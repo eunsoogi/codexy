@@ -1,18 +1,26 @@
-use std::fs;
+use std::{fs, path::Path};
 
-use crate::support;
+use crate::support::{self, PluginFixture};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    crate::support::copy_plugin_fixture_with_mutable_files(&[
+fn plugin_fixture() -> TestResult<PluginFixture> {
+    crate::support::plugin_fixture_with_mutable_files(&[
         std::path::Path::new("skills/codex-orchestration/SKILL.md"),
     ])
     .map_err(Into::into)
 }
 
+fn reset_orchestration_file(fixture: &PluginFixture) -> TestResult<(std::path::PathBuf, String)> {
+    let relative = Path::new("skills/codex-orchestration/SKILL.md");
+    fixture.reset_file(relative)?;
+    let path = fixture.root().join(relative);
+    Ok((path.clone(), fs::read_to_string(path)?))
+}
+
 #[test]
 fn validator_requires_child_external_gate_and_archive_preflight_policy() -> TestResult {
+    let fixture = plugin_fixture()?;
     for (required, replacement, error_fragment) in [
         (
             "child external-gate wait MUST end its active goal and plan before waiting",
@@ -40,12 +48,10 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
             "invoke exactly one fresh sentinel review for the new file state or head",
         ),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-        let original = fs::read_to_string(&path)?;
+        let (path, original) = reset_orchestration_file(&fixture)?;
         fs::write(&path, original.replace(required, replacement))?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy(fixture.root())?;
         assert!(
             !output.status.success(),
             "validator accepted missing policy {required:?}"
@@ -57,18 +63,18 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
 
 #[test]
 fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
+    let fixture = plugin_fixture()?;
     for forbidden in [
         "MUST call update_goal(status=\"blocked\") after a Sentinel BLOCK.",
         "MUST create a replacement thread after a Sentinel BLOCK.",
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let (path, original) = reset_orchestration_file(&fixture)?;
         fs::write(
             &path,
-            format!("{}\n{forbidden}\n", fs::read_to_string(&path)?),
+            format!("{original}\n{forbidden}\n"),
         )?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy(fixture.root())?;
         assert!(
             !output.status.success(),
             "validator accepted forbidden BLOCK policy {forbidden:?}"
@@ -80,17 +86,17 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
 
 #[test]
 fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
     fs::write(
         &path,
         format!(
             "{}\nChild external-gate wait MUST retain active goal and plan.\n",
-            fs::read_to_string(&path)?
+            original
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy(fixture.root())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("external-gate goal retention"));
     Ok(())
@@ -98,9 +104,8 @@ fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
 
 #[test]
 fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    let original = fs::read_to_string(&path)?;
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
     fs::write(
         &path,
         original.replace(
@@ -109,7 +114,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
         ),
     )?;
 
-    let required_only_historically = support::validator_instruction_policy(&plugin_root)?;
+    let required_only_historically = support::validator_instruction_policy(fixture.root())?;
     assert!(!required_only_historically.status.success());
     assert!(
         support::stderr(&required_only_historically)
@@ -122,7 +127,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\n## Historical Example\nThis is retained only for historical context.\nMUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let forbidden_only_historically = support::validator_instruction_policy(&plugin_root)?;
+    let forbidden_only_historically = support::validator_instruction_policy(fixture.root())?;
     assert!(
         forbidden_only_historically.status.success(),
         "{}",
@@ -135,7 +140,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\nLogging is not required, but MUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let unrelated_negation = support::validator_instruction_policy(&plugin_root)?;
+    let unrelated_negation = support::validator_instruction_policy(fixture.root())?;
     assert!(!unrelated_negation.status.success());
     assert!(support::stderr(&unrelated_negation).contains("autonomous polling"));
 
@@ -146,7 +151,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST end its active goal and plan before waiting",
         ),
     )?;
-    let heading_only = support::validator_instruction_policy(&plugin_root)?;
+    let heading_only = support::validator_instruction_policy(fixture.root())?;
     assert!(!heading_only.status.success());
     assert!(
         support::stderr(&heading_only)
@@ -164,7 +169,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
                 negated_clause,
             ),
         )?;
-        let negated_required = support::validator_instruction_policy(&plugin_root)?;
+        let negated_required = support::validator_instruction_policy(fixture.root())?;
         assert!(!negated_required.status.success(), "{negated_clause}");
     }
     Ok(())
@@ -172,9 +177,8 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
 
 #[test]
 fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    let original = fs::read_to_string(&path)?;
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
     fs::write(
         &path,
         format!(
@@ -183,7 +187,7 @@ fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> T
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy(fixture.root())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("latest evidence"));
     Ok(())
@@ -191,26 +195,25 @@ fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> T
 
 #[test]
 fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
     fs::write(
         &path,
         format!(
             "{}\nMUST NOT keep polling and keep the goal active.\n",
-            fs::read_to_string(&path)?
+            original
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy(fixture.root())?;
     assert!(output.status.success(), "{}", support::stderr(&output));
     Ok(())
 }
 
 #[test]
 fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
-    let original = fs::read_to_string(&path)?;
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
     fs::write(
         &path,
         format!(
@@ -218,7 +221,7 @@ fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy(fixture.root())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not block a usable owner"));
     Ok(())
