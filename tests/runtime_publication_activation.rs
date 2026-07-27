@@ -8,7 +8,7 @@ use std::{
 use serde_json::Value as Json;
 use serde_yaml::Value as Yaml;
 
-use crate::support;
+use crate::support::{self, FixtureCommand};
 
 const RECEIPT_SCHEMA: &str = "codexy.runtime-candidate-receipt.v1";
 
@@ -68,7 +68,7 @@ fn invalid_activation_is_byte_identical() -> Result<(), Box<dyn std::error::Erro
     let temp = tempfile::tempdir()?;
     let receipt = temp.path().join("invalid-receipt.json");
     fs::write(&receipt, r#"{"schema":"invalid"}"#)?;
-    let output = Command::new(&gate)
+    let output = FixtureCommand::new(&gate)
         .args([
             "--repo-root",
             root.to_str().ok_or("non-UTF-8 repository root")?,

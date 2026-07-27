@@ -7,7 +7,7 @@ use std::{
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
-use crate::support::make_executable;
+use crate::support::{FixtureCommand, make_executable};
 
 mod metadata;
 
@@ -115,7 +115,7 @@ impl Fixture {
     }
 
     fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        Ok(Command::new(self.repo.join("scripts/verify-runtime-activation-branch"))
+        Ok(FixtureCommand::new(self.repo.join("scripts/verify-runtime-activation-branch"))
             .args(["activation", base, version])
             .arg(&self.receipt)
             .current_dir(&self.repo)

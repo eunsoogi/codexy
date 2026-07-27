@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn codegraph_wrapper_reports_missing_declared_windows_runtime_without_running_macos_binary()

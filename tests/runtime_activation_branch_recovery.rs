@@ -4,7 +4,7 @@ use std::{
     process::Command,
 };
 
-use crate::support::make_executable;
+use crate::support::{FixtureCommand, make_executable};
 
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
@@ -122,7 +122,7 @@ impl Fixture {
         pr_state: &str,
         test_mode: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let mut command = Command::new(
+        let mut command = FixtureCommand::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/verify-runtime-activation-branch"),
         );

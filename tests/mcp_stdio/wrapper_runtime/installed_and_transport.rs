@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn lsp_wrapper_uses_installed_plugin_root_for_config() -> Result<(), Box<dyn std::error::Error>> {

@@ -4,6 +4,8 @@ use std::{
     process::Command,
 };
 
+use crate::support::FixtureCommand;
+
 #[path = "sync_version_cli/isolation.rs"]
 mod isolation;
 #[path = "sync_version_cli/admission.rs"]
@@ -80,7 +82,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it()
     assert_ne!(lock_text, stale_lock, "lock fixture did not change");
     fs::write(&lock_path, stale_lock)?;
 
-    let output = Command::new(repo.join("scripts/sync-plugin-version"))
+    let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version"))
         .arg("--check")
         .current_dir(&repo)
         .output()?;
