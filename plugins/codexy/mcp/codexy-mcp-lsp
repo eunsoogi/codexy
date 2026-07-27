@@ -9,7 +9,11 @@ bundled_platforms="darwin-arm64 linux-x86_64"
 
 platform=$(codexy_runtime_platform)
 
-runtime_name="codexy-mcp-lsp-$platform.bin"
+case "$platform" in
+  windows-x86_64) runtime_extension=exe ;;
+  *) runtime_extension=bin ;;
+esac
+runtime_name="codexy-mcp-lsp-$platform.$runtime_extension"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in
     /*) ;;
@@ -24,7 +28,7 @@ fi
 
 case " $bundled_platforms " in
   *" $platform "*) ;;
-  *) echo "codexy-mcp-lsp unsupported platform: $platform; bundled runtime supports: $bundled_platforms" >&2; exit 127 ;;
+  *) echo "codexy-mcp-lsp unsupported platform: $platform; expected runtime: $runtime_name; bundled runtime supports: $bundled_platforms" >&2; exit 127 ;;
 esac
 bundled_runtime="$plugin_root/runtime/$runtime_name"
 if [ -x "$bundled_runtime" ]; then exec "$bundled_runtime" "$@"; fi

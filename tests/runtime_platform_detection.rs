@@ -18,7 +18,8 @@ fn wrappers_share_platform_detection_across_supported_shells()
             install_fake_uname(&fixture, os, arch)?;
             let runtime_dir = temp.path().join("runtime path with spaces");
             std::fs::create_dir(&runtime_dir)?;
-            let runtime = runtime_dir.join(format!("codexy-mcp-{server}-{platform}.bin"));
+            let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+            let runtime = runtime_dir.join(format!("codexy-mcp-{server}-{platform}.{extension}"));
             std::fs::write(&runtime, "#!/bin/sh\nprintf '%s\\n' \"$@\"\n")?;
             make_executable(&runtime)?;
 
@@ -45,7 +46,7 @@ fn explicit_platform_override_precedes_detection_and_unknown_hosts_fail_closed()
         install_fake_uname(&fixture, "Plan9", "mips64")?;
         let runtime_dir = temp.path().join("runtime override");
         std::fs::create_dir(&runtime_dir)?;
-        let runtime = runtime_dir.join(format!("codexy-mcp-{server}-windows-x86_64.bin"));
+        let runtime = runtime_dir.join(format!("codexy-mcp-{server}-windows-x86_64.exe"));
         std::fs::write(&runtime, "#!/bin/sh\nexit 0\n")?;
         make_executable(&runtime)?;
         let wrapper = fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}"));

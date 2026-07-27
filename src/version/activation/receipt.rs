@@ -11,7 +11,7 @@ const RELEASE_SCHEMA: &str = "codexy-runtime-release/v1";
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
 const REPOSITORY_ID: i64 = 1_269_350_143;
 const WORKFLOW_PATH: &str = ".github/workflows/runtime-candidate.yml";
-const PLATFORMS: [&str; 2] = ["darwin-arm64", "linux-x86_64"];
+pub(super) const PLATFORMS: [&str; 3] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
 const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 
 pub(super) fn activation_from_receipt(receipt: &Value) -> Result<(Value, Value)> {

@@ -41,6 +41,8 @@ jobs:
             runner: ubuntu-latest
           - platform: darwin-arm64
             runner: macos-14
+          - platform: windows-x86_64
+            runner: windows-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -48,12 +50,23 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Verify exact source commit
+        if: matrix.platform != 'windows-x86_64'
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+      - name: Verify exact source commit on native Windows
+        if: matrix.platform == 'windows-x86_64'
+        shell: pwsh
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_COMMIT) {
+            throw "checked out source commit does not match workflow input"
+          }
       - name: Build candidate MCP runtimes
         run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
       - name: Smoke platform-local MCP protocols
+        if: matrix.platform != 'windows-x86_64'
         run: |
           python3 - <<'PY'
           import json, subprocess
@@ -87,7 +100,50 @@ jobs:
           for case in cases:
               smoke(case["binary"], case["name"], case["arguments"])
           PY
+      - name: Smoke native Windows MCP protocols
+        if: matrix.platform == 'windows-x86_64'
+        shell: pwsh
+        run: |
+          $cases = @(
+            @{ Binary = "target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "Cargo.toml" } },
+            @{ Binary = "target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
+          )
+          foreach ($case in $cases) {
+            $binary = (Resolve-Path -LiteralPath $case.Binary).Path
+            $start = [System.Diagnostics.ProcessStartInfo]::new()
+            $start.FileName = $binary
+            $start.UseShellExecute = $false
+            $start.RedirectStandardInput = $true
+            $start.RedirectStandardOutput = $true
+            $start.RedirectStandardError = $true
+            $start.CreateNoWindow = $true
+            $process = [System.Diagnostics.Process]::new()
+            $process.StartInfo = $start
+            try {
+              if (-not $process.Start()) { throw "failed to start $binary" }
+              $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+              $stderrTask = $process.StandardError.ReadToEndAsync()
+              $requests = @(
+                (@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} } | ConvertTo-Json -Compress),
+                (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } } | ConvertTo-Json -Compress)
+              )
+              foreach ($request in $requests) { $process.StandardInput.WriteLine($request) }
+              $process.StandardInput.Close()
+              if (-not $process.WaitForExit(30000)) { $process.Kill($true); throw "$binary timed out" }
+              $stdout = $stdoutTask.GetAwaiter().GetResult()
+              $stderr = $stderrTask.GetAwaiter().GetResult()
+              if ($process.ExitCode -ne 0) { throw "$binary failed: $stderr" }
+              $responses = @($stdout -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
+              if (($responses | Where-Object id -eq 1).result.protocolVersion -ne "2024-11-05") { throw "$binary protocol mismatch" }
+              $tool = $responses | Where-Object id -eq 2
+              if ($tool.error -or -not $tool.result.content) { throw "$binary tool smoke failed" }
+            } finally {
+              if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
+              $process.Dispose()
+            }
+          }
       - name: Package declared platform binaries
+        if: matrix.platform != 'windows-x86_64'
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -97,6 +153,20 @@ jobs:
             cp "target/release/codexy-mcp-${server}" "$path"
             chmod 755 "$path"
           done
+      - name: Package native Windows PE binaries
+        if: matrix.platform == 'windows-x86_64'
+        shell: pwsh
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          New-Item -ItemType Directory -Force -Path runtime | Out-Null
+          foreach ($server in @("lsp", "codegraph")) {
+            $source = "target/release/codexy-mcp-$server.exe"
+            $destination = "runtime/codexy-mcp-$server-$env:PLATFORM.exe"
+            Copy-Item -LiteralPath $source -Destination $destination
+            $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
+            if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
+          }
       - uses: actions/upload-artifact@v7
         with:
           name: runtime-candidate-${{ matrix.platform }}
@@ -140,18 +210,32 @@ jobs:
             done
           done
           CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" python3 - <<'PY'
-          import hashlib, json, os
+          import hashlib, json, os, shutil
           root = os.environ["ROOT"]
           platforms = {}
-          for platform in ("darwin-arm64", "linux-x86_64"):
+          for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
               inventory = {}
               for server in ("lsp", "codegraph"):
-                  path = f"runtime/codexy-mcp-{server}-{platform}.bin"
-                  data = open(f"{root}/{path}", "rb").read()
-                  inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
+              extension = "exe" if platform == "windows-x86_64" else "bin"
+              path = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
+              data = open(f"{root}/{path}", "rb").read()
+              inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
               platforms[platform] = inventory
           candidate = {"schema":"codexy-runtime-candidate/v1","source":{"repository":"https://github.com/eunsoogi/codexy","commit":os.environ["SOURCE_COMMIT"]},"artifact":{"tag":os.environ["CANDIDATE_TAG"]},"compatibility":{"bootstrapApi":1,"pluginRuntimeApi":1,"transport":"stdio-newline-v1","mcpProtocol":"2024-11-05"},"platforms":platforms}
           open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
+          manifest_path = f"{root}/.codex-plugin/plugin.json"
+          manifest = json.load(open(manifest_path, encoding="utf-8"))
+          manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+          open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) + "\n")
+          for server in ("lsp", "codegraph"):
+              wrapper_path = f"{root}/mcp/codexy-mcp-{server}"
+              wrapper = open(wrapper_path, encoding="utf-8").read()
+              old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
+              new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
+              if wrapper.count(old) != 1:
+                  raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
+              open(wrapper_path, "w", encoding="utf-8").write(wrapper.replace(old, new))
+              shutil.copyfile(f"{root}/runtime/codexy-mcp-{server}-windows-x86_64.exe", f"{root}/mcp/codexy-mcp-{server}.exe")
           PY
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
           archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"

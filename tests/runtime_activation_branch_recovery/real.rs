@@ -80,6 +80,7 @@ impl Fixture {
                 repo.join(relative),
             )?;
         }
+        restore_legacy_platform_metadata(&repo)?;
         git(&repo, &["init", "-b", "main"])?;
         git(&repo, &["config", "user.name", "test"])?;
         git(&repo, &["config", "user.email", "test@example.com"])?;
@@ -94,7 +95,8 @@ impl Fixture {
                 .args(["--bootstrap-version", "1.3.0"])
                 .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
-        git(&repo, &["add", ".agents/plugins/release-publish-contract.json"])?;
+        git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
+        git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
         git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
         git(&repo, &["add", "plugins/codexy/runtime-release.json", "src/version/bootstrap.rs"])?;
         git(&repo, &["commit", "-m", "activation"])?;
@@ -178,6 +180,26 @@ impl Fixture {
     }
 }
 
+fn restore_legacy_platform_metadata(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let platforms = json!(["darwin-arm64", "linux-x86_64"]);
+    let manifest = repo.join("plugins/codexy/.codex-plugin/plugin.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&manifest)?)?;
+    value["supportedPlatforms"] = platforms.clone();
+    fs::write(manifest, serde_json::to_vec_pretty(&value)?)?;
+
+    let marketplace = repo.join(".agents/plugins/marketplace.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&marketplace)?)?;
+    value["plugins"][0]["supportedPlatforms"] = platforms.clone();
+    fs::write(marketplace, serde_json::to_vec_pretty(&value)?)?;
+
+    let publish = repo.join(".agents/plugins/release-publish-contract.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&publish)?)?;
+    value["runtime"]["platforms"] = platforms.clone();
+    value["package"]["platforms"] = platforms;
+    fs::write(publish, serde_json::to_vec_pretty(&value)?)?;
+    Ok(())
+}
+
 fn receipt_value() -> Value {
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
@@ -186,7 +208,8 @@ fn receipt_value() -> Value {
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": "b".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
-            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}}
+            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}},
+            "windows-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-windows-x86_64.exe", "sha256": "f".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe", "sha256": "a".repeat(64)}}
         }
     });
     let candidate_bytes = serde_json::to_vec(&canonical(candidate.clone())).unwrap();

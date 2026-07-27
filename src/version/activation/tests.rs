@@ -14,7 +14,7 @@ const WRAPPERS: [&str; 2] = [
 #[test]
 fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 6);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
     assert_eq!(release["artifact"]["tag"], "runtime-candidate-1.3.0");
@@ -23,9 +23,17 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
         release["platforms"]["darwin-arm64"]["lsp"]["path"],
         "runtime/codexy-mcp-lsp-darwin-arm64.bin"
     );
+    assert_eq!(
+        release["platforms"]["windows-x86_64"]["lsp"]["path"],
+        "runtime/codexy-mcp-lsp-windows-x86_64.exe"
+    );
     for wrapper in fixture.wrappers() {
-        assert!(fs::read_to_string(wrapper)?.contains("getcodexy==1.3.0"));
+        let wrapper = fs::read_to_string(wrapper)?;
+        assert!(wrapper.contains("getcodexy==1.3.0"));
+        assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\""));
     }
+    let manifest: Value = serde_json::from_str(&fs::read_to_string(fixture.manifest())?)?;
+    assert_eq!(manifest["supportedPlatforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(
         fs::read_to_string(fixture.bootstrap())?,
         "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n"
@@ -43,10 +51,12 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
 #[test]
 fn activation_updates_the_complete_selected_identity_transaction() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 6);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
     let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
     assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(publish["runtime"]["selectedTag"], "runtime-candidate-1.3.0");
+    assert_eq!(publish["runtime"]["platforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
+    assert_eq!(publish["package"]["platforms"], json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     Ok(())
 }
 
@@ -107,6 +117,7 @@ impl Fixture {
         let mcp = root.join("plugins/codexy/mcp");
         fs::create_dir_all(root.join("src/version"))?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
+        fs::create_dir_all(root.join("plugins/codexy/.codex-plugin"))?;
         fs::create_dir_all(&mcp)?;
         fs::write(
             root.join("src/version/bootstrap.rs"),
@@ -118,13 +129,21 @@ impl Fixture {
         )?;
         fs::write(
             root.join(".agents/plugins/release-publish-contract.json"),
-            r#"{"bootstrap":{"selectedVersion":"1.2.2"},"runtime":{"selectedTag":"v1.2.2"}}"#,
+            r#"{"bootstrap":{"selectedVersion":"1.2.2"},"runtime":{"selectedTag":"v1.2.2","platforms":["darwin-arm64","linux-x86_64"]},"package":{"platforms":["darwin-arm64","linux-x86_64"]}}"#,
+        )?;
+        fs::write(
+            root.join("plugins/codexy/.codex-plugin/plugin.json"),
+            r#"{"supportedPlatforms":["darwin-arm64","linux-x86_64"]}"#,
+        )?;
+        fs::write(
+            root.join(".agents/plugins/marketplace.json"),
+            r#"{"plugins":[{"supportedPlatforms":["darwin-arm64","linux-x86_64"]}]}"#,
         )?;
         for (path, server) in WRAPPERS.into_iter().zip(["lsp", "codegraph"]) {
             fs::write(
                 root.join(path),
                 format!(
-                    "#!/bin/sh\nexec uvx --from getcodexy==0.0.1 codexy-mcp-runtime {server} -- \"$@\"\n"
+                    "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==0.0.1 codexy-mcp-runtime {server} -- \"$@\"\n"
                 ),
             )?;
         }
@@ -150,6 +169,9 @@ impl Fixture {
     fn bootstrap(&self) -> PathBuf {
         self.root.join("src/version/bootstrap.rs")
     }
+    fn manifest(&self) -> PathBuf {
+        self.root.join("plugins/codexy/.codex-plugin/plugin.json")
+    }
     fn wrappers(&self) -> impl Iterator<Item = PathBuf> + '_ {
         WRAPPERS.into_iter().map(|path| self.root.join(path))
     }
@@ -159,6 +181,8 @@ impl Fixture {
             .chain(std::iter::once(self.publish()))
             .chain(std::iter::once(self.candidate()))
             .chain(std::iter::once(self.bootstrap()))
+            .chain(std::iter::once(self.manifest()))
+            .chain(std::iter::once(self.root.join(".agents/plugins/marketplace.json")))
             .map(|path| Ok((path.clone(), fs::read(path).ok())))
             .collect()
     }
@@ -173,7 +197,8 @@ fn receipt_value() -> Value {
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": digest}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
-            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}}
+            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}},
+            "windows-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-windows-x86_64.exe", "sha256": "f".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe", "sha256": "a".repeat(64)}}
         }
     });
     let payload_sha = format!(

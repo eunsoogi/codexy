@@ -88,7 +88,8 @@ pub(super) fn tag(value: &str) -> Result<()> {
 }
 
 pub(super) fn binary_path(value: &str, server: &str, platform: &str) -> Result<()> {
-    let expected = format!("runtime/codexy-mcp-{server}-{platform}.bin");
+    let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+    let expected = format!("runtime/codexy-mcp-{server}-{platform}.{extension}");
     if value == expected {
         Ok(())
     } else {
