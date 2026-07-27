@@ -212,7 +212,9 @@ fn check_platforms(
             if state == "legacy-public" {
                 exact(
                     digest,
-                    legacy_digest(platform, server),
+                    legacy_digest(platform, server).ok_or_else(|| {
+                        anyhow::anyhow!("unsupported legacy runtime inventory: {platform}/{server}")
+                    })?,
                     "platform digest",
                     path,
                 )?;
@@ -236,20 +238,20 @@ fn check_platforms(
     Ok(())
 }
 
-fn legacy_digest(platform: &str, server: &str) -> &'static str {
+fn legacy_digest(platform: &str, server: &str) -> Option<&'static str> {
     match (platform, server) {
         ("darwin-arm64", "lsp") => {
-            "0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706"
+            Some("0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706")
         }
         ("darwin-arm64", "codegraph") => {
-            "f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6"
+            Some("f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6")
         }
         ("linux-x86_64", "lsp") => {
-            "7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663"
+            Some("7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663")
         }
         ("linux-x86_64", "codegraph") => {
-            "218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2"
+            Some("218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2")
         }
-        _ => unreachable!("validated runtime inventory"),
+        _ => None,
     }
 }

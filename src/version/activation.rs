@@ -24,6 +24,11 @@ struct Update {
 
 /// Validates a candidate receipt and atomically stages its activation updates.
 /// No publication, commit, branch, or pull request action is performed here.
+///
+/// # Errors
+///
+/// Returns an error when the candidate receipt or activation targets are invalid,
+/// or when atomic staging cannot complete.
 pub fn activate(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Result<usize> {
     let updates = prepare(repo_root, bootstrap_version, receipt_path)?;
     apply_with(&updates, write_staged)?;
@@ -188,17 +193,19 @@ where
 }
 
 fn wrapper_updates(root: &Path, version: &str) -> Result<Vec<Update>> {
-    wrappers::prepare_activation_updates(root, version, &PLATFORMS)?
-        .into_iter()
-        .map(wrapper_update)
-        .collect()
+    Ok(
+        wrappers::prepare_activation_updates(root, version, &PLATFORMS)?
+            .into_iter()
+            .map(wrapper_update)
+            .collect(),
+    )
 }
 
-fn wrapper_update(update: WrapperUpdate) -> Result<Update> {
-    Ok(Update {
+fn wrapper_update(update: WrapperUpdate) -> Update {
+    Update {
         path: update.path,
         bytes: update.bytes,
-    })
+    }
 }
 
 fn write_staged(updates: &[Update]) -> Result<()> {

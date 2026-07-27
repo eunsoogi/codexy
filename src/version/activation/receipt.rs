@@ -3,7 +3,10 @@ mod fields;
 use anyhow::{Result, bail};
 use serde_json::{Map, Value, json};
 
-use fields::*;
+use fields::{
+    binary_path, commit, digest, exact, exact_keys, object, object_field, positive_integer, string,
+    tag,
+};
 
 const RECEIPT_SCHEMA: &str = "codexy-runtime-candidate-receipt/v1";
 const CANDIDATE_SCHEMA: &str = "codexy-runtime-candidate/v1";
