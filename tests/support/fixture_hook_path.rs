@@ -10,7 +10,7 @@ pub(crate) fn hook_fixture_model_input(
         .to_str()
         .ok_or_else(|| "hook fixture path is not valid UTF-8".to_owned())?;
     hook_fixture_model_input_for_platform(command, native_cwd, cfg!(windows), |value| {
-        windows_shell_path_to_native(value)
+        windows_shell_path_to_native(value, native_cwd)
     })
 }
 
@@ -96,12 +96,12 @@ fn modeled_path_token(
 }
 
 #[cfg(windows)]
-fn windows_shell_path_to_native(value: &str) -> Result<String, String> {
-    super::fixture_hook_path_windows::native_shell_fixture_path(value)
+fn windows_shell_path_to_native(value: &str, native_cwd: &str) -> Result<String, String> {
+    super::fixture_hook_path_windows::native_shell_fixture_path(value, native_cwd)
 }
 
 #[cfg(not(windows))]
-fn windows_shell_path_to_native(value: &str) -> Result<String, String> {
+fn windows_shell_path_to_native(value: &str, _native_cwd: &str) -> Result<String, String> {
     Ok(value.to_owned())
 }
 

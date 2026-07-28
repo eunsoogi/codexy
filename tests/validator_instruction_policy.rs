@@ -19,6 +19,18 @@ mod passive_permission;
 #[path = "validator_instruction_policy/sculptor_loc_policy.rs"]
 mod sculptor_loc_policy;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+const MUTABLE_PLUGIN_FILES: &[&str] = &[
+    ".codex-plugin/plugin.json",
+    "agents/codexy-sculptor.toml",
+    "agents/codexy-sentinel.toml",
+    "agents/codexy-weaver.toml",
+    "agents/openai.yaml",
+    "skills/codex-orchestration/agents/openai.yaml",
+    "skills/git-workflow/SKILL.md",
+    "skills/plugin-marketplace-prep/SKILL.md",
+    "skills/proof-driven-completion/SKILL.md",
+    "skills/refactoring/SKILL.md",
+];
 #[rustfmt::skip]
 const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MCP", "Use Codexy codegraph MCP"), ("MUST preflight branch refs", "preflight branch refs"), ("MUST wait", "Wait"), ("MUST keep metadata current", "Keep metadata current"), ("MUST add nested", "Add nested"), ("MUST put executable", "Put executable"), ("MUST treat failures", "Treat failures"), ("MUST capture", "Capture"), ("MUST mention unrelated", "Mention unrelated")];
 
@@ -199,10 +211,8 @@ fn copy_fixture(plugin_root: &Path) -> std::io::Result<()> {
 }
 
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_fixture(&plugin_root)?;
-    Ok((temp, plugin_root))
+    let mutable_files = MUTABLE_PLUGIN_FILES.iter().map(Path::new).collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
 }
 
 fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {

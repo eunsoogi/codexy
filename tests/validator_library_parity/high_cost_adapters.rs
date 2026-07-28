@@ -65,6 +65,16 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         if source.contains("CARGO_BIN_EXE_codexy-validate") {
             return Err(format!("{relative} must use the focused library adapter").into());
         }
+        if relative == "tests/validator_instruction_policy.rs" {
+            support::assert_structured_literals(
+                &source,
+                "instruction policy copy-on-write fixture",
+                &[
+                    "support::copy_plugin_fixture_with_mutable_files",
+                    "agents/codexy-sculptor.toml",
+                ],
+            );
+        }
     }
     for entry in std::fs::read_dir(root.join("tests"))? {
         let file_path = entry?.path();
