@@ -222,6 +222,8 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     assert!(!run_gate(&extra_archive, &extra_plugin).status.success());
 }
 
+#[path = "release_archive_gate/candidate.rs"]
+mod candidate;
 #[path = "release_archive_gate/content_compare.rs"]
 mod content_compare;
 #[path = "release_archive_gate/safety.rs"]

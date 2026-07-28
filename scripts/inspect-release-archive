@@ -64,12 +64,45 @@ esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
+python3 - "$release_contract" "$release_state" >"$tmp_dir/expected-runtime" <<'PY'
+import json, sys
+
+contract_path, state = sys.argv[1:]
+try:
+    with open(contract_path, encoding="utf-8") as source:
+        platforms = json.load(source)["platforms"]
+    expected_platforms = (
+        ("darwin-arm64", "linux-x86_64")
+        if state == "legacy-public"
+        else ("darwin-arm64", "linux-x86_64", "windows-x86_64")
+    )
+    if set(platforms) != set(expected_platforms):
+        raise ValueError("platform set")
+    for platform in expected_platforms:
+        extension = "exe" if platform == "windows-x86_64" else "bin"
+        for server in ("lsp", "codegraph"):
+            expected = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
+            artifact = platforms[platform][server]
+            if state == "candidate-proven" and artifact.get("path") != expected:
+                raise ValueError("candidate runtime path")
+            print(expected)
+except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+    raise SystemExit("runtime release artifact contract is invalid")
+PY
 while IFS= read -r relative; do
-  case "$relative" in
-    runtime/codexy-mcp-lsp-darwin-arm64.bin|runtime/codexy-mcp-lsp-linux-x86_64.bin|runtime/codexy-mcp-codegraph-darwin-arm64.bin|runtime/codexy-mcp-codegraph-linux-x86_64.bin) ;;
-    runtime/*) echo "unexpected runtime artifact: $relative" >&2; exit 1 ;;
+  case "$relative" in runtime/*)
+    grep -Fxq "$relative" "$tmp_dir/expected-runtime" || {
+      echo "unexpected runtime artifact: $relative" >&2
+      exit 1
+    }
   esac
 done <"$tmp_dir/actual"
+while IFS= read -r relative; do
+  grep -Fxq "$relative" "$tmp_dir/actual" || {
+    echo "expected runtime artifact missing: $relative" >&2
+    exit 1
+  }
+done <"$tmp_dir/expected-runtime"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
