@@ -93,6 +93,15 @@ pub(crate) fn validator_routing(plugin_root: &Path) -> Result<Output, Box<dyn st
     validator_in_process_mode(plugin_root, Mode::OrchestrationRouting)
 }
 
+pub(crate) fn validator_pr_labels(pr_state: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    validator_in_process_mode(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        Mode::PrLabels {
+            pr_state: pr_state.to_owned(),
+        },
+    )
+}
+
 pub(crate) fn validator_child_lane_ownership_file(
     evidence_path: &Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {

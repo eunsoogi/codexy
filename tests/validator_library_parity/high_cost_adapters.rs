@@ -167,6 +167,17 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         "runtime heartbeat fixture mutation path",
         &["skills/codex-orchestration/references/runtime-heartbeats.md"],
     );
+    let source_artifact = std::fs::read_to_string(
+        root.join("tests/validator_source_artifact_contract.rs"),
+    )?;
+    support::assert_structured_literals(
+        &source_artifact,
+        "source artifact in-process validation",
+        &["support::validator"],
+    );
+    if source_artifact.contains("CARGO_BIN_EXE_codexy-validate") {
+        return Err("source artifact validation must not launch codexy-validate per case".into());
+    }
     for (relative, mutable_file) in [
         (
             "tests/validator_agent_registration_bootstrap.rs",

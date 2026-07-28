@@ -142,6 +142,9 @@ pub enum Mode {
     IssueTitle {
         title: String,
     },
+    PrLabels {
+        pr_state: String,
+    },
     IssueIntake {
         receipt: String,
     },

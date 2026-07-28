@@ -118,7 +118,7 @@ fn cargo_declares_at_most_eight_integration_suites() {
 
 #[cfg(unix)]
 #[test]
-fn plugin_fixtures_reuse_the_immutable_large_asset() {
+fn plugin_fixtures_keep_the_large_asset_private() {
     let temp = tempfile::tempdir().expect("temporary fixture root");
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
     let fixture = temp.path().join("codexy");
@@ -126,11 +126,16 @@ fn plugin_fixtures_reuse_the_immutable_large_asset() {
 
     let source_asset = source.join("assets/codexy-agent-hero.png");
     let fixture_asset = fixture.join("assets/codexy-agent-hero.png");
-    let source_metadata = std::fs::metadata(source_asset).expect("source asset metadata");
-    let fixture_metadata = std::fs::metadata(fixture_asset).expect("fixture asset metadata");
-    assert_eq!(
+    let source_metadata = std::fs::metadata(&source_asset).expect("source asset metadata");
+    let fixture_metadata = std::fs::metadata(&fixture_asset).expect("fixture asset metadata");
+    assert_ne!(
         (fixture_metadata.dev(), fixture_metadata.ino()),
         (source_metadata.dev(), source_metadata.ino()),
-        "immutable large fixture assets must be hard-linked instead of copied per test"
+        "fixture assets must not share a writable inode with the canonical source"
+    );
+    assert_eq!(
+        std::fs::read(&fixture_asset).expect("fixture asset bytes"),
+        std::fs::read(&source_asset).expect("source asset bytes"),
+        "private fixture copies must preserve binary asset bytes"
     );
 }

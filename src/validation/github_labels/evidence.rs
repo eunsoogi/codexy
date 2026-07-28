@@ -33,6 +33,7 @@ fn label_name(value: &Value) -> Option<String> {
     value
         .as_str()
         .or_else(|| value.get("name").and_then(Value::as_str))
+        .filter(|name| !name.is_empty())
         .map(str::to_owned)
 }
 
@@ -97,14 +98,18 @@ pub(super) fn repository_label_taxonomy(pr_state: &Value) -> Option<Vec<String>>
         .get("repositoryLabels")
         .into_iter()
         .chain(pr_state.pointer("/repository/labels"));
-    for labels in labels.by_ref().filter(|labels| {
-        matches!(labels, Value::Array(_)) || matches!(labels.get("nodes"), Some(Value::Array(_)))
-    }) {
+    for labels in labels.by_ref() {
+        let Some(items) = labels
+            .as_array()
+            .or_else(|| labels.get("nodes").and_then(Value::as_array))
+        else {
+            continue;
+        };
         let names = label_names(Some(labels));
         if !names.is_empty() {
             return Some(names);
         }
-        found_empty_taxonomy = true;
+        found_empty_taxonomy |= items.is_empty();
     }
     found_empty_taxonomy.then(Vec::new)
 }
@@ -143,10 +148,19 @@ pub(super) fn is_codexy_lane(pr_state: &Value) -> bool {
         })
 }
 
+pub(super) fn has_pr_identity(pr_state: &Value) -> bool {
+    string_field(
+        pr_state,
+        &["repository", "nameWithOwner", "headRepository", "url"],
+    )
+    .iter()
+    .any(|value| !value.is_empty())
+}
+
 fn string_field(value: &Value, keys: &[&str]) -> Vec<String> {
     keys.iter()
         .filter_map(|key| value.get(*key).and_then(Value::as_str))
-        .map(|value| value.to_ascii_lowercase())
+        .map(str::to_ascii_lowercase)
         .collect()
 }
 

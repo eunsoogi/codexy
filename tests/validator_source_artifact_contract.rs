@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support;
 
 #[test]
 fn validator_cli_rejects_source_plugin_with_generated_bin_directory()
@@ -59,13 +59,7 @@ fn validator_cli_rejects_source_plugin_with_generated_runtime_directory()
 fn validate_source_plugin(
     plugin_root: &std::path::Path,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?)
+    support::validator(plugin_root, "--check")
 }
 
 fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {

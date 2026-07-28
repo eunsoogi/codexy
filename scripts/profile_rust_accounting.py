@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import tomllib
 from collections import Counter
 from pathlib import Path
 
@@ -16,9 +17,14 @@ def listed_test_inventory_from_completed_binaries(
     root: Path, output: str
 ) -> tuple[tuple[Counter[str], set[str]], int]:
     tests: Counter[str] = Counter()
-    targets: set[str] = set()
+    binaries = dict(completed_test_binaries(root, output))
+    targets = declared_test_targets(root) | set(binaries)
     status = 0
-    for target, binary in completed_test_binaries(root, output):
+    for target in sorted(targets):
+        binary = binaries.get(target) or compiled_test_binary(root, target)
+        if binary is None:
+            status = status or 1
+            continue
         process = subprocess.run(
             [str(binary), "--list"],
             cwd=root,
@@ -33,6 +39,25 @@ def listed_test_inventory_from_completed_binaries(
             if match := LIST_PATTERN.match(line):
                 tests[f"{target}::{canonical_test_name(match.group('name'))}"] += 1
     return (tests, targets), status
+
+
+def declared_test_targets(root: Path) -> set[str]:
+    manifest = tomllib.loads((root / "Cargo.toml").read_text())
+    targets = {"lib"}
+    targets.update(path.stem for path in (root / "src/bin").glob("*.rs"))
+    targets.update(test["name"] for test in manifest.get("test", []))
+    return targets
+
+
+def compiled_test_binary(root: Path, target: str) -> Path | None:
+    package = tomllib.loads((root / "Cargo.toml").read_text())["package"]["name"]
+    stem = (package if target == "lib" else target).replace("-", "_")
+    candidates = [
+        path
+        for path in (root / "target/debug/deps").glob(f"{stem}-*")
+        if path.is_file() and path.suffix not in {".d", ".pdb"}
+    ]
+    return max(candidates, key=lambda path: path.stat().st_mtime, default=None)
 
 
 def completed_test_binaries(root: Path, output: str) -> list[tuple[str, Path]]:

@@ -42,7 +42,7 @@ pub(crate) use agent_model_assignments::{
 };
 pub(crate) use child_thread_ledger_skill::{
     stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
-    validator_in_process, validator_instruction_policy, validator_routing,
+    validator_in_process, validator_instruction_policy, validator_pr_labels, validator_routing,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;

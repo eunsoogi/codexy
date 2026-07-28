@@ -30,11 +30,6 @@ fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::i
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
-    if source.ends_with("assets/codexy-agent-hero.png")
-        && std::fs::hard_link(source, target).is_ok()
-    {
-        return Ok(());
-    }
     let source_c = CString::new(source.as_os_str().as_bytes())?;
     let target_c = CString::new(target.as_os_str().as_bytes())?;
     // SAFETY: both pointers are NUL-terminated paths valid for this call.
@@ -74,10 +69,5 @@ mod tests {
 #[cfg(not(target_os = "macos"))]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     super::profile_metrics::record("fixture_copy_file");
-    if source.ends_with("assets/codexy-agent-hero.png")
-        && std::fs::hard_link(source, target).is_ok()
-    {
-        return Ok(());
-    }
     std::fs::copy(source, target).map(|_| ())
 }
