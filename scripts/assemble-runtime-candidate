@@ -55,6 +55,7 @@ for server in ("lsp", "codegraph"):
         delimiters = []
         index = 0
         quote = None
+        word_start = True
         while index < len(line):
             character = line[index]
             if quote:
@@ -67,11 +68,16 @@ for server in ("lsp", "codegraph"):
                 continue
             if character in "'\"":
                 quote = character
+                word_start = False
                 index += 1
                 continue
-            if character == "#":
+            if character == "#" and word_start:
                 break
             if line[index:index + 2] != "<<":
+                if character.isspace() or character in ";|&()<>":
+                    word_start = True
+                else:
+                    word_start = False
                 index += 1
                 continue
             index += 2
@@ -96,6 +102,7 @@ for server in ("lsp", "codegraph"):
             if not delimiter:
                 raise ValueError("missing heredoc delimiter")
             delimiters.append((delimiter, strip_tabs))
+            word_start = False
         return delimiters
 
     declarations = []

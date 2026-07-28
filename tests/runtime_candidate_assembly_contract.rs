@@ -174,6 +174,24 @@ fn candidate_assembly_rejects_declarations_inside_heredocs()
 }
 
 #[test]
+fn candidate_assembly_rejects_declarations_inside_word_adjacent_comment_heredocs()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(&format!(
+        ": foo#bar <<'WRAPPER'\n{FIRST_DECLARATION}WRAPPER\n"
+    ))?;
+    let output = fixture.assemble();
+    assert!(
+        !output.status.success(),
+        "candidate assembly accepted declaration inside word-adjacent-comment heredoc"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("candidate wrapper platform declaration mismatch")
+    );
+    Ok(())
+}
+
+#[test]
 fn candidate_assembly_ignores_inert_heredoc_declaration_text()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = CandidateFixture::new(&format!(
@@ -183,6 +201,21 @@ fn candidate_assembly_ignores_inert_heredoc_declaration_text()
     assert!(
         output.status.success(),
         "candidate assembly rejected inert heredoc text: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn candidate_assembly_ignores_word_adjacent_comment_heredoc_text()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(&format!(
+        "{FIRST_DECLARATION}: foo#bar <<'WRAPPER'\nbundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\nWRAPPER\n"
+    ))?;
+    let output = fixture.assemble();
+    assert!(
+        output.status.success(),
+        "candidate assembly rejected inert word-adjacent-comment heredoc text: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
