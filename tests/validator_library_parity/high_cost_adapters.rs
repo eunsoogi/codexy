@@ -96,6 +96,36 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
             ],
         );
     }
+    for (relative, mutable_file) in [
+        (
+            "tests/validator_agent_registration_bootstrap.rs",
+            "skills/codex-orchestration/scripts/bootstrap-codexy-agents",
+        ),
+        (
+            "tests/validator_agent_registration_bootstrap_security.rs",
+            "",
+        ),
+        ("tests/validator_agent_registration_hardening.rs", ""),
+        ("tests/validator_agent_registration_transactions.rs", ""),
+        ("tests/validator_agent_registration.rs", ""),
+    ] {
+        let source = std::fs::read_to_string(root.join(relative))?;
+        support::assert_structured_literals(
+            &source,
+            "agent registration copy-on-write fixture",
+            &["support::copy_plugin_fixture_into_with_mutable_files"],
+        );
+        if !mutable_file.is_empty() {
+            support::assert_structured_literals(
+                &source,
+                "agent registration mutable fixture file",
+                &[mutable_file],
+            );
+        }
+        if source.contains("support::copy_dir(") {
+            return Err(format!("{relative} must use the shared copy-on-write fixture").into());
+        }
+    }
     for entry in std::fs::read_dir(root.join("tests"))? {
         let file_path = entry?.path();
         let name = file_path.file_name().map(|name| name.to_string_lossy());

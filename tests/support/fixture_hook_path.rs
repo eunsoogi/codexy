@@ -52,10 +52,15 @@ fn project_modeled_paths(
             }
         }
     }
-    for prefix in ["ln -s ", "ln -sfn "] {
+    for prefix in ["ln -s ", "ln -sfn ", "cp "] {
         let mut start = 0;
         while let Some(found) = command[start..].find(prefix) {
-            let begin = start + found + prefix.len();
+            let found = start + found;
+            if !shell_command_boundary(&command, found) {
+                start = found + prefix.len();
+                continue;
+            }
+            let begin = found + prefix.len();
             let tail = &command[begin..];
             let end = begin
                 + tail
@@ -63,20 +68,51 @@ fn project_modeled_paths(
                     .or_else(|| tail.find(" || "))
                     .or_else(|| tail.find(';'))
                     .unwrap_or(tail.len());
-            let Some(space) = command[begin..end].rfind(char::is_whitespace) else {
+            let Some((path_begin, path_end)) =
+                modeled_path_operand_bounds(&command[begin..end], prefix == "cp ")
+            else {
                 start = end;
                 continue;
             };
-            let path_end = begin + space;
-            if let Some(replacement) = modeled_path_token(&command[begin..path_end], &convert)? {
-                command.replace_range(begin..path_end, &replacement);
-                start = begin + replacement.len();
+            let path_begin = begin + path_begin;
+            let path_end = begin + path_end;
+            if let Some(replacement) = modeled_path_token(&command[path_begin..path_end], &convert)?
+            {
+                command.replace_range(path_begin..path_end, &replacement);
+                start = path_begin + replacement.len();
             } else {
                 start = end;
             }
         }
     }
     Ok(command)
+}
+
+fn shell_command_boundary(command: &str, offset: usize) -> bool {
+    command[..offset]
+        .chars()
+        .next_back()
+        .is_none_or(|character| {
+            character.is_whitespace() || matches!(character, ';' | '&' | '|' | '(')
+        })
+}
+
+fn modeled_path_operand_bounds(segment: &str, copy_source: bool) -> Option<(usize, usize)> {
+    if !copy_source {
+        let path_end = segment.rfind(char::is_whitespace)?;
+        return Some((0, path_end));
+    }
+
+    let mut offset = 0;
+    for token in segment.split_whitespace() {
+        let start = offset + segment[offset..].find(token)?;
+        offset = start + token.len();
+        if token == "--" || token.starts_with('-') {
+            continue;
+        }
+        return Some((start, offset));
+    }
+    None
 }
 
 fn modeled_path_token(
@@ -116,6 +152,27 @@ fn modeled_path_projection_touches_only_declared_operands() {
             other => Err(other.into()),
         }),
         Ok("sudo -D 'C:\\work\\foreign' git status && ln -s 'C:\\Git\\usr\\bin\\printf' left && printf C:unrelated".into()),
+    );
+}
+
+#[test]
+fn modeled_path_projection_converts_copy_sources_without_rewriting_destinations() {
+    let command = "cp -fP /usr/bin/printf left && printf /usr/bin/printf";
+    assert_eq!(
+        project_modeled_paths(command, |path| match path {
+            "/usr/bin/printf" => Ok(r"C:\Git\usr\bin\printf.exe".into()),
+            other => Err(other.into()),
+        }),
+        Ok("cp -fP 'C:\\Git\\usr\\bin\\printf.exe' left && printf /usr/bin/printf".into()),
+    );
+}
+
+#[test]
+fn modeled_path_projection_does_not_treat_scoped_commands_as_copy_operations() {
+    let command = "scp /usr/bin/printf remote:";
+    assert_eq!(
+        project_modeled_paths(command, |_| Err("copy source must stay unprojected".into())),
+        Ok(command.into()),
     );
 }
 

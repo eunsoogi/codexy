@@ -158,10 +158,7 @@ fn seed_legacy_config(config: &Path) -> std::io::Result<()> {
 
 fn installed_fixture(root: &Path) -> std::io::Result<PathBuf> {
     let plugin_root = root.join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    support::copy_plugin_fixture_into_with_mutable_files(&plugin_root, &[])?;
     Ok(plugin_root)
 }
 
