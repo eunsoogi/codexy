@@ -76,6 +76,11 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
     assert_eq!(windows_static_python_fixture(&shell), None);
     std::fs::write(&python, "print('fixture')\n")?;
     assert_eq!(windows_static_python_fixture(&shell), Some(python));
+    std::fs::write(
+        &command,
+        "python -I -B \"%~dp0codexy-admission.py\" --event \"%event%\"\n",
+    )?;
+    assert_eq!(windows_static_python_fixture(&shell), None);
     std::fs::write(&command, "py -3 fixture.py\n")?;
     assert_eq!(windows_static_python_fixture(&shell), None);
     Ok(())

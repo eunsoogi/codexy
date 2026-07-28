@@ -27,7 +27,7 @@ pub(super) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
     let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();
-    let expected = format!("\"%~dp0{stem}.py\" --event \"%event%\"");
+    let expected = format!("py -3 -I -B \"%~dp0{stem}.py\" --event \"%event%\"");
     std::fs::read_to_string(companion)
         .ok()?
         .contains(&expected)
@@ -40,8 +40,8 @@ pub(super) fn windows_static_python_command(program: &Path) -> Result<Option<Com
     let Some(python) = windows_static_python_fixture(program) else {
         return Ok(None);
     };
-    let mut command = Command::new(discover_windows_interpreter("python")?);
-    command.args(["-I", "-B"]);
+    let mut command = Command::new(discover_windows_interpreter("py")?);
+    command.args(["-3", "-I", "-B"]);
     command.arg(python).arg("--event");
     Ok(Some(command))
 }
