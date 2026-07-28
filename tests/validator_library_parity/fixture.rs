@@ -35,7 +35,8 @@ fn normalize_fixture_stderr_line(line: &str, suffix: &str) -> String {
         return line.into();
     };
     let normalized_candidate = candidate.replace('/', "\\").to_ascii_lowercase();
-    if normalized_candidate.ends_with(suffix) {
+    let bounded_suffix = format!("\\{suffix}");
+    if normalized_candidate == suffix || normalized_candidate.ends_with(&bounded_suffix) {
         format!("error: <fixture-surface>:{remainder}")
     } else {
         line.into()
@@ -57,6 +58,24 @@ mod tests {
                 Path::new("skills/proof-driven-completion/SKILL.md"),
             ),
             "error: <fixture-surface>:77 prohibitions must use MUST NOT\n"
+        );
+    }
+
+    #[test]
+    fn preserves_lookalike_and_unrelated_fixture_paths() {
+        let declared_path = Path::new("skills/proof-driven-completion/SKILL.md");
+        let lookalike = "error: C:\\Temp\\codexy\\not-skills\\proof-driven-completion\\SKILL.md:77 must stay distinct\n";
+        let unrelated = "error: C:\\Temp\\codexy\\skills\\runtime\\SKILL.md:77 must stay distinct\n";
+
+        assert_eq!(
+            normalize_fixture_stderr_text(lookalike, declared_path),
+            lookalike,
+            "a textual suffix is not the declared fixture surface"
+        );
+        assert_eq!(
+            normalize_fixture_stderr_text(unrelated, declared_path),
+            unrelated,
+            "unrelated fixture paths must remain observable"
         );
     }
 }
