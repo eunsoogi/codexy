@@ -51,6 +51,37 @@ fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
 }
 
 #[test]
+fn single_surface_instruction_policy_adapter_matches_the_manifest_fixture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let relative = Path::new("skills/proof-driven-completion/SKILL.md");
+    let canonical = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("plugins/codexy")
+        .join(relative);
+    let original = std::fs::read_to_string(&canonical)?;
+    let fixture = support::instruction_policy_fixture(relative)?;
+    let source = std::fs::read_to_string(fixture.path())?;
+    let replacement = source.replace("MUST NOT accept", "do not accept");
+    std::fs::write(
+        fixture.path(),
+        &replacement,
+    )?;
+    let (_temp, manifest_root) = support::copy_plugin_fixture_with_mutable_files(&[relative])?;
+    std::fs::write(manifest_root.join(relative), replacement)?;
+
+    let single_surface = support::validator_instruction_policy_file(fixture.path())?;
+    let manifest_fixture = support::validator_instruction_policy(&manifest_root)?;
+    assert!(!single_surface.status.success());
+    assert!(String::from_utf8_lossy(&single_surface.stderr).contains("MUST NOT"));
+    assert_eq!(single_surface.status.code(), manifest_fixture.status.code());
+    assert_eq!(
+        normalized_fixture_stderr(&single_surface, fixture.path()),
+        normalized_fixture_stderr(&manifest_fixture, &manifest_root.join(relative)),
+    );
+    assert_eq!(std::fs::read_to_string(canonical)?, original);
+    Ok(())
+}
+
+#[test]
 fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::error::Error>> {
     let (_temp, plugin_root) = support::copy_plugin_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
@@ -205,4 +236,9 @@ fn cli_output(plugin_root: &Path, mode: &str) -> Result<Output, Box<dyn std::err
             mode,
         ])
         .output()?)
+}
+
+fn normalized_fixture_stderr(output: &Output, path: &Path) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .replace(&path.display().to_string(), "<fixture-surface>")
 }

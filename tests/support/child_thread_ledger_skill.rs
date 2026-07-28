@@ -50,6 +50,16 @@ pub(crate) fn validator_instruction_policy(
     Ok(output_from_errors(plugin_root, errors))
 }
 
+pub(crate) fn validator_instruction_policy_file(
+    path: &Path,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    super::profile_metrics::record("validator_in_process");
+    Ok(output_from_errors(
+        path,
+        validation::instruction_policy_diagnostics(path)?,
+    ))
+}
+
 fn collect_declared_fixture_changes(
     current: &Path,
     canonical: &Path,

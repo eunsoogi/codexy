@@ -15,8 +15,6 @@ mod validator_instruction_policy;
 
 #[path = "../validator_instruction_policy_passive.rs"]
 mod validator_instruction_policy_passive;
-#[path = "../validator_instruction_policy/passive_fixture.rs"]
-mod passive_fixture;
 
 #[path = "../validator_instruction_policy_purpose.rs"]
 mod validator_instruction_policy_purpose;

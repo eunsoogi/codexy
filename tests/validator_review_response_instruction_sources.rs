@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::support::{PluginFixture, stderr, TestResult};
+use crate::support::{InstructionPolicyFixture, stderr, TestResult};
 
 const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
 const SENTINEL_CLAUSE: &str =
@@ -9,20 +9,13 @@ const ORCHESTRATION_PATH: &str = "skills/codex-orchestration/SKILL.md";
 const ORCHESTRATION_CLAUSE: &str =
     "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.";
 
-const MUTABLE_FILES: &[&str] = &[
-    SENTINEL_PATH,
-    ORCHESTRATION_PATH,
-];
-
-fn plugin_fixture() -> TestResult<PluginFixture> {
-    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
-    Ok(crate::support::plugin_fixture_with_mutable_files(&mutable_files)?)
+fn policy_fixture(relative: &str) -> TestResult<InstructionPolicyFixture> {
+    Ok(crate::support::instruction_policy_fixture(Path::new(relative))?)
 }
 
 #[test]
 fn active_review_cluster_contract_sources_pass() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
+    let plugin_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
     let output = crate::support::validator_instruction_policy(&plugin_root)?;
     assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
@@ -30,22 +23,21 @@ fn active_review_cluster_contract_sources_pass() -> TestResult {
 
 #[test]
 fn toml_comments_cannot_satisfy_review_cluster_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(SENTINEL_PATH);
+    let fixture = policy_fixture(SENTINEL_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     let replaced = text.replacen(SENTINEL_CLAUSE, "Removed active Sentinel contract.", 1);
     let commented = format!("{replaced}\n# {SENTINEL_CLAUSE}\n");
     toml::from_str::<toml::Value>(&commented)?;
     std::fs::write(path, commented)?;
 
-    assert_contract_rejected(&plugin_root)
+    assert_contract_rejected(path)
 }
 
 #[test]
 fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     for inactive in [
         format!("<!-- {ORCHESTRATION_CLAUSE} -->"),
         format!("```text\n{ORCHESTRATION_CLAUSE}\n```"),
@@ -60,8 +52,7 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         format!("<head>\n{ORCHESTRATION_CLAUSE}\n</head>"),
         format!("<pre>\n<!-- </pre> -->\n{ORCHESTRATION_CLAUSE}\n</pre>"),
     ] {
-        fixture.reset_file(Path::new(ORCHESTRATION_PATH))?;
-        let path = plugin_root.join(ORCHESTRATION_PATH);
+        fixture.reset()?;
         let text = std::fs::read_to_string(&path)?;
         let replaced = text.replacen(
             ORCHESTRATION_CLAUSE,
@@ -70,16 +61,15 @@ fn inactive_markdown_cannot_satisfy_review_cluster_contracts() -> TestResult {
         );
         std::fs::write(path, format!("{replaced}\n{inactive}\n"))?;
 
-        assert_contract_rejected(&plugin_root)?;
+        assert_contract_rejected(path)?;
     }
     Ok(())
 }
 
 #[test]
 fn inline_code_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
         path,
@@ -90,16 +80,15 @@ fn inline_code_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
         ),
     )?;
 
-    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    let output = crate::support::validator_instruction_policy_file(path)?;
     assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
 }
 
 #[test]
 fn escaped_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
         path,
@@ -110,18 +99,17 @@ fn escaped_html_tag_examples_do_not_hide_active_contracts() -> TestResult {
         ),
     )?;
 
-    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    let output = crate::support::validator_instruction_policy_file(path)?;
     assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
 }
 
 #[test]
 fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     for marker in ["-", "+", "*"] {
-        fixture.reset_file(Path::new(ORCHESTRATION_PATH))?;
-        let path = plugin_root.join(ORCHESTRATION_PATH);
+        fixture.reset()?;
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(
             path,
@@ -132,7 +120,7 @@ fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
             ),
         )?;
 
-        let output = crate::support::validator_instruction_policy(&plugin_root)?;
+        let output = crate::support::validator_instruction_policy_file(path)?;
         assert!(
             output.status.success(),
             "{marker} bullet failed: {}",
@@ -144,9 +132,8 @@ fn standard_unordered_bullets_keep_active_contracts() -> TestResult {
 
 #[test]
 fn real_html_close_after_commented_close_restores_active_contracts() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
         path,
@@ -157,16 +144,15 @@ fn real_html_close_after_commented_close_restores_active_contracts() -> TestResu
         ),
     )?;
 
-    let output = crate::support::validator_instruction_policy(&plugin_root)?;
+    let output = crate::support::validator_instruction_policy_file(path)?;
     assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
     Ok(())
 }
 
 #[test]
 fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(SENTINEL_PATH);
+    let fixture = policy_fixture(SENTINEL_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     let fenced = text.replacen(
         SENTINEL_CLAUSE,
@@ -176,14 +162,13 @@ fn fenced_toml_prompt_examples_cannot_satisfy_review_cluster_contract() -> TestR
     toml::from_str::<toml::Value>(&fenced)?;
     std::fs::write(path, fenced)?;
 
-    assert_contract_rejected(&plugin_root)
+    assert_contract_rejected(path)
 }
 
 #[test]
 fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     let negated = text.replacen(
         ORCHESTRATION_CLAUSE,
@@ -192,14 +177,13 @@ fn negated_markdown_clause_cannot_satisfy_review_cluster_contract() -> TestResul
     );
     std::fs::write(path, negated)?;
 
-    assert_contract_rejected(&plugin_root)
+    assert_contract_rejected(path)
 }
 
 #[test]
 fn trailing_disclaimer_cannot_satisfy_review_cluster_contract() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let plugin_root = fixture.root();
-    let path = plugin_root.join(ORCHESTRATION_PATH);
+    let fixture = policy_fixture(ORCHESTRATION_PATH)?;
+    let path = fixture.path();
     let text = std::fs::read_to_string(&path)?;
     let disclaimed = text.replacen(
         ORCHESTRATION_CLAUSE,
@@ -210,11 +194,11 @@ fn trailing_disclaimer_cannot_satisfy_review_cluster_contract() -> TestResult {
     );
     std::fs::write(path, disclaimed)?;
 
-    assert_contract_rejected(&plugin_root)
+    assert_contract_rejected(path)
 }
 
-fn assert_contract_rejected(plugin_root: &std::path::Path) -> TestResult {
-    let output = crate::support::validator_instruction_policy(plugin_root)?;
+fn assert_contract_rejected(path: &std::path::Path) -> TestResult {
+    let output = crate::support::validator_instruction_policy_file(path)?;
     assert!(!output.status.success(), "inactive contract unexpectedly passed");
     assert!(
         stderr(&output).contains("root-cause review cluster"),

@@ -13,6 +13,7 @@ mod fixture_hook_path_windows;
 mod fixture_path;
 mod fixture_probe;
 mod fixture_text;
+mod instruction_policy_fixture;
 mod package;
 mod package_archive;
 mod package_fixture;
@@ -42,7 +43,8 @@ pub(crate) use agent_model_assignments::{
 };
 pub(crate) use child_thread_ledger_skill::{
     stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
-    validator_in_process, validator_instruction_policy, validator_pr_labels, validator_routing,
+    validator_in_process, validator_instruction_policy, validator_instruction_policy_file,
+    validator_pr_labels, validator_routing,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
@@ -53,6 +55,7 @@ pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
 };
+pub(crate) use instruction_policy_fixture::{InstructionPolicyFixture, instruction_policy_fixture};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,

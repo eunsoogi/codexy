@@ -17,7 +17,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         ),
         (
             "tests/validator_instruction_policy_passive.rs",
-            "validator_instruction_policy",
+            "validator_instruction_policy_file",
         ),
         (
             "tests/validator_gpt_5_6_routing_adversarial.rs",
@@ -53,11 +53,15 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         ),
         (
             "tests/validator_execution_budget_policy.rs",
-            "validator_instruction_policy",
+            "validator_instruction_policy_file",
         ),
         (
             "tests/validator_live_worktree_reservation_preflight.rs",
-            "validator_instruction_policy",
+            "validator_instruction_policy_file",
+        ),
+        (
+            "tests/validator_review_response_instruction_sources.rs",
+            "validator_instruction_policy_file",
         ),
     ] {
         let source = std::fs::read_to_string(root.join(relative))?;
@@ -78,6 +82,16 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
                     "agents/codexy-sculptor.toml",
                 ],
             );
+        }
+        if matches!(
+            relative,
+            "tests/validator_instruction_policy_passive.rs"
+                | "tests/validator_execution_budget_policy.rs"
+                | "tests/validator_live_worktree_reservation_preflight.rs"
+                | "tests/validator_review_response_instruction_sources.rs"
+        ) && source.contains("plugin_fixture")
+        {
+            return Err(format!("{relative} must use single-surface fixtures").into());
         }
         if relative == "tests/validator_sentinel_reviewer_gate.rs" {
             support::assert_structured_literals(
