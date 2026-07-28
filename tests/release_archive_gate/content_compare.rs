@@ -179,12 +179,33 @@ fn archive_inspector_uses_one_content_comparison_helper() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive inspector");
+    let script_lines = script.lines().map(str::trim).collect::<Vec<_>>();
+    let python_commands = script_lines
+        .iter()
+        .filter(|line| line.starts_with("python3 "))
+        .copied()
+        .collect::<Vec<_>>();
 
-    assert_eq!(script.matches("check-release-archive-content").count(), 1);
-    assert!(!script.contains("cmp -s \"$plugin_root/$relative\""));
-    assert!(!script.contains("expected_digest=$(digest_file \"$plugin_root/$relative\")"));
+    assert_eq!(
+        python_commands,
+        [
+            "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy\"",
+        ]
+    );
+    for retired_command in [
+        "cmp -s \"$plugin_root/$relative\" \"$extract_root/plugins/codexy/$relative\" || {",
+        "expected_digest=$(digest_file \"$plugin_root/$relative\")",
+    ] {
+        assert!(!script_lines.iter().any(|line| *line == retired_command));
+    }
     let helper = std::fs::read_to_string(helper()).expect("content comparison helper");
-    assert!(helper.contains("CHUNK_SIZE"));
-    assert!(helper.contains("os.fsdecode"));
-    assert!(!helper.contains("return path.read_bytes()"));
+    let helper_lines = helper.lines().map(str::trim).collect::<Vec<_>>();
+    for required_line in ["CHUNK_SIZE = 64 * 1024", "raw = os.fsdecode(entry)"] {
+        assert!(helper_lines.iter().any(|line| *line == required_line));
+    }
+    assert!(
+        !helper_lines
+            .iter()
+            .any(|line| *line == "return path.read_bytes()")
+    );
 }
