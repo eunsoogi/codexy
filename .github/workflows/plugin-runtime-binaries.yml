@@ -94,7 +94,7 @@ jobs:
               test ! -e "$candidate/runtime-release.json"
               test "$(digest_file "$candidate/runtime-candidate.json")" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
               rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
-              mkdir -p "$staged/runtime"
+              mkdir -p "$staged/mcp" "$staged/runtime"
               cp "$candidate/runtime-candidate.json" "$staged/runtime-candidate.json"
               for platform in $(jq -r '.platforms | keys[]' plugins/codexy/runtime-release.json); do
                 for server in lsp codegraph; do
@@ -106,6 +106,12 @@ jobs:
                   test "$(digest_file "$candidate/$path")" = "$digest"
                   cp "$candidate/$path" "$staged/$path"
                   cmp "$candidate/$path" "$staged/$path"
+                  if [ "$platform" = windows-x86_64 ]; then
+                    entrypoint="mcp/codexy-mcp-${server}.exe"
+                    test "$(digest_file "$candidate/$entrypoint")" = "$digest"
+                    cp "$candidate/$entrypoint" "$staged/$entrypoint"
+                    cmp "$candidate/$entrypoint" "$staged/$entrypoint"
+                  fi
                 done
               done
               tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
@@ -141,6 +147,7 @@ jobs:
           $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
           if ($actual -ne $release.artifact.sha256) { throw "candidate archive digest mismatch" }
           $root = Join-Path $env:RUNNER_TEMP "selected-candidate"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
           $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
