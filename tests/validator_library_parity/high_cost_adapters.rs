@@ -76,6 +76,26 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
             );
         }
     }
+    for (relative, mutable_file) in [
+        (
+            "tests/validator_gpt_5_6_routing.rs",
+            "skills/codex-orchestration/SKILL.md",
+        ),
+        (
+            "tests/validator_role_instruction_policy.rs",
+            "agents/codexy-sentinel.toml",
+        ),
+    ] {
+        let source = std::fs::read_to_string(root.join(relative))?;
+        support::assert_structured_literals(
+            &source,
+            "high-cost copy-on-write fixture",
+            &[
+                "support::copy_plugin_fixture_into_with_mutable_files",
+                mutable_file,
+            ],
+        );
+    }
     for entry in std::fs::read_dir(root.join("tests"))? {
         let file_path = entry?.path();
         let name = file_path.file_name().map(|name| name.to_string_lossy());
