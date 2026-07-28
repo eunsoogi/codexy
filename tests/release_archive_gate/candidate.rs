@@ -37,6 +37,30 @@ fn archive_gate_rejects_a_candidate_windows_entrypoint_with_wrong_identity() {
     assert!(!output.status.success());
 }
 
+#[test]
+fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
+    let (root, plugin_root, archive) = complete_archive_fixture("candidate-runtime-path");
+    make_candidate_proven_windows_package(&plugin_root);
+    let release_path = plugin_root.join("runtime-release.json");
+    let mut release: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&release_path).expect("release contract"))
+            .expect("release contract JSON");
+    release["platforms"]["windows-x86_64"]["lsp"]["path"] =
+        serde_json::json!("runtime/codexy-mcp-lsp-untrusted.exe");
+    std::fs::write(
+        &release_path,
+        serde_json::to_vec_pretty(&release).expect("release JSON"),
+    )
+    .expect("malformed candidate release");
+    create_archive(root.path(), &archive).expect("candidate archive");
+
+    assert!(
+        !run_candidate_gate(root.path(), &archive, &plugin_root)
+            .status
+            .success()
+    );
+}
+
 fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::process::Output {
     let repo_root = root.join("candidate-repository");
     std::fs::create_dir_all(repo_root.join(".agents/plugins")).expect("candidate contract parent");

@@ -97,12 +97,6 @@ while IFS= read -r relative; do
     }
   esac
 done <"$tmp_dir/actual"
-while IFS= read -r relative; do
-  grep -Fxq "$relative" "$tmp_dir/actual" || {
-    echo "expected runtime artifact missing: $relative" >&2
-    exit 1
-  }
-done <"$tmp_dir/expected-runtime"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -

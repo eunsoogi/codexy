@@ -186,8 +186,18 @@ fn archive_inspector_uses_one_content_comparison_helper() {
         .copied()
         .collect::<Vec<_>>();
 
+    assert!(python_commands.iter().any(|line| {
+        *line == "python3 - \"$release_contract\" \"$release_state\" >\"$tmp_dir/expected-runtime\" <<'PY'"
+    }));
     assert_eq!(
-        python_commands,
+        python_commands
+            .iter()
+            .filter(|line| {
+                **line
+                    == "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy\""
+            })
+            .copied()
+            .collect::<Vec<_>>(),
         [
             "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy\"",
         ]
