@@ -95,7 +95,9 @@ if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -qu
   exit 1
 fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
-local_path_pattern='/(Users|home|tmp|private/var)/'
+# A leading slash is an MSYS path-conversion candidate when this reaches native
+# rg.exe through Git Bash. The character class still matches only a slash.
+local_path_pattern='[\/](Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
 inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
 set +e

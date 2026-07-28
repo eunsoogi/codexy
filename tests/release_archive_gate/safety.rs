@@ -29,3 +29,21 @@ fn archive_gate_rejects_local_paths_in_json_outside_the_validated_policy_invento
         "archive contains a secret or local path",
     );
 }
+
+#[test]
+fn archive_gate_local_path_pattern_stays_an_opaque_shell_operand() {
+    let script = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
+    )
+    .expect("archive gate script");
+    let assignments = script
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("local_path_pattern="))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        assignments,
+        ["local_path_pattern='[\\/](Users|home|tmp|private/var)/'"]
+    );
+}
