@@ -71,6 +71,8 @@ fn candidate_assembly_rejects_nonexact_wrapper_platform_declarations()
         "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64 windows-x86_64\"\n".into(),
         "bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n".into(),
         format!("{FIRST_DECLARATION}bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n"),
+        format!("{FIRST_DECLARATION}  bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n"),
+        format!("{FIRST_DECLARATION}export bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n"),
         "not_bundled_platforms=\"darwin-arm64 linux-x86_64\"\n".into(),
         "# bundled_platforms=\"darwin-arm64 linux-x86_64\"\n".into(),
         format!("{FIRST_DECLARATION}{FIRST_DECLARATION}"),

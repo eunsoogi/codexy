@@ -20,6 +20,7 @@ CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" pytho
 import hashlib
 import json
 import os
+import re
 import shutil
 
 root = os.environ["ROOT"]
@@ -51,10 +52,11 @@ for server in ("lsp", "codegraph"):
     old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
     new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
     lines = wrapper.splitlines(keepends=True)
+    shell_assignment = re.compile(r'^[ \t]*(?:export[ \t]+)?bundled_platforms=')
     declarations = [
         (index, line.removesuffix("\n").removesuffix("\r"))
         for index, line in enumerate(lines)
-        if line.startswith("bundled_platforms=")
+        if shell_assignment.match(line)
     ]
     if len(declarations) != 1 or declarations[0][1] not in {old, new}:
         raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
