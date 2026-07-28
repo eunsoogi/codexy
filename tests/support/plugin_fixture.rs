@@ -100,7 +100,7 @@ pub(crate) fn fixture_mutable_files(root: &Path) -> Option<Vec<PathBuf>> {
 fn record_fixture_mutable_files(root: &Path, mutable_files: &[&Path]) {
     let mut declared = mutable_files
         .iter()
-        .map(|path| (*path).to_path_buf())
+        .map(|path| normalized_relative_file(path))
         .collect::<Vec<_>>();
     declared.sort();
     declared.dedup();
@@ -110,6 +110,12 @@ fn record_fixture_mutable_files(root: &Path, mutable_files: &[&Path]) {
     {
         fixtures.insert(root.to_path_buf(), declared);
     }
+}
+
+fn normalized_relative_file(path: &Path) -> PathBuf {
+    path.components()
+        .map(|component| component.as_os_str())
+        .collect()
 }
 
 fn source_root() -> PathBuf {
@@ -136,6 +142,15 @@ fn validate_relative_file(relative: &Path) -> std::io::Result<()> {
         ));
     }
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn records_mutable_paths_with_native_component_separators() {
+    assert_eq!(
+        normalized_relative_file(Path::new("agents/codexy-sentinel.toml")),
+        Path::new("agents").join("codexy-sentinel.toml")
+    );
 }
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
