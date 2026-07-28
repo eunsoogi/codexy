@@ -5,12 +5,16 @@ use std::process::{Command, Output};
 
 #[path = "validator_library_parity/high_cost_adapters.rs"]
 mod high_cost_adapters;
+#[path = "validator_library_parity/fixture.rs"]
+mod fixture;
+
+use fixture::{copy_plugin_fixture, normalized_fixture_stderr};
 
 #[test]
 fn in_process_validator_matches_cli_success_output_for_migrated_modes()
 -> Result<(), Box<dyn std::error::Error>> {
     for mode in ["--check", "--check-mcp", "--check-roles"] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture(&[])?;
         assert_matches_cli(&plugin_root, mode)?;
     }
     Ok(())
@@ -24,7 +28,8 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
         ("--check-mcp", ".mcp.json"),
         ("--check-roles", "agents/codexy-sentinel.toml"),
     ] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let mutable = [Path::new(missing)];
+        let (_temp, plugin_root) = copy_plugin_fixture(&mutable)?;
         std::fs::remove_file(plugin_root.join(missing))?;
         assert_matches_cli(&plugin_root, mode)?;
     }
@@ -34,7 +39,7 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
 #[test]
 fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture(&[Path::new("agents/codexy-sentinel.toml")])?;
     let path = plugin_root.join("agents/codexy-sentinel.toml");
     let source = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -83,7 +88,9 @@ fn single_surface_instruction_policy_adapter_matches_the_manifest_fixture()
 
 #[test]
 fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture(&[Path::new(
+        "skills/codex-orchestration/SKILL.md",
+    )])?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let source = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -236,9 +243,4 @@ fn cli_output(plugin_root: &Path, mode: &str) -> Result<Output, Box<dyn std::err
             mode,
         ])
         .output()?)
-}
-
-fn normalized_fixture_stderr(output: &Output, path: &Path) -> String {
-    String::from_utf8_lossy(&output.stderr)
-        .replace(&path.display().to_string(), "<fixture-surface>")
 }

@@ -3,6 +3,9 @@ use crate::support;
 use std::path::Path;
 use std::sync::{Arc, Barrier};
 
+#[path = "validator_fixture_parallel_isolation/default_fixture.rs"]
+mod default_fixture;
+
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()
 -> Result<(), Box<dyn std::error::Error>> {

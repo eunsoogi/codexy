@@ -13,9 +13,11 @@ fn roles_fixture_copies_the_mutable_sentinel_without_touching_the_source() -> Re
 }
 
 #[test]
-fn default_plugin_fixture_keeps_the_canonical_source_writable_only_in_the_fixture(
+fn manifest_aware_plugin_fixture_keeps_the_canonical_source_writable_only_in_the_fixture(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = crate::support::plugin_fixture()?;
+    let fixture = crate::support::plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("agents/codexy-sentinel.toml"),
+    ])?;
     let sentinel = fixture.root().join("agents/codexy-sentinel.toml");
     let original = std::fs::read_to_string(&sentinel)?;
     std::fs::write(&sentinel, format!("{original}\n# default fixture mutation\n"))?;

@@ -27,11 +27,18 @@ impl PluginFixture {
 }
 
 pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
-    super::profile_metrics::record("plugin_fixture");
-    let temp = tempfile::tempdir()?;
-    let root = temp.path().join("codexy");
-    super::copy_dir(source_root(), &root)?;
-    Ok(PluginFixture::from_parts(temp, root))
+    #[cfg(windows)]
+    {
+        return materialize_fixture(&[]).map_err(Into::into);
+    }
+    #[cfg(not(windows))]
+    {
+        super::profile_metrics::record("plugin_fixture");
+        let temp = tempfile::tempdir()?;
+        let root = temp.path().join("codexy");
+        super::copy_dir(source_root(), &root)?;
+        Ok(PluginFixture::from_parts(temp, root))
+    }
 }
 
 pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {

@@ -1,6 +1,6 @@
 use codexy_runtime::validation::review_response_cluster_diagnostics;
 
-use crate::support::{self, copy_plugin_fixture, stderr, TestResult};
+use crate::support::{self, stderr, TestResult};
 use serde_json::json;
 use std::{fs, process::Command};
 use tempfile::tempdir;
@@ -23,6 +23,14 @@ const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
         "Sentinel MUST consolidate examples from the same defect class into one blocker with one structural repair strategy.",
     ),
 ];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    let mutable_files = REQUIRED_CONTRACTS
+        .iter()
+        .map(|(relative, _)| std::path::Path::new(*relative))
+        .collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+}
 
 #[test]
 fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> TestResult {
