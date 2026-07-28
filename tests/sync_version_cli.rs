@@ -152,6 +152,7 @@ pub(super) fn archive_repository(
         "src/version/mutation.rs",
         "src/version/wrappers.rs",
         "plugins/codexy/hooks/policy-inventory.json",
+        "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
     ] {
         let destination = repo.join(relative);
         if let Some(parent) = destination.parent() {

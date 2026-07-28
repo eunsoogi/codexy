@@ -19,11 +19,11 @@ fn inventory_metadata_local_paths_fail_with_both_archive_scanners() {
     let canonical_source = root.path().join("inspect-release-archive");
     materialize_lf_text_fixture(&source, &canonical_source).expect("canonical archive inspector");
     for grep_backend in [false, true] {
-        let mut command = Command::new(if grep_backend { "sh" } else { canonical_source.to_str().expect("gate path") });
+        let mut command = Command::new(&canonical_source);
         if grep_backend {
             let script_dir = fixture_path_text(source.parent().expect("scripts directory")).expect("fixture script directory");
             let script = std::fs::read_to_string(&canonical_source).expect("gate script").replacen("if command -v rg >/dev/null 2>&1; then", "if false; then", 1).replacen("script_dir=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)", &format!("script_dir={script_dir}"), 1);
-            command.arg("-c").arg(script).arg("inventory-grep");
+            std::fs::write(&canonical_source, script).expect("grep archive inspector");
         }
         let output = command.arg_path(&archive).arg_path(&plugin_root).output().expect("archive gate should start");
         assert!(!output.status.success(), "archive scanner accepted metadata, grep={grep_backend}");

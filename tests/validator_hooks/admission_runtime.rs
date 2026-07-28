@@ -92,6 +92,41 @@ fn ordinary_launcher_variables_do_not_make_unrelated_commands_opaque() -> TestRe
     assert_case(&root, &foreign, "printf '%s\\n' \"$UNKNOWN_RUNTIME_VALUE\"", true, &[])
 }
 
+#[test]
+fn native_windows_drive_paths_preserve_their_anchor_in_the_policy_model() -> TestResult {
+    let root = plugin_root();
+    let python = if cfg!(windows) { "python" } else { "python3" };
+    let output = Command::new(python)
+        .arg("-c")
+        .arg(
+            r#"import ntpath
+from pathlib import PureWindowsPath
+import codexy_policy.filesystem_state as filesystem_state
+
+filesystem_state.os.path = ntpath
+filesystem_state.Path = PureWindowsPath
+filesystem_state.state = lambda value, paths: dict(paths).get(value, filesystem_state.ABSENT)
+cwd = r"C:\work\owned"
+source = r"C:\Program Files\Git\usr\bin\printf.exe"
+assert filesystem_state.resolved_location(source, cwd, ()) == source
+mkdir = filesystem_state._mkdir_trace(r"C:\work\owned\scratch", cwd, (), True)
+assert mkdir.kind == filesystem_state.SUCCESS
+assert r"C:\work\owned\scratch" in dict(mkdir.paths)
+assert filesystem_state.resolved_location(r"\\server\share\tool", cwd, ()) is None
+assert filesystem_state._mkdir_trace(r"\\server\share\tool", cwd, (), True).kind == filesystem_state.AMBIGUOUS
+"#,
+        )
+        .env("PYTHONPATH", root.join("hooks"))
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "drive-anchor policy control failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {

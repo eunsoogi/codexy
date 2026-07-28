@@ -144,9 +144,8 @@ fn fixture_command_preserves_python_arguments_stdout_stderr_and_exit_status()
     Ok(())
 }
 
-#[cfg(unix)]
 #[test]
-fn materialized_script_preserves_source_relative_scanner_diagnostics()
+fn large_materialized_script_preserves_source_relative_scanner_diagnostics()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let source_root = temp.path().join("source-repo");
@@ -158,7 +157,10 @@ fn materialized_script_preserves_source_relative_scanner_diagnostics()
     let scanner = source_scripts.join("scanner");
     std::fs::write(
         &source,
-        "#!/bin/sh\nroot=$(CDPATH= cd -- \"$(dirname -- \"$0\")/..\" && pwd)\n[ -f \"$root/repo-state\" ] || { echo 'missing shared repo state' >&2; exit 2; }\nexec \"$(dirname -- \"$0\")/scanner\" \"$1\"\n",
+        format!(
+            "#!/bin/sh\n# {}\nroot=$(CDPATH= cd -- \"$(dirname -- \"$0\")/..\" && pwd)\n[ -f \"$root/repo-state\" ] || {{ echo 'missing shared repo state' >&2; exit 2; }}\nexec \"$(dirname -- \"$0\")/scanner\" \"$1\"\n",
+            "materialized fixture payload ".repeat(400),
+        ),
     )?;
     std::fs::write(
         &scanner,

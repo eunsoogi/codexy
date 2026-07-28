@@ -176,8 +176,6 @@ fn materialized_script_command(
         #[cfg(windows)]
         Err(error) => return Err(error),
     };
-    let script = String::from_utf8(contents)
-        .map_err(|_| "materialized fixture script must be valid UTF-8".to_owned())?;
     let uses_posix_path = matches!(interpreter, "sh" | "bash");
     #[cfg(windows)]
     let interpreter = discover_windows_interpreter(interpreter)?;
@@ -192,8 +190,17 @@ fn materialized_script_command(
     } else {
         source.as_os_str().to_owned()
     };
+    let materialized: OsString = if uses_posix_path {
+        fixture_path_text(program)?.into()
+    } else {
+        program.to_owned()
+    };
     let mut command = Command::new(interpreter);
-    command.arg("-c").arg(script).arg(source);
+    command
+        .arg("-c")
+        .arg("materialized=$1\nshift\n. \"$materialized\"")
+        .arg(source)
+        .arg(materialized);
     Ok((command, uses_posix_path))
 }
 
