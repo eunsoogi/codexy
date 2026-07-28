@@ -170,3 +170,27 @@ fn manifest_aware_materialization_uses_private_copies_without_hard_links()
     assert_eq!(copy_source.matches("hard_link").count(), 0);
     Ok(())
 }
+
+#[test]
+fn ordinary_fixtures_route_through_the_private_materialization_boundary()
+-> Result<(), Box<dyn std::error::Error>> {
+    let source = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/plugin_fixture.rs"),
+    )?;
+    let ordinary_fixture = source
+        .split("pub(crate) fn plugin_fixture()")
+        .nth(1)
+        .and_then(|section| section.split("pub(crate) fn copy_plugin_fixture").next())
+        .ok_or("ordinary plugin fixture implementation")?;
+
+    support::assert_structured_literals(
+        ordinary_fixture,
+        "ordinary fixture private materialization",
+        &["super::plugin_fixture_copy::materialize(source_root(), &root, &[])?"],
+    );
+    assert!(
+        !ordinary_fixture.contains("super::copy_dir(source_root(), &root)?"),
+        "ordinary fixtures must not bypass the private materialization boundary"
+    );
+    Ok(())
+}

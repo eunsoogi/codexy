@@ -30,7 +30,7 @@ pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
     super::profile_metrics::record("plugin_fixture");
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("codexy");
-    super::copy_dir(source_root(), &root)?;
+    super::plugin_fixture_copy::materialize(source_root(), &root, &[])?;
     Ok(PluginFixture::from_parts(temp, root))
 }
 
