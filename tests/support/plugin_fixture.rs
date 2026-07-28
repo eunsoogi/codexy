@@ -1,4 +1,8 @@
+use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+static FIXTURE_MUTABLE_FILES: OnceLock<Mutex<BTreeMap<PathBuf, Vec<PathBuf>>>> = OnceLock::new();
 
 #[derive(Debug)]
 pub(crate) struct PluginFixture {
@@ -59,7 +63,9 @@ pub(crate) fn copy_plugin_fixture_into_with_mutable_files(
         validate_relative_file(path)?;
     }
     super::profile_metrics::record("plugin_fixture");
-    super::plugin_fixture_copy::materialize(source_root(), target, mutable_files)
+    super::plugin_fixture_copy::materialize(source_root(), target, mutable_files)?;
+    record_fixture_mutable_files(target, mutable_files);
+    Ok(())
 }
 
 pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {
@@ -72,7 +78,31 @@ fn materialize_fixture(mutable_files: &[&Path]) -> std::io::Result<PluginFixture
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("codexy");
     super::plugin_fixture_copy::materialize(source_root(), &root, mutable_files)?;
+    record_fixture_mutable_files(&root, mutable_files);
     Ok(PluginFixture::from_parts(temp, root))
+}
+
+pub(crate) fn fixture_mutable_files(root: &Path) -> Option<Vec<PathBuf>> {
+    FIXTURE_MUTABLE_FILES
+        .get_or_init(|| Mutex::new(BTreeMap::new()))
+        .lock()
+        .ok()
+        .and_then(|fixtures| fixtures.get(root).cloned())
+}
+
+fn record_fixture_mutable_files(root: &Path, mutable_files: &[&Path]) {
+    let mut declared = mutable_files
+        .iter()
+        .map(|path| (*path).to_path_buf())
+        .collect::<Vec<_>>();
+    declared.sort();
+    declared.dedup();
+    if let Ok(mut fixtures) = FIXTURE_MUTABLE_FILES
+        .get_or_init(|| Mutex::new(BTreeMap::new()))
+        .lock()
+    {
+        fixtures.insert(root.to_path_buf(), declared);
+    }
 }
 
 fn source_root() -> PathBuf {

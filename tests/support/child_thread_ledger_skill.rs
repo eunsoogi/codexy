@@ -21,7 +21,16 @@ pub(crate) fn validator_instruction_policy(
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let canonical = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
     let mut changed = Vec::new();
-    collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
+    let used_fixture_manifest = match super::fixture_mutable_files(plugin_root) {
+        Some(mutable_files) => {
+            collect_declared_fixture_changes(plugin_root, &canonical, &mutable_files, &mut changed)?
+        }
+        None => false,
+    };
+    if !used_fixture_manifest {
+        changed.clear();
+        collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
+    }
     if let Some(repo_root) = plugin_root.parent().and_then(Path::parent) {
         let current_agents = repo_root.join("AGENTS.md");
         let canonical_agents = Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md");
@@ -39,6 +48,25 @@ pub(crate) fn validator_instruction_policy(
         errors.extend(validation::instruction_policy_diagnostics(&path)?);
     }
     Ok(output_from_errors(plugin_root, errors))
+}
+
+fn collect_declared_fixture_changes(
+    current: &Path,
+    canonical: &Path,
+    mutable_files: &[PathBuf],
+    changed: &mut Vec<PathBuf>,
+) -> std::io::Result<bool> {
+    for relative in mutable_files {
+        let current_path = current.join(relative);
+        let canonical_path = canonical.join(relative);
+        if !current_path.is_file() || !canonical_path.is_file() {
+            return Ok(false);
+        }
+        if std::fs::read(&current_path)? != std::fs::read(&canonical_path)? {
+            changed.push(current_path);
+        }
+    }
+    Ok(true)
 }
 
 fn collect_changed_surfaces(

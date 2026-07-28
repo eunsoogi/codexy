@@ -43,3 +43,16 @@ fn parallel_copy_on_write_fixture_mutations_preserve_each_overlay_and_the_seed()
     );
     Ok(())
 }
+
+#[test]
+fn copy_on_write_fixture_retains_its_declared_mutable_manifest()
+-> Result<(), Box<dyn std::error::Error>> {
+    let declared = Path::new("skills/proof-driven-completion/SKILL.md");
+    let fixture = support::plugin_fixture_with_mutable_files(&[declared])?;
+
+    assert_eq!(
+        support::fixture_mutable_files(fixture.root()),
+        Some(vec![declared.to_path_buf()])
+    );
+    Ok(())
+}
