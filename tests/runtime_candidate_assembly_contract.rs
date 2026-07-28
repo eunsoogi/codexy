@@ -2,6 +2,8 @@ use std::{fs, path::Path};
 
 #[path = "runtime_candidate_assembly_contract/fixture.rs"]
 mod fixture;
+#[path = "runtime_candidate_assembly_contract/heredoc.rs"]
+mod heredoc;
 
 use fixture::CandidateFixture;
 

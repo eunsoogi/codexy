@@ -71,6 +71,10 @@ for server in ("lsp", "codegraph"):
                 word_start = False
                 index += 1
                 continue
+            if character == "\\":
+                word_start = False
+                index += 2
+                continue
             if character == "#" and word_start:
                 break
             if line[index:index + 2] != "<<":
@@ -105,27 +109,66 @@ for server in ("lsp", "codegraph"):
             word_start = False
         return delimiters
 
+    def continues_line(line):
+        quote = None
+        index = 0
+        while index < len(line):
+            character = line[index]
+            if quote:
+                if character == "\\" and quote == '"':
+                    if index + 1 == len(line):
+                        return True
+                    index += 2
+                    continue
+                if character == quote:
+                    quote = None
+                index += 1
+                continue
+            if character in "'\"":
+                quote = character
+                index += 1
+                continue
+            if character == "\\":
+                if index + 1 == len(line):
+                    return True
+                index += 2
+                continue
+            index += 1
+        return False
+
     declarations = []
     heredocs = []
-    for index, line in enumerate(lines):
+    index = 0
+    while index < len(lines):
+        line = lines[index]
         source = line.removesuffix("\n").removesuffix("\r")
         if heredocs:
             delimiter, strip_tabs = heredocs[0]
             if (source.lstrip("\t") if strip_tabs else source) == delimiter:
                 heredocs.pop(0)
+            index += 1
             continue
+        while continues_line(source):
+            index += 1
+            if index == len(lines):
+                raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: unterminated continuation")
+            next_source = lines[index].removesuffix("\n").removesuffix("\r")
+            source = source[:-1] + next_source
         try:
             heredocs.extend(heredoc_delimiters(source))
         except ValueError as error:
             raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: {error}")
         if "bundled_platforms" not in source:
+            index += 1
             continue
         if source in {old, new}:
             declarations.append((index, source))
+            index += 1
             continue
         reads = source.replace("${bundled_platforms}", "").replace("$bundled_platforms", "")
         if "bundled_platforms" in reads:
             raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
+        index += 1
     if heredocs:
         raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: unterminated heredoc")
     if len(declarations) != 1 or declarations[0][1] not in {old, new}:
