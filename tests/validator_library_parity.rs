@@ -90,11 +90,12 @@ fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn plugin_fixture_mutations_do_not_leak_between_copy_on_write_overlays()
+fn plugin_fixture_mutations_do_not_leak_between_manifest_aware_overlays()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (_first_temp, first) = support::copy_plugin_fixture()?;
-    let (_second_temp, second) = support::copy_plugin_fixture()?;
     let relative = ".codex-plugin/plugin.json";
+    let mutable = Path::new(relative);
+    let (_first_temp, first) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
+    let (_second_temp, second) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
     let original = std::fs::read_to_string(second.join(relative))?;
 
     std::fs::write(first.join(relative), "{\"mutated\":true}\n")?;
