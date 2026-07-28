@@ -8,6 +8,10 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     for (relative, adapter) in [
         (
+            "tests/validator_sentinel_reviewer_gate.rs",
+            "support::validator_in_process",
+        ),
+        (
             "tests/validator_instruction_policy.rs",
             "validator_instruction_policy",
         ),
@@ -73,6 +77,13 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
                     "support::copy_plugin_fixture_with_mutable_files",
                     "agents/codexy-sculptor.toml",
                 ],
+            );
+        }
+        if relative == "tests/validator_sentinel_reviewer_gate.rs" {
+            support::assert_structured_literals(
+                &source,
+                "sentinel reviewer manifest-aware fixture",
+                &["support::roles_fixture"],
             );
         }
     }
