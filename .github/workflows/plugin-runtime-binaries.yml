@@ -6,6 +6,7 @@ on:
       - "plugins/codexy/**"
       - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
+      - "scripts/check-release-archive-content"
       - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
   push:
@@ -14,6 +15,7 @@ on:
       - "plugins/codexy/**"
       - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
+      - "scripts/check-release-archive-content"
       - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
 

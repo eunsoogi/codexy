@@ -4,7 +4,7 @@ use tempfile::tempdir;
 
 use crate::support::release_archive as release_archive_support;
 use release_archive_support::{
-    assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
+    assert_archive_scanner_contract, complete_plugin_fixture,
     complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive, make_executable,
 };
 
@@ -52,20 +52,6 @@ fn archive_gate_requires_runtime_release_contract() {
     );
 }
 
-#[test]
-fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
-    let workflow = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(".github/workflows/plugin-runtime-binaries.yml"),
-    )
-    .expect("runtime workflow");
-    let inspector = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
-    )
-    .expect("archive inspector");
-    assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
-    assert_runtime_workflow_contract(&workflow, &inspector);
-}
 fn complete_archive_fixture(
     name: &str,
 ) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -236,5 +222,9 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     assert!(!run_gate(&extra_archive, &extra_plugin).status.success());
 }
 
+#[path = "release_archive_gate/content_compare.rs"]
+mod content_compare;
 #[path = "release_archive_gate/safety.rs"]
 mod safety;
+#[path = "release_archive_gate/workflow.rs"]
+mod workflow;
