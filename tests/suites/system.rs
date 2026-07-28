@@ -55,6 +55,9 @@ mod runtime_activation_branch_recovery;
 #[path = "../runtime_workflow_recovery.rs"]
 mod runtime_workflow_recovery;
 
+#[path = "../runtime_candidate_assembly_contract.rs"]
+mod runtime_candidate_assembly_contract;
+
 #[path = "../windows_mcp_install_workflow_contract.rs"]
 mod windows_mcp_install_workflow_contract;
 

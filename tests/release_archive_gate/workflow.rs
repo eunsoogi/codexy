@@ -16,6 +16,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     for path in [
         "scripts/inspect-release-archive",
         "scripts/check-release-archive-content",
+        "scripts/check-release-archive-entries",
     ] {
         assert_eq!(
             trigger_paths.matches(path).count(),
