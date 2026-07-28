@@ -9,6 +9,7 @@ mod executable_path;
 mod fixture_command;
 mod fixture_command_windows;
 mod fixture_hook_path;
+mod fixture_hook_path_windows;
 mod fixture_path;
 mod fixture_probe;
 mod fixture_text;

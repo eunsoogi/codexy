@@ -97,41 +97,7 @@ fn modeled_path_token(
 
 #[cfg(windows)]
 fn windows_shell_path_to_native(value: &str) -> Result<String, String> {
-    use std::collections::BTreeMap;
-    use std::process::Command;
-    use std::sync::{Mutex, OnceLock};
-
-    static PATH_CACHE: OnceLock<Mutex<BTreeMap<String, String>>> = OnceLock::new();
-    let cache = PATH_CACHE.get_or_init(|| Mutex::new(BTreeMap::new()));
-    if let Some(native) = cache
-        .lock()
-        .map_err(|_| "Git-Bash fixture path cache lock poisoned".to_owned())?
-        .get(value)
-        .cloned()
-    {
-        return Ok(native);
-    }
-
-    let shell = super::fixture_command_windows::discover_windows_interpreter("sh")?;
-    let output = Command::new(shell)
-        .args(["-c", "cygpath -w -- \"$1\"", "fixture-path", value])
-        .output()
-        .map_err(|error| format!("converting Git-Bash fixture path {value}: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "converting Git-Bash fixture path {value}: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let native = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    let native = (!native.is_empty())
-        .then_some(native)
-        .ok_or_else(|| format!("converting Git-Bash fixture path {value}: empty output"))?;
-    cache
-        .lock()
-        .map_err(|_| "Git-Bash fixture path cache lock poisoned".to_owned())?
-        .insert(value.to_owned(), native.clone());
-    Ok(native)
+    super::fixture_hook_path_windows::native_shell_fixture_path(value)
 }
 
 #[cfg(not(windows))]
