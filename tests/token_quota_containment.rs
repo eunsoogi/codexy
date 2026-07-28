@@ -12,6 +12,12 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+fn copy_orchestration_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    Ok(support::copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
+        "skills/codex-orchestration/SKILL.md",
+    )])?)
+}
+
 #[test]
 fn session_audit_reports_metadata_only_deduplicated_aggregates() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -160,7 +166,7 @@ fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestRe
 
 #[test]
 fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_orchestration_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let original = fs::read_to_string(&path)?;
     fs::write(
@@ -186,7 +192,7 @@ fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
 
 #[test]
 fn validator_ignores_negated_and_historical_legacy_polling_examples() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_orchestration_fixture()?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let original = fs::read_to_string(&path)?;
     fs::write(

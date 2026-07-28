@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 
 use crate::support;
 
@@ -7,7 +8,9 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const REFERENCE: &str = "skills/git-workflow/references/codex-connector-review.md";
 
 fn validate(change: impl FnOnce(String) -> String) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+        REFERENCE,
+    )])?;
     let path = plugin_root.join(REFERENCE);
     fs::write(&path, change(fs::read_to_string(&path)?))?;
     support::validator_instruction_policy(&plugin_root)

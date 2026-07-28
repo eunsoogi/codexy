@@ -27,10 +27,16 @@ const AFFIRMATIVE_NEAR_NEGATORS: &[&str] = &[
     "The owner MUST register not only a heartbeat instead of repeated model continuations or ending without a wakeup path.",
 ];
 const AFFIRMATIVE_HYPHENATED_TARGET: &str = "The owner MUST register a heartbeat-only wake route instead of repeated model continuations or ending without a wakeup path.";
+const MUTABLE_FILES: &[&str] = &[REFERENCE, TOKEN_SKILL];
+
+fn plugin_fixture() -> TestResult<support::PluginFixture> {
+    let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
+    Ok(support::plugin_fixture_with_mutable_files(&mutable_files)?)
+}
 
 #[test]
 fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = plugin_fixture()?;
     let output = support::validator_instruction_policy(fixture.root())?;
     assert!(
         output.status.success(),
@@ -72,7 +78,7 @@ fn validator_rejects_affirmative_hyphenated_heartbeat_targets() -> TestResult {
 
 #[test]
 fn validator_does_not_treat_target_bound_never_as_an_affirmative_heartbeat_rule() -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = plugin_fixture()?;
     let path = fixture.root().join(REFERENCE);
     fs::write(
         &path,
@@ -99,7 +105,7 @@ fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult 
         format!("## Historical Example\n{AFFIRMATIVE_HYPHENATED_TARGET}"),
         format!("```markdown\n{AFFIRMATIVE_HYPHENATED_TARGET}\n```"),
     ] {
-        let fixture = support::plugin_fixture()?;
+        let fixture = plugin_fixture()?;
         let path = fixture.root().join(REFERENCE);
         fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
         let output = support::validator_instruction_policy(fixture.root())?;
@@ -161,7 +167,7 @@ fn assert_rejected_policy_mutation(
     original_clause: &str,
     replacement: &str,
 ) -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = plugin_fixture()?;
     let path = fixture.root().join(relative);
     let original = fs::read_to_string(&path)?;
     let mutated = original.replace(original_clause, replacement);
@@ -180,7 +186,7 @@ fn assert_rejected_policy_mutation(
 }
 
 fn assert_rejected_addition(addition: &str) -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = plugin_fixture()?;
     let path = fixture.root().join(REFERENCE);
     fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
     let output = support::validator_instruction_policy(fixture.root())?;
@@ -193,7 +199,7 @@ fn assert_rejected_addition(addition: &str) -> TestResult {
 }
 
 fn assert_accepted_addition(addition: &str) -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = plugin_fixture()?;
     let path = fixture.root().join(REFERENCE);
     fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
     let output = support::validator_instruction_policy(fixture.root())?;

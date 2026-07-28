@@ -4,7 +4,10 @@ use std::fs;
 mod structured_contract;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
+#[path = "validator_runtime_heartbeat_contract/fixture.rs"]
+mod fixture;
 use crate::support;
+use fixture::assert_rejected_clauses;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -70,8 +73,8 @@ const TRANSITION_CLAUSES: &[&str] = &[
 
 #[test]
 fn plugin_fixture_reset_restores_a_mutated_skill() -> TestResult {
-    let fixture = support::plugin_fixture()?;
     let relative = std::path::Path::new("skills/token-efficient-orchestration/SKILL.md");
+    let fixture = support::plugin_fixture_with_mutable_files(&[relative])?;
     let path = fixture.root().join(relative);
     let original = fs::read_to_string(&path)?;
 
@@ -133,31 +136,11 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
     Ok(())
 }
 
-fn assert_rejected_clauses(
-    relative: &str,
-    clauses: &[&str],
-    replacement: &str,
-    expected_error: &str,
-) -> TestResult {
-    let fixture = support::plugin_fixture()?;
-    let relative = std::path::Path::new(relative);
-    let path = fixture.root().join(relative);
-    for clause in clauses {
-        fixture.reset_file(relative)?;
-        let original = fs::read_to_string(&path)?;
-        let mutated = original.replace(clause, replacement);
-        assert_ne!(original, mutated, "fixture is missing required clause {clause:?}");
-        fs::write(&path, mutated)?;
-        let output = support::validator_instruction_policy(fixture.root())?;
-        assert!(!output.status.success(), "validator accepted {clause:?}");
-        assert!(support::stderr(&output).contains(expected_error));
-    }
-    Ok(())
-}
-
 #[test]
 fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/references/runtime-heartbeats.md"),
+    ])?;
     let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
     let original = fs::read_to_string(&path)?;
     for replacement in [

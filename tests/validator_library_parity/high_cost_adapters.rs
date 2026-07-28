@@ -96,6 +96,66 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
             ],
         );
     }
+    for (relative, fixture_api, mutable_file) in [
+        (
+            "tests/validator_connector_review_policy_markdown_boundaries.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/git-workflow/references/codex-connector-review.md",
+        ),
+        (
+            "tests/validator_execution_budget_policy_controls.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/references/execution-budget.md",
+        ),
+        (
+            "tests/validator_parent_execution_budget_countermands.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/references/execution-budget.md",
+        ),
+        (
+            "tests/validator_parent_execution_budget_policy.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/references/execution-budget.md",
+        ),
+        (
+            "tests/validator_token_polling_runtime_identity.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/token-efficient-orchestration/SKILL.md",
+        ),
+        (
+            "tests/token_quota_containment.rs",
+            "support::copy_plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/SKILL.md",
+        ),
+        (
+            "tests/validator_runtime_heartbeat_wait_priority.rs",
+            "support::plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/references/runtime-heartbeats.md",
+        ),
+    ] {
+        let source = std::fs::read_to_string(root.join(relative))?;
+        support::assert_structured_literals(
+            &source,
+            "high-cost declared-mutable fixture",
+            &[fixture_api, mutable_file],
+        );
+    }
+    let heartbeat_fixture = std::fs::read_to_string(
+        root.join("tests/validator_runtime_heartbeat_contract/fixture.rs"),
+    )?;
+    support::assert_structured_literals(
+        &heartbeat_fixture,
+        "runtime heartbeat declared-mutable fixture",
+        &["support::plugin_fixture_with_mutable_files"],
+    );
+    let heartbeat_contract = std::fs::read_to_string(root.join(
+        "tests/validator_runtime_heartbeat_contract.rs",
+    ))?;
+    support::assert_structured_literals(
+        &heartbeat_contract,
+        "runtime heartbeat fixture mutation path",
+        &["skills/codex-orchestration/references/runtime-heartbeats.md"],
+    );
     for (relative, mutable_file) in [
         (
             "tests/validator_agent_registration_bootstrap.rs",
@@ -129,10 +189,12 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     for entry in std::fs::read_dir(root.join("tests"))? {
         let file_path = entry?.path();
         let name = file_path.file_name().map(|name| name.to_string_lossy());
-        if name.as_deref().is_some_and(|name| {
-            name.starts_with("validator_runtime_heartbeat_")
-                && name != "validator_runtime_heartbeat_reference_registration.rs"
-        }) {
+        if file_path.is_file()
+            && name.as_deref().is_some_and(|name| {
+                name.starts_with("validator_runtime_heartbeat_")
+                    && name != "validator_runtime_heartbeat_reference_registration.rs"
+            })
+        {
             let source = std::fs::read_to_string(&file_path)?;
             support::assert_structured_literals(
                 &source,
