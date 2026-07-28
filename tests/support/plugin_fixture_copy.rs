@@ -29,12 +29,11 @@ pub(super) fn materialize(
 fn materialize_windows(
     source: &Path,
     target: &Path,
-    _relative: &Path,
+    relative: &Path,
     mutable_files: &[&Path],
 ) -> std::io::Result<()> {
     let seed = private_seed(source)?;
-    let _ = mutable_files;
-    super::copy_dir(seed, target)
+    materialize_seed(&seed, target, relative, mutable_files)
 }
 
 #[cfg(windows)]
@@ -47,7 +46,52 @@ fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("codexy");
         super::copy_dir(source, &root)?;
+        make_seed_readonly(&root)?;
         *seed = Some(PrivateSeed { _temp: temp, root });
     }
     Ok(seed.as_ref().expect("private fixture seed").root.clone())
+}
+
+#[cfg(windows)]
+fn materialize_seed(
+    source: &Path,
+    target: &Path,
+    relative: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    std::fs::create_dir_all(target)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        let entry_relative = relative.join(entry.file_name());
+        if source_path.is_dir() {
+            materialize_seed(&source_path, &target_path, &entry_relative, mutable_files)?;
+        } else if mutable_files.iter().any(|path| *path == entry_relative) {
+            std::fs::copy(&source_path, &target_path)?;
+            let mut permissions = std::fs::metadata(&target_path)?.permissions();
+            permissions.set_readonly(false);
+            std::fs::set_permissions(&target_path, permissions)?;
+        } else {
+            std::fs::hard_link(&source_path, &target_path)?;
+            super::profile_metrics::record("fixture_private_seed_link");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            make_seed_readonly(&path)?;
+        } else {
+            let mut permissions = std::fs::metadata(&path)?.permissions();
+            permissions.set_readonly(true);
+            std::fs::set_permissions(path, permissions)?;
+        }
+    }
+    Ok(())
 }

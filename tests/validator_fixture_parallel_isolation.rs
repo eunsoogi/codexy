@@ -16,6 +16,8 @@ fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed(
     let workers: Vec<_> = (0..4)
         .map(|index| {
             let barrier = Arc::clone(&barrier);
+            #[cfg(windows)]
+            let seed = seed.clone();
             std::thread::spawn(move || -> Result<(), String> {
                 barrier.wait();
                 let (_temp, overlay) = support::copy_plugin_fixture_with_mutable_files(&[declared])
@@ -24,12 +26,28 @@ fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed(
                 let declared_path = overlay.join(declared);
                 let undeclared_path = overlay.join(undeclared);
                 std::fs::write(&declared_path, &mutation).map_err(|error| error.to_string())?;
-                std::fs::write(&undeclared_path, &mutation).map_err(|error| error.to_string())?;
+                let undeclared_write = std::fs::write(&undeclared_path, &mutation);
+                #[cfg(windows)]
+                if undeclared_write.is_ok() {
+                    return Err("undeclared write escaped the private seed boundary".into());
+                }
+                #[cfg(not(windows))]
+                undeclared_write.map_err(|error| error.to_string())?;
                 let declared_observed =
                     std::fs::read_to_string(declared_path).map_err(|error| error.to_string())?;
                 let undeclared_observed =
                     std::fs::read_to_string(undeclared_path).map_err(|error| error.to_string())?;
-                (declared_observed == mutation && undeclared_observed == mutation)
+                (declared_observed == mutation
+                    && {
+                        #[cfg(windows)]
+                        {
+                            undeclared_observed == seed
+                        }
+                        #[cfg(not(windows))]
+                        {
+                            undeclared_observed == mutation
+                        }
+                    })
                     .then_some(())
                     .ok_or_else(|| format!("worker {index} observed a cross-overlay write"))
             })
@@ -80,7 +98,11 @@ fn undeclared_mutations_cannot_escape_a_manifest_aware_overlay()
     let first = support::plugin_fixture_with_mutable_files(&[declared])?;
     let second = support::plugin_fixture_with_mutable_files(&[declared])?;
 
-    std::fs::write(first.root().join(undeclared), "name = \"mutated\"\n")?;
+    let write = std::fs::write(first.root().join(undeclared), "name = \"mutated\"\n");
+    #[cfg(windows)]
+    assert!(write.is_err(), "undeclared writes must fail closed on Windows");
+    #[cfg(not(windows))]
+    write?;
 
     assert_eq!(std::fs::read_to_string(second.root().join(undeclared))?, seed);
     assert_eq!(std::fs::read_to_string(seed_path)?, seed);
@@ -90,6 +112,7 @@ fn undeclared_mutations_cannot_escape_a_manifest_aware_overlay()
 #[test]
 fn undeclared_truncate_rename_and_remove_remain_private_to_one_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(not(windows))]
     use std::io::Write;
 
     let declared = Path::new(".codex-plugin/plugin.json");
@@ -99,17 +122,26 @@ fn undeclared_truncate_rename_and_remove_remain_private_to_one_overlay()
     let first = support::plugin_fixture_with_mutable_files(&[declared])?;
     let second = support::plugin_fixture_with_mutable_files(&[declared])?;
     let first_undeclared = first.root().join(undeclared);
+    #[cfg(not(windows))]
     let moved = first.root().join("agents/codexy-sentinel.moved.toml");
 
-    let mut file = std::fs::OpenOptions::new()
+    let file = std::fs::OpenOptions::new()
         .write(true)
         .truncate(true)
-        .open(&first_undeclared)?;
-    file.write_all(b"name = \"truncated\"\n")?;
-    std::fs::rename(&first_undeclared, &moved)?;
-    std::fs::remove_file(&moved)?;
-
-    assert!(!first_undeclared.exists());
+        .open(&first_undeclared);
+    #[cfg(windows)]
+    {
+        assert!(file.is_err(), "undeclared truncation must fail closed on Windows");
+        assert!(first_undeclared.exists());
+    }
+    #[cfg(not(windows))]
+    {
+        let mut file = file?;
+        file.write_all(b"name = \"truncated\"\n")?;
+        std::fs::rename(&first_undeclared, &moved)?;
+        std::fs::remove_file(&moved)?;
+        assert!(!first_undeclared.exists());
+    }
     assert_eq!(std::fs::read_to_string(second.root().join(undeclared))?, seed);
     assert_eq!(std::fs::read_to_string(source.join(undeclared))?, seed);
     Ok(())
@@ -152,17 +184,26 @@ fn manifest_aware_fixture_retains_its_declared_mutable_manifest()
 }
 
 #[test]
-fn manifest_aware_materialization_uses_private_copies_without_hard_links()
+fn manifest_aware_materialization_links_only_a_private_readonly_seed()
 -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/plugin_fixture_copy.rs"),
     )?;
 
-    assert_eq!(source.matches("hard_link").count(), 0);
+    let canonical_boundary = source
+        .split("fn materialize_seed")
+        .next()
+        .ok_or("private fixture seed boundary")?;
+    assert_eq!(canonical_boundary.matches("hard_link").count(), 0);
     support::assert_structured_literals(
         &source,
         "private fixture seed boundary",
-        &["fn private_seed", "super::copy_dir(seed, target)"],
+        &[
+            "fn private_seed",
+            "fn materialize_seed",
+            "std::fs::hard_link",
+            "fixture_private_seed_link",
+        ],
     );
     let copy_source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper_copy.rs"),
@@ -172,7 +213,7 @@ fn manifest_aware_materialization_uses_private_copies_without_hard_links()
 }
 
 #[test]
-fn ordinary_fixtures_route_through_the_private_materialization_boundary()
+fn ordinary_fixtures_keep_a_full_private_copy_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/plugin_fixture.rs"),
@@ -185,12 +226,8 @@ fn ordinary_fixtures_route_through_the_private_materialization_boundary()
 
     support::assert_structured_literals(
         ordinary_fixture,
-        "ordinary fixture private materialization",
-        &["super::plugin_fixture_copy::materialize(source_root(), &root, &[])?"],
-    );
-    assert!(
-        !ordinary_fixture.contains("super::copy_dir(source_root(), &root)?"),
-        "ordinary fixtures must not bypass the private materialization boundary"
+        "ordinary fixture full private copy",
+        &["super::copy_dir(source_root(), &root)?"],
     );
     Ok(())
 }
