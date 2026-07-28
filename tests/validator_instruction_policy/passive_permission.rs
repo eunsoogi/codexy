@@ -67,12 +67,13 @@ fn validator_rejects_non_adjacent_authorized_loc_overage() -> TestResult {
 
 #[test]
 fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for addition in [
         "A governed file is not authorized by maintainer approval to exceed 250 LOC.",
         "A governed file is authorized by maintainer approval to remain at or below 250 LOC.",
     ] {
-        let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
-        let skill_path = fixture.path();
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
         assert!(
@@ -85,6 +86,8 @@ fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult
 
 #[test]
 fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for (addition, rejects) in [
         ("LOC exceptions are waived after approval.", true),
         ("LOC exceptions are not waived after approval.", false),
@@ -144,8 +147,7 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
         ("LOC exceptions are not granted after review.", false),
         ("The validator granted rejecting LOC exceptions.", false),
     ] {
-        let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
-        let skill_path = fixture.path();
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
         let output = validator_instruction_policy_file(skill_path)?;
@@ -161,6 +163,8 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
 
 #[test]
 fn validator_handles_active_mandatory_permissions() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for (addition, rejects) in [
         (
             "Maintainers MUST authorize LOC exceptions after review.",
@@ -203,8 +207,7 @@ fn validator_handles_active_mandatory_permissions() -> TestResult {
             false,
         ),
     ] {
-        let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
-        let skill_path = fixture.path();
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
         let output = validator_instruction_policy_file(skill_path)?;
