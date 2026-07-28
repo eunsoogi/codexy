@@ -22,7 +22,7 @@ from profile_rust_accounting import (
 )
 from profile_rust_workflow import enforce_workflow_contract
 
-BUDGET_SECONDS = 195.0
+BUDGET_SECONDS = 180.0
 WINDOWS_BUDGET_SECONDS = 540.0
 MINIMUM_PASSED_TESTS = 1802
 REQUIRED_JOB_TIMEOUT_MINUTES = 4
