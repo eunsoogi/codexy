@@ -20,7 +20,6 @@ CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" pytho
 import hashlib
 import json
 import os
-import re
 import shutil
 
 root = os.environ["ROOT"]
@@ -52,12 +51,76 @@ for server in ("lsp", "codegraph"):
     old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
     new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
     lines = wrapper.splitlines(keepends=True)
-    shell_assignment = re.compile(r'^[ \t]*(?:export[ \t]+)?bundled_platforms=')
-    declarations = [
-        (index, line.removesuffix("\n").removesuffix("\r"))
-        for index, line in enumerate(lines)
-        if shell_assignment.match(line)
-    ]
+    def heredoc_delimiters(line):
+        delimiters = []
+        index = 0
+        quote = None
+        while index < len(line):
+            character = line[index]
+            if quote:
+                if character == "\\" and quote == '"':
+                    index += 2
+                    continue
+                if character == quote:
+                    quote = None
+                index += 1
+                continue
+            if character in "'\"":
+                quote = character
+                index += 1
+                continue
+            if character == "#":
+                break
+            if line[index:index + 2] != "<<":
+                index += 1
+                continue
+            index += 2
+            strip_tabs = line[index:index + 1] == "-"
+            index += int(strip_tabs)
+            while line[index:index + 1] in (" ", "\t"):
+                index += 1
+            delimiter_quote = line[index:index + 1]
+            if delimiter_quote in ("'", '"'):
+                index += 1
+                end = line.find(delimiter_quote, index)
+                if end < 0:
+                    raise ValueError("unterminated heredoc delimiter")
+                delimiter = line[index:end]
+                index = end + 1
+            else:
+                end = index
+                while end < len(line) and not line[end].isspace() and line[end] not in ";|&<>()":
+                    end += 1
+                delimiter = line[index:end]
+                index = end
+            if not delimiter:
+                raise ValueError("missing heredoc delimiter")
+            delimiters.append((delimiter, strip_tabs))
+        return delimiters
+
+    declarations = []
+    heredocs = []
+    for index, line in enumerate(lines):
+        source = line.removesuffix("\n").removesuffix("\r")
+        if heredocs:
+            delimiter, strip_tabs = heredocs[0]
+            if (source.lstrip("\t") if strip_tabs else source) == delimiter:
+                heredocs.pop(0)
+            continue
+        try:
+            heredocs.extend(heredoc_delimiters(source))
+        except ValueError as error:
+            raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: {error}")
+        if "bundled_platforms" not in source:
+            continue
+        if source in {old, new}:
+            declarations.append((index, source))
+            continue
+        reads = source.replace("${bundled_platforms}", "").replace("$bundled_platforms", "")
+        if "bundled_platforms" in reads:
+            raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
+    if heredocs:
+        raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: unterminated heredoc")
     if len(declarations) != 1 or declarations[0][1] not in {old, new}:
         raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
     index, declaration = declarations[0]
