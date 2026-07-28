@@ -102,6 +102,7 @@ fn native_windows_drive_paths_preserve_their_anchor_in_the_policy_model() -> Tes
             r#"import ntpath
 from pathlib import PureWindowsPath
 import codexy_policy.filesystem_state as filesystem_state
+import codexy_policy.executable_identity as executable_identity
 
 filesystem_state.os.path = ntpath
 filesystem_state.Path = PureWindowsPath
@@ -114,6 +115,21 @@ assert mkdir.kind == filesystem_state.SUCCESS
 assert r"C:\work\owned\scratch" in dict(mkdir.paths)
 assert filesystem_state.resolved_location(r"\\server\share\tool", cwd, ()) is None
 assert filesystem_state._mkdir_trace(r"\\server\share\tool", cwd, (), True).kind == filesystem_state.AMBIGUOUS
+
+class NativePath:
+    def __init__(self, value): self.value = value
+    def is_absolute(self): return ntpath.isabs(self.value)
+    def __truediv__(self, other): return NativePath(ntpath.join(self.value, other.value if isinstance(other, NativePath) else other))
+    def resolve(self, strict): return self
+    def __eq__(self, other): return isinstance(other, NativePath) and self.value == other.value
+
+executable_identity.os.path = ntpath
+executable_identity.Path = NativePath
+lookups = []
+executable_identity.shutil.which = lambda value, path=None: lookups.append(value)
+assert executable_identity._path(r"C:\work\owned", cwd) == NativePath(r"C:\work\owned")
+assert executable_identity._path("C:relative", cwd) is None
+assert lookups == ["C:relative"]
 "#,
         )
         .env("PYTHONPATH", root.join("hooks"))
