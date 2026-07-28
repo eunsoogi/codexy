@@ -1,25 +1,25 @@
 use std::path::Path;
 use std::process::{Command, Output};
+use std::sync::{Mutex, OnceLock};
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt as _;
 #[cfg(windows)]
 use std::os::windows::process::ExitStatusExt as _;
 
+struct GitFixtureSeed {
+    _temporary: tempfile::TempDir,
+    metadata: std::path::PathBuf,
+}
+
+static GIT_FIXTURE_SEED: OnceLock<Mutex<Option<GitFixtureSeed>>> = OnceLock::new();
+
 pub(crate) fn fixture(
     path: &str,
     source: String,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     let repo = tempfile::tempdir()?;
-    run(repo.path(), &["init", "-q"])?;
-    // Later mutation cases amend the initial commit. Keep the identity in the
-    // repository (rather than only on the initial command) so those cases do
-    // not inherit a runner's absent or malformed global Git configuration.
-    run(
-        repo.path(),
-        &["config", "user.email", "codexy@example.test"],
-    )?;
-    run(repo.path(), &["config", "user.name", "Codexy Test"])?;
+    initialize_fixture_repository(repo.path())?;
     if ["src/bin/", "tests/", "examples/", "benches/"]
         .iter()
         .any(|prefix| path.starts_with(prefix))
@@ -52,6 +52,38 @@ pub(crate) fn fixture(
     run(repo.path(), &["add", "."])?;
     run(repo.path(), &["commit", "-qm", "initial"])?;
     Ok(repo)
+}
+
+fn initialize_fixture_repository(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let seed = git_fixture_seed()?;
+    super::copy_dir(seed, &root.join(".git"))?;
+    Ok(())
+}
+
+fn git_fixture_seed() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let seeds = GIT_FIXTURE_SEED.get_or_init(|| Mutex::new(None));
+    let mut seed = seeds
+        .lock()
+        .map_err(|_| std::io::Error::other("touched-LOC Git fixture seed lock"))?;
+    if seed.is_none() {
+        let temporary = tempfile::tempdir()?;
+        let root = temporary.path().join("repository");
+        std::fs::create_dir_all(&root)?;
+        // Later mutation cases amend their initial commit. Keep identity in the
+        // private seed so every ordinary-copy fixture ignores host Git settings.
+        run(&root, &["init", "-q"])?;
+        run(&root, &["config", "user.email", "codexy@example.test"])?;
+        run(&root, &["config", "user.name", "Codexy Test"])?;
+        *seed = Some(GitFixtureSeed {
+            metadata: root.join(".git"),
+            _temporary: temporary,
+        });
+    }
+    Ok(seed
+        .as_ref()
+        .expect("private Git fixture seed")
+        .metadata
+        .clone())
 }
 
 pub(crate) fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {

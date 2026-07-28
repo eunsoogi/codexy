@@ -116,6 +116,44 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn touched_loc_fixtures_keep_private_histories_when_reusing_git_metadata() -> TestResult {
+    let first = fixture("src/lib.rs", "pub fn first() {}\n".to_owned())?;
+    let second = fixture("src/lib.rs", "pub fn second() {}\n".to_owned())?;
+    write(first.path(), "src/lib.rs", "pub fn mutated() {}\n")?;
+    let first_add = std::process::Command::new("git")
+        .args(["add", "src/lib.rs"])
+        .current_dir(first.path())
+        .output()?;
+    assert!(first_add.status.success());
+    let first_commit = std::process::Command::new("git")
+        .args(["commit", "-qm", "mutated"])
+        .current_dir(first.path())
+        .output()?;
+    assert!(first_commit.status.success());
+
+    let second_head = std::process::Command::new("git")
+        .args(["show", "HEAD:src/lib.rs"])
+        .current_dir(second.path())
+        .output()?;
+    assert!(second_head.status.success());
+    assert_eq!(
+        String::from_utf8(second_head.stdout)?,
+        "pub fn second() {}\n",
+        "fixture history must remain private to its own temporary repository"
+    );
+
+    let helper = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/touched_loc.rs"),
+    )?;
+    support::assert_structured_literals(
+        &helper,
+        "private touched-LOC Git metadata seed",
+        &["fn git_fixture_seed", "copy_dir(seed, &root.join(\".git\"))"],
+    );
+    Ok(())
+}
+
 fn assert_multiline_workflow_extraction(
     root: &std::path::Path,
     command: &str,
