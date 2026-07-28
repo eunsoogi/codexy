@@ -24,12 +24,24 @@ fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed(
                 let declared_path = overlay.join(declared);
                 let undeclared_path = overlay.join(undeclared);
                 std::fs::write(&declared_path, &mutation).map_err(|error| error.to_string())?;
-                std::fs::write(&undeclared_path, &mutation).map_err(|error| error.to_string())?;
+                let undeclared_write = std::fs::write(&undeclared_path, &mutation);
+                #[cfg(windows)]
+                if undeclared_write.is_ok() {
+                    return Err("undeclared write escaped the read-only fixture boundary".into());
+                }
+                #[cfg(not(windows))]
+                undeclared_write.map_err(|error| error.to_string())?;
                 let declared_observed =
                     std::fs::read_to_string(declared_path).map_err(|error| error.to_string())?;
                 let undeclared_observed =
                     std::fs::read_to_string(undeclared_path).map_err(|error| error.to_string())?;
-                (declared_observed == mutation && undeclared_observed == mutation)
+                (declared_observed == mutation
+                    && {
+                        #[cfg(windows)]
+                        { undeclared_observed != mutation }
+                        #[cfg(not(windows))]
+                        { undeclared_observed == mutation }
+                    })
                     .then_some(())
                     .ok_or_else(|| format!("worker {index} observed a cross-overlay write"))
             })
@@ -80,7 +92,11 @@ fn undeclared_mutations_cannot_escape_a_manifest_aware_overlay()
     let first = support::plugin_fixture_with_mutable_files(&[declared])?;
     let second = support::plugin_fixture_with_mutable_files(&[declared])?;
 
-    std::fs::write(first.root().join(undeclared), "name = \"mutated\"\n")?;
+    let write = std::fs::write(first.root().join(undeclared), "name = \"mutated\"\n");
+    #[cfg(windows)]
+    assert!(write.is_err(), "undeclared writes must fail closed on Windows");
+    #[cfg(not(windows))]
+    write?;
 
     assert_eq!(std::fs::read_to_string(second.root().join(undeclared))?, seed);
     assert_eq!(std::fs::read_to_string(seed_path)?, seed);
@@ -107,6 +123,15 @@ fn manifest_aware_materialization_never_links_to_the_canonical_seed()
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/plugin_fixture_copy.rs"),
     )?;
 
-    assert_eq!(source.matches("std::fs::hard_link").count(), 0);
+    let canonical_materializer = source
+        .split("fn private_seed")
+        .next()
+        .ok_or("private fixture seed boundary")?;
+    assert_eq!(canonical_materializer.matches("hard_link").count(), 0);
+    support::assert_structured_literals(
+        &source,
+        "private fixture seed boundary",
+        &["fn private_seed", "fixture_private_seed_link"],
+    );
     Ok(())
 }
