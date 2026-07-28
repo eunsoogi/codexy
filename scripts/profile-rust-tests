@@ -10,7 +10,7 @@ import re
 import signal
 import subprocess
 import sys
-import tempfile
+import threading
 import time
 from collections import Counter
 from pathlib import Path
@@ -44,32 +44,51 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     return source.count('Command::new("cargo")')
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     started = time.perf_counter()
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as capture:
-        process = subprocess.Popen(
-            WORKLOAD,
-            cwd=root,
-            stdout=capture,
-            stderr=subprocess.STDOUT,
-            text=True,
-            start_new_session=os.name == "posix",
-        )
-        try:
-            status = process.wait(timeout=budget_seconds)
-        except subprocess.TimeoutExpired:
-            if os.name == "posix":
-                os.killpg(process.pid, signal.SIGKILL)
-            else:
-                process.kill()
-            process.wait()
-            status = 124
-        capture.seek(0)
-        output = capture.read()
+    process = subprocess.Popen(
+        WORKLOAD,
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        start_new_session=os.name == "posix",
+    )
+    output: list[str] = []
+
+    def stream_output() -> None:
+        assert process.stdout is not None
+        for line in process.stdout:
+            output.append(line)
+            sys.stdout.write(line)
+            sys.stdout.flush()
+
+    reader = threading.Thread(target=stream_output, name="cargo-test-output", daemon=True)
+    reader.start()
+    try:
+        status = process.wait(timeout=budget_seconds)
+    except subprocess.TimeoutExpired:
+        terminate_workload(process)
+        status = 124
+    except KeyboardInterrupt:
+        terminate_workload(process)
+        raise
+    finally:
+        reader.join()
+    output_text = "".join(output)
     if status == 124:
-        sys.stdout.write(output)
-        return output, budget_seconds, 124
+        return output_text, budget_seconds, 124
     elapsed = time.perf_counter() - started
-    sys.stdout.write(output)
-    return output, elapsed, status
+    return output_text, elapsed, status
+
+
+def terminate_workload(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+    if os.name == "posix":
+        os.killpg(process.pid, signal.SIGKILL)
+    else:
+        process.kill()
+    process.wait()
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
