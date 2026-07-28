@@ -1,4 +1,7 @@
-use super::{TestResult, copy_plugin_fixture, stderr, validator};
+use std::path::Path;
+
+use super::{TestResult, stderr};
+use crate::support::{instruction_policy_fixture, validator_instruction_policy_file};
 
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
@@ -14,12 +17,12 @@ fn validator_cli_rejects_allowances_later_in_loc_exception_sections() -> TestRes
         "## LOC exceptions\n\n- Review requirements apply.\n\n### Approval workflow\n\n- Allowed after approval.",
     ] {
         for skill in GOVERNED_SKILLS {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
+            let fixture = instruction_policy_fixture(Path::new(skill))?;
+            let skill_path = fixture.path();
             let text = std::fs::read_to_string(&skill_path)?;
             std::fs::write(&skill_path, format!("{text}\n{section}\n"))?;
 
-            let output = validator(&plugin_root, "--check")?;
+            let output = validator_instruction_policy_file(skill_path)?;
             assert!(
                 !output.status.success(),
                 "{skill:?}: {section:?} unexpectedly passed"
@@ -34,8 +37,8 @@ fn validator_cli_rejects_allowances_later_in_loc_exception_sections() -> TestRes
 fn validator_cli_resets_loc_exception_context_at_section_boundaries() -> TestResult {
     for boundary in ["## Review workflow", "# Review workflow"] {
         for skill in GOVERNED_SKILLS {
-            let (_temp, plugin_root) = copy_plugin_fixture()?;
-            let skill_path = plugin_root.join(skill);
+            let fixture = instruction_policy_fixture(Path::new(skill))?;
+            let skill_path = fixture.path();
             let text = std::fs::read_to_string(&skill_path)?;
             std::fs::write(
                 &skill_path,
@@ -44,7 +47,7 @@ fn validator_cli_resets_loc_exception_context_at_section_boundaries() -> TestRes
                 ),
             )?;
 
-            let output = validator(&plugin_root, "--check")?;
+            let output = validator_instruction_policy_file(skill_path)?;
             assert!(output.status.success(), "{skill:?}: {}", stderr(&output));
         }
     }

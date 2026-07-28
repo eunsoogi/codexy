@@ -138,10 +138,10 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
 
 #[test]
 fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
-        std::path::Path::new("skills/codex-orchestration/references/runtime-heartbeats.md"),
-    ])?;
-    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    let fixture = support::instruction_policy_fixture(std::path::Path::new(
+        "skills/codex-orchestration/references/runtime-heartbeats.md",
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     for replacement in [
         "\n## MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
@@ -155,7 +155,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             ),
         )?;
         assert!(
-            !support::validator_instruction_policy(&plugin_root)?
+            !support::validator_instruction_policy_file(path)?
                 .status
                 .success()
         );
@@ -172,7 +172,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
         ),
     )?;
     assert!(
-        !support::validator_instruction_policy(&plugin_root)?
+        !support::validator_instruction_policy_file(path)?
             .status
             .success(),
         "validator accepted a required clause from historical prose"
@@ -188,7 +188,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
                 ),
             ),
         )?;
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(
             output.status.success(),
             "validator ignored active policy under {heading:?}: {}",
@@ -202,7 +202,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not permit Sentinel"));
 
@@ -212,7 +212,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\n## Historical Example\nThis old policy is retained for context. The owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         output.status.success(),
         "validator rejected historical-only Sentinel wording: {}",
@@ -225,7 +225,7 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
             "{original}\n## Historical Example\nThis old policy is retained for context.\n## Current Policy\nThe owner MAY fold a live packaged Sentinel into heartbeat observation.\n"
         ),
     )?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not permit Sentinel"));
     Ok(())

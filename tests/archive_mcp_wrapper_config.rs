@@ -1,4 +1,4 @@
-use crate::support::FixtureCommand as Command;
+use crate::support::{FixtureCommand as Command, normalize_fixture_text};
 
 use serde_json::{Value, json};
 use tempfile::tempdir;
@@ -87,7 +87,7 @@ fn archive_entry_checker_rejects_non_executable_mcp_wrapper_metadata() {
     .expect("archive checker should start");
     assert!(!output.status.success());
     assert_eq!(
-        String::from_utf8(output.stderr).expect("checker stderr"),
+        normalize_fixture_text(&String::from_utf8(output.stderr).expect("checker stderr")),
         "packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp\n"
     );
 }

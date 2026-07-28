@@ -7,10 +7,10 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_section(section: &str) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+    let fixture = support::instruction_policy_fixture(Path::new(
         "skills/codex-orchestration/references/runtime-heartbeats.md",
-    )])?;
-    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let sentence = format!(
         "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
@@ -19,7 +19,7 @@ fn validate_section(section: &str) -> TestResult<std::process::Output> {
         &path,
         original.replace(&sentence, &format!("\n\n{section}")),
     )?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 #[test]

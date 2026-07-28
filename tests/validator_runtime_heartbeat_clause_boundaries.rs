@@ -7,15 +7,15 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const HEARTBEAT_KIND: &str = "kind=heartbeat";
 
 fn validate_heartbeat_kind(replacement: &str) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+    let fixture = support::instruction_policy_fixture(Path::new(
         "skills/codex-orchestration/references/runtime-heartbeats.md",
-    )])?;
-    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let updated = original.replace(HEARTBEAT_KIND, replacement);
     assert_ne!(updated, original, "fixture heartbeat kind was not replaced");
     fs::write(path, updated)?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 #[test]

@@ -170,16 +170,22 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     )?;
     support::assert_structured_literals(
         &heartbeat_fixture,
-        "runtime heartbeat declared-mutable fixture",
-        &["support::plugin_fixture_with_mutable_files"],
+        "runtime heartbeat single-surface fixture",
+        &[
+            "support::instruction_policy_fixture",
+            "support::validator_instruction_policy_file",
+        ],
     );
     let heartbeat_contract = std::fs::read_to_string(root.join(
         "tests/validator_runtime_heartbeat_contract.rs",
     ))?;
     support::assert_structured_literals(
         &heartbeat_contract,
-        "runtime heartbeat fixture mutation path",
-        &["skills/codex-orchestration/references/runtime-heartbeats.md"],
+        "runtime heartbeat fixture isolation control",
+        &[
+            "support::plugin_fixture_with_mutable_files",
+            "skills/codex-orchestration/references/runtime-heartbeats.md",
+        ],
     );
     let source_artifact = std::fs::read_to_string(
         root.join("tests/validator_source_artifact_contract.rs"),

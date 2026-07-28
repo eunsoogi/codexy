@@ -8,10 +8,10 @@ const DISCOVERY_REQUIREMENT: &str =
     "MUST search the callable tool surface for `automation_update`";
 
 fn validate_discovery_clause(replacement: &str) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+    let fixture = support::instruction_policy_fixture(Path::new(
         "skills/codex-orchestration/references/runtime-heartbeats.md",
-    )])?;
-    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let updated = original.replace(DISCOVERY_REQUIREMENT, replacement);
     assert_ne!(
@@ -19,7 +19,7 @@ fn validate_discovery_clause(replacement: &str) -> TestResult<std::process::Outp
         "fixture discovery clause was not replaced"
     );
     fs::write(path, updated)?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 #[test]
@@ -69,10 +69,10 @@ fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult
 
 #[test]
 fn validator_accepts_unnegated_discovery_clause() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+    let fixture = support::instruction_policy_fixture(Path::new(
         "skills/codex-orchestration/references/runtime-heartbeats.md",
-    )])?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    ))?;
+    let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(
         output.status.success(),
         "validator rejected the unnegated discovery clause: {}",

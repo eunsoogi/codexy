@@ -34,6 +34,10 @@ fn plugin_fixture() -> TestResult<support::PluginFixture> {
     Ok(support::plugin_fixture_with_mutable_files(&mutable_files)?)
 }
 
+fn policy_fixture(relative: &str) -> TestResult<support::InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(std::path::Path::new(relative))?)
+}
+
 #[test]
 fn validator_accepts_ordered_wait_and_host_recovery_routes() -> TestResult {
     let fixture = plugin_fixture()?;
@@ -78,13 +82,13 @@ fn validator_rejects_affirmative_hyphenated_heartbeat_targets() -> TestResult {
 
 #[test]
 fn validator_does_not_treat_target_bound_never_as_an_affirmative_heartbeat_rule() -> TestResult {
-    let fixture = plugin_fixture()?;
-    let path = fixture.root().join(REFERENCE);
+    let fixture = policy_fixture(REFERENCE)?;
+    let path = fixture.path();
     fs::write(
         &path,
         format!("{}\n{TARGET_BOUND_NEVER_HEARTBEAT}", fs::read_to_string(&path)?),
     )?;
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         !support::stderr(&output).contains("unconditional heartbeat"),
         "target-bound `never` must not become an affirmative heartbeat rule: {}",
@@ -105,10 +109,10 @@ fn validator_ignores_inactive_unconditional_child_state_history() -> TestResult 
         format!("## Historical Example\n{AFFIRMATIVE_HYPHENATED_TARGET}"),
         format!("```markdown\n{AFFIRMATIVE_HYPHENATED_TARGET}\n```"),
     ] {
-        let fixture = plugin_fixture()?;
-        let path = fixture.root().join(REFERENCE);
+        let fixture = policy_fixture(REFERENCE)?;
+        let path = fixture.path();
         fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
-        let output = support::validator_instruction_policy(fixture.root())?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(
             output.status.success(),
             "validator rejected inactive legacy history: {}",
@@ -167,8 +171,8 @@ fn assert_rejected_policy_mutation(
     original_clause: &str,
     replacement: &str,
 ) -> TestResult {
-    let fixture = plugin_fixture()?;
-    let path = fixture.root().join(relative);
+    let fixture = policy_fixture(relative)?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let mutated = original.replace(original_clause, replacement);
     assert_ne!(
@@ -176,7 +180,7 @@ fn assert_rejected_policy_mutation(
         "fixture is missing ordered clause {original_clause:?}"
     );
     fs::write(path, mutated)?;
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         !output.status.success(),
         "validator accepted weakened wait/heartbeat priority"
@@ -186,10 +190,10 @@ fn assert_rejected_policy_mutation(
 }
 
 fn assert_rejected_addition(addition: &str) -> TestResult {
-    let fixture = plugin_fixture()?;
-    let path = fixture.root().join(REFERENCE);
+    let fixture = policy_fixture(REFERENCE)?;
+    let path = fixture.path();
     fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         !output.status.success(),
         "validator accepted additive unconditional heartbeat policy"
@@ -199,10 +203,10 @@ fn assert_rejected_addition(addition: &str) -> TestResult {
 }
 
 fn assert_accepted_addition(addition: &str) -> TestResult {
-    let fixture = plugin_fixture()?;
-    let path = fixture.root().join(REFERENCE);
+    let fixture = policy_fixture(REFERENCE)?;
+    let path = fixture.path();
     fs::write(&path, format!("{}\n{addition}", fs::read_to_string(&path)?))?;
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         output.status.success(),
         "validator rejected non-heartbeat registration target: {}",
