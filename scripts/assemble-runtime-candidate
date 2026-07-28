@@ -50,9 +50,17 @@ for server in ("lsp", "codegraph"):
     wrapper = open(wrapper_path, encoding="utf-8").read()
     old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
     new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
-    if (wrapper.count(old), wrapper.count(new)) not in {(1, 0), (0, 1)}:
+    lines = wrapper.splitlines(keepends=True)
+    declarations = [
+        (index, line.removesuffix("\n").removesuffix("\r"))
+        for index, line in enumerate(lines)
+        if line.startswith("bundled_platforms=")
+    ]
+    if len(declarations) != 1 or declarations[0][1] not in {old, new}:
         raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
-    open(wrapper_path, "w", encoding="utf-8").write(wrapper.replace(old, new))
+    index, declaration = declarations[0]
+    lines[index] = new + lines[index][len(declaration):]
+    open(wrapper_path, "w", encoding="utf-8").write("".join(lines))
     shutil.copyfile(f"{root}/runtime/codexy-mcp-{server}-windows-x86_64.exe", f"{root}/mcp/codexy-mcp-{server}.exe")
 PY
 

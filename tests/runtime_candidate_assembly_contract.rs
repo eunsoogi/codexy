@@ -30,13 +30,19 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
 }
 
 #[test]
-fn candidate_assembly_rejects_malformed_duplicate_and_unsupported_wrapper_declarations()
+fn candidate_assembly_rejects_nonexact_wrapper_platform_declarations()
 -> Result<(), Box<dyn std::error::Error>> {
     for declaration in [
-        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64 windows-x86_64\"\n",
-        "bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64 windows-x86_64\"\n".into(),
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n".into(),
+        format!("{FIRST_DECLARATION}bundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\n"),
+        "not_bundled_platforms=\"darwin-arm64 linux-x86_64\"\n".into(),
+        "# bundled_platforms=\"darwin-arm64 linux-x86_64\"\n".into(),
+        format!("{FIRST_DECLARATION}{FIRST_DECLARATION}"),
+        format!("{FIRST_DECLARATION}{ACTIVATED_DECLARATION}"),
+        "#!/bin/sh\necho wrapper\n".into(),
     ] {
-        let fixture = CandidateFixture::new(declaration)?;
+        let fixture = CandidateFixture::new(&declaration)?;
         let output = fixture.assemble();
         assert!(
             !output.status.success(),
