@@ -10,6 +10,14 @@ fn specialist_model_contract_is_not_a_public_api() -> support::TestResult {
 }
 
 #[test]
+fn privacy_contract_check_reuses_the_workspace_target() {
+    assert_eq!(
+        support::public_contract_target_dir(),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target")
+    );
+}
+
+#[test]
 fn privacy_contract_import_rejects_unrelated_cargo_failures() -> support::TestResult {
     let temp = tempfile::tempdir()?;
     let output = Command::new("cargo")

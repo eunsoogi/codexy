@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -71,8 +71,13 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     )?;
     Ok(Command::new("cargo")
         .args(["check", "--quiet"])
+        .env("CARGO_TARGET_DIR", public_contract_target_dir())
         .current_dir(temp.path())
         .output()?)
+}
+
+pub(crate) fn public_contract_target_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("target")
 }
 
 pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
