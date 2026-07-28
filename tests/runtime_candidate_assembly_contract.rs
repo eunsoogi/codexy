@@ -30,6 +30,41 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
 }
 
 #[test]
+fn candidate_assembly_preserves_wrapper_bytes_while_rewriting_declarations()
+-> Result<(), Box<dyn std::error::Error>> {
+    for declaration in [
+        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+    ] {
+        for (separator, ending) in [("\n", "\n"), ("\r\n", "\r\n"), ("\n", "")] {
+            let wrapper = format!("#!/bin/sh{separator}set -eu{separator}{declaration}{ending}");
+            let fixture = CandidateFixture::new(&wrapper)?;
+            let output = fixture.assemble();
+            assert!(
+                output.status.success(),
+                "candidate assembly failed for {wrapper:?}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let expected = wrapper.replacen(
+                declaration,
+                "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+                1,
+            );
+            for server in ["lsp", "codegraph"] {
+                let wrapper = fs::read(
+                    fixture
+                        .root()
+                        .join("dist/candidate/plugins/codexy/mcp")
+                        .join(format!("codexy-mcp-{server}")),
+                )?;
+                assert_eq!(wrapper, expected.as_bytes());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn candidate_assembly_rejects_nonexact_wrapper_platform_declarations()
 -> Result<(), Box<dyn std::error::Error>> {
     for declaration in [

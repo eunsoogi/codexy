@@ -47,7 +47,7 @@ manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_6
 open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) + "\n")
 for server in ("lsp", "codegraph"):
     wrapper_path = f"{root}/mcp/codexy-mcp-{server}"
-    wrapper = open(wrapper_path, encoding="utf-8").read()
+    wrapper = open(wrapper_path, encoding="utf-8", newline="").read()
     old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
     new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
     lines = wrapper.splitlines(keepends=True)
@@ -60,7 +60,7 @@ for server in ("lsp", "codegraph"):
         raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
     index, declaration = declarations[0]
     lines[index] = new + lines[index][len(declaration):]
-    open(wrapper_path, "w", encoding="utf-8").write("".join(lines))
+    open(wrapper_path, "w", encoding="utf-8", newline="").write("".join(lines))
     shutil.copyfile(f"{root}/runtime/codexy-mcp-{server}-windows-x86_64.exe", f"{root}/mcp/codexy-mcp-{server}.exe")
 PY
 
