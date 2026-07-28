@@ -110,7 +110,7 @@ local_path_pattern='/(Users|home|tmp|private/var)/'
 scan_output="$tmp_dir/archive-scan-output"
 inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
 set +e
-LOCAL_PATH_PATTERN="$local_path_pattern" python3 - "$inventory" <<'PY'
+MSYS2_ENV_CONV_EXCL=LOCAL_PATH_PATTERN LOCAL_PATH_PATTERN="$local_path_pattern" python3 - "$inventory" <<'PY'
 import json, os, re, sys
 
 try:

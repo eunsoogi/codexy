@@ -1,6 +1,8 @@
 #[allow(unused_imports)]
 use std::process::Command;
 
+use super::wrapper_copy::is_generated_fixture_directory;
+
 #[path = "release_archive/archive_entry.rs"]
 mod archive_entry;
 #[path = "release_archive/archive_evidence.rs"]
@@ -51,6 +53,7 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, check
             "!**/hooks/policy-inventory.json",
             "hooks/policy-inventory.json\" ! -name '*.md'",
             "archive policy inventory hygiene scan failed",
+            "MSYS2_ENV_CONV_EXCL=LOCAL_PATH_PATTERN",
             "key not in {\"source\", \"text\"}",
             "! -name '*.md'",
             "! -name '*.txt'",
@@ -138,7 +141,7 @@ pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> s
         let source_path = entry.path();
         let target_path = target.join(entry.file_name());
         if source_path.is_dir() {
-            if entry.file_name() != "runtime" {
+            if entry.file_name() != "runtime" && !is_generated_fixture_directory(&source_path) {
                 copy_tree(&source_path, &target_path)?;
             }
         } else {
