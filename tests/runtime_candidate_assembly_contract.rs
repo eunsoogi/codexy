@@ -84,6 +84,12 @@ impl CandidateFixture {
         let tar = root.join("test-bin/tar");
         fs::write(&tar, "#!/bin/sh\nexit 0\n")?;
         crate::support::make_executable(&tar)?;
+        let rsync = root.join("test-bin/rsync");
+        fs::write(
+            &rsync,
+            "#!/bin/sh\nset -eu\nsource=${8:?source}\ndestination=${9:?destination}\nmkdir -p \"$destination\"\ncp -R \"${source%/}/.\" \"$destination/\"\n",
+        )?;
+        crate::support::make_executable(&rsync)?;
         run_git(&root, &["init", "-q"])?;
         run_git(&root, &["config", "user.email", "test@example.invalid"])?;
         run_git(&root, &["config", "user.name", "Candidate Fixture"])?;
