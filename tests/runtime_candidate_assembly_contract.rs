@@ -23,7 +23,7 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
                     .join("dist/candidate/plugins/codexy/mcp")
                     .join(format!("codexy-mcp-{server}")),
             )?;
-            assert_eq!(wrapper, ACTIVATED_DECLARATION);
+            assert_eq!(wrapper.replace("\r\n", "\n"), ACTIVATED_DECLARATION);
         }
     }
     Ok(())
