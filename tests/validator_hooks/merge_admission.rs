@@ -121,9 +121,10 @@ fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestR
 fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
     let message = "fix(workflow): require intent (#128)\n\nFixes #503\n";
     let subject = "fix(workflow): require intent (#128)";
-    let (output, merged, _) = wrapper_with_payload(&plugin_root(), state(), false, message, subject, "Fixes #503\n", false)?;
+    let (output, merged, body) = wrapper_with_payload(&plugin_root(), state(), false, message, subject, "Fixes #503\n", true)?;
     assert!(output.status.success(), "exact payload rejected: {}", String::from_utf8_lossy(&output.stderr));
     assert!(merged, "exact payload did not reach merge");
+    assert_eq!(body, "Fixes #503\n", "post-admission mutation changed gh body");
     for (actual_subject, actual_body) in [
         ("fix: malformed subject", "Fixes #503\n"),
         (subject, "This body does not close #503\n"),
@@ -136,19 +137,6 @@ fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
     let (output, merged, _) = wrapper_with_payload(&plugin_root(), state(), false, invalid, "fix: malformed subject", "Fixes #503\n", false)?;
     assert!(!output.status.success(), "malformed exact payload admitted");
     assert!(!merged, "malformed exact payload reached merge");
-    Ok(())
-}
-
-#[cfg(unix)]
-#[test]
-fn canonical_wrapper_gh_uses_immutable_body_snapshot() -> TestResult {
-    let (output, merged, body) = wrapper_with_payload(
-        &plugin_root(), state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n",
-        "fix(workflow): require intent (#128)", "Fixes #503\n", true,
-    )?;
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    assert!(merged, "immutable body did not reach merge");
-    assert_eq!(body, "Fixes #503\n", "post-admission mutation changed gh body");
     Ok(())
 }
 
