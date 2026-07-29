@@ -202,3 +202,6 @@ MUST include:
 - Treating an arbitrary reviewer agent, generic review role, parent-only
   readthrough, stale reviewer output, or external review pass as equivalent to
   the packaged Codexy reviewer agent gate for the current diff and evidence.
+
+A checked contract is the sole merge authorization; generic finish, completion,
+silence, clean gates, and a ready PR are non-authoritative signals.

@@ -43,6 +43,12 @@ mod validator_git_workflow_local_reference;
 #[path = "../validator_git_workflow_skill.rs"]
 mod validator_git_workflow_skill;
 
+#[path = "../validator_merge_authorization.rs"]
+mod validator_merge_authorization;
+
+#[path = "../validator_merge_authorization_policy.rs"]
+mod validator_merge_authorization_policy;
+
 #[path = "../validator_installed_readiness_guard.rs"]
 mod validator_installed_readiness_guard;
 

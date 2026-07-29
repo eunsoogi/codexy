@@ -82,7 +82,11 @@ mod markdown;
 mod mcp;
 mod mcp_required;
 mod mcp_runtime;
+mod merge_authorization;
+mod merge_authorization_contract;
+mod merge_authorization_policy;
 mod merge_message;
+mod mode;
 mod mode_dispatch;
 mod orchestration_routing;
 mod orchestration_routing_api;
@@ -119,51 +123,11 @@ use std::path::Path;
 
 use anyhow::Result;
 
+pub use mode::Mode;
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
 pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
-
-#[derive(Debug, Clone)]
-pub enum Mode {
-    All,
-    InstructionPolicy,
-    OrchestrationRouting,
-    Lsp,
-    RustLspReadiness,
-    MergeMessage {
-        expected_issue: Option<u64>,
-        expected_pr: Option<u64>,
-        message: String,
-    },
-    PrTitle {
-        title: String,
-    },
-    IssueTitle {
-        title: String,
-    },
-    PrLabels {
-        pr_state: String,
-    },
-    IssueIntake {
-        receipt: String,
-    },
-    CompletionHandoff {
-        handoff: String,
-        pr_state: String,
-    },
-    ReviewResponseCluster(String),
-    Mcp,
-    Hooks,
-    Roles,
-    RuntimeArtifacts,
-    ChildLaneOwnership {
-        evidence: String,
-    },
-    TouchedLoc {
-        base_ref: String,
-    },
-}
 
 /// Returns the LSP file extensions covered by Codexy validation metadata.
 ///
@@ -196,6 +160,12 @@ pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
     let mut errors = Vec::new();
     instruction_policy::check_surface(path, &text, &mut errors);
     Ok(errors)
+}
+
+/// Returns global diagnostics for the canonical merge-authorization policy.
+#[must_use]
+pub fn merge_authorization_policy_diagnostics(plugin_root: &Path) -> Vec<String> {
+    merge_authorization_policy::check(plugin_root)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

@@ -35,6 +35,12 @@ struct Cli {
         conflicts_with = "merge_message"
     )]
     merge_message_file: Option<PathBuf>,
+    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
+    check_merge_authorization: bool,
+    #[arg(long, requires = "check_merge_authorization")]
+    merge_authorization_file: Option<PathBuf>,
+    #[arg(long, requires = "check_merge_authorization")]
+    merge_authorization_pr_state_file: Option<PathBuf>,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_issue_title", "check_completion_handoff", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
     check_pr_title: bool,
     #[arg(long, requires = "check_pr_title")]
@@ -79,6 +85,7 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    ensure_one_mode(&cli)?;
     let plugin_root = cli.plugin_root.clone().unwrap_or_else(paths::plugin_root);
     if cli.print_covered_extensions {
         for extension in validation::covered_extensions(&plugin_root)? {
@@ -98,6 +105,17 @@ fn main() -> Result<()> {
             expected_issue: cli.expected_issue,
             expected_pr: cli.expected_pr,
             message: merge_message(&cli)?,
+        }
+    } else if cli.check_merge_authorization {
+        validation::Mode::MergeAuthorization {
+            authorization: read_required_file(
+                &cli.merge_authorization_file,
+                "--merge-authorization-file",
+            )?,
+            pr_state: read_required_file(
+                &cli.merge_authorization_pr_state_file,
+                "--merge-authorization-pr-state-file",
+            )?,
         }
     } else if cli.check_pr_title {
         validation::Mode::PrTitle {
@@ -153,6 +171,32 @@ fn main() -> Result<()> {
         "plugin config validation ok: {}",
         paths::display_relative(&plugin_root)
     );
+    Ok(())
+}
+
+fn ensure_one_mode(cli: &Cli) -> Result<()> {
+    let modes = [
+        cli.check,
+        cli.check_lsp,
+        cli.check_rust_lsp_readiness,
+        cli.check_merge_message,
+        cli.check_merge_authorization,
+        cli.check_pr_title,
+        cli.check_issue_title,
+        cli.check_issue_intake,
+        cli.check_completion_handoff,
+        cli.check_review_response_cluster,
+        cli.check_mcp,
+        cli.check_hooks,
+        cli.check_roles,
+        cli.check_runtime_artifacts,
+        cli.check_child_lane_ownership,
+        cli.check_touched_loc,
+        cli.print_covered_extensions,
+    ];
+    if modes.into_iter().filter(|enabled| *enabled).count() != 1 {
+        anyhow::bail!("exactly one validation mode is required");
+    }
     Ok(())
 }
 

@@ -124,12 +124,12 @@ elif ! cat "$pr_body_file"; then
   printf '%s\n' "failed to display captured PR body" >&2
   exit 1
 fi
-printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "
-IFS= read -r pr_body_approval
-if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
-  printf '%s\n' "PR body approval token mismatch" >&2
+if ! scripts/validate-plugin-config --check-merge-authorization \
+  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" --merge-authorization-pr-state-file <(gh pr view "$pr_number" --repo "$repo" --json number,baseRefName,headRefOid); then
+  printf '%s\n' "authoritative merge authorization failed" >&2
   exit 1
 fi
+printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "; IFS= read -r pr_body_approval; [ "$pr_body_approval" = "APPROVE_PR_BODY_FOR_MAIN" ] || { printf '%s\n' "PR body approval token mismatch" >&2; exit 1; }
 
 mkdir -p "$(dirname "$expected_body_file")"
 if ! cp "$pr_body_file" "$expected_body_file"; then

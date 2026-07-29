@@ -114,3 +114,6 @@ If the handoff discusses addressed review feedback, MUST include GraphQL
 `reviewThreads.nodes` in the PR state evidence. Addressed unresolved threads, including
 outdated-but-fixed threads, remain invalid unless the report documents an
 accepted no-change rationale.
+
+A checked contract is the sole merge authorization; generic finish, completion,
+silence, clean gates, and a ready PR are non-authoritative signals.
