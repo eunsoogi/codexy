@@ -3,6 +3,7 @@ use std::{collections::BTreeSet, fs, path::Path};
 use crate::paths::display_relative;
 
 const CANONICAL_WRAPPER: &str = "plugins/codexy/hooks/codexy-authorized-squash-merge.sh";
+const MAX_SHELL_NESTING: usize = 8;
 
 pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
     let mut paths = BTreeSet::new();
@@ -28,23 +29,48 @@ pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
 }
 
 fn unguarded_merge(line: &str) -> bool {
-    command_segments(line).into_iter().any(unguarded_segment)
+    unguarded_merge_at(line, 0)
 }
 
-fn unguarded_segment(segment: &str) -> bool {
-    let tokens = segment.trim_start().split_whitespace().collect::<Vec<_>>();
+fn unguarded_merge_at(line: &str, depth: usize) -> bool {
+    command_segments(line)
+        .into_iter()
+        .any(|segment| unguarded_segment(segment, depth))
+}
+
+fn unguarded_segment(segment: &str, depth: usize) -> bool {
+    let words = shell_words(segment);
+    let token_refs = words.iter().map(String::as_str).collect::<Vec<_>>();
+    let tokens = executable_tokens(&token_refs);
+    let Some(tokens) = tokens else {
+        return true;
+    };
+    if let Some(program) = shell_program(tokens) {
+        return depth >= MAX_SHELL_NESTING || unguarded_merge_at(program, depth + 1);
+    }
+    tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
+}
+
+fn executable_tokens<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
     let tokens = strip_assignments(strip_controls(&tokens));
     let Some(tokens) = strip_command(tokens) else {
-        return true;
+        return None;
     };
     let Some(tokens) = strip_env(tokens) else {
-        return true;
+        return None;
     };
     let tokens = strip_assignments(tokens);
-    let Some(tokens) = strip_command(tokens) else {
-        return true;
-    };
-    tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
+    strip_command(tokens)
+}
+
+fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
+    if !matches!(tokens.first(), Some(&"sh" | &"bash" | &"dash" | &"zsh")) {
+        return None;
+    }
+    match tokens {
+        [_, "-c", program, ..] => Some(*program),
+        _ => None,
+    }
 }
 
 fn command_segments(line: &str) -> Vec<&str> {
@@ -83,8 +109,47 @@ fn command_segments(line: &str) -> Vec<&str> {
     segments
 }
 
+fn shell_words(segment: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+    for character in segment.chars() {
+        if escaped {
+            word.push(character);
+            escaped = false;
+        } else if character == '\\' && quote != Some('\'') {
+            escaped = true;
+        } else if matches!(character, '\'' | '\"') {
+            quote = if quote == Some(character) {
+                None
+            } else if quote.is_none() {
+                Some(character)
+            } else {
+                quote
+            };
+        } else if quote.is_none() && character.is_whitespace() {
+            if !word.is_empty() {
+                words.push(std::mem::take(&mut word));
+            }
+        } else {
+            word.push(character);
+        }
+    }
+    if escaped {
+        word.push('\\');
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    words
+}
+
 fn strip_controls<'a>(mut tokens: &'a [&'a str]) -> &'a [&'a str] {
-    while matches!(tokens.first(), Some(&"if" | &"then" | &"!")) {
+    while matches!(
+        tokens.first(),
+        Some(&"if" | &"then" | &"while" | &"until" | &"do" | &"!")
+    ) {
         tokens = &tokens[1..];
     }
     tokens

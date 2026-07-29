@@ -163,6 +163,7 @@ fn policy_rejects_opposite_global_rule_polarity() -> Result<(), Box<dyn std::err
 
 #[test]
 fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(), Box<dyn std::error::Error>> {
+    let mut missed = Vec::new();
     for route_line in [
         "echo ready; gh pr merge \"$pr_number\" --squash",
         "printf ready && gh pr merge \"$pr_number\" --squash",
@@ -176,14 +177,19 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "! gh pr merge \"$pr_number\" --squash",
         "if true; then gh pr merge \"$pr_number\" --squash; fi",
         "if true; then ! gh pr merge \"$pr_number\" --squash; fi",
+        "while true; do gh pr merge \"$pr_number\" --squash; done",
+        r#"sh -c 'gh pr merge "$pr_number" --squash'"#,
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
         let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
         std::fs::write(route, route_text)?;
         let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
-        assert!(errors.iter().any(|error| error.contains("before mutation")), "{route_line}: {errors:#?}");
+        if !errors.iter().any(|error| error.contains("before mutation")) {
+            missed.push(route_line);
+        }
     }
+    assert!(missed.is_empty(), "unguarded routes: {missed:#?}");
     {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
@@ -200,6 +206,9 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "! plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "if true; then plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; fi",
         "if true; then ! plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; fi",
+        "while true; do plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; done",
+        r#"sh -c 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
+        r#"sh -c 'echo "gh pr merge $pr_number --squash"'"#,
         "if true; then ! gh pr view \"$pr_number\"; fi",
     ] {
         let fixture = fixture()?;
