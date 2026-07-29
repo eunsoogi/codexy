@@ -8,34 +8,45 @@ const STAGING: &str = "0123456789abcdef0123456789abcdef01234567";
 const ACTIVATION: &str = "89abcdef0123456789abcdef0123456789abcdef";
 
 #[test]
-fn remote_version_tag_admission_is_authoritative_and_race_safe() -> Result<(), Box<dyn std::error::Error>> {
-    for state in [RemoteTag::Wrong, RemoteTag::Unpeelable, RemoteTag::Changed, RemoteTag::Appears] {
+fn remote_version_tag_admission_uses_authenticated_create_only_api() -> Result<(), Box<dyn std::error::Error>> {
+    for state in [
+        RemoteTag::Wrong,
+        RemoteTag::Unpeelable,
+        RemoteTag::Changed,
+        RemoteTag::ConcurrentWrong,
+        RemoteTag::ConcurrentUnpeelable,
+        RemoteTag::ApiAuth,
+        RemoteTag::ApiFailure,
+    ] {
         let fixture = Fixture::new(state)?;
         let output = fixture.run()?;
-        assert!(!output.status.success(), "unsafe {state:?} remote tag unexpectedly admitted");
+        assert!(!output.status.success(), "unsafe {state:?} tag unexpectedly admitted");
         assert_eq!(fixture.release_calls()?, 0, "{state:?} reached release creation: {}", String::from_utf8_lossy(&output.stderr));
+        assert_eq!(fixture.git_push_calls()?, 0, "{state:?} used unauthenticated git push");
+        assert_eq!(fixture.api_calls()?, state.create_api_calls(), "{state:?} API admission count");
     }
-    for state in [RemoteTag::Exact, RemoteTag::Absent] {
+    for state in [RemoteTag::Exact, RemoteTag::Absent, RemoteTag::ConcurrentExact] {
         let fixture = Fixture::new(state)?;
         let output = fixture.run()?;
         assert!(!output.status.success(), "fixture must stop at fake release boundary");
         assert!(String::from_utf8_lossy(&output.stderr).contains("release-create sentinel"));
         assert_eq!(fixture.release_calls()?, 1, "{state:?} tag did not admit release");
-        assert_eq!(fixture.show_ref_calls()?, 0, "{state:?} used a local tag snapshot");
+        assert_eq!(fixture.git_push_calls()?, 0, "{state:?} used unauthenticated git push");
+        assert_eq!(fixture.api_calls()?, state.create_api_calls(), "{state:?} API admission count");
     }
     Ok(())
 }
 
 #[derive(Clone, Copy, Debug)]
-enum RemoteTag { Wrong, Unpeelable, Changed, Appears, Exact, Absent }
+enum RemoteTag { Wrong, Unpeelable, Changed, Exact, Absent, ConcurrentExact, ConcurrentWrong, ConcurrentUnpeelable, ApiAuth, ApiFailure }
 
-struct Fixture {
-    _temp: tempfile::TempDir,
-    root: PathBuf,
-    script: PathBuf,
-    calls: PathBuf,
-    show_refs: PathBuf,
+impl RemoteTag {
+    fn create_api_calls(self) -> usize {
+        usize::from(!matches!(self, Self::Wrong | Self::Unpeelable | Self::Changed | Self::Exact))
+    }
 }
+
+struct Fixture { _temp: tempfile::TempDir, root: PathBuf, script: PathBuf, calls: PathBuf, pushes: PathBuf, api_calls: PathBuf }
 
 impl Fixture {
     fn new(state: RemoteTag) -> Result<Self, Box<dyn std::error::Error>> {
@@ -56,8 +67,9 @@ impl Fixture {
         fs::write(root.join("remote-state"), remote_state(state))?;
         fs::write(root.join("remote-queries"), "0")?;
         let calls = root.join("release-calls");
-        let show_refs = root.join("show-ref-calls");
-        Ok(Self { _temp: temp, root, script, calls, show_refs })
+        let pushes = root.join("git-push-calls");
+        let api_calls = root.join("api-calls");
+        Ok(Self { _temp: temp, root, script, calls, pushes, api_calls })
     }
 
     fn run(&self) -> Result<Output, Box<dyn std::error::Error>> {
@@ -72,20 +84,22 @@ impl Fixture {
             .env_path("REMOTE_QUERIES", self.root.join("remote-queries"))
             .env_path("FETCHED_STATE", self.root.join("fetched-state"))
             .env_path("RELEASE_CALLS", &self.calls)
-            .env_path("SHOW_REF_CALLS", &self.show_refs)
+            .env_path("GIT_PUSH_CALLS", &self.pushes)
+            .env_path("API_CALLS", &self.api_calls)
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("GH_TOKEN", "fixture-token")
             .env("STAGING_SOURCE_COMMIT", STAGING)
             .env("ACTIVATION_COMMIT", ACTIVATION)
             .env("STAGING_RUN_ID", "42");
         Ok(command.output()?)
     }
 
-    fn release_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { Ok(lines(&self.calls)?) }
-    fn show_ref_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { Ok(lines(&self.show_refs)?) }
+    fn release_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.calls) }
+    fn git_push_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.pushes) }
+    fn api_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.api_calls) }
 }
 
-fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> {
-    Ok(fs::read_to_string(path).unwrap_or_default().lines().count())
-}
+fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> { Ok(fs::read_to_string(path).unwrap_or_default().lines().count()) }
 
 fn release_step() -> Result<String, Box<dyn std::error::Error>> {
     let workflow = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
@@ -96,11 +110,16 @@ fn release_step() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 fn remote_state(state: RemoteTag) -> &'static str {
-    match state { RemoteTag::Wrong => "wrong", RemoteTag::Unpeelable => "unpeelable", RemoteTag::Changed => "changed", RemoteTag::Appears => "appears", RemoteTag::Exact => "exact", RemoteTag::Absent => "absent" }
+    match state {
+        RemoteTag::Wrong => "wrong", RemoteTag::Unpeelable => "unpeelable", RemoteTag::Changed => "changed",
+        RemoteTag::Exact => "exact", RemoteTag::Absent => "absent", RemoteTag::ConcurrentExact => "concurrent-exact",
+        RemoteTag::ConcurrentWrong => "concurrent-wrong", RemoteTag::ConcurrentUnpeelable => "concurrent-unpeelable",
+        RemoteTag::ApiAuth => "api-auth", RemoteTag::ApiFailure => "api-failure",
+    }
 }
 
 fn git_fixture() -> &'static str {
-    "#!/bin/sh\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); [ \"$value\" = absent ] && exit 0; [ \"$value\" = appears ] && exit 0; [ \"$value\" = changed ] && [ \"$count\" -ge 2 ] && value=wrong; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) case \"$(state)\" in absent) printf '%s\\n' exact > \"$REMOTE_STATE\" ;; appears) printf '%s\\n' wrong > \"$REMOTE_STATE\"; exit 1 ;; *) exit 91 ;; esac ;;\n  show-ref) printf '%s\\n' local >> \"$SHOW_REF_CALLS\"; exit 1 ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
+    "#!/bin/sh\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); case \"$value\" in absent|concurrent-exact|concurrent-wrong|concurrent-unpeelable|api-auth|api-failure) exit 0 ;; changed) [ \"$count\" -ge 2 ] && value=wrong ;; esac; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) printf '%s\\n' push >> \"$GIT_PUSH_CALLS\"; exit 91 ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
 }
 
 fn jq_fixture() -> &'static str {
@@ -108,5 +127,5 @@ fn jq_fixture() -> &'static str {
 }
 
 fn gh_fixture() -> &'static str {
-    "#!/bin/sh\nprintf '%s\\n' release >> \"$RELEASE_CALLS\"\nprintf '%s\\n' 'release-create sentinel' >&2\nexit 83\n"
+    "#!/bin/sh\nstate() { cat \"$REMOTE_STATE\"; }\nif [ \"$1\" = api ]; then\n  printf '%s\\n' api >> \"$API_CALLS\"\n  [ \"$GH_TOKEN\" = fixture-token ] || { printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }\n  case \"$(state)\" in absent) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 201 Created'; exit 0 ;; concurrent-exact) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-wrong) printf '%s\\n' wrong > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-unpeelable) printf '%s\\n' unpeelable > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; api-auth) printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;; api-failure) printf '%s\\n' 'HTTP/2.0 500 Server Error'; exit 1 ;; *) exit 91 ;; esac\nfi\nprintf '%s\\n' release >> \"$RELEASE_CALLS\"\nprintf '%s\\n' 'release-create sentinel' >&2\nexit 83\n"
 }

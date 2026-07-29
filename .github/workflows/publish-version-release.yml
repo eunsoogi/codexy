@@ -115,12 +115,29 @@ jobs:
           test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
           test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
           tag_ref=refs/tags/v1.3.0
-          if test -z "$(git ls-remote --refs origin "$tag_ref")"; then
-            git push origin "$ACTIVATION_COMMIT:$tag_ref"
+          remote_tag="$(git ls-remote --refs origin "$tag_ref")"
+          if test -z "$remote_tag"; then
+            tag_create_response=tag-create-response.txt
+            if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response"; then
+              test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 201 || {
+                printf '%s\n' "remote v1.3.0 tag API did not create a ref" >&2
+                exit 1
+              }
+            else
+              test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 422 || {
+                printf '%s\n' "remote v1.3.0 tag API admission failed" >&2
+                exit 1
+              }
+            fi
           fi
           remote_tag="$(git ls-remote --refs origin "$tag_ref")"
           test -n "$remote_tag" || {
             printf '%s\n' "remote v1.3.0 tag is absent after admission" >&2
+            exit 1
+          }
+          remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
+          test "$remote_tag_oid" = "$ACTIVATION_COMMIT" || {
+            printf '%s\n' "remote v1.3.0 tag is not the exact lightweight activation ref" >&2
             exit 1
           }
           git fetch --no-tags origin "$tag_ref"

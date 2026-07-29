@@ -18,12 +18,17 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         assert_eq!(step["env"][name], format!("${{{{ inputs.{input} }}}}"));
     }
     let release = step["run"].as_str().ok_or("final release run")?;
+    assert_eq!(step["env"]["GH_TOKEN"], "${{ github.token }}");
     let create = release.find("gh release create v1.3.0").ok_or("version release")?;
     for required in [
         "test -n \"$STAGING_SOURCE_COMMIT\"",
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
         "git ls-remote --refs origin \"$tag_ref\"",
-        "git push origin \"$ACTIVATION_COMMIT:$tag_ref\"",
+        "gh api --method POST --include \"repos/$GITHUB_REPOSITORY/git/refs\"",
+        "-f ref=\"$tag_ref\" -f sha=\"$ACTIVATION_COMMIT\"",
+        "tag_create_response=tag-create-response.txt",
+        "remote v1.3.0 tag API admission failed",
+        "remote v1.3.0 tag is not the exact lightweight activation ref",
         "FETCH_HEAD^{commit}",
         "cannot resolve remote v1.3.0 tag",
         "remote v1.3.0 tag does not match activation commit",
@@ -31,6 +36,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
+    assert!(!release.lines().any(|line| {
+        line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
+    }));
     let create_arguments = release[create..]
         .lines()
         .next()
@@ -38,5 +46,6 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         .split_ascii_whitespace()
         .collect::<Vec<_>>();
     assert_eq!(create_arguments.get(7), Some(&"--verify-tag"));
+    assert!(!create_arguments.iter().any(|argument| *argument == "--target"));
     Ok(())
 }
