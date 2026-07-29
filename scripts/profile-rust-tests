@@ -45,6 +45,19 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     return source.count('Command::new("cargo")')
 
 
+def replay_output(output: bytes) -> bool:
+    binary = getattr(sys.stdout, "buffer", None)
+    if binary is None:
+        sys.stdout.write(output.decode("utf-8"))
+        return False
+    binary.write(output)
+    return True
+
+
+def flush_output() -> None:
+    getattr(sys.stdout, "buffer", sys.stdout).flush()
+
+
 def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lines: list[bytes]) -> None:
     with capture_path.open("rb", buffering=0) as capture:
         while process.poll() is None:
@@ -52,8 +65,8 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
             line = capture.readline()
             if line.endswith(b"\n"):
                 lines.append(line)
-                sys.stdout.write(line.decode("utf-8"))
-                sys.stdout.flush()
+                replay_output(line)
+                flush_output()
                 return
             time.sleep(0.01)
 
@@ -93,8 +106,8 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     live_output = first_line[0] if first_line else b""
     tail = output[len(live_output) :]
     if tail:
-        sys.stdout.write(tail.decode("utf-8"))
-    sys.stdout.flush()
+        replay_output(tail)
+    flush_output()
     output_text = output.decode("utf-8")
     if status == 124:
         return output_text, budget_seconds, 124

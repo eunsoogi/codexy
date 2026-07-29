@@ -32,9 +32,50 @@ class Process:
     def poll(self):
         return 0 if self.finished else None
 
+class WindowsTextSink:
+    def __init__(self):
+        self.bytes = bytearray()
+    def write(self, text):
+        self.bytes.extend(text.replace("\n", "\r\n").encode())
+    def flush(self):
+        pass
+
+class BinarySink:
+    def __init__(self):
+        self.bytes = bytearray()
+        self.flushes = 0
+    def write(self, data):
+        self.bytes.extend(data)
+    def flush(self):
+        self.flushes += 1
+
+class BinaryStdout:
+    def __init__(self):
+        self.buffer = BinarySink()
+
 script = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(script.parent))
 module = runpy.run_path(script)
+payload = b"first\r\nsecond\r\n"
+legacy = WindowsTextSink()
+legacy.write(payload.decode())
+if bytes(legacy.bytes) != b"first\r\r\nsecond\r\r\n":
+    raise SystemExit(f"legacy Windows translation was not reproduced: {legacy.bytes!r}")
+original_stdout = sys.stdout
+try:
+    fallback = WindowsTextSink()
+    sys.stdout = fallback
+    if module["replay_output"](payload) is not False:
+        raise SystemExit("text-only fallback claimed byte-preserving replay")
+    binary = BinaryStdout()
+    sys.stdout = binary
+    if module["replay_output"](payload) is not True:
+        raise SystemExit("binary sink did not declare byte-preserving replay")
+    module["flush_output"]()
+finally:
+    sys.stdout = original_stdout
+if bytes(binary.buffer.bytes) != payload or binary.buffer.flushes != 1:
+    raise SystemExit(f"binary replay was not exact: {binary.buffer.bytes!r} flushes={binary.buffer.flushes}")
 def measure(chunks):
     def spawn(*_args, **kwargs):
         if kwargs["stdout"] is module["subprocess"].PIPE:
