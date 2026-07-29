@@ -146,7 +146,7 @@ def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfil
     if set(candidate) != {"schema", "source", "artifact", "compatibility", "platforms"} or candidate.get("schema") != CANDIDATE_SCHEMA or candidate.get("source") != {"repository": release.source.repository, "commit": release.source.commit}:
         raise ValueError("runtime candidate identity does not match release")
     artifact = candidate.get("artifact")
-    if not isinstance(artifact, dict) or set(artifact) != {"stagingRunId", "stagingRunAttempt"} or not all(isinstance(artifact[key], int) and artifact[key] > 0 for key in artifact) or compatibility(candidate.get("compatibility")) != release.compatibility:
+    if not isinstance(artifact, dict) or set(artifact) != {"stagingRunId", "stagingRunAttempt"} or not all(type(artifact[key]) is int and artifact[key] > 0 for key in artifact) or compatibility(candidate.get("compatibility")) != release.compatibility:
         raise ValueError("runtime candidate metadata does not match release")
     inventory = platforms(candidate.get("platforms"), require_path=True)
     if inventory != release.platforms or platform not in inventory:
