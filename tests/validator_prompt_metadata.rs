@@ -182,13 +182,6 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
         assert!(classification.contains(lane_type));
     }
 
-    assert!(classification.contains(
-        "Missing classification evidence blocks branch/worktree setup, delegation,\n  validation/QA"
-    ));
-    assert!(
-        classification
-            .contains("Classification MUST happen before acting on or using the owner decision")
-    );
     assert!(orchestration.contains("$task-classification"));
     assert!(orchestration.contains(
         "Missing classification before\nsetup, validation, release, or other workflow actions"

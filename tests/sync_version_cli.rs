@@ -153,6 +153,9 @@ pub(super) fn archive_repository(
         "src/version/wrappers.rs",
         "plugins/codexy/hooks/policy-inventory.json",
         "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
+        "plugins/codexy/skills/codex-orchestration/references/workflow-profiles.json",
+        "plugins/codexy/skills/task-classification/SKILL.md",
+        "plugins/codexy/skills/task-classification/agents/openai.yaml",
     ] {
         let destination = repo.join(relative);
         if let Some(parent) = destination.parent() {
