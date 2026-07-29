@@ -5,7 +5,6 @@ use serde_json::{Map, Value, json};
 
 use fields::{
     binary_path, commit, digest, exact, exact_keys, object, object_field, positive_integer, string,
-    tag,
 };
 
 const RECEIPT_SCHEMA: &str = "codexy-runtime-candidate-receipt/v1";
@@ -17,7 +16,10 @@ const WORKFLOW_PATH: &str = ".github/workflows/runtime-candidate.yml";
 pub(super) const PLATFORMS: [&str; 3] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
 const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 
-pub(super) fn activation_from_receipt(receipt: &Value) -> Result<(Value, Value)> {
+pub(super) fn activation_from_receipt(
+    receipt: &Value,
+    release_tag: &str,
+) -> Result<(Value, Value)> {
     let root = object(receipt, "candidate receipt")?;
     exact_keys(
         root,
@@ -31,21 +33,17 @@ pub(super) fn activation_from_receipt(receipt: &Value) -> Result<(Value, Value)>
     )?;
     let candidate = object_field(root, "candidate", "candidate receipt")?;
     let artifact = object_field(root, "artifact", "candidate receipt")?;
-    validate_provenance(object_field(root, "provenance", "candidate receipt")?)?;
-    validate_candidate(candidate)?;
-    let tag = string(
-        object_field(candidate, "artifact", "candidate")?,
-        "tag",
-        "candidate artifact",
-    )?;
-    validate_artifact(artifact, tag)?;
+    let provenance = object_field(root, "provenance", "candidate receipt")?;
+    validate_provenance(provenance)?;
+    validate_candidate(candidate, provenance)?;
+    validate_artifact(artifact)?;
     let source = object_field(candidate, "source", "candidate")?;
     let compatibility = object_field(candidate, "compatibility", "candidate")?;
     let platforms = object_field(candidate, "platforms", "candidate")?;
     let release_platforms = release_platforms(platforms)?;
     let release_artifact = json!({
-        "tag": tag,
-        "url": string(artifact, "url", "candidate artifact proof")?,
+        "tag": release_tag,
+        "url": format!("{REPOSITORY}/releases/download/{release_tag}/codexy-marketplace-plugin.tar.gz"),
         "sha256": string(artifact, "sha256", "candidate artifact proof")?,
         "payloadManifestSha256": string(
             artifact,
@@ -82,7 +80,10 @@ fn release_platforms(platforms: &Map<String, Value>) -> Result<Value> {
     Ok(Value::Object(entries))
 }
 
-fn validate_candidate(candidate: &Map<String, Value>) -> Result<()> {
+fn validate_candidate(
+    candidate: &Map<String, Value>,
+    provenance: &Map<String, Value>,
+) -> Result<()> {
     exact_keys(
         candidate,
         &["schema", "source", "artifact", "compatibility", "platforms"],
@@ -102,8 +103,18 @@ fn validate_candidate(candidate: &Map<String, Value>) -> Result<()> {
     )?;
     commit(string(source, "commit", "candidate source")?)?;
     let artifact = object_field(candidate, "artifact", "candidate")?;
-    exact_keys(artifact, &["tag"], "candidate artifact")?;
-    tag(string(artifact, "tag", "candidate artifact")?)?;
+    exact_keys(
+        artifact,
+        &["stagingRunId", "stagingRunAttempt"],
+        "candidate artifact",
+    )?;
+    if positive_integer(artifact, "stagingRunId", "candidate artifact")?
+        != positive_integer(provenance, "runId", "candidate provenance")?
+        || positive_integer(artifact, "stagingRunAttempt", "candidate artifact")?
+            != positive_integer(provenance, "runAttempt", "candidate provenance")?
+    {
+        bail!("candidate staging identity does not match provenance");
+    }
     let compatibility = object_field(candidate, "compatibility", "candidate")?;
     exact_keys(
         compatibility,
@@ -149,16 +160,11 @@ fn validate_candidate(candidate: &Map<String, Value>) -> Result<()> {
     Ok(())
 }
 
-fn validate_artifact(artifact: &Map<String, Value>, tag_value: &str) -> Result<()> {
+fn validate_artifact(artifact: &Map<String, Value>) -> Result<()> {
     exact_keys(
         artifact,
-        &["url", "sha256", "payloadManifestSha256"],
+        &["sha256", "payloadManifestSha256"],
         "candidate artifact proof",
-    )?;
-    exact(
-        string(artifact, "url", "candidate artifact proof")?,
-        &format!("{REPOSITORY}/releases/download/{tag_value}/codexy-marketplace-plugin.tar.gz"),
-        "candidate artifact URL",
     )?;
     digest(string(artifact, "sha256", "candidate artifact proof")?)?;
     digest(string(

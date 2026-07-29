@@ -1,9 +1,8 @@
 #!/bin/sh
 set -eu
 
-case "${CANDIDATE_TAG:?}" in runtime-candidate-?*) ;; *) exit 1;; esac
-slug="${CANDIDATE_TAG#runtime-candidate-}"
-case "$slug" in *[!A-Za-z0-9._-]*) exit 1;; esac
+case "${STAGING_RUN_ID:?}" in *[!0-9]*|'') exit 1;; esac
+case "${STAGING_RUN_ATTEMPT:?}" in *[!0-9]*|'') exit 1;; esac
 test "$(git rev-parse HEAD)" = "${SOURCE_COMMIT:?}"
 
 root=dist/candidate/plugins/codexy
@@ -16,7 +15,7 @@ for platform in darwin-arm64 linux-x86_64; do
   done
 done
 
-CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ROOT="$root" python3 - <<'PY'
+SOURCE_COMMIT="$SOURCE_COMMIT" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" ROOT="$root" python3 - <<'PY'
 import hashlib
 import json
 import os
@@ -35,7 +34,10 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
 candidate = {
     "schema": "codexy-runtime-candidate/v1",
     "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": os.environ["SOURCE_COMMIT"]},
-    "artifact": {"tag": os.environ["CANDIDATE_TAG"]},
+    "artifact": {
+        "stagingRunId": int(os.environ["STAGING_RUN_ID"]),
+        "stagingRunAttempt": int(os.environ["STAGING_RUN_ATTEMPT"]),
+    },
     "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
     "platforms": platforms,
 }
@@ -182,7 +184,7 @@ PY
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
-CANDIDATE_TAG="$CANDIDATE_TAG" SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" python3 - <<'PY'
+SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" python3 - <<'PY'
 import json
 import os
 
@@ -191,18 +193,17 @@ receipt = {
     "schema": "codexy-runtime-candidate-receipt/v1",
     "candidate": candidate,
     "artifact": {
-        "url": f"https://github.com/eunsoogi/codexy/releases/download/{os.environ['CANDIDATE_TAG']}/codexy-marketplace-plugin.tar.gz",
         "sha256": os.environ["ARCHIVE_SHA"],
         "payloadManifestSha256": os.environ["MANIFEST_SHA"],
     },
     "provenance": {
         "repositoryId": 1269350143,
         "workflowPath": ".github/workflows/runtime-candidate.yml",
-        "runId": int(os.environ["GITHUB_RUN_ID"]),
-        "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
-        "workflowRunUrl": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+        "runId": int(os.environ["STAGING_RUN_ID"]),
+        "runAttempt": int(os.environ["STAGING_RUN_ATTEMPT"]),
+        "workflowRunUrl": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['STAGING_RUN_ID']}",
     },
 }
-open("dist/runtime-candidate-receipt.json", "wb").write(json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode())
-open("dist/runtime-candidate-provenance.json", "w", encoding="utf-8").write(json.dumps(receipt["provenance"], sort_keys=True, separators=(",", ":")))
+open("dist/runtime-staging-receipt.json", "wb").write(json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode())
+open("dist/runtime-staging-provenance.json", "w", encoding="utf-8").write(json.dumps(receipt["provenance"], sort_keys=True, separators=(",", ":")))
 PY

@@ -74,19 +74,6 @@ pub(super) fn commit(value: &str) -> Result<()> {
     }
 }
 
-pub(super) fn tag(value: &str) -> Result<()> {
-    let slug = value.strip_prefix("runtime-candidate-").unwrap_or_default();
-    if !slug.is_empty()
-        && slug
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
-    {
-        Ok(())
-    } else {
-        bail!("candidate tag must have a safe runtime-candidate slug")
-    }
-}
-
 pub(super) fn binary_path(value: &str, server: &str, platform: &str) -> Result<()> {
     let extension = if platform == "windows-x86_64" {
         "exe"
