@@ -88,7 +88,8 @@ fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         plugin_root,
-    )
+    )?;
+    support::materialize_admission_runtime_suite(plugin_root)
 }
 
 fn validator(plugin_root: &std::path::Path) -> TestResult<std::process::Output> {
