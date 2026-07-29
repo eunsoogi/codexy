@@ -57,10 +57,12 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
 
     def stream_output() -> None:
         assert process.stdout is not None
-        for line in process.stdout:
+        for index, line in enumerate(process.stdout):
             output.append(line)
             sys.stdout.write(line)
-            sys.stdout.flush()
+            if index == 0:
+                sys.stdout.flush()
+        sys.stdout.flush()
 
     reader = threading.Thread(target=stream_output, name="cargo-test-output", daemon=True)
     reader.start()
