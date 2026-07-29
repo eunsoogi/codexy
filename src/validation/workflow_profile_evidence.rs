@@ -64,8 +64,7 @@ fn indented_code(line: &str) -> bool {
 }
 
 fn active_markdown(line: &str, comment: &mut bool, code: &mut Option<usize>) -> String {
-    let masked_code = without_inline_code(line, code);
-    let mut line = masked_code.as_str();
+    let mut line = line;
     let mut active = String::new();
     loop {
         if *comment {
@@ -76,10 +75,18 @@ fn active_markdown(line: &str, comment: &mut bool, code: &mut Option<usize>) -> 
             line = &line[end + 3..];
         } else {
             let Some(start) = line.find("<!--") else {
-                active.push_str(line);
+                active.push_str(&without_inline_code(line, code));
                 return active;
             };
-            active.push_str(&line[..start]);
+            if line[..start].contains('`') {
+                active.push_str(&without_inline_code(line, code));
+                return active;
+            }
+            active.push_str(&without_inline_code(&line[..start], code));
+            if code.is_some() {
+                active.push_str(&without_inline_code(&line[start..], code));
+                return active;
+            }
             *comment = true;
             line = &line[start + 4..];
         }
@@ -115,8 +122,12 @@ fn without_inline_code(line: &str, code: &mut Option<usize>) -> String {
         let content = &rest[open + width..];
         let Some(close) = matching_backticks(content, width) else {
             visible.push_str(&rest[..open]);
-            visible.extend(std::iter::repeat_n(' ', rest[open..].chars().count()));
-            *code = Some(width);
+            if rest[open..].contains("<!--") {
+                visible.extend(std::iter::repeat_n(' ', rest[open..].chars().count()));
+                *code = Some(width);
+            } else {
+                visible.push_str(&rest[open..]);
+            }
             return visible;
         };
         visible.push_str(&rest[..open]);

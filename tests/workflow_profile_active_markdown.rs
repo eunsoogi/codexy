@@ -112,12 +112,19 @@ fn code_and_fence_boundaries_preserve_active_security_evidence() -> TestResult {
 }
 
 #[test]
-fn multiline_code_spans_cannot_mutate_html_comment_state() -> TestResult {
-    assert_profile_result(
-        "a multiline code span cannot open an html comment",
-        "Context: `<!--\nstill code`\nTask kind: security review\nWorkflow profile: light",
-        false,
-    )?;
+fn comment_markers_precede_unclosed_code_spans() -> TestResult {
+    for (name, evidence) in [
+        (
+            "a comment ignores backticks before its closer",
+            "<!-- ` --> Task kind: security review\nWorkflow profile: light",
+        ),
+        (
+            "an unclosed backtick cannot hide later security metadata",
+            "Context: `unclosed\nTask kind: security review\nWorkflow profile: light",
+        ),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
     Ok(())
 }
 

@@ -140,6 +140,7 @@ fn affirmative_not_only_and_postfix_negation_are_distinct() -> TestResult {
     for task_kind in [
         "security is not involved",
         "permission is not involved",
+        "high-consequence external-state is not involved",
         "not only secretary notes",
     ] {
         assert_profile_result(

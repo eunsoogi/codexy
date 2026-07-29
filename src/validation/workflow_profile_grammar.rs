@@ -130,7 +130,7 @@ fn free_suffix(tokens: &[Token], index: usize) -> bool {
 }
 
 fn postfix_negation(tokens: &[Token], index: usize) -> bool {
-    let mut cursor = index + 1;
+    let mut cursor = signal_end(tokens, index).map_or(index + 1, |end| end + 1);
     while tokens
         .get(cursor)
         .is_some_and(|token| token.joined_to_previous)
