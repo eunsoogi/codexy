@@ -1,14 +1,12 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
-use crate::support;
+use crate::support::{self, FixtureCommand as Command};
 
 use super::workflow;
 
@@ -133,7 +131,7 @@ impl FinalArchiveFixture {
         let runtime = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n".to_vec();
         let runtime_path = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
         fs::write(&runtime_path, &runtime)?;
-        fs::set_permissions(&runtime_path, fs::Permissions::from_mode(0o755))?;
+        support::make_executable(&runtime_path)?;
         let staged_archive = root.join("staging.tar.gz");
         assert!(
             Command::new("tar")

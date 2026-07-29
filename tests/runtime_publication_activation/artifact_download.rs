@@ -1,8 +1,10 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Output,
 };
+
+use crate::support::{self, FixtureCommand as Command};
 
 const REPOSITORY_ID: &str = "1269350143";
 const RUN_ID: &str = "42";
@@ -72,9 +74,7 @@ impl Fixture {
             &gh,
             "#!/bin/sh\ncase \"$*\" in\n  *'/actions/artifacts/'*'/zip') cat \"$FAKE_ZIP\" ;;\n  *'/artifacts') cat \"$FAKE_ARTIFACTS\" ;;\n  *'/actions/runs/'*) cat \"$FAKE_RUN\" ;;\n  *) exit 91 ;;\nesac\n",
         )?;
-        let mut permissions = fs::metadata(&gh)?.permissions();
-        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
-        fs::set_permissions(&gh, permissions)?;
+        support::make_executable(&gh)?;
         let archive = temp.path().join("fixture-artifact.zip");
         let status = Command::new("python3")
             .args([
