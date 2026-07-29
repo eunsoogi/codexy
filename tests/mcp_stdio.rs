@@ -8,6 +8,8 @@ use serde_json::{Value, json};
 mod client;
 #[path = "mcp_stdio/codegraph_protocol.rs"]
 mod codegraph_protocol;
+#[path = "mcp_stdio/codegraph_search_bounds.rs"]
+mod codegraph_search_bounds;
 #[path = "mcp_stdio/fixtures.rs"]
 mod fixtures;
 #[path = "mcp_stdio/lsp_protocol.rs"]
