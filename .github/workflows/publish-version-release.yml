@@ -3,8 +3,12 @@ name: Publish verified version release
 on:
   workflow_dispatch:
     inputs:
-      source_commit:
-        description: "Exact selected protected-main commit"
+      staging_source_commit:
+        description: "Exact protected-main commit behind the staged artifact"
+        required: true
+        type: string
+      activation_commit:
+        description: "Exact later protected-main commit with activated version metadata"
         required: true
         type: string
       staging_run_id:
@@ -29,25 +33,31 @@ jobs:
           persist-credentials: false
       - name: Verify selected protected-main source
         env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
-          git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
-          test "$(git rev-parse "$SOURCE_COMMIT")" = "$SOURCE_COMMIT"
-          git checkout --detach "$SOURCE_COMMIT"
+          git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
+          test "$STAGING_SOURCE_COMMIT" != "$ACTIVATION_COMMIT"
+          git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+          test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
+          test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+          git checkout --detach "$ACTIVATION_COMMIT"
       - name: Download authenticated staging artifact
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: scripts/download-runtime-staging-artifact staging
       - name: Verify selected archive identity
         env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           receipt=staging/runtime-staging-receipt.json
-          test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
+          test "$(jq -r .candidate.source.commit "$receipt")" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
@@ -58,10 +68,11 @@ jobs:
           test "$(jq -r .artifact.tag plugins/codexy/runtime-release.json)" = v1.3.0
           test "$(jq -r .artifact.url plugins/codexy/runtime-release.json)" = "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz"
           test "$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)" = "$(jq -r .artifact.sha256 "$receipt")"
-          test "$(jq -r .source.commit plugins/codexy/runtime-release.json)" = "$SOURCE_COMMIT"
+          test "$(jq -r .source.commit plugins/codexy/runtime-release.json)" = "$STAGING_SOURCE_COMMIT"
       - name: Materialize and exercise activated final artifacts
         env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           mkdir -p dist
@@ -73,9 +84,9 @@ jobs:
           final_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
           runtime_sha="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
           run_attempt="$(jq -r .run_attempt staging/runtime-staging-run.json)"
-          jq -n --arg sourceCommit "$SOURCE_COMMIT" --arg finalSha "$final_sha" --arg runtimeSha "$runtime_sha" --argjson runId "$STAGING_RUN_ID" --argjson runAttempt "$run_attempt" --slurpfile stagingReceipt staging/runtime-staging-receipt.json '{
+          jq -n --arg activationCommit "$ACTIVATION_COMMIT" --arg stagingSourceCommit "$STAGING_SOURCE_COMMIT" --arg finalSha "$final_sha" --arg runtimeSha "$runtime_sha" --argjson runId "$STAGING_RUN_ID" --argjson runAttempt "$run_attempt" --slurpfile stagingReceipt staging/runtime-staging-receipt.json '{
             schema: "codexy-runtime-release-receipt/v1",
-            source: {commit: $sourceCommit},
+            source: {activationCommit: $activationCommit, stagingSourceCommit: $stagingSourceCommit},
             release: {tag: "v1.3.0"},
             artifact: {name: "codexy-marketplace-plugin.tar.gz", sha256: $finalSha},
             runtimeArtifact: {name: "codexy-runtime-package.tar.gz", sha256: $runtimeSha},
@@ -90,9 +101,9 @@ jobs:
       - name: Create and verify the only public version release
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
-          gh release create v1.3.0 dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz dist/runtime-release-receipt.json --target "$SOURCE_COMMIT" --title v1.3.0 --notes "Verified version release."
+          gh release create v1.3.0 dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz dist/runtime-release-receipt.json --target "$ACTIVATION_COMMIT" --title v1.3.0 --notes "Verified version release."
           base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
           curl --fail --location "$base/codexy-runtime-package.tar.gz" -o public-runtime.tar.gz
@@ -100,6 +111,8 @@ jobs:
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .runtimeArtifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
+          test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
+          test "$(jq -r .source.stagingSourceCommit public-receipt.json)" = "$STAGING_SOURCE_COMMIT"
           jq -cS .provenance public-receipt.json | tr -d '\n' > public-provenance.json
           cmp receipt-provenance.json public-provenance.json
           gh attestation verify public.tar.gz --repo "$GITHUB_REPOSITORY"

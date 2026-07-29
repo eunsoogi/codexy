@@ -4,13 +4,17 @@ set -eu
 staged_archive=${1:?staged archive path required}
 final_archive=${2:?final archive path required}
 release_tag=${RELEASE_TAG:?release tag required}
-source_commit=${SOURCE_COMMIT:?source commit required}
+staging_source_commit=${STAGING_SOURCE_COMMIT:?staging source commit required}
+activation_commit=${ACTIVATION_COMMIT:?activation commit required}
 runtime_asset=codexy-runtime-package.tar.gz
 source_plugin=plugins/codexy
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-case "$source_commit" in *[!0-9a-f]*|'') exit 1 ;; esac
-test "${#source_commit}" -eq 40
+for commit in "$staging_source_commit" "$activation_commit"; do
+  case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
+  test "${#commit}" -eq 40
+done
+test "$staging_source_commit" != "$activation_commit"
 test -f "$staged_archive"
 test -d "$source_plugin"
 
@@ -33,8 +37,12 @@ staged_plugin="$tmp_dir/extracted/plugins/codexy"
 test -d "$staged_plugin/runtime"
 test -f "$staged_plugin/runtime-candidate.json"
 
+if test -d .git; then
+  test "$(git rev-parse HEAD)" = "$activation_commit"
+fi
+
 STAGED_SHA=$(digest_file "$staged_archive") \
-RELEASE_TAG="$release_tag" SOURCE_COMMIT="$source_commit" \
+RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" \
 RUNTIME_ASSET="$runtime_asset" SOURCE_PLUGIN="$source_plugin" \
 STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
 import hashlib, json, os, re
@@ -57,8 +65,8 @@ expected_url = (
 )
 if (
     release.get("state") != "candidate-proven"
-    or release["source"]["commit"] != os.environ["SOURCE_COMMIT"]
-    or json.loads(candidate)["source"]["commit"] != os.environ["SOURCE_COMMIT"]
+    or release["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
+    or json.loads(candidate)["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
     or artifact["tag"] != tag
     or artifact["url"] != expected_url
     or artifact["sha256"] != os.environ["STAGED_SHA"]

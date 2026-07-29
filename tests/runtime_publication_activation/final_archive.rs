@@ -8,9 +8,12 @@ use std::{
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
+use crate::support;
+
 use super::workflow;
 
-const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
 
 #[test]
@@ -18,16 +21,25 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
     let run = publisher.1;
-    for required in [
-        "git checkout --detach \"$SOURCE_COMMIT\"",
-        "scripts/materialize-runtime-release-archive",
-        "codexy-runtime-package.tar.gz",
-        "runtime-release-receipt.json",
-        "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy",
-        "gh attestation verify public-runtime.tar.gz",
-    ] {
-        assert!(run.contains(required), "final publisher lacks {required}");
+    let inputs = publisher.2["on"]["workflow_dispatch"]["inputs"]
+        .as_mapping()
+        .ok_or("final publisher dispatch inputs")?;
+    for input in ["staging_source_commit", "activation_commit", "staging_run_id"] {
+        assert!(inputs.contains_key(input), "final publisher lacks {input}");
     }
+    support::assert_structured_literals(
+        &run,
+        "final publisher lineage and archive contract",
+        &[
+            "STAGING_SOURCE_COMMIT",
+            "ACTIVATION_COMMIT",
+            "scripts/materialize-runtime-release-archive",
+            "codexy-runtime-package.tar.gz",
+            "runtime-release-receipt.json",
+            "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy",
+            "gh attestation verify public-runtime.tar.gz",
+        ],
+    );
     Ok(())
 }
 
@@ -42,7 +54,8 @@ fn materializer_preserves_staged_runtime_and_activates_metadata()
     .args([&fixture.staged_archive, &fixture.final_archive])
     .current_dir(&fixture.root)
     .env("RELEASE_TAG", "v1.3.0")
-    .env("SOURCE_COMMIT", COMMIT)
+    .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
+    .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
     .output()?;
     assert!(
         output.status.success(),
@@ -150,7 +163,7 @@ impl FinalArchiveFixture {
 fn candidate() -> Value {
     json!({
         "schema": "codexy-runtime-candidate/v1",
-        "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": COMMIT},
+        "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": STAGING_COMMIT},
         "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {}
@@ -161,7 +174,7 @@ fn release(candidate: &[u8], staged_sha: &str) -> Value {
     json!({
         "schema": "codexy-runtime-release/v1",
         "state": "candidate-proven",
-        "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": COMMIT},
+        "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": STAGING_COMMIT},
         "artifact": {
             "tag": "v1.3.0",
             "url": format!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/{RUNTIME_ASSET}"),

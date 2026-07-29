@@ -1,0 +1,86 @@
+use std::{fs, path::{Path, PathBuf}, process::{Command, Output}};
+
+use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
+
+const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
+
+#[test]
+fn materializer_binds_staging_source_to_later_activation_commit()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = LifecycleFixture::new()?;
+    assert!(fixture.materialize(&fixture.staging_commit, &fixture.activation_commit)?.status.success());
+    assert!(!fixture.materialize(&"e".repeat(40), &fixture.activation_commit)?.status.success());
+    assert!(!fixture.materialize(&fixture.activation_commit, &fixture.staging_commit)?.status.success());
+    assert!(!fixture.materialize(&fixture.staging_commit, &"f".repeat(40))?.status.success());
+    Ok(())
+}
+
+struct LifecycleFixture {
+    _temporary: tempfile::TempDir,
+    root: PathBuf,
+    archive: PathBuf,
+    staging_commit: String,
+    activation_commit: String,
+}
+
+impl LifecycleFixture {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let temporary = tempfile::tempdir()?;
+        let root = temporary.path().to_path_buf();
+        git(&root, &["init"])?;
+        git(&root, &["config", "user.email", "fixture@example.test"])?;
+        git(&root, &["config", "user.name", "fixture"])?;
+        let plugin = root.join("plugins/codexy");
+        let staged = root.join("staged/plugins/codexy");
+        for path in [&plugin, &staged] {
+            fs::create_dir_all(path.join(".codex-plugin"))?;
+            fs::create_dir_all(path.join("runtime"))?;
+        }
+        fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.2.2\"}\n")?;
+        fs::write(plugin.join("runtime-release.json"), b"{\"state\":\"legacy-public\"}\n")?;
+        git(&root, &["add", "."])?;
+        git(&root, &["commit", "-m", "stage source"])?;
+        let staging_commit = git(&root, &["rev-parse", "HEAD"])?;
+        let candidate = candidate(&staging_commit);
+        let bytes = serde_json::to_vec(&candidate)?;
+        fs::write(staged.join("runtime-candidate.json"), &bytes)?;
+        let runtime = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
+        fs::write(&runtime, b"#!/bin/sh\nexit 0\n")?;
+        let archive = root.join("staging.tar.gz");
+        assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy").status()?.success());
+        let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));
+        fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.3.0\"}\n")?;
+        fs::write(plugin.join("runtime-candidate.json"), &bytes)?;
+        fs::write(plugin.join("runtime-release.json"), serde_json::to_vec(&release(&candidate, &digest))?)?;
+        git(&root, &["add", "."])?;
+        git(&root, &["commit", "-m", "activate source"])?;
+        let activation_commit = git(&root, &["rev-parse", "HEAD"])?;
+        Ok(Self { _temporary: temporary, root, archive, staging_commit, activation_commit })
+    }
+
+    fn materialize(&self, staging: &str, activation: &str) -> Result<Output, std::io::Error> {
+        Command::new("git").args(["checkout", "--detach", &self.activation_commit]).current_dir(&self.root).output()?;
+        Command::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/materialize-runtime-release-archive"))
+            .args([&self.archive, &self.root.join("final.tar.gz")])
+            .current_dir(&self.root)
+            .env("RELEASE_TAG", "v1.3.0")
+            .env("STAGING_SOURCE_COMMIT", staging)
+            .env("ACTIVATION_COMMIT", activation)
+            .output()
+    }
+}
+
+fn git(root: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").args(args).current_dir(root).output()?;
+    assert!(output.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&output.stderr));
+    Ok(String::from_utf8(output.stdout)?.trim().into())
+}
+
+fn candidate(commit: &str) -> Value {
+    json!({"schema":"codexy-runtime-candidate/v1","source":{"repository":"https://github.com/eunsoogi/codexy","commit":commit},"artifact":{"stagingRunId":42,"stagingRunAttempt":1},"compatibility":{"bootstrapApi":1,"pluginRuntimeApi":1,"transport":"stdio-newline-v1","mcpProtocol":"2024-11-05"},"platforms":{}})
+}
+
+fn release(candidate: &Value, archive: &str) -> Value {
+    json!({"schema":"codexy-runtime-release/v1","state":"candidate-proven","source":candidate["source"].clone(),"artifact":{"tag":"v1.3.0","url":format!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/{RUNTIME_ASSET}"),"sha256":archive,"payloadManifestSha256":format!("{:x}", Sha256::digest(serde_json::to_vec(candidate).unwrap()))},"compatibility":candidate["compatibility"].clone(),"platforms":{}})
+}
