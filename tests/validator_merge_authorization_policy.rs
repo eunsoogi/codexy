@@ -170,13 +170,16 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "env -- gh pr merge \"$pr_number\" --squash",
         "env -u TOKEN gh pr merge \"$pr_number\" --squash",
         "env --unset=TOKEN gh pr merge \"$pr_number\" --squash",
+        "false || gh pr merge \"$pr_number\" --squash",
+        "if gh pr merge \"$pr_number\" --squash; then exit 1; fi",
+        "command gh pr merge \"$pr_number\" --squash",
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
         let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
         std::fs::write(route, route_text)?;
         let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
-        assert!(errors.iter().any(|error| error.contains("before mutation")), "{errors:#?}");
+        assert!(errors.iter().any(|error| error.contains("before mutation")), "{route_line}: {errors:#?}");
     }
     {
         let fixture = fixture()?;
@@ -189,6 +192,8 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "env FLAG=1 plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "env -i plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "env -- plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+        "command plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+        "if plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; then exit 0; fi",
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");

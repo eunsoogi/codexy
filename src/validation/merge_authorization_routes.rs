@@ -34,10 +34,16 @@ fn unguarded_merge(line: &str) -> bool {
 fn unguarded_segment(segment: &str) -> bool {
     let tokens = segment.trim_start().split_whitespace().collect::<Vec<_>>();
     let tokens = strip_assignments(strip_condition(&tokens));
+    let Some(tokens) = strip_command(tokens) else {
+        return true;
+    };
     let Some(tokens) = strip_env(tokens) else {
         return true;
     };
     let tokens = strip_assignments(tokens);
+    let Some(tokens) = strip_command(tokens) else {
+        return true;
+    };
     tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
 }
 
@@ -62,9 +68,13 @@ fn command_segments(line: &str) -> Vec<&str> {
             } else {
                 quote
             };
-        } else if quote.is_none() && (byte == b';' || bytes.get(index..index + 2) == Some(b"&&")) {
+        } else if quote.is_none()
+            && (byte == b';'
+                || bytes.get(index..index + 2) == Some(b"&&")
+                || bytes.get(index..index + 2) == Some(b"||"))
+        {
             segments.push(&line[start..index]);
-            index += usize::from(byte == b'&');
+            index += usize::from(byte != b';');
             start = index + 1;
         }
         index += 1;
@@ -74,10 +84,22 @@ fn command_segments(line: &str) -> Vec<&str> {
 }
 
 fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    if tokens.starts_with(&["if", "!"]) {
-        &tokens[2..]
-    } else {
-        tokens
+    match tokens {
+        ["if", "!", rest @ ..] => rest,
+        ["if", rest @ ..] => rest,
+        _ => tokens,
+    }
+}
+
+fn strip_command<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
+    if tokens.first() != Some(&"command") {
+        return Some(tokens);
+    }
+    match &tokens[1..] {
+        ["-v" | "-V", ..] => Some(&[]),
+        ["--", rest @ ..] | ["-p", rest @ ..] => Some(rest),
+        [option, ..] if option.starts_with('-') => None,
+        rest => Some(rest),
     }
 }
 
