@@ -33,7 +33,14 @@ name=${repo#*/}
 [ "$owner/$name" = "$repo" ] || { printf '%s\n' 'repo must be owner/name' >&2; exit 2; }
 authorization_file=$(mktemp)
 pr_state_file=$(mktemp)
-trap 'rm -f "$authorization_file" "$pr_state_file"' EXIT
+merge_payload_file=$(mktemp)
+trap 'rm -f "$authorization_file" "$pr_state_file" "$merge_payload_file"' EXIT
+printf '%s\n\n' "$subject" > "$merge_payload_file"
+cat < "$body_file" >> "$merge_payload_file"
+if ! cmp -s "$message_file" "$merge_payload_file"; then
+  printf '%s\n' 'merge message file does not match subject and body payload' >&2
+  exit 1
+fi
 if ! gh api graphql --paginate --slurp -f owner="$owner" -f name="$name" -F number="$expected_pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) { nameWithOwner pullRequest(number:$number) {
@@ -50,7 +57,7 @@ python3 -I -B "$script_dir/codexy-github-merge-authorization.py" \
   --repo "$repo" --expected-pr "$expected_pr" --expected-head "$head_oid" \
   --pr-state-file "$pr_state_file" --authorization-file "$authorization_file"
 
-set -- --expected-pr "$expected_pr" --merge-message-file "$message_file"
+set -- --expected-pr "$expected_pr" --merge-message-file "$merge_payload_file"
 [ -z "$expected_issue" ] || set -- "$@" --expected-issue "$expected_issue"
 "$script_dir/codexy-merge-admission-check.sh" "$@" \
   --merge-authorization-file "$authorization_file" \
@@ -61,6 +68,6 @@ if gh pr merge "$expected_pr" --repo "$repo" --squash --delete-branch \
 else
   merge_status=$?
 fi
-rm -f "$authorization_file" "$pr_state_file"
+rm -f "$authorization_file" "$pr_state_file" "$merge_payload_file"
 trap - EXIT
 exit "$merge_status"
