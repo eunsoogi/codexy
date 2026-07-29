@@ -52,14 +52,17 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
     let search_text = search["result"]["content"][0]["text"]
         .as_str()
         .ok_or("search text")?;
-    assert!(
-        search_text.contains("ENTRY"),
-        "codegraph_search must return a matching line, got {search_text:?}"
+    let search_payload: Value = serde_json::from_str(search_text)?;
+    let matches = search_payload["matches"].as_array().ok_or("search matches")?;
+    assert_eq!(
+        matches[0],
+        json!("./entry.rs:2:pub const ENTRY: u8 = dep::VALUE;"),
+        "codegraph_search must return the expected match"
     );
     assert_eq!(
-        search_text.lines().count(),
+        matches.len(),
         1,
-        "codegraph_search must stop at the requested line limit"
+        "codegraph_search must stop at the requested match limit"
     );
     let missing = client.send(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",
