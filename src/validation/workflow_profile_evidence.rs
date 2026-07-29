@@ -6,31 +6,27 @@ use super::workflow_profile_grammar::value_has_strict_signal;
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
     let (mut fence, mut comment, mut lines) = (None, false, Vec::new());
     for raw in evidence.lines() {
-        if comment {
-            comment = !raw.contains("-->");
+        if fence.is_some() {
+            let line = normalize_metadata_prefix(raw);
+            if let Some((marker, length, tail)) = fence_marker(line) {
+                if fence.is_some_and(|(open, minimum)| {
+                    marker == open && length >= minimum && tail.trim().is_empty()
+                }) {
+                    fence = None;
+                }
+            }
             lines.push(String::new());
             continue;
         }
         if indented_code(raw) {
+            active_markdown(raw, &mut comment);
             lines.push(String::new());
             continue;
         }
-        let line = normalize_metadata_prefix(raw);
-        if line.trim_start().starts_with("<!--") {
-            comment = !line.contains("-->");
-            lines.push(String::new());
-            continue;
-        }
-        if let Some((marker, length, tail)) = fence_marker(line) {
-            if fence.is_none() {
-                fence = Some((marker, length));
-            } else if fence.is_some_and(|(open, minimum)| {
-                marker == open && length >= minimum && tail.trim().is_empty()
-            }) {
-                fence = None;
-            }
-            lines.push(String::new());
-        } else if fence.is_some() {
+        let active = active_markdown(raw, &mut comment);
+        let line = normalize_metadata_prefix(&active);
+        if let Some((marker, length, _tail)) = fence_marker(line) {
+            fence = Some((marker, length));
             lines.push(String::new());
         } else {
             lines.push(line.to_owned());
@@ -49,6 +45,27 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
 
 fn indented_code(line: &str) -> bool {
     line.starts_with('\t') || line.bytes().take_while(|byte| *byte == b' ').count() >= 4
+}
+
+fn active_markdown<'a>(mut line: &'a str, comment: &mut bool) -> String {
+    let mut active = String::new();
+    loop {
+        if *comment {
+            let Some(end) = line.find("-->") else {
+                return active;
+            };
+            *comment = false;
+            line = &line[end + 3..];
+        } else {
+            let Some(start) = line.find("<!--") else {
+                active.push_str(line);
+                return active;
+            };
+            active.push_str(&line[..start]);
+            *comment = true;
+            line = &line[start + 4..];
+        }
+    }
 }
 
 pub(super) fn has_strict_work_signal(lines: &[&str]) -> bool {

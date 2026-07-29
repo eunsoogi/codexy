@@ -175,6 +175,31 @@ fn inactive_markdown_cannot_change_current_workflow_evidence() -> TestResult {
         "an indented historical profile cannot conflict with active light work",
         "Workflow profile: light\n    Workflow profile: strict",
         true,
+    )?;
+    assert_profile_result(
+        "an inline-opened comment cannot satisfy strict proof",
+        &format!("Workflow profile: strict\nContext <!--\n{}\n-->", formal_classification()),
+        false,
+    )?;
+    assert_profile_result(
+        "an inline-opened comment cannot erase active security evidence",
+        "Task kind: security review\nContext <!--\nReview response: historical\nWorkflow profile: light\n-->",
+        false,
+    )?;
+    assert_profile_result(
+        "text after an inline close remains active",
+        &format!("<!-- historical --> Workflow profile: strict\n{}", formal_classification()),
+        true,
+    )?;
+    assert_profile_result(
+        "active text before a same-line comment remains active",
+        &format!("Workflow profile: strict <!-- historical -->\n{}", formal_classification()),
+        true,
+    )?;
+    assert_profile_result(
+        "near-comment punctuation remains ordinary active text",
+        &format!("Workflow profile: strict\nContext < !--\n{}", formal_classification()),
+        true,
     )
 }
 
