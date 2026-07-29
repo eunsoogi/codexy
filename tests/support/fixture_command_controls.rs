@@ -66,7 +66,7 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
 {
     let temp = tempfile::tempdir()?;
     let command = temp.path().join("fixture command with spaces");
-    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf fixture\\n")?;
+    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf fixture\n")?;
     #[cfg(windows)]
     {
         assert!(!command.exists());
@@ -76,8 +76,11 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
     #[cfg(not(windows))]
     {
         let source = std::fs::read_to_string(command)?;
-        assert!(source.contains("CODEXY_FIXTURE_COMMAND_TRACE"));
-        assert!(source.ends_with("printf fixture\n"));
+        super::super::assert_structured_literals(
+            &source,
+            "POSIX fixture command trace",
+            &["CODEXY_FIXTURE_COMMAND_TRACE", "printf fixture\n"],
+        );
     }
     Ok(())
 }
