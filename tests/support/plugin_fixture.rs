@@ -126,15 +126,29 @@ fn source_root() -> PathBuf {
 }
 
 pub(crate) fn materialize_admission_runtime_suite(plugin_root: &Path) -> std::io::Result<()> {
-    let repository = plugin_root.parent().ok_or_else(|| {
+    let repository = fixture_repository(plugin_root)?;
+    let suite = repository.join("tests/suites/all.rs");
+    std::fs::create_dir_all(suite.parent().expect("suite parent"))?;
+    std::fs::write(suite, "// admission runtime suite fixture\n")
+}
+
+fn fixture_repository(plugin_root: &Path) -> std::io::Result<&Path> {
+    let parent = plugin_root.parent().ok_or_else(|| {
         std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "fixture plugin root needs a parent",
         )
     })?;
-    let suite = repository.join("tests/suites/all.rs");
-    std::fs::create_dir_all(suite.parent().expect("suite parent"))?;
-    std::fs::write(suite, "// admission runtime suite fixture\n")
+    if parent.file_name().is_some_and(|name| name == "plugins") {
+        parent.parent().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "fixture plugin directory needs a repository parent",
+            )
+        })
+    } else {
+        Ok(parent)
+    }
 }
 
 fn validate_relative_file(relative: &Path) -> std::io::Result<()> {
@@ -166,6 +180,55 @@ fn records_mutable_paths_with_native_component_separators() {
         normalized_relative_file(Path::new("agents/codexy-sentinel.toml")),
         Path::new("agents").join("codexy-sentinel.toml")
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::materialize_admission_runtime_suite;
+    use std::path::Path;
+
+    #[test]
+    fn materializes_the_canonical_nested_repository_suite() -> std::io::Result<()> {
+        let temp = tempfile::tempdir()?;
+        let repository = temp.path().join("repository");
+        let plugin_root = repository.join("plugins/codexy");
+        std::fs::create_dir_all(&plugin_root)?;
+
+        materialize_admission_runtime_suite(&plugin_root)?;
+
+        assert!(repository.join("tests/suites/all.rs").is_file());
+        assert!(!repository.join("plugins/tests/suites/all.rs").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn materializes_root_layouts_without_promoting_lookalike_parents() -> std::io::Result<()> {
+        let temp = tempfile::tempdir()?;
+        let root = temp.path().join("root-layout/codexy");
+        let lookalike = temp.path().join("lookalike/plugins-shadow/codexy");
+        std::fs::create_dir_all(&root)?;
+        std::fs::create_dir_all(&lookalike)?;
+
+        materialize_admission_runtime_suite(&root)?;
+        materialize_admission_runtime_suite(&lookalike)?;
+
+        assert!(
+            root.parent()
+                .expect("root parent")
+                .join("tests/suites/all.rs")
+                .is_file()
+        );
+        assert!(
+            lookalike
+                .parent()
+                .expect("lookalike parent")
+                .join("tests/suites/all.rs")
+                .is_file()
+        );
+        assert!(!temp.path().join("lookalike/tests/suites/all.rs").exists());
+        assert!(materialize_admission_runtime_suite(Path::new("")).is_err());
+        Ok(())
+    }
 }
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
