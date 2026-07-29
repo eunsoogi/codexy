@@ -126,6 +126,10 @@ fn prospective_inline_code_closers_stay_fence_local() -> TestResult {
             "a matching closer before a later fence remains ordinary inline code",
             "Context: `carried\ncode`\n```text\nignored\n```\nTask kind: security review\nWorkflow profile: light",
         ),
+        (
+            "removing the genuine closer exposes security metadata before the fence",
+            "Workflow profile: light\nContext: `carried\nTask kind: security review\ncode\n```text\nignored\n```",
+        ),
     ] {
         assert_profile_result(name, evidence, false)?;
     }
