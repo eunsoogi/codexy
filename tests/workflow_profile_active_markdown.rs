@@ -113,17 +113,21 @@ fn code_and_fence_boundaries_preserve_active_security_evidence() -> TestResult {
 
 #[test]
 fn comment_markers_precede_unclosed_code_spans() -> TestResult {
-    for (name, evidence) in [
+    for (name, evidence, expected) in [
         (
             "a comment ignores backticks before its closer",
-            "<!-- ` --> Task kind: security review\nWorkflow profile: light",
+            "<!-- ` --> Task kind: security review\nWorkflow profile: light", false,
         ),
         (
             "an unclosed backtick cannot hide later security metadata",
-            "Context: `unclosed\nTask kind: security review\nWorkflow profile: light",
+            "Context: `unclosed\nTask kind: security review\nWorkflow profile: light", false,
+        ),
+        (
+            "a closed code span cannot block a later comment opener",
+            "`prior` <!--\nTask kind: security review\n-->\nWorkflow profile: light", true,
         ),
     ] {
-        assert_profile_result(name, evidence, false)?;
+        assert_profile_result(name, evidence, expected)?;
     }
     Ok(())
 }

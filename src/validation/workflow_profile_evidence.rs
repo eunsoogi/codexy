@@ -78,7 +78,7 @@ fn active_markdown(line: &str, comment: &mut bool, code: &mut Option<usize>) -> 
                 active.push_str(&without_inline_code(line, code));
                 return active;
             };
-            if line[..start].contains('`') {
+            if line[..start].contains('`') && !contains_inline_code(&line[..start]) {
                 active.push_str(&without_inline_code(line, code));
                 return active;
             }
@@ -166,6 +166,17 @@ fn matching_backticks(text: &str, width: usize) -> Option<usize> {
         }
     }
     None
+}
+
+fn contains_inline_code(text: &str) -> bool {
+    let Some(open) = text.find('`') else {
+        return false;
+    };
+    let width = text[open..]
+        .bytes()
+        .take_while(|byte| *byte == b'`')
+        .count();
+    matching_backticks(&text[open + width..], width).is_some()
 }
 
 pub(super) fn has_strict_work_signal(lines: &[&str]) -> bool {
