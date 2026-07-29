@@ -2,6 +2,9 @@ use crate::support::FixtureCommand as Command;
 
 use serde_yaml::Value;
 
+#[path = "validator_marketplace_publish_contract/runtime_negatives.rs"]
+mod runtime_negatives;
+
 #[test]
 fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = document("plugin-runtime-binaries.yml")?;

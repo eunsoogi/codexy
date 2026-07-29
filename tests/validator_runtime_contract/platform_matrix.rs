@@ -80,7 +80,7 @@ fn add_windows_runtime_release(plugin_root: &std::path::Path) -> Result<(), Box<
     let mut release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     release["state"] = serde_json::json!("candidate-proven");
     release["artifact"]["tag"] = serde_json::json!("v1.3.0");
-    release["artifact"]["url"] = serde_json::json!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-marketplace-plugin.tar.gz");
+    release["artifact"]["url"] = serde_json::json!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz");
     release["platforms"]["windows-x86_64"] = serde_json::json!({
         "lsp": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
         "codegraph": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }

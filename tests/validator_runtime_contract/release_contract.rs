@@ -80,7 +80,7 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     let mut release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     release["state"] = serde_json::json!("candidate-proven");
     release["artifact"]["tag"] = serde_json::json!(tag);
-    release["artifact"]["url"] = serde_json::json!(format!("https://github.com/eunsoogi/codexy/releases/download/{tag}/codexy-marketplace-plugin.tar.gz"));
+    release["artifact"]["url"] = serde_json::json!(format!("https://github.com/eunsoogi/codexy/releases/download/{tag}/codexy-runtime-package.tar.gz"));
     for platform in ["darwin-arm64", "linux-x86_64"] {
         for server in ["lsp", "codegraph"] {
             release["platforms"][platform][server]["path"] = serde_json::json!(format!("runtime/codexy-mcp-{server}-{platform}.bin"));
