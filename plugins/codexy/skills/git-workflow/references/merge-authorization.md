@@ -1,8 +1,9 @@
 # Authoritative Merge Authorization
 
 Passing gates make a pull request eligible; they are not merge authorization.
-Before `gh pr merge`, auto-merge, or an equivalent mutation, the actor captures
-a fresh JSON record whose `kind` is `explicit-user-intent`,
+Before `gh pr merge`, auto-merge, or an equivalent mutation, the installed
+canonical wrapper captures the exact target PR directly from GitHub immediately
+before validation. It derives its ephemeral JSON record whose `kind` is `explicit-user-intent`,
 `explicit-maintainer-intent`, or `repository-workflow-contract`. The record
 uses `intent: "merge"`, `mergeClass: "squash"`, and the exact `prNumber`,
 `baseRefName`, and `headRefOid` returned by GitHub immediately before mutation.
@@ -28,21 +29,9 @@ connector, Sentinel, merge-message, cleanup, or post-merge synchronization
 gates. Authorization and gate requirements remain in force with `--auto` and
 `--admin`.
 
-```bash
-authorization_file="${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}"
-pr_state_file=$(mktemp)
-trap 'rm -f "$pr_state_file"' EXIT
-
-gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='
-query($owner:String!, $name:String!, $number:Int!) {
-  repository(owner:$owner, name:$name) { pullRequest(number:$number) {
-    number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } }
-  }}
-}' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}' > "$pr_state_file"
-scripts/validate-plugin-config --check-merge-authorization \
-  --merge-authorization-file "$authorization_file" \
-  --merge-authorization-pr-state-file "$pr_state_file"
-```
-
-The command has to succeed before the separate canonical squash-merge command
-in `merge-and-main-sync.md` is run.
+The public wrapper has no `--merge-authorization-file` or
+`--merge-authorization-pr-state-file` inputs. Repository-local JSON serves
+validator test input only; installed merge mutations derive authority solely
+from the wrapper's fresh internal GitHub capture. The wrapper keeps the capture
+and derived record ephemeral, binding repository, PR, head, comment identity,
+and association before it can run `gh pr merge`.

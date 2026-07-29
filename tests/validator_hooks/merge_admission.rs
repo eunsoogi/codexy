@@ -32,7 +32,7 @@ fn connector_merge_without_authoritative_state_is_denied() -> TestResult {
 
 #[cfg(unix)]
 #[test]
-fn canonical_wrapper_reaches_gh_through_the_installed_admission_hook() -> TestResult {
+fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = super::admission_runtime::repository(
@@ -77,11 +77,67 @@ fn canonical_wrapper_reaches_gh_through_the_installed_admission_hook() -> TestRe
         .args(["--repo", "eunsoogi/codexy", "--match-head-commit", "32b03a210b3defb2d29dd352283ea2488e60d893", "--subject", "fix(workflow): require intent (#128)", "--body-file"])
         .arg(&body)
         .output()?;
+    assert!(!output.status.success(), "caller-owned authorization state reached gh: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(!record.exists(), "caller-owned authorization state reached gh");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = super::admission_runtime::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let message = owned.join("message.txt");
+    let body = owned.join("body.txt");
+    std::fs::write(&message, "fix(workflow): require intent (#128)\n\nFixes #503\n")?;
+    std::fs::write(&body, "Fixes #503\n")?;
+    let fake_bin = workspace.path().join("bin");
+    std::fs::create_dir(&fake_bin)?;
+    let fake_gh = fake_bin.join("gh");
+    std::fs::write(&fake_gh, "#!/bin/sh\nif [ \"$1\" = api ]; then cat \"$CODEXY_GH_STATE\"; else printf '%s\\n' \"$@\" > \"$CODEXY_GH_RECORD\"; fi\n")?;
+    make_executable(&fake_gh)?;
+    let state_file = workspace.path().join("github-state.json");
+    let record = workspace.path().join("gh-record.txt");
+    std::fs::write(&state_file, state().replace("AUTHORIZE REPOSITORY SQUASH CONTRACT", "AUTHORIZE SQUASH MERGE"))?;
+    let output = Command::new(root.join("hooks/codexy-authorized-squash-merge.sh"))
+        .current_dir(&owned)
+        .env("PATH", format!("{}:{}", fake_bin.display(), std::env::var("PATH")?))
+        .env("CODEXY_GH_STATE", &state_file).env("CODEXY_GH_RECORD", &record)
+        .args(["--expected-pr", "128", "--expected-issue", "503", "--merge-message-file"])
+        .arg(&message)
+        .args(["--repo", "eunsoogi/codexy", "--match-head-commit", "32b03a210b3defb2d29dd352283ea2488e60d893", "--subject", "fix(workflow): require intent (#128)", "--body-file"])
+        .arg(&body).output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(
-        std::fs::read_to_string(record)?.lines().collect::<Vec<_>>(),
-        ["pr", "merge", "128", "--repo", "eunsoogi/codexy", "--squash", "--delete-branch", "--match-head-commit", "32b03a210b3defb2d29dd352283ea2488e60d893", "--subject", "fix(workflow): require intent (#128)", "--body-file", body.to_str().ok_or("body path")?]
+        std::fs::read_to_string(record)?.lines().take(2).collect::<Vec<_>>(),
+        ["pr", "merge"]
     );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn canonical_wrapper_rejects_bad_github_authorization_captures() -> TestResult {
+    let duplicate = state().replacen(
+        "]}",
+        r#",{"id":"IC_replay","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-130","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer","association":"MEMBER"}}]}"#,
+        1,
+    );
+    for capture in [
+        state().replacen("eunsoogi/codexy", "openai/codex", 1),
+        state().replacen("\"number\":128", "\"number\":127", 1),
+        state().replacen("32b03a210b3defb2d29dd352283ea2488e60d893", "stale-head", 1),
+        state().replacen("AUTHORIZE REPOSITORY", "DO NOT AUTHORIZE REPOSITORY", 1),
+        duplicate,
+    ] {
+        let (output, merged) = wrapper_output(&plugin_root(), &capture, false)?;
+        assert!(!output.status.success(), "bad capture admitted: {}", String::from_utf8_lossy(&output.stderr));
+        assert!(!merged, "bad capture reached merge");
+    }
+    let (output, merged) = wrapper_output(&plugin_root(), state(), true)?;
+    assert!(!output.status.success(), "GitHub API failure admitted");
+    assert!(!merged, "GitHub API failure reached merge");
     Ok(())
 }
 
@@ -92,5 +148,33 @@ fn admission(root: &std::path::Path, message: &std::path::Path, authorization: &
         .args(["--merge-authorization-pr-state-file"]).arg(state).output()
 }
 
+#[cfg(unix)]
+fn wrapper_output(root: &std::path::Path, capture: &str, fail_api: bool) -> TestResult<(std::process::Output, bool)> {
+    let workspace = tempfile::tempdir()?;
+    let owned = super::admission_runtime::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let message = owned.join("message.txt");
+    let body = owned.join("body.txt");
+    let capture_file = workspace.path().join("capture.json");
+    let record = workspace.path().join("merge.txt");
+    let fake_bin = workspace.path().join("bin");
+    std::fs::write(&message, "fix(workflow): require intent (#128)\n\nFixes #503\n")?;
+    std::fs::write(&body, "Fixes #503\n")?;
+    std::fs::write(&capture_file, capture)?;
+    std::fs::create_dir(&fake_bin)?;
+    let fake_gh = fake_bin.join("gh");
+    std::fs::write(&fake_gh, "#!/bin/sh\nif [ \"$1\" = api ]; then [ \"${CODEXY_GH_FAIL:-}\" != 1 ] && cat \"$CODEXY_GH_STATE\"; else printf merge > \"$CODEXY_GH_RECORD\"; fi\n")?;
+    make_executable(&fake_gh)?;
+    let output = Command::new(root.join("hooks/codexy-authorized-squash-merge.sh"))
+        .current_dir(&owned)
+        .env("PATH", format!("{}:{}", fake_bin.display(), std::env::var("PATH")?))
+        .env("CODEXY_GH_STATE", &capture_file).env("CODEXY_GH_RECORD", &record)
+        .env("CODEXY_GH_FAIL", if fail_api { "1" } else { "0" })
+        .args(["--expected-pr", "128", "--expected-issue", "503", "--merge-message-file"])
+        .arg(&message)
+        .args(["--repo", "eunsoogi/codexy", "--match-head-commit", "32b03a210b3defb2d29dd352283ea2488e60d893", "--subject", "fix(workflow): require intent (#128)", "--body-file"])
+        .arg(&body).output()?;
+    Ok((output, record.exists()))
+}
+
 fn contract() -> &'static str { r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractCommentId":"IC_contract","contractCommentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","target":"current-pull-request","negated":false,"revoked":false}"# }
-fn state() -> &'static str { r#"{"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer","association":"MEMBER"}}]}"# }
+fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer","association":"MEMBER"}}]}"# }

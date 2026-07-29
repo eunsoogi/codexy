@@ -6,8 +6,6 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 expected_pr=
 expected_issue=
 message_file=
-authorization_file=
-pr_state_file=
 repo=
 head_oid=
 subject=
@@ -18,8 +16,6 @@ while [ "$#" -gt 0 ]; do
     --expected-pr) expected_pr=${2-}; shift 2 ;;
     --expected-issue) expected_issue=${2-}; shift 2 ;;
     --merge-message-file) message_file=${2-}; shift 2 ;;
-    --merge-authorization-file) authorization_file=${2-}; shift 2 ;;
-    --merge-authorization-pr-state-file) pr_state_file=${2-}; shift 2 ;;
     --repo) repo=${2-}; shift 2 ;;
     --match-head-commit) head_oid=${2-}; shift 2 ;;
     --subject) subject=${2-}; shift 2 ;;
@@ -28,15 +24,40 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-for required in "$expected_pr" "$message_file" "$authorization_file" "$pr_state_file" \
-  "$repo" "$head_oid" "$subject" "$body_file"; do
+for required in "$expected_pr" "$message_file" "$repo" "$head_oid" "$subject" "$body_file"; do
   [ -n "$required" ] || { printf '%s\n' 'missing required authorized merge argument' >&2; exit 2; }
 done
+
+owner=${repo%%/*}
+name=${repo#*/}
+[ "$owner/$name" = "$repo" ] || { printf '%s\n' 'repo must be owner/name' >&2; exit 2; }
+authorization_file=$(mktemp)
+pr_state_file=$(mktemp)
+trap 'rm -f "$authorization_file" "$pr_state_file"' EXIT
+if ! gh api graphql -f owner="$owner" -f name="$name" -F number="$expected_pr" -f query='
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) { nameWithOwner pullRequest(number:$number) {
+    number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } }
+  }}
+}' --jq '.data.repository | {repository:.nameWithOwner} + (.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]})' > "$pr_state_file"; then
+  printf '%s\n' 'failed to capture current GitHub PR authorization state' >&2
+  exit 1
+fi
+python3 -I -B "$script_dir/codexy-github-merge-authorization.py" \
+  --repo "$repo" --expected-pr "$expected_pr" --expected-head "$head_oid" \
+  --pr-state-file "$pr_state_file" --authorization-file "$authorization_file"
 
 set -- --expected-pr "$expected_pr" --merge-message-file "$message_file"
 [ -z "$expected_issue" ] || set -- "$@" --expected-issue "$expected_issue"
 "$script_dir/codexy-merge-admission-check.sh" "$@" \
   --merge-authorization-file "$authorization_file" \
   --merge-authorization-pr-state-file "$pr_state_file"
-exec gh pr merge "$expected_pr" --repo "$repo" --squash --delete-branch \
-  --match-head-commit "$head_oid" --subject "$subject" --body-file "$body_file"
+if gh pr merge "$expected_pr" --repo "$repo" --squash --delete-branch \
+  --match-head-commit "$head_oid" --subject "$subject" --body-file "$body_file"; then
+  merge_status=0
+else
+  merge_status=$?
+fi
+rm -f "$authorization_file" "$pr_state_file"
+trap - EXIT
+exit "$merge_status"
