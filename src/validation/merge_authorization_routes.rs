@@ -33,7 +33,11 @@ fn unguarded_merge(line: &str) -> bool {
 
 fn unguarded_segment(segment: &str) -> bool {
     let tokens = segment.trim_start().split_whitespace().collect::<Vec<_>>();
-    let tokens = strip_assignments(strip_env(strip_condition(&tokens)));
+    let tokens = strip_assignments(strip_condition(&tokens));
+    let Some(tokens) = strip_env(tokens) else {
+        return true;
+    };
+    let tokens = strip_assignments(tokens);
     tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
 }
 
@@ -77,12 +81,24 @@ fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
     }
 }
 
-fn strip_env<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    if tokens.first() == Some(&"env") {
-        &tokens[1..]
-    } else {
-        tokens
+fn strip_env<'a>(mut tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
+    if tokens.first() != Some(&"env") {
+        return Some(tokens);
     }
+    tokens = &tokens[1..];
+    while let Some(token) = tokens.first() {
+        match *token {
+            "--" => return Some(&tokens[1..]),
+            "-i" | "--ignore-environment" => tokens = &tokens[1..],
+            "-u" | "--unset" => tokens = tokens.get(2..)?,
+            _ if assignment(token) || token.starts_with("-u") || token.starts_with("--unset=") => {
+                tokens = &tokens[1..]
+            }
+            _ if token.starts_with('-') => return None,
+            _ => return Some(tokens),
+        }
+    }
+    Some(tokens)
 }
 
 fn strip_assignments<'a>(mut tokens: &'a [&'a str]) -> &'a [&'a str] {

@@ -166,6 +166,10 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
     for route_line in [
         "echo ready; gh pr merge \"$pr_number\" --squash",
         "printf ready && gh pr merge \"$pr_number\" --squash",
+        "env -i gh pr merge \"$pr_number\" --squash",
+        "env -- gh pr merge \"$pr_number\" --squash",
+        "env -u TOKEN gh pr merge \"$pr_number\" --squash",
+        "env --unset=TOKEN gh pr merge \"$pr_number\" --squash",
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
@@ -174,11 +178,24 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
         assert!(errors.iter().any(|error| error.contains("before mutation")), "{errors:#?}");
     }
-    let fixture = fixture()?;
-    let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
-    let route_text = format!("{}\n~~~shell\necho 'gh pr merge \"$pr_number\" --squash'\n~~~\n", std::fs::read_to_string(&route)?);
-    std::fs::write(route, route_text)?;
-    assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+    {
+        let fixture = fixture()?;
+        let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
+        let route_text = format!("{}\n~~~shell\necho 'gh pr merge \"$pr_number\" --squash'\n~~~\n", std::fs::read_to_string(&route)?);
+        std::fs::write(route, route_text)?;
+        assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+    }
+    for route_line in [
+        "env FLAG=1 plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+        "env -i plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+        "env -- plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+    ] {
+        let fixture = fixture()?;
+        let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
+        let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
+        std::fs::write(route, route_text)?;
+        assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+    }
     Ok(())
 }
 
