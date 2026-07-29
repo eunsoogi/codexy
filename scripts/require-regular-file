@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+path=${1:?path required}
+label=${2:?label required}
+
+if [ ! -e "$path" ]; then
+  echo "$label missing" >&2
+  exit 1
+fi
+
+if [ -L "$path" ] || [ ! -f "$path" ]; then
+  echo "$label must be a regular file" >&2
+  exit 1
+fi

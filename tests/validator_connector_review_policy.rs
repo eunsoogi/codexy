@@ -199,6 +199,7 @@ fn repo_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std
         repo_root.join("AGENTS.md"),
     )?;
     std::fs::rename(source_plugin_root, &plugin_root)?;
+    support::materialize_admission_runtime_suite(&plugin_root)?;
     Ok((temp, plugin_root))
 }
 
