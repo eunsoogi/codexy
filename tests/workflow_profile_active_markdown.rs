@@ -130,11 +130,8 @@ fn prospective_inline_code_closers_stay_fence_local() -> TestResult {
         assert_profile_result(name, evidence, false)?;
     }
     assert_profile_result(
-        "a genuine closer before a later fence preserves active strict evidence",
-        &format!(
-            "Workflow profile: strict\nContext: `carried\ncode`\nTask kind: security review\n```text\nignored\n```\n{}",
-            formal_classification()
-        ),
+        "a genuine closer keeps security metadata inside multiline inline code",
+        "Workflow profile: light\nContext: `carried\nTask kind: security review\ncode`\n```text\nignored\n```",
         true,
     )?;
     Ok(())
