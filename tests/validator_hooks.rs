@@ -15,6 +15,10 @@ mod archive_inventory;
 mod graphql_admission;
 #[path = "validator_hooks/policy_inventory.rs"]
 mod policy_inventory;
+#[path = "validator_hooks/policy_inventory_contract.rs"]
+mod policy_inventory_contract;
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
 
 #[test]
 fn validator_rejects_missing_hooks_configuration() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,6 +72,8 @@ pub(super) fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn
         &root,
         "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
     )?;
+    std::fs::create_dir_all(base.join("tests/suites"))?;
+    std::fs::write(base.join("tests/suites/all.rs"), "// admission runtime suite\n")?;
     Ok(root)
 }
 pub(super) fn set_command(root: &std::path::Path, command: &str) -> Result<(), Box<dyn std::error::Error>> {

@@ -214,6 +214,7 @@ fn complete_plugin_fixture_with_runtime(
         &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         &plugin_root,
     )?;
+    crate::support::materialize_admission_runtime_suite(&plugin_root)?;
     let runtime = plugin_root.join("runtime");
     std::fs::create_dir_all(&runtime)?;
     let host_platform = fixture_host_platform(std::env::consts::OS, std::env::consts::ARCH)?;

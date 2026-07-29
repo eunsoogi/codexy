@@ -7,7 +7,11 @@ use serde::Deserialize;
 use crate::paths::display_relative;
 use crate::validation::load_json;
 
+use super::policy_inventory_contract::{self, CapabilityContract};
+use super::policy_inventory_suite::{self, RUNTIME_SUITE};
+
 const INVENTORY_PATH: &str = "hooks/policy-inventory.json";
+const INVENTORY_SCHEMA: &str = "codexy.hooks.policy-inventory";
 const TEST_IDS: &[&str] = &[
     "admission",
     "inventory",
@@ -19,11 +23,19 @@ const TEST_IDS: &[&str] = &[
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Inventory {
-    version: u8,
+    schema: String,
     generated_from: String,
+    capability_contract: ContractBinding,
     test_suites: BTreeMap<String, String>,
     rules: Vec<Rule>,
     summary: Summary,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ContractBinding {
+    schema: String,
+    content_digest: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,13 +74,19 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         )
     })?;
-    if inventory.version != 5 || inventory.generated_from != "skills/**/*.md" {
+    if inventory.schema != INVENTORY_SCHEMA || inventory.generated_from != "skills/**/*.md" {
         bail!(
-            "{} must identify semantic Markdown and YAML inventory version 5",
+            "{} must identify the stable inventory schema and semantic Markdown input",
             display_relative(&path)
         );
     }
-    check_test_registry(&path, &inventory.test_suites)?;
+    let contract = policy_inventory_contract::check(plugin_root)?;
+    policy_inventory_contract::check_binding(
+        &inventory.capability_contract.schema,
+        &inventory.capability_contract.content_digest,
+        &contract,
+    )?;
+    check_test_registry(plugin_root, &path, &inventory.test_suites)?;
     let discovered = super::policy_inventory_discovery::discover(plugin_root)?;
     if inventory.rules.len() != discovered.len() {
         bail!(
@@ -98,24 +116,43 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
                 display_relative(&path)
             );
         }
-        check_rule(&path, rule)?;
+        check_rule(&path, rule, &contract)?;
     }
     check_summary(&path, &inventory)
 }
 
-fn check_test_registry(path: &Path, registry: &BTreeMap<String, String>) -> Result<()> {
-    for id in TEST_IDS {
-        if !registry
-            .get(*id)
-            .is_some_and(|value| !value.trim().is_empty())
-        {
-            bail!("{} must register real test ID {id}", display_relative(path));
-        }
+fn check_test_registry(
+    plugin_root: &Path,
+    path: &Path,
+    registry: &BTreeMap<String, String>,
+) -> Result<()> {
+    if registry.len() != TEST_IDS.len()
+        || TEST_IDS
+            .iter()
+            .any(|id| registry.get(*id) != Some(&RUNTIME_SUITE.to_owned()))
+    {
+        bail!(
+            "{} must map each policy test ID to the actual admission runtime suite",
+            display_relative(path)
+        );
+    }
+    let suite = policy_inventory_suite::runtime_path(plugin_root)?;
+    let metadata = std::fs::symlink_metadata(&suite).map_err(|error| {
+        anyhow!(
+            "{} must resolve the actual admission runtime suite as a regular file: {error}",
+            display_relative(&suite)
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        bail!(
+            "{} must resolve the actual admission runtime suite as a regular file",
+            display_relative(&suite)
+        );
     }
     Ok(())
 }
 
-fn check_rule(path: &Path, rule: &Rule) -> Result<()> {
+fn check_rule(path: &Path, rule: &Rule, contract: &CapabilityContract) -> Result<()> {
     for id in rule
         .tests
         .iter()
@@ -130,61 +167,55 @@ fn check_rule(path: &Path, rule: &Rule) -> Result<()> {
             );
         }
     }
-    if rule.positive_tests.is_empty() || rule.negative_tests.is_empty() || rule.evidence.is_empty()
+    if rule.positive_tests.is_empty()
+        || rule.negative_tests.is_empty()
+        || !rule.evidence.contains(&contract.evidence())
     {
         bail!(
-            "{} rule {} must carry positive, negative, and evidence receipts",
+            "{} rule {} must carry capability-bound positive, negative, and evidence receipts",
             display_relative(path),
             rule.id
         );
     }
     match rule.decision.as_str() {
-        "enforced" => {
-            if rule.event != "PreToolUse"
-                || rule.input == "unavailable"
-                || rule.tests.is_empty()
-                || rule.unavailable_event.is_some()
-                || rule.unavailable_input.is_some()
-                || rule.rationale.is_some()
-            {
-                bail!(
-                    "{} rule {} overclaims preventive enforcement",
-                    display_relative(path),
-                    rule.id
-                );
-            }
+        "enforced"
+            if contract.prevents(&rule.event, &rule.input)
+                && !rule.tests.is_empty()
+                && rule.unavailable_event.is_none()
+                && rule.unavailable_input.is_none()
+                && rule.rationale.is_none() =>
+        {
+            Ok(())
         }
-        "reviewed-exception" => {
-            if rule.event != "unavailable"
-                || rule.input != "unavailable"
-                || !rule
-                    .unavailable_event
-                    .as_deref()
-                    .is_some_and(|value| !value.trim().is_empty())
-                || !rule
-                    .unavailable_input
-                    .as_deref()
-                    .is_some_and(|value| !value.trim().is_empty())
-                || !rule
-                    .rationale
-                    .as_deref()
-                    .is_some_and(|value| !value.trim().is_empty())
-                || !rule.evidence.iter().any(|item| item.contains("0.144.4"))
-            {
-                bail!(
-                    "{} rule {} lacks an exact-build reviewed exception",
-                    display_relative(path),
-                    rule.id
-                );
-            }
+        "reviewed-exception"
+            if rule.event == "unavailable"
+                && rule.input == "unavailable"
+                && non_empty(&rule.unavailable_event)
+                && non_empty(&rule.unavailable_input)
+                && non_empty(&rule.rationale) =>
+        {
+            Ok(())
         }
+        "enforced" => bail!(
+            "{} rule {} overclaims preventive enforcement",
+            display_relative(path),
+            rule.id
+        ),
+        "reviewed-exception" => bail!(
+            "{} rule {} lacks an audited nonpreventive exception",
+            display_relative(path),
+            rule.id
+        ),
         _ => bail!(
             "{} rule {} remains uncovered",
             display_relative(path),
             rule.id
         ),
     }
-    Ok(())
+}
+
+fn non_empty(value: &Option<String>) -> bool {
+    value.as_deref().is_some_and(|item| !item.trim().is_empty())
 }
 
 fn check_summary(path: &Path, inventory: &Inventory) -> Result<()> {
