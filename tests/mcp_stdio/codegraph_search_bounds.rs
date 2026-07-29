@@ -43,6 +43,23 @@ fn codegraph_search_bounds_a_one_megabyte_line_without_emitting_it()
 }
 
 #[test]
+fn codegraph_search_keeps_a_late_match_inside_the_line_byte_limit()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    std::fs::write(
+        root.path().join("late.rs"),
+        format!("{}NEEDLE suffix\n", "x".repeat(3_000)),
+    )?;
+    let result = search(root.path(), "NEEDLE", 1)?;
+    let line = result["matches"][0].as_str().ok_or("late match")?;
+    let needle = line.find("NEEDLE").ok_or("late match span")?;
+    assert_eq!(&line[needle..needle + "NEEDLE".len()], "NEEDLE");
+    assert!(line.len() <= MATCH_LIMIT_BYTES);
+    assert_search_metadata(&result, 1, false, true, false)?;
+    Ok(())
+}
+
+#[test]
 fn codegraph_search_honors_line_byte_boundaries_without_splitting_utf8()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;

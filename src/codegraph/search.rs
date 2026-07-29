@@ -1,4 +1,5 @@
 use std::fs;
+use std::ops::Range;
 use std::path::Path;
 
 use anyhow::{Context as _, Result};
@@ -54,15 +55,18 @@ pub(super) fn search(root: &Path, query: &str, limit: Option<usize>) -> Result<S
             continue;
         };
         for (index, line) in source.lines().enumerate() {
-            if !pattern.is_match(line) {
+            let Some(found) = pattern.find(line) else {
                 continue;
-            }
+            };
             if output.matches.len() >= result_limit {
                 output.truncation.result_count = true;
                 return Ok(output);
             }
-            let (line, line_truncated) = truncate_utf8(
-                &format!("./{file}:{}:{line}", index + 1),
+            let formatted = format!("./{file}:{}:{line}", index + 1);
+            let line_start = formatted.len() - line.len();
+            let (line, line_truncated) = truncate_utf8_around(
+                &formatted,
+                (line_start + found.start())..(line_start + found.end()),
                 SEARCH_MATCH_LIMIT_BYTES,
             );
             if !push_if_content_fits(&mut output, line, line_truncated)? {
@@ -92,13 +96,21 @@ fn push_if_content_fits(
     Ok(true)
 }
 
-fn truncate_utf8(value: &str, limit: usize) -> (String, bool) {
+fn truncate_utf8_around(value: &str, matched: Range<usize>, limit: usize) -> (String, bool) {
     if value.len() <= limit {
         return (value.to_owned(), false);
     }
-    let mut end = limit;
+    let context_before = limit.saturating_sub(matched.len()) / 2;
+    let mut start = matched
+        .start
+        .saturating_sub(context_before)
+        .min(value.len() - limit);
+    while !value.is_char_boundary(start) {
+        start += 1;
+    }
+    let mut end = start + limit;
     while !value.is_char_boundary(end) {
         end -= 1;
     }
-    (value[..end].to_owned(), true)
+    (value[start..end].to_owned(), true)
 }
