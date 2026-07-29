@@ -72,14 +72,15 @@ fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
         if flags.is_empty() || !flags.chars().all(shell_option) {
             return None;
         }
+        let operands = flags
+            .chars()
+            .filter(|flag| matches!(flag, 'o' | 'O'))
+            .count();
+        let rest_after_operands = after.get(operands..)?;
         if flags.contains('c') {
-            return after.first().copied();
+            return rest_after_operands.first().copied();
         }
-        rest = if flags.contains('o') || flags.contains('O') {
-            after.get(1..)?
-        } else {
-            after
-        };
+        rest = rest_after_operands;
     }
     None
 }
