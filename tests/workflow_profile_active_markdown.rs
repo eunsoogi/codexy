@@ -112,6 +112,27 @@ fn code_and_fence_boundaries_preserve_active_security_evidence() -> TestResult {
 }
 
 #[test]
+fn prospective_inline_code_closers_stay_fence_local() -> TestResult {
+    for (name, evidence) in [
+        (
+            "a backtick inside a later fence cannot close carried inline code",
+            "Context: `carried\n```text\ncode`\n```\nTask kind: security review\nWorkflow profile: light",
+        ),
+        (
+            "a fence without a matching backtick leaves later security evidence active",
+            "Context: `carried\n```text\ncode\n```\nTask kind: security review\nWorkflow profile: light",
+        ),
+        (
+            "a matching closer before a later fence remains ordinary inline code",
+            "Context: `carried\ncode`\n```text\nignored\n```\nTask kind: security review\nWorkflow profile: light",
+        ),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn comment_markers_precede_unclosed_code_spans() -> TestResult {
     for (name, evidence, expected) in [
         (

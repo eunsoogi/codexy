@@ -121,9 +121,15 @@ fn active_markdown(line: &str, later: &[&str], state: &mut MarkdownState) -> Str
 }
 
 fn closes_later(lines: &[&str], width: usize) -> bool {
-    lines
-        .iter()
-        .any(|line| matching_backticks(line, width).is_some())
+    for line in lines {
+        if !indented_code(line) && fence_marker(normalize_metadata_prefix(line)).is_some() {
+            return false;
+        }
+        if matching_backticks(line, width).is_some() {
+            return true;
+        }
+    }
+    false
 }
 
 fn invalid_fence_header(line: &str) -> bool {
