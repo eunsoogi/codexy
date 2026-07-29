@@ -36,9 +36,10 @@ jobs:
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
           test "$STAGING_SOURCE_COMMIT" != "$ACTIVATION_COMMIT"
-          git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+          test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
           test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
           test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
           git checkout --detach "$ACTIVATION_COMMIT"
@@ -103,6 +104,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
           gh release create v1.3.0 dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz dist/runtime-release-receipt.json --target "$ACTIVATION_COMMIT" --title v1.3.0 --notes "Verified version release."
           base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
