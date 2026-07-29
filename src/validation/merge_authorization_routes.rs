@@ -65,11 +65,18 @@ fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
         return None;
     }
     let mut rest = &tokens[1..];
+    let mut command = false;
     while let Some((option, after)) = rest.split_first() {
+        if *option == "--" {
+            return command.then(|| after.first().copied()).flatten();
+        }
+        if command && !option.starts_with(['-', '+']) {
+            return Some(*option);
+        }
         let flags = option
             .strip_prefix('-')
             .or_else(|| option.strip_prefix('+'))?;
-        if flags.is_empty() || !flags.chars().all(shell_option) {
+        if flags.is_empty() || !flags.chars().all(|flag| SHELL_OPTIONS.contains(flag)) {
             return None;
         }
         let operands = flags
@@ -77,16 +84,10 @@ fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
             .filter(|flag| matches!(flag, 'o' | 'O'))
             .count();
         let rest_after_operands = after.get(operands..)?;
-        if flags.contains('c') {
-            return rest_after_operands.first().copied();
-        }
+        command |= flags.contains('c');
         rest = rest_after_operands;
     }
     None
-}
-
-fn shell_option(flag: char) -> bool {
-    SHELL_OPTIONS.contains(flag)
 }
 
 fn command_segments(line: &str) -> Vec<&str> {

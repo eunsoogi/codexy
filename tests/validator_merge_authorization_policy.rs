@@ -163,7 +163,6 @@ fn policy_rejects_opposite_global_rule_polarity() -> Result<(), Box<dyn std::err
 
 #[test]
 fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(), Box<dyn std::error::Error>> {
-    let mut missed = Vec::new();
     for route_line in [
         "echo ready; gh pr merge \"$pr_number\" --squash",
         "printf ready && gh pr merge \"$pr_number\" --squash",
@@ -183,25 +182,23 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         r#"bash -lc 'gh pr merge "$pr_number" --squash'"#,
         r#"bash -lcO extglob 'gh pr merge "$pr_number" --squash'"#,
         r#"bash -lco pipefail 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -lc -O extglob 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -lc -o pipefail 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -lc -- 'gh pr merge "$pr_number" --squash'"#,
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
         let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
         std::fs::write(route, route_text)?;
-        let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
-        if !errors.iter().any(|error| error.contains("before mutation")) {
-            missed.push(route_line);
-        }
-    }
-    assert!(missed.is_empty(), "unguarded routes: {missed:#?}");
-    {
-        let fixture = fixture()?;
-        let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
-        let route_text = format!("{}\n~~~shell\necho 'gh pr merge \"$pr_number\" --squash'\n~~~\n", std::fs::read_to_string(&route)?);
-        std::fs::write(route, route_text)?;
-        assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+        assert!(
+            codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root())
+                .iter()
+                .any(|error| error.contains("before mutation")),
+            "unguarded route: {route_line}"
+        );
     }
     for route_line in [
+        "echo 'gh pr merge \"$pr_number\" --squash'",
         "env FLAG=1 plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "env -i plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "env -- plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
@@ -220,9 +217,13 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         r#"bash -lcO extglob 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
         r#"bash -lco pipefail 'echo "gh pr merge $pr_number --squash"'"#,
         r#"bash -lcO extglob 'gh pr view "$pr_number"'"#,
+        r#"bash -lc -O extglob 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
+        r#"bash -lc -o pipefail 'echo "gh pr merge $pr_number --squash"'"#,
         r#"bash -q -c 'gh pr merge "$pr_number" --squash'"#,
         r#"bash -oc 'gh pr merge "$pr_number" --squash'"#,
         "bash -lcO extglob",
+        "bash -lc -O",
+        r#"bash -lc -q 'gh pr merge "$pr_number" --squash'"#,
         r#"bash -- -c 'gh pr merge "$pr_number" --squash'"#,
         "{gh pr merge \"$pr_number\" --squash;}",
         "if true; then ! gh pr view \"$pr_number\"; fi",
