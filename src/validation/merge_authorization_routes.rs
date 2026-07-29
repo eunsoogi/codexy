@@ -28,7 +28,7 @@ pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
 }
 
 fn unguarded_merge(line: &str) -> bool {
-    command_segments(line).any(unguarded_segment)
+    command_segments(line).into_iter().any(unguarded_segment)
 }
 
 fn unguarded_segment(segment: &str) -> bool {
@@ -37,8 +37,36 @@ fn unguarded_segment(segment: &str) -> bool {
     tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
 }
 
-fn command_segments(line: &str) -> impl Iterator<Item = &str> {
-    line.split(';').flat_map(|segment| segment.split("&&"))
+fn command_segments(line: &str) -> Vec<&str> {
+    let mut segments = Vec::new();
+    let mut start = 0;
+    let mut quote = None;
+    let mut escaped = false;
+    let bytes = line.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if escaped {
+            escaped = false;
+        } else if byte == b'\\' && quote != Some(b'\'') {
+            escaped = true;
+        } else if matches!(byte, b'\'' | b'\"') {
+            quote = if quote == Some(byte) {
+                None
+            } else if quote.is_none() {
+                Some(byte)
+            } else {
+                quote
+            };
+        } else if quote.is_none() && (byte == b';' || bytes.get(index..index + 2) == Some(b"&&")) {
+            segments.push(&line[start..index]);
+            index += usize::from(byte == b'&');
+            start = index + 1;
+        }
+        index += 1;
+    }
+    segments.push(&line[start..]);
+    segments
 }
 
 fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
@@ -86,11 +114,7 @@ fn command_blocks(text: &str) -> Vec<Vec<String>> {
             } else if fence.is_none() {
                 fence = Some(marker);
             }
-        } else if fence.is_some()
-            && !line.starts_with('#')
-            && !line.starts_with("echo")
-            && !line.starts_with("printf")
-        {
+        } else if fence.is_some() && !line.starts_with('#') {
             current.push(line.to_owned());
         }
     }

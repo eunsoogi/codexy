@@ -73,10 +73,7 @@ fn check_intent(authorization: &Value, pr_state: &Value, errors: &mut Vec<String
                 .filter(|comment| {
                     string_field(comment, "id") == id
                         && string_field(comment, "url") == url
-                        && comment
-                            .get("author")
-                            .and_then(|author| string_field(author, "association"))
-                            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
+                        && authoritative_commenter(comment)
                         && string_field(comment, "body") == expected.as_deref()
                 })
                 .count()
@@ -89,6 +86,15 @@ fn check_intent(authorization: &Value, pr_state: &Value, errors: &mut Vec<String
     if id.is_none_or(str::is_empty) || !url_matches_pr || found != Some(1) {
         errors.push("merge authorization intent must match one OWNER or MEMBER GitHub PR comment with exact squash authorization".into());
     }
+}
+
+fn authoritative_commenter(comment: &Value) -> bool {
+    comment
+        .get("author")
+        .and_then(|author| string_field(author, "login"))
+        .is_some()
+        && string_field(comment, "authorAssociation")
+            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
 }
 
 fn intent_comment(authorization: &Value) -> Option<String> {

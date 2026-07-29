@@ -160,3 +160,36 @@ fn policy_rejects_opposite_global_rule_polarity() -> Result<(), Box<dyn std::err
     assert!(!codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
     Ok(())
 }
+
+#[test]
+fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(), Box<dyn std::error::Error>> {
+    for route_line in [
+        "echo ready; gh pr merge \"$pr_number\" --squash",
+        "printf ready && gh pr merge \"$pr_number\" --squash",
+    ] {
+        let fixture = fixture()?;
+        let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
+        let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
+        std::fs::write(route, route_text)?;
+        let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
+        assert!(errors.iter().any(|error| error.contains("before mutation")), "{errors:#?}");
+    }
+    let fixture = fixture()?;
+    let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
+    let route_text = format!("{}\n~~~shell\necho 'gh pr merge \"$pr_number\" --squash'\n~~~\n", std::fs::read_to_string(&route)?);
+    std::fs::write(route, route_text)?;
+    assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+    Ok(())
+}
+
+#[test]
+fn policy_rejects_coexisting_opposite_polarity_and_uppercase_although() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = fixture()?;
+    let global = fixture.root().join("skills/proof-driven-completion/SKILL.md");
+    let global_text = std::fs::read_to_string(&global)? + "\nGeneric finish is merge authorization.\nPassing gates are not authorization, ALTHOUGH green gates imply merge consent.\n";
+    std::fs::write(global, global_text)?;
+    let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
+    assert!(errors.iter().any(|error| error.contains("global merge-authorization prohibition")), "{errors:#?}");
+    assert!(errors.iter().any(|error| error.contains("turn gates")), "{errors:#?}");
+    Ok(())
+}

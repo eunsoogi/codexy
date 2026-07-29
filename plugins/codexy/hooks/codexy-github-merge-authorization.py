@@ -66,7 +66,7 @@ def page_state(page):
 
 def candidate(comment, state):
     author = comment.get("author") if isinstance(comment, dict) else None
-    if string(author, "association") not in {"OWNER", "MEMBER"}:
+    if not string(author, "login") or string(comment, "authorAssociation") not in {"OWNER", "MEMBER"}:
         return None
     number = state["number"]
     base = state["baseRefName"]

@@ -39,6 +39,22 @@ fn canonical_wrapper_rejects_paginated_query_failure() -> TestResult {
 }
 
 #[cfg(unix)]
+#[test]
+fn canonical_wrapper_rejects_nested_forged_and_wrong_author_associations() -> TestResult {
+    for comment in [
+        nested_authorization("IC_nested"),
+        authorization_with_association("IC_outsider", "CONTRIBUTOR"),
+        authorization_without_author("IC_forged"),
+    ] {
+        let capture = pages(vec![comment.clone()], vec![]);
+        let (output, merged) = wrapper(&state(vec![comment]), &capture, false)?;
+        assert!(!output.status.success(), "noncanonical association was accepted");
+        assert!(!merged, "noncanonical association reached merge");
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
 fn wrapper(first: &str, pages: &str, fail_paginated: bool) -> TestResult<(std::process::Output, bool)> {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
@@ -95,10 +111,27 @@ fn response(comments: Vec<Value>, has_next: bool) -> Value {
 
 #[cfg(unix)]
 fn ordinary_comment(id: &str) -> Value {
-    json!({"id":id,"url":format!("https://github.com/eunsoogi/codexy/pull/128#issuecomment-{id}"),"body":"waiting","author":{"login":"member","association":"MEMBER"}})
+    json!({"id":id,"url":format!("https://github.com/eunsoogi/codexy/pull/128#issuecomment-{id}"),"body":"waiting","author":{"login":"member"},"authorAssociation":"MEMBER"})
 }
 
 #[cfg(unix)]
 fn authorization(id: &str) -> Value {
+    authorization_with_association(id, "MEMBER")
+}
+
+#[cfg(unix)]
+fn authorization_with_association(id: &str, association: &str) -> Value {
+    json!({"id":id,"url":format!("https://github.com/eunsoogi/codexy/pull/128#issuecomment-{id}"),"body":format!("AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD {HEAD}"),"author":{"login":"maintainer"},"authorAssociation":association})
+}
+
+#[cfg(unix)]
+fn nested_authorization(id: &str) -> Value {
     json!({"id":id,"url":format!("https://github.com/eunsoogi/codexy/pull/128#issuecomment-{id}"),"body":format!("AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD {HEAD}"),"author":{"login":"maintainer","association":"MEMBER"}})
+}
+
+#[cfg(unix)]
+fn authorization_without_author(id: &str) -> Value {
+    let mut comment = authorization(id);
+    comment.as_object_mut().unwrap().remove("author");
+    comment
 }

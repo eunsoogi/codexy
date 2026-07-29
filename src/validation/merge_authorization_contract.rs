@@ -14,10 +14,7 @@ pub(super) fn check(record: &Value, pr_state: &Value, errors: &mut Vec<String>) 
                 .filter(|comment| {
                     string(comment, "id") == id
                         && string(comment, "url") == url
-                        && comment
-                            .get("author")
-                            .and_then(|author| string(author, "association"))
-                            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
+                        && authoritative_commenter(comment)
                         && string(comment, "body") == expected.as_deref()
                 })
                 .count()
@@ -32,6 +29,15 @@ pub(super) fn check(record: &Value, pr_state: &Value, errors: &mut Vec<String>) 
             "merge authorization contract must match one OWNER or MEMBER GitHub PR comment".into(),
         );
     }
+}
+
+fn authoritative_commenter(comment: &Value) -> bool {
+    comment
+        .get("author")
+        .and_then(|author| string(author, "login"))
+        .is_some()
+        && string(comment, "authorAssociation")
+            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
 }
 
 fn require(value: &Value, field: &str, expected: &str, errors: &mut Vec<String>) {
