@@ -117,12 +117,12 @@ fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
     let mut offset = 0;
     while let Some(relative) = source[offset..].find("assert") {
         let start = offset + relative;
-        let Some(open) = assertion_open(source, start) else {
+        let Some((macro_start, open)) = assertion_open(source, start) else {
             offset = start + "assert".len();
             continue;
         };
         if let Some(close) = matching_paren(source, open) {
-            found.push((start, close, &source[open + 1..close]));
+            found.push((macro_start, close, &source[open + 1..close]));
             offset = close + 1;
         } else {
             break;
@@ -131,7 +131,10 @@ fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
     found
 }
 
-fn assertion_open(source: &str, start: usize) -> Option<usize> {
+fn assertion_open(source: &str, assert_start: usize) -> Option<(usize, usize)> {
+    let start = source[..assert_start]
+        .strip_suffix("debug_")
+        .map_or(assert_start, str::len);
     if source[..start]
         .chars()
         .next_back()
@@ -140,7 +143,14 @@ fn assertion_open(source: &str, start: usize) -> Option<usize> {
         return None;
     }
     let tail = &source[start..];
-    let name = ["assert_eq", "assert_ne", "assert"]
+    let name = [
+        "debug_assert_eq",
+        "debug_assert_ne",
+        "debug_assert",
+        "assert_eq",
+        "assert_ne",
+        "assert",
+    ]
         .into_iter()
         .find(|name| {
             tail.strip_prefix(name).is_some_and(|after| {
@@ -151,7 +161,7 @@ fn assertion_open(source: &str, start: usize) -> Option<usize> {
     let after_bang = after_name.strip_prefix('!')?.trim_start();
     after_bang
         .starts_with('(')
-        .then_some(source.len() - after_bang.len())
+        .then_some((start, source.len() - after_bang.len()))
 }
 
 fn is_identifier_character(character: char) -> bool {
