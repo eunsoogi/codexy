@@ -62,6 +62,79 @@ fn guard_rejects_multiline_and_assert_eq_governed_substring_checks() {
 }
 
 #[test]
+fn guard_rejects_debug_assertion_macro_substring_checks() {
+    for assertion in [
+        "debug_assert!(skill.contains(\"required policy\"));",
+        "debug_assert_eq!(skill.contains(\"required policy\"), true);",
+        "debug_assert_ne!(skill.contains(\"required policy\"), false);",
+    ] {
+        let source = format!(
+            "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n{assertion}"
+        );
+        assert_eq!(scan_source(&source).len(), 1, "{assertion}");
+    }
+}
+
+#[test]
+fn guard_rejects_assertion_macro_delimiters_and_contains_syntax_variants() {
+    let guarded = "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n";
+    for assertion in [
+        "assert!(skill.contains(\"required policy\"));",
+        "assert! { skill.contains(\"required policy\") };",
+        "assert! [ skill.contains(\"required policy\") ];",
+        "debug_assert!(skill.contains(\"required policy\"));",
+        "debug_assert! { skill.contains(\"required policy\") };",
+        "debug_assert! [ skill.contains(\"required policy\") ];",
+        "assert!(skill . contains(\"required policy\"));",
+        "assert!(skill.\ncontains(\"required policy\"));",
+        "assert!(skill.contains::<&str>(\"required policy\"));",
+    ] {
+        assert_eq!(scan_source(&format!("{guarded}{assertion}")).len(), 1, "{assertion}");
+    }
+}
+
+#[test]
+fn guard_rejects_function_pointer_turbofish_and_raw_contains_identifiers() {
+    let guarded = "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n";
+    for assertion in [
+        "assert!(skill.contains::<fn(char) -> bool>(char::is_whitespace));",
+        "assert!(skill.contains::<Option<fn(char) -> Vec<bool>>>(None));",
+        "assert!(skill.r#contains(\"required policy\"));",
+        "assert!(skill.r#contains::<&str>(\"required policy\"));",
+    ] {
+        assert_eq!(scan_source(&format!("{guarded}{assertion}")).len(), 1, "{assertion}");
+    }
+
+    for assertion in [
+        "assert!(skill.contains::<fn(char) -> bool>);",
+        "assert!(skill.r#contains_more(\"required policy\"));",
+    ] {
+        assert!(scan_source(&format!("{guarded}{assertion}")).is_empty(), "{assertion}");
+    }
+}
+
+#[test]
+fn guard_ignores_custom_assertion_names() {
+    for source in [
+        "custom_assert!(snapshot.contains(\"heading\"));",
+        "debug_assertion!(snapshot.contains(\"heading\"));",
+        "assert_search_metadata(snapshot.contains(\"heading\"));",
+        "πassert!(snapshot.contains(\"heading\"));",
+    ] {
+        assert!(scan_source(source).is_empty(), "{source}");
+    }
+}
+
+#[test]
+fn guard_allows_structured_exact_match_assertions_after_assert_prefixed_calls() {
+    let source = concat!(
+        "assert_search_metadata(&first, 1)?;\n",
+        "assert_eq!(first[\"matches\"][0].as_str(), Some(\"ENTRY\"));\n",
+    );
+    assert!(scan_source(source).is_empty());
+}
+
+#[test]
 fn guard_allows_diagnostics_and_requires_a_substantive_rationale() {
     let diagnostic = "assert!(stderr.contains(\"validator failed\"));";
     assert!(scan_source(diagnostic).is_empty());

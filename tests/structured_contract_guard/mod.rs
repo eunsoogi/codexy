@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 mod identity;
-mod sanitize;
 mod repository;
+mod sanitize;
+mod syntax;
 
 use identity::assertion_identity;
 use sanitize::{sanitize, strip_comments};
+use syntax::{assertions, has_contains_call};
 pub(crate) use repository::{
     comparison_counts, comparison_counts_at, repository_violations, repository_violations_at,
 };
@@ -56,18 +58,6 @@ pub(crate) fn governed_assertions(source: &str) -> Vec<GovernedAssertion> {
         .collect()
 }
 
-fn has_contains_call(text: &str) -> bool {
-    let mut tail = text;
-    while let Some(index) = tail.find(".contains") {
-        let after = &tail[index + ".contains".len()..];
-        if after.trim_start().starts_with('(') {
-            return true;
-        }
-        tail = after;
-    }
-    false
-}
-
 fn governed_bindings(source: &str) -> Vec<String> {
     let mut governed: Vec<String> = Vec::new();
     let mut governed_paths: Vec<String> = Vec::new();
@@ -110,51 +100,6 @@ fn is_governed_path(text: &str) -> bool {
     ]
     .iter()
     .any(|marker| text.contains(marker))
-}
-
-fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
-    let mut found = Vec::new();
-    let mut offset = 0;
-    while let Some(relative) = source[offset..].find("assert") {
-        let start = offset + relative;
-        let tail = &source[start..];
-        let Some(bang) = tail.find('!') else { break };
-        let name = tail[..bang].trim();
-        if !matches!(name, "assert" | "assert_eq" | "assert_ne") {
-            offset = start + bang + 1;
-            continue;
-        }
-        let Some(open) = tail[bang + 1..]
-            .find('(')
-            .map(|index| start + bang + 1 + index)
-        else {
-            break;
-        };
-        if let Some(close) = matching_paren(source, open) {
-            found.push((start, close, &source[open + 1..close]));
-            offset = close + 1;
-        } else {
-            break;
-        }
-    }
-    found
-}
-
-fn matching_paren(source: &str, open: usize) -> Option<usize> {
-    let mut depth = 0;
-    for (relative, character) in source[open..].char_indices() {
-        match character {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(open + relative);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 fn identifiers(text: &str) -> Vec<&str> {
