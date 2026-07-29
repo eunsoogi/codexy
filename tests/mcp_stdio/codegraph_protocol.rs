@@ -54,9 +54,10 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
         .ok_or("search text")?;
     let search_payload: Value = serde_json::from_str(search_text)?;
     let matches = search_payload["matches"].as_array().ok_or("search matches")?;
-    assert!(
-        matches[0].as_str().is_some_and(|line| line.contains("ENTRY")),
-        "codegraph_search must return a matching line, got {search_text:?}"
+    assert_eq!(
+        matches[0],
+        json!("./entry.rs:2:pub const ENTRY: u8 = dep::VALUE;"),
+        "codegraph_search must return the expected match"
     );
     assert_eq!(
         matches.len(),
