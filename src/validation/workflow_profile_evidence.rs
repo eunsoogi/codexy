@@ -22,14 +22,17 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
+        if !comment {
+            let line = normalize_metadata_prefix(raw);
+            if let Some((marker, length, _tail)) = fence_marker(line) {
+                fence = Some((marker, length));
+                lines.push(String::new());
+                continue;
+            }
+        }
         let active = active_markdown(raw, &mut comment);
         let line = normalize_metadata_prefix(&active);
-        if let Some((marker, length, _tail)) = fence_marker(line) {
-            fence = Some((marker, length));
-            lines.push(String::new());
-        } else {
-            lines.push(line.to_owned());
-        }
+        lines.push(line.to_owned());
     }
     let references = lines.iter().map(String::as_str).collect::<Vec<_>>();
     let start = (0..references.len())
@@ -57,7 +60,9 @@ fn indented_code(line: &str) -> bool {
     false
 }
 
-fn active_markdown<'a>(mut line: &'a str, comment: &mut bool) -> String {
+fn active_markdown(line: &str, comment: &mut bool) -> String {
+    let masked_code = without_inline_code(line);
+    let mut line = masked_code.as_str();
     let mut active = String::new();
     loop {
         if *comment {
@@ -76,6 +81,49 @@ fn active_markdown<'a>(mut line: &'a str, comment: &mut bool) -> String {
             line = &line[start + 4..];
         }
     }
+}
+
+fn without_inline_code(line: &str) -> String {
+    let mut visible = String::new();
+    let mut rest = line;
+    while let Some(open) = rest.find('`') {
+        let width = rest[open..]
+            .bytes()
+            .take_while(|byte| *byte == b'`')
+            .count();
+        let content = &rest[open + width..];
+        let Some(close) = matching_backticks(content, width) else {
+            visible.push_str(rest);
+            return visible;
+        };
+        visible.push_str(&rest[..open]);
+        visible.extend(std::iter::repeat_n(
+            ' ',
+            rest[open..open + width + close + width].chars().count(),
+        ));
+        rest = &content[close + width..];
+    }
+    visible.push_str(rest);
+    visible
+}
+
+fn matching_backticks(text: &str, width: usize) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] != b'`' {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < bytes.len() && bytes[index] == b'`' {
+            index += 1;
+        }
+        if index - start == width {
+            return Some(start);
+        }
+    }
+    None
 }
 
 pub(super) fn has_strict_work_signal(lines: &[&str]) -> bool {
@@ -99,5 +147,6 @@ fn fence_marker(line: &str) -> Option<(u8, usize, &str)> {
     let marker = *trimmed.as_bytes().first()?;
     (marker == b'`' || marker == b'~').then_some(())?;
     let length = trimmed.bytes().take_while(|byte| *byte == marker).count();
-    (length >= 3).then_some((marker, length, &trimmed[length..]))
+    let tail = &trimmed[length..];
+    (length >= 3 && (marker != b'`' || !tail.contains('`'))).then_some((marker, length, tail))
 }

@@ -47,6 +47,29 @@ fn compound_hyphens_preserve_category_polarity() -> TestResult {
 }
 
 #[test]
+fn permission_inflections_are_exact_categories_not_prefixes() -> TestResult {
+    for task_kind in ["permissions change", "permissions-sensitive change"] {
+        assert_profile_result(
+            "plural permission work remains strict",
+            &format!("Task kind: {task_kind}"),
+            false,
+        )?;
+    }
+    for task_kind in [
+        "permissionless documentation",
+        "permissions-free documentation",
+        "non-security-sensitive documentation",
+    ] {
+        assert_profile_result(
+            "exact category inflections preserve non-category controls",
+            &format!("Task kind: {task_kind}"),
+            true,
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn coordinated_prefix_negation_has_bounded_scope() -> TestResult {
     for task_kind in [
         "no security or release or publication work",

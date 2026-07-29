@@ -57,6 +57,35 @@ fn inactive_markdown_cannot_change_current_workflow_evidence() -> TestResult {
 }
 
 #[test]
+fn only_valid_markdown_boundaries_can_hide_active_security_evidence() -> TestResult {
+    for (name, evidence) in [
+        (
+            "a backtick in fence info does not open a fence",
+            "```rust`\nTask kind: security review\nWorkflow profile: light",
+        ),
+        (
+            "an inline-code comment marker does not open a comment",
+            "Context: `<!--`\nTask kind: security review\nWorkflow profile: light",
+        ),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
+    for (name, evidence) in [
+        (
+            "a valid fence hides security evidence",
+            "```text\nTask kind: security review\n```\nWorkflow profile: light",
+        ),
+        (
+            "a valid comment hides security evidence",
+            "<!-- Task kind: security review -->\nWorkflow profile: light",
+        ),
+    ] {
+        assert_profile_result(name, evidence, true)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn inert_lines_cannot_mutate_html_comment_state() -> TestResult {
     let indented_closer = format!(
             "Workflow profile: strict\nContext <!--\n    -->\n{}\n-->",

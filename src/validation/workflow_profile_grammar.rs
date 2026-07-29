@@ -1,9 +1,10 @@
-const STRICT_SIGNALS: [&str; 7] = [
+const STRICT_SIGNALS: [&str; 8] = [
     "destructive",
     "security",
     "secret",
     "secrets",
     "permission",
+    "permissions",
     "release",
     "publication",
 ];
