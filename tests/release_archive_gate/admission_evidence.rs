@@ -80,5 +80,28 @@ fn archive_gate_rejects_a_non_regular_checkout_admission_suite() {
     std::fs::create_dir_all(evidence_root.join("tests/suites/all.rs")).expect("suite directory");
     let output = run_with_evidence(&archive, &plugin_root, &evidence_root);
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("checkout admission suite missing"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("checkout admission suite must be a regular file")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn archive_gate_rejects_a_symlinked_checkout_admission_suite() {
+    let (root, plugin_root, archive) = archive_fixture("symlinked-admission-suite");
+    let evidence_root = root.path().join("evidence");
+    let suite = evidence_root.join("tests/suites/all.rs");
+    std::fs::create_dir_all(suite.parent().expect("suite parent")).expect("suite directory");
+    std::os::unix::fs::symlink(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/suites/all.rs"),
+        suite,
+    )
+    .expect("symlink suite");
+    let output = run_with_evidence(&archive, &plugin_root, &evidence_root);
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("checkout admission suite must be a regular file")
+    );
 }

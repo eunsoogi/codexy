@@ -66,8 +66,8 @@ PY
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
-[ -f "$canonical_admission_suite" ] || { echo "canonical checkout admission suite missing" >&2; exit 1; }
-[ -f "$admission_suite" ] || { echo "checkout admission suite missing" >&2; exit 1; }
+"$script_dir/require-regular-file" "$canonical_admission_suite" "canonical checkout admission suite"
+"$script_dir/require-regular-file" "$admission_suite" "checkout admission suite"
 cmp -s "$canonical_admission_suite" "$admission_suite" || {
   echo "checkout admission suite differs from canonical evidence" >&2
   exit 1
