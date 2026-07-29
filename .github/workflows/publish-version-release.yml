@@ -102,9 +102,17 @@ jobs:
       - name: Create and verify the only public version release
         env:
           GH_TOKEN: ${{ github.token }}
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          test -n "$STAGING_SOURCE_COMMIT" && test -n "$ACTIVATION_COMMIT" && test -n "$STAGING_RUN_ID"
+          test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
+          test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+          test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = "$STAGING_SOURCE_COMMIT"
+          test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
+          test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
           test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
           gh release create v1.3.0 dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz dist/runtime-release-receipt.json --target "$ACTIVATION_COMMIT" --title v1.3.0 --notes "Verified version release."
           base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"

@@ -59,11 +59,13 @@ jobs:
       - name: Prepare one version-selection branch
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
-            git fetch origin "$branch"
+            git fetch origin main "$branch"
             git switch --track -c "$branch" "origin/$branch"
+            scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json"
             printf '%s\n' existing > activation-branch-state
           else
             git switch -c "$branch"

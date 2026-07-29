@@ -4,6 +4,9 @@ use serde_yaml::Value;
 
 use crate::support;
 
+#[path = "runtime_workflow_recovery/release_lineage.rs"]
+mod release_lineage;
+
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -104,6 +107,7 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
         "resumable activation pull request",
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
+            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json\"",
             "codexy/runtime-activation-v${BOOTSTRAP_VERSION}",
         ],
     );
