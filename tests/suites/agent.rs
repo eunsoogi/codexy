@@ -73,6 +73,9 @@ mod workflow_profile_contract;
 #[path = "../workflow_profile_signals.rs"]
 mod workflow_profile_signals;
 
+#[path = "../workflow_profile_grammar.rs"]
+mod workflow_profile_grammar;
+
 #[path = "../validator_role_instruction_policy.rs"]
 mod validator_role_instruction_policy;
 
