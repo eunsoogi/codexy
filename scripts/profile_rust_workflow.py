@@ -11,6 +11,7 @@ from profile_rust_shell import invocation_count
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
+WINDOWS_TOOLCHAIN_BOOTSTRAP = "rustup toolchain install"
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 
 
@@ -204,7 +205,7 @@ def enforce_workflow_contract(
     windows_workload_count = sum(
         invocation_count(command, workload) for command in windows_runs
     )
-    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_GATE]
+    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
         or windows_timeouts != [str(required_windows_timeout_minutes)]

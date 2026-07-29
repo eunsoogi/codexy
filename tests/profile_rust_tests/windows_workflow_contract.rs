@@ -17,6 +17,8 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
             "name: Rust test suite (Windows)",
             "runs-on: windows-latest",
             "timeout-minutes: 10",
+            "name: Prepare Windows Rust toolchain",
+            "run: rustup toolchain install",
             "run: python scripts/profile-rust-tests --windows",
         ],
     );
@@ -29,7 +31,7 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: python scripts/profile-rust-tests --windows\n",
+        "jobs:\n  rust-test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n",
     )?;
     assert!(fixture.run(&[])?.status.success());
 
@@ -70,6 +72,19 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
         &fixture.workflow,
         "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - run: python scripts/profile-rust-tests --windows\n",
     )?;
+    assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_rejects_a_windows_profile_without_prior_toolchain_bootstrap(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        "jobs:\n  rust-test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 10\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: python scripts/profile-rust-tests --windows\n",
+    )?;
+
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
 }
