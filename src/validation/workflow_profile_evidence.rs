@@ -4,8 +4,9 @@ use super::child_lane_ownership_phrases::metadata_key;
 use super::workflow_profile_grammar::value_has_strict_signal;
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
-    let (mut fence, mut comment, mut code, mut lines) = (None, false, None, Vec::new());
-    for raw in evidence.lines() {
+    let raw_lines = evidence.lines().collect::<Vec<_>>();
+    let (mut fence, mut state, mut lines) = (None, MarkdownState::default(), Vec::new());
+    for (index, raw) in raw_lines.iter().enumerate() {
         if fence.is_some() {
             if indented_code(raw) {
                 lines.push(String::new());
@@ -25,7 +26,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
-        if !comment {
+        if !state.comment {
             let line = normalize_metadata_prefix(raw);
             if let Some((marker, length, _tail)) = fence_marker(line) {
                 fence = Some((marker, length));
@@ -33,7 +34,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
                 continue;
             }
         }
-        let active = active_markdown(raw, &mut comment, &mut code);
+        let active = active_markdown(raw, &raw_lines[index + 1..], &mut state);
         let line = normalize_metadata_prefix(&active);
         lines.push(line.to_owned());
     }
@@ -46,6 +47,12 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
         })
         .map_or(0, |index| index + 1);
     lines.into_iter().skip(start).collect()
+}
+
+#[derive(Default)]
+struct MarkdownState {
+    comment: bool,
+    code: Option<usize>,
 }
 
 fn indented_code(line: &str) -> bool {
@@ -63,80 +70,60 @@ fn indented_code(line: &str) -> bool {
     false
 }
 
-fn active_markdown(line: &str, comment: &mut bool, code: &mut Option<usize>) -> String {
+fn active_markdown(line: &str, later: &[&str], state: &mut MarkdownState) -> String {
+    if !state.comment && state.code.is_none() && invalid_fence_header(line) {
+        return line.to_owned();
+    }
     let mut line = line;
     let mut active = String::new();
     loop {
-        if *comment {
+        if state.comment {
             let Some(end) = line.find("-->") else {
                 return active;
             };
-            *comment = false;
+            state.comment = false;
             line = &line[end + 3..];
-        } else {
-            let Some(start) = line.find("<!--") else {
-                active.push_str(&without_inline_code(line, code));
+        } else if let Some(width) = state.code {
+            let Some(close) = matching_backticks(line, width) else {
                 return active;
             };
-            if line[..start].contains('`') && !contains_inline_code(&line[..start]) {
-                active.push_str(&without_inline_code(line, code));
+            state.code = None;
+            line = &line[close + width..];
+        } else {
+            let comment = line.find("<!--");
+            let code = line.find('`');
+            let Some(start) = [comment, code].into_iter().flatten().min() else {
+                active.push_str(line);
                 return active;
+            };
+            active.push_str(&line[..start]);
+            if comment == Some(start) {
+                state.comment = true;
+                line = &line[start + 4..];
+            } else {
+                let width = line[start..]
+                    .bytes()
+                    .take_while(|byte| *byte == b'`')
+                    .count();
+                let rest = &line[start + width..];
+                if let Some(close) = matching_backticks(rest, width) {
+                    line = &rest[close + width..];
+                } else if closes_later(later, width) {
+                    state.code = Some(width);
+                    return active;
+                } else {
+                    active.push_str(&line[start..]);
+                    return active;
+                }
             }
-            active.push_str(&without_inline_code(&line[..start], code));
-            if code.is_some() {
-                active.push_str(&without_inline_code(&line[start..], code));
-                return active;
-            }
-            *comment = true;
-            line = &line[start + 4..];
         }
     }
 }
 
-fn without_inline_code(line: &str, code: &mut Option<usize>) -> String {
-    if code.is_none() && invalid_fence_header(line) {
-        return line.to_owned();
-    }
-    let mut visible = String::new();
-    let mut rest = line;
-    loop {
-        if let Some(width) = *code {
-            let Some(close) = matching_backticks(rest, width) else {
-                visible.extend(std::iter::repeat_n(' ', rest.chars().count()));
-                return visible;
-            };
-            let end = close + width;
-            visible.extend(std::iter::repeat_n(' ', rest[..end].chars().count()));
-            rest = &rest[end..];
-            *code = None;
-            continue;
-        }
-        let Some(open) = rest.find('`') else {
-            visible.push_str(rest);
-            return visible;
-        };
-        let width = rest[open..]
-            .bytes()
-            .take_while(|byte| *byte == b'`')
-            .count();
-        let content = &rest[open + width..];
-        let Some(close) = matching_backticks(content, width) else {
-            visible.push_str(&rest[..open]);
-            if rest[open..].contains("<!--") {
-                visible.extend(std::iter::repeat_n(' ', rest[open..].chars().count()));
-                *code = Some(width);
-            } else {
-                visible.push_str(&rest[open..]);
-            }
-            return visible;
-        };
-        visible.push_str(&rest[..open]);
-        visible.extend(std::iter::repeat_n(
-            ' ',
-            rest[open..open + width + close + width].chars().count(),
-        ));
-        rest = &content[close + width..];
-    }
+fn closes_later(lines: &[&str], width: usize) -> bool {
+    lines
+        .iter()
+        .any(|line| matching_backticks(line, width).is_some())
 }
 
 fn invalid_fence_header(line: &str) -> bool {
@@ -166,17 +153,6 @@ fn matching_backticks(text: &str, width: usize) -> Option<usize> {
         }
     }
     None
-}
-
-fn contains_inline_code(text: &str) -> bool {
-    let Some(open) = text.find('`') else {
-        return false;
-    };
-    let width = text[open..]
-        .bytes()
-        .take_while(|byte| *byte == b'`')
-        .count();
-    matching_backticks(&text[open + width..], width).is_some()
 }
 
 pub(super) fn has_strict_work_signal(lines: &[&str]) -> bool {
