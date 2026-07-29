@@ -10,6 +10,9 @@ use crate::{
 
 const SCHEMA: &str = "codexy-runtime-candidate/v1";
 
+#[cfg(test)]
+mod tests;
+
 pub(super) fn check(
     plugin_root: &Path,
     release: &Map<String, Value>,
@@ -48,16 +51,25 @@ pub(super) fn check(
     let artifact = object_field(candidate, "artifact", &path)?;
     exact_keys(artifact, &["stagingRunId", "stagingRunAttempt"], &path)?;
     for field in ["stagingRunId", "stagingRunAttempt"] {
-        if artifact
-            .get(field)
-            .and_then(Value::as_i64)
-            .is_none_or(|value| value < 1)
-        {
-            bail!(
-                "{} {field} must be a positive integer",
-                display_relative(&path)
-            );
-        }
+        positive_staging_identity(artifact, field, &path)?;
+    }
+    Ok(())
+}
+
+fn positive_staging_identity(
+    artifact: &Map<String, Value>,
+    field: &str,
+    path: &Path,
+) -> Result<()> {
+    if artifact
+        .get(field)
+        .and_then(Value::as_i64)
+        .is_none_or(|value| value < 1)
+    {
+        bail!(
+            "{} {field} must be a positive integer",
+            display_relative(path)
+        );
     }
     Ok(())
 }

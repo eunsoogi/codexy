@@ -22,12 +22,21 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     for required in [
         "test -n \"$STAGING_SOURCE_COMMIT\"",
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
-        "git show-ref --verify --quiet refs/tags/v1.3.0",
-        "refs/tags/v1.3.0^{commit}",
-        "cannot resolve existing v1.3.0 tag",
-        "existing v1.3.0 tag does not match activation commit",
+        "git ls-remote --refs origin \"$tag_ref\"",
+        "git push origin \"$ACTIVATION_COMMIT:$tag_ref\"",
+        "FETCH_HEAD^{commit}",
+        "cannot resolve remote v1.3.0 tag",
+        "remote v1.3.0 tag does not match activation commit",
+        "remote v1.3.0 tag changed during admission",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
+    let create_arguments = release[create..]
+        .lines()
+        .next()
+        .ok_or("version release command")?
+        .split_ascii_whitespace()
+        .collect::<Vec<_>>();
+    assert_eq!(create_arguments.get(7), Some(&"--verify-tag"));
     Ok(())
 }

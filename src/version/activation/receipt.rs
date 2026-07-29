@@ -1,5 +1,8 @@
 mod fields;
 
+#[cfg(test)]
+mod tests;
+
 use anyhow::{Result, bail};
 use serde_json::{Map, Value, json};
 
