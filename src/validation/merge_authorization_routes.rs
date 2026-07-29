@@ -4,7 +4,9 @@ use crate::paths::display_relative;
 
 const CANONICAL_WRAPPER: &str = "plugins/codexy/hooks/codexy-authorized-squash-merge.sh";
 const MAX_SHELL_NESTING: usize = 8;
-const SHELL_OPTIONS: &str = "abcefhiklmnoprstuvxBCDEHOT";
+
+#[path = "shell_options.rs"]
+mod shell_options;
 
 pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
     let mut paths = BTreeSet::new();
@@ -42,7 +44,7 @@ fn unguarded_segment(segment: &str, depth: usize) -> bool {
     let Some(tokens) = tokens else {
         return true;
     };
-    if let Some(program) = shell_program(tokens) {
+    if let Some(program) = shell_options::program(tokens) {
         return depth >= MAX_SHELL_NESTING || unguarded_merge_at(program, depth + 1);
     }
     tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
@@ -58,36 +60,6 @@ fn executable_tokens<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
     };
     let tokens = strip_assignments(tokens);
     strip_command(tokens)
-}
-
-fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
-    if !matches!(tokens.first(), Some(&"sh" | &"bash" | &"dash" | &"zsh")) {
-        return None;
-    }
-    let mut rest = &tokens[1..];
-    let mut command = false;
-    while let Some((option, after)) = rest.split_first() {
-        if *option == "--" {
-            return command.then(|| after.first().copied()).flatten();
-        }
-        if command && !option.starts_with(['-', '+']) {
-            return Some(*option);
-        }
-        let flags = option
-            .strip_prefix('-')
-            .or_else(|| option.strip_prefix('+'))?;
-        if flags.is_empty() || !flags.chars().all(|flag| SHELL_OPTIONS.contains(flag)) {
-            return None;
-        }
-        let operands = flags
-            .chars()
-            .filter(|flag| matches!(flag, 'o' | 'O'))
-            .count();
-        let rest_after_operands = after.get(operands..)?;
-        command |= flags.contains('c');
-        rest = rest_after_operands;
-    }
-    None
 }
 
 fn command_segments(line: &str) -> Vec<&str> {
