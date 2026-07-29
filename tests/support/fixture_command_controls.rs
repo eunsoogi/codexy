@@ -62,6 +62,27 @@ fn windows_fixture_companion_selects_only_a_paired_shell_entrypoint()
 }
 
 #[test]
+fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = tempfile::tempdir()?;
+    let command = temp.path().join("fixture command with spaces");
+    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf fixture\\n")?;
+    #[cfg(windows)]
+    {
+        assert!(!command.exists());
+        assert!(command.with_extension("cmd").is_file());
+        assert!(command.with_extension("sh").is_file());
+    }
+    #[cfg(not(windows))]
+    {
+        let source = std::fs::read_to_string(command)?;
+        assert!(source.contains("CODEXY_FIXTURE_COMMAND_TRACE"));
+        assert!(source.ends_with("printf fixture\n"));
+    }
+    Ok(())
+}
+
+#[test]
 fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

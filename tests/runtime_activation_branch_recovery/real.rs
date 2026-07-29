@@ -7,7 +7,7 @@ use std::{
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
-use crate::support::{FixtureCommand, make_executable};
+use crate::support::{FixtureCommand, write_posix_fixture_command};
 
 mod metadata;
 
@@ -57,7 +57,7 @@ struct Fixture {
 impl Fixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        let repo = temp.path().join("repo");
+        let repo = temp.path().join("repo with spaces");
         let archive = temp.path().join("repo.tar");
         fs::create_dir(&repo)?;
         command(
@@ -98,11 +98,9 @@ impl Fixture {
                 .args(["--bootstrap-version", "1.3.0"])
                 .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
-        command(
-            Command::new(repo.join("scripts/sync-plugin-version"))
-                .args(["--version", "1.3.0"])
-                .current_dir(&repo),
-        )?;
+        let mut sync = FixtureCommand::new(repo.join("scripts/sync-plugin-version"));
+        sync.args(["--version", "1.3.0"]).current_dir(&repo);
+        command(&mut sync)?;
         git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
         git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
         git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
@@ -111,7 +109,7 @@ impl Fixture {
         git(&repo, &["commit", "-m", "activation"])?;
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;
-        executable(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;
+        write_posix_fixture_command(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;
         Ok(Self {
             _temp: temp,
             repo,
@@ -121,20 +119,24 @@ impl Fixture {
     }
 
     fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        Ok(FixtureCommand::new(self.repo.join("scripts/verify-runtime-activation-branch"))
+        let host_path = std::env::var_os("PATH").ok_or("PATH")?;
+        let mut paths = vec![self.bin.clone()];
+        paths.extend(std::env::split_paths(&host_path));
+        let mut command = FixtureCommand::new(
+            self.repo.join("scripts/verify-runtime-activation-branch"),
+        );
+        command
             .args(["activation", base, version])
             .arg(&self.receipt)
-            .current_dir(&self.repo)
-            .env(
-                "PATH",
-                format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
-            )
+            .current_dir(&self.repo);
+        command
+            .env_path_list("PATH", paths)
             .env("CODEXY_TEST_MODE", "1")
-            .env(
+            .env_path(
                 "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),
-            )
-            .output()?)
+            );
+        Ok(command.output()?)
     }
 
     fn activate(&self, root: &Path, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
@@ -237,9 +239,4 @@ fn command(command: &mut Command) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Err(String::from_utf8_lossy(&output.stderr).into_owned().into())
     }
-}
-
-fn executable(path: &Path, source: &str) -> std::io::Result<()> {
-    fs::write(path, source)?;
-    make_executable(path)
 }

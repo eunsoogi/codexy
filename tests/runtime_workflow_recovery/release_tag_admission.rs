@@ -2,7 +2,7 @@ use std::{env, fs, path::Path, path::PathBuf, process::Output};
 
 use serde_yaml::Value;
 
-use crate::support::{self, FixtureCommand as Command};
+use crate::support::{self, FixtureCommand as Command, write_posix_fixture_command};
 
 const STAGING: &str = "0123456789abcdef0123456789abcdef01234567";
 const ACTIVATION: &str = "89abcdef0123456789abcdef0123456789abcdef";
@@ -37,6 +37,21 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api() -> Result<(
     Ok(())
 }
 
+#[test]
+fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "concurrent wrong tag unexpectedly admitted");
+    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
+    assert_eq!(fixture.remote_state()?, "wrong", "API did not set wrong remote ref");
+    assert_eq!(fixture.release_calls()?, 0, "wrong tag reached release creation");
+    assert_eq!(fixture.command_calls("git")?, 6, "host git fallthrough");
+    assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
+    assert_eq!(fixture.command_calls("gh")?, 1, "host gh fallthrough");
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug)]
 enum RemoteTag { Wrong, Unpeelable, Changed, Exact, Absent, ConcurrentExact, ConcurrentWrong, ConcurrentUnpeelable, ApiAuth, ApiFailure }
 
@@ -58,8 +73,7 @@ impl Fixture {
         fs::write(root.join("dist/runtime-release-receipt.json"), "{}")?;
         for (name, body) in [("git", git_fixture()), ("jq", jq_fixture()), ("gh", gh_fixture())] {
             let path = bin.join(name);
-            fs::write(&path, body)?;
-            support::make_executable(&path)?;
+            write_posix_fixture_command(&path, body)?;
         }
         let script = root.join("release-step.sh");
         fs::write(&script, format!("#!/bin/sh\nset -e\n{}", release_step()?))?;
@@ -86,6 +100,7 @@ impl Fixture {
             .env_path("RELEASE_CALLS", &self.calls)
             .env_path("GIT_PUSH_CALLS", &self.pushes)
             .env_path("API_CALLS", &self.api_calls)
+            .env_path("CODEXY_FIXTURE_COMMAND_TRACE", self.root.join("command-trace"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("GH_TOKEN", "fixture-token")
             .env("STAGING_SOURCE_COMMIT", STAGING)
@@ -97,6 +112,13 @@ impl Fixture {
     fn release_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.calls) }
     fn git_push_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.pushes) }
     fn api_calls(&self) -> Result<usize, Box<dyn std::error::Error>> { lines(&self.api_calls) }
+    fn command_calls(&self, name: &str) -> Result<usize, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join("command-trace"))?
+            .lines().filter(|line| *line == name).count())
+    }
+    fn remote_state(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join("remote-state"))?.trim().to_owned())
+    }
 }
 
 fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> { Ok(fs::read_to_string(path).unwrap_or_default().lines().count()) }
