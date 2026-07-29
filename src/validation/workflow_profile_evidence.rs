@@ -19,7 +19,6 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             continue;
         }
         if indented_code(raw) {
-            active_markdown(raw, &mut comment);
             lines.push(String::new());
             continue;
         }
