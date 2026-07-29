@@ -9,10 +9,13 @@ const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
 fn materializer_binds_staging_source_to_later_activation_commit()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = LifecycleFixture::new()?;
+    assert!(fixture.admits_activation(&fixture.activation_commit)?);
     assert!(fixture.materialize(&fixture.staging_commit, &fixture.activation_commit)?.status.success());
     assert!(!fixture.materialize(&"e".repeat(40), &fixture.activation_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.activation_commit, &fixture.staging_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.staging_commit, &"f".repeat(40))?.status.success());
+    fixture.advance_protected_main()?;
+    assert!(!fixture.admits_activation(&fixture.activation_commit)?);
     Ok(())
 }
 
@@ -27,10 +30,16 @@ struct LifecycleFixture {
 impl LifecycleFixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let temporary = tempfile::tempdir()?;
-        let root = temporary.path().to_path_buf();
+        let remote = temporary.path().join("protected.git");
+        assert!(Command::new("git").args(["init", "--bare"]).arg(&remote).status()?.success());
+        let root = temporary.path().join("work");
+        fs::create_dir(&root)?;
         git(&root, &["init"])?;
+        git(&root, &["branch", "-M", "main"])?;
         git(&root, &["config", "user.email", "fixture@example.test"])?;
         git(&root, &["config", "user.name", "fixture"])?;
+        let remote = remote.to_string_lossy().into_owned();
+        git(&root, &["remote", "add", "origin", &remote])?;
         let plugin = root.join("plugins/codexy");
         let staged = root.join("staged/plugins/codexy");
         for path in [&plugin, &staged] {
@@ -42,6 +51,7 @@ impl LifecycleFixture {
         git(&root, &["add", "."])?;
         git(&root, &["commit", "-m", "stage source"])?;
         let staging_commit = git(&root, &["rev-parse", "HEAD"])?;
+        git(&root, &["push", "-u", "origin", "main"])?;
         let candidate = candidate(&staging_commit);
         let bytes = serde_json::to_vec(&candidate)?;
         fs::write(staged.join("runtime-candidate.json"), &bytes)?;
@@ -56,6 +66,7 @@ impl LifecycleFixture {
         git(&root, &["add", "."])?;
         git(&root, &["commit", "-m", "activate source"])?;
         let activation_commit = git(&root, &["rev-parse", "HEAD"])?;
+        git(&root, &["push", "origin", "main"])?;
         Ok(Self { _temporary: temporary, root, archive, staging_commit, activation_commit })
     }
 
@@ -68,6 +79,20 @@ impl LifecycleFixture {
             .env("STAGING_SOURCE_COMMIT", staging)
             .env("ACTIVATION_COMMIT", activation)
             .output()
+    }
+
+    fn admits_activation(&self, activation: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        git(&self.root, &["fetch", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main"])?;
+        Ok(git(&self.root, &["rev-parse", "origin/main"])? == activation)
+    }
+
+    fn advance_protected_main(&self) -> Result<(), Box<dyn std::error::Error>> {
+        git(&self.root, &["checkout", "main"])?;
+        fs::write(self.root.join("protected-main-race"), b"advanced\n")?;
+        git(&self.root, &["add", "."])?;
+        git(&self.root, &["commit", "-m", "advance protected main"])?;
+        git(&self.root, &["push", "origin", "main"])?;
+        Ok(())
     }
 }
 
