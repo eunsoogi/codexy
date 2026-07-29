@@ -187,6 +187,11 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         r#"bash -lc -- 'gh pr merge "$pr_number" --squash'"#,
         r#"bash --noprofile -c 'gh pr merge "$pr_number" --squash'"#,
         r#"bash --rcfile /dev/null -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -lcO extglob"#,
+        r#"bash -lc -O"#,
+        r#"bash -lc -q 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -q -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -oc 'gh pr merge "$pr_number" --squash'"#,
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
@@ -218,11 +223,6 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         r#"bash -lc -O extglob 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
         r#"bash -lc -o pipefail 'echo "gh pr merge $pr_number --squash"'"#,
         r#"bash --noprofile -c 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
-        r#"bash -q -c 'gh pr merge "$pr_number" --squash'"#,
-        r#"bash -oc 'gh pr merge "$pr_number" --squash'"#,
-        "bash -lcO extglob",
-        "bash -lc -O",
-        r#"bash -lc -q 'gh pr merge "$pr_number" --squash'"#,
         r#"bash -- -c 'gh pr merge "$pr_number" --squash'"#,
         "{gh pr merge \"$pr_number\" --squash;}",
         "if true; then ! gh pr view \"$pr_number\"; fi",
@@ -231,7 +231,7 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
         let route_text = format!("{}\n~~~shell\n{route_line}\n~~~\n", std::fs::read_to_string(&route)?);
         std::fs::write(route, route_text)?;
-        assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+        assert!(codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty(), "{route_line}");
     }
     Ok(())
 }

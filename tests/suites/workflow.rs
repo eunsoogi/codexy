@@ -49,6 +49,9 @@ mod validator_merge_authorization;
 #[path = "../validator_merge_authorization_policy.rs"]
 mod validator_merge_authorization_policy;
 
+#[path = "../validator_merge_authorization_shell_options.rs"]
+mod validator_merge_authorization_shell_options;
+
 #[path = "../validator_installed_readiness_guard.rs"]
 mod validator_installed_readiness_guard;
 

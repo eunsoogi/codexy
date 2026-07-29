@@ -44,8 +44,12 @@ fn unguarded_segment(segment: &str, depth: usize) -> bool {
     let Some(tokens) = tokens else {
         return true;
     };
-    if let Some(program) = shell_options::program(tokens) {
-        return depth >= MAX_SHELL_NESTING || unguarded_merge_at(program, depth + 1);
+    match shell_options::invocation(tokens) {
+        shell_options::Invocation::Command(program) => {
+            return depth >= MAX_SHELL_NESTING || unguarded_merge_at(program, depth + 1);
+        }
+        shell_options::Invocation::Invalid => return true,
+        shell_options::Invocation::NotShell | shell_options::Invocation::Safe => {}
     }
     tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
 }
