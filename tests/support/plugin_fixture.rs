@@ -37,6 +37,7 @@ pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("codexy");
         super::copy_dir(source_root(), &root)?;
+        materialize_admission_runtime_suite(&root)?;
         Ok(PluginFixture::from_parts(temp, root))
     }
 }
@@ -71,6 +72,7 @@ pub(crate) fn copy_plugin_fixture_into_with_mutable_files(
     }
     super::profile_metrics::record("plugin_fixture");
     super::plugin_fixture_copy::materialize(source_root(), target, mutable_files)?;
+    materialize_admission_runtime_suite(target)?;
     record_fixture_mutable_files(target, mutable_files);
     Ok(())
 }
@@ -85,6 +87,7 @@ fn materialize_fixture(mutable_files: &[&Path]) -> std::io::Result<PluginFixture
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("codexy");
     super::plugin_fixture_copy::materialize(source_root(), &root, mutable_files)?;
+    materialize_admission_runtime_suite(&root)?;
     record_fixture_mutable_files(&root, mutable_files);
     Ok(PluginFixture::from_parts(temp, root))
 }
@@ -120,6 +123,18 @@ fn normalized_relative_file(path: &Path) -> PathBuf {
 
 fn source_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy")
+}
+
+pub(crate) fn materialize_admission_runtime_suite(plugin_root: &Path) -> std::io::Result<()> {
+    let repository = plugin_root.parent().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "fixture plugin root needs a parent",
+        )
+    })?;
+    let suite = repository.join("tests/suites/all.rs");
+    std::fs::create_dir_all(suite.parent().expect("suite parent"))?;
+    std::fs::write(suite, "// admission runtime suite fixture\n")
 }
 
 fn validate_relative_file(relative: &Path) -> std::io::Result<()> {

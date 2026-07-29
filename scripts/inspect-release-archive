@@ -62,6 +62,8 @@ PY
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
+mkdir -p "$extract_root/tests/suites"
+: > "$extract_root/tests/suites/all.rs"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 python3 - "$release_contract" "$release_state" >"$tmp_dir/expected-runtime" <<'PY'
@@ -99,6 +101,8 @@ while IFS= read -r relative; do
 done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
+mkdir -p "$tmp_dir/source-check/tests/suites"
+: > "$tmp_dir/source-check/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
 if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
