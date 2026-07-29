@@ -48,13 +48,15 @@ pub(super) fn check_evidence(plugin_root: &Path, evidence: &str) -> Vec<String> 
         errors.push("formal evidence triggers require the strict workflow profile".to_owned());
     }
     if formal_trigger
-        && super::child_lane_classification_setup::formal_child_classification_complete_index_before(
+        && super::child_lane_classification_setup::formal_classification_complete_index_before(
             &lines,
             lines.len(),
         )
         .is_none()
     {
-        errors.push("strict workflow evidence requires the formal task-classification contract".to_owned());
+        errors.push(
+            "strict workflow evidence requires the formal task-classification contract".to_owned(),
+        );
     }
     errors
 }

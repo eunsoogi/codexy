@@ -80,6 +80,37 @@ fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
 }
 
 #[test]
+fn strict_formal_profiles_are_owner_neutral_but_child_setup_is_not() -> TestResult {
+    for (source, owner) in [
+        ("current-thread-classified", "parent-owned"),
+        ("current-thread-classified", "external/human-owned"),
+        ("current-thread-classified", "current-thread-owned"),
+        ("parent-supplied", "child-owned"),
+    ] {
+        assert_profile_result(
+            &format!("strict profile accepts valid {owner} classification"),
+            &format!("Workflow profile: strict\n{}", formal_classification_for(source, owner)),
+            true,
+        )?;
+    }
+    let invalid_owner = formal_classification_for("current-thread-classified", "parent-owned")
+        .replacen("Lane ownership: parent-owned", "Lane ownership: unknown", 1);
+    assert_profile_result(
+        "strict profile rejects invalid ownership text",
+        &format!("Workflow profile: strict\n{invalid_owner}"),
+        false,
+    )?;
+    assert_profile_result(
+        "parent-owned strict classification cannot authorize child setup",
+        &format!(
+            "Workflow profile: strict\n{}\nChild branch codexy/500-child was created after classification.",
+            formal_classification_for("current-thread-classified", "parent-owned")
+        ),
+        false,
+    )
+}
+
+#[test]
 fn workflow_profile_metadata_is_current_lane_active_markdown_and_unambiguous() -> TestResult {
     assert_profile_result(
         "numbered trigger with rationale cannot downgrade light work",
@@ -173,5 +204,15 @@ pub(super) fn assert_profile_result(
 }
 
 pub(super) fn formal_classification() -> &'static str {
-    "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+    formal_classification_for("current-thread-classified", "current-thread-owned")
+}
+
+fn formal_classification_for(source: &str, owner: &str) -> &'static str {
+    match (source, owner) {
+        ("current-thread-classified", "parent-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative parent-owned because the parent owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("current-thread-classified", "external/human-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: external/human-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative external/human-owned because an external owner owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("current-thread-classified", "current-thread-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("parent-supplied", "child-owned") => "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        _ => panic!("test fixture only supports valid ownership records"),
+    }
 }
