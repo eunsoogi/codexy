@@ -64,7 +64,7 @@ fn receipt_value() -> Value {
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": "a".repeat(40)},
-        "artifact": {"tag": "runtime-candidate-1.3.0"},
+        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": digest}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
@@ -77,7 +77,7 @@ fn receipt_value() -> Value {
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1",
         "candidate": candidate,
-        "artifact": {"url": "https://github.com/eunsoogi/codexy/releases/download/runtime-candidate-1.3.0/codexy-marketplace-plugin.tar.gz", "sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
+        "artifact": {"sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
         "provenance": {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"}
     })
 }

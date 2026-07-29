@@ -147,9 +147,9 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
     )
     .expect("release contract JSON");
     release["state"] = serde_json::json!("candidate-proven");
-    release["artifact"]["tag"] = serde_json::json!("runtime-candidate-inspector-proof");
+    release["artifact"]["tag"] = serde_json::json!("v1.3.0");
     release["artifact"]["url"] = serde_json::json!(
-        "https://github.com/eunsoogi/codexy/releases/download/runtime-candidate-inspector-proof/codexy-marketplace-plugin.tar.gz"
+        "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-marketplace-plugin.tar.gz"
     );
     release["artifact"]["sha256"] = serde_json::json!("f".repeat(64));
     for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
@@ -168,7 +168,7 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
     let candidate = serde_json::json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": release["source"].clone(),
-        "artifact": {"tag": release["artifact"]["tag"].clone()},
+        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": release["compatibility"].clone(),
         "platforms": release["platforms"].clone(),
     });

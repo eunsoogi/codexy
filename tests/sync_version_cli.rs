@@ -142,6 +142,7 @@ pub(super) fn archive_repository(
     for relative in [
         "Cargo.toml",
         "Cargo.lock",
+        ".agents/plugins/release-publish-contract.json",
         "packages/getcodexy/pyproject.toml",
         "src/version.rs",
         "src/version/admission.rs",

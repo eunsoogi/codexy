@@ -1,3 +1,5 @@
+mod runtime;
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -28,6 +30,7 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     )?;
     require_string(contract.get("name"), "name", &contract_path)?;
     check_current_marketplace_target(&contract, &contract_path)?;
+    runtime::check(&contract, &contract_path)?;
     check_package_contract(&contract, &contract_path, platforms)?;
     check_source_marketplace_mode(&contract, &contract_path)?;
     check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))?;
