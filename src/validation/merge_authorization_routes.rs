@@ -4,6 +4,7 @@ use crate::paths::display_relative;
 
 const CANONICAL_WRAPPER: &str = "plugins/codexy/hooks/codexy-authorized-squash-merge.sh";
 const MAX_SHELL_NESTING: usize = 8;
+const SHELL_OPTIONS: &str = "abcefhiklmnoprstuvxBCDEHOT";
 
 pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
     let mut paths = BTreeSet::new();
@@ -18,7 +19,7 @@ pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
         if command_blocks(&text)
             .iter()
             .flatten()
-            .any(|line| unguarded_merge(line))
+            .any(|line| unguarded_merge_at(line, 0))
         {
             errors.push(format!(
                 "{} must validate authoritative merge authorization before mutation",
@@ -26,10 +27,6 @@ pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
             ));
         }
     }
-}
-
-fn unguarded_merge(line: &str) -> bool {
-    unguarded_merge_at(line, 0)
 }
 
 fn unguarded_merge_at(line: &str, depth: usize) -> bool {
@@ -67,10 +64,28 @@ fn shell_program<'a>(tokens: &'a [&'a str]) -> Option<&'a str> {
     if !matches!(tokens.first(), Some(&"sh" | &"bash" | &"dash" | &"zsh")) {
         return None;
     }
-    match tokens {
-        [_, "-c", program, ..] => Some(*program),
-        _ => None,
+    let mut rest = &tokens[1..];
+    while let Some((option, after)) = rest.split_first() {
+        let flags = option
+            .strip_prefix('-')
+            .or_else(|| option.strip_prefix('+'))?;
+        if flags.is_empty() || !flags.chars().all(shell_option) {
+            return None;
+        }
+        if flags.contains('c') {
+            return after.first().copied();
+        }
+        rest = if flags.contains('o') || flags.contains('O') {
+            after.get(1..)?
+        } else {
+            after
+        };
     }
+    None
+}
+
+fn shell_option(flag: char) -> bool {
+    SHELL_OPTIONS.contains(flag)
 }
 
 fn command_segments(line: &str) -> Vec<&str> {
@@ -148,7 +163,7 @@ fn shell_words(segment: &str) -> Vec<String> {
 fn strip_controls<'a>(mut tokens: &'a [&'a str]) -> &'a [&'a str] {
     while matches!(
         tokens.first(),
-        Some(&"if" | &"then" | &"while" | &"until" | &"do" | &"!")
+        Some(&"if" | &"then" | &"while" | &"until" | &"do" | &"!" | &"{" | &"}")
     ) {
         tokens = &tokens[1..];
     }

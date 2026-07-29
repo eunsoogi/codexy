@@ -178,7 +178,9 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "if true; then gh pr merge \"$pr_number\" --squash; fi",
         "if true; then ! gh pr merge \"$pr_number\" --squash; fi",
         "while true; do gh pr merge \"$pr_number\" --squash; done",
+        "while true; do { gh pr merge \"$pr_number\" --squash; }; done",
         r#"sh -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -lc 'gh pr merge "$pr_number" --squash'"#,
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
@@ -207,8 +209,15 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "if true; then plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; fi",
         "if true; then ! plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; fi",
         "while true; do plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; done",
+        "while true; do { plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; }; done",
         r#"sh -c 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
         r#"sh -c 'echo "gh pr merge $pr_number --squash"'"#,
+        r#"bash -lc 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
+        r#"bash -lc 'echo "gh pr merge $pr_number --squash"'"#,
+        r#"bash -lc 'gh pr view "$pr_number"'"#,
+        r#"bash -q -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash -- -c 'gh pr merge "$pr_number" --squash'"#,
+        "{gh pr merge \"$pr_number\" --squash;}",
         "if true; then ! gh pr view \"$pr_number\"; fi",
     ] {
         let fixture = fixture()?;
