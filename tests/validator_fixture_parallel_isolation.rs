@@ -5,6 +5,9 @@ use std::sync::{Arc, Barrier};
 
 #[path = "validator_fixture_parallel_isolation/default_fixture.rs"]
 mod default_fixture;
+#[cfg(windows)]
+#[path = "validator_fixture_parallel_isolation/readonly_escape.rs"]
+mod readonly_escape;
 
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()
@@ -187,25 +190,21 @@ fn manifest_aware_fixture_retains_its_declared_mutable_manifest()
 }
 
 #[test]
-fn manifest_aware_materialization_links_only_a_private_readonly_seed()
+fn manifest_aware_materialization_copies_from_a_private_readonly_seed()
 -> Result<(), Box<dyn std::error::Error>> {
     let source = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/plugin_fixture_copy.rs"),
     )?;
 
-    let canonical_boundary = source
-        .split("fn materialize_seed")
-        .next()
-        .ok_or("private fixture seed boundary")?;
-    assert_eq!(canonical_boundary.matches("hard_link").count(), 0);
+    assert_eq!(source.matches("hard_link").count(), 0);
     support::assert_structured_literals(
         &source,
         "private fixture seed boundary",
         &[
             "fn private_seed",
             "fn materialize_seed",
-            "std::fs::hard_link",
-            "fixture_private_seed_link",
+            "std::fs::copy",
+            "fixture_private_seed_copy",
         ],
     );
     let copy_source = std::fs::read_to_string(
