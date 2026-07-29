@@ -76,11 +76,30 @@ fn guard_rejects_debug_assertion_macro_substring_checks() {
 }
 
 #[test]
+fn guard_rejects_assertion_macro_delimiters_and_contains_syntax_variants() {
+    let guarded = "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n";
+    for assertion in [
+        "assert!(skill.contains(\"required policy\"));",
+        "assert! { skill.contains(\"required policy\") };",
+        "assert! [ skill.contains(\"required policy\") ];",
+        "debug_assert!(skill.contains(\"required policy\"));",
+        "debug_assert! { skill.contains(\"required policy\") };",
+        "debug_assert! [ skill.contains(\"required policy\") ];",
+        "assert!(skill . contains(\"required policy\"));",
+        "assert!(skill.\ncontains(\"required policy\"));",
+        "assert!(skill.contains::<&str>(\"required policy\"));",
+    ] {
+        assert_eq!(scan_source(&format!("{guarded}{assertion}")).len(), 1, "{assertion}");
+    }
+}
+
+#[test]
 fn guard_ignores_custom_assertion_names() {
     for source in [
         "custom_assert!(snapshot.contains(\"heading\"));",
         "debug_assertion!(snapshot.contains(\"heading\"));",
         "assert_search_metadata(snapshot.contains(\"heading\"));",
+        "πassert!(snapshot.contains(\"heading\"));",
     ] {
         assert!(scan_source(source).is_empty(), "{source}");
     }

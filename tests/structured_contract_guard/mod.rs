@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 mod identity;
-mod sanitize;
 mod repository;
+mod sanitize;
+mod syntax;
 
 use identity::assertion_identity;
 use sanitize::{sanitize, strip_comments};
+use syntax::{assertions, has_contains_call};
 pub(crate) use repository::{
     comparison_counts, comparison_counts_at, repository_violations, repository_violations_at,
 };
@@ -56,18 +58,6 @@ pub(crate) fn governed_assertions(source: &str) -> Vec<GovernedAssertion> {
         .collect()
 }
 
-fn has_contains_call(text: &str) -> bool {
-    let mut tail = text;
-    while let Some(index) = tail.find(".contains") {
-        let after = &tail[index + ".contains".len()..];
-        if after.trim_start().starts_with('(') {
-            return true;
-        }
-        tail = after;
-    }
-    false
-}
-
 fn governed_bindings(source: &str) -> Vec<String> {
     let mut governed: Vec<String> = Vec::new();
     let mut governed_paths: Vec<String> = Vec::new();
@@ -110,79 +100,6 @@ fn is_governed_path(text: &str) -> bool {
     ]
     .iter()
     .any(|marker| text.contains(marker))
-}
-
-fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
-    let mut found = Vec::new();
-    let mut offset = 0;
-    while let Some(relative) = source[offset..].find("assert") {
-        let start = offset + relative;
-        let Some((macro_start, open)) = assertion_open(source, start) else {
-            offset = start + "assert".len();
-            continue;
-        };
-        if let Some(close) = matching_paren(source, open) {
-            found.push((macro_start, close, &source[open + 1..close]));
-            offset = close + 1;
-        } else {
-            break;
-        }
-    }
-    found
-}
-
-fn assertion_open(source: &str, assert_start: usize) -> Option<(usize, usize)> {
-    let start = source[..assert_start]
-        .strip_suffix("debug_")
-        .map_or(assert_start, str::len);
-    if source[..start]
-        .chars()
-        .next_back()
-        .is_some_and(is_identifier_character)
-    {
-        return None;
-    }
-    let tail = &source[start..];
-    let name = [
-        "debug_assert_eq",
-        "debug_assert_ne",
-        "debug_assert",
-        "assert_eq",
-        "assert_ne",
-        "assert",
-    ]
-        .into_iter()
-        .find(|name| {
-            tail.strip_prefix(name).is_some_and(|after| {
-                !after.chars().next().is_some_and(is_identifier_character)
-            })
-        })?;
-    let after_name = tail[name.len()..].trim_start();
-    let after_bang = after_name.strip_prefix('!')?.trim_start();
-    after_bang
-        .starts_with('(')
-        .then_some((start, source.len() - after_bang.len()))
-}
-
-fn is_identifier_character(character: char) -> bool {
-    character.is_ascii_alphanumeric() || character == '_'
-}
-
-fn matching_paren(source: &str, open: usize) -> Option<usize> {
-    let mut depth = 0;
-    for (relative, character) in source[open..].char_indices() {
-        match character {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(open + relative);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 fn identifiers(text: &str) -> Vec<&str> {
