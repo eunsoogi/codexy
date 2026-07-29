@@ -49,19 +49,21 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
         cwd=root,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
         start_new_session=os.name == "posix",
     )
-    output: list[str] = []
+    output: list[bytes] = []
 
     def stream_output() -> None:
         assert process.stdout is not None
-        for index, line in enumerate(process.stdout):
-            output.append(line)
-            sys.stdout.write(line)
-            if index == 0:
-                sys.stdout.flush()
+        first_line = process.stdout.readline()
+        if first_line:
+            output.append(first_line)
+            sys.stdout.write(first_line.decode("utf-8"))
+            sys.stdout.flush()
+        remaining = process.stdout.read()
+        if remaining:
+            output.append(remaining)
+            sys.stdout.write(remaining.decode("utf-8"))
         sys.stdout.flush()
 
     reader = threading.Thread(target=stream_output, name="cargo-test-output", daemon=True)
@@ -76,7 +78,7 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
         raise
     finally:
         reader.join()
-    output_text = "".join(output)
+    output_text = b"".join(output).decode("utf-8")
     if status == 124:
         return output_text, budget_seconds, 124
     elapsed = time.perf_counter() - started
