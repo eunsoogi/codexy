@@ -7,6 +7,7 @@ mod parse;
 mod path_ops;
 mod python;
 mod resolve;
+mod search;
 pub mod tools;
 
 use std::collections::BTreeSet;
