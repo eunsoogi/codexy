@@ -182,6 +182,38 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
 }
 
 #[test]
+fn strict_signal_negation_is_category_local() -> TestResult {
+    for task_kind in [
+        "no security but release work",
+        "without permission; publication workflow",
+        "not a release, but security review",
+    ] {
+        assert_profile_result(
+            "an affirmative category after a delimiter requires strict proof",
+            &format!("Task kind: {task_kind}"),
+            false,
+        )?;
+    }
+    assert_profile_result(
+        "one negation may cover coordinated categories in its clause",
+        "Task kind: no security or release work",
+        true,
+    )
+}
+
+#[test]
+fn strict_signals_require_exact_category_tokens() -> TestResult {
+    for task_kind in ["secretary notes", "secretarial work"] {
+        assert_profile_result(
+            "a category prefix inside another token remains lightweight",
+            &format!("Task kind: {task_kind}"),
+            true,
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn active_markdown_uses_matching_fence_delimiters() -> TestResult {
     assert_profile_result(
         "mismatched fence markers do not activate historical strict evidence",

@@ -2,9 +2,11 @@ use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_ownership_phrases::metadata_key;
 
-const STRICT_SIGNALS: [&str; 8] = [
+const STRICT_SIGNALS: [&str; 10] = [
     "destructive",
     "security",
+    "secret",
+    "secrets",
     "permission",
     "high-risk",
     "release",
@@ -62,26 +64,62 @@ fn fence_marker(line: &str) -> Option<(u8, usize, &str)> {
 }
 
 fn value_has_strict_signal(value: &str) -> bool {
-    let tokens = value
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
-        .filter(|token| !token.is_empty())
-        .collect::<Vec<_>>();
-    tokens.iter().enumerate().any(|(index, token)| {
-        !negated(&tokens, index)
-            && (STRICT_SIGNALS.contains(token)
-                || token.starts_with("secret")
-                || matches!(
-                    (*token, tokens.get(index + 1).copied()),
-                    ("high-consequence", Some("external-state"))
-                ))
+    category_clauses(value).iter().any(|tokens| {
+        tokens.iter().enumerate().any(|(index, token)| {
+            !negated(tokens, index)
+                && (STRICT_SIGNALS.contains(&token.as_str())
+                    || matches!(
+                        (token.as_str(), tokens.get(index + 1).map(String::as_str)),
+                        ("high-consequence", Some("external-state"))
+                    ))
+        })
     })
 }
 
-fn negated(tokens: &[&str], index: usize) -> bool {
+fn category_clauses(value: &str) -> Vec<Vec<String>> {
+    let mut clauses = vec![Vec::new()];
+    let mut token = String::new();
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() || character == '-' {
+            token.push(character);
+            continue;
+        }
+        finish_token(&mut clauses, &mut token);
+        if matches!(character, ',' | ';' | '.' | '!' | '?') {
+            start_clause(&mut clauses);
+        }
+    }
+    finish_token(&mut clauses, &mut token);
+    clauses
+}
+
+fn finish_token(clauses: &mut Vec<Vec<String>>, token: &mut String) {
+    if token.is_empty() {
+        return;
+    }
+    if matches!(token.as_str(), "but" | "yet" | "however") {
+        start_clause(clauses);
+    } else {
+        clauses
+            .last_mut()
+            .expect("one clause exists")
+            .push(std::mem::take(token));
+        return;
+    }
+    token.clear();
+}
+
+fn start_clause(clauses: &mut Vec<Vec<String>>) {
+    if clauses.last().is_some_and(|clause| !clause.is_empty()) {
+        clauses.push(Vec::new());
+    }
+}
+
+fn negated(tokens: &[String], index: usize) -> bool {
     tokens[index].starts_with("non-")
         || tokens[..index]
             .iter()
             .rev()
             .take(3)
-            .any(|token| matches!(*token, "no" | "not" | "without" | "non"))
+            .any(|token| matches!(token.as_str(), "no" | "not" | "without" | "non"))
 }
