@@ -114,6 +114,31 @@ fn reports_a_governed_assertion_added_after_the_merge_base() {
 }
 
 #[test]
+fn reports_a_substring_assertion_after_an_assert_prefixed_helper_call() {
+    let fixture = git_fixture();
+    fixture.write("tests/control.rs", "fn control() {}\n");
+    fixture.commit_all("base control");
+    fixture.git(&["branch", "-M", "main"]);
+    fixture.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    fixture.git(&["checkout", "-b", "topic"]);
+    fixture.write(
+        "tests/parsed_value.rs",
+        concat!(
+            "assert_search_metadata(&first, 1)?;\n",
+            "assert!(first[\"matches\"][0].as_str()",
+            ".is_some_and(|line| line.contains(\"ENTRY\")));\n",
+        ),
+    );
+    fixture.commit_all("topic adds parsed-value substring assertion");
+
+    assert_eq!(
+        repository_violations_at(fixture.root())
+            .expect("guard must reject the parsed-value substring assertion"),
+        ["tests/parsed_value.rs: line 2 receiver `first`"]
+    );
+}
+
+#[test]
 fn rejects_a_same_line_assertion_body_change_after_the_merge_base() {
     let fixture = git_fixture();
     fixture.write(
