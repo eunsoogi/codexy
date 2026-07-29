@@ -98,10 +98,16 @@ impl Fixture {
                 .args(["--bootstrap-version", "1.3.0"])
                 .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
+        command(
+            Command::new(repo.join("scripts/sync-plugin-version"))
+                .args(["--version", "1.3.0"])
+                .current_dir(&repo),
+        )?;
         git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
         git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
         git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
         git(&repo, &["add", "plugins/codexy/runtime-release.json", "src/version/bootstrap.rs"])?;
+        git(&repo, &["add", "Cargo.toml", "Cargo.lock"])?;
         git(&repo, &["commit", "-m", "activation"])?;
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;

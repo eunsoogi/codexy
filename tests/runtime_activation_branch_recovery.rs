@@ -9,7 +9,9 @@ use crate::support::{FixtureCommand, make_executable};
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
 
-const AUTHORIZED: [&str; 8] = [
+const AUTHORIZED: [&str; 10] = [
+    "Cargo.lock",
+    "Cargo.toml",
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
     "plugins/codexy/.codex-plugin/plugin.json",
@@ -28,6 +30,7 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
         Change::WrapperDrift,
         Change::BootstrapDrift,
         Change::ReleaseContractDrift,
+        Change::CargoVersionDrift,
         Change::Extra,
         Change::Missing,
     ] {
@@ -53,6 +56,7 @@ enum Change {
     WrapperDrift,
     BootstrapDrift,
     ReleaseContractDrift,
+    CargoVersionDrift,
     Extra,
     Missing,
 }
@@ -80,17 +84,20 @@ impl Fixture {
             write(&repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
+        fs::create_dir_all(repo.join("scripts"))?;
+        fake_sync_version(&repo.join("scripts/sync-plugin-version"))?;
         git(&repo, &["add", "."])?;
         git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
         copy_tree(&expected, &repo)?;
         match change {
             Change::Exact => {}
-            Change::WrapperDrift => write(&repo, AUTHORIZED[3], b"drift\n")?,
-            Change::BootstrapDrift => write(&repo, AUTHORIZED[7], b"drift\n")?,
-            Change::ReleaseContractDrift => write(&repo, AUTHORIZED[1], b"drift\n")?,
+            Change::WrapperDrift => write(&repo, "plugins/codexy/mcp/codexy-mcp-codegraph", b"drift\n")?,
+            Change::BootstrapDrift => write(&repo, "src/version/bootstrap.rs", b"drift\n")?,
+            Change::ReleaseContractDrift => write(&repo, ".agents/plugins/release-publish-contract.json", b"drift\n")?,
+            Change::CargoVersionDrift => write(&repo, "Cargo.toml", b"drift\n")?,
             Change::Extra => write(&repo, "docs/extra.md", b"extra\n")?,
-            Change::Missing => fs::remove_file(repo.join(AUTHORIZED[5]))?,
+            Change::Missing => fs::remove_file(repo.join("plugins/codexy/runtime-candidate.json"))?,
         }
         git(&repo, &["add", "-A"])?;
         git(&repo, &["commit", "-m", "activation"])?;
@@ -198,6 +205,19 @@ for path in \
   src/version/bootstrap.rs
 do
   mkdir -p "$root/$(dirname "$path")"
+  cp "$EXPECTED_ROOT/$path" "$root/$path"
+done
+"##,
+    )
+}
+
+fn fake_sync_version(path: &Path) -> std::io::Result<()> {
+    executable(
+        path,
+        r##"#!/bin/sh
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+for path in Cargo.toml Cargo.lock; do
   cp "$EXPECTED_ROOT/$path" "$root/$path"
 done
 "##,

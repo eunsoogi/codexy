@@ -6,6 +6,8 @@ base="${2:-origin/main}"
 bootstrap_version="${3:?bootstrap version is required}"
 receipt="${4:?candidate receipt is required}"
 expected="$(printf '%s\n' \
+  Cargo.lock \
+  Cargo.toml \
   .agents/plugins/marketplace.json \
   .agents/plugins/release-publish-contract.json \
   plugins/codexy/.codex-plugin/plugin.json \
@@ -42,6 +44,12 @@ fi
   --repo-root "$expected_root" \
   --bootstrap-version "$bootstrap_version" \
   --candidate-receipt "$receipt"
+sync_version="$expected_root/scripts/sync-plugin-version"
+test -f "$sync_version" && test ! -L "$sync_version" && test -x "$sync_version" || {
+  printf '%s\n' "verified base is missing its version-selection contract" >&2
+  exit 1
+}
+"$sync_version" --version "$bootstrap_version"
 for path in $expected; do
   test -f "$path" && test ! -L "$path"
   test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
