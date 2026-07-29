@@ -7,14 +7,15 @@ fn run_with_evidence(
     plugin_root: &std::path::Path,
     evidence_root: &std::path::Path,
 ) -> std::process::Output {
-    Command::new(
+    let mut command = Command::new(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
-    )
-    .arg(archive)
-    .arg(plugin_root)
-    .env("CODEXY_ARCHIVE_EVIDENCE_ROOT", evidence_root)
-    .output()
-    .expect("archive gate should start")
+    );
+    command
+        .arg_path(archive)
+        .arg_path(plugin_root)
+        .env_path("CODEXY_ARCHIVE_EVIDENCE_ROOT", evidence_root)
+        .output()
+        .expect("archive gate should start")
 }
 
 fn archive_fixture(name: &str) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
