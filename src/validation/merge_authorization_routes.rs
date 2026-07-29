@@ -87,6 +87,7 @@ fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
     match tokens {
         ["if", "!", rest @ ..] => rest,
         ["if", rest @ ..] => rest,
+        ["!" | "then", rest @ ..] => rest,
         _ => tokens,
     }
 }

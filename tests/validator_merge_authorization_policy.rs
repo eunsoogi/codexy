@@ -173,6 +173,8 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "false || gh pr merge \"$pr_number\" --squash",
         "if gh pr merge \"$pr_number\" --squash; then exit 1; fi",
         "command gh pr merge \"$pr_number\" --squash",
+        "! gh pr merge \"$pr_number\" --squash",
+        "if true; then gh pr merge \"$pr_number\" --squash; fi",
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
@@ -194,6 +196,8 @@ fn policy_rejects_statement_prefix_routes_and_allows_quoted_output() -> Result<(
         "env -- plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "command plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
         "if plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; then exit 0; fi",
+        "! plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"",
+        "if true; then plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr \"$pr_number\"; fi",
     ] {
         let fixture = fixture()?;
         let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
