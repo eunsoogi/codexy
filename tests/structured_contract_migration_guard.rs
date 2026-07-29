@@ -94,6 +94,26 @@ fn guard_rejects_assertion_macro_delimiters_and_contains_syntax_variants() {
 }
 
 #[test]
+fn guard_rejects_function_pointer_turbofish_and_raw_contains_identifiers() {
+    let guarded = "let skill = std::fs::read_to_string(\"plugins/codexy/skills/demo/SKILL.md\")?;\n";
+    for assertion in [
+        "assert!(skill.contains::<fn(char) -> bool>(char::is_whitespace));",
+        "assert!(skill.contains::<Option<fn(char) -> Vec<bool>>>(None));",
+        "assert!(skill.r#contains(\"required policy\"));",
+        "assert!(skill.r#contains::<&str>(\"required policy\"));",
+    ] {
+        assert_eq!(scan_source(&format!("{guarded}{assertion}")).len(), 1, "{assertion}");
+    }
+
+    for assertion in [
+        "assert!(skill.contains::<fn(char) -> bool>);",
+        "assert!(skill.r#contains_more(\"required policy\"));",
+    ] {
+        assert!(scan_source(&format!("{guarded}{assertion}")).is_empty(), "{assertion}");
+    }
+}
+
+#[test]
 fn guard_ignores_custom_assertion_names() {
     for source in [
         "custom_assert!(snapshot.contains(\"heading\"));",

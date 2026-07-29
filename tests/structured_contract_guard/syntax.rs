@@ -6,6 +6,7 @@ const ASSERTION_MACROS: [&str; 6] = [
     "assert_ne",
     "assert",
 ];
+const CONTAINS_MEMBER_NAMES: [&str; 2] = ["r#contains", "contains"];
 
 pub(super) fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
     let mut found = Vec::new();
@@ -29,14 +30,24 @@ pub(super) fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
 pub(super) fn has_contains_call(text: &str) -> bool {
     let compact: String = text.chars().filter(|character| !character.is_whitespace()).collect();
     let mut tail = compact.as_str();
-    while let Some(index) = tail.find(".contains") {
-        let after = &tail[index + ".contains".len()..];
-        if after.starts_with('(') || turbofish_call(after) {
+    while let Some(index) = tail.find('.') {
+        let after_dot = &tail[index + 1..];
+        if contains_member_call(after_dot) {
             return true;
         }
-        tail = after;
+        tail = after_dot;
     }
     false
+}
+
+fn contains_member_call(text: &str) -> bool {
+    let Some(after_name) = CONTAINS_MEMBER_NAMES
+        .into_iter()
+        .find_map(|name| text.strip_prefix(name))
+    else {
+        return false;
+    };
+    after_name.starts_with('(') || turbofish_call(after_name)
 }
 
 fn assertion_open(source: &str, assert_start: usize) -> Option<(usize, usize)> {
@@ -69,7 +80,7 @@ fn turbofish_call(after: &str) -> bool {
     for (index, character) in tail.char_indices() {
         match character {
             '<' => depth += 1,
-            '>' => {
+            '>' if !tail[..index].ends_with('-') => {
                 depth -= 1;
                 if depth == 0 {
                     return tail[index + 1..].starts_with('(');
