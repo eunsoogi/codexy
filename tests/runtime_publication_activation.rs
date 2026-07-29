@@ -164,7 +164,7 @@ fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn
     support::assert_structured_literals(
         &final_archive,
         "final archive shell paths",
-        &[".arg_path(&fixture.staged_archive)", ".arg_path(&fixture.final_archive)"],
+        &[".arg_path(&self.staged_archive)", ".arg_path(&self.final_archive)"],
     );
     let artifact_download = fs::read_to_string(root.join("tests/runtime_publication_activation/artifact_download.rs"))?;
     support::assert_structured_literals(
@@ -176,6 +176,16 @@ fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn
             ".env_path(\"FAKE_RUN\", run_path)",
             ".env_path(\"FAKE_ARTIFACTS\", artifacts_path)",
             ".env_path(\"FAKE_ZIP\", self.root.join(\"fixture-artifact.zip\"))",
+        ],
+    );
+    let lifecycle = fs::read_to_string(root.join("tests/runtime_publication_activation/final_archive_lifecycle.rs"))?;
+    support::assert_structured_literals(
+        &lifecycle,
+        "lifecycle materializer shell launch",
+        &[
+            "FixtureCommand as Command",
+            ".arg_path(&self.archive)",
+            ".arg_path(self.root.join(\"final.tar.gz\"))",
         ],
     );
     Ok(())

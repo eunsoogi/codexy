@@ -88,8 +88,46 @@ for path in sorted((staged / "mcp").glob("*.exe")):
 Path(os.environ["PROTECTED"]).write_text(json.dumps(protected, sort_keys=True))
 PY
 
-rsync -a --checksum --delete --exclude runtime --exclude 'mcp/*.exe' \
-  "$source_plugin/" "$staged_plugin/"
+SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" python3 - <<'PY'
+import os, shutil
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+
+def excluded(relative: Path) -> bool:
+    return relative.parts[0] == "runtime" or (
+        relative.parent == Path("mcp") and relative.suffix == ".exe"
+    )
+
+def remove(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+for path in sorted(staged.rglob("*"), key=lambda value: len(value.parts), reverse=True):
+    relative = path.relative_to(staged)
+    if not excluded(relative) and not (source / relative).exists():
+        remove(path)
+
+for path in sorted(source.rglob("*"), key=lambda value: len(value.parts)):
+    relative = path.relative_to(source)
+    if excluded(relative):
+        continue
+    target = staged / relative
+    if path.is_dir():
+        if target.exists() and not target.is_dir():
+            remove(target)
+        target.mkdir(parents=True, exist_ok=True)
+    elif path.is_file():
+        if target.exists() and target.is_dir():
+            remove(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+    else:
+        raise SystemExit(f"unsupported activated source entry: {relative}")
+PY
 SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" \
 PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
 import hashlib, json, os
