@@ -14,6 +14,37 @@ fn windows_gate_reconciles_exact_compiled_test_names() -> Result<(), Box<dyn std
 }
 
 #[test]
+fn windows_gate_counts_a_crlf_fragmented_completed_status() -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_case("fragmented")?;
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout)?;
+    let report = report_fields(&stdout);
+    assert_eq!(report.get("coverage-tests"), Some(&vec!["1803", "1803", "PASS"]));
+    assert_eq!(report.get("coverage-missing"), Some(&vec!["0"]));
+    Ok(())
+}
+
+#[test]
+fn windows_gate_rejects_a_fragmented_status_at_true_eof() -> Result<(), Box<dyn std::error::Error>> {
+    assert_rejected_fragmented_case("fragmented-eof", ["1803", "2", "FAIL"], "1801", "0", "0")
+}
+
+#[test]
+fn windows_gate_resets_a_fragmented_status_at_a_new_target() -> Result<(), Box<dyn std::error::Error>> {
+    assert_rejected_fragmented_case("fragmented-new-target", ["1804", "2", "FAIL"], "1802", "0", "0")
+}
+
+#[test]
+fn windows_gate_resets_a_fragmented_status_at_a_complete_status() -> Result<(), Box<dyn std::error::Error>> {
+    assert_rejected_fragmented_case("fragmented-new-status", ["1803", "3", "FAIL"], "1800", "0", "0")
+}
+
+#[test]
+fn windows_gate_rejects_a_foreign_line_without_a_test_prefix() -> Result<(), Box<dyn std::error::Error>> {
+    assert_rejected_fragmented_case("foreign-line", ["1803", "2", "FAIL"], "1801", "0", "0")
+}
+
+#[test]
 fn windows_gate_accounts_for_unrecognized_compiled_targets() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_case("unknown-target")?;
     assert!(output.status.success(), "{output:?}");
@@ -97,7 +128,7 @@ fn run_case_with_commands(
     let cargo = bin.join("cargo");
     std::fs::write(
         &cargo,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\ncase \"$1\" in\nmetadata) [ \"$PROFILE_CASE\" = metadata-fails ] && exit 9; printf '%s\\n' '{\"packages\":[{\"targets\":[{\"kind\":[\"test\"]}]}]}' ;;\ntest) printf '%s\\n' \"     Running unittests src/lib.rs ($PROFILE_LIB_TEST)\" 'test alpha ... ok' 'test panic - should panic ... ok' \"     Running tests/suites/all.rs ($PROFILE_ALL_TEST)\"; case \"$PROFILE_CASE\" in missing) : ;; *) printf '%s\\n' 'test beta ... ok' ;; esac; index=1; while [ \"$index\" -le 1799 ]; do printf 'test generated-%s ... ok\\n' \"$index\"; index=$((index + 1)); done; case \"$PROFILE_CASE\" in unknown-target) printf '%s\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'test custom ... ok' ;; duplicate) printf '%s\\n' 'test beta ... ok' ;; extra) printf '%s\\n' 'test extra ... ok' ;; run-fails) printf '%s\\n' 'test beta ... FAILED'; exit 101 ;; esac; case \"$PROFILE_CASE\" in unstarted-target) : ;; *) printf '%s\\n' \"     Running tests/suites/archive.rs ($PROFILE_ARCHIVE_TEST)\" 'test archive ... ok' ;; esac; case \"$PROFILE_CASE\" in no-summary) : ;; *) printf '%s\\n' 'Finished `test` profile [unoptimized] target(s) in 0.01s' 'test result: ok. 1803 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac ;;\nesac\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\ncase \"$1\" in\nmetadata) [ \"$PROFILE_CASE\" = metadata-fails ] && exit 9; printf '%s\\n' '{\"packages\":[{\"targets\":[{\"kind\":[\"test\"]}]}]}' ;;\ntest) printf '%s\\n' \"     Running unittests src/lib.rs ($PROFILE_LIB_TEST)\" 'test alpha ... ok' 'test panic - should panic ... ok' \"     Running tests/suites/all.rs ($PROFILE_ALL_TEST)\"; case \"$PROFILE_CASE\" in missing) : ;; fragmented) printf 'test beta ... foreign complete line\\r\\nok\\r\\n' ;; fragmented-eof) printf 'test beta ... foreign complete line\\r\\n'; exit 0 ;; fragmented-new-target) printf 'test beta ... foreign complete line\\r\\n'; printf '%s\\r\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'ok'; exit 0 ;; fragmented-new-status) printf 'test beta ... foreign complete line\\r\\ntest generated-1 ... ok\\r\\nok\\r\\n'; exit 0 ;; foreign-line) printf 'foreign complete line\\r\\nok\\r\\n'; exit 0 ;; *) printf '%s\\n' 'test beta ... ok' ;; esac; index=1; while [ \"$index\" -le 1799 ]; do printf 'test generated-%s ... ok\\n' \"$index\"; index=$((index + 1)); done; case \"$PROFILE_CASE\" in unknown-target) printf '%s\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'test custom ... ok' ;; duplicate) printf '%s\\n' 'test beta ... ok' ;; extra) printf '%s\\n' 'test extra ... ok' ;; run-fails) printf '%s\\n' 'test beta ... FAILED'; exit 101 ;; esac; case \"$PROFILE_CASE\" in unstarted-target) : ;; *) printf '%s\\n' \"     Running tests/suites/archive.rs ($PROFILE_ARCHIVE_TEST)\" 'test archive ... ok' ;; esac; case \"$PROFILE_CASE\" in no-summary) : ;; *) printf '%s\\n' 'Finished `test` profile [unoptimized] target(s) in 0.01s' 'test result: ok. 1803 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac ;;\nesac\n",
     )?;
     #[cfg(unix)]
     {
@@ -161,4 +192,22 @@ fn report_fields(output: &str) -> std::collections::BTreeMap<&str, Vec<&str>> {
             fields.next().map(|name| (name, fields.collect()))
         })
         .collect()
+}
+
+fn assert_rejected_fragmented_case(
+    case: &str,
+    coverage_tests: [&str; 3],
+    missing: &str,
+    duplicates: &str,
+    extra: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_case(case)?;
+    assert!(!output.status.success(), "{case}: {output:?}");
+    let stdout = String::from_utf8(output.stdout)?;
+    let report = report_fields(&stdout);
+    assert_eq!(report.get("coverage-tests"), Some(&coverage_tests.to_vec()), "{case}");
+    assert_eq!(report.get("coverage-missing"), Some(&vec![missing]), "{case}");
+    assert_eq!(report.get("coverage-duplicates"), Some(&vec![duplicates]), "{case}");
+    assert_eq!(report.get("coverage-extra"), Some(&vec![extra]), "{case}");
+    Ok(())
 }
