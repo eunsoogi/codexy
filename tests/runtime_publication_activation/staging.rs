@@ -1,6 +1,7 @@
 use crate::support;
 
 use super::{has_dispatch, workflow};
+use super::super::structured_contract_artifacts::TextShape;
 
 #[test]
 fn runtime_staging_uses_authenticated_actions_artifacts_not_candidate_releases()
@@ -17,18 +18,16 @@ fn runtime_staging_uses_authenticated_actions_artifacts_not_candidate_releases()
             "sha256",
         ],
     );
-    for forbidden in [
-        "gh release create",
-        "gh release view",
-        "git tag -a",
-        "git push origin $CANDIDATE_TAG",
-        "releases/download/$CANDIDATE_TAG",
-    ] {
-        assert!(
-            !staging.1.contains(forbidden),
-            "runtime staging must not depend on a non-version release or tag: {forbidden}"
-        );
-    }
+    TextShape::new(&staging.1).assert_absent_concepts(
+        "runtime staging has no public candidate release or tag",
+        &[
+            "gh release create",
+            "gh release view",
+            "git tag -a",
+            "git push origin $CANDIDATE_TAG",
+            "releases/download/$CANDIDATE_TAG",
+        ],
+    );
     Ok(())
 }
 
@@ -47,9 +46,9 @@ fn final_publisher_is_version_only() -> Result<(), Box<dyn std::error::Error>> {
             "codexy-marketplace-plugin.tar.gz",
         ],
     );
-    assert!(
-        !publisher.1.contains("runtime-candidate-"),
-        "final publisher must never create a candidate release or tag"
+    TextShape::new(&publisher.1).assert_absent_concepts(
+        "final publisher has no candidate release or tag",
+        &["runtime-candidate-"],
     );
     Ok(())
 }
