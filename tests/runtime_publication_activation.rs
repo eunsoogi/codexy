@@ -16,6 +16,8 @@ mod activation_immutability;
 mod artifact_download;
 #[path = "runtime_publication_activation/final_archive.rs"]
 mod final_archive;
+#[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
+mod final_archive_lifecycle;
 #[path = "runtime_publication_activation/staging.rs"]
 mod staging;
 
