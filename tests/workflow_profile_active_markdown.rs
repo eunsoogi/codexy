@@ -64,6 +64,10 @@ fn inert_lines_cannot_mutate_html_comment_state() -> TestResult {
         );
     for (name, evidence) in [
         ("indented opener", "    <!-- inert opener\nTask kind: security review\nWorkflow profile: light"),
+        ("one space then tab opener", " \t<!-- inert opener\nTask kind: security review\nWorkflow profile: light"),
+        ("two spaces then tab opener", "  \t<!-- inert opener\nTask kind: security review\nWorkflow profile: light"),
+        ("three spaces then tab opener", "   \t<!-- inert opener\nTask kind: security review\nWorkflow profile: light"),
+        ("tab opener", "\t<!-- inert opener\nTask kind: security review\nWorkflow profile: light"),
         ("indented closer", indented_closer.as_str()),
         ("indented same-line delimiters", "    <!-- inert opener -->\nTask kind: security review\nWorkflow profile: light"),
         ("fenced delimiters", "```text\n<!-- inert fence opener -->\n```\nTask kind: security review\nWorkflow profile: light"),
@@ -74,5 +78,10 @@ fn inert_lines_cannot_mutate_html_comment_state() -> TestResult {
             false,
         )?;
     }
+    assert_profile_result(
+        "three spaces without a tab remain active markdown",
+        "   <!-- active comment\nTask kind: security review\nWorkflow profile: light",
+        true,
+    )?;
     Ok(())
 }

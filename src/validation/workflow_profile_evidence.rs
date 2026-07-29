@@ -43,7 +43,18 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
 }
 
 fn indented_code(line: &str) -> bool {
-    line.starts_with('\t') || line.bytes().take_while(|byte| *byte == b' ').count() >= 4
+    let mut columns = 0;
+    for byte in line.bytes() {
+        columns = match byte {
+            b' ' => columns + 1,
+            b'\t' => columns + (4 - columns % 4),
+            _ => return columns >= 4,
+        };
+        if columns >= 4 {
+            return true;
+        }
+    }
+    false
 }
 
 fn active_markdown<'a>(mut line: &'a str, comment: &mut bool) -> String {
