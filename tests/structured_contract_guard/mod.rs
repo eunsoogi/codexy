@@ -117,18 +117,9 @@ fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
     let mut offset = 0;
     while let Some(relative) = source[offset..].find("assert") {
         let start = offset + relative;
-        let tail = &source[start..];
-        let Some(bang) = tail.find('!') else { break };
-        let name = tail[..bang].trim();
-        if !matches!(name, "assert" | "assert_eq" | "assert_ne") {
-            offset = start + bang + 1;
+        let Some(open) = assertion_open(source, start) else {
+            offset = start + "assert".len();
             continue;
-        }
-        let Some(open) = tail[bang + 1..]
-            .find('(')
-            .map(|index| start + bang + 1 + index)
-        else {
-            break;
         };
         if let Some(close) = matching_paren(source, open) {
             found.push((start, close, &source[open + 1..close]));
@@ -138,6 +129,33 @@ fn assertions(source: &str) -> Vec<(usize, usize, &str)> {
         }
     }
     found
+}
+
+fn assertion_open(source: &str, start: usize) -> Option<usize> {
+    if source[..start]
+        .chars()
+        .next_back()
+        .is_some_and(is_identifier_character)
+    {
+        return None;
+    }
+    let tail = &source[start..];
+    let name = ["assert_eq", "assert_ne", "assert"]
+        .into_iter()
+        .find(|name| {
+            tail.strip_prefix(name).is_some_and(|after| {
+                !after.chars().next().is_some_and(is_identifier_character)
+            })
+        })?;
+    let after_name = tail[name.len()..].trim_start();
+    let after_bang = after_name.strip_prefix('!')?.trim_start();
+    after_bang
+        .starts_with('(')
+        .then_some(source.len() - after_bang.len())
+}
+
+fn is_identifier_character(character: char) -> bool {
+    character.is_ascii_alphanumeric() || character == '_'
 }
 
 fn matching_paren(source: &str, open: usize) -> Option<usize> {

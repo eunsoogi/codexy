@@ -62,6 +62,15 @@ fn guard_rejects_multiline_and_assert_eq_governed_substring_checks() {
 }
 
 #[test]
+fn guard_allows_structured_exact_match_assertions_after_assert_prefixed_calls() {
+    let source = concat!(
+        "assert_search_metadata(&first, 1)?;\n",
+        "assert_eq!(first[\"matches\"][0].as_str(), Some(\"ENTRY\"));\n",
+    );
+    assert!(scan_source(source).is_empty());
+}
+
+#[test]
 fn guard_allows_diagnostics_and_requires_a_substantive_rationale() {
     let diagnostic = "assert!(stderr.contains(\"validator failed\"));";
     assert!(scan_source(diagnostic).is_empty());
