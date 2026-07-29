@@ -1,18 +1,15 @@
-use super::child_lane_classification_boundaries::current_lane_start;
+use super::child_lane_classification_boundaries::lane_boundary;
 use super::child_lane_classification_control::normalize_metadata_prefix;
 use super::child_lane_ownership_phrases::metadata_key;
 
-const STRICT_SIGNALS: [&str; 10] = [
+const STRICT_SIGNALS: [&str; 7] = [
     "destructive",
     "security",
     "secret",
     "secrets",
     "permission",
-    "high-risk",
     "release",
     "publication",
-    "multi-lane",
-    "merge-sensitive",
 ];
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
@@ -35,7 +32,13 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
         }
     }
     let references = lines.iter().map(String::as_str).collect::<Vec<_>>();
-    let start = current_lane_start(&references, references.len());
+    let start = (0..references.len())
+        .rev()
+        .find(|index| {
+            lane_boundary(&references, *index)
+                .is_some_and(|boundary| boundary.resets_authority_record())
+        })
+        .map_or(0, |index| index + 1);
     lines.into_iter().skip(start).collect()
 }
 
@@ -67,11 +70,7 @@ fn value_has_strict_signal(value: &str) -> bool {
     category_clauses(value).iter().any(|tokens| {
         tokens.iter().enumerate().any(|(index, token)| {
             !negated(tokens, index)
-                && (STRICT_SIGNALS.contains(&token.as_str())
-                    || matches!(
-                        (token.as_str(), tokens.get(index + 1).map(String::as_str)),
-                        ("high-consequence", Some("external-state"))
-                    ))
+                && (STRICT_SIGNALS.contains(&token.as_str()) || compound_signal(tokens, index))
         })
     })
 }
@@ -80,17 +79,24 @@ fn category_clauses(value: &str) -> Vec<Vec<String>> {
     let mut clauses = vec![Vec::new()];
     let mut token = String::new();
     for character in value.chars() {
-        if character.is_ascii_alphanumeric() || character == '-' {
+        if character.is_ascii_alphanumeric() {
             token.push(character);
             continue;
         }
         finish_token(&mut clauses, &mut token);
-        if matches!(character, ',' | ';' | '.' | '!' | '?') {
+        if clause_delimiter(character) {
             start_clause(&mut clauses);
         }
     }
     finish_token(&mut clauses, &mut token);
     clauses
+}
+
+fn clause_delimiter(character: char) -> bool {
+    matches!(
+        character,
+        ',' | ';' | ':' | '.' | '!' | '?' | '‒' | '–' | '—' | '―' | '−'
+    )
 }
 
 fn finish_token(clauses: &mut Vec<Vec<String>>, token: &mut String) {
@@ -113,6 +119,23 @@ fn start_clause(clauses: &mut Vec<Vec<String>>) {
     if clauses.last().is_some_and(|clause| !clause.is_empty()) {
         clauses.push(Vec::new());
     }
+}
+
+fn compound_signal(tokens: &[String], index: usize) -> bool {
+    let token = tokens[index].as_str();
+    let next = tokens.get(index + 1).map(String::as_str);
+    matches!(
+        (token, next),
+        ("high", Some("risk")) | ("multi", Some("lane")) | ("merge", Some("sensitive"))
+    ) || matches!(
+        (
+            token,
+            next,
+            tokens.get(index + 2).map(String::as_str),
+            tokens.get(index + 3).map(String::as_str),
+        ),
+        ("high", Some("consequence"), Some("external"), Some("state"))
+    )
 }
 
 fn negated(tokens: &[String], index: usize) -> bool {
