@@ -1,10 +1,8 @@
-use std::path::Path;
-
 use serde_json::Value;
 
 use super::{merge_authorization_contract, merge_authorization_json::unique_object};
 
-pub(super) fn check(_plugin_root: &Path, authorization: &str, pr_state: &str) -> Vec<String> {
+pub(super) fn check(authorization: &str, pr_state: &str) -> Vec<String> {
     let mut errors = unique_object(authorization, "merge authorization");
     errors.extend(unique_object(pr_state, "merge authorization PR state"));
     let authorization = match serde_json::from_str::<Value>(authorization) {

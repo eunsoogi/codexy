@@ -169,6 +169,12 @@ pub fn merge_authorization_policy_diagnostics(plugin_root: &Path) -> Vec<String>
     merge_authorization_policy::check(plugin_root)
 }
 
+/// Returns diagnostics for one authorization record and captured PR state.
+#[must_use]
+pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> Vec<String> {
+    merge_authorization::check(authorization, pr_state)
+}
+
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {
     value
         .and_then(serde_json::Value::as_str)

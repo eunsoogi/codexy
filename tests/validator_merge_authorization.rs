@@ -12,15 +12,13 @@ const EXTERNAL_CONTRACT: &str = r#"{"kind":"repository-workflow-contract","inten
 #[test]
 fn validator_accepts_the_external_repository_workflow_contract()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate_with_state(EXTERNAL_CONTRACT, CONTRACT_STATE)?;
-    assert!(output.status.success(), "{}", stderr(&output));
+    assert_valid(EXTERNAL_CONTRACT, CONTRACT_STATE);
     Ok(())
 }
 
 #[test]
 fn validator_rejects_a_repository_local_contract_claim() -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate(LOCAL_CONTRACT)?;
-    assert!(!output.status.success(), "{}", stderr(&output));
+    assert_invalid(LOCAL_CONTRACT, PR_STATE);
     Ok(())
 }
 
@@ -29,7 +27,7 @@ fn validator_accepts_exact_explicit_user_or_maintainer_intent() -> Result<(), Bo
     for authorization in [
         COMMENT_INTENT,
         &COMMENT_INTENT.replacen("explicit-maintainer-intent", "explicit-user-intent", 1),
-    ] { assert!(validate_with_state(authorization, COMMENT_STATE)?.status.success(), "{authorization}"); }
+    ] { assert_valid(authorization, COMMENT_STATE); }
     Ok(())
 }
 
@@ -43,9 +41,8 @@ fn validator_rejects_non_authoritative_or_wrongly_scoped_intent()
         &LOCAL_CONTRACT.replacen("\"baseRefName\":\"main\"", "\"baseRefName\":\"release\"", 1),
         &LOCAL_CONTRACT.replacen("\"headRefOid\":\"32b03a210b3defb2d29dd352283ea2488e60d893\"", "\"headRefOid\":\"stale\"", 1),
     ] {
-        let output = validate(authorization)?;
-        assert!(!output.status.success(), "{authorization}");
-        assert!(stderr(&output).contains("merge authorization"), "{}", stderr(&output));
+        let errors = assert_invalid(authorization, PR_STATE);
+        assert!(errors.iter().any(|error| error.contains("merge authorization")), "{errors:?}");
     }
     Ok(())
 }
@@ -67,9 +64,8 @@ fn validator_rejects_forged_or_revoked_authorization() -> Result<(), Box<dyn std
         &LOCAL_CONTRACT.replacen("\"target\":\"current-pull-request\"", "\"target\":\"all-pull-requests\"", 1),
         &LOCAL_CONTRACT.replacen(",\"target\":\"current-pull-request\"", "", 1),
     ] {
-        let output = validate(authorization)?;
-        assert!(!output.status.success(), "{authorization}");
-        assert!(stderr(&output).contains("merge authorization"), "{}", stderr(&output));
+        let errors = assert_invalid(authorization, PR_STATE);
+        assert!(errors.iter().any(|error| error.contains("merge authorization")), "{errors:?}");
     }
     Ok(())
 }
@@ -83,8 +79,7 @@ fn validator_rejects_non_authoritative_comment_evidence() -> Result<(), Box<dyn 
         COMMENT_STATE.replacen("HEAD 32b03a210b3defb2d29dd352283ea2488e60d893", "HEAD stale", 1),
         COMMENT_STATE.replacen("\"id\":\"IC_128\"", "\"id\":\"IC_128\",\"id\":\"IC_other\"", 1),
     ] {
-        let output = validate_with_state(COMMENT_INTENT, &state)?;
-        assert!(!output.status.success(), "{state}\n{}", stderr(&output));
+        assert_invalid(COMMENT_INTENT, &state);
     }
     Ok(())
 }
@@ -103,7 +98,7 @@ fn validator_rejects_stale_or_replayed_external_contract_evidence() -> Result<()
         replay,
         CONTRACT_STATE.replacen("AUTHORIZE REPOSITORY SQUASH CONTRACT", "AUTHORIZE SQUASH MERGE", 1),
     ] {
-        assert!(!validate_with_state(EXTERNAL_CONTRACT, &state)?.status.success(), "{state}");
+        assert_invalid(EXTERNAL_CONTRACT, &state);
     }
     Ok(())
 }
@@ -118,18 +113,16 @@ fn validator_rejects_ambiguous_or_untyped_current_targets() -> Result<(), Box<dy
         LOCAL_CONTRACT.replacen("\"prNumber\":128", "\"pr\\u004eumber\":127,\"prNumber\":128", 1),
         LOCAL_CONTRACT.replace("128", "0"),
     ] {
-        let output = validate(&authorization)?;
-        assert!(!output.status.success(), "{authorization}\n{}", stderr(&output));
+        assert_invalid(&authorization, PR_STATE);
     }
     Ok(())
 }
 
 #[test]
 fn validator_rejects_ambiguous_pr_state_without_rejecting_metadata_values() -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate_with_state(LOCAL_CONTRACT, r#"{"number":127,"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#)?;
-    assert!(!output.status.success(), "{}", stderr(&output));
+    assert_invalid(LOCAL_CONTRACT, r#"{"number":127,"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#);
     let metadata = EXTERNAL_CONTRACT.replacen("\"revoked\":false", "\"revoked\":false,\"note\":\"kind\"", 1);
-    assert!(validate_with_state(&metadata, CONTRACT_STATE)?.status.success());
+    assert_valid(&metadata, CONTRACT_STATE);
     Ok(())
 }
 
@@ -173,25 +166,15 @@ fn authorization_does_not_make_a_separate_failed_gate_pass() -> Result<(), Box<d
     Ok(())
 }
 
-fn validate(authorization: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    validate_with_state(authorization, PR_STATE)
+fn assert_valid(authorization: &str, state: &str) {
+    let errors = codexy_runtime::validation::merge_authorization_diagnostics(authorization, state);
+    assert!(errors.is_empty(), "{authorization}: {errors:?}");
 }
 
-fn validate_with_state(authorization: &str, state: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let authorization_path = temp.path().join("merge-authorization.json");
-    let pr_state_path = temp.path().join("pr-state.json");
-    std::fs::write(&authorization_path, authorization)?;
-    std::fs::write(&pr_state_path, state)?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-merge-authorization",
-            "--merge-authorization-file",
-            authorization_path.to_str().ok_or("authorization path")?,
-            "--merge-authorization-pr-state-file",
-            pr_state_path.to_str().ok_or("PR state path")?,
-        ])
-        .output()?)
+fn assert_invalid(authorization: &str, state: &str) -> Vec<String> {
+    let errors = codexy_runtime::validation::merge_authorization_diagnostics(authorization, state);
+    assert!(!errors.is_empty(), "{authorization}");
+    errors
 }
 
 fn stderr(output: &std::process::Output) -> String {

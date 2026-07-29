@@ -41,7 +41,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::MergeAuthorization {
             authorization,
             pr_state,
-        } => merge_authorization::check(plugin_root, &authorization, &pr_state),
+        } => merge_authorization::check(&authorization, &pr_state),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),
