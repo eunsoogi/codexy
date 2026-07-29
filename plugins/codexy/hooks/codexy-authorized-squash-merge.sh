@@ -34,12 +34,15 @@ name=${repo#*/}
 authorization_file=$(mktemp)
 pr_state_file=$(mktemp)
 trap 'rm -f "$authorization_file" "$pr_state_file"' EXIT
-if ! gh api graphql -f owner="$owner" -f name="$name" -F number="$expected_pr" -f query='
-query($owner:String!, $name:String!, $number:Int!) {
+if ! gh api graphql --paginate --slurp -f owner="$owner" -f name="$name" -F number="$expected_pr" -f query='
+query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) { nameWithOwner pullRequest(number:$number) {
-    number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } }
+    number baseRefName headRefOid comments(first:100, after:$endCursor) {
+      nodes { id url body author { login } authorAssociation }
+      pageInfo { hasNextPage endCursor }
+    }
   }}
-}' --jq '.data.repository | {repository:.nameWithOwner} + (.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]})' > "$pr_state_file"; then
+}' > "$pr_state_file"; then
   printf '%s\n' 'failed to capture current GitHub PR authorization state' >&2
   exit 1
 fi

@@ -22,8 +22,45 @@ def parse_state(path):
             state = json.load(source)
     except (OSError, json.JSONDecodeError) as error:
         fail(f"could not read GitHub PR state: {error}")
-    if not isinstance(state, dict):
-        fail("GitHub PR state must be an object")
+    if isinstance(state, dict):
+        return state
+    if not isinstance(state, list) or not state:
+        fail("GitHub PR state must be a non-empty GraphQL page list")
+    return combine_pages(state)
+
+
+def combine_pages(pages):
+    states = [page_state(page) for page in pages]
+    first = states[0]
+    for state in states[1:]:
+        if any(state[key] != first[key] for key in ("repository", "number", "baseRefName", "headRefOid")):
+            fail("GitHub comment pages disagree about the target PR")
+    for index, state in enumerate(states):
+        next_page = state.pop("next")
+        if index + 1 < len(states):
+            if not next_page[0] or not next_page[1]:
+                fail("GitHub comment pagination is incomplete")
+        elif next_page[0]:
+            fail("GitHub comment pagination is incomplete")
+    first["comments"] = [comment for state in states for comment in state["comments"]]
+    return first
+
+
+def page_state(page):
+    try:
+        repository = page["data"]["repository"]
+        pull_request = repository["pullRequest"]
+        comments = pull_request["comments"]
+        page_info = comments["pageInfo"]
+        state = {
+            "repository": repository["nameWithOwner"], "number": pull_request["number"],
+            "baseRefName": pull_request["baseRefName"], "headRefOid": pull_request["headRefOid"],
+            "comments": comments["nodes"], "next": (page_info["hasNextPage"], page_info["endCursor"]),
+        }
+    except (KeyError, TypeError):
+        fail("GitHub comment page has an invalid GraphQL shape")
+    if not isinstance(state["comments"], list) or not isinstance(state["next"][0], bool):
+        fail("GitHub comment page has an invalid pagination shape")
     return state
 
 
@@ -66,6 +103,8 @@ def main():
     comments = state.get("comments")
     if not isinstance(comments, list):
         fail("PR comments are missing")
+    with open(args.pr_state_file, "w", encoding="utf-8") as output:
+        json.dump(state, output, separators=(",", ":"))
     matches = [item for comment in comments if (item := candidate(comment, state))]
     if len(matches) != 1 or not all(matches[0].get(field) for field in ("kind", "prNumber", "baseRefName", "headRefOid")):
         fail("expected exactly one current OWNER or MEMBER authorization comment")

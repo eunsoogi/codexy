@@ -43,9 +43,11 @@ fn check_global_surfaces(root: &Path, errors: &mut Vec<String>) {
 
 fn is_global_rule(line: &str) -> bool {
     let line = line.to_ascii_lowercase();
-    ["generic", "authorization", "merge"]
-        .iter()
-        .all(|term| line.contains(term))
+    let generic_is_denied = line.contains("generic finish") && line.contains("non-authoritative");
+    let authority_is_required = line.contains("authoritative merge authorization")
+        || (line.contains("checked contract") && line.contains("sole merge authorization"))
+        || (line.contains("global invariant") && line.contains("workflow profile"));
+    generic_is_denied && authority_is_required
 }
 
 fn check_profile_defaults(root: &Path, errors: &mut Vec<String>) {
@@ -114,7 +116,7 @@ fn clauses(block: &str) -> Vec<&str> {
 }
 
 fn adversative_boundary(text: &str) -> Option<(&str, &str)> {
-    [", but ", ", however ", ", yet "]
+    [", but ", ", however ", ", yet ", ", although "]
         .iter()
         .filter_map(|marker| text.find(marker).map(|index| (index, *marker)))
         .min_by_key(|(index, _)| *index)

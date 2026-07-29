@@ -9,6 +9,8 @@ mod admission_artifact;
 mod admission_runtime;
 #[path = "validator_hooks/merge_admission.rs"]
 mod merge_admission;
+#[path = "validator_hooks/github_authorization_pagination.rs"]
+mod github_authorization_pagination;
 #[path = "validator_hooks/filesystem_aliases.rs"]
 mod filesystem_aliases;
 #[path = "validator_hooks/archive_inventory.rs"]

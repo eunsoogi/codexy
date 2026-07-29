@@ -28,13 +28,17 @@ pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
 }
 
 fn unguarded_merge(line: &str) -> bool {
-    let tokens = line.trim_start().split_whitespace().collect::<Vec<_>>();
-    let tokens = strip_condition(&tokens);
-    if tokens.first() == Some(&CANONICAL_WRAPPER) {
-        return false;
-    }
-    let tokens = strip_env(tokens);
-    tokens.starts_with(&["gh", "pr", "merge"])
+    command_segments(line).any(unguarded_segment)
+}
+
+fn unguarded_segment(segment: &str) -> bool {
+    let tokens = segment.trim_start().split_whitespace().collect::<Vec<_>>();
+    let tokens = strip_assignments(strip_env(strip_condition(&tokens)));
+    tokens.first() != Some(&CANONICAL_WRAPPER) && tokens.starts_with(&["gh", "pr", "merge"])
+}
+
+fn command_segments(line: &str) -> impl Iterator<Item = &str> {
+    line.split(';').flat_map(|segment| segment.split("&&"))
 }
 
 fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
@@ -51,6 +55,22 @@ fn strip_env<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
     } else {
         tokens
     }
+}
+
+fn strip_assignments<'a>(mut tokens: &'a [&'a str]) -> &'a [&'a str] {
+    while tokens.first().is_some_and(|token| assignment(token)) {
+        tokens = &tokens[1..];
+    }
+    tokens
+}
+
+fn assignment(token: &str) -> bool {
+    token.split_once('=').is_some_and(|(name, _)| {
+        name.starts_with(|character: char| character.is_ascii_alphabetic() || character == '_')
+            && name
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    })
 }
 
 fn command_blocks(text: &str) -> Vec<Vec<String>> {

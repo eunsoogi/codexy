@@ -124,3 +124,39 @@ fn policy_rejects_fallback_merge_routes_and_bullet_boundaries() -> Result<(), Bo
     assert!(errors.iter().any(|error| error.contains("turn gates")), "{errors:#?}");
     Ok(())
 }
+
+#[test]
+fn policy_rejects_although_grants_and_shell_sequence_bypasses() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = fixture()?;
+    let policy = fixture.root().join("skills/proof-driven-completion/SKILL.md");
+    let policy_text = std::fs::read_to_string(&policy)?
+        + "\nPassing gates are not authorization, although green gates imply merge consent.\n";
+    std::fs::write(policy, policy_text)?;
+    let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
+    let route_text = std::fs::read_to_string(&route)? + r#"
+~~~shell
+plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"; gh pr merge "$pr_number" --squash
+plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number" && gh pr merge "$pr_number" --squash
+env FLAG=1 gh pr merge "$pr_number" --squash
+FLAG=1 gh pr merge "$pr_number" --squash
+~~~
+"#;
+    std::fs::write(route, route_text)?;
+    let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
+    assert!(errors.iter().any(|error| error.contains("turn gates")), "{errors:#?}");
+    assert!(errors.iter().any(|error| error.contains("before mutation")), "{errors:#?}");
+    Ok(())
+}
+
+#[test]
+fn policy_rejects_opposite_global_rule_polarity() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = fixture()?;
+    let path = fixture.root().join("skills/proof-driven-completion/SKILL.md");
+    let text = std::fs::read_to_string(&path)?.replace(
+        "A checked contract is the sole merge authorization; generic finish, completion,\nsilence, clean gates, and a ready PR are non-authoritative signals.",
+        "Generic finish is merge authorization.",
+    );
+    std::fs::write(path, text)?;
+    assert!(!codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
+    Ok(())
+}
