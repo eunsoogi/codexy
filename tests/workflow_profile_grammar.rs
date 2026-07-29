@@ -99,3 +99,36 @@ fn affirmative_not_only_and_postfix_negation_are_distinct() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn only_direct_prefix_negation_propagates_through_coordination() -> TestResult {
+    for task_kind in [
+        "permission-free and release work",
+        "permission‐free or publication work",
+        "security‑free and release work",
+        "security is not involved and release work continues",
+        "permission is not involved or publication proceeds",
+        "non-security and release work",
+    ] {
+        assert_profile_result(
+            "category-local suffix and postfix polarity cannot suppress a later category",
+            &format!("Task kind: {task_kind}"),
+            false,
+        )?;
+    }
+    for task_kind in [
+        "no security and release work",
+        "without permission or publication workflow",
+        "not a release and publication workflow",
+        "permission-free and secretary notes",
+        "security is not involved or secretary notes",
+        "non-security and secretary notes",
+    ] {
+        assert_profile_result(
+            "only direct prefix negation propagates through a category chain",
+            &format!("Task kind: {task_kind}"),
+            true,
+        )?;
+    }
+    Ok(())
+}

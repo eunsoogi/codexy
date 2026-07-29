@@ -107,7 +107,7 @@ fn category_negated(tokens: &[Token], index: usize) -> bool {
     free_suffix(tokens, index)
         || postfix_negation(tokens, index)
         || direct_prefix_negation(tokens, index)
-        || coordinated_negation(tokens, index)
+        || coordinated_prefix_negation(tokens, index)
 }
 
 fn free_suffix(tokens: &[Token], index: usize) -> bool {
@@ -152,7 +152,7 @@ fn direct_prefix_negation(tokens: &[Token], index: usize) -> bool {
     )
 }
 
-fn coordinated_negation(tokens: &[Token], index: usize) -> bool {
+fn coordinated_prefix_negation(tokens: &[Token], index: usize) -> bool {
     let cursor = skip_articles(tokens, index);
     let Some(coordinator) = cursor.checked_sub(1) else {
         return false;
@@ -163,7 +163,17 @@ fn coordinated_negation(tokens: &[Token], index: usize) -> bool {
     (0..coordinator)
         .rev()
         .find(|candidate| signal_at(tokens, *candidate))
-        .is_some_and(|candidate| category_negated(tokens, candidate))
+        .is_some_and(|candidate| {
+            coordinating_prefix_negation(tokens, candidate)
+                || coordinated_prefix_negation(tokens, candidate)
+        })
+}
+
+fn coordinating_prefix_negation(tokens: &[Token], index: usize) -> bool {
+    let cursor = skip_articles(tokens, index);
+    cursor
+        .checked_sub(1)
+        .is_some_and(|prefix| matches!(tokens[prefix].text.as_str(), "no" | "not" | "without"))
 }
 
 fn skip_articles(tokens: &[Token], mut cursor: usize) -> usize {
