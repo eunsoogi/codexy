@@ -11,7 +11,7 @@ const RUN_ID: &str = "42";
 const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
 #[test]
-fn downloads_one_authenticated_unexpired_staging_artifact()
+fn downloads_authenticated_staging_with_space_safe_paths()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true)?;
@@ -22,16 +22,10 @@ fn downloads_one_authenticated_unexpired_staging_artifact()
     );
     assert!(fixture.root.join("staging/runtime-staging-receipt.json").is_file());
     assert!(fixture.root.join("staging/runtime-staging-run.json").is_file());
-    Ok(())
-}
-
-#[cfg(windows)]
-#[test]
-fn staging_download_projects_paths_with_spaces_for_the_windows_shell()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new()?;
-    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true)?;
-    assert!(output.status.success(), "Windows path projection failed: {}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        fixture.root.file_name().and_then(|path| path.to_str()),
+        Some("staging fixture with spaces")
+    );
     Ok(())
 }
 

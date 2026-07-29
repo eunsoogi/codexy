@@ -46,16 +46,26 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
 }
 
 #[test]
-fn materializer_preserves_staged_runtime_and_activates_metadata()
+fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = FinalArchiveFixture::new()?;
-    let output = fixture.materialize(None)?;
+    let missing_rsync = fixture.root.join("missing rsync command");
+    fs::create_dir(&missing_rsync)?;
+    let rsync = missing_rsync.join("rsync");
+    fs::write(&rsync, "#!/bin/sh\nexit 127\n")?;
+    support::make_executable(&rsync)?;
+    let output = fixture.materialize(Some(missing_rsync))?;
     assert!(
         output.status.success(),
-        "materializer failed: {}",
+        "materializer must preserve the archive without rsync: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let extracted = fixture.root.join("extracted");
+    assert_eq!(
+        fixture.root.file_name().and_then(|path| path.to_str()),
+        Some("final archive fixture with spaces")
+    );
+    let extraction = tempfile::tempdir()?;
+    let extracted = extraction.path().join("extracted");
     fs::create_dir(&extracted)?;
     assert!(
         Command::new("tar")
@@ -89,30 +99,6 @@ fn materializer_preserves_staged_runtime_and_activates_metadata()
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");
     Ok(())
-}
-
-#[test]
-fn materializer_does_not_require_rsync() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = FinalArchiveFixture::new()?;
-    let missing_rsync = fixture.root.join("missing rsync command");
-    fs::create_dir(&missing_rsync)?;
-    let rsync = missing_rsync.join("rsync");
-    fs::write(&rsync, "#!/bin/sh\nexit 127\n")?;
-    support::make_executable(&rsync)?;
-    let output = fixture.materialize(Some(missing_rsync))?;
-    assert!(
-        output.status.success(),
-        "materializer must not require rsync: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[cfg(windows)]
-#[test]
-fn materializer_projects_paths_with_spaces_for_the_windows_shell()
--> Result<(), Box<dyn std::error::Error>> {
-    materializer_preserves_staged_runtime_and_activates_metadata()
 }
 
 struct FinalArchiveFixture {

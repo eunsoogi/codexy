@@ -8,9 +8,13 @@ use crate::support::FixtureCommand as Command;
 const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
 
 #[test]
-fn materializer_binds_staging_source_to_later_activation_commit()
+fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = LifecycleFixture::new()?;
+    assert_eq!(
+        fixture.root.file_name().and_then(|path| path.to_str()),
+        Some("work with spaces")
+    );
     assert!(fixture.admits_activation(&fixture.activation_commit)?);
     assert!(fixture.materialize(&fixture.staging_commit, &fixture.activation_commit)?.status.success());
     assert!(!fixture.materialize(&"e".repeat(40), &fixture.activation_commit)?.status.success());
@@ -19,13 +23,6 @@ fn materializer_binds_staging_source_to_later_activation_commit()
     fixture.advance_protected_main()?;
     assert!(!fixture.admits_activation(&fixture.activation_commit)?);
     Ok(())
-}
-
-#[cfg(windows)]
-#[test]
-fn lifecycle_materializer_launches_from_a_path_with_spaces()
--> Result<(), Box<dyn std::error::Error>> {
-    materializer_binds_staging_source_to_later_activation_commit()
 }
 
 struct LifecycleFixture {
