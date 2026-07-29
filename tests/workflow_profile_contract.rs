@@ -154,6 +154,30 @@ fn active_markdown_uses_matching_fence_delimiters() -> TestResult {
     )
 }
 
+#[test]
+fn inactive_markdown_cannot_change_current_workflow_evidence() -> TestResult {
+    assert_profile_result(
+        "an indented formal table cannot satisfy strict proof",
+        &format!("Workflow profile: strict\n    {}", formal_classification()),
+        false,
+    )?;
+    assert_profile_result(
+        "a commented formal table cannot satisfy strict proof",
+        &format!("Workflow profile: strict\n<!--\n{}\n-->", formal_classification()),
+        false,
+    )?;
+    assert_profile_result(
+        "an indented historical boundary cannot erase active security work",
+        "Task kind: security review\n    Review response: historical\nWorkflow profile: light",
+        false,
+    )?;
+    assert_profile_result(
+        "an indented historical profile cannot conflict with active light work",
+        "Workflow profile: light\n    Workflow profile: strict",
+        true,
+    )
+}
+
 pub(super) fn assert_profile_result(
     name: &str,
     evidence: &str,

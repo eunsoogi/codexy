@@ -160,13 +160,12 @@ fn coordinated_prefix_negation(tokens: &[Token], index: usize) -> bool {
     if !matches!(tokens[coordinator].text.as_str(), "or" | "and") {
         return false;
     }
-    (0..coordinator)
-        .rev()
-        .find(|candidate| signal_at(tokens, *candidate))
-        .is_some_and(|candidate| {
-            coordinating_prefix_negation(tokens, candidate)
-                || coordinated_prefix_negation(tokens, candidate)
-        })
+    let Some(candidate) = coordinator.checked_sub(1) else {
+        return false;
+    };
+    signal_at(tokens, candidate)
+        && (coordinating_prefix_negation(tokens, candidate)
+            || coordinated_prefix_negation(tokens, candidate))
 }
 
 fn coordinating_prefix_negation(tokens: &[Token], index: usize) -> bool {

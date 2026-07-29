@@ -4,9 +4,23 @@ use super::child_lane_ownership_phrases::metadata_key;
 use super::workflow_profile_grammar::value_has_strict_signal;
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
-    let (mut fence, mut lines) = (None, Vec::new());
+    let (mut fence, mut comment, mut lines) = (None, false, Vec::new());
     for raw in evidence.lines() {
+        if comment {
+            comment = !raw.contains("-->");
+            lines.push(String::new());
+            continue;
+        }
+        if indented_code(raw) {
+            lines.push(String::new());
+            continue;
+        }
         let line = normalize_metadata_prefix(raw);
+        if line.trim_start().starts_with("<!--") {
+            comment = !line.contains("-->");
+            lines.push(String::new());
+            continue;
+        }
         if let Some((marker, length, tail)) = fence_marker(line) {
             if fence.is_none() {
                 fence = Some((marker, length));
@@ -31,6 +45,10 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
         })
         .map_or(0, |index| index + 1);
     lines.into_iter().skip(start).collect()
+}
+
+fn indented_code(line: &str) -> bool {
+    line.starts_with('\t') || line.bytes().take_while(|byte| *byte == b' ').count() >= 4
 }
 
 pub(super) fn has_strict_work_signal(lines: &[&str]) -> bool {

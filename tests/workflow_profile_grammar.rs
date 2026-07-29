@@ -132,3 +132,28 @@ fn only_direct_prefix_negation_propagates_through_coordination() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn coordinated_prefix_negation_stops_before_predicate_prose() -> TestResult {
+    for task_kind in [
+        "no security is involved and release work continues",
+        "no security concerns remain and release work continues",
+    ] {
+        assert_profile_result(
+            "predicate prose ends coordinated prefix negation before an affirmative category",
+            &format!("Task kind: {task_kind}"),
+            false,
+        )?;
+    }
+    for task_kind in [
+        "no security and release work",
+        "no security or release or publication work",
+    ] {
+        assert_profile_result(
+            "adjacent coordinated categories retain direct prefix negation",
+            &format!("Task kind: {task_kind}"),
+            true,
+        )?;
+    }
+    Ok(())
+}
