@@ -123,9 +123,14 @@ def load(plugin_root: Path) -> RuntimeRelease:
         raise ValueError("runtime release artifact has unknown or missing fields")
     tag = string(artifact.get("tag"), "artifact.tag")
     url = string(artifact.get("url"), "artifact.url")
-    if state == "candidate-proven" and (not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag)):
+    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
         raise ValueError("runtime release must use a version-only tag")
-    if url != f"{REPOSITORY}/releases/download/{tag}/codexy-marketplace-plugin.tar.gz":
+    asset = (
+        "codexy-runtime-package.tar.gz"
+        if state == "candidate-proven"
+        else "codexy-marketplace-plugin.tar.gz"
+    )
+    if url != f"{REPOSITORY}/releases/download/{tag}/{asset}":
         raise ValueError("runtime release artifact URL is not canonical")
     return RuntimeRelease(state, Source(REPOSITORY, commit), Artifact(tag, url,
         digest(artifact.get("sha256"), "artifact.sha256"),

@@ -43,7 +43,7 @@ pub(super) fn activation_from_receipt(
     let release_platforms = release_platforms(platforms)?;
     let release_artifact = json!({
         "tag": release_tag,
-        "url": format!("{REPOSITORY}/releases/download/{release_tag}/codexy-marketplace-plugin.tar.gz"),
+        "url": format!("{REPOSITORY}/releases/download/{release_tag}/codexy-runtime-package.tar.gz"),
         "sha256": string(artifact, "sha256", "candidate artifact proof")?,
         "payloadManifestSha256": string(
             artifact,

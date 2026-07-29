@@ -149,7 +149,7 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
     release["state"] = serde_json::json!("candidate-proven");
     release["artifact"]["tag"] = serde_json::json!("v1.3.0");
     release["artifact"]["url"] = serde_json::json!(
-        "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-marketplace-plugin.tar.gz"
+        "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz"
     );
     release["artifact"]["sha256"] = serde_json::json!("f".repeat(64));
     for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
