@@ -18,6 +18,10 @@ mod gate_output;
 mod live_output;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/output_batching.rs"]
+mod output_batching;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/windows_accounting.rs"]
 mod windows_accounting;
 

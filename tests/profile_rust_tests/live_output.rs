@@ -3,6 +3,8 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::Duration;
 
+const FIRST_LINE_TIMEOUT: Duration = Duration::from_secs(2);
+
 #[test]
 fn gate_streams_workload_output_before_the_child_completes()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -40,7 +42,9 @@ fn gate_streams_workload_output_before_the_child_completes()
         let _ = reader.read_to_end(&mut Vec::new());
     });
 
-    let first_line = receiver.recv_timeout(Duration::from_millis(400));
+    // The child remains blocked on `release`, so this only bounds host startup;
+    // it cannot let buffered output satisfy the pre-completion assertion.
+    let first_line = receiver.recv_timeout(FIRST_LINE_TIMEOUT);
     std::fs::write(&release, [])?;
     assert!(child.wait()?.success());
     reader.join().map_err(|_| "gate stdout reader panicked")?;
