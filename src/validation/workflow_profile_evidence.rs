@@ -8,7 +8,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
     let (mut fence, mut state, mut lines) = (None, MarkdownState::default(), Vec::new());
     for (index, raw) in raw_lines.iter().enumerate() {
         if fence.is_some() {
-            if indented_code(raw) {
+            if !active_markdown_line(raw) {
                 lines.push(String::new());
                 continue;
             }
@@ -22,7 +22,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
-        if indented_code(raw) {
+        if !active_markdown_line(raw) {
             lines.push(String::new());
             continue;
         }
@@ -53,6 +53,10 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
 struct MarkdownState {
     comment: bool,
     code: Option<usize>,
+}
+
+fn active_markdown_line(line: &str) -> bool {
+    !indented_code(line)
 }
 
 fn indented_code(line: &str) -> bool {
@@ -122,7 +126,10 @@ fn active_markdown(line: &str, later: &[&str], state: &mut MarkdownState) -> Str
 
 fn closes_later(lines: &[&str], width: usize) -> bool {
     for line in lines {
-        if !indented_code(line) && fence_marker(normalize_metadata_prefix(line)).is_some() {
+        if !active_markdown_line(line) {
+            continue;
+        }
+        if fence_marker(normalize_metadata_prefix(line)).is_some() {
             return false;
         }
         if matching_backticks(line, width).is_some() {

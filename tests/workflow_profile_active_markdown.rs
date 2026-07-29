@@ -127,6 +127,10 @@ fn prospective_inline_code_closers_stay_fence_local() -> TestResult {
             "Context: `carried\ncode`\n```text\nignored\n```\nTask kind: security review\nWorkflow profile: light",
         ),
         (
+            "an indented closer cannot hide later active security evidence",
+            "Workflow profile: light\nContext: `carried\n    code`\nTask kind: security review",
+        ),
+        (
             "removing the genuine closer exposes security metadata before the fence",
             "Workflow profile: light\nContext: `carried\nTask kind: security review\ncode\n```text\nignored\n```",
         ),
