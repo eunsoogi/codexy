@@ -19,8 +19,8 @@ class Recorder:
         self.flushes += 1
 
 class Process:
-    def __init__(self):
-        self.stdout = iter(("first\n", "second\n", "third\n"))
+    def __init__(self, lines):
+        self.stdout = iter(lines)
     def wait(self, timeout):
         return 0
     def poll(self):
@@ -29,16 +29,29 @@ class Process:
 script = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(script.parent))
 module = runpy.run_path(script)
-module["subprocess"].Popen = lambda *args, **kwargs: Process()
-recorder = Recorder()
-original_stdout = sys.stdout
-sys.stdout = recorder
-try:
-    output, _elapsed, status = module["run_workload"](None, 1.0)
-finally:
-    sys.stdout = original_stdout
-if status != 0 or output != "first\nsecond\nthird\n" or recorder.flushes > 2:
-    raise SystemExit(f"status={status} output={output!r} flushes={recorder.flushes}")
+def measure(lines):
+    module["subprocess"].Popen = lambda *args, **kwargs: Process(lines)
+    recorder = Recorder()
+    original_stdout = sys.stdout
+    sys.stdout = recorder
+    try:
+        output, _elapsed, status = module["run_workload"](None, 1.0)
+    finally:
+        sys.stdout = original_stdout
+    return status, output, recorder.flushes
+
+actual = [
+    measure(()),
+    measure(("first\n",)),
+    measure(("first\n", "second\n", "third\n")),
+]
+expected = [
+    (0, "", 1),
+    (0, "first\n", 2),
+    (0, "first\nsecond\nthird\n", 2),
+]
+if actual != expected:
+    raise SystemExit(f"actual={actual!r} expected={expected!r}")
 "#;
     let output = Command::new("python3")
         .args(["-c", probe])
