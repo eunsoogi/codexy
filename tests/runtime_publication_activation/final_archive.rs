@@ -1,6 +1,8 @@
 use std::{
+    env,
     fs,
     path::{Path, PathBuf},
+    process::Output,
 };
 
 use serde_json::{Value, json};
@@ -47,18 +49,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
 fn materializer_preserves_staged_runtime_and_activates_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = FinalArchiveFixture::new()?;
-    let mut command = Command::new(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("scripts/materialize-runtime-release-archive"),
-    );
-    let output = command
-        .arg_path(&fixture.staged_archive)
-        .arg_path(&fixture.final_archive)
-        .current_dir(&fixture.root)
-        .env("RELEASE_TAG", "v1.3.0")
-        .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
-        .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-        .output()?;
+    let output = fixture.materialize(None)?;
     assert!(
         output.status.success(),
         "materializer failed: {}",
@@ -97,6 +88,23 @@ fn materializer_preserves_staged_runtime_and_activates_metadata()
     let smoke = Command::new(runtime).arg("--help").output()?;
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");
+    Ok(())
+}
+
+#[test]
+fn materializer_does_not_require_rsync() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = FinalArchiveFixture::new()?;
+    let missing_rsync = fixture.root.join("missing rsync command");
+    fs::create_dir(&missing_rsync)?;
+    let rsync = missing_rsync.join("rsync");
+    fs::write(&rsync, "#!/bin/sh\nexit 127\n")?;
+    support::make_executable(&rsync)?;
+    let output = fixture.materialize(Some(missing_rsync))?;
+    assert!(
+        output.status.success(),
+        "materializer must not require rsync: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -167,6 +175,27 @@ impl FinalArchiveFixture {
             candidate,
             runtime,
         })
+    }
+
+    fn materialize(&self, prepend_path: Option<PathBuf>) -> Result<Output, std::io::Error> {
+        let mut command = Command::new(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("scripts/materialize-runtime-release-archive"),
+        );
+        if let Some(path) = prepend_path {
+            let host_path = env::var_os("PATH").ok_or_else(|| std::io::Error::other("PATH"))?;
+            let mut entries = vec![path];
+            entries.extend(env::split_paths(&host_path));
+            command.env_path_list("PATH", entries);
+        }
+        command
+            .arg_path(&self.staged_archive)
+            .arg_path(&self.final_archive)
+            .current_dir(&self.root)
+            .env("RELEASE_TAG", "v1.3.0")
+            .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
+            .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
+            .output()
     }
 }
 

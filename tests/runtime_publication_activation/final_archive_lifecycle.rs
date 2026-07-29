@@ -1,7 +1,9 @@
-use std::{fs, path::{Path, PathBuf}, process::{Command, Output}};
+use std::{fs, path::{Path, PathBuf}, process::Output};
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+
+use crate::support::FixtureCommand as Command;
 
 const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
 
@@ -19,6 +21,13 @@ fn materializer_binds_staging_source_to_later_activation_commit()
     Ok(())
 }
 
+#[cfg(windows)]
+#[test]
+fn lifecycle_materializer_launches_from_a_path_with_spaces()
+-> Result<(), Box<dyn std::error::Error>> {
+    materializer_binds_staging_source_to_later_activation_commit()
+}
+
 struct LifecycleFixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,
@@ -32,7 +41,7 @@ impl LifecycleFixture {
         let temporary = tempfile::tempdir()?;
         let remote = temporary.path().join("protected.git");
         assert!(Command::new("git").args(["init", "--bare"]).arg(&remote).status()?.success());
-        let root = temporary.path().join("work");
+        let root = temporary.path().join("work with spaces");
         fs::create_dir(&root)?;
         git(&root, &["init"])?;
         git(&root, &["branch", "-M", "main"])?;
@@ -72,8 +81,12 @@ impl LifecycleFixture {
 
     fn materialize(&self, staging: &str, activation: &str) -> Result<Output, std::io::Error> {
         Command::new("git").args(["checkout", "--detach", &self.activation_commit]).current_dir(&self.root).output()?;
-        Command::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/materialize-runtime-release-archive"))
-            .args([&self.archive, &self.root.join("final.tar.gz")])
+        let mut command = Command::new(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/materialize-runtime-release-archive"),
+        );
+        command
+            .arg_path(&self.archive)
+            .arg_path(self.root.join("final.tar.gz"))
             .current_dir(&self.root)
             .env("RELEASE_TAG", "v1.3.0")
             .env("STAGING_SOURCE_COMMIT", staging)
