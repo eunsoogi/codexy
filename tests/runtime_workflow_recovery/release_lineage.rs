@@ -22,6 +22,10 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     for required in [
         "test -n \"$STAGING_SOURCE_COMMIT\"",
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
+        "git show-ref --verify --quiet refs/tags/v1.3.0",
+        "refs/tags/v1.3.0^{commit}",
+        "cannot resolve existing v1.3.0 tag",
+        "existing v1.3.0 tag does not match activation commit",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
