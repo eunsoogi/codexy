@@ -33,7 +33,7 @@ fn unguarded_merge(line: &str) -> bool {
 
 fn unguarded_segment(segment: &str) -> bool {
     let tokens = segment.trim_start().split_whitespace().collect::<Vec<_>>();
-    let tokens = strip_assignments(strip_condition(&tokens));
+    let tokens = strip_assignments(strip_controls(&tokens));
     let Some(tokens) = strip_command(tokens) else {
         return true;
     };
@@ -83,13 +83,11 @@ fn command_segments(line: &str) -> Vec<&str> {
     segments
 }
 
-fn strip_condition<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    match tokens {
-        ["if", "!", rest @ ..] => rest,
-        ["if", rest @ ..] => rest,
-        ["!" | "then", rest @ ..] => rest,
-        _ => tokens,
+fn strip_controls<'a>(mut tokens: &'a [&'a str]) -> &'a [&'a str] {
+    while matches!(tokens.first(), Some(&"if" | &"then" | &"!")) {
+        tokens = &tokens[1..];
     }
+    tokens
 }
 
 fn strip_command<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
