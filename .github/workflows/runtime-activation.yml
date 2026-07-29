@@ -34,6 +34,7 @@ jobs:
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
@@ -42,26 +43,14 @@ jobs:
           python -m venv public-bootstrap
           public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${BOOTSTRAP_VERSION}"
           public-bootstrap/bin/codexy-mcp-runtime --help
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID" > run.json
-          test "$(jq -r .head_sha run.json)" = "$SOURCE_COMMIT"
-          test "$(jq -r .path run.json)" = .github/workflows/runtime-candidate.yml
-          test "$(jq -r .status run.json)" = completed
-          test "$(jq -r .conclusion run.json)" = success
-          run_attempt="$(jq -r .run_attempt run.json)"
-          test "$run_attempt" -gt 0
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID/artifacts" > artifacts.json
-          artifact_name="runtime-staging-${STAGING_RUN_ID}-${run_attempt}"
-          artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id' artifacts.json)"
-          test "$(printf '%s\n' "$artifact_id" | sed '/^$/d' | wc -l | tr -d ' ')" = 1
-          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > staging.zip
-          unzip -q staging.zip -d staging
+          scripts/download-runtime-staging-artifact staging
           receipt=staging/runtime-staging-receipt.json
           test "$(jq -r .schema "$receipt")" = codexy-runtime-candidate-receipt/v1
           test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
           test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID"
-          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$run_attempt"
+          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
-          test "$(jq -r .provenance.runAttempt "$receipt")" = "$run_attempt"
+          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           jq -cS .provenance "$receipt" | tr -d '\n' > receipt-provenance.json
           jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
           cmp receipt-provenance.json staged-provenance.json

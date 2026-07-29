@@ -26,7 +26,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - name: Verify selected protected-main source
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
@@ -34,20 +34,10 @@ jobs:
       - name: Download authenticated staging artifact
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
-        run: |
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID" > run.json
-          test "$(jq -r .head_sha run.json)" = "${{ inputs.source_commit }}"
-          test "$(jq -r .path run.json)" = .github/workflows/runtime-candidate.yml
-          test "$(jq -r .status run.json)" = completed
-          test "$(jq -r .conclusion run.json)" = success
-          run_attempt="$(jq -r .run_attempt run.json)"
-          artifact_name="runtime-staging-${STAGING_RUN_ID}-${run_attempt}"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID/artifacts" > artifacts.json
-          artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id' artifacts.json)"
-          test "$(printf '%s\n' "$artifact_id" | sed '/^$/d' | wc -l | tr -d ' ')" = 1
-          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > staging.zip
-          unzip -q staging.zip -d staging
+        run: scripts/download-runtime-staging-artifact staging
       - name: Verify selected archive identity
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
@@ -56,8 +46,8 @@ jobs:
           receipt=staging/runtime-staging-receipt.json
           test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
-          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt run.json)"
-          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt run.json)"
+          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
+          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           jq -cS .provenance "$receipt" | tr -d '\n' > receipt-provenance.json
           jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
           cmp receipt-provenance.json staged-provenance.json

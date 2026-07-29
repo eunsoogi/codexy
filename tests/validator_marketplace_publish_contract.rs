@@ -26,7 +26,7 @@ fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(
 }
 
 #[test]
-fn contract_names_selected_and_candidate_release_identities() -> Result<(), Box<dyn std::error::Error>> {
+fn contract_names_selected_and_authenticated_staging_identities() -> Result<(), Box<dyn std::error::Error>> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
     assert_eq!(contract["schema"], "codexy.internal.release-publish-contract.v1");
@@ -34,7 +34,9 @@ fn contract_names_selected_and_candidate_release_identities() -> Result<(), Box<
     assert_eq!(contract["bootstrap"]["selectedVersion"], "1.2.2");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
     assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));
-    for path in [contract["bootstrap"]["publicationWorkflow"].as_str(), contract["runtime"]["candidateWorkflow"].as_str(), contract["runtime"]["activationWorkflow"].as_str()] { assert!(root.join(path.ok_or("workflow")?).is_file()); }
+    assert_eq!(contract["runtime"]["artifactRetentionDays"], 14);
+    assert!(contract["runtime"].get("candidateTagPrefix").is_none());
+    for path in [contract["bootstrap"]["publicationWorkflow"].as_str(), contract["runtime"]["stagingWorkflow"].as_str(), contract["runtime"]["activationWorkflow"].as_str(), contract["runtime"]["finalPublisherWorkflow"].as_str()] { assert!(root.join(path.ok_or("workflow")?).is_file()); }
     Ok(())
 }
 

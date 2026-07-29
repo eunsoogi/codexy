@@ -9,9 +9,10 @@
   },
   "runtime": {
     "selectedTag": "v1.2.2",
-    "candidateTagPrefix": "runtime-candidate-",
-    "candidateWorkflow": ".github/workflows/runtime-candidate.yml",
+    "stagingWorkflow": ".github/workflows/runtime-candidate.yml",
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
+    "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",
+    "artifactRetentionDays": 14,
     "platforms": [
       "darwin-arm64",
       "linux-x86_64"

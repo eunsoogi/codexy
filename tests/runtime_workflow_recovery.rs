@@ -20,9 +20,14 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
             "python -m venv public-bootstrap",
             "getcodexy==${BOOTSTRAP_VERSION}",
             "public-bootstrap/bin/codexy-mcp-runtime --help",
-            "test \"$(jq -r .status run.json)\" = completed",
-            "test \"$(jq -r .conclusion run.json)\" = success",
+            "scripts/download-runtime-staging-artifact staging",
         ],
+    );
+    let download = script("download-runtime-staging-artifact")?;
+    support::assert_structured_literals(
+        &download,
+        "authenticated staging downloader",
+        &[".status \"$run\")\" = completed", ".conclusion \"$run\")\" = success"],
     );
     Ok(())
 }
@@ -79,10 +84,12 @@ fn activation_requires_a_successful_authenticated_staging_binding()
         "open-activation-pr",
         "Prove public bootstrap and authenticated staging identity",
     )?;
+    assert!(proof.lines().any(|line| line.trim() == "scripts/download-runtime-staging-artifact staging"));
+    let download = script("download-runtime-staging-artifact")?;
     support::assert_structured_literals(
-        proof,
+        &download,
         "activation staging success binding",
-        &["artifacts.json", "staging.zip", ".conclusion run.json)"],
+        &["runtime-staging-artifacts.json", "actions/artifacts/$artifact_id/zip", ".expired == false"],
     );
     Ok(())
 }

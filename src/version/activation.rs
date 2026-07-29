@@ -75,7 +75,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     Ok(updates)
 }
 
-fn publish_contract_update(root: &Path, version: &str, candidate_tag: &str) -> Result<Update> {
+fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Result<Update> {
     let path = root.join(".agents/plugins/release-publish-contract.json");
     let mut contract = read_json(&path, "release publish contract")?;
     let current_release = read_json(
@@ -91,7 +91,7 @@ fn publish_contract_update(root: &Path, version: &str, candidate_tag: &str) -> R
         bail!("release publish contract does not match the selected runtime identity");
     }
     contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
-    contract["runtime"]["selectedTag"] = Value::String(candidate_tag.to_owned());
+    contract["runtime"]["selectedTag"] = Value::String(release_tag.to_owned());
     for section in ["runtime", "package"] {
         let platforms = contract
             .get_mut(section)
