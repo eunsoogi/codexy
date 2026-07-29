@@ -92,9 +92,14 @@ fn check_artifact(artifact: &Map<String, Value>, state: &str, path: &Path) -> Re
     let tag = string(artifact, "tag", path)?;
     check_tag(tag, state, path)?;
     let url = string(artifact, "url", path)?;
+    let asset = if state == "candidate-proven" {
+        "codexy-runtime-package.tar.gz"
+    } else {
+        "codexy-marketplace-plugin.tar.gz"
+    };
     exact(
         url,
-        &format!("{REPOSITORY}/releases/download/{tag}/codexy-marketplace-plugin.tar.gz"),
+        &format!("{REPOSITORY}/releases/download/{tag}/{asset}"),
         "artifact.url",
         path,
     )?;

@@ -16,7 +16,11 @@ from unittest import mock
 TAG = "v1.3.0"
 COMMIT = "a" * 40
 ARCHIVE_DIGEST = "b" * 64
-URL = f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/codexy-marketplace-plugin.tar.gz"
+URL = f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/codexy-runtime-package.tar.gz"
+LEGACY_URL = (
+    f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/"
+    "codexy-marketplace-plugin.tar.gz"
+)
 BINARIES = {"lsp": b"lsp binary", "codegraph": b"codegraph binary"}
 
 
@@ -59,6 +63,7 @@ def release() -> dict[str, object]:
 def legacy() -> dict[str, object]:
     value = release()
     value["state"] = "legacy-public"
+    value["artifact"]["url"] = LEGACY_URL
     value["platforms"] = {
         platform: {server: {"sha256": binary["sha256"]} for server, binary in inventory.items()}
         for platform, inventory in candidate()["platforms"].items()  # type: ignore[union-attr]
@@ -199,7 +204,7 @@ class RuntimeContractTests(unittest.TestCase):
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
         with mock.patch.dict(os.environ, {}, clear=True):
             configuration = runtime.Configuration.load("lsp", root, [])
-        self.assertEqual(configuration.package_url, URL)
+        self.assertEqual(configuration.package_url, LEGACY_URL)
         self.assertEqual(configuration.package_sha256, ARCHIVE_DIGEST)
         self.assertEqual(configuration.release_contract, parsed)
         self.assertTrue(parsed.verify_archive(root / "missing.tar.gz", platform="linux-x86_64"))

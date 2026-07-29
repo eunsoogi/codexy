@@ -1,0 +1,129 @@
+#!/bin/sh
+set -eu
+
+staged_archive=${1:?staged archive path required}
+final_archive=${2:?final archive path required}
+release_tag=${RELEASE_TAG:?release tag required}
+source_commit=${SOURCE_COMMIT:?source commit required}
+runtime_asset=codexy-runtime-package.tar.gz
+source_plugin=plugins/codexy
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+case "$source_commit" in *[!0-9a-f]*|'') exit 1 ;; esac
+test "${#source_commit}" -eq 40
+test -f "$staged_archive"
+test -d "$source_plugin"
+
+if command -v sha256sum >/dev/null 2>&1; then
+  digest_file() { sha256sum "$1" | awk '{print $1}'; }
+elif command -v shasum >/dev/null 2>&1; then
+  digest_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  echo "sha256sum or shasum is required" >&2
+  exit 127
+fi
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+"$script_dir/check-release-archive-entries" \
+  "$staged_archive" 52428800 10000 268435456
+mkdir "$tmp_dir/extracted"
+tar --no-same-owner --no-same-permissions -xzf "$staged_archive" -C "$tmp_dir/extracted"
+staged_plugin="$tmp_dir/extracted/plugins/codexy"
+test -d "$staged_plugin/runtime"
+test -f "$staged_plugin/runtime-candidate.json"
+
+STAGED_SHA=$(digest_file "$staged_archive") \
+RELEASE_TAG="$release_tag" SOURCE_COMMIT="$source_commit" \
+RUNTIME_ASSET="$runtime_asset" SOURCE_PLUGIN="$source_plugin" \
+STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
+import hashlib, json, os, re
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+release = json.loads((source / "runtime-release.json").read_text())
+manifest = json.loads((source / ".codex-plugin/plugin.json").read_text())
+candidate = (source / "runtime-candidate.json").read_bytes()
+if candidate != (staged / "runtime-candidate.json").read_bytes():
+    raise SystemExit("staged candidate identity differs from activated source")
+artifact = release["artifact"]
+tag = os.environ["RELEASE_TAG"]
+if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
+    raise SystemExit("release tag is not version-only")
+expected_url = (
+    f"https://github.com/eunsoogi/codexy/releases/download/{tag}/"
+    f"{os.environ['RUNTIME_ASSET']}"
+)
+if (
+    release.get("state") != "candidate-proven"
+    or release["source"]["commit"] != os.environ["SOURCE_COMMIT"]
+    or json.loads(candidate)["source"]["commit"] != os.environ["SOURCE_COMMIT"]
+    or artifact["tag"] != tag
+    or artifact["url"] != expected_url
+    or artifact["sha256"] != os.environ["STAGED_SHA"]
+    or artifact["payloadManifestSha256"] != hashlib.sha256(candidate).hexdigest()
+    or manifest.get("version") != tag.removeprefix("v")
+):
+    raise SystemExit("activated release metadata does not match staged identity")
+for inventory in release["platforms"].values():
+    for binary in inventory.values():
+        path = staged / binary["path"]
+        if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
+            raise SystemExit(f"staged runtime digest mismatch: {binary['path']}")
+protected = {}
+for path in sorted((staged / "runtime").rglob("*")):
+    if path.is_file():
+        protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
+for path in sorted((staged / "mcp").glob("*.exe")):
+    protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
+Path(os.environ["PROTECTED"]).write_text(json.dumps(protected, sort_keys=True))
+PY
+
+rsync -a --checksum --delete --exclude runtime --exclude 'mcp/*.exe' \
+  "$source_plugin/" "$staged_plugin/"
+SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" \
+PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
+import hashlib, json, os
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+for relative in [
+    ".codex-plugin/plugin.json",
+    "runtime-candidate.json",
+    "runtime-release.json",
+]:
+    if (source / relative).read_bytes() != (staged / relative).read_bytes():
+        raise SystemExit(f"activated metadata was not materialized: {relative}")
+protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
+for relative, digest in protected.items():
+    if hashlib.sha256((staged / relative).read_bytes()).hexdigest() != digest:
+        raise SystemExit(f"verified staged bytes changed: {relative}")
+PY
+
+mkdir -p "$(dirname -- "$final_archive")"
+ARCHIVE_ROOT="$tmp_dir/extracted" FINAL_ARCHIVE="$final_archive" python3 - <<'PY'
+import gzip, os, tarfile
+from pathlib import Path
+
+root = Path(os.environ["ARCHIVE_ROOT"])
+plugin = root / "plugins/codexy"
+paths = [plugin, *sorted(plugin.rglob("*"))]
+with (
+    Path(os.environ["FINAL_ARCHIVE"]).open("wb") as raw,
+    gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
+    tarfile.open(fileobj=compressed, mode="w", format=tarfile.GNU_FORMAT) as archive,
+):
+    for path in paths:
+        relative = path.relative_to(root)
+        info = archive.gettarinfo(str(path), str(relative))
+        info.uid = info.gid = 0
+        info.uname = info.gname = ""
+        info.mtime = 0
+        if info.isfile():
+            with path.open("rb") as source:
+                archive.addfile(info, source)
+        else:
+            archive.addfile(info)
+PY

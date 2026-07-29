@@ -145,7 +145,7 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
             "state": "candidate-proven",
             "artifact": {
                 "tag": "v1.3.0",
-                "url": f"{runtime.REPOSITORY}/releases/download/v1.3.0/codexy-marketplace-plugin.tar.gz",
+                "url": f"{runtime.REPOSITORY}/releases/download/v1.3.0/codexy-runtime-package.tar.gz",
                 "sha256": "b" * 64,
                 "payloadManifestSha256": hashlib.sha256(encoded).hexdigest(),
             },

@@ -18,6 +18,10 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
     assert_eq!(release["artifact"]["tag"], "v1.3.0");
+    assert_eq!(
+        release["artifact"]["url"],
+        "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz"
+    );
     assert_eq!(release["source"]["commit"], "a".repeat(40));
     assert_eq!(
         release["platforms"]["darwin-arm64"]["lsp"]["path"],
@@ -84,6 +88,18 @@ fn mismatched_candidate_digest_leaves_targets_byte_identical() -> Result<()> {
     let before = fixture.tracked()?;
     let mut receipt = receipt_value();
     receipt["artifact"]["payloadManifestSha256"] = json!("0".repeat(64));
+    fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
+    assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
+    assert_eq!(fixture.tracked()?, before);
+    Ok(())
+}
+
+#[test]
+fn mismatched_staging_run_attempt_leaves_targets_byte_identical() -> Result<()> {
+    let fixture = Fixture::new()?;
+    let before = fixture.tracked()?;
+    let mut receipt = receipt_value();
+    receipt["candidate"]["artifact"]["stagingRunAttempt"] = json!(2);
     fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
     assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
     assert_eq!(fixture.tracked()?, before);

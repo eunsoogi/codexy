@@ -14,6 +14,8 @@ use crate::support;
 mod activation_immutability;
 #[path = "runtime_publication_activation/artifact_download.rs"]
 mod artifact_download;
+#[path = "runtime_publication_activation/final_archive.rs"]
+mod final_archive;
 #[path = "runtime_publication_activation/staging.rs"]
 mod staging;
 
