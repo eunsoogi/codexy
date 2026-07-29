@@ -4,11 +4,14 @@ use super::child_lane_ownership_phrases::metadata_key;
 use super::workflow_profile_grammar::value_has_strict_signal;
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
-    let (mut fence, mut comment, mut lines) = (None, false, Vec::new());
+    let (mut fence, mut comment, mut code, mut lines) = (None, false, None, Vec::new());
     for raw in evidence.lines() {
         if fence.is_some() {
-            let line = normalize_metadata_prefix(raw);
-            if let Some((marker, length, tail)) = fence_marker(line) {
+            if indented_code(raw) {
+                lines.push(String::new());
+                continue;
+            }
+            if let Some((marker, length, tail)) = fence_marker(raw) {
                 if fence.is_some_and(|(open, minimum)| {
                     marker == open && length >= minimum && tail.trim().is_empty()
                 }) {
@@ -30,7 +33,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
                 continue;
             }
         }
-        let active = active_markdown(raw, &mut comment);
+        let active = active_markdown(raw, &mut comment, &mut code);
         let line = normalize_metadata_prefix(&active);
         lines.push(line.to_owned());
     }
@@ -60,8 +63,8 @@ fn indented_code(line: &str) -> bool {
     false
 }
 
-fn active_markdown(line: &str, comment: &mut bool) -> String {
-    let masked_code = without_inline_code(line);
+fn active_markdown(line: &str, comment: &mut bool, code: &mut Option<usize>) -> String {
+    let masked_code = without_inline_code(line, code);
     let mut line = masked_code.as_str();
     let mut active = String::new();
     loop {
@@ -83,17 +86,37 @@ fn active_markdown(line: &str, comment: &mut bool) -> String {
     }
 }
 
-fn without_inline_code(line: &str) -> String {
+fn without_inline_code(line: &str, code: &mut Option<usize>) -> String {
+    if code.is_none() && invalid_fence_header(line) {
+        return line.to_owned();
+    }
     let mut visible = String::new();
     let mut rest = line;
-    while let Some(open) = rest.find('`') {
+    loop {
+        if let Some(width) = *code {
+            let Some(close) = matching_backticks(rest, width) else {
+                visible.extend(std::iter::repeat_n(' ', rest.chars().count()));
+                return visible;
+            };
+            let end = close + width;
+            visible.extend(std::iter::repeat_n(' ', rest[..end].chars().count()));
+            rest = &rest[end..];
+            *code = None;
+            continue;
+        }
+        let Some(open) = rest.find('`') else {
+            visible.push_str(rest);
+            return visible;
+        };
         let width = rest[open..]
             .bytes()
             .take_while(|byte| *byte == b'`')
             .count();
         let content = &rest[open + width..];
         let Some(close) = matching_backticks(content, width) else {
-            visible.push_str(rest);
+            visible.push_str(&rest[..open]);
+            visible.extend(std::iter::repeat_n(' ', rest[open..].chars().count()));
+            *code = Some(width);
             return visible;
         };
         visible.push_str(&rest[..open]);
@@ -103,8 +126,16 @@ fn without_inline_code(line: &str) -> String {
         ));
         rest = &content[close + width..];
     }
-    visible.push_str(rest);
-    visible
+}
+
+fn invalid_fence_header(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    let Some(marker) = trimmed.as_bytes().first() else {
+        return false;
+    };
+    *marker == b'`'
+        && trimmed.bytes().take_while(|byte| *byte == b'`').count() >= 3
+        && fence_marker(line).is_none()
 }
 
 fn matching_backticks(text: &str, width: usize) -> Option<usize> {

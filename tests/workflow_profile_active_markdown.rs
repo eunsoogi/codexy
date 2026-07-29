@@ -86,6 +86,42 @@ fn only_valid_markdown_boundaries_can_hide_active_security_evidence() -> TestRes
 }
 
 #[test]
+fn code_and_fence_boundaries_preserve_active_security_evidence() -> TestResult {
+    for (name, evidence) in [
+        (
+            "an indented fence marker cannot close an active fence",
+            "Task kind: security review\n```text\n    ```\nReview response: historical\n```\nWorkflow profile: light",
+        ),
+        (
+            "a multiline code span cannot open an html comment",
+            "Context: `<!--\nstill code`\nTask kind: security review\nWorkflow profile: light",
+        ),
+        (
+            "ordinary multiline code leaves later metadata active",
+            "Context: `ordinary\nmultiline code`\nTask kind: security review\nWorkflow profile: light",
+        ),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
+    assert_profile_result(
+        "an unindented fence marker closes an active fence",
+        "Task kind: security review\n```text\n```\nReview response: historical\nWorkflow profile: light",
+        true,
+    )?;
+    Ok(())
+}
+
+#[test]
+fn multiline_code_spans_cannot_mutate_html_comment_state() -> TestResult {
+    assert_profile_result(
+        "a multiline code span cannot open an html comment",
+        "Context: `<!--\nstill code`\nTask kind: security review\nWorkflow profile: light",
+        false,
+    )?;
+    Ok(())
+}
+
+#[test]
 fn inert_lines_cannot_mutate_html_comment_state() -> TestResult {
     let indented_closer = format!(
             "Workflow profile: strict\nContext <!--\n    -->\n{}\n-->",

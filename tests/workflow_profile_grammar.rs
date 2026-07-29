@@ -97,6 +97,34 @@ fn coordinated_prefix_negation_has_bounded_scope() -> TestResult {
 }
 
 #[test]
+fn coordinated_negation_covers_a_complete_compound_category() -> TestResult {
+    for task_kind in ["no high-risk or release work", "no merge-sensitive and publication work"] {
+        assert_profile_result(
+            "direct negation propagates after a compound strict category",
+            &format!("Task kind: {task_kind}"),
+            true,
+        )?;
+    }
+    for task_kind in [
+        "high-risk or release work",
+        "release work",
+        "no high-risk review followed by release work",
+    ] {
+        assert_profile_result(
+            "only direct coordinated negation can suppress a later category",
+            &format!("Task kind: {task_kind}"),
+            false,
+        )?;
+    }
+    assert_profile_result(
+        "local compound negation remains lightweight",
+        "Task kind: no high-risk review",
+        true,
+    )?;
+    Ok(())
+}
+
+#[test]
 fn affirmative_not_only_and_postfix_negation_are_distinct() -> TestResult {
     for task_kind in [
         "not only security review",

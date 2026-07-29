@@ -84,24 +84,36 @@ fn start_clause(clauses: &mut Vec<Vec<Token>>) {
 }
 
 fn signal_at(tokens: &[Token], index: usize) -> bool {
-    STRICT_SIGNALS.contains(&tokens[index].text.as_str()) || compound_signal(tokens, index)
+    signal_end(tokens, index).is_some()
 }
 
-fn compound_signal(tokens: &[Token], index: usize) -> bool {
+fn signal_end(tokens: &[Token], index: usize) -> Option<usize> {
+    STRICT_SIGNALS
+        .contains(&tokens[index].text.as_str())
+        .then_some(index)
+        .or_else(|| compound_signal(tokens, index).map(|width| index + width - 1))
+}
+
+fn compound_signal(tokens: &[Token], index: usize) -> Option<usize> {
     let token = tokens[index].text.as_str();
     let next = tokens.get(index + 1).map(|token| token.text.as_str());
     matches!(
         (token, next),
         ("high", Some("risk")) | ("multi", Some("lane")) | ("merge", Some("sensitive"))
-    ) || matches!(
-        (
-            token,
-            next,
-            tokens.get(index + 2).map(|token| token.text.as_str()),
-            tokens.get(index + 3).map(|token| token.text.as_str()),
-        ),
-        ("high", Some("consequence"), Some("external"), Some("state"))
     )
+    .then_some(2)
+    .or_else(|| {
+        matches!(
+            (
+                token,
+                next,
+                tokens.get(index + 2).map(|token| token.text.as_str()),
+                tokens.get(index + 3).map(|token| token.text.as_str()),
+            ),
+            ("high", Some("consequence"), Some("external"), Some("state"))
+        )
+        .then_some(4)
+    })
 }
 
 fn category_negated(tokens: &[Token], index: usize) -> bool {
@@ -161,12 +173,21 @@ fn coordinated_prefix_negation(tokens: &[Token], index: usize) -> bool {
     if !matches!(tokens[coordinator].text.as_str(), "or" | "and") {
         return false;
     }
-    let Some(candidate) = coordinator.checked_sub(1) else {
+    let Some(candidate_end) = coordinator.checked_sub(1) else {
+        return false;
+    };
+    let Some(candidate) = signal_start(tokens, candidate_end) else {
         return false;
     };
     signal_at(tokens, candidate)
         && (coordinating_prefix_negation(tokens, candidate)
             || coordinated_prefix_negation(tokens, candidate))
+}
+
+fn signal_start(tokens: &[Token], end: usize) -> Option<usize> {
+    (0..=end)
+        .rev()
+        .find(|start| signal_end(tokens, *start) == Some(end))
 }
 
 fn coordinating_prefix_negation(tokens: &[Token], index: usize) -> bool {
