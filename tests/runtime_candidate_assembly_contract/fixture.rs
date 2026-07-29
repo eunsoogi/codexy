@@ -46,10 +46,9 @@ impl CandidateFixture {
         Command::new("sh")
             .arg("scripts/assemble-runtime-candidate")
             .current_dir(self.root())
-            .env("CANDIDATE_TAG", "runtime-candidate-test")
             .env("SOURCE_COMMIT", &self.source_commit)
-            .env("GITHUB_RUN_ID", "1")
-            .env("GITHUB_RUN_ATTEMPT", "1")
+            .env("STAGING_RUN_ID", "1")
+            .env("STAGING_RUN_ATTEMPT", "1")
             .env("GITHUB_SERVER_URL", "https://github.invalid")
             .env("GITHUB_REPOSITORY", "example/codexy")
             .env(

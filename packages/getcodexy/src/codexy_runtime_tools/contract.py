@@ -123,6 +123,8 @@ def load(plugin_root: Path) -> RuntimeRelease:
         raise ValueError("runtime release artifact has unknown or missing fields")
     tag = string(artifact.get("tag"), "artifact.tag")
     url = string(artifact.get("url"), "artifact.url")
+    if state == "candidate-proven" and (not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag)):
+        raise ValueError("runtime release must use a version-only tag")
     if url != f"{REPOSITORY}/releases/download/{tag}/codexy-marketplace-plugin.tar.gz":
         raise ValueError("runtime release artifact URL is not canonical")
     return RuntimeRelease(state, Source(REPOSITORY, commit), Artifact(tag, url,
@@ -138,7 +140,8 @@ def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfil
         raise ValueError("legacy runtime release has no candidate payload")
     if set(candidate) != {"schema", "source", "artifact", "compatibility", "platforms"} or candidate.get("schema") != CANDIDATE_SCHEMA or candidate.get("source") != {"repository": release.source.repository, "commit": release.source.commit}:
         raise ValueError("runtime candidate identity does not match release")
-    if candidate.get("artifact") != {"tag": release.artifact.tag} or compatibility(candidate.get("compatibility")) != release.compatibility:
+    artifact = candidate.get("artifact")
+    if not isinstance(artifact, dict) or set(artifact) != {"stagingRunId", "stagingRunAttempt"} or not all(isinstance(artifact[key], int) and artifact[key] > 0 for key in artifact) or compatibility(candidate.get("compatibility")) != release.compatibility:
         raise ValueError("runtime candidate metadata does not match release")
     inventory = platforms(candidate.get("platforms"), require_path=True)
     if inventory != release.platforms or platform not in inventory:
