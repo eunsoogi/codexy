@@ -1,15 +1,26 @@
 use std::process::Command;
 
+use serde_json::Value;
+
 const PR_STATE: &str = r#"{"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[]}"#;
-const CONTRACT_AUTHORIZATION: &str = r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractId":"codexy-main-squash","contractVersion":1,"recordIssuer":"maintainer-recorded","target":"current-pull-request","negated":false,"revoked":false}"#;
+const LOCAL_CONTRACT: &str = r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractId":"codexy-main-squash","contractVersion":1,"recordIssuer":"maintainer-recorded","target":"current-pull-request","negated":false,"revoked":false}"#;
 const COMMENT_STATE: &str = r#"{"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"id":"IC_128","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-128","body":"AUTHORIZE SQUASH MERGE: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer","association":"OWNER"}}]}"#;
 const COMMENT_INTENT: &str = r#"{"kind":"explicit-maintainer-intent","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","commentId":"IC_128","commentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-128","negated":false,"revoked":false}"#;
+const CONTRACT_STATE: &str = r#"{"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer","association":"MEMBER"}}]}"#;
+const EXTERNAL_CONTRACT: &str = r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractCommentId":"IC_contract","contractCommentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","target":"current-pull-request","negated":false,"revoked":false}"#;
 
 #[test]
-fn validator_accepts_the_checked_repository_workflow_contract()
+fn validator_accepts_the_external_repository_workflow_contract()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate(CONTRACT_AUTHORIZATION)?;
+    let output = validate_with_state(EXTERNAL_CONTRACT, CONTRACT_STATE)?;
     assert!(output.status.success(), "{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_a_repository_local_contract_claim() -> Result<(), Box<dyn std::error::Error>> {
+    let output = validate(LOCAL_CONTRACT)?;
+    assert!(!output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 
@@ -28,9 +39,9 @@ fn validator_rejects_non_authoritative_or_wrongly_scoped_intent()
     for authorization in [
         r#"{"kind":"generic-finish","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#,
         r#"{"kind":"parent-agent-prose","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#,
-        &CONTRACT_AUTHORIZATION.replacen("\"prNumber\":128", "\"prNumber\":127", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"baseRefName\":\"main\"", "\"baseRefName\":\"release\"", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"headRefOid\":\"32b03a210b3defb2d29dd352283ea2488e60d893\"", "\"headRefOid\":\"stale\"", 1),
+        &LOCAL_CONTRACT.replacen("\"prNumber\":128", "\"prNumber\":127", 1),
+        &LOCAL_CONTRACT.replacen("\"baseRefName\":\"main\"", "\"baseRefName\":\"release\"", 1),
+        &LOCAL_CONTRACT.replacen("\"headRefOid\":\"32b03a210b3defb2d29dd352283ea2488e60d893\"", "\"headRefOid\":\"stale\"", 1),
     ] {
         let output = validate(authorization)?;
         assert!(!output.status.success(), "{authorization}");
@@ -48,13 +59,13 @@ fn validator_rejects_forged_or_revoked_authorization() -> Result<(), Box<dyn std
         COMMENT_INTENT,
         &COMMENT_INTENT.replacen("IC_128", "IC_forged", 1),
         &COMMENT_INTENT.replacen("commentUrl", "sourceReference", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"negated\":false", "\"negated\":true", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"revoked\":false", "\"revoked\":true", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"negated\":false", "\"negated\":\"true\"", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"recordIssuer\":\"maintainer-recorded\"", "\"recordIssuer\":\"agent-self-authored\"", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"contractId\":\"codexy-main-squash\"", "\"contractId\":\"invented-contract\"", 1),
-        &CONTRACT_AUTHORIZATION.replacen("\"target\":\"current-pull-request\"", "\"target\":\"all-pull-requests\"", 1),
-        &CONTRACT_AUTHORIZATION.replacen(",\"target\":\"current-pull-request\"", "", 1),
+        &LOCAL_CONTRACT.replacen("\"negated\":false", "\"negated\":true", 1),
+        &LOCAL_CONTRACT.replacen("\"revoked\":false", "\"revoked\":true", 1),
+        &LOCAL_CONTRACT.replacen("\"negated\":false", "\"negated\":\"true\"", 1),
+        &LOCAL_CONTRACT.replacen("\"recordIssuer\":\"maintainer-recorded\"", "\"recordIssuer\":\"agent-self-authored\"", 1),
+        &LOCAL_CONTRACT.replacen("\"contractId\":\"codexy-main-squash\"", "\"contractId\":\"invented-contract\"", 1),
+        &LOCAL_CONTRACT.replacen("\"target\":\"current-pull-request\"", "\"target\":\"all-pull-requests\"", 1),
+        &LOCAL_CONTRACT.replacen(",\"target\":\"current-pull-request\"", "", 1),
     ] {
         let output = validate(authorization)?;
         assert!(!output.status.success(), "{authorization}");
@@ -79,14 +90,33 @@ fn validator_rejects_non_authoritative_comment_evidence() -> Result<(), Box<dyn 
 }
 
 #[test]
+fn validator_rejects_stale_or_replayed_external_contract_evidence() -> Result<(), Box<dyn std::error::Error>> {
+    let mut replay: Value = serde_json::from_str(CONTRACT_STATE)?;
+    let comments = replay
+        .get_mut("comments")
+        .and_then(Value::as_array_mut)
+        .ok_or("contract comments")?;
+    comments.push(comments.first().cloned().ok_or("contract comment")?);
+    let replay = serde_json::to_string(&replay)?;
+    for state in [
+        CONTRACT_STATE.replacen("BASE main", "BASE release", 1),
+        replay,
+        CONTRACT_STATE.replacen("AUTHORIZE REPOSITORY SQUASH CONTRACT", "AUTHORIZE SQUASH MERGE", 1),
+    ] {
+        assert!(!validate_with_state(EXTERNAL_CONTRACT, &state)?.status.success(), "{state}");
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_ambiguous_or_untyped_current_targets() -> Result<(), Box<dyn std::error::Error>> {
     for authorization in [
-        CONTRACT_AUTHORIZATION.replace("128", "null"),
-        CONTRACT_AUTHORIZATION.replace("\"main\"", "null"),
-        CONTRACT_AUTHORIZATION.replace("\"32b03a210b3defb2d29dd352283ea2488e60d893\"", "null"),
-        CONTRACT_AUTHORIZATION.replacen("\"negated\":false", "\"negated\":true,\"negated\":false", 1),
-        CONTRACT_AUTHORIZATION.replacen("\"prNumber\":128", "\"pr\\u004eumber\":127,\"prNumber\":128", 1),
-        CONTRACT_AUTHORIZATION.replace("128", "0"),
+        LOCAL_CONTRACT.replace("128", "null"),
+        LOCAL_CONTRACT.replace("\"main\"", "null"),
+        LOCAL_CONTRACT.replace("\"32b03a210b3defb2d29dd352283ea2488e60d893\"", "null"),
+        LOCAL_CONTRACT.replacen("\"negated\":false", "\"negated\":true,\"negated\":false", 1),
+        LOCAL_CONTRACT.replacen("\"prNumber\":128", "\"pr\\u004eumber\":127,\"prNumber\":128", 1),
+        LOCAL_CONTRACT.replace("128", "0"),
     ] {
         let output = validate(&authorization)?;
         assert!(!output.status.success(), "{authorization}\n{}", stderr(&output));
@@ -96,10 +126,10 @@ fn validator_rejects_ambiguous_or_untyped_current_targets() -> Result<(), Box<dy
 
 #[test]
 fn validator_rejects_ambiguous_pr_state_without_rejecting_metadata_values() -> Result<(), Box<dyn std::error::Error>> {
-    let output = validate_with_state(CONTRACT_AUTHORIZATION, r#"{"number":127,"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#)?;
+    let output = validate_with_state(LOCAL_CONTRACT, r#"{"number":127,"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#)?;
     assert!(!output.status.success(), "{}", stderr(&output));
-    let metadata = r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractId":"codexy-main-squash","contractVersion":1,"recordIssuer":"maintainer-recorded","target":"current-pull-request","negated":false,"revoked":false,"note":"kind"}"#;
-    assert!(validate(metadata)?.status.success());
+    let metadata = EXTERNAL_CONTRACT.replacen("\"revoked\":false", "\"revoked\":false,\"note\":\"kind\"", 1);
+    assert!(validate_with_state(&metadata, CONTRACT_STATE)?.status.success());
     Ok(())
 }
 
@@ -108,7 +138,7 @@ fn validator_rejects_combined_validation_modes() -> Result<(), Box<dyn std::erro
     let temp = tempfile::tempdir()?;
     let authorization_path = temp.path().join("merge-authorization.json");
     let pr_state_path = temp.path().join("pr-state.json");
-    std::fs::write(&authorization_path, CONTRACT_AUTHORIZATION)?;
+    std::fs::write(&authorization_path, LOCAL_CONTRACT)?;
     std::fs::write(&pr_state_path, PR_STATE)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([

@@ -1,7 +1,0 @@
-{
-  "contractId": "codexy-main-squash",
-  "contractVersion": 1,
-  "mergeClass": "squash",
-  "target": "current-pull-request",
-  "recordIssuer": "maintainer-recorded"
-}

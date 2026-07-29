@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::{merge_authorization_contract, merge_authorization_json::unique_object};
 
-pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> Vec<String> {
+pub(super) fn check(_plugin_root: &Path, authorization: &str, pr_state: &str) -> Vec<String> {
     let mut errors = unique_object(authorization, "merge authorization");
     errors.extend(unique_object(pr_state, "merge authorization PR state"));
     let authorization = match serde_json::from_str::<Value>(authorization) {
@@ -21,7 +21,7 @@ pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> 
             return errors;
         }
     };
-    check_kind(plugin_root, &authorization, &pr_state, &mut errors);
+    check_kind(&authorization, &pr_state, &mut errors);
     check_false(authorization.get("negated"), "negated", &mut errors);
     check_false(authorization.get("revoked"), "revoked", &mut errors);
     check_value(&authorization, "intent", "merge", &mut errors);
@@ -44,15 +44,12 @@ pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> 
     errors
 }
 
-fn check_kind(
-    plugin_root: &Path,
-    authorization: &Value,
-    pr_state: &Value,
-    errors: &mut Vec<String>,
-) {
+fn check_kind(authorization: &Value, pr_state: &Value, errors: &mut Vec<String>) {
     match string_field(authorization, "kind") {
         Some("explicit-user-intent" | "explicit-maintainer-intent") => check_intent(authorization, pr_state, errors),
-        Some("repository-workflow-contract") => merge_authorization_contract::check(plugin_root, authorization, errors),
+        Some("repository-workflow-contract") => {
+            merge_authorization_contract::check(authorization, pr_state, errors)
+        }
         _ => errors.push("merge authorization kind must be explicit-user-intent, explicit-maintainer-intent, or repository-workflow-contract".into()),
     }
 }

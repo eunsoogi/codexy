@@ -1,44 +1,54 @@
-use std::{fs, path::Path};
-
 use serde_json::Value;
 
-use crate::paths::display_relative;
-
-pub(super) const ID: &str = "codexy-main-squash";
-const PATH: &str = "skills/git-workflow/references/merge-authorization-contract.json";
-
-pub(super) fn check(plugin_root: &Path, record: &Value, errors: &mut Vec<String>) {
-    let path = plugin_root.join(PATH);
-    let contract = match fs::read_to_string(&path)
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-    {
-        Some(contract) => contract,
-        None => {
-            errors.push(format!(
-                "{} must define the checked merge-authorization contract",
-                display_relative(&path)
-            ));
-            return;
-        }
-    };
-    require(&contract, "contractId", ID, errors);
-    if contract.get("contractVersion").and_then(Value::as_u64) != Some(1) {
-        errors.push("merge authorization contractVersion must be 1".into());
-    }
-    require(&contract, "mergeClass", "squash", errors);
-    require(&contract, "target", "current-pull-request", errors);
-    require(&contract, "recordIssuer", "maintainer-recorded", errors);
-    require(record, "contractId", ID, errors);
+pub(super) fn check(record: &Value, pr_state: &Value, errors: &mut Vec<String>) {
     require(record, "target", "current-pull-request", errors);
-    if record.get("contractVersion").and_then(Value::as_u64) != Some(1) {
-        errors.push("merge authorization contractVersion must be 1".into());
+    let id = string(record, "contractCommentId");
+    let url = string(record, "contractCommentUrl");
+    let expected = expected_comment(record);
+    let found = pr_state
+        .get("comments")
+        .and_then(Value::as_array)
+        .map(|comments| {
+            comments
+                .iter()
+                .filter(|comment| {
+                    string(comment, "id") == id
+                        && string(comment, "url") == url
+                        && comment
+                            .get("author")
+                            .and_then(|author| string(author, "association"))
+                            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
+                        && string(comment, "body") == expected.as_deref()
+                })
+                .count()
+        });
+    let number = pr_state.get("number").and_then(Value::as_u64);
+    let matches_pr = url.zip(number).is_some_and(|(url, number)| {
+        url.starts_with("https://github.com/")
+            && url.contains(&format!("/pull/{number}#issuecomment-"))
+    });
+    if id.is_none_or(str::is_empty) || !matches_pr || found != Some(1) {
+        errors.push(
+            "merge authorization contract must match one OWNER or MEMBER GitHub PR comment".into(),
+        );
     }
-    require(record, "recordIssuer", "maintainer-recorded", errors);
 }
 
 fn require(value: &Value, field: &str, expected: &str, errors: &mut Vec<String>) {
     if value.get(field).and_then(Value::as_str) != Some(expected) {
         errors.push(format!("merge authorization {field} must be {expected:?}"));
     }
+}
+
+fn expected_comment(record: &Value) -> Option<String> {
+    Some(format!(
+        "AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #{} BASE {} HEAD {}",
+        record.get("prNumber")?.as_u64()?,
+        string(record, "baseRefName")?,
+        string(record, "headRefOid")?,
+    ))
+}
+
+fn string<'a>(value: &'a Value, field: &str) -> Option<&'a str> {
+    value.get(field).and_then(Value::as_str)
 }
