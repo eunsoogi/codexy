@@ -10,6 +10,9 @@ use serde_yaml::Value as Yaml;
 
 use crate::support;
 
+#[path = "runtime_publication_activation/activation_immutability.rs"]
+mod activation_immutability;
+
 const RECEIPT_SCHEMA: &str = "codexy.runtime-candidate-receipt.v1";
 
 #[test]
@@ -53,41 +56,6 @@ fn workflow(name: &str) -> Result<Workflow, Box<dyn std::error::Error>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name);
     let text = fs::read_to_string(&path)?;
     Ok((path, text.clone(), serde_yaml::from_str(&text)?))
-}
-
-#[test]
-fn invalid_activation_is_byte_identical() -> Result<(), Box<dyn std::error::Error>> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let gate = root.join("scripts/activate-runtime-contract");
-    assert!(
-        gate.is_file(),
-        "missing activation gate entrypoint: {}",
-        gate.display()
-    );
-    let before = activation_bytes(root)?;
-    let temp = tempfile::tempdir()?;
-    let receipt = temp.path().join("invalid-receipt.json");
-    fs::write(&receipt, r#"{"schema":"invalid"}"#)?;
-    let output = Command::new(&gate)
-        .args([
-            "--repo-root",
-            root.to_str().ok_or("non-UTF-8 repository root")?,
-            "--bootstrap-version",
-            "1.2.2",
-            "--candidate-receipt",
-            receipt.to_str().ok_or("non-UTF-8 receipt path")?,
-        ])
-        .output()?;
-    assert!(
-        !output.status.success(),
-        "activation accepted an invalid candidate receipt"
-    );
-    assert_eq!(
-        activation_bytes(root)?,
-        before,
-        "failed activation mutated a public pointer"
-    );
-    Ok(())
 }
 
 #[test]
@@ -193,7 +161,7 @@ fn has_dispatch(document: &Yaml) -> bool {
     })
 }
 
-fn activation_bytes(
+pub(super) fn activation_bytes(
     root: &Path,
 ) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>, Box<dyn std::error::Error>> {
     let mut bytes = BTreeMap::new();

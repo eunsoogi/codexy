@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -15,7 +17,9 @@ fn runtime_heartbeat_reference_is_registered_packaged_and_delegation_checked() -
             .any(|line| line.starts_with("- `references/runtime-heartbeats.md`"))
     );
 
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+        RELATIVE,
+    )])?;
     let path = plugin_root.join(RELATIVE);
     let original = std::fs::read_to_string(&path)?;
     std::fs::remove_file(&path)?;

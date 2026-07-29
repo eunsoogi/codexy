@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Compare staged and extracted package files listed in deterministic order."""
+
+import hashlib
+import os
+import pathlib
+import re
+import sys
+
+CHUNK_SIZE = 64 * 1024
+
+
+def fail(message: str) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def safe_relative(raw: str) -> pathlib.PurePosixPath:
+    path = pathlib.PurePosixPath(raw)
+    if (
+        not raw
+        or "\\" in raw
+        or path.is_absolute()
+        or re.match(r"^[A-Za-z]:", raw)
+        or any(part in {"", ".", ".."} for part in raw.split("/"))
+    ):
+        fail(f"unsafe expected path: {raw}")
+    return path
+
+
+def within(root: pathlib.Path, relative: pathlib.PurePosixPath) -> pathlib.Path:
+    candidate = root.joinpath(*relative.parts)
+    try:
+        candidate.resolve().relative_to(root.resolve())
+    except ValueError:
+        fail(f"unsafe expected path: {relative}")
+    return candidate
+
+
+def same_bytes(source: pathlib.Path, extracted: pathlib.Path) -> bool:
+    try:
+        with source.open("rb") as source_file, extracted.open("rb") as extracted_file:
+            while True:
+                source_chunk = source_file.read(CHUNK_SIZE)
+                extracted_chunk = extracted_file.read(CHUNK_SIZE)
+                if source_chunk != extracted_chunk:
+                    return False
+                if not source_chunk:
+                    return True
+    except OSError:
+        return False
+
+
+def file_digest(path: pathlib.Path, relative: pathlib.PurePosixPath) -> bytes:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(CHUNK_SIZE), b""):
+                digest.update(chunk)
+    except OSError:
+        fail(f"packaged file bytes differ: {relative}")
+    return digest.digest()
+
+
+def main(argv: list[str]) -> None:
+    if len(argv) != 4:
+        raise SystemExit("usage: check-release-archive-content EXPECTED SOURCE EXTRACTED")
+    expected, source, extracted = map(pathlib.Path, argv[1:])
+    try:
+        entries = expected.read_bytes().splitlines()
+    except OSError as error:
+        raise SystemExit(f"expected list unavailable: {error}") from error
+    for entry in entries:
+        raw = os.fsdecode(entry)
+        relative = safe_relative(raw)
+        source_path = within(source, relative)
+        extracted_path = within(extracted, relative)
+        if not same_bytes(source_path, extracted_path):
+            fail(f"packaged file bytes differ: {relative}")
+        if file_digest(source_path, relative) != file_digest(extracted_path, relative):
+            fail(f"packaged file digest differs: {relative}")
+
+
+if __name__ == "__main__":
+    main(sys.argv)

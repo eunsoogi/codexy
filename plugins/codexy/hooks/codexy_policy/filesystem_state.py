@@ -41,7 +41,9 @@ def resolved_location(
 ) -> str | None:
     """Resolve only modeled symlink traversal for later command-state effects."""
     source = value if os.path.isabs(value) else os.path.join(cwd, value)
-    cursor = os.path.sep
+    cursor = _traversal_root(source)
+    if cursor is None:
+        return None
     indexed = dict(paths)
     for segment in (part for part in source.split(os.path.sep) if part not in {"", "."}):
         cursor = _follow_modeled_symlink(cursor, indexed)
@@ -139,7 +141,9 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
     if not segments:
         return MkdirOutcome(SUCCESS, paths) if parents and state(location(value, cwd), paths).kind == "directory" else MkdirOutcome(FAILURE)
     indexed = dict(paths)
-    cursor = os.path.sep
+    cursor = _traversal_root(source)
+    if cursor is None:
+        return MkdirOutcome(AMBIGUOUS)
     created = []
     for index, segment in enumerate(segments):
         cursor = _follow_modeled_symlink(cursor, indexed)
@@ -169,6 +173,14 @@ def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...],
     if not parents and created != [destination]:
         return MkdirOutcome(FAILURE)
     return MkdirOutcome(SUCCESS, tuple(indexed.items()))
+
+
+def _traversal_root(source: str) -> str | None:
+    """Preserve a native drive anchor while rejecting unsupported UNC traversal."""
+    drive, _ = os.path.splitdrive(source)
+    if drive.startswith(os.path.sep * 2):
+        return None
+    return os.path.join(drive, os.path.sep) if drive else os.path.sep
 
 
 def _symlink_ambiguous(path: str, paths: dict[str, PathState]) -> bool:

@@ -32,20 +32,49 @@ pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn prepare_pin_updates(root: &Path, version: &str) -> Result<Vec<WrapperUpdate>> {
+pub(super) fn prepare_activation_updates(
+    root: &Path,
+    version: &str,
+    platforms: &[&str],
+) -> Result<Vec<WrapperUpdate>> {
     super::require_semver(version)?;
+    let bundled_platforms = platforms.join(" ");
     WRAPPERS
         .iter()
         .map(|(relative, server)| {
             let path = root.join(relative);
             let (mut text, pin) = wrapper_pin_with_range(&path, server)?;
             text.replace_range(pin, version);
+            replace_bundled_platforms(&mut text, &bundled_platforms, &path)?;
             Ok(WrapperUpdate {
                 path,
                 bytes: text.into_bytes(),
             })
         })
         .collect()
+}
+
+fn replace_bundled_platforms(text: &mut String, platforms: &str, path: &Path) -> Result<()> {
+    const PREFIX: &str = "bundled_platforms=\"";
+    let matches = text.match_indices(PREFIX).collect::<Vec<_>>();
+    if matches.len() != 1 {
+        bail!(
+            "{} must contain exactly one bundled_platforms declaration",
+            display_relative(path)
+        );
+    }
+    let start = matches[0].0 + PREFIX.len();
+    let end = text[start..]
+        .find('"')
+        .map(|offset| start + offset)
+        .with_context(|| {
+            format!(
+                "{} bundled_platforms declaration must terminate",
+                display_relative(path)
+            )
+        })?;
+    text.replace_range(start..end, platforms);
+    Ok(())
 }
 
 #[derive(Debug)]

@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 mod structured_contract;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
-use crate::support;
+use crate::support::{self, PluginFixture};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -40,20 +40,15 @@ fn validator_accepts_all_packaged_roles_with_nonrecursive_delegation() -> TestRe
 
 #[test]
 fn validator_rejects_role_without_nonrecursive_delegation_prohibition() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let role_path = plugin_root.join("agents/codexy-cartographer.toml");
+    let fixture = plugin_fixture()?;
+    let role_path = fixture.root().join("agents/codexy-cartographer.toml");
     let role = std::fs::read_to_string(&role_path)?;
     std::fs::write(
         &role_path,
         role.replace(NO_RECURSIVE_DELEGATION, "MUST NOT recurse through helpers."),
     )?;
 
-    let output = validator(&plugin_root)?;
+    let output = validator(fixture.root())?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("nonrecursive delegation contract is missing"));
@@ -62,6 +57,7 @@ fn validator_rejects_role_without_nonrecursive_delegation_prohibition() -> TestR
 
 #[test]
 fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
+    let fixture = plugin_fixture()?;
     for permission in [
         "MAY spawn another helper after mapping the repository.",
         "CAN spawn a helper after mapping the repository.",
@@ -71,20 +67,14 @@ fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
         "Allowed actions: spawn helper tasks, but MUST NOT merge.",
         "Permitted to delegate to a reviewer thread after mapping the repository.",
     ] {
-        let temp = tempfile::tempdir()?;
-        let plugin_root = temp.path().join("codexy");
-        support::copy_dir(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
-        let role_path = plugin_root.join("agents/codexy-cartographer.toml");
+        let role_path = reset_fixture_file(&fixture, Path::new("agents/codexy-cartographer.toml"))?;
         let role = std::fs::read_to_string(&role_path)?;
         std::fs::write(
             &role_path,
             role.replacen("\n\"\"\"", &format!("\n{permission}\n\"\"\""), 1),
         )?;
 
-        let output = validator(&plugin_root)?;
+        let output = validator(fixture.root())?;
 
         assert!(!output.status.success(), "{permission}");
         assert!(
@@ -97,13 +87,8 @@ fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
 
 #[test]
 fn validator_rejects_orchestration_without_first_level_delegation_contract() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = plugin_fixture()?;
+    let skill_path = fixture.root().join("skills/codex-orchestration/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
@@ -113,7 +98,7 @@ fn validator_rejects_orchestration_without_first_level_delegation_contract() -> 
         ),
     )?;
 
-    let output = validator(&plugin_root)?;
+    let output = validator(fixture.root())?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("nonrecursive delegation contract is missing"));
@@ -122,13 +107,8 @@ fn validator_rejects_orchestration_without_first_level_delegation_contract() -> 
 
 #[test]
 fn validator_rejects_recursive_permission_in_orchestration_skill() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = plugin_fixture()?;
+    let path = fixture.root().join("skills/codex-orchestration/SKILL.md");
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
         &path,
@@ -138,7 +118,7 @@ fn validator_rejects_recursive_permission_in_orchestration_skill() -> TestResult
         ),
     )?;
 
-    let output = validator(&plugin_root)?;
+    let output = validator(fixture.root())?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("permits recursive delegation"));
@@ -147,19 +127,14 @@ fn validator_rejects_recursive_permission_in_orchestration_skill() -> TestResult
 
 #[test]
 fn validator_rejects_recursive_permission_in_every_registered_reference() -> TestResult {
+    let fixture = plugin_fixture()?;
     for relative_path in registered_orchestration_references()? {
-        let temp = tempfile::tempdir()?;
-        let plugin_root = temp.path().join("codexy");
-        support::copy_dir(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
-        let path = plugin_root.join(&relative_path);
+        let path = reset_fixture_file(&fixture, Path::new(&relative_path))?;
         let mut text = std::fs::read_to_string(&path)?;
         text.push_str("\nA helper MAY spawn another helper.\n");
         std::fs::write(path, text)?;
 
-        let output = validator(&plugin_root)?;
+        let output = validator(fixture.root())?;
 
         assert!(!output.status.success(), "{relative_path}");
         assert!(
@@ -188,6 +163,27 @@ fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> Test
         &structured_contract_rules::DELEGATION[2..],
     );
     Ok(())
+}
+
+fn plugin_fixture() -> TestResult<PluginFixture> {
+    Ok(support::plugin_fixture_with_mutable_files(&[
+        Path::new("agents/codexy-cartographer.toml"),
+        Path::new("skills/codex-orchestration/SKILL.md"),
+        Path::new("skills/codex-orchestration/references/classification-and-control.md"),
+        Path::new("skills/codex-orchestration/references/goal-transition-reporting.md"),
+        Path::new("skills/codex-orchestration/references/thread-and-worktree-routing.md"),
+        Path::new("skills/codex-orchestration/references/orchestration-loop.md"),
+        Path::new("skills/codex-orchestration/references/runtime-heartbeats.md"),
+        Path::new("skills/codex-orchestration/references/parent-stop-preflight.md"),
+        Path::new("skills/codex-orchestration/references/execution-budget.md"),
+        Path::new("skills/codex-orchestration/references/plain-language-user-replies.md"),
+        Path::new("skills/codex-orchestration/references/natural-korean-responses.md"),
+    ])?)
+}
+
+fn reset_fixture_file(fixture: &PluginFixture, relative: &Path) -> TestResult<std::path::PathBuf> {
+    fixture.reset_file(relative)?;
+    Ok(fixture.root().join(relative))
 }
 
 fn validator(plugin_root: &Path) -> TestResult<Output> {

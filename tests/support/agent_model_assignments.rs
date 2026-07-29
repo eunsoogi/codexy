@@ -1,35 +1,58 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-
-use super::copy_dir;
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+pub(crate) fn agent_fixture<'a>(
+    filenames: impl IntoIterator<Item = &'a str>,
+) -> TestResult<super::PluginFixture> {
+    let mutable_paths = filenames
+        .into_iter()
+        .map(|filename| Path::new("agents").join(filename))
+        .collect::<Vec<_>>();
+    let mutable_files = mutable_paths
+        .iter()
+        .map(|path| path.as_path())
+        .collect::<Vec<_>>();
+    Ok(super::plugin_fixture_with_mutable_files(&mutable_files)?)
+}
+
+pub(crate) fn catalog_fixture() -> TestResult<super::PluginFixture> {
+    Ok(super::plugin_fixture_with_mutable_files(&[Path::new(
+        "agents/catalog.toml",
+    )])?)
+}
+
 pub(crate) fn validate_agent_replacement(
+    fixture: &super::PluginFixture,
     filename: &str,
     field: &str,
     expected: &str,
     replacement: &str,
 ) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_fixture(temp.path())?;
-    let path = plugin_root.join(format!("agents/{filename}"));
+    let mutable_path = Path::new("agents").join(filename);
+    fixture.reset_file(&mutable_path)?;
+    let path = fixture.root().join(&mutable_path);
     let agent = std::fs::read_to_string(&path)?;
     let needle = format!("{field} = {expected:?}");
     std::fs::write(
         &path,
         agent.replacen(&needle, &format!("{field} = {replacement:?}"), 1),
     )?;
-    validator(&plugin_root)
+    validator(fixture.root())
 }
 
-pub(crate) fn validate_catalog_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_fixture(temp.path())?;
-    let path = plugin_root.join("agents/catalog.toml");
+pub(crate) fn validate_catalog_replacement(
+    fixture: &super::PluginFixture,
+    needle: &str,
+    replacement: &str,
+) -> TestResult<Output> {
+    let relative = Path::new("agents/catalog.toml");
+    fixture.reset_file(relative)?;
+    let path = fixture.root().join(relative);
     let catalog = std::fs::read_to_string(&path)?;
     std::fs::write(&path, catalog.replacen(needle, replacement, 1))?;
-    validator(&plugin_root)
+    validator(fixture.root())
 }
 
 pub(crate) fn public_contract_import_check() -> TestResult<Output> {
@@ -48,8 +71,13 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     )?;
     Ok(Command::new("cargo")
         .args(["check", "--quiet"])
+        .env("CARGO_TARGET_DIR", public_contract_target_dir())
         .current_dir(temp.path())
         .output()?)
+}
+
+pub(crate) fn public_contract_target_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("target")
 }
 
 pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
@@ -66,16 +94,8 @@ pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
     .into())
 }
 
-fn copy_plugin_fixture(root: &Path) -> TestResult<std::path::PathBuf> {
-    let plugin_root = root.join("codexy");
-    copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok(plugin_root)
-}
-
 fn validator(plugin_root: &Path) -> TestResult<Output> {
+    super::profile_metrics::record("validator_cli");
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",

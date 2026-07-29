@@ -86,7 +86,9 @@ fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
                 targets.iter().any(|target| {
                     target["src_path"]
                         .as_str()
-                        .is_some_and(|path| path.ends_with("/shared/src/tool.rs"))
+                        .is_some_and(|path| {
+                            Path::new(path).ends_with(Path::new("shared/src/tool.rs"))
+                        })
                 })
             })
         })

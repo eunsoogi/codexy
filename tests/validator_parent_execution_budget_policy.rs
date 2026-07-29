@@ -22,6 +22,12 @@ fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
     plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
 }
 
+fn copy_budget_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    Ok(support::copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
+        "skills/codex-orchestration/references/execution-budget.md",
+    )])?)
+}
+
 #[test]
 fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -34,7 +40,7 @@ fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
     );
 
     for clause in PARENT_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_budget_fixture()?;
         let path = budget_path(&plugin_root);
         let original = fs::read_to_string(&path)?;
         fs::write(
@@ -50,7 +56,7 @@ fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
 
 #[test]
 fn validator_rejects_parent_cycles_without_acceptance_progress() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_budget_fixture()?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(

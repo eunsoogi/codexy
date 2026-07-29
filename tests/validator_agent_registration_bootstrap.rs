@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[path = "structured_contract.rs"]
 mod structured_contract;
@@ -15,11 +15,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    let plugin_root = installed_plugin(temp.path(), &[])?;
     let codex_home = temp.path().join("home/.codex");
     let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
 
@@ -61,11 +57,7 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
 #[test]
 fn installed_bootstrap_rejects_plugin_root_overrides() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    let plugin_root = installed_plugin(temp.path(), &[])?;
     let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
     let codex_home = temp.path().join("home/.codex");
 
@@ -101,11 +93,7 @@ fn installed_bootstrap_rejects_plugin_root_overrides() -> TestResult {
 #[test]
 fn pre_start_bootstrap_rejects_custom_config_discovery_roots() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    let plugin_root = installed_plugin(temp.path(), &[])?;
     let custom_root = temp.path().join("custom-profile");
     let config = custom_root.join("config.toml");
     let output = Command::new(plugin_root.join("bootstrap-codexy-agents"))
@@ -185,10 +173,11 @@ fn orchestration_guidance_bootstraps_exact_roles_without_generic_fallback() -> T
 #[test]
 fn validator_requires_the_installed_bootstrap_entrypoint() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
+    let plugin_root = installed_plugin(
+        temp.path(),
+        &[Path::new(
+            "skills/codex-orchestration/scripts/bootstrap-codexy-agents",
+        )],
     )?;
     let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
     if bootstrap.exists() {
@@ -219,6 +208,12 @@ fn lifecycle_hooks_do_not_run_the_registration_bootstrap() -> TestResult {
 
 fn path(path: &Path) -> Result<&str, Box<dyn std::error::Error>> {
     Ok(path.to_str().ok_or("path must be UTF-8")?)
+}
+
+fn installed_plugin(root: &Path, mutable_files: &[&Path]) -> std::io::Result<std::path::PathBuf> {
+    let plugin_root = root.join("installed-codexy");
+    support::copy_plugin_fixture_into_with_mutable_files(&plugin_root, mutable_files)?;
+    Ok(plugin_root)
 }
 
 fn stdout(output: &std::process::Output) -> String {

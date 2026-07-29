@@ -1,6 +1,10 @@
-use std::{fs, process::Command};
+use std::fs;
 
 use serde_json::Value;
+
+#[path = "session_audit_custom_tools/support.rs"]
+mod audit_support;
+use audit_support::{audit, stderr};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -238,13 +242,4 @@ fn session_audit_rejects_oversized_invalid_utf8_before_decoding() -> TestResult 
     assert!(stderr(&output).contains("session metadata input exceeds 8388608 bytes"));
     assert!(!stderr(&output).contains("not valid UTF-8"));
     Ok(())
-}
-fn audit(input: &std::path::Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-session-audit"))
-        .arg("--input")
-        .arg(input)
-        .output()?)
-}
-fn stderr(output: &std::process::Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
 }

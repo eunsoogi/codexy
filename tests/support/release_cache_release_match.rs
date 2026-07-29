@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use super::release_cache::{
     assert_server_info, create_fake_curl_bin, create_runtime_package, initialize_wrapper,

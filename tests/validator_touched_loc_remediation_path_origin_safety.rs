@@ -189,11 +189,12 @@ fn nested_repository_fixture(
     } else {
         "../src/tool.rs".to_owned()
     };
+    let external_target = toml::Value::String(external_target).to_string();
     write(
         outer.path(),
         "external/Cargo.toml",
         &format!(
-            "[package]\nname = \"external\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[[bin]]\nname = \"tool\"\npath = \"{}\"\n",
+            "[package]\nname = \"external\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[[bin]]\nname = \"tool\"\npath = {}\n",
             external_target
         ),
     )?;

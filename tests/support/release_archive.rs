@@ -1,10 +1,34 @@
 #[allow(unused_imports)]
 use std::process::Command;
 
+use super::wrapper_copy::is_generated_fixture_directory;
+
+#[path = "release_archive/archive_entry.rs"]
+mod archive_entry;
+#[path = "release_archive/archive_evidence.rs"]
+mod archive_evidence;
+#[cfg(test)]
+#[path = "release_archive/archive_evidence_tests.rs"]
+mod archive_evidence_tests;
 #[path = "release_archive/archive_process.rs"]
 mod archive_process;
 #[allow(unused_imports)]
 pub(crate) use archive_process::{create_archive, create_archive_with_commands};
+
+pub(crate) fn inspect_archive(
+    archive: &std::path::Path,
+    plugin_root: &std::path::Path,
+    path: Option<&std::path::Path>,
+) -> std::io::Result<std::process::Output> {
+    let mut command = crate::support::FixtureCommand::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
+    );
+    command.arg_path(archive).arg_path(plugin_root);
+    if let Some(path) = path {
+        command.env("PATH", path);
+    }
+    command.output()
+}
 
 pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
     let missing: Vec<_> = required
@@ -18,7 +42,7 @@ pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[
 }
 
 #[allow(dead_code)]
-pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
+pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, checker: &str) {
     assert_structured_literals(
         script,
         "archive scanner behavior",
@@ -29,6 +53,7 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "!**/hooks/policy-inventory.json",
             "hooks/policy-inventory.json\" ! -name '*.md'",
             "archive policy inventory hygiene scan failed",
+            "MSYS2_ENV_CONV_EXCL=LOCAL_PATH_PATTERN",
             "key not in {\"source\", \"text\"}",
             "! -name '*.md'",
             "! -name '*.txt'",
@@ -37,10 +62,14 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
             "shasum -a 256",
             "rg or grep is required",
             "hygiene scan failed",
-            "duplicate archive entries",
             "unexpected runtime artifact",
-            "unsafe archive path",
+            "check-release-archive-entries",
         ],
+    );
+    assert_structured_literals(
+        entries,
+        "archive entry checker behavior",
+        &["duplicate archive entries", "unsafe archive path"],
     );
     assert_structured_literals(
         checker,
@@ -112,25 +141,56 @@ pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> s
         let source_path = entry.path();
         let target_path = target.join(entry.file_name());
         if source_path.is_dir() {
-            if entry.file_name() != "runtime" {
+            if entry.file_name() != "runtime" && !is_generated_fixture_directory(&source_path) {
                 copy_tree(&source_path, &target_path)?;
             }
         } else {
-            std::fs::copy(source_path, target_path)?;
+            std::fs::copy(&source_path, &target_path)?;
+            if std::fs::read(&source_path)?.starts_with(b"#!") {
+                crate::support::make_executable(&target_path)?;
+            }
         }
     }
     Ok(())
 }
 
 pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = std::fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(path, permissions)?;
+    crate::support::make_executable(path)
+}
+
+pub(crate) fn governed_archive_mode(
+    is_windows: bool,
+    is_governed_wrapper: bool,
+    _source_mode: u32,
+) -> Option<u32> {
+    (is_windows && is_governed_wrapper).then_some(0o755)
+}
+
+#[test]
+fn windows_archive_fixture_forces_only_governed_shebang_wrappers_to_posix_0755() {
+    assert_eq!(governed_archive_mode(true, true, 0o644), Some(0o755));
+    assert_eq!(governed_archive_mode(true, false, 0o644), None);
+    assert_eq!(governed_archive_mode(false, true, 0o644), None);
+}
+
+fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
+    match (os, architecture) {
+        ("macos", "aarch64") => Ok("darwin-arm64"),
+        ("linux", "x86_64") => Ok("linux-x86_64"),
+        ("windows", "x86_64") => Ok("windows-x86_64"),
+        _ => Err(std::io::Error::other(format!(
+            "unsupported test host platform: {os}-{architecture}"
+        ))),
     }
-    Ok(())
+}
+
+#[test]
+fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
+    assert_eq!(
+        fixture_host_platform("windows", "x86_64").unwrap(),
+        "windows-x86_64"
+    );
+    assert!(fixture_host_platform("plan9", "mips64").is_err());
 }
 
 pub(crate) fn complete_plugin_fixture(
@@ -156,15 +216,7 @@ fn complete_plugin_fixture_with_runtime(
     )?;
     let runtime = plugin_root.join("runtime");
     std::fs::create_dir_all(&runtime)?;
-    let host_platform = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("macos", "aarch64") => "darwin-arm64",
-        ("linux", "x86_64") => "linux-x86_64",
-        (os, architecture) => {
-            return Err(std::io::Error::other(format!(
-                "unsupported test host platform: {os}-{architecture}"
-            )));
-        }
-    };
+    let host_platform = fixture_host_platform(std::env::consts::OS, std::env::consts::ARCH)?;
     for (server, binary) in [
         ("lsp", env!("CARGO_BIN_EXE_codexy-mcp-lsp")),
         ("codegraph", env!("CARGO_BIN_EXE_codexy-mcp-codegraph")),
@@ -181,7 +233,7 @@ fn complete_plugin_fixture_with_runtime(
                 };
                 std::fs::write(&path, header.repeat(1024))?;
             }
-            make_executable(&path)?;
+            crate::support::make_executable(&path)?;
         }
     }
     Ok(plugin_root)

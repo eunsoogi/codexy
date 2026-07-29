@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 
@@ -203,10 +203,7 @@ fn bootstrap_and_checker_ignore_hostile_path_dirname() -> TestResult {
 
 fn installed_plugin(temp: &Path) -> TestResult<std::path::PathBuf> {
     let plugin_root = temp.join("installed-codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    support::copy_plugin_fixture_into_with_mutable_files(&plugin_root, &[])?;
     Ok(plugin_root)
 }
 

@@ -1,0 +1,229 @@
+use std::ffi::{OsStr, OsString};
+use std::process::Command;
+
+use super::fixture_command_windows::fixture_script_interpreter;
+#[cfg(windows)]
+use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
+pub(super) use super::fixture_command_windows::{
+    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
+};
+use super::{
+    fixture_path::{fixture_path_environment_value, fixture_path_text},
+    fixture_text::materialized_script_source,
+};
+
+/// A test-only command factory that preserves direct native execution and launches POSIX
+/// fixture scripts through `sh` on Windows.
+#[derive(Debug)]
+pub(crate) struct FixtureCommand {
+    command: Command,
+    uses_posix_paths: bool,
+}
+
+impl FixtureCommand {
+    pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
+        let program = program.as_ref();
+        #[cfg(windows)]
+        if let Some(command) = windows_static_python_command(std::path::Path::new(program))
+            .unwrap_or_else(|error| panic!("{error}"))
+        {
+            return Self::native(command);
+        }
+        #[cfg(windows)]
+        if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
+            return Self::native(Command::new(companion));
+        }
+        if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
+            let (command, uses_posix_paths) = materialized_script_command(program, &source)
+                .unwrap_or_else(|error| panic!("{error}"));
+            return Self {
+                command,
+                uses_posix_paths,
+            };
+        }
+        #[cfg(windows)]
+        {
+            if let Ok(contents) = std::fs::read(std::path::Path::new(program)) {
+                match fixture_script_launcher(true, &contents) {
+                    Ok(Some(interpreter)) => {
+                        let uses_posix_path = matches!(interpreter, "sh" | "bash");
+                        let interpreter = discover_windows_interpreter(interpreter)
+                            .unwrap_or_else(|error| panic!("{error}"));
+                        let mut command = Command::new(interpreter);
+                        let program: OsString = if uses_posix_path {
+                            fixture_path_text(program)
+                                .unwrap_or_else(|error| panic!("{error}"))
+                                .into()
+                        } else {
+                            program.to_owned()
+                        };
+                        command.arg(program);
+                        return Self {
+                            command,
+                            uses_posix_paths: uses_posix_path,
+                        };
+                    }
+                    Ok(None) => {}
+                    Err(error) => panic!("{error}"),
+                }
+            }
+        }
+        Self::native(Command::new(program))
+    }
+
+    fn native(command: Command) -> Self {
+        Self {
+            command,
+            uses_posix_paths: false,
+        }
+    }
+
+    pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let key = key.as_ref();
+        let value = if self.uses_posix_paths {
+            fixture_path_environment_value(key, value.as_ref())
+                .unwrap_or_else(|error| panic!("{error}"))
+        } else {
+            value.as_ref().to_owned()
+        };
+        self.command.env(key, value);
+        self
+    }
+
+    pub(crate) fn envs<K, V, I>(&mut self, variables: I) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        for (key, value) in variables {
+            self.env(key, value);
+        }
+        self
+    }
+
+    pub(crate) fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+        let path = self.path_value(path.as_ref());
+        self.command.arg(path);
+        self
+    }
+
+    pub(crate) fn env_path<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let value = self.path_value(value.as_ref());
+        self.command.env(key, value);
+        self
+    }
+
+    pub(crate) fn env_path_list<K, I, V>(&mut self, key: K, values: I) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        I: IntoIterator<Item = V>,
+        V: AsRef<OsStr>,
+    {
+        let values = values
+            .into_iter()
+            .map(|value| self.path_value(value.as_ref()))
+            .collect::<Vec<_>>();
+        let value = if self.uses_posix_paths {
+            values
+                .iter()
+                .map(|value| value.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(":")
+                .into()
+        } else {
+            std::env::join_paths(values)
+                .unwrap_or_else(|error| panic!("joining fixture paths: {error}"))
+        };
+        self.command.env(key, value);
+        self
+    }
+
+    pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+        self.arg_path(path)
+    }
+
+    fn path_value(&self, value: &OsStr) -> OsString {
+        if self.uses_posix_paths {
+            fixture_path_text(value)
+                .unwrap_or_else(|error| panic!("{error}"))
+                .into()
+        } else {
+            value.to_owned()
+        }
+    }
+}
+
+fn materialized_script_command(
+    program: &OsStr,
+    source: &std::path::Path,
+) -> Result<(Command, bool), String> {
+    let contents = std::fs::read(std::path::Path::new(program))
+        .map_err(|error| format!("reading materialized fixture script: {error}"))?;
+    let interpreter = match fixture_script_interpreter(&contents) {
+        Ok(Some(interpreter)) => interpreter,
+        Ok(None) => return Ok((Command::new(program), false)),
+        #[cfg(not(windows))]
+        Err(_) => return Ok((Command::new(program), false)),
+        #[cfg(windows)]
+        Err(error) => return Err(error),
+    };
+    let uses_posix_path = matches!(interpreter, "sh" | "bash");
+    #[cfg(windows)]
+    let interpreter = discover_windows_interpreter(interpreter)?;
+    #[cfg(not(windows))]
+    let interpreter = if interpreter == "python" {
+        "python3"
+    } else {
+        interpreter
+    };
+    let source: OsString = if uses_posix_path {
+        fixture_path_text(source)?.into()
+    } else {
+        source.as_os_str().to_owned()
+    };
+    let materialized: OsString = if uses_posix_path {
+        fixture_path_text(program)?.into()
+    } else {
+        program.to_owned()
+    };
+    let mut command = Command::new(interpreter);
+    command
+        .arg("-c")
+        .arg("materialized=$1\nshift\n. \"$materialized\"")
+        .arg(source)
+        .arg(materialized);
+    Ok((command, uses_posix_path))
+}
+
+impl std::ops::Deref for FixtureCommand {
+    type Target = Command;
+
+    fn deref(&self) -> &Self::Target {
+        &self.command
+    }
+}
+
+impl std::ops::DerefMut for FixtureCommand {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.command
+    }
+}
+
+impl From<Command> for FixtureCommand {
+    fn from(command: Command) -> Self {
+        Self::native(command)
+    }
+}
+
+#[cfg(test)]
+#[path = "fixture_command_controls.rs"]
+mod controls;

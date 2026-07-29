@@ -20,8 +20,19 @@ pub(crate) fn create_archive_with_commands(
     gzip_command: &str,
     timeout: Duration,
 ) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        return create_windows_archive_with_commands(
+            root,
+            archive,
+            tar_command,
+            gzip_command,
+            timeout,
+        );
+    }
     let archive_file = File::create(archive)?;
     let mut tar = Command::new(tar_command)
+        .env("COPYFILE_DISABLE", "1")
         .args(["-C"])
         .arg(root)
         .args(["-cf", "-", "plugins/codexy"])
@@ -61,6 +72,89 @@ pub(crate) fn create_archive_with_commands(
         return Err(std::io::Error::other(format!("tar failed: {tar_status}")));
     }
     Ok(())
+}
+
+#[cfg(windows)]
+fn create_windows_archive_with_commands(
+    root: &std::path::Path,
+    archive: &std::path::Path,
+    tar_command: &str,
+    gzip_command: &str,
+    timeout: Duration,
+) -> std::io::Result<()> {
+    let temporary = tempfile::NamedTempFile::new_in(
+        archive
+            .parent()
+            .ok_or_else(|| std::io::Error::other("archive requires a parent directory"))?,
+    )?;
+    let temporary_path = temporary.into_temp_path();
+    let wrappers = governed_wrapper_paths(root)?;
+
+    let mut tar = Command::new(tar_command);
+    tar.env("COPYFILE_DISABLE", "1")
+        .arg("-C")
+        .arg(root)
+        .arg("-cf");
+    tar.arg(&temporary_path);
+    tar.arg("plugins/codexy");
+    let mut tar = tar.spawn()?;
+    let tar_status = wait_for_archive_process(&mut tar, "tar", timeout)?;
+    if !tar_status.success() {
+        return Err(std::io::Error::other(format!("tar failed: {tar_status}")));
+    }
+
+    if !wrappers.is_empty() {
+        super::archive_evidence::record_archive_header_receipt(
+            "before-rewrite",
+            &temporary_path,
+            &wrappers,
+        )?;
+        super::archive_entry::force_governed_wrapper_modes(&temporary_path, &wrappers)?;
+        super::archive_evidence::record_archive_header_receipt(
+            "after-rewrite",
+            &temporary_path,
+            &wrappers,
+        )?;
+    }
+
+    let archive_file = File::create(archive)?;
+    let mut gzip = Command::new(gzip_command)
+        .args(["-1", "-c"])
+        .stdin(Stdio::from(
+            std::fs::OpenOptions::new()
+                .read(true)
+                .open(&temporary_path)?,
+        ))
+        .stdout(archive_file)
+        .spawn()?;
+    let status = wait_for_archive_process(&mut gzip, "gzip", timeout)?;
+    if !status.success() {
+        return Err(std::io::Error::other(format!("gzip failed: {status}")));
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn governed_wrapper_paths(root: &std::path::Path) -> std::io::Result<Vec<String>> {
+    let directory = root.join("plugins/codexy/mcp");
+    if !directory.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut wrappers = Vec::new();
+    for entry in std::fs::read_dir(directory)? {
+        let entry = entry?;
+        let path = entry.path();
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with("codexy-mcp-")
+            && path.is_file()
+            && std::fs::read(&path)?.starts_with(b"#!")
+        {
+            wrappers.push(format!("plugins/codexy/mcp/{name}"));
+        }
+    }
+    wrappers.sort();
+    Ok(wrappers)
 }
 
 fn wait_for_archive_process(

@@ -5,6 +5,7 @@ use std::os::unix::process::CommandExt as _;
 use std::process::{Child, Command, Output, Stdio};
 use std::time::Duration;
 
+use super::fixture_command::FixtureCommand;
 use super::package_fixture::create_runtime_package;
 use super::wrapper_copy::copy_dir;
 pub(crate) use super::wrapper_process::wait_for_wrapper_output;
@@ -68,6 +69,13 @@ impl<'a> WrapperFixture<'a> {
         std::fs::write(&wrapper, script)?;
         make_executable(&wrapper)
     }
+
+    pub(crate) fn select_platform(
+        &self,
+        platform: super::wrapper_platform::FixturePlatform,
+    ) -> std::io::Result<()> {
+        super::wrapper_platform::install_fixture_platform(&self.plugin_root, platform)
+    }
 }
 
 pub(crate) fn run_wrapper(
@@ -88,7 +96,8 @@ pub(crate) fn run_wrapper_with_optional_failure(
     fake_version: &str,
     fail_cargo: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    let mut command =
+        FixtureCommand::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
     command
         .env("HOME", fixture.home)
         .env(
@@ -156,7 +165,8 @@ pub(crate) fn assert_wrapper_uses_package_runtime_without_cargo(
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     let package = create_runtime_package(temp.path(), "darwin-arm64", server, "override")?;
-    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    let mut command =
+        FixtureCommand::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
     command
         .arg("--help")
         .env("HOME", fixture.home)
@@ -200,7 +210,20 @@ pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
         permissions.set_mode(0o755);
         std::fs::set_permissions(path, permissions)?;
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        let shell = super::fixture_command_windows::discover_windows_interpreter("sh")
+            .map_err(std::io::Error::other)?;
+        let path = super::fixture_path::fixture_path_text(path.as_os_str())
+            .map_err(std::io::Error::other)?;
+        let status = Command::new(shell)
+            .args(["-c", "chmod +x -- \"$1\"", "fixture-mode", &path])
+            .status()?;
+        if !status.success() {
+            return Err(std::io::Error::other("Windows fixture chmod failed"));
+        }
+    }
+    #[cfg(all(not(unix), not(windows)))]
     let _ = path;
     Ok(())
 }

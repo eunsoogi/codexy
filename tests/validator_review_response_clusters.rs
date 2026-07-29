@@ -1,6 +1,6 @@
 use codexy_runtime::validation::review_response_cluster_diagnostics;
 
-use crate::support::{self, copy_plugin_fixture, stderr, TestResult};
+use crate::support::{self, stderr, TestResult};
 use serde_json::json;
 use std::{fs, process::Command};
 use tempfile::tempdir;
@@ -23,6 +23,14 @@ const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
         "Sentinel MUST consolidate examples from the same defect class into one blocker with one structural repair strategy.",
     ),
 ];
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    let mutable_files = REQUIRED_CONTRACTS
+        .iter()
+        .map(|(relative, _)| std::path::Path::new(*relative))
+        .collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+}
 
 #[test]
 fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> TestResult {
@@ -64,7 +72,9 @@ fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() ->
             "5. [final-receipt-validate] After addressing feedback and before push or handoff, set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.",
         ),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
+        let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
+            std::path::Path::new("skills/git-workflow/references/review-response-clusters.md"),
+        ])?;
         let path = plugin_root.join("skills/git-workflow/references/review-response-clusters.md");
         std::fs::write(&path, procedure.replacen(required_step, bare_step, 1))?;
 

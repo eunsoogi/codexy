@@ -1,10 +1,12 @@
 use crate::support;
 
-use support::{TestResult, copy_plugin_fixture, stderr, validator};
+use support::{TestResult, copy_plugin_fixture_with_mutable_files, stderr, validator};
 
 #[test]
 fn validator_rejects_missing_parent_goal_transition_reporting_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/references/goal-transition-reporting.md"),
+    ])?;
     let reference =
         plugin_root.join("skills/codex-orchestration/references/goal-transition-reporting.md");
     let text = std::fs::read_to_string(&reference)?;

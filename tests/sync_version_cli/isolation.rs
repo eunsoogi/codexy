@@ -8,32 +8,12 @@ use std::{
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let build_root = super::archive_repository(&temp, "build-root")?;
     let diagnostic_root = super::archive_repository(&temp, "diagnostic-root")?;
-    fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/paths.rs"),
-        build_root.join("src/paths.rs"),
-    )?;
-    let build_target = build_root.join("target");
-
-    let build_status = Command::new("cargo")
-        .args([
-            "build",
-            "--locked",
-            "--quiet",
-            "--no-default-features",
-            "--bin",
-            "codexy-sync-version",
-        ])
-        .env("CARGO_TARGET_DIR", &build_target)
-        .current_dir(&build_root)
-        .status()?;
-    assert!(build_status.success(), "isolated helper build failed");
-
-    let build_root_before = version_surface_contents(&build_root)?;
+    let source_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let source_root_before = version_surface_contents(source_root)?;
     super::admission::activate(&diagnostic_root)?;
     let bootstrap_before = bootstrap_surface_contents(&diagnostic_root)?;
-    let output = Command::new(build_target.join("debug/codexy-sync-version"))
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--version", "1.3.0"])
         .env("CODEXY_REPO_ROOT", &diagnostic_root)
         .current_dir(&diagnostic_root)
@@ -44,7 +24,7 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(version_surface_contents(&build_root)?, build_root_before);
+    assert_eq!(version_surface_contents(source_root)?, source_root_before);
     assert_eq!(
         bootstrap_surface_contents(&diagnostic_root)?,
         bootstrap_before

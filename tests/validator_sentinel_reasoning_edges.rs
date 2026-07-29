@@ -1,5 +1,4 @@
-use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
 use crate::support;
 
@@ -105,22 +104,12 @@ fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<
 }
 
 fn validate_sentinel_edit(edit: impl FnOnce(String) -> TestResult<String>) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    let fixture = support::roles_fixture()?;
+    let plugin_root = fixture.root();
     let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
     let sentinel = std::fs::read_to_string(&sentinel_path)?;
     std::fs::write(&sentinel_path, edit(sentinel)?)?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
-        ])
-        .output()?)
+    support::validator_in_process(plugin_root, "--check-roles")
 }
 
 fn stderr(output: &Output) -> String {

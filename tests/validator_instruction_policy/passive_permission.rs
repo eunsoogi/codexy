@@ -1,4 +1,10 @@
-use super::{TestResult, copy_plugin_fixture, copy_repo_fixture, stderr, validator};
+use std::path::Path;
+
+use super::{TestResult, copy_repo_fixture, stderr, validator};
+use crate::support::{instruction_policy_fixture, validator_instruction_policy_file};
+
+#[path = "passive_permission/root_agents.rs"]
+mod root_agents;
 
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
@@ -10,15 +16,15 @@ const GOVERNED_SKILLS: &[&str] = &[
 #[test]
 fn validator_rejects_authorized_loc_overage() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
+        let fixture = instruction_policy_fixture(Path::new(skill))?;
+        let skill_path = fixture.path();
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
             format!("{text}\n- A governed file is authorized to exceed 250 LOC.\n"),
         )?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert!(!output.status.success(), "{skill:?} unexpectedly passed");
         assert!(stderr(&output).contains("LOC exception policy"));
     }
@@ -28,61 +34,25 @@ fn validator_rejects_authorized_loc_overage() -> TestResult {
 #[test]
 fn validator_allows_negated_authorized_loc_overage() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
+        let fixture = instruction_policy_fixture(Path::new(skill))?;
+        let skill_path = fixture.path();
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
             format!("{text}\n- A governed file is not authorized to exceed 250 LOC.\n"),
         )?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert!(output.status.success(), "{skill:?}: {}", stderr(&output));
     }
     Ok(())
 }
 
 #[test]
-fn validator_rejects_authorized_loc_overage_in_governed_root_agents() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
-    let agents = std::fs::read_to_string(&agents_path)?;
-    std::fs::write(
-        agents_path,
-        format!("{agents}\n- A governed file is authorized to exceed 250 LOC.\n"),
-    )?;
-
-    let output = validator(&plugin_root, "--check")?;
-    assert!(
-        !output.status.success(),
-        "root AGENTS.md unexpectedly passed"
-    );
-    assert!(stderr(&output).contains("LOC exception policy"));
-    Ok(())
-}
-
-#[test]
-fn validator_allows_negated_authorized_loc_overage_in_governed_root_agents() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
-    let agents = std::fs::read_to_string(&agents_path)?;
-    std::fs::write(
-        agents_path,
-        format!("{agents}\n- A governed file is not authorized to exceed 250 LOC.\n"),
-    )?;
-
-    let output = validator(&plugin_root, "--check")?;
-    assert!(
-        output.status.success(),
-        "root AGENTS.md: {}",
-        stderr(&output)
-    );
-    Ok(())
-}
-
-#[test]
 fn validator_rejects_non_adjacent_authorized_loc_overage() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
+        let fixture = instruction_policy_fixture(Path::new(skill))?;
+        let skill_path = fixture.path();
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
@@ -90,23 +60,24 @@ fn validator_rejects_non_adjacent_authorized_loc_overage() -> TestResult {
                 "{text}\n- A governed file is authorized by maintainer approval to exceed 250 LOC.\n"
             ),
         )?;
-        assert!(!validator(&plugin_root, "--check")?.status.success());
+        assert!(!validator_instruction_policy_file(skill_path)?.status.success());
     }
     Ok(())
 }
 
 #[test]
 fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for addition in [
         "A governed file is not authorized by maintainer approval to exceed 250 LOC.",
         "A governed file is authorized by maintainer approval to remain at or below 250 LOC.",
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
         assert!(
-            validator(&plugin_root, "--check")?.status.success(),
+            validator_instruction_policy_file(skill_path)?.status.success(),
             "{addition}"
         );
     }
@@ -115,6 +86,8 @@ fn validator_allows_safe_non_adjacent_authorization_observations() -> TestResult
 
 #[test]
 fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for (addition, rejects) in [
         ("LOC exceptions are waived after approval.", true),
         ("LOC exceptions are not waived after approval.", false),
@@ -174,11 +147,10 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
         ("LOC exceptions are not granted after review.", false),
         ("The validator granted rejecting LOC exceptions.", false),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert_eq!(
             !output.status.success(),
             rejects,
@@ -191,6 +163,8 @@ fn validator_handles_waived_permissions_and_safe_observations() -> TestResult {
 
 #[test]
 fn validator_handles_active_mandatory_permissions() -> TestResult {
+    let fixture = instruction_policy_fixture(Path::new(GOVERNED_SKILLS[0]))?;
+    let skill_path = fixture.path();
     for (addition, rejects) in [
         (
             "Maintainers MUST authorize LOC exceptions after review.",
@@ -233,11 +207,10 @@ fn validator_handles_active_mandatory_permissions() -> TestResult {
             false,
         ),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(GOVERNED_SKILLS[0]);
+        fixture.reset()?;
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{text}\n- {addition}\n"))?;
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert_eq!(
             !output.status.success(),
             rejects,

@@ -3,6 +3,18 @@ use super::*;
 pub(super) struct InstalledPlugin {
     pub(super) _temp: tempfile::TempDir,
     pub(super) path: PathBuf,
+    pub(super) candidate_runtime_dir: Option<PathBuf>,
+}
+
+impl InstalledPlugin {
+    pub(super) fn use_candidate_runtime(
+        &self,
+        command: &mut crate::support::FixtureCommand,
+    ) {
+        if let Some(runtime_dir) = &self.candidate_runtime_dir {
+            command.env("CODEXY_RUNTIME_DIR", runtime_dir);
+        }
+    }
 }
 
 pub(super) struct TempRuntimeDir {
@@ -35,7 +47,10 @@ impl McpClient {
         Self::spawn_command(command)
     }
 
-    pub(super) fn spawn_command(mut command: Command) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn spawn_command(
+        command: impl Into<crate::support::FixtureCommand>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut command = command.into();
         let child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

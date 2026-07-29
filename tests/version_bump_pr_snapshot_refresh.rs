@@ -1,5 +1,6 @@
 use serde_json::json;
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
+use crate::support::FixtureCommand as Command;
 
 use super::version_bump_pr_test_support::markdown_section_lines;
 

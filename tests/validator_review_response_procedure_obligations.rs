@@ -1,4 +1,4 @@
-use crate::support::{copy_plugin_fixture, stderr, TestResult};
+use crate::support::{copy_plugin_fixture_with_mutable_files, stderr, TestResult};
 
 const REFERENCE: &str = "skills/git-workflow/references/review-response-clusters.md";
 const RECEIPT_CREATE: &str =
@@ -113,7 +113,9 @@ fn assert_rejected(procedure: &str) -> TestResult {
 }
 
 fn validate(procedure: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
+        REFERENCE,
+    )])?;
     std::fs::write(plugin_root.join(REFERENCE), procedure)?;
     Ok(crate::support::validator_instruction_policy(&plugin_root)?)
 }

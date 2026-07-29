@@ -1,9 +1,14 @@
+#[cfg(unix)]
 use std::os::unix::fs::symlink;
 
 use super::admission_runtime::{
-    TestResult, assert_case, assert_event_case, executable, plugin_root, repository,
+    TestResult, assert_event_case, plugin_root, repository,
 };
 
+#[cfg(unix)]
+use super::admission_runtime::{assert_case, executable};
+
+#[cfg(unix)]
 #[test]
 fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
     let root = plugin_root();

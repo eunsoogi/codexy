@@ -5,12 +5,16 @@ use std::process::{Command, Output};
 
 #[path = "validator_library_parity/high_cost_adapters.rs"]
 mod high_cost_adapters;
+#[path = "validator_library_parity/fixture.rs"]
+mod fixture;
+
+use fixture::{copy_plugin_fixture, normalized_fixture_stderr};
 
 #[test]
 fn in_process_validator_matches_cli_success_output_for_migrated_modes()
 -> Result<(), Box<dyn std::error::Error>> {
     for mode in ["--check", "--check-mcp", "--check-roles"] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let (_temp, plugin_root) = copy_plugin_fixture(&[])?;
         assert_matches_cli(&plugin_root, mode)?;
     }
     Ok(())
@@ -24,7 +28,8 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
         ("--check-mcp", ".mcp.json"),
         ("--check-roles", "agents/codexy-sentinel.toml"),
     ] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+        let mutable = [Path::new(missing)];
+        let (_temp, plugin_root) = copy_plugin_fixture(&mutable)?;
         std::fs::remove_file(plugin_root.join(missing))?;
         assert_matches_cli(&plugin_root, mode)?;
     }
@@ -34,7 +39,7 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
 #[test]
 fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture(&[Path::new("agents/codexy-sentinel.toml")])?;
     let path = plugin_root.join("agents/codexy-sentinel.toml");
     let source = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -51,8 +56,41 @@ fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
 }
 
 #[test]
+fn single_surface_instruction_policy_adapter_matches_the_manifest_fixture()
+-> Result<(), Box<dyn std::error::Error>> {
+    let relative = Path::new("skills/proof-driven-completion/SKILL.md");
+    let canonical = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("plugins/codexy")
+        .join(relative);
+    let original = std::fs::read_to_string(&canonical)?;
+    let fixture = support::instruction_policy_fixture(relative)?;
+    let source = std::fs::read_to_string(fixture.path())?;
+    let replacement = source.replace("MUST NOT accept", "do not accept");
+    std::fs::write(
+        fixture.path(),
+        &replacement,
+    )?;
+    let (_temp, manifest_root) = support::copy_plugin_fixture_with_mutable_files(&[relative])?;
+    std::fs::write(manifest_root.join(relative), replacement)?;
+
+    let single_surface = support::validator_instruction_policy_file(fixture.path())?;
+    let manifest_fixture = support::validator_instruction_policy(&manifest_root)?;
+    assert!(!single_surface.status.success());
+    assert!(String::from_utf8_lossy(&single_surface.stderr).contains("MUST NOT"));
+    assert_eq!(single_surface.status.code(), manifest_fixture.status.code());
+    assert_eq!(
+        normalized_fixture_stderr(&single_surface, fixture.path()),
+        normalized_fixture_stderr(&manifest_fixture, &manifest_root.join(relative)),
+    );
+    assert_eq!(std::fs::read_to_string(canonical)?, original);
+    Ok(())
+}
+
+#[test]
 fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_fixture(&[Path::new(
+        "skills/codex-orchestration/SKILL.md",
+    )])?;
     let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
     let source = std::fs::read_to_string(&path)?;
     std::fs::write(
@@ -90,11 +128,12 @@ fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn plugin_fixture_mutations_do_not_leak_between_copy_on_write_overlays()
+fn plugin_fixture_mutations_do_not_leak_between_manifest_aware_overlays()
 -> Result<(), Box<dyn std::error::Error>> {
-    let (_first_temp, first) = support::copy_plugin_fixture()?;
-    let (_second_temp, second) = support::copy_plugin_fixture()?;
     let relative = ".codex-plugin/plugin.json";
+    let mutable = Path::new(relative);
+    let (_first_temp, first) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
+    let (_second_temp, second) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
     let original = std::fs::read_to_string(second.join(relative))?;
 
     std::fs::write(first.join(relative), "{\"mutated\":true}\n")?;

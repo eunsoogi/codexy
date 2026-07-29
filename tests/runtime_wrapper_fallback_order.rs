@@ -1,6 +1,6 @@
 use crate::support;
 
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 use std::time::Duration;
 
 use support::{WrapperFixture, run_wrapper_command_with_timeout};
@@ -26,7 +26,7 @@ fn runtime_dir_override_wins_over_bundled_and_uvx() -> Result<(), Box<dyn std::e
     let fixture = WrapperFixture::new(temp.path())?;
     let runtime_dir = temp.path().join("runtime");
     std::fs::create_dir(&runtime_dir)?;
-    let runtime = runtime_dir.join("codexy-mcp-lsp-windows-x86_64.bin");
+    let runtime = runtime_dir.join("codexy-mcp-lsp-windows-x86_64.exe");
     std::fs::write(&runtime, "#!/bin/sh\necho override \"$@\"\n")?;
     support::make_executable(&runtime)?;
     let output = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"))

@@ -59,8 +59,10 @@ fn candidate_publication_records_a_reproducible_success_binding()
         "publish-candidate",
         "Assemble canonical candidate archive and receipt",
     )?;
+    assert_eq!(assembly, "scripts/assemble-runtime-candidate");
+    let assembly = script("assemble-runtime-candidate")?;
     support::assert_structured_literals(
-        assembly,
+        &assembly,
         "reproducible candidate archive",
         &["tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy"],
     );
@@ -143,9 +145,67 @@ fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
     Ok(())
 }
 
+#[test]
+fn candidate_keeps_windows_native_until_verified_activation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let candidate = workflow("runtime-candidate.yml")?;
+    let matrix = candidate["jobs"]["build-runtime"]["strategy"]["matrix"]["include"]
+        .as_sequence()
+        .ok_or("candidate build matrix")?;
+    assert!(matrix.iter().any(|entry| {
+        entry["platform"] == "windows-x86_64" && entry["runner"] == "windows-latest"
+    }));
+    let steps = candidate["jobs"]["build-runtime"]["steps"]
+        .as_sequence()
+        .ok_or("candidate build steps")?;
+    let (_, native) = named_step(steps, "Smoke native Windows MCP protocols")?;
+    assert_eq!(native["shell"], "pwsh");
+    support::assert_structured_literals(
+        native["run"].as_str().ok_or("native Windows smoke")?,
+        "native Windows candidate proof",
+        &["ProcessStartInfo", "codexy-mcp-lsp.exe", "codexy-mcp-codegraph.exe", "tools/call"],
+    );
+    let assembly = run(&candidate, "publish-candidate", "Assemble canonical candidate archive and receipt")?;
+    assert_eq!(assembly, "scripts/assemble-runtime-candidate");
+    let assembly = script("assemble-runtime-candidate")?;
+    support::assert_structured_literals(
+        &assembly,
+        "candidate-only Windows activation staging",
+        &[
+            "windows-x86_64",
+            "extension = \"exe\" if platform == \"windows-x86_64\" else \"bin\"",
+            "manifest[\"supportedPlatforms\"] = [\"darwin-arm64\", \"linux-x86_64\", \"windows-x86_64\"]",
+            "candidate wrapper platform declaration mismatch",
+            "codexy-mcp-{server}.exe",
+        ],
+    );
+
+    let selected = workflow("plugin-runtime-binaries.yml")?;
+    let windows = run(
+        &selected,
+        "verify-windows-selected-candidate",
+        "Verify immutable native Windows candidate bytes",
+    )?;
+    support::assert_structured_literals(
+        windows,
+        "selected Windows runtime truth boundary",
+        &[
+            "legacy-public baseline intentionally has no selected Windows candidate",
+            "candidate-proven",
+            "tar.exe",
+            "codexy-mcp-$server-windows-x86_64.exe",
+        ],
+    );
+    Ok(())
+}
+
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)
+}
+
+fn script(name: &str) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts").join(name))?)
 }
 
 fn run<'a>(

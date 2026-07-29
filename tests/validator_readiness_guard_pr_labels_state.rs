@@ -1,10 +1,35 @@
-use std::process::Command;
+use crate::support;
+
+#[test]
+fn readiness_guard_scopes_pr_label_policy_to_codexy_prs() -> Result<(), Box<dyn std::error::Error>>
+{
+    for (name, json) in [
+        (
+            "user-repo-with-taxonomy.json",
+            r#"{"number":7,"state":"OPEN","repository":"example/user-app","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
+        (
+            "codexy-name-fragment.json",
+            r#"{"number":7,"state":"OPEN","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
+        (
+            "closed-codexy-pr.json",
+            r#"{"number":209,"state":"CLOSED","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"]}"#,
+        ),
+    ] {
+        let output = support::validator_pr_labels(json)?;
+        assert!(
+            output.status.success(),
+            "guard should accept out-of-scope PR label state for {name}: {}",
+            output_text(&output)
+        );
+    }
+
+    Ok(())
+}
 
 #[test]
 fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std::error::Error>> {
-    let script = readiness_guard();
-    let temp = tempfile::tempdir()?;
-
     for (name, json, expected) in [
         (
             "missing-taxonomy.json",
@@ -138,15 +163,7 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
             "repositoryLabels taxonomy",
         ),
     ] {
-        let pr_state = temp.path().join(name);
-        std::fs::write(&pr_state, json)?;
-        let output = Command::new(&script)
-            .args([
-                "--check-pr-labels",
-                "--pr-state-file",
-                pr_state.to_str().ok_or("pr state path")?,
-            ])
-            .output()?;
+        let output = support::validator_pr_labels(json)?;
         assert!(
             !output.status.success(),
             "guard should reject incomplete PR state for {name}"
@@ -163,9 +180,6 @@ fn readiness_guard_rejects_incomplete_pr_label_state() -> Result<(), Box<dyn std
 
 #[test]
 fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::error::Error>> {
-    let script = readiness_guard();
-    let temp = tempfile::tempdir()?;
-
     for (name, json) in [
         (
             "bracketed-string-label.json",
@@ -176,15 +190,7 @@ fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::er
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":["type]fix"]},"repositoryLabels":{"nodes":["type]fix"]}}"#,
         ),
     ] {
-        let pr_state = temp.path().join(name);
-        std::fs::write(&pr_state, json)?;
-        let output = Command::new(&script)
-            .args([
-                "--check-pr-labels",
-                "--pr-state-file",
-                pr_state.to_str().ok_or("pr state path")?,
-            ])
-            .output()?;
+        let output = support::validator_pr_labels(json)?;
         assert!(
             output.status.success(),
             "guard should accept bracketed label evidence for {name}: {}",
@@ -198,8 +204,6 @@ fn readiness_guard_accepts_bracketed_label_names() -> Result<(), Box<dyn std::er
 #[test]
 fn readiness_guard_accepts_unicode_review_and_comment_bodies()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = readiness_guard();
-    let temp = tempfile::tempdir()?;
     let json = r#"{
         "number": 247, "state": "OPEN", "repository": "eunsoogi/codexy",
         "labels": [{"name": "type/fix"}, {"name": "area/workflow"}],
@@ -217,15 +221,7 @@ fn readiness_guard_accepts_unicode_review_and_comment_bodies()
         ]
     }"#;
 
-    let pr_state = temp.path().join("unicode-review-bodies.json");
-    std::fs::write(&pr_state, json)?;
-    let output = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            pr_state.to_str().ok_or("pr state path")?,
-        ])
-        .output()?;
+    let output = support::validator_pr_labels(json)?;
     assert!(
         output.status.success(),
         "guard should accept valid label evidence with unicode review/comment bodies: {}",
@@ -241,9 +237,4 @@ fn output_text(output: &std::process::Output) -> String {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     )
-}
-
-fn readiness_guard() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("plugins/codexy/hooks/codexy-readiness-guard.sh")
 }

@@ -1,20 +1,15 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{
-    assert_archive_scanner_contract, assert_runtime_workflow_contract, complete_plugin_fixture,
-    complete_plugin_fixture_with_stubbed_runtime, create_archive, make_executable,
+    assert_archive_scanner_contract, complete_plugin_fixture,
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive, make_executable,
 };
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
-    Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
-        .arg(archive)
-        .arg(plugin_root)
-        .output()
-        .expect("archive gate should start")
+    inspect_archive(archive, plugin_root, None).expect("archive gate should start")
 }
 
 fn assert_gate_error(archive: &std::path::Path, plugin_root: &std::path::Path, expected: &str) {
@@ -33,7 +28,12 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
     )
     .expect("MCP response checker");
-    assert_archive_scanner_contract(&script, &checker);
+    let entries = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/check-release-archive-entries"),
+    )
+    .expect("archive entry checker");
+    assert_archive_scanner_contract(&script, &entries, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
 }
 
@@ -52,20 +52,6 @@ fn archive_gate_requires_runtime_release_contract() {
     );
 }
 
-#[test]
-fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
-    let workflow = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join(".github/workflows/plugin-runtime-binaries.yml"),
-    )
-    .expect("runtime workflow");
-    let inspector = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
-    )
-    .expect("archive inspector");
-    assert_eq!(workflow.matches("plugins/codexy/**").count(), 2);
-    assert_runtime_workflow_contract(&workflow, &inspector);
-}
 fn complete_archive_fixture(
     name: &str,
 ) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -236,5 +222,11 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     assert!(!run_gate(&extra_archive, &extra_plugin).status.success());
 }
 
+#[path = "release_archive_gate/candidate.rs"]
+mod candidate;
+#[path = "release_archive_gate/content_compare.rs"]
+mod content_compare;
 #[path = "release_archive_gate/safety.rs"]
 mod safety;
+#[path = "release_archive_gate/workflow.rs"]
+mod workflow;

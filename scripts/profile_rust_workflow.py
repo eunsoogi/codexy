@@ -10,6 +10,8 @@ from pathlib import Path
 from profile_rust_shell import invocation_count
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
+WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
+WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -151,9 +153,21 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
     return timeouts, runs
 
 
+def job_values(lines: list[str], key: str) -> list[str]:
+    values: list[str] = []
+    for line in lines:
+        if len(line) - len(line.lstrip(" ")) != 4:
+            continue
+        entry = yaml_mapping_entry(line)
+        if entry is not None and entry[0] == key:
+            values.append(yaml_scalar_value(entry[1]))
+    return values
+
+
 def enforce_workflow_contract(
     workflow: Path,
     required_timeout_minutes: int,
+    required_windows_timeout_minutes: int,
     workload: tuple[str, ...],
 ) -> None:
     try:
@@ -162,8 +176,8 @@ def enforce_workflow_contract(
     except (OSError, ValueError) as error:
         sys.stderr.write(f"Rust workflow is invalid: {workflow}: {error}\n")
         raise SystemExit(1) from None
-    if "rust-test" not in jobs:
-        sys.stderr.write("Rust workflow must define the rust-test job\n")
+    if set(jobs) != {"rust-test", "windows-rust-test"}:
+        sys.stderr.write("Rust workflow must define only the Ubuntu and Windows Rust jobs\n")
         raise SystemExit(1)
     timeouts, rust_runs = job_contract(jobs["rust-test"])
     found = int(timeouts[0]) if len(timeouts) == 1 and timeouts[0].isdigit() else None
@@ -171,6 +185,11 @@ def enforce_workflow_contract(
         sys.stderr.write(
             f"Rust job timeout must be {required_timeout_minutes} minutes; found {found}\n"
         )
+        raise SystemExit(1)
+    if job_values(jobs["rust-test"], "runs-on") != ["ubuntu-latest"] or job_values(
+        jobs["rust-test"], "strategy"
+    ):
+        sys.stderr.write("Rust test job must run once on ubuntu-latest without a matrix\n")
         raise SystemExit(1)
     runs = [command for lines in jobs.values() for command in job_contract(lines)[1]]
     profiler = ("scripts/profile-rust-tests",)
@@ -180,6 +199,21 @@ def enforce_workflow_contract(
     if rust_profiler_count != 1 or profiler_count != 1:
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
-    if workload_count:
-        sys.stderr.write("Rust workflow must not run the full workload outside its gate\n")
+    windows_lines = jobs["windows-rust-test"]
+    windows_timeouts, windows_runs = job_contract(windows_lines)
+    windows_workload_count = sum(
+        invocation_count(command, workload) for command in windows_runs
+    )
+    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_GATE]
+    if (
+        job_values(windows_lines, "runs-on") != ["windows-latest"]
+        or windows_timeouts != [str(required_windows_timeout_minutes)]
+        or job_values(windows_lines, "strategy")
+        or windows_runs != expected_windows_runs
+        or windows_workload_count != 0
+        or workload_count != 0
+    ):
+        sys.stderr.write(
+            "Windows Rust job must run the exact full workload once on windows-latest\n"
+        )
         raise SystemExit(1)

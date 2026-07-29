@@ -1,7 +1,6 @@
 use std::path::Path;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::complete_plugin_fixture;
 
 #[test]

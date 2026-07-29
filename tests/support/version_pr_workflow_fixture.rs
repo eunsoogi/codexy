@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Output};
+use crate::support::FixtureCommand as Command;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
@@ -15,13 +16,15 @@ pub(super) enum Scenario {
 pub(super) struct WorkflowFixture {
     _temporary: tempfile::TempDir,
     repo: PathBuf,
+    origin: PathBuf,
+    baseline: String,
     state: PathBuf,
     runner: PathBuf,
     bin: PathBuf,
 }
 
 impl WorkflowFixture {
-    pub(super) fn new(root: &Path, scenario: Scenario) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn new(root: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let temporary = tempfile::tempdir()?;
         let repo = temporary.path().join("repo");
         let origin = temporary.path().join("origin.git");
@@ -41,29 +44,40 @@ impl WorkflowFixture {
         git(&repo, &["add", "."])?;
         git(&repo, &["commit", "-qm", "fixture main"])?;
         git(&repo, &["push", "-q", "-u", "origin", "main"])?;
+        let baseline = git_stdout(&repo, &["rev-parse", "HEAD"])?.trim().to_owned();
+        Ok(Self { _temporary: temporary, repo, origin, baseline, state, runner, bin })
+    }
 
-        fs::write(repo.join("Cargo.toml"), "[workspace]\nresolver = \"3\"\n")?;
+    pub(super) fn prepare(&self, scenario: Scenario) -> Result<(), Box<dyn std::error::Error>> {
+        git(&self.repo, &["switch", "-q", "main"])?;
+        git(&self.repo, &["reset", "--hard", &self.baseline])?;
+        git(&self.repo, &["clean", "-fdx"])?;
+        git(&self.repo, &["update-ref", "-d", "refs/heads/codexy/version-1.3.1"])?;
+        git(&self.origin, &["update-ref", "-d", "refs/heads/codexy/version-1.3.1"])?;
+        reset_directory(&self.state)?;
+        reset_directory(&self.runner)?;
+        fs::write(self.repo.join("Cargo.toml"), "[workspace]\nresolver = \"3\"\n")?;
         let branch = "codexy/version-1.3.1";
         let mut existing = serde_json::json!([]);
         if !matches!(scenario, Scenario::NewPr) {
-            git(&repo, &["switch", "-qc", branch])?;
-            git(&repo, &["add", "Cargo.toml"])?;
-            git(&repo, &["commit", "-qm", "fixture version"])?;
-            git(&repo, &["push", "-q", "-u", "origin", branch])?;
-            let oid = git_stdout(&repo, &["rev-parse", "HEAD"])?;
+            git(&self.repo, &["switch", "-qc", branch])?;
+            git(&self.repo, &["add", "Cargo.toml"])?;
+            git(&self.repo, &["commit", "-qm", "fixture version"])?;
+            git(&self.repo, &["push", "-q", "-u", "origin", branch])?;
+            let oid = git_stdout(&self.repo, &["rev-parse", "HEAD"])?;
             existing = serde_json::json!([{
                 "number": 999,
                 "headRefOid": oid.trim(),
                 "headRepository": "eunsoogi/codexy",
                 "headLabel": format!("eunsoogi:{branch}")
             }]);
-            git(&repo, &["switch", "-q", "main"])?;
-            fs::write(repo.join("Cargo.toml"), "[workspace]\nresolver = \"3\"\n")?;
+            git(&self.repo, &["switch", "-q", "main"])?;
+            fs::write(self.repo.join("Cargo.toml"), "[workspace]\nresolver = \"3\"\n")?;
         }
-        write_state(&state, scenario, existing)?;
-        fs::write(state.join("mutation-sentinel"), b"unchanged\n")?;
-        fs::write(temporary.path().join("summary.md"), b"")?;
-        Ok(Self { _temporary: temporary, repo, state, runner, bin })
+        write_state(&self.state, scenario, existing)?;
+        fs::write(self.state.join("mutation-sentinel"), b"unchanged\n")?;
+        fs::write(self._temporary.path().join("summary.md"), b"")?;
+        Ok(())
     }
 
     pub(super) fn run(&self) -> std::io::Result<Output> {
@@ -109,6 +123,11 @@ impl WorkflowFixture {
     pub(super) fn gate_events(&self) -> std::io::Result<String> {
         fs::read_to_string(self.state.join("gates.log"))
     }
+}
+
+fn reset_directory(path: &Path) -> std::io::Result<()> {
+    fs::remove_dir_all(path)?;
+    fs::create_dir_all(path)
 }
 
 fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> {

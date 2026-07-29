@@ -6,6 +6,10 @@ use super::GateFixture;
 mod workflow_shell_syntax;
 
 #[cfg(unix)]
+#[path = "windows_workflow_contract.rs"]
+mod windows_workflow_contract;
+
+#[cfg(unix)]
 #[test]
 fn gate_rejects_two_profiler_commands_in_one_block_run() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;

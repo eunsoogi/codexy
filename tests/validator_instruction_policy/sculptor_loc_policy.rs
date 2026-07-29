@@ -1,4 +1,9 @@
-use super::{TestResult, copy_plugin_fixture, stderr, validator};
+use std::path::{Path, PathBuf};
+
+use super::{TestResult, stderr, validator};
+use crate::support::{self, PluginFixture};
+
+const SCULPTOR_AGENT: &str = "agents/codexy-sculptor.toml";
 
 const RATIONALE_MARKER: &str = "exceed the LOC target without a narrow rationale";
 const RATIONALE_AUTHORIZATION: &str =
@@ -31,20 +36,20 @@ const SAFE_OVERAGE_OBSERVATIONS: &[&str] = &[
 
 #[test]
 fn validator_cli_rejects_sculptor_rationale_based_overage_authorization() -> TestResult {
+    let fixture = sculptor_fixture()?;
+    let plugin_root = fixture.root();
     for instruction in [
         RATIONALE_AUTHORIZATION,
         UNRELATED_NEGATION_AUTHORIZATION,
         UNRELATED_CONJUNCTION_NEGATION_AUTHORIZATION,
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
-        let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
+        let (agent_path, agent) = reset_sculptor_agent(&fixture)?;
         std::fs::write(
             &agent_path,
             inject_developer_instruction(&agent, instruction),
         )?;
 
-        let output = validator(&plugin_root, "--check-roles")?;
+        let output = validator(plugin_root, "--check-roles")?;
         assert!(
             !output.status.success(),
             "rationale-based Sculptor overage authorization unexpectedly passed: {instruction}"
@@ -58,6 +63,8 @@ fn validator_cli_rejects_sculptor_rationale_based_overage_authorization() -> Tes
 
 #[test]
 fn validator_cli_allows_sculptor_unconditional_overage_escalation() -> TestResult {
+    let fixture = sculptor_fixture()?;
+    let plugin_root = fixture.root();
     for instruction in [
         SAFE_ESCALATION,
         SAFE_PROHIBITION,
@@ -66,30 +73,26 @@ fn validator_cli_allows_sculptor_unconditional_overage_escalation() -> TestResul
         SAFE_NEGATED_PERMISSION,
         SAFE_NON_LOC_APPROVAL,
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
-        let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
+        let (agent_path, agent) = reset_sculptor_agent(&fixture)?;
         std::fs::write(
             &agent_path,
             inject_developer_instruction(&agent, instruction),
         )?;
 
-        let output = validator(&plugin_root, "--check-roles")?;
+        let output = validator(plugin_root, "--check-roles")?;
         assert!(output.status.success(), "{}", stderr(&output));
     }
     for instruction in SAFE_NEGATED_PASSIVE_PERMISSION
         .iter()
         .chain(SAFE_OVERAGE_OBSERVATIONS)
     {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
-        let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
+        let (agent_path, agent) = reset_sculptor_agent(&fixture)?;
         std::fs::write(
             &agent_path,
             inject_developer_instruction(&agent, instruction),
         )?;
 
-        let output = validator(&plugin_root, "--check-roles")?;
+        let output = validator(plugin_root, "--check-roles")?;
         assert!(
             output.status.success(),
             "safe instruction unexpectedly failed: {instruction}\n{}",
@@ -101,18 +104,18 @@ fn validator_cli_allows_sculptor_unconditional_overage_escalation() -> TestResul
 
 #[test]
 fn validator_cli_rejects_direct_sculptor_loc_overage_permission() -> TestResult {
+    let fixture = sculptor_fixture()?;
+    let plugin_root = fixture.root();
     for instruction in
         std::iter::once(&DIRECT_OVERAGE_AUTHORIZATION).chain(PASSIVE_OVERAGE_AUTHORIZATION.iter())
     {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let agent_path = plugin_root.join("agents/codexy-sculptor.toml");
-        let agent = without_rationale_authorization(&std::fs::read_to_string(&agent_path)?);
+        let (agent_path, agent) = reset_sculptor_agent(&fixture)?;
         std::fs::write(
             &agent_path,
             inject_developer_instruction(&agent, instruction),
         )?;
 
-        let output = validator(&plugin_root, "--check-roles")?;
+        let output = validator(plugin_root, "--check-roles")?;
         assert!(
             !output.status.success(),
             "direct Sculptor LOC overage permission unexpectedly passed: {instruction}"
@@ -122,6 +125,17 @@ fn validator_cli_rejects_direct_sculptor_loc_overage_permission() -> TestResult 
         assert!(stderr.contains("must not allow LOC exceptions"), "{stderr}");
     }
     Ok(())
+}
+
+fn sculptor_fixture() -> TestResult<PluginFixture> {
+    Ok(support::plugin_fixture_with_mutable_files(&[Path::new(SCULPTOR_AGENT)])?)
+}
+
+fn reset_sculptor_agent(fixture: &PluginFixture) -> std::io::Result<(PathBuf, String)> {
+    let relative = Path::new(SCULPTOR_AGENT);
+    fixture.reset_file(relative)?;
+    let path = fixture.root().join(relative);
+    Ok((path.clone(), without_rationale_authorization(&std::fs::read_to_string(path)?)))
 }
 
 fn without_rationale_authorization(agent: &str) -> String {

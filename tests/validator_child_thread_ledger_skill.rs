@@ -1,6 +1,14 @@
 use crate::support;
 
-use support::{TestResult, copy_plugin_fixture, stderr, validator};
+use support::{TestResult, stderr, validator};
+
+fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+    support::copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/SKILL.md"),
+        std::path::Path::new("skills/dreaming/SKILL.md"),
+    ])
+    .map_err(Into::into)
+}
 
 #[test]
 fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {

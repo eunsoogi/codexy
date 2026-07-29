@@ -1,3 +1,4 @@
+mod metadata;
 mod receipt;
 
 use std::{
@@ -7,11 +8,15 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, bail};
-use serde_json::Value;
+use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
-use super::wrappers::{self, WrapperUpdate};
+use super::{
+    activation::receipt::PLATFORMS,
+    wrappers::{self, WrapperUpdate},
+};
+use metadata::platform_updates;
 
 #[derive(Debug)]
 struct Update {
@@ -21,6 +26,11 @@ struct Update {
 
 /// Validates a candidate receipt and atomically stages its activation updates.
 /// No publication, commit, branch, or pull request action is performed here.
+///
+/// # Errors
+///
+/// Returns an error when the candidate receipt or activation targets are invalid,
+/// or when atomic staging cannot complete.
 pub fn activate(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Result<usize> {
     let updates = prepare(repo_root, bootstrap_version, receipt_path)?;
     apply_with(&updates, write_staged)?;
@@ -63,6 +73,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
             bytes: candidate_bytes,
         },
     ];
+    updates.extend(platform_updates(repo_root)?);
     updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
 }
@@ -84,6 +95,17 @@ fn publish_contract_update(root: &Path, version: &str, candidate_tag: &str) -> R
     }
     contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
     contract["runtime"]["selectedTag"] = Value::String(candidate_tag.to_owned());
+    for section in ["runtime", "package"] {
+        let platforms = contract
+            .get_mut(section)
+            .and_then(Value::as_object_mut)
+            .and_then(|object| object.get_mut("platforms"))
+            .with_context(|| format!("release publish contract lacks {section}.platforms"))?;
+        if !platforms.is_array() {
+            bail!("release publish contract {section}.platforms must be an array");
+        }
+        *platforms = json!(PLATFORMS);
+    }
     Ok(Update {
         path,
         bytes: format!("{}\n", serde_json::to_string_pretty(&contract)?).into_bytes(),
@@ -116,17 +138,19 @@ where
 }
 
 fn wrapper_updates(root: &Path, version: &str) -> Result<Vec<Update>> {
-    wrappers::prepare_pin_updates(root, version)?
-        .into_iter()
-        .map(wrapper_update)
-        .collect()
+    Ok(
+        wrappers::prepare_activation_updates(root, version, &PLATFORMS)?
+            .into_iter()
+            .map(wrapper_update)
+            .collect(),
+    )
 }
 
-fn wrapper_update(update: WrapperUpdate) -> Result<Update> {
-    Ok(Update {
+fn wrapper_update(update: WrapperUpdate) -> Update {
+    Update {
         path: update.path,
         bytes: update.bytes,
-    })
+    }
 }
 
 fn write_staged(updates: &[Update]) -> Result<()> {

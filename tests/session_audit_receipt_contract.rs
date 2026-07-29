@@ -2,6 +2,8 @@ use std::{fs, process::Command};
 
 use serde_json::Value;
 
+use crate::support;
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const PACKAGED_PROOF_PATHS: &[&str] = &[
@@ -47,10 +49,13 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
     assert_eq!(receipt["installed"]["contentEquivalent"], true);
     assert_eq!(proof["contentEquivalent"], true);
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    assert_eq!(
-        proof["contentProof"]["sourceManifestSha256"],
-        sha256(root.join("plugins/codexy/.codex-plugin/plugin.json"))?
-    );
+    let canonical_text = tempfile::tempdir()?;
+    let manifest = canonical_text.path().join("plugin.json");
+    support::materialize_lf_text_fixture(
+        &root.join("plugins/codexy/.codex-plugin/plugin.json"),
+        &manifest,
+    )?;
+    assert_eq!(proof["contentProof"]["sourceManifestSha256"], sha256(manifest)?);
     for list in [
         &receipt["installed"]["changedFiles"],
         &proof["contentProof"]["sourceChangedFiles"],
@@ -59,7 +64,10 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
         assert_eq!(proof_paths(list)?, PACKAGED_PROOF_PATHS);
     }
     for path in PACKAGED_PROOF_PATHS {
-        let digest = sha256(root.join("plugins/codexy").join(path))?;
+        let source = root.join("plugins/codexy").join(path);
+        let materialized = canonical_text.path().join(path);
+        support::materialize_lf_text_fixture(&source, &materialized)?;
+        let digest = sha256(materialized)?;
         assert_eq!(proof_digest(&proof["contentProof"]["sourceChangedFiles"], path)?, digest);
         assert_eq!(proof_digest(&proof["contentProof"]["installedChangedFiles"], path)?, digest);
     }
@@ -73,6 +81,21 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
     assert!(!output.status.success());
     assert!(stderr(&output).contains("content equivalence"));
     Ok(())
+}
+
+#[test]
+fn shared_sha256_digest_matches_the_known_plugin_manifest_digest() -> TestResult {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("plugins/codexy/.codex-plugin/plugin.json");
+    assert_eq!(support::sha256_file(&path)?, sha256(path)?);
+    Ok(())
+}
+
+#[test]
+fn shared_sha256_digest_reports_missing_input_without_a_host_tool() {
+    let missing = tempfile::tempdir().unwrap().path().join("missing-input");
+    let error = support::sha256_file(&missing).unwrap_err();
+    assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
 }
 
 #[test]
@@ -152,24 +175,7 @@ fn stderr(output: &std::process::Output) -> String {
 }
 
 fn sha256(path: std::path::PathBuf) -> TestResult<String> {
-    let output = Command::new("shasum")
-        .arg("-a")
-        .arg("256")
-        .arg(&path)
-        .output()?;
-    let output = if output.status.success() {
-        output
-    } else {
-        Command::new("sha256sum").arg(path).output()?
-    };
-    if !output.status.success() {
-        return Err("a SHA-256 command must calculate sanitized source digests".into());
-    }
-    String::from_utf8(output.stdout)?
-        .split_ascii_whitespace()
-        .next()
-        .map(str::to_owned)
-        .ok_or_else(|| "SHA-256 output must include a digest".into())
+    Ok(support::sha256_file(&path)?)
 }
 
 fn proof_paths(value: &Value) -> TestResult<Vec<&str>> {

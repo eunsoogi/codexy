@@ -1,0 +1,74 @@
+pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
+    let normalized = text.replace("\r\n", "\n");
+    let missing: Vec<_> = required
+        .iter()
+        .filter(|literal| !normalized.contains(**literal))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "structured contract {rule_id} is missing required literals {missing:?}"
+    );
+}
+
+#[test]
+fn structured_literals_treat_crlf_as_text_line_endings() {
+    assert_structured_literals(
+        "first line\r\nsecond line\r\n",
+        "CRLF source fixture",
+        &["first line\nsecond line\n"],
+    );
+}
+
+#[allow(dead_code)]
+pub(crate) fn assert_archive_scanner_contract(script: &str, checker: &str) {
+    assert_structured_literals(
+        script,
+        "archive scanner behavior",
+        &[
+            "rg -a -n",
+            "grep -a -Hn",
+            "!**/runtime/*",
+            "!**/mcp/*.exe",
+            "! -name '*.md'",
+            "! -name '*.txt'",
+            "command -v python3",
+            "rg or grep is required",
+            "hygiene scan failed",
+            "duplicate archive entries",
+            "unexpected runtime artifact",
+            "unsafe archive path",
+        ],
+    );
+    assert_structured_literals(
+        checker,
+        "MCP response checker behavior",
+        &[
+            "invalid JSON-RPC version for response id",
+            "set(responses) != {1, 2}",
+        ],
+    );
+}
+
+#[allow(dead_code)]
+pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
+    assert_structured_literals(
+        workflow,
+        "runtime workflow coverage",
+        &[
+            "scripts/validate-plugin-config --plugin-root plugins/codexy --check\n          rsync -a",
+            "Smoke test native POSIX MCP runtimes",
+            "Smoke test native Windows MCP runtimes",
+            "Verify clean native Windows plugin MCP install",
+            "$archivePath = (Resolve-Path -LiteralPath \"dist/codexy-marketplace-plugin.tar.gz\").Path",
+            "Push-Location -LiteralPath $marketplaceRoot",
+            "mcpServerStatus/list",
+            "for ($attempt = 0; $attempt -lt 15; $attempt++)",
+            "Start-Sleep -Seconds 2",
+            "MCP status evidence",
+            "$entrypointRequests = @(",
+            "installed $server PE omitted its expected tool",
+            "installed $server PE process timed out",
+            "needs: [package-plugin, windows-installed-mcp]",
+        ],
+    );
+}

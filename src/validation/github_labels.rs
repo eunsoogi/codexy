@@ -4,9 +4,37 @@ use serde_json::Value;
 
 use super::handoff_claims::has_negative_label_value;
 use evidence::{
-    is_codexy_lane, is_open_pr, is_stacked_pr, issue_label_errors, issue_nodes, label_names,
-    repository_label_taxonomy, stacked_issue_evidence,
+    has_pr_identity, is_codexy_lane, is_open_pr, is_stacked_pr, issue_label_errors, issue_nodes,
+    label_names, repository_label_taxonomy, stacked_issue_evidence,
 };
+
+pub(super) fn check_pr_labels(pr_state: &str) -> Vec<String> {
+    let pr_state = match serde_json::from_str::<Value>(pr_state) {
+        Ok(Value::Object(object)) => Value::Object(object),
+        _ => return vec!["PR state malformed JSON evidence".into()],
+    };
+    if pr_state
+        .get("state")
+        .and_then(Value::as_str)
+        .is_none_or(str::is_empty)
+    {
+        return vec!["PR state missing state evidence".into()];
+    }
+    if !has_pr_identity(&pr_state) {
+        return vec!["PR state missing repository identity evidence".into()];
+    }
+    if !is_open_pr(&pr_state) || !is_codexy_lane(&pr_state) {
+        return Vec::new();
+    }
+    match repository_label_taxonomy(&pr_state) {
+        Some(labels) if labels.is_empty() => Vec::new(),
+        None => vec!["GitHub label evidence missing repositoryLabels taxonomy".into()],
+        Some(_) if label_names(pr_state.get("labels")).is_empty() => {
+            vec!["PR labels missing label application evidence".into()]
+        }
+        Some(_) => Vec::new(),
+    }
+}
 
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
     if !(claims_pr_readiness(handoff) || claims_completion(handoff)) {

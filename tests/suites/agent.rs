@@ -100,11 +100,16 @@ mod validator_sentinel_reasoning_evidence;
 #[path = "../validator_sentinel_reasoning_followups.rs"]
 mod validator_sentinel_reasoning_followups;
 
+#[path = "../validator_sentinel_reasoning_fixture.rs"]
+mod validator_sentinel_reasoning_fixture;
+
 #[path = "../validator_sentinel_reviewer_gate.rs"]
 mod validator_sentinel_reviewer_gate;
 
 #[path = "../validator_sentinel_scope_policy.rs"]
 mod validator_sentinel_scope_policy;
+#[path = "../validator_sentinel_scope_policy_fixture.rs"]
+mod validator_sentinel_scope_policy_fixture;
 
 #[path = "../validator_subagent_delegation.rs"]
 mod validator_subagent_delegation;

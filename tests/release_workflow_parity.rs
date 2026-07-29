@@ -14,11 +14,13 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
         assert!(lines(bootstrap_proof).any(|actual| actual == line));
     }
     let candidate_assembly = run(&candidate, "publish-candidate", "Assemble canonical candidate archive and receipt")?;
-    assert!(lines(candidate_assembly).any(|line| line == "rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ \"$root/\""));
-    assert!(lines(candidate_assembly).any(|line| line == "slug=\"${CANDIDATE_TAG#runtime-candidate-}\""));
-    assert!(lines(candidate_assembly).any(|line| line == "case \"$slug\" in *[!A-Za-z0-9._-]*) exit 1;; esac"));
-    let copied = lines(candidate_assembly).position(|line| line == "cp -R staged-runtime \"$root/runtime\"").ok_or("candidate copy")?;
-    let executable = lines(candidate_assembly).position(|line| line == "chmod 755 \"$root/runtime/codexy-mcp-${server}-${platform}.bin\"").ok_or("candidate mode")?;
+    assert_eq!(candidate_assembly, "scripts/assemble-runtime-candidate");
+    let candidate_assembly = script("assemble-runtime-candidate")?;
+    assert!(lines(&candidate_assembly).any(|line| line == "rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ \"$root/\""));
+    assert!(lines(&candidate_assembly).any(|line| line == "slug=\"${CANDIDATE_TAG#runtime-candidate-}\""));
+    assert!(lines(&candidate_assembly).any(|line| line == "case \"$slug\" in *[!A-Za-z0-9._-]*) exit 1;; esac"));
+    let copied = lines(&candidate_assembly).position(|line| line == "cp -R staged-runtime \"$root/runtime\"").ok_or("candidate copy")?;
+    let executable = lines(&candidate_assembly).position(|line| line == "chmod 755 \"$root/runtime/codexy-mcp-${server}-${platform}.bin\"").ok_or("candidate mode")?;
     assert!(copied < executable);
     let candidate_publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
     assert!(command_present(candidate_publish, &["gh", "release", "create"]));
@@ -114,6 +116,7 @@ fn bootstrap_candidate_identity_is_independent_from_plugin_version() -> Result<(
 }
 
 fn document(name: &str) -> Result<Value, Box<dyn std::error::Error>> { Ok(serde_yaml::from_str(&std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name))?)?) }
+fn script(name: &str) -> Result<String, Box<dyn std::error::Error>> { Ok(std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts").join(name))?) }
 fn lines(run: &str) -> impl Iterator<Item = &str> { run.lines().map(str::trim).filter(|line| !line.is_empty()) }
 fn command_present(run: &str, words: &[&str]) -> bool { lines(run).any(|line| line.split_ascii_whitespace().collect::<Vec<_>>().windows(words.len()).any(|actual| actual == words)) }
 fn assert_dispatch_only(value: &Value) -> Result<(), Box<dyn std::error::Error>> { let trigger = value.as_mapping().and_then(|root| root.iter().find(|(key, _)| key.as_str() == Some("on") || **key == Value::Bool(true))).and_then(|(_, value)| value.as_mapping()).ok_or("triggers")?; assert_eq!(trigger.len(), 1); assert!(trigger.contains_key(Value::String("workflow_dispatch".into()))); Ok(()) }

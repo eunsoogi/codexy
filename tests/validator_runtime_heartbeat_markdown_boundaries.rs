@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use crate::support;
 
@@ -7,11 +7,13 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = plugin_root.join("skills/codex-orchestration/references/runtime-heartbeats.md");
+    let fixture = support::instruction_policy_fixture(Path::new(
+        "skills/codex-orchestration/references/runtime-heartbeats.md",
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     fs::write(&path, original.replace(CLAUSE, replacement))?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 #[test]

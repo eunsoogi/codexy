@@ -34,7 +34,7 @@ fn validator_cli_rejects_supported_platform_without_bundled_mcp_runtimes()
 }
 
 #[test]
-fn validator_cli_rejects_platform_outside_immutable_runtime_inventory()
+fn validator_cli_rejects_candidate_platform_without_matching_publish_contract()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
@@ -64,11 +64,11 @@ fn validator_cli_rejects_platform_outside_immutable_runtime_inventory()
 
     assert!(
         !output.status.success(),
-        "validator should reject platforms outside the immutable runtime inventory"
+        "validator should require an atomic candidate publish contract update"
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("immutable runtime package must retain platforms"),
+            .contains("package.platforms must match supportedPlatforms"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -87,8 +87,9 @@ fn add_windows_runtime_release(plugin_root: &std::path::Path) -> Result<(), Box<
     });
     for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
         for server in ["lsp", "codegraph"] {
+            let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
             release["platforms"][platform][server]["path"] =
-                serde_json::json!(format!("runtime/codexy-mcp-{server}-{platform}.bin"));
+                serde_json::json!(format!("runtime/codexy-mcp-{server}-{platform}.{extension}"));
         }
     }
     std::fs::write(&path, serde_json::to_string_pretty(&release)?)?;

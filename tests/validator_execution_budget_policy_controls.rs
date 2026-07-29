@@ -10,7 +10,9 @@ fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
 
 #[test]
 fn validator_allows_negated_countermand_examples() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
+    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
+        std::path::Path::new("skills/codex-orchestration/references/execution-budget.md"),
+    ])?;
     let path = budget_path(&plugin_root);
     let original = fs::read_to_string(&path)?;
     fs::write(

@@ -6,6 +6,8 @@ on:
       - "plugins/codexy/**"
       - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
+      - "scripts/check-release-archive-content"
+      - "scripts/check-release-archive-entries"
       - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
   push:
@@ -14,6 +16,8 @@ on:
       - "plugins/codexy/**"
       - ".agents/plugins/**"
       - "scripts/inspect-release-archive"
+      - "scripts/check-release-archive-content"
+      - "scripts/check-release-archive-entries"
       - "scripts/validate-plugin-config"
       - ".github/workflows/plugin-runtime-binaries.yml"
 
@@ -86,27 +90,30 @@ jobs:
               ;;
             candidate-proven)
               mkdir -p dist/candidate dist/final/plugins
-              tar -xzf dist/selected.tar.gz -C dist/candidate \
-                plugins/codexy/runtime-candidate.json \
-                plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
-                plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
-                plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
-                plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin
+              tar -xzf dist/selected.tar.gz -C dist/candidate plugins/codexy
               candidate=dist/candidate/plugins/codexy
               staged=dist/final/plugins/codexy
               test ! -e "$candidate/runtime-release.json"
               test "$(digest_file "$candidate/runtime-candidate.json")" = "$(jq -r .artifact.payloadManifestSha256 plugins/codexy/runtime-release.json)"
               rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
-              mkdir -p "$staged/runtime"
+              mkdir -p "$staged/mcp" "$staged/runtime"
               cp "$candidate/runtime-candidate.json" "$staged/runtime-candidate.json"
-              for platform in darwin-arm64 linux-x86_64; do
+              for platform in $(jq -r '.platforms | keys[]' plugins/codexy/runtime-release.json); do
                 for server in lsp codegraph; do
                   path="$(jq -r ".platforms[\"$platform\"][\"$server\"].path" plugins/codexy/runtime-release.json)"
                   digest="$(jq -r ".platforms[\"$platform\"][\"$server\"].sha256" plugins/codexy/runtime-release.json)"
-                  test "$path" = "runtime/codexy-mcp-${server}-${platform}.bin"
+                  extension=bin
+                  test "$platform" != windows-x86_64 || extension=exe
+                  test "$path" = "runtime/codexy-mcp-${server}-${platform}.$extension"
                   test "$(digest_file "$candidate/$path")" = "$digest"
                   cp "$candidate/$path" "$staged/$path"
                   cmp "$candidate/$path" "$staged/$path"
+                  if [ "$platform" = windows-x86_64 ]; then
+                    entrypoint="mcp/codexy-mcp-${server}.exe"
+                    test "$(digest_file "$candidate/$entrypoint")" = "$digest"
+                    cp "$candidate/$entrypoint" "$staged/$entrypoint"
+                    cmp "$candidate/$entrypoint" "$staged/$entrypoint"
+                  fi
                 done
               done
               tar -C dist/final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
@@ -119,3 +126,41 @@ jobs:
           name: codexy-marketplace-plugin-${{ matrix.platform }}
           path: dist/codexy-marketplace-plugin.tar.gz
           if-no-files-found: error
+
+  verify-windows-selected-candidate:
+    name: Verify native Windows selected candidate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify immutable native Windows candidate bytes
+        shell: pwsh
+        run: |
+          $release = Get-Content -Raw "plugins/codexy/runtime-release.json" | ConvertFrom-Json
+          if ($release.state -eq "legacy-public") {
+            Write-Output "legacy-public baseline intentionally has no selected Windows candidate"
+            exit 0
+          }
+          if ($release.state -ne "candidate-proven") { throw "unsupported runtime release state: $($release.state)" }
+          $archive = Join-Path $env:RUNNER_TEMP "selected-candidate.tar.gz"
+          curl.exe --fail --location $release.artifact.url --output $archive
+          if ($LASTEXITCODE -ne 0) { throw "candidate archive download failed" }
+          $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          if ($actual -ne $release.artifact.sha256) { throw "candidate archive digest mismatch" }
+          $root = Join-Path $env:RUNNER_TEMP "selected-candidate"
+          if (Test-Path -LiteralPath $root) { throw "candidate extraction root must be fresh: $root" }
+          New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
+          $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
+          & $windowsTar -xzf $archive -C $root
+          if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
+          foreach ($server in @("lsp", "codegraph")) {
+            $runtime = Join-Path $root "plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe"
+            $entrypoint = Join-Path $root "plugins/codexy/mcp/codexy-mcp-$server.exe"
+            foreach ($path in @($runtime, $entrypoint)) {
+              if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "missing native Windows runtime: $path" }
+              $signature = [System.IO.File]::ReadAllBytes($path)[0..1]
+              if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$path is not a PE executable" }
+            }
+            if ((Get-FileHash $runtime).Hash -ne (Get-FileHash $entrypoint).Hash) { throw "$server entrypoint differs from its runtime" }
+          }

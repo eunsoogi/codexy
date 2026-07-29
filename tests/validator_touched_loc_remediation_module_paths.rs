@@ -1,5 +1,6 @@
 use crate::support;
 
+use std::path::Path;
 use std::process::Command;
 
 use serde_json::Value;
@@ -34,7 +35,7 @@ fn cargo_metadata_discovers_directory_target_main_roots() -> TestResult {
                             .is_some_and(|kinds| kinds.iter().any(|candidate| candidate == kind))
                             && target["src_path"]
                                 .as_str()
-                                .is_some_and(|source| source.ends_with(path))
+                                .is_some_and(|source| Path::new(source).ends_with(Path::new(path)))
                     })
                 })
         );

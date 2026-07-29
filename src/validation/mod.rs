@@ -80,6 +80,7 @@ mod lsp;
 mod manifest;
 mod markdown;
 mod mcp;
+mod mcp_required;
 mod mcp_runtime;
 mod merge_message;
 mod mode_dispatch;
@@ -140,6 +141,9 @@ pub enum Mode {
     },
     IssueTitle {
         title: String,
+    },
+    PrLabels {
+        pr_state: String,
     },
     IssueIntake {
         receipt: String,

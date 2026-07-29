@@ -1,15 +1,18 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
     process::Command,
 };
 
+use crate::support::{FixtureCommand, make_executable};
+
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
 
-const AUTHORIZED: [&str; 6] = [
+const AUTHORIZED: [&str; 8] = [
+    ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
+    "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy/mcp/codexy-mcp-codegraph",
     "plugins/codexy/mcp/codexy-mcp-lsp",
     "plugins/codexy/runtime-candidate.json",
@@ -83,11 +86,11 @@ impl Fixture {
         copy_tree(&expected, &repo)?;
         match change {
             Change::Exact => {}
-            Change::WrapperDrift => write(&repo, AUTHORIZED[1], b"drift\n")?,
-            Change::BootstrapDrift => write(&repo, AUTHORIZED[5], b"drift\n")?,
-            Change::ReleaseContractDrift => write(&repo, AUTHORIZED[0], b"drift\n")?,
+            Change::WrapperDrift => write(&repo, AUTHORIZED[3], b"drift\n")?,
+            Change::BootstrapDrift => write(&repo, AUTHORIZED[7], b"drift\n")?,
+            Change::ReleaseContractDrift => write(&repo, AUTHORIZED[1], b"drift\n")?,
             Change::Extra => write(&repo, "docs/extra.md", b"extra\n")?,
-            Change::Missing => fs::remove_file(repo.join(AUTHORIZED[3]))?,
+            Change::Missing => fs::remove_file(repo.join(AUTHORIZED[5]))?,
         }
         git(&repo, &["add", "-A"])?;
         git(&repo, &["commit", "-m", "activation"])?;
@@ -119,7 +122,7 @@ impl Fixture {
         pr_state: &str,
         test_mode: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let mut command = Command::new(
+        let mut command = FixtureCommand::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/verify-runtime-activation-branch"),
         );
@@ -185,7 +188,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 for path in \
+  .agents/plugins/marketplace.json \
   .agents/plugins/release-publish-contract.json \
+  plugins/codexy/.codex-plugin/plugin.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
   plugins/codexy/runtime-candidate.json \
@@ -201,7 +206,5 @@ done
 
 fn executable(path: &Path, source: &str) -> std::io::Result<()> {
     fs::write(path, source)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)
+    make_executable(path)
 }

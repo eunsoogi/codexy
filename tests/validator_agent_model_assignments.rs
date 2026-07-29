@@ -1,12 +1,14 @@
 use std::collections::BTreeSet;
 use std::path::Path;
-use std::process::Command;
 
 use crate::support;
 
+#[path = "validator_agent_model_assignments/privacy.rs"]
+mod privacy;
+
 use support::{
-    TestResult, assert_privacy_diagnostic, public_contract_import_check,
-    validate_agent_replacement, validate_catalog_replacement,
+    TestResult, agent_fixture, catalog_fixture, validate_agent_replacement,
+    validate_catalog_replacement,
 };
 
 #[derive(Debug)]
@@ -131,9 +133,16 @@ fn packaged_agents_match_the_independent_role_contract() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_every_role_model_regression() -> TestResult {
+    let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
     for expected in EXPECTED_AGENTS {
         assert_rejected(
-            validate_agent_replacement(expected.filename, "model", expected.model, "gpt-5.5")?,
+            validate_agent_replacement(
+                &fixture,
+                expected.filename,
+                "model",
+                expected.model,
+                "gpt-5.5",
+            )?,
             &format!("{} model must be {}", expected.name, expected.model),
         );
     }
@@ -142,9 +151,11 @@ fn validator_cli_rejects_every_role_model_regression() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_every_role_effort_regression() -> TestResult {
+    let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
     for expected in EXPECTED_AGENTS {
         assert_rejected(
             validate_agent_replacement(
+                &fixture,
                 expected.filename,
                 "model_reasoning_effort",
                 expected.effort,
@@ -161,8 +172,9 @@ fn validator_cli_rejects_every_role_effort_regression() -> TestResult {
 
 #[test]
 fn validator_cli_reports_missing_catalog_contract_entry() -> TestResult {
+    let fixture = catalog_fixture()?;
     assert_rejected(
-        validate_catalog_replacement("  \"codexy-architect.toml\",\n", "")?,
+        validate_catalog_replacement(&fixture, "  \"codexy-architect.toml\",\n", "")?,
         "missing: codexy-architect.toml; unexpected: none",
     );
     Ok(())
@@ -170,8 +182,10 @@ fn validator_cli_reports_missing_catalog_contract_entry() -> TestResult {
 
 #[test]
 fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
+    let fixture = catalog_fixture()?;
     assert_rejected(
         validate_catalog_replacement(
+            &fixture,
             "  \"codexy-warden.toml\",\n]",
             "  \"codexy-warden.toml\",\n  \"codexy-unknown.toml\",\n]",
         )?,
@@ -200,28 +214,6 @@ fn sentinel_uses_sol_with_xhigh_reasoning_and_not_ultra() -> TestResult {
             .get("model_reasoning_effort")
             .and_then(toml::Value::as_str),
         Some("ultra")
-    );
-    Ok(())
-}
-
-#[test]
-fn specialist_model_contract_is_not_a_public_api() -> TestResult {
-    let output = public_contract_import_check()?;
-    assert_privacy_diagnostic(&output)?;
-    Ok(())
-}
-
-#[test]
-fn privacy_contract_import_rejects_unrelated_cargo_failures() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let output = Command::new("cargo")
-        .args(["check", "--quiet"])
-        .current_dir(temp.path())
-        .output()?;
-
-    assert!(
-        assert_privacy_diagnostic(&output).is_err(),
-        "an unrelated cargo failure must not prove the specialist contract private"
     );
     Ok(())
 }

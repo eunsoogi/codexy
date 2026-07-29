@@ -1,12 +1,15 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt as _,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+
+use crate::support::{FixtureCommand, make_executable};
+
+mod metadata;
 
 #[test]
 fn real_base_activator_authenticates_retry_and_metadata_matrix()
@@ -80,6 +83,7 @@ impl Fixture {
                 repo.join(relative),
             )?;
         }
+        metadata::restore_legacy_platform_metadata(&repo)?;
         git(&repo, &["init", "-b", "main"])?;
         git(&repo, &["config", "user.name", "test"])?;
         git(&repo, &["config", "user.email", "test@example.com"])?;
@@ -94,7 +98,8 @@ impl Fixture {
                 .args(["--bootstrap-version", "1.3.0"])
                 .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
-        git(&repo, &["add", ".agents/plugins/release-publish-contract.json"])?;
+        git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
+        git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
         git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
         git(&repo, &["add", "plugins/codexy/runtime-release.json", "src/version/bootstrap.rs"])?;
         git(&repo, &["commit", "-m", "activation"])?;
@@ -110,7 +115,7 @@ impl Fixture {
     }
 
     fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        Ok(Command::new(self.repo.join("scripts/verify-runtime-activation-branch"))
+        Ok(FixtureCommand::new(self.repo.join("scripts/verify-runtime-activation-branch"))
             .args(["activation", base, version])
             .arg(&self.receipt)
             .current_dir(&self.repo)
@@ -186,7 +191,8 @@ fn receipt_value() -> Value {
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": "b".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
-            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}}
+            "linux-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}},
+            "windows-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-windows-x86_64.exe", "sha256": "9".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe", "sha256": "a".repeat(64)}}
         }
     });
     let candidate_bytes = serde_json::to_vec(&canonical(candidate.clone())).unwrap();
@@ -229,7 +235,5 @@ fn command(command: &mut Command) -> Result<(), Box<dyn std::error::Error>> {
 
 fn executable(path: &Path, source: &str) -> std::io::Result<()> {
     fs::write(path, source)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)
+    make_executable(path)
 }

@@ -1,12 +1,14 @@
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
 use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
 
 #[test]
 fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
+    let fixture = support::roles_fixture()?;
     for replacement in [
         "missing reasoning control used or unavailable evidence is acceptable",
         "reasoning control used or unavailable evidence is optional",
@@ -118,6 +120,7 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
         "reasoning control used or unavailable evidence, optional",
     ] {
         let output = validate_sentinel_replacement(
+            &fixture,
             "reasoning control used or unavailable evidence",
             replacement,
         )?;
@@ -126,12 +129,13 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     }
     let needle = "reasoning control used or unavailable evidence, direct reviewer passes performed";
     let output = validate_sentinel_replacement(
+        &fixture,
         needle,
         "reasoning control used or unavailable evidence, but reviewers may omit reasoning-control evidence, direct reviewer passes performed",
     )?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
-    let output = validate_sentinel_edit(|sentinel| {
+    let output = validate_sentinel_edit(&fixture, |sentinel| {
         Ok(sentinel.replacen(
             "\n\"\"\"\n",
             "\nDo not record reasoning control used or unavailable evidence.\n\"\"\"\n",
@@ -141,11 +145,12 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reasoning-control evidence must be affirmative"));
     let output = validate_sentinel_replacement(
+        &fixture,
         "reasoning control used or unavailable evidence, direct reviewer passes performed",
         "reasoning control used or unavailable evidence, direct reviewer passes performed",
     )?;
     assert!(output.status.success(), "{}", stderr(&output));
-    let output = validate_sentinel_edit(|sentinel| {
+    let output = validate_sentinel_edit(&fixture, |sentinel| {
         Ok(sentinel.replace(
             "and any unresolved risk. MUST identify formatting-only LOC remediation before approving readiness.",
             "and any unresolved risk. Every approval MUST NOT omit reasoning control used or unavailable evidence, but not direct reviewer passes performed.. MUST identify formatting-only LOC remediation before approving readiness.",
@@ -158,35 +163,28 @@ fn validator_cli_rejects_negated_reasoning_control_evidence() -> TestResult {
     assert!(stderr(&output).contains("reviewer gate contract is missing"));
     Ok(())
 }
-fn validate_sentinel_replacement(needle: &str, replacement: &str) -> TestResult<Output> {
-    validate_sentinel_edit(|sentinel| Ok(sentinel.replace(needle, replacement)))
+fn validate_sentinel_replacement(
+    fixture: &support::PluginFixture,
+    needle: &str,
+    replacement: &str,
+) -> TestResult<Output> {
+    validate_sentinel_edit(fixture, |sentinel| Ok(sentinel.replace(needle, replacement)))
 }
 
-fn validate_sentinel_edit(edit: impl FnOnce(String) -> TestResult<String>) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
-    copy_fixture(&plugin_root)?;
-    let sentinel_path = plugin_root.join("agents/codexy-sentinel.toml");
+fn validate_sentinel_edit(
+    fixture: &support::PluginFixture,
+    edit: impl FnOnce(String) -> TestResult<String>,
+) -> TestResult<Output> {
+    fixture.reset_file(Path::new(SENTINEL_PATH))?;
+    let plugin_root = fixture.root();
+    let sentinel_path = plugin_root.join(SENTINEL_PATH);
     let sentinel = std::fs::read_to_string(&sentinel_path)?;
     std::fs::write(&sentinel_path, edit(sentinel)?)?;
     validator(&plugin_root)
 }
 
-fn copy_fixture(plugin_root: &Path) -> std::io::Result<()> {
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        plugin_root,
-    )
-}
-
 fn validator(plugin_root: &Path) -> TestResult<Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
-        ])
-        .output()?)
+    support::validator_in_process(plugin_root, "--check-roles")
 }
 
 fn stderr(output: &Output) -> String {

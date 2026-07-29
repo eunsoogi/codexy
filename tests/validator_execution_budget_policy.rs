@@ -1,8 +1,8 @@
-use std::fs;
+use std::{fs, path::Path};
 
 #[path = "structured_contract.rs"]
 mod structured_contract;
-use crate::support;
+use crate::support::{self, InstructionPolicyFixture};
 
 use structured_contract::{Contract, Modality, Rule};
 
@@ -53,8 +53,16 @@ const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget.\n## File churn MAY renew the budget.",
 ];
 
-fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
-    plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
+const EXECUTION_BUDGET: &str = "skills/codex-orchestration/references/execution-budget.md";
+
+fn policy_fixture() -> TestResult<InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(Path::new(EXECUTION_BUDGET))?)
+}
+
+fn reset_budget_file(fixture: &InstructionPolicyFixture) -> TestResult<(std::path::PathBuf, String)> {
+    fixture.reset()?;
+    let path = fixture.path().to_path_buf();
+    Ok((path.clone(), fs::read_to_string(path)?))
 }
 
 #[test]
@@ -72,16 +80,15 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
             &["finite execution budget"],
         ))
         .expect("execution-budget contract must require a finite child-lane budget");
+    let fixture = policy_fixture()?;
     for clause in REQUIRED_CLAUSES {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = budget_path(&plugin_root);
-        let original = fs::read_to_string(&path)?;
+        let (path, original) = reset_budget_file(&fixture)?;
         fs::write(
             &path,
             original.replace(clause, "removed execution-budget policy"),
         )?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(&path)?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }
@@ -90,16 +97,15 @@ fn validator_requires_finite_execution_budget_contract() -> TestResult {
 
 #[test]
 fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult {
+    let fixture = policy_fixture()?;
     for countermand in RENEWAL_COUNTERMANDS.iter().chain(OTHER_COUNTERMANDS) {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = budget_path(&plugin_root);
-        let original = fs::read_to_string(&path)?;
+        let (path, original) = reset_budget_file(&fixture)?;
         let sequence = format!(
             "\n#426 sequence: a small adjacent edit, proof rerun, new edge, and changed fingerprint leave the same acceptance work.\n#434 sequence: repeated child waiting turns, goal refreshes, and polling occur without a material transition.\n{countermand}\n"
         );
         fs::write(&path, format!("{original}{sequence}"))?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(&path)?;
         assert!(
             !output.status.success(),
             "validator accepted countermanding #426/#434 policy {countermand:?}"
@@ -111,10 +117,9 @@ fn validator_rejects_anchor_preserving_426_and_434_countermands() -> TestResult 
 
 #[test]
 fn validator_rejects_mixed_polarity_countermand() -> TestResult {
+    let fixture = policy_fixture()?;
     for countermand in MIXED_POLARITY_COUNTERMANDS {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = budget_path(&plugin_root);
-        let original = fs::read_to_string(&path)?;
+        let (path, original) = reset_budget_file(&fixture)?;
         fs::write(
             &path,
             format!(
@@ -122,7 +127,7 @@ fn validator_rejects_mixed_polarity_countermand() -> TestResult {
             ),
         )?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(&path)?;
         assert!(
             !output.status.success(),
             "validator accepted mixed-polarity countermand {countermand:?}"
@@ -134,13 +139,12 @@ fn validator_rejects_mixed_polarity_countermand() -> TestResult {
 
 #[test]
 fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
+    let fixture = policy_fixture()?;
     for countermand in ADJACENT_MIXED_POLARITY_COUNTERMANDS {
-        let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-        let path = budget_path(&plugin_root);
-        let original = fs::read_to_string(&path)?;
+        let (path, original) = reset_budget_file(&fixture)?;
         fs::write(&path, format!("{original}\n{countermand}\n"))?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(&path)?;
         assert!(
             !output.status.success(),
             "validator accepted adjacent mixed-polarity countermand {countermand:?}"
@@ -152,15 +156,14 @@ fn validator_rejects_adjacent_mixed_polarity_countermand() -> TestResult {
 
 #[test]
 fn validator_rejects_numbered_metadata_countermand() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = budget_path(&plugin_root);
-    let original = fs::read_to_string(&path)?;
+    let fixture = policy_fixture()?;
+    let (path, original) = reset_budget_file(&fixture)?;
     fs::write(
         &path,
         format!("{original}\n#426 sequence: Artifact churn MAY renew the budget.\n"),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(&path)?;
     assert!(
         !output.status.success(),
         "validator accepted numbered metadata countermand"
@@ -171,9 +174,8 @@ fn validator_rejects_numbered_metadata_countermand() -> TestResult {
 
 #[test]
 fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = budget_path(&plugin_root);
-    let original = fs::read_to_string(&path)?;
+    let fixture = policy_fixture()?;
+    let (path, original) = reset_budget_file(&fixture)?;
     fs::write(
         &path,
         format!(
@@ -181,7 +183,7 @@ fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(&path)?;
     assert!(
         output.status.success(),
         "validator rejected benign Markdown: {}",
@@ -192,15 +194,14 @@ fn validator_allows_benign_markdown_heading_and_comment() -> TestResult {
 
 #[test]
 fn validator_allows_multiline_html_comment() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = budget_path(&plugin_root);
-    let original = fs::read_to_string(&path)?;
+    let fixture = policy_fixture()?;
+    let (path, original) = reset_budget_file(&fixture)?;
     fs::write(
         &path,
         format!("{original}\n<!--\nArtifact churn MAY renew the budget.\n-->\n"),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(&path)?;
     assert!(
         output.status.success(),
         "validator rejected a multiline HTML comment: {}",
@@ -211,16 +212,15 @@ fn validator_allows_multiline_html_comment() -> TestResult {
 
 #[test]
 fn validator_allows_convergent_progress_and_post_proof_termination() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture()?;
-    let path = budget_path(&plugin_root);
-    let original = fs::read_to_string(&path)?;
+    let fixture = policy_fixture()?;
+    let (path, original) = reset_budget_file(&fixture)?;
     fs::write(
         &path,
         format!(
             "{original}\nConvergent control: an explicit acceptance criterion was newly satisfied, required proof completed, and the lane terminates implementation.\n"
         ),
     )?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(&path)?;
     assert!(
         output.status.success(),
         "validator rejected convergent progress and post-proof termination: {}",

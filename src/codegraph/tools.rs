@@ -1,16 +1,15 @@
 use std::fs;
-use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 use anyhow::{Context as _, Result, bail};
+use regex::Regex;
 use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::codegraph::{build_graph, neighborhood, reverse_deps};
 use crate::mcp::{ToolDef, text_result};
 
-use super::files::{is_code_file, repo_root, result_limit, walk_code_files};
+use super::files::{repo_root, result_limit, walk_code_files};
 
 #[must_use]
 pub fn tools() -> Vec<ToolDef> {
@@ -22,7 +21,7 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         ToolDef::new(
             "codegraph_search",
-            "Search repository code with ripgrep and return path:line matches.",
+            "Search repository code and return path:line matches.",
             json!({"type":"object","properties":{"root":{"type":"string"},"query":{"type":"string"},"limit":{"type":"number"}},"required":["query"]}),
         ),
         ToolDef::new(
@@ -52,7 +51,7 @@ pub fn tools() -> Vec<ToolDef> {
 ///
 /// # Errors
 ///
-/// Returns an error when required arguments are missing, ripgrep fails, JSON
+/// Returns an error when required arguments are missing, a search regex is invalid, JSON
 /// serialization fails, or the tool name is unknown.
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
     let root = repo_root(args.get("root").and_then(Value::as_str));
@@ -150,44 +149,20 @@ fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
 
 fn rg_lines(root: &Path, query: &str, limit: Option<usize>) -> Result<String> {
     let bounded_limit = result_limit(limit);
-    let mut child = Command::new("rg")
-        .args([
-            "--hidden",
-            "--line-buffered",
-            "-n",
-            "--glob",
-            "!node_modules",
-            "--glob",
-            "!.git",
-            "-e",
-            query,
-            ".",
-        ])
-        .current_dir(root)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .with_context(|| format!("running rg in {}", root.display()))?;
-    let stdout = child.stdout.take().context("reading rg stdout")?;
+    let pattern = Regex::new(query).with_context(|| format!("invalid search regex: {query}"))?;
     let mut lines = Vec::new();
-    for line in BufReader::new(stdout).lines() {
-        let line = line.context("reading rg output")?;
-        if is_code_file(Path::new(line.split(':').next().unwrap_or_default())) {
-            lines.push(line);
-            if lines.len() >= bounded_limit {
-                let _ = child.kill();
-                break;
+    for file in walk_code_files(root) {
+        let Ok(source) = fs::read_to_string(root.join(&file)) else {
+            continue;
+        };
+        for (index, line) in source.lines().enumerate() {
+            if pattern.is_match(line) {
+                lines.push(format!("./{file}:{}:{line}", index + 1));
+                if lines.len() >= bounded_limit {
+                    return Ok(lines.join("\n"));
+                }
             }
         }
-    }
-    let status = child
-        .wait()
-        .with_context(|| format!("waiting for rg in {}", root.display()))?;
-    if !status.success() && status.code() != Some(1) && lines.is_empty() {
-        return Ok(format!(
-            "Command failed: rg --hidden -n --glob !node_modules --glob !.git -e {query}"
-        ));
     }
     Ok(lines.join("\n"))
 }

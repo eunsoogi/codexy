@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Output};
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 
@@ -166,10 +167,7 @@ fn diagnostics_confirm_v2_only_from_the_real_table() -> TestResult {
 
 fn fixture(root: &Path) -> std::io::Result<PathBuf> {
     let plugin = root.join("plugin");
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin,
-    )?;
+    support::copy_plugin_fixture_into_with_mutable_files(&plugin, &[])?;
     Ok(plugin)
 }
 

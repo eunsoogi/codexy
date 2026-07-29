@@ -1,0 +1,134 @@
+use std::path::{Path, PathBuf};
+#[cfg(windows)]
+use std::sync::{Mutex, OnceLock};
+
+#[cfg(windows)]
+struct PrivateSeed {
+    _temp: tempfile::TempDir,
+    root: PathBuf,
+}
+
+#[cfg(windows)]
+static PRIVATE_SEED: OnceLock<Mutex<Option<PrivateSeed>>> = OnceLock::new();
+
+pub(super) fn materialize(
+    source: PathBuf,
+    target: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    #[cfg(not(windows))]
+    {
+        let _ = mutable_files;
+        return super::copy_dir(source, target);
+    }
+    #[cfg(windows)]
+    materialize_windows(&source, target, Path::new(""), mutable_files)
+}
+
+#[cfg(windows)]
+fn materialize_windows(
+    source: &Path,
+    target: &Path,
+    relative: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    let seed = private_seed(source)?;
+    materialize_seed(&seed, target, relative, mutable_files)
+}
+
+#[cfg(windows)]
+fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
+    let seeds = PRIVATE_SEED.get_or_init(|| Mutex::new(None));
+    let mut seed = seeds
+        .lock()
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "fixture seed lock"))?;
+    if seed.is_none() {
+        let temp = tempfile::tempdir()?;
+        let root = temp.path().join("codexy");
+        super::copy_dir(source, &root)?;
+        make_seed_readonly(&root)?;
+        *seed = Some(PrivateSeed { _temp: temp, root });
+    }
+    Ok(seed.as_ref().expect("private fixture seed").root.clone())
+}
+
+#[cfg(any(test, windows))]
+fn materialize_seed(
+    source: &Path,
+    target: &Path,
+    relative: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    std::fs::create_dir_all(target)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        let entry_relative = relative.join(entry.file_name());
+        if source_path.is_dir() {
+            materialize_seed(&source_path, &target_path, &entry_relative, mutable_files)?;
+        } else if mutable_files.iter().any(|path| *path == entry_relative) {
+            std::fs::copy(&source_path, &target_path)?;
+            let mut permissions = std::fs::metadata(&target_path)?.permissions();
+            permissions.set_readonly(false);
+            std::fs::set_permissions(&target_path, permissions)?;
+        } else {
+            std::fs::copy(&source_path, &target_path)?;
+            super::profile_metrics::record("fixture_private_seed_copy");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(any(test, windows))]
+fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            make_seed_readonly(&path)?;
+        } else {
+            let mut permissions = std::fs::metadata(&path)?.permissions();
+            permissions.set_readonly(true);
+            std::fs::set_permissions(path, permissions)?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{make_seed_readonly, materialize_seed};
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::Path;
+
+    #[test]
+    fn clearing_readonly_cannot_mutate_the_seed_or_a_sibling_overlay()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let seed = temp.path().join("seed");
+        let first = temp.path().join("first");
+        let second = temp.path().join("second");
+        let relative = Path::new("agents/codexy-sentinel.toml");
+        let original = b"name = \"codexy-sentinel\"\n";
+        std::fs::create_dir_all(seed.join("agents"))?;
+        std::fs::write(seed.join(relative), original)?;
+        make_seed_readonly(&seed)?;
+        materialize_seed(&seed, &first, Path::new(""), &[])?;
+        materialize_seed(&seed, &second, Path::new(""), &[])?;
+
+        let first_path = first.join(relative);
+        let mut permissions = std::fs::metadata(&first_path)?.permissions();
+        #[cfg(unix)]
+        permissions.set_mode(permissions.mode() | 0o200);
+        #[cfg(windows)]
+        permissions.set_readonly(false);
+        std::fs::set_permissions(&first_path, permissions)?;
+        std::fs::write(first_path, b"name = \"mutated\"\n")?;
+
+        assert_eq!(std::fs::read(seed.join(relative))?, original);
+        assert_eq!(std::fs::read(second.join(relative))?, original);
+        Ok(())
+    }
+}

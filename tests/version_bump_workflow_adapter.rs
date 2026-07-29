@@ -11,8 +11,9 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
         root.join("scripts/reconcile-version-pr").is_file(),
         "production workflow adapter is missing"
     );
+    let fixture = WorkflowFixture::new(root)?;
     for scenario in [Scenario::NewPr, Scenario::MatchingExisting] {
-        let fixture = WorkflowFixture::new(root, scenario)?;
+        fixture.prepare(scenario)?;
         let output = fixture.run()?;
         assert!(
             output.status.success(),
@@ -42,7 +43,7 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
         }
     }
 
-    let fixture = WorkflowFixture::new(root, Scenario::MismatchedIssue)?;
+    fixture.prepare(Scenario::MismatchedIssue)?;
     let output = fixture.run()?;
     assert!(!output.status.success());
     assert!(
@@ -56,9 +57,10 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
 #[test]
 fn governing_issue_request_is_canonicalized_before_mutation() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let fixture = WorkflowFixture::new(root)?;
 
     for request in ["301", "0301"] {
-        let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+        fixture.prepare(Scenario::NewPr)?;
         let output = fixture.run_with_issue(request)?;
         assert!(
             output.status.success(),
@@ -79,14 +81,14 @@ fn governing_issue_request_is_canonicalized_before_mutation() -> TestResult {
     }
 
     for request in ["0", "not-a-number", "301;echo"] {
-        let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+        fixture.prepare(Scenario::NewPr)?;
         let output = fixture.run_with_issue(request)?;
         assert!(!output.status.success(), "{request} was accepted");
         assert_eq!(fixture.mutation_events()?, Vec::<String>::new(), "{request}");
         assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
     }
 
-    let fixture = WorkflowFixture::new(root, Scenario::NewPr)?;
+    fixture.prepare(Scenario::NewPr)?;
     let output = fixture.run_with_issue("302")?;
     assert!(!output.status.success(), "request/API mismatch was accepted");
     assert_eq!(fixture.mutation_events()?, Vec::<String>::new());

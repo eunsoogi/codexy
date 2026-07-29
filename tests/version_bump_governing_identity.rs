@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
+use crate::support::FixtureCommand as Command;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 

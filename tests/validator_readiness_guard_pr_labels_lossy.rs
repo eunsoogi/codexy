@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_accepts_full_pr_state_with_lossy_review_thread_body()

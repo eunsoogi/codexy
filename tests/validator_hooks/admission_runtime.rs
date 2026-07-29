@@ -1,6 +1,7 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Stdio};
+use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
 
 use serde_json::{Value, json};
 
@@ -91,6 +92,57 @@ fn ordinary_launcher_variables_do_not_make_unrelated_commands_opaque() -> TestRe
     assert_case(&root, &foreign, "printf '%s\\n' \"$UNKNOWN_RUNTIME_VALUE\"", true, &[])
 }
 
+#[test]
+fn native_windows_drive_paths_preserve_their_anchor_in_the_policy_model() -> TestResult {
+    let root = plugin_root();
+    let python = if cfg!(windows) { "python" } else { "python3" };
+    let output = Command::new(python)
+        .arg("-c")
+        .arg(
+            r#"import ntpath
+from pathlib import PureWindowsPath
+import codexy_policy.filesystem_state as filesystem_state
+import codexy_policy.executable_identity as executable_identity
+
+filesystem_state.os.path = ntpath
+filesystem_state.Path = PureWindowsPath
+filesystem_state.state = lambda value, paths: dict(paths).get(value, filesystem_state.ABSENT)
+cwd = r"C:\work\owned"
+source = r"C:\Program Files\Git\usr\bin\printf.exe"
+assert filesystem_state.resolved_location(source, cwd, ()) == source
+mkdir = filesystem_state._mkdir_trace(r"C:\work\owned\scratch", cwd, (), True)
+assert mkdir.kind == filesystem_state.SUCCESS
+assert r"C:\work\owned\scratch" in dict(mkdir.paths)
+assert filesystem_state.resolved_location(r"\\server\share\tool", cwd, ()) is None
+assert filesystem_state._mkdir_trace(r"\\server\share\tool", cwd, (), True).kind == filesystem_state.AMBIGUOUS
+
+class NativePath:
+    def __init__(self, value): self.value = value
+    def is_absolute(self): return ntpath.isabs(self.value)
+    def __truediv__(self, other): return NativePath(ntpath.join(self.value, other.value if isinstance(other, NativePath) else other))
+    def resolve(self, strict): return self
+    def __eq__(self, other): return isinstance(other, NativePath) and self.value == other.value
+
+executable_identity.os.path = ntpath
+executable_identity.Path = NativePath
+lookups = []
+executable_identity.shutil.which = lambda value, path=None: lookups.append(value)
+assert executable_identity._path(r"C:\work\owned", cwd) == NativePath(r"C:\work\owned")
+assert executable_identity._path("C:relative", cwd) is None
+assert lookups == ["C:relative"]
+"#,
+        )
+        .env("PYTHONPATH", root.join("hooks"))
+        .env("PYTHONDONTWRITEBYTECODE", "1")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "drive-anchor policy control failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn filesystem_aliases_cannot_disguise_git_mutations() -> TestResult {
@@ -141,6 +193,7 @@ pub(super) fn assert_case(root: &Path, cwd: &Path, command: &str, denied: bool, 
 }
 
 pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &str, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
+    let (command, cwd) = hook_fixture_model_input(command, cwd).map_err(std::io::Error::other)?;
     let input = json!({"hook_event_name":event,"tool_name":"Bash","tool_input":{"command":command},"cwd":cwd});
     assert_input(root, input, denied, environment)
 }
@@ -158,7 +211,14 @@ fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &
     let description = input.to_string();
     let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
     let event = input["hook_event_name"].as_str().ok_or("event")?;
-    child.arg(event).env_clear().env("PLUGIN_ROOT", root).envs(environment.iter().copied()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    child.arg(event);
+    child.env_clear();
+    if let Some(path) = std::env::var_os("PATH") {
+        child.env("PATH", path);
+    }
+    child.env_path("PLUGIN_ROOT", root);
+    child.envs(environment.iter().copied());
+    child.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = child.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
     let output = child.wait_with_output()?;

@@ -1,7 +1,10 @@
-use std::{fs, os::unix::fs::PermissionsExt as _, path::{Path, PathBuf}, process::Command};
+use std::{fs, path::{Path, PathBuf}};
+use crate::support::FixtureCommand as Command;
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+
+use crate::support::make_executable;
 
 #[test]
 fn existing_assets_stabilize_retry_bytes_with_a_success_binding() -> Result<(), Box<dyn std::error::Error>> {
@@ -141,9 +144,11 @@ impl Fixture {
     }
 
     fn run_with(&self, run_id: u64, attempt: u64) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let path = format!("{}:{}", self.bin.display(), std::env::var("PATH")?);
+        let path = std::env::join_paths(
+            std::iter::once(self.bin.clone()).chain(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)),
+        )?;
         Ok(Command::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/reconcile-runtime-candidate-assets"))
-            .arg(&self.dist)
+            .path_arg(&self.dist)
             .env("PATH", path)
             .env("CANDIDATE_TAG", "runtime-candidate-test")
             .env("GITHUB_RUN_ID", run_id.to_string())
@@ -178,8 +183,6 @@ case "$1" in
   *) exit 64 ;;
 esac
 "##)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)?;
+    make_executable(path)?;
     Ok(())
 }

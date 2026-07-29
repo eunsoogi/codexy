@@ -40,6 +40,9 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../repository_eol_contract.rs"]
+mod repository_eol_contract;
+
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
@@ -51,6 +54,12 @@ mod runtime_activation_branch_recovery;
 
 #[path = "../runtime_workflow_recovery.rs"]
 mod runtime_workflow_recovery;
+
+#[path = "../runtime_candidate_assembly_contract.rs"]
+mod runtime_candidate_assembly_contract;
+
+#[path = "../windows_mcp_install_workflow_contract.rs"]
+mod windows_mcp_install_workflow_contract;
 
 #[path = "../bootstrap_package_admission.rs"]
 mod bootstrap_package_admission;

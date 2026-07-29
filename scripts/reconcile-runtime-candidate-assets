@@ -39,7 +39,7 @@ if has_asset runtime-candidate-receipt.json; then
     '.schema == "codexy-runtime-candidate-receipt/v1" and .artifact.sha256 == $archive_sha and .artifact.payloadManifestSha256 == $manifest_sha and .artifact.url == $artifact_url' \
     "$published_receipt" >/dev/null
   cp "$published_receipt" "$receipt"
-  jq -cS .provenance "$published_receipt" | tr -d '\n' > "$provenance"
+  jq -cS .provenance "$published_receipt" | tr -d '\r\n' > "$provenance"
 fi
 
 binding="$dist_dir/runtime-candidate-publication-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"

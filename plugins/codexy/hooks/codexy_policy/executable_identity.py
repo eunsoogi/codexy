@@ -107,7 +107,7 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
 
 
 def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]) -> tuple[str, ...] | None:
-    if "/" in command:
+    if _path_operand(command):
         location = resolved_location(command, cwd, aliases)
         return None if location is None else (location,)
     if path is None:
@@ -163,7 +163,7 @@ def _identity(candidate: Path) -> str | None:
 
 
 def _path(command: str, cwd: str, path: str | None = None) -> Path | None:
-    if "/" not in command:
+    if not _path_operand(command):
         found = shutil.which(command, path=path)
         return Path(found) if found is not None else None
     path = Path(command)
@@ -172,6 +172,10 @@ def _path(command: str, cwd: str, path: str | None = None) -> Path | None:
         return path.resolve(strict=True)
     except OSError:
         return None
+
+
+def _path_operand(value: str) -> bool:
+    return "/" in value or os.path.isabs(value)
 
 
 def _same_executable(candidate: Path, target: Path) -> bool:

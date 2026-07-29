@@ -14,6 +14,7 @@ use super::{
 ///
 /// Returns an error when any selected validation surface reports contract
 /// failures.
+#[must_use]
 pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
     match mode {
         Mode::All => {
@@ -38,6 +39,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         } => merge_message::check(expected_issue, expected_pr, &message),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
+        Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),
         Mode::IssueIntake { receipt } => issue_intake::check(&receipt),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(&handoff, &pr_state);

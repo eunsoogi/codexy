@@ -1,3 +1,6 @@
+#[path = "runtime_binary.rs"]
+mod runtime_binary;
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -53,15 +56,17 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
         for platform in &platforms {
             let runtime_path = plugin_root
                 .join("runtime")
-                .join(format!("codexy-mcp-{server}-{platform}.bin"));
+                .join(runtime_binary::artifact_name(server, platform));
             if !runtime_path.is_file() {
                 bail!(
                     "{} bundled MCP runtime missing for supported platform {platform}",
                     display_relative(&runtime_path)
                 );
             }
-            check_runtime_binary_signature(&runtime_path, platform)?;
-            check_runtime_executable(&runtime_path)?;
+            runtime_binary::check(&runtime_path, platform)?;
+            if platform == "windows-x86_64" {
+                runtime_binary::check_windows_entrypoint_copy(plugin_root, server, &runtime_path)?;
+            }
         }
     }
     Ok(())
@@ -80,57 +85,16 @@ fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn check_runtime_binary_signature(runtime_path: &Path, platform: &str) -> Result<()> {
-    let bytes = std::fs::read(runtime_path)
-        .with_context(|| format!("reading {}", display_relative(runtime_path)))?;
-    match platform {
-        "linux-x86_64" if bytes.starts_with(b"\x7fELF") => Ok(()),
-        "darwin-arm64"
-            if bytes.starts_with(&[0xcf, 0xfa, 0xed, 0xfe])
-                || bytes.starts_with(&[0xfe, 0xed, 0xfa, 0xcf]) =>
-        {
-            Ok(())
-        }
-        "linux-x86_64" | "darwin-arm64" => bail!(
-            "{} bundled MCP runtime has invalid binary format for {platform}",
-            display_relative(runtime_path)
-        ),
-        _ => Ok(()),
-    }
-}
-
-fn check_runtime_executable(runtime_path: &Path) -> Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt as _;
-
-        let mode = runtime_path
-            .metadata()
-            .with_context(|| format!("reading {}", display_relative(runtime_path)))?
-            .permissions()
-            .mode();
-        if mode & 0o111 == 0 {
-            bail!(
-                "{} bundled MCP runtime must be executable",
-                display_relative(runtime_path)
-            );
-        }
-    }
-    #[cfg(not(unix))]
-    let _ = runtime_path;
-    Ok(())
-}
-
 fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
-    let selected = ["darwin-arm64", "linux-x86_64"];
-    if platforms != selected {
+    let legacy = ["darwin-arm64", "linux-x86_64"];
+    let candidate = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
+    if platforms != legacy && platforms != candidate {
         bail!(
-            "{} immutable runtime package must retain platforms {:?}",
+            "{} immutable runtime package must retain the legacy baseline or verified candidate platforms",
             display_relative(&path),
-            selected
         );
     }
     for required in [
@@ -148,6 +112,8 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/inspect-release-archive",
+        "verify-windows-selected-candidate:",
+        "Verify immutable native Windows candidate bytes",
     ] {
         if !text.contains(required) {
             bail!(

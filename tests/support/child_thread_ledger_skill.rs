@@ -9,49 +9,6 @@ use std::os::unix::process::ExitStatusExt;
 #[cfg(windows)]
 use std::os::windows::process::ExitStatusExt;
 
-pub(crate) struct PluginFixture {
-    _temp: tempfile::TempDir,
-    root: PathBuf,
-}
-
-impl PluginFixture {
-    pub(crate) fn root(&self) -> &Path {
-        &self.root
-    }
-
-    pub(crate) fn reset_file(&self, relative: &Path) -> std::io::Result<()> {
-        if !relative.is_relative()
-            || relative
-                .components()
-                .any(|component| matches!(component, std::path::Component::ParentDir))
-        {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "fixture reset path must be relative",
-            ));
-        }
-        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("plugins/codexy")
-            .join(relative);
-        std::fs::copy(source, self.root.join(relative)).map(|_| ())
-    }
-}
-
-pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
-    let temp = tempfile::tempdir()?;
-    let root = temp.path().join("codexy");
-    super::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &root,
-    )?;
-    Ok(PluginFixture { _temp: temp, root })
-}
-
-pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let fixture = plugin_fixture()?;
-    Ok((fixture._temp, fixture.root))
-}
-
 pub(crate) fn validator(
     plugin_root: &Path,
     mode: &str,
@@ -64,7 +21,16 @@ pub(crate) fn validator_instruction_policy(
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let canonical = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
     let mut changed = Vec::new();
-    collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
+    let used_fixture_manifest = match super::fixture_mutable_files(plugin_root) {
+        Some(mutable_files) => {
+            collect_declared_fixture_changes(plugin_root, &canonical, &mutable_files, &mut changed)?
+        }
+        None => false,
+    };
+    if !used_fixture_manifest {
+        changed.clear();
+        collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
+    }
     if let Some(repo_root) = plugin_root.parent().and_then(Path::parent) {
         let current_agents = repo_root.join("AGENTS.md");
         let canonical_agents = Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md");
@@ -82,6 +48,35 @@ pub(crate) fn validator_instruction_policy(
         errors.extend(validation::instruction_policy_diagnostics(&path)?);
     }
     Ok(output_from_errors(plugin_root, errors))
+}
+
+pub(crate) fn validator_instruction_policy_file(
+    path: &Path,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    super::profile_metrics::record("validator_in_process");
+    Ok(output_from_errors(
+        path,
+        validation::instruction_policy_diagnostics(path)?,
+    ))
+}
+
+fn collect_declared_fixture_changes(
+    current: &Path,
+    canonical: &Path,
+    mutable_files: &[PathBuf],
+    changed: &mut Vec<PathBuf>,
+) -> std::io::Result<bool> {
+    for relative in mutable_files {
+        let current_path = current.join(relative);
+        let canonical_path = canonical.join(relative);
+        if !current_path.is_file() || !canonical_path.is_file() {
+            return Ok(false);
+        }
+        if std::fs::read(&current_path)? != std::fs::read(&canonical_path)? {
+            changed.push(current_path);
+        }
+    }
+    Ok(true)
 }
 
 fn collect_changed_surfaces(
@@ -106,6 +101,15 @@ fn collect_changed_surfaces(
 
 pub(crate) fn validator_routing(plugin_root: &Path) -> Result<Output, Box<dyn std::error::Error>> {
     validator_in_process_mode(plugin_root, Mode::OrchestrationRouting)
+}
+
+pub(crate) fn validator_pr_labels(pr_state: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    validator_in_process_mode(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        Mode::PrLabels {
+            pr_state: pr_state.to_owned(),
+        },
+    )
 }
 
 pub(crate) fn validator_child_lane_ownership_file(
@@ -148,6 +152,7 @@ fn validator_in_process_mode(
     plugin_root: &Path,
     mode: Mode,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    super::profile_metrics::record("validator_in_process");
     let errors = validation::errors(plugin_root, mode);
     Ok(output_from_errors(plugin_root, errors))
 }
@@ -187,7 +192,7 @@ fn exit_status(success: bool) -> ExitStatus {
     #[cfg(unix)]
     return ExitStatus::from_raw(if success { 0 } else { 1 << 8 });
     #[cfg(windows)]
-    ExitStatus::from_raw(i32::from(!success))
+    ExitStatus::from_raw(u32::from(!success))
 }
 
 pub(crate) fn stderr(output: &std::process::Output) -> String {

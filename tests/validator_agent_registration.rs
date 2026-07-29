@@ -1,8 +1,7 @@
-use std::process::Command;
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 
-use support::copy_dir;
 
 #[test]
 fn register_codexy_agents_migrates_cache_config_to_stable_discovery_files()
@@ -215,10 +214,7 @@ fn register_codexy_agents_uninstall_removes_only_managed_block()
 
 fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
     let plugin_root = root.join("installed-codexy");
-    copy_dir(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
+    support::copy_plugin_fixture_into_with_mutable_files(&plugin_root, &[])?;
     Ok(plugin_root)
 }
 

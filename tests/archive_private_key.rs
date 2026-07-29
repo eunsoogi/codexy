@@ -1,10 +1,9 @@
-use std::process::Command;
-
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
-use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
+use crate::support::release_archive as release_archive_support;
+use release_archive_support::{
+    complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive,
+};
 
 fn assert_private_key_rejected(name: &str, pem: &str) {
     let root = tempdir().expect("tempdir");
@@ -13,12 +12,7 @@ fn assert_private_key_rejected(name: &str, pem: &str) {
     std::fs::write(plugin_root.join(name), pem).expect("private-key fixture");
     let archive = root.path().join(format!("{name}.tar.gz"));
     create_archive(root.path(), &archive).expect("archive fixture");
-    let output =
-        Command::new(env!("CARGO_MANIFEST_DIR").to_owned() + "/scripts/inspect-release-archive")
-            .arg(&archive)
-            .arg(&plugin_root)
-            .output()
-            .expect("archive gate should start");
+    let output = inspect_archive(&archive, &plugin_root, None).expect("archive gate should start");
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("archive contains a secret or local path")

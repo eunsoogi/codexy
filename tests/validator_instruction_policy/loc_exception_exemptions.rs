@@ -1,4 +1,7 @@
-use super::{TestResult, copy_plugin_fixture, stderr, validator};
+use std::path::Path;
+
+use super::{TestResult, stderr};
+use crate::support::{instruction_policy_fixture, validator_instruction_policy_file};
 
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
@@ -10,15 +13,15 @@ const GOVERNED_SKILLS: &[&str] = &[
 #[test]
 fn validator_cli_rejects_generic_passive_exempted_allowance() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
+        let fixture = instruction_policy_fixture(Path::new(skill))?;
+        let skill_path = fixture.path();
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
             format!("{text}\n- Governed files are exempted from the 250 LOC limit.\n"),
         )?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert!(!output.status.success(), "{skill:?} unexpectedly passed");
         assert!(stderr(&output).contains("LOC exception policy"));
     }
@@ -28,8 +31,8 @@ fn validator_cli_rejects_generic_passive_exempted_allowance() -> TestResult {
 #[test]
 fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
     for skill in GOVERNED_SKILLS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join(skill);
+        let fixture = instruction_policy_fixture(Path::new(skill))?;
+        let skill_path = fixture.path();
         let text = std::fs::read_to_string(&skill_path)?;
         std::fs::write(
             &skill_path,
@@ -38,7 +41,7 @@ fn validator_cli_allows_negated_passive_loc_exception_wording() -> TestResult {
             ),
         )?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator_instruction_policy_file(skill_path)?;
         assert!(output.status.success(), "{skill:?}: {}", stderr(&output));
     }
     Ok(())

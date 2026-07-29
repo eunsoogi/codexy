@@ -4,10 +4,23 @@
 mod agent_model_assignments;
 mod cache_fixture;
 mod child_thread_ledger_skill;
+mod digest;
+mod executable_path;
+mod fixture_command;
+mod fixture_command_windows;
+mod fixture_hook_path;
+mod fixture_hook_path_windows;
+mod fixture_path;
+mod fixture_probe;
+mod fixture_text;
+mod instruction_policy_fixture;
 mod package;
 mod package_archive;
 mod package_fixture;
-mod release_archive;
+mod plugin_fixture;
+mod plugin_fixture_copy;
+mod profile_metrics;
+pub(crate) mod release_archive;
 mod release_cache;
 mod release_cache_audit;
 mod release_cache_fixture;
@@ -17,20 +30,33 @@ mod release_cache_resources;
 mod release_version;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
+pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
 mod wrapper_copy;
+mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
-    TestResult, assert_privacy_diagnostic, public_contract_import_check,
-    validate_agent_replacement, validate_catalog_replacement,
+    TestResult, agent_fixture, assert_privacy_diagnostic, catalog_fixture,
+    public_contract_import_check, public_contract_target_dir, validate_agent_replacement,
+    validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
-    copy_plugin_fixture, plugin_fixture, stderr, validator, validator_child_lane_ownership_file,
-    validator_completion_handoff_files, validator_in_process, validator_instruction_policy,
-    validator_routing,
+    stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
+    validator_in_process, validator_instruction_policy, validator_instruction_policy_file,
+    validator_pr_labels, validator_routing,
 };
+pub(crate) use digest::sha256_file;
+pub(crate) use executable_path::executable_path;
+pub(crate) use fixture_command::FixtureCommand;
+pub(crate) use fixture_hook_path::hook_fixture_model_input;
+pub(crate) use fixture_path::fixture_path_text;
+pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
+pub(crate) use fixture_text::{
+    materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
+};
+pub(crate) use instruction_policy_fixture::{InstructionPolicyFixture, instruction_policy_fixture};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
@@ -41,6 +67,11 @@ pub(super) use package::{
     assert_wrapper_refreshes_package_before_stale_cache_without_cargo,
     assert_wrapper_requires_token_for_default_artifact_without_cargo,
     assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo,
+};
+pub(crate) use plugin_fixture::{
+    PluginFixture, copy_plugin_fixture, copy_plugin_fixture_into_with_mutable_files,
+    copy_plugin_fixture_with_mutable_files, fixture_mutable_files, plugin_fixture,
+    plugin_fixture_with_mutable_files, roles_fixture,
 };
 pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{
@@ -68,3 +99,4 @@ pub(crate) use wrapper::{
     wait_for_wrapper_output,
 };
 pub(crate) use wrapper_copy::copy_dir;
+pub(crate) use wrapper_platform::{FixturePlatform, install_fixture_platform};

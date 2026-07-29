@@ -1,10 +1,9 @@
-use std::process::Command;
+use crate::support::{FixtureCommand as Command, normalize_fixture_text};
 
 use serde_json::{Value, json};
 use tempfile::tempdir;
 
-#[path = "support/release_archive.rs"]
-mod release_archive_support;
+use crate::support::release_archive as release_archive_support;
 use release_archive_support::{complete_plugin_fixture_with_stubbed_runtime, create_archive};
 
 fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::process::Output {
@@ -55,6 +54,42 @@ fn entrypoints(config: &std::path::Path) -> Vec<String> {
         .lines()
         .map(str::to_owned)
         .collect()
+}
+
+#[test]
+fn archive_entry_checker_rejects_non_executable_mcp_wrapper_metadata() {
+    let root = tempdir().expect("tempdir");
+    let archive = root.path().join("wrapper.tar.gz");
+    let wrappers = root.path().join("mcp-entrypoints");
+    std::fs::write(&wrappers, "mcp/codexy-mcp-lsp\n").expect("wrapper list");
+    let archive_text = archive.to_str().expect("archive path");
+    let status = Command::new("python3")
+        .args([
+            "-c",
+            "import io, sys, tarfile\nwith tarfile.open(sys.argv[1], 'w:gz') as out:\n info = tarfile.TarInfo('plugins/codexy/mcp/codexy-mcp-lsp')\n info.mode = 0o644\n info.size = 1\n out.addfile(info, io.BytesIO(b'x'))\n",
+            archive_text,
+        ])
+        .status()
+        .expect("archive writer should start");
+    assert!(status.success(), "archive writer failed");
+    let output = Command::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/check-release-archive-entries"),
+    )
+    .args([
+        archive_text,
+        "1024",
+        "10",
+        "1024",
+        wrappers.to_str().expect("wrapper list path"),
+    ])
+    .output()
+    .expect("archive checker should start");
+    assert!(!output.status.success());
+    assert_eq!(
+        normalize_fixture_text(&String::from_utf8(output.stderr).expect("checker stderr")),
+        "packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp\n"
+    );
 }
 
 #[cfg(unix)]

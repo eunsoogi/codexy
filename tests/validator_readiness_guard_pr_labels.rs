@@ -1,4 +1,5 @@
-use std::process::Command;
+use crate::support;
+use crate::support::FixtureCommand as Command;
 
 #[test]
 fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
@@ -71,9 +72,6 @@ fn readiness_guard_checks_pr_labels_against_repository_taxonomy()
 #[test]
 fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = readiness_guard();
-    let temp = tempfile::tempdir()?;
-
     for (name, json) in [
         (
             "repository-before-pr-labels.json",
@@ -84,14 +82,7 @@ fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","closingIssuesReferences":[{"number":216,"labels":[{"name":"type/fix"}]}],"labels":[],"repositoryLabels":[{"name":"type/fix"}]}"#,
         ),
     ] {
-        let pr_state = write_pr_state(temp.path(), name, json)?;
-        let output = Command::new(&script)
-            .args([
-                "--check-pr-labels",
-                "--pr-state-file",
-                pr_state.to_str().ok_or("pr state path")?,
-            ])
-            .output()?;
+        let output = support::validator_pr_labels(json)?;
         assert!(
             !output.status.success(),
             "guard should reject unlabeled PR even when nested labels appear first for {name}"
@@ -102,38 +93,6 @@ fn readiness_guard_ignores_nested_labels_before_top_level_pr_labels()
             output_text(&output)
         );
     }
-    Ok(())
-}
-
-#[test]
-fn readiness_guard_scopes_pr_label_policy_to_codexy_prs() -> Result<(), Box<dyn std::error::Error>>
-{
-    let script = readiness_guard();
-    let temp = tempfile::tempdir()?;
-
-    for (name, json) in [
-        (
-            "user-repo-with-taxonomy.json",
-            r#"{"number":7,"state":"OPEN","repository":"example/user-app","labels":[],"repositoryLabels":["type/fix"]}"#,
-        ),
-        (
-            "codexy-name-fragment.json",
-            r#"{"number":7,"state":"OPEN","headRefName":"codexy/local-helper","repository":"example/codexy-helper","labels":[],"repositoryLabels":["type/fix"]}"#,
-        ),
-        (
-            "closed-codexy-pr.json",
-            r#"{"number":209,"state":"CLOSED","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"]}"#,
-        ),
-    ] {
-        assert_accepts(
-            &script,
-            temp.path(),
-            name,
-            json,
-            "out-of-scope PR label state",
-        )?;
-    }
-
     Ok(())
 }
 
@@ -153,14 +112,7 @@ fn readiness_guard_allows_missing_or_empty_repository_label_taxonomy()
             r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":[]},"repository":{"labels":{"nodes":[]}}}"#,
         ),
     ] {
-        let pr_state = write_pr_state(temp.path(), name, json)?;
-        let output = Command::new(&script)
-            .args([
-                "--check-pr-labels",
-                "--pr-state-file",
-                pr_state.to_str().ok_or("pr state path")?,
-            ])
-            .output()?;
+        let output = guard_output(&script, temp.path(), name, json)?;
         assert!(
             output.status.success(),
             "guard should allow no-repository-label-taxonomy state for {name}\nstdout:\n{}\nstderr:\n{}",
@@ -215,13 +167,34 @@ fn guard_output(
     json: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let pr_state = write_pr_state(dir, name, json)?;
-    Ok(Command::new(script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            pr_state.to_str().ok_or("pr state path")?,
-        ])
-        .output()?)
+    if json.matches("\"repository\"").count() > 1 {
+        return Ok(Command::new(script)
+            .args([
+                "--check-pr-labels",
+                "--pr-state-file",
+                pr_state.to_str().ok_or("pr state path")?,
+            ])
+            .output()?);
+    }
+    support::validator_pr_labels(json)
+}
+
+#[test]
+fn readiness_guard_shell_wrapper_matches_the_in_process_label_decision()
+-> Result<(), Box<dyn std::error::Error>> {
+    let json = r#"{"number":209,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":["type/fix"]}"#;
+    let temp = tempfile::tempdir()?;
+    let pr_state = write_pr_state(temp.path(), "unlabeled.json", json)?;
+    let shell = Command::new(readiness_guard())
+        .args(["--check-pr-labels", "--pr-state-file", pr_state.to_str().ok_or("pr state path")?])
+        .output()?;
+    let library = support::validator_pr_labels(json)?;
+
+    assert_eq!(shell.status.success(), library.status.success());
+    let expected = "error: PR labels missing label application evidence";
+    assert!(output_text(&shell).lines().any(|line| line == expected));
+    assert!(output_text(&library).lines().any(|line| line == expected));
+    Ok(())
 }
 
 fn output_text(output: &std::process::Output) -> String {
