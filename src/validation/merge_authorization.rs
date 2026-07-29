@@ -1,9 +1,8 @@
-use std::{collections::BTreeSet, fmt, path::Path};
+use std::path::Path;
 
-use serde::de::{Deserializer, Error as _, MapAccess, Visitor};
 use serde_json::Value;
 
-use super::merge_authorization_contract;
+use super::{merge_authorization_contract, merge_authorization_json::unique_object};
 
 pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> Vec<String> {
     let mut errors = unique_object(authorization, "merge authorization");
@@ -22,7 +21,7 @@ pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> 
             return errors;
         }
     };
-    check_kind(plugin_root, &authorization, &mut errors);
+    check_kind(plugin_root, &authorization, &pr_state, &mut errors);
     check_false(authorization.get("negated"), "negated", &mut errors);
     check_false(authorization.get("revoked"), "revoked", &mut errors);
     check_value(&authorization, "intent", "merge", &mut errors);
@@ -45,27 +44,63 @@ pub(super) fn check(plugin_root: &Path, authorization: &str, pr_state: &str) -> 
     errors
 }
 
-fn check_kind(plugin_root: &Path, authorization: &Value, errors: &mut Vec<String>) {
+fn check_kind(
+    plugin_root: &Path,
+    authorization: &Value,
+    pr_state: &Value,
+    errors: &mut Vec<String>,
+) {
     match string_field(authorization, "kind") {
-        Some("explicit-user-intent") => check_intent(authorization, "user", errors),
-        Some("explicit-maintainer-intent") => check_intent(authorization, "maintainer", errors),
+        Some("explicit-user-intent" | "explicit-maintainer-intent") => check_intent(authorization, pr_state, errors),
         Some("repository-workflow-contract") => merge_authorization_contract::check(plugin_root, authorization, errors),
         _ => errors.push("merge authorization kind must be explicit-user-intent, explicit-maintainer-intent, or repository-workflow-contract".into()),
     }
 }
 
-fn check_intent(authorization: &Value, actor: &str, errors: &mut Vec<String>) {
-    check_value(authorization, "actor", actor, errors);
-    if !string_field(authorization, "sourceReference").is_some_and(|source| {
-        source
-            .strip_prefix(&format!("{actor}-intent://"))
-            .is_some_and(|tail| !tail.trim().is_empty())
-    }) {
-        errors.push(format!(
-            "merge authorization sourceReference must be authenticated {actor} intent"
-        ));
+fn check_intent(authorization: &Value, pr_state: &Value, errors: &mut Vec<String>) {
+    if ["actor", "recordIssuer", "sourceReference"]
+        .iter()
+        .any(|field| authorization.get(field).is_some())
+    {
+        errors.push("merge authorization intent must cite an authoritative PR comment, not claimed provenance".into());
     }
-    check_value(authorization, "recordIssuer", "maintainer-recorded", errors);
+    let id = string_field(authorization, "commentId");
+    let url = string_field(authorization, "commentUrl");
+    let expected = intent_comment(authorization);
+    let found = pr_state
+        .get("comments")
+        .and_then(Value::as_array)
+        .map(|comments| {
+            comments
+                .iter()
+                .filter(|comment| {
+                    string_field(comment, "id") == id
+                        && string_field(comment, "url") == url
+                        && comment
+                            .get("author")
+                            .and_then(|author| string_field(author, "association"))
+                            .is_some_and(|role| matches!(role, "OWNER" | "MEMBER"))
+                        && string_field(comment, "body") == expected.as_deref()
+                })
+                .count()
+        });
+    let pr_number = typed_value(pr_state, "number").and_then(Value::as_u64);
+    let url_prefix = "https://github.com/";
+    let url_matches_pr = url.zip(pr_number).is_some_and(|(url, number)| {
+        url.starts_with(url_prefix) && url.contains(&format!("/pull/{number}#issuecomment-"))
+    });
+    if id.is_none_or(str::is_empty) || !url_matches_pr || found != Some(1) {
+        errors.push("merge authorization intent must match one OWNER or MEMBER GitHub PR comment with exact squash authorization".into());
+    }
+}
+
+fn intent_comment(authorization: &Value) -> Option<String> {
+    Some(format!(
+        "AUTHORIZE SQUASH MERGE: PR #{} BASE {} HEAD {}",
+        typed_value(authorization, "prNumber")?.as_u64()?,
+        string_field(authorization, "baseRefName")?,
+        string_field(authorization, "headRefOid")?,
+    ))
 }
 
 fn check_false(value: Option<&Value>, field: &str, errors: &mut Vec<String>) {
@@ -104,39 +139,6 @@ fn typed_value<'a>(value: &'a Value, field: &str) -> Option<&'a Value> {
             .as_str()
             .filter(|item| !item.trim().is_empty())
             .map(|_| value),
-    }
-}
-
-fn unique_object(text: &str, label: &str) -> Vec<String> {
-    let mut deserializer = serde_json::Deserializer::from_str(text);
-    deserializer
-        .deserialize_map(UniqueObject)
-        .err()
-        .map(|error| vec![format!("{label} {error}")])
-        .unwrap_or_default()
-}
-
-struct UniqueObject;
-
-impl<'de> Visitor<'de> for UniqueObject {
-    type Value = ();
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("an object with unique keys")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut keys = BTreeSet::new();
-        while let Some(key) = map.next_key::<String>()? {
-            if !keys.insert(key.clone()) {
-                return Err(A::Error::custom(format!("must not repeat {key}")));
-            }
-            let _: Value = map.next_value()?;
-        }
-        Ok(())
     }
 }
 

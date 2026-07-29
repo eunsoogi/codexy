@@ -84,6 +84,7 @@ mod mcp_required;
 mod mcp_runtime;
 mod merge_authorization;
 mod merge_authorization_contract;
+mod merge_authorization_json;
 mod merge_authorization_policy;
 mod merge_message;
 mod mode;

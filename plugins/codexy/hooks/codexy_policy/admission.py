@@ -7,7 +7,6 @@ import os
 from typing import Any
 
 from .github import connector_admitted
-from .merge import valid as merge_valid
 from .shell import forbidden as shell_forbidden
 
 MAX_INPUT = 1024 * 1024
@@ -101,7 +100,7 @@ def _github(event: str, tool: str, data: object) -> bytes:
     if tool.endswith("enable_auto_merge"):
         invalid = True
     elif tool.endswith("merge_pull_request"):
-        invalid = not merge_valid(data)
+        invalid = True
     else:
         invalid = not connector_admitted(tool, data)
     return deny(event) if invalid else b""

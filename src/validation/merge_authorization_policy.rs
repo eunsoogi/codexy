@@ -6,7 +6,6 @@ use std::{
 
 use crate::paths::display_relative;
 
-const MERGE_REFERENCE: &str = "skills/git-workflow/references/merge-and-main-sync.md";
 const AUTHORIZATION_REFERENCE: &str = "skills/git-workflow/references/merge-authorization.md";
 const GLOBAL_SURFACES: &[&str] = &[
     AUTHORIZATION_REFERENCE,
@@ -16,37 +15,49 @@ const GLOBAL_SURFACES: &[&str] = &[
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
-    check_merge_route(plugin_root, &mut errors);
+    check_merge_routes(plugin_root, &mut errors);
     check_global_surfaces(plugin_root, &mut errors);
     check_profile_defaults(plugin_root, &mut errors);
     errors
 }
 
-fn check_merge_route(root: &Path, errors: &mut Vec<String>) {
-    let path = root.join(MERGE_REFERENCE);
-    let Ok(text) = fs::read_to_string(&path) else {
-        errors.push(format!("{} could not be read", display_relative(&path)));
+fn check_merge_routes(root: &Path, errors: &mut Vec<String>) {
+    let mut paths = BTreeSet::new();
+    if collect_markdown(&root.join("skills"), &mut paths).is_err() {
+        errors.push("skills could not be read for merge-authorization policy".into());
         return;
-    };
-    let lines = route_lines(&text);
-    let validated = lines.iter().position(|line| {
-        line.trim_start()
-            .starts_with("if ! scripts/validate-plugin-config --check-merge-authorization")
-    });
-    let merged = lines.iter().position(|line| line.contains("gh pr merge"));
-    if !matches!((validated, merged), (Some(before), Some(after)) if before < after) {
-        errors.push(format!(
-            "{} must validate authoritative merge authorization before mutation",
-            display_relative(&path)
-        ));
     }
+    for path in paths {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for block in command_blocks(&text) {
+            let mut validated = false;
+            for line in block {
+                let line = line.trim_start();
+                validated |=
+                    line.starts_with("if ! plugins/codexy/hooks/codexy-merge-admission-check.sh");
+                if merge_command(line) && !validated {
+                    errors.push(format!(
+                        "{} must validate authoritative merge authorization before mutation",
+                        display_relative(&path)
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+fn merge_command(line: &str) -> bool {
+    line.starts_with("gh pr merge") || line.starts_with("if ! gh pr merge")
 }
 
 fn check_global_surfaces(root: &Path, errors: &mut Vec<String>) {
     for relative in GLOBAL_SURFACES {
         let path = root.join(relative);
         match fs::read_to_string(&path) {
-            Ok(text) if is_global_rule(&active_lines(&text).join(" ")) => {}
+            Ok(text) if is_global_rule(&prose_blocks(&text).join(" ")) => {}
             Ok(_) => errors.push(format!(
                 "{} must preserve the global merge-authorization prohibition",
                 display_relative(&path)
@@ -79,9 +90,10 @@ fn check_profile_defaults(root: &Path, errors: &mut Vec<String>) {
         let Ok(text) = fs::read_to_string(&path) else {
             continue;
         };
-        if markdown_blocks(&text)
+        if prose_blocks(&text)
             .iter()
-            .any(|fragment| permits_profile_default(fragment))
+            .flat_map(|block| clauses(block))
+            .any(clause_grants_merge)
         {
             errors.push(format!(
                 "{} must not let a workflow profile turn gates into merge permission",
@@ -89,10 +101,6 @@ fn check_profile_defaults(root: &Path, errors: &mut Vec<String>) {
             ));
         }
     }
-}
-
-fn permits_profile_default(text: &str) -> bool {
-    text.split(['.', ';']).any(clause_grants_merge)
 }
 
 fn clause_grants_merge(text: &str) -> bool {
@@ -121,79 +129,101 @@ fn clause_grants_merge(text: &str) -> bool {
     line.contains("merge") && grants && gate_grant && !denied
 }
 
-fn active_lines(text: &str) -> Vec<String> {
-    markdown_blocks(text)
-        .into_iter()
-        .flat_map(|fragment| {
-            fragment
-                .split_whitespace()
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        })
-        .collect()
+fn clauses(block: &str) -> impl Iterator<Item = &str> {
+    block.split(['.', ';', '!', '?'])
 }
 
-fn markdown_blocks(text: &str) -> Vec<String> {
-    let mut fragments = Vec::new();
+fn prose_blocks(text: &str) -> Vec<String> {
+    let mut blocks = Vec::new();
     let mut paragraph = Vec::new();
     let mut fence = None;
-    text.lines().for_each(|line| {
-        let line = line.trim();
-        if matches!(line.get(..3), Some("```") | Some("~~~")) {
-            if fence == line.get(..3) {
+    for raw in text.lines() {
+        let line = raw.trim();
+        if let Some(marker) = fence_marker(line) {
+            fence = if fence == Some(marker) {
+                None
+            } else if fence.is_none() {
+                Some(marker)
+            } else {
+                fence
+            };
+            continue;
+        }
+        if fence.is_some() {
+            continue;
+        }
+        if line.is_empty() || line.starts_with('#') || list_item(line) {
+            flush(&mut blocks, &mut paragraph);
+            if list_item(line) {
+                blocks.push(strip_list_item(line).to_owned());
+            }
+        } else {
+            paragraph.push(line);
+        }
+    }
+    flush(&mut blocks, &mut paragraph);
+    blocks
+}
+
+fn command_blocks(text: &str) -> Vec<Vec<String>> {
+    let mut blocks = Vec::new();
+    let mut current = Vec::new();
+    let mut fence = None;
+    for raw in text.lines() {
+        let line = raw.trim();
+        if let Some(marker) = fence_marker(line) {
+            if fence == Some(marker) {
+                blocks.push(std::mem::take(&mut current));
                 fence = None;
             } else if fence.is_none() {
-                fence = line.get(..3);
+                fence = Some(marker);
             }
-        } else if fence.is_none()
-            && (line.is_empty() || line.starts_with('#') || numbered_rule(line))
+        } else if fence.is_some()
+            && !line.starts_with('#')
+            && !line.starts_with("echo")
+            && !line.starts_with("printf")
         {
-            if !paragraph.is_empty() {
-                fragments.push(paragraph.join(" "));
-                paragraph.clear();
-            }
-            if numbered_rule(line) {
-                fragments.push(line.to_owned());
-            }
-        } else if fence.is_none() {
-            paragraph.push(line.to_owned());
+            current.push(line.to_owned());
         }
-    });
-    if !paragraph.is_empty() {
-        fragments.push(paragraph.join(" "));
     }
-    fragments
+    blocks
 }
 
-fn numbered_rule(line: &str) -> bool {
-    line.split_once('.').is_some_and(|(number, _)| {
-        !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
-    })
+fn flush(blocks: &mut Vec<String>, paragraph: &mut Vec<&str>) {
+    if !paragraph.is_empty() {
+        blocks.push(std::mem::take(paragraph).join(" "));
+    }
 }
 
-fn route_lines(text: &str) -> Vec<String> {
-    let mut fence = None;
-    let mut shell = false;
-    text.lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if matches!(line.get(..3), Some("```") | Some("~~~")) {
-                if fence == line.get(..3) {
-                    fence = None;
-                    shell = false;
-                } else if fence.is_none() {
-                    fence = line.get(..3);
-                    shell = line == "```bash" || line == "```sh";
-                }
-                return None;
-            }
-            ((fence.is_none() || shell)
-                && !line.starts_with('#')
-                && !line.starts_with("echo")
-                && !line.starts_with("printf"))
-            .then(|| line.to_owned())
-        })
-        .collect()
+fn fence_marker(line: &str) -> Option<char> {
+    line.starts_with("```")
+        .then_some('`')
+        .or_else(|| line.starts_with("~~~").then_some('~'))
+}
+
+fn list_item(line: &str) -> bool {
+    line.starts_with("- ")
+        || line.starts_with("* ")
+        || line.starts_with("+ ")
+        || line
+            .find(|character: char| !character.is_ascii_digit())
+            .is_some_and(|index| {
+                matches!(line.as_bytes().get(index), Some(b'.' | b')'))
+                    && line.as_bytes().get(index + 1) == Some(&b' ')
+            })
+}
+
+fn strip_list_item(line: &str) -> &str {
+    if line
+        .get(..2)
+        .is_some_and(|prefix| matches!(prefix, "- " | "* " | "+ "))
+    {
+        &line[2..]
+    } else {
+        line.find(|character: char| !character.is_ascii_digit())
+            .and_then(|index| line.get(index + 2..))
+            .unwrap_or(line)
+    }
 }
 
 fn collect_markdown(root: &Path, paths: &mut BTreeSet<PathBuf>) -> std::io::Result<()> {

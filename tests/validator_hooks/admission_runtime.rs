@@ -198,7 +198,7 @@ pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &
     assert_input(root, input, denied, environment)
 }
 
-fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, denied: bool) -> TestResult {
+pub(super) fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, denied: bool) -> TestResult {
     assert_input(
         root,
         json!({"hook_event_name":"PreToolUse","tool_name":tool_name,"tool_input":tool_input}),

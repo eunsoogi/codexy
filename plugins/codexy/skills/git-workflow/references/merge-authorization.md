@@ -7,11 +7,14 @@ a fresh JSON record whose `kind` is `explicit-user-intent`,
 uses `intent: "merge"`, `mergeClass: "squash"`, and the exact `prNumber`,
 `baseRefName`, and `headRefOid` returned by GitHub immediately before mutation.
 
-An explicit user or maintainer intent is authoritative when it has the matching
-actor, an exact current pull-request target, a nonempty `*-intent://` source,
-and `recordIssuer: "maintainer-recorded"`. The alternative checked record is
-`repository-workflow-contract`, defined by `merge-authorization-contract.json`;
-it carries that contract's exact ID, version, and target. Generic finish,
+An explicit user or maintainer intent is authoritative only when its record
+references one fresh GitHub PR comment with the immutable `commentId` and
+`commentUrl`, authored by an `OWNER` or `MEMBER`. Its body is exactly
+`AUTHORIZE SQUASH MERGE: PR #<number> BASE <base> HEAD <head>` for the current
+PR state; arbitrary schemes, claimed actors, and parent prose MUST NOT count as authorization.
+The alternative checked record is `repository-workflow-contract`, defined by
+`merge-authorization-contract.json`; it carries that contract's exact ID,
+version, and target. Generic finish,
 completion, silence, closing text, parent prose, gate success, ambiguity,
 negation, and stale/wrong targets are non-authoritative signals. This
 global invariant applies to every workflow profile. A gate-satisfied pull
@@ -27,7 +30,12 @@ authorization_file="${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authoriz
 pr_state_file=$(mktemp)
 trap 'rm -f "$pr_state_file"' EXIT
 
-gh pr view "$pr_number" --repo "$repo" --json number,baseRefName,headRefOid > "$pr_state_file"
+gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) { pullRequest(number:$number) {
+    number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } }
+  }}
+}' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}' > "$pr_state_file"
 scripts/validate-plugin-config --check-merge-authorization \
   --merge-authorization-file "$authorization_file" \
   --merge-authorization-pr-state-file "$pr_state_file"

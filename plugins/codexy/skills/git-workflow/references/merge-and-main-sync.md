@@ -125,8 +125,17 @@ elif ! cat "$pr_body_file"; then
   exit 1
 fi
 if ! scripts/validate-plugin-config --check-merge-authorization \
-  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" --merge-authorization-pr-state-file <(gh pr view "$pr_number" --repo "$repo" --json number,baseRefName,headRefOid); then
+  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" --merge-authorization-pr-state-file <(gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } } } } }' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}'); then
   printf '%s\n' "authoritative merge authorization failed" >&2
+  exit 1
+fi
+if ! plugins/codexy/hooks/codexy-merge-admission-check.sh \
+  --expected-pr "$pr_number" \
+  --expected-issue "$issue_number" \
+  --merge-message-file "$merge_message_file" \
+  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" \
+  --merge-authorization-pr-state-file <(gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } } } } }' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}'); then
+  printf '%s\n' "packaged merge admission validation failed" >&2
   exit 1
 fi
 printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "; IFS= read -r pr_body_approval; [ "$pr_body_approval" = "APPROVE_PR_BODY_FOR_MAIN" ] || { printf '%s\n' "PR body approval token mismatch" >&2; exit 1; }

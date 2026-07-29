@@ -7,6 +7,8 @@ use crate::support;
 mod admission_artifact;
 #[path = "validator_hooks/admission_runtime.rs"]
 mod admission_runtime;
+#[path = "validator_hooks/merge_admission.rs"]
+mod merge_admission;
 #[path = "validator_hooks/filesystem_aliases.rs"]
 mod filesystem_aliases;
 #[path = "validator_hooks/archive_inventory.rs"]
