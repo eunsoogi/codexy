@@ -33,10 +33,12 @@ name=${repo#*/}
 [ "$owner/$name" = "$repo" ] || { printf '%s\n' 'repo must be owner/name' >&2; exit 2; }
 authorization_file=$(mktemp)
 pr_state_file=$(mktemp)
+merge_body_file=$(mktemp)
 merge_payload_file=$(mktemp)
-trap 'rm -f "$authorization_file" "$pr_state_file" "$merge_payload_file"' EXIT
+trap 'rm -f "$authorization_file" "$pr_state_file" "$merge_body_file" "$merge_payload_file"' EXIT
+cat < "$body_file" > "$merge_body_file"
 printf '%s\n\n' "$subject" > "$merge_payload_file"
-cat < "$body_file" >> "$merge_payload_file"
+cat < "$merge_body_file" >> "$merge_payload_file"
 if ! cmp -s "$message_file" "$merge_payload_file"; then
   printf '%s\n' 'merge message file does not match subject and body payload' >&2
   exit 1
@@ -63,11 +65,11 @@ set -- --expected-pr "$expected_pr" --merge-message-file "$merge_payload_file"
   --merge-authorization-file "$authorization_file" \
   --merge-authorization-pr-state-file "$pr_state_file"
 if gh pr merge "$expected_pr" --repo "$repo" --squash --delete-branch \
-  --match-head-commit "$head_oid" --subject "$subject" --body-file "$body_file"; then
+  --match-head-commit "$head_oid" --subject "$subject" --body-file "$merge_body_file"; then
   merge_status=0
 else
   merge_status=$?
 fi
-rm -f "$authorization_file" "$pr_state_file" "$merge_payload_file"
+rm -f "$authorization_file" "$pr_state_file" "$merge_body_file" "$merge_payload_file"
 trap - EXIT
 exit "$merge_status"
