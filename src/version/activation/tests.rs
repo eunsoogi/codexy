@@ -17,7 +17,7 @@ fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
     assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
     let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
     assert_eq!(release["state"], "candidate-proven");
-    assert_eq!(release["artifact"]["tag"], "runtime-candidate-1.3.0");
+    assert_eq!(release["artifact"]["tag"], "v1.3.0");
     assert_eq!(release["source"]["commit"], "a".repeat(40));
     assert_eq!(
         release["platforms"]["darwin-arm64"]["lsp"]["path"],
@@ -57,7 +57,7 @@ fn activation_updates_the_complete_selected_identity_transaction() -> Result<()>
     assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
     let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
     assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
-    assert_eq!(publish["runtime"]["selectedTag"], "runtime-candidate-1.3.0");
+    assert_eq!(publish["runtime"]["selectedTag"], "v1.3.0");
     assert_eq!(
         publish["runtime"]["platforms"],
         json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
@@ -204,7 +204,7 @@ fn receipt_value() -> Value {
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": "a".repeat(40)},
-        "artifact": {"tag": "runtime-candidate-1.3.0"},
+        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": digest}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
@@ -219,7 +219,7 @@ fn receipt_value() -> Value {
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1",
         "candidate": candidate,
-        "artifact": {"url": "https://github.com/eunsoogi/codexy/releases/download/runtime-candidate-1.3.0/codexy-marketplace-plugin.tar.gz", "sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
+        "artifact": {"sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
         "provenance": {"repositoryId": 1_269_350_143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"}
     })
 }

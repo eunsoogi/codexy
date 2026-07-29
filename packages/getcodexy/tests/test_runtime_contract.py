@@ -1,4 +1,4 @@
-"""RED contract for immutable public runtime selection (Issue #477)."""
+"""Contract for version-only public runtime selection."""
 
 import hashlib
 import importlib
@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 
-TAG = "runtime-candidate-2026-07-22.1"
+TAG = "v1.3.0"
 COMMIT = "a" * 40
 ARCHIVE_DIGEST = "b" * 64
 URL = f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/codexy-marketplace-plugin.tar.gz"
@@ -38,7 +38,7 @@ def candidate() -> dict[str, object]:
     return {
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": COMMIT},
-        "artifact": {"tag": TAG},
+        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": platforms,
     }
@@ -131,8 +131,8 @@ class RuntimeContractTests(unittest.TestCase):
         _, prior = self.load(release(), plugin_version="1.2.2")
         _, future = self.load(release(), plugin_version="9.9.9")
         changed = release()
-        changed["artifact"]["tag"] = "runtime-candidate-2026-07-23.1"  # type: ignore[index]
-        changed["artifact"]["url"] = URL.replace(TAG, "runtime-candidate-2026-07-23.1")  # type: ignore[index]
+        changed["artifact"]["tag"] = "v1.3.1"  # type: ignore[index]
+        changed["artifact"]["url"] = URL.replace(TAG, "v1.3.1")  # type: ignore[index]
         _, advanced = self.load(changed)
         self.assertEqual(prior.cache_key(platform="linux-x86_64", server="lsp"), future.cache_key(platform="linux-x86_64", server="lsp"))
         self.assertNotEqual(prior.cache_key(platform="linux-x86_64", server="lsp"), advanced.cache_key(platform="linux-x86_64", server="lsp"))
@@ -189,7 +189,7 @@ class RuntimeContractTests(unittest.TestCase):
             self.archive(archive, candidate())
             self.assertTrue(parsed.verify_archive(archive, platform="linux-x86_64"))
             bad = candidate()
-            bad["artifact"]["tag"] = "other"  # type: ignore[index]
+            bad["artifact"]["stagingRunId"] = 99  # type: ignore[index]
             self.archive(archive, bad)
             with self.assertRaises(ValueError):
                 parsed.verify_archive(archive, platform="linux-x86_64")

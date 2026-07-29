@@ -174,14 +174,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       attestations: write
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
           pattern: runtime-staging-*

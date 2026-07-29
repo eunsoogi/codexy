@@ -14,24 +14,29 @@ fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Resu
 }
 
 #[test]
-fn candidate_and_activation_write_only_at_explicit_boundaries() -> Result<(), Box<dyn std::error::Error>> {
-    let candidate = document("runtime-candidate.yml")?;
-    let permissions = mapping(&candidate["jobs"]["publish-candidate"]["permissions"])?;
-    assert_eq!(permissions[Value::String("contents".into())], "write");
+fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> Result<(), Box<dyn std::error::Error>> {
+    let staging = document("runtime-candidate.yml")?;
+    let permissions = mapping(&staging["jobs"]["stage-runtime"]["permissions"])?;
+    assert_eq!(permissions[Value::String("contents".into())], "read");
     assert_eq!(permissions[Value::String("id-token".into())], "write");
     assert_eq!(permissions[Value::String("attestations".into())], "write");
-    let publish = run(&candidate, "publish-candidate", "Create candidate tag and release once")?;
-    assert!(command(publish, &["gh", "release", "create"]));
-    assert!(!command(publish, &["gh", "release", "edit"]));
-    assert!(!checkout_persists(&candidate, "build-runtime")?);
-    assert!(checkout_persists(&candidate, "publish-candidate")?);
-    assert_bot_identity(&candidate, "publish-candidate")?;
+    assert!(!checkout_persists(&staging, "build-runtime")?);
+    assert!(!checkout_persists(&staging, "stage-runtime")?);
+
     let activation = document("runtime-activation.yml")?;
     let permissions = mapping(&activation["permissions"])?;
     assert_eq!(permissions[Value::String("contents".into())], "write");
     assert_eq!(permissions[Value::String("pull-requests".into())], "write");
     assert!(checkout_persists(&activation, "open-activation-pr")?);
-    assert_bot_identity(&activation, "open-activation-pr")?;
+
+    let publisher = document("publish-version-release.yml")?;
+    let permissions = mapping(&publisher["permissions"])?;
+    assert_eq!(permissions[Value::String("contents".into())], "write");
+    assert_eq!(permissions[Value::String("id-token".into())], "write");
+    assert_eq!(permissions[Value::String("attestations".into())], "write");
+    assert!(!checkout_persists(&publisher, "publish-v1-3-0")?);
+    let publish = run(&publisher, "publish-v1-3-0", "Create and verify the only public version release")?;
+    assert!(command(publish, &["gh", "release", "create", "v1.3.0"]));
     Ok(())
 }
 
@@ -41,4 +46,3 @@ fn assert_exact(mapping: &Mapping, name: &str, value: &str) -> Result<(), Box<dy
 fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == name)).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
 fn command(run: &str, words: &[&str]) -> bool { run.lines().map(str::trim).any(|line| line.split_ascii_whitespace().collect::<Vec<_>>().windows(words.len()).any(|actual| actual == words)) }
 fn checkout_persists(value: &Value, job: &str) -> Result<bool, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["uses"] == "actions/checkout@v7")).and_then(|step| step["with"]["persist-credentials"].as_bool()).ok_or_else(|| "checkout credentials".into()) }
-fn assert_bot_identity(value: &Value, job: &str) -> Result<(), Box<dyn std::error::Error>> { let run = run(value, job, "Configure Git identity")?; assert!(run.lines().map(str::trim).any(|line| line == "git config user.name \"github-actions[bot]\"")); assert!(run.lines().map(str::trim).any(|line| line == "git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"")); Ok(()) }
