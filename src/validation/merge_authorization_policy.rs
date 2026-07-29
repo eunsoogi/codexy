@@ -6,6 +6,9 @@ use std::{
 
 use crate::paths::display_relative;
 
+#[path = "merge_authorization_routes.rs"]
+mod merge_authorization_routes;
+
 const AUTHORIZATION_REFERENCE: &str = "skills/git-workflow/references/merge-authorization.md";
 const GLOBAL_SURFACES: &[&str] = &[
     AUTHORIZATION_REFERENCE,
@@ -15,42 +18,10 @@ const GLOBAL_SURFACES: &[&str] = &[
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
-    check_merge_routes(plugin_root, &mut errors);
+    merge_authorization_routes::check(plugin_root, &mut errors);
     check_global_surfaces(plugin_root, &mut errors);
     check_profile_defaults(plugin_root, &mut errors);
     errors
-}
-
-fn check_merge_routes(root: &Path, errors: &mut Vec<String>) {
-    let mut paths = BTreeSet::new();
-    if collect_markdown(&root.join("skills"), &mut paths).is_err() {
-        errors.push("skills could not be read for merge-authorization policy".into());
-        return;
-    }
-    for path in paths {
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for block in command_blocks(&text) {
-            let mut validated = false;
-            for line in block {
-                let line = line.trim_start();
-                validated |=
-                    line.starts_with("if ! plugins/codexy/hooks/codexy-merge-admission-check.sh");
-                if merge_command(line) && !validated {
-                    errors.push(format!(
-                        "{} must validate authoritative merge authorization before mutation",
-                        display_relative(&path)
-                    ));
-                    break;
-                }
-            }
-        }
-    }
-}
-
-fn merge_command(line: &str) -> bool {
-    line.starts_with("gh pr merge") || line.starts_with("if ! gh pr merge")
 }
 
 fn check_global_surfaces(root: &Path, errors: &mut Vec<String>) {
@@ -129,8 +100,25 @@ fn clause_grants_merge(text: &str) -> bool {
     line.contains("merge") && grants && gate_grant && !denied
 }
 
-fn clauses(block: &str) -> impl Iterator<Item = &str> {
-    block.split(['.', ';', '!', '?'])
+fn clauses(block: &str) -> Vec<&str> {
+    let mut clauses = Vec::new();
+    for sentence in block.split(['.', ';', '!', '?']) {
+        let mut remainder = sentence;
+        while let Some((prefix, suffix)) = adversative_boundary(remainder) {
+            clauses.push(prefix);
+            remainder = suffix;
+        }
+        clauses.push(remainder);
+    }
+    clauses
+}
+
+fn adversative_boundary(text: &str) -> Option<(&str, &str)> {
+    [", but ", ", however ", ", yet "]
+        .iter()
+        .filter_map(|marker| text.find(marker).map(|index| (index, *marker)))
+        .min_by_key(|(index, _)| *index)
+        .map(|(index, marker)| (&text[..index], &text[index + marker.len()..]))
 }
 
 fn prose_blocks(text: &str) -> Vec<String> {
@@ -162,30 +150,6 @@ fn prose_blocks(text: &str) -> Vec<String> {
         }
     }
     flush(&mut blocks, &mut paragraph);
-    blocks
-}
-
-fn command_blocks(text: &str) -> Vec<Vec<String>> {
-    let mut blocks = Vec::new();
-    let mut current = Vec::new();
-    let mut fence = None;
-    for raw in text.lines() {
-        let line = raw.trim();
-        if let Some(marker) = fence_marker(line) {
-            if fence == Some(marker) {
-                blocks.push(std::mem::take(&mut current));
-                fence = None;
-            } else if fence.is_none() {
-                fence = Some(marker);
-            }
-        } else if fence.is_some()
-            && !line.starts_with('#')
-            && !line.starts_with("echo")
-            && !line.starts_with("printf")
-        {
-            current.push(line.to_owned());
-        }
-    }
     blocks
 }
 
@@ -226,7 +190,7 @@ fn strip_list_item(line: &str) -> &str {
     }
 }
 
-fn collect_markdown(root: &Path, paths: &mut BTreeSet<PathBuf>) -> std::io::Result<()> {
+pub(super) fn collect_markdown(root: &Path, paths: &mut BTreeSet<PathBuf>) -> std::io::Result<()> {
     for entry in fs::read_dir(root)? {
         let path = entry?.path();
         if path.is_dir() {

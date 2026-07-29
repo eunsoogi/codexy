@@ -124,11 +124,6 @@ elif ! cat "$pr_body_file"; then
   printf '%s\n' "failed to display captured PR body" >&2
   exit 1
 fi
-if ! scripts/validate-plugin-config --check-merge-authorization \
-  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" --merge-authorization-pr-state-file <(gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } } } } }' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}'); then
-  printf '%s\n' "authoritative merge authorization failed" >&2
-  exit 1
-fi
 if ! plugins/codexy/hooks/codexy-merge-admission-check.sh \
   --expected-pr "$pr_number" \
   --expected-issue "$issue_number" \
@@ -150,16 +145,20 @@ if ! test -s "$expected_body_file"; then
   exit 1
 fi
 
-if ! gh pr merge "$pr_number" \
+if ! plugins/codexy/hooks/codexy-authorized-squash-merge.sh \
+  --expected-pr "$pr_number" \
+  --expected-issue "$issue_number" \
+  --merge-message-file "$merge_message_file" \
+  --merge-authorization-file "${AUTHORIZATION_FILE:?set AUTHORIZATION_FILE to the authorization JSON path}" \
+  --merge-authorization-pr-state-file <(gh api graphql -f owner=eunsoogi -f name=codexy -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { number baseRefName headRefOid comments(first:100) { nodes { id url body author { login } authorAssociation } } } } }' --jq '.data.repository.pullRequest | {number,baseRefName,headRefOid,comments:[.comments.nodes[] | {id,url,body,author:{login:.author.login,association:.authorAssociation}}]}') \
   --repo "$repo" \
-  --squash \
-  --delete-branch \
   --match-head-commit "$head_oid" \
   --subject "$merge_subject" \
   --body-file "$pr_body_file"; then
-  printf '%s\n' "GitHub squash merge failed" >&2
+  printf '%s\n' "packaged authorized squash merge failed" >&2
   exit 1
 fi
+
 ```
 
 `--auto` only waits for configured GitHub requirements, and `--admin` bypasses

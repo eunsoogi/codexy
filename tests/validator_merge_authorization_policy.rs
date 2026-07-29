@@ -50,7 +50,7 @@ fn policy_rejects_profile_consent_and_a_command_decoy() -> Result<(), Box<dyn st
     text.push_str("\nFast profile: green gates\nimply merge consent.\n");
     std::fs::write(profile, text)?;
     let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
-    let text = std::fs::read_to_string(&route)?.replace("plugins/codexy/hooks/codexy-merge-admission-check.sh", ": merge-admission");
+    let text = std::fs::read_to_string(&route)?.replace("plugins/codexy/hooks/codexy-authorized-squash-merge.sh", "gh pr merge");
     std::fs::write(route, text)?;
     let errors = codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root());
     assert!(errors.iter().any(|error| error.contains("before mutation")), "{errors:#?}");
@@ -99,7 +99,7 @@ fn policy_rejects_later_grant_after_an_earlier_denial() -> Result<(), Box<dyn st
     let fixture = fixture()?;
     let path = fixture.root().join("skills/proof-driven-completion/SKILL.md");
     let mut text = std::fs::read_to_string(&path)?;
-    text.push_str("\nPassing gates are not authorization; green gates imply merge consent.\n");
+    text.push_str("\nPassing gates are not authorization, but green gates imply merge consent.\n");
     std::fs::write(path, text)?;
     assert!(!codexy_runtime::validation::merge_authorization_policy_diagnostics(fixture.root()).is_empty());
     Ok(())
@@ -109,8 +109,11 @@ fn policy_rejects_later_grant_after_an_earlier_denial() -> Result<(), Box<dyn st
 fn policy_rejects_fallback_merge_routes_and_bullet_boundaries() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = fixture()?;
     let route = fixture.root().join("skills/git-workflow/references/merge-and-main-sync.md");
-    let mut route_text = std::fs::read_to_string(&route)?;
-    route_text.push_str("\n~~~shell\ngh pr merge \"$pr_number\" --squash\n~~~\n");
+    let mut route_text = std::fs::read_to_string(&route)?.replace(
+        "codexy-authorized-squash-merge.sh",
+        "codexy-authorized-squash-merge.sh-decoy",
+    );
+    route_text.push_str("\n~~~shell\nif ! plugins/codexy/hooks/codexy-authorized-squash-merge.sh-decoy --expected-pr \"$pr_number\"; then exit 1; fi\ngh pr merge \"$pr_number\" --squash\nenv gh pr merge \"$pr_number\" --squash\n~~~\n");
     std::fs::write(route, route_text)?;
     let policy = fixture.root().join("skills/proof-driven-completion/SKILL.md");
     let mut policy_text = std::fs::read_to_string(&policy)?;
