@@ -47,16 +47,18 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
 fn materializer_preserves_staged_runtime_and_activates_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = FinalArchiveFixture::new()?;
-    let output = Command::new(
+    let mut command = Command::new(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("scripts/materialize-runtime-release-archive"),
-    )
-    .args([&fixture.staged_archive, &fixture.final_archive])
-    .current_dir(&fixture.root)
-    .env("RELEASE_TAG", "v1.3.0")
-    .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
-    .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-    .output()?;
+    );
+    let output = command
+        .arg_path(&fixture.staged_archive)
+        .arg_path(&fixture.final_archive)
+        .current_dir(&fixture.root)
+        .env("RELEASE_TAG", "v1.3.0")
+        .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
+        .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
+        .output()?;
     assert!(
         output.status.success(),
         "materializer failed: {}",
@@ -98,6 +100,13 @@ fn materializer_preserves_staged_runtime_and_activates_metadata()
     Ok(())
 }
 
+#[cfg(windows)]
+#[test]
+fn materializer_projects_paths_with_spaces_for_the_windows_shell()
+-> Result<(), Box<dyn std::error::Error>> {
+    materializer_preserves_staged_runtime_and_activates_metadata()
+}
+
 struct FinalArchiveFixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,
@@ -110,7 +119,8 @@ struct FinalArchiveFixture {
 impl FinalArchiveFixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let temporary = tempfile::tempdir()?;
-        let root = temporary.path().to_path_buf();
+        let root = temporary.path().join("final archive fixture with spaces");
+        fs::create_dir(&root)?;
         let source = root.join("plugins/codexy");
         let staged = root.join("staged/plugins/codexy");
         for plugin in [&source, &staged] {

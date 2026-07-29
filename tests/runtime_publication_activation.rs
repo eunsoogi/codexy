@@ -157,6 +157,30 @@ fn runtime_contract_requires_authenticated_windows_staging_identity()
     Ok(())
 }
 
+#[test]
+fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let final_archive = fs::read_to_string(root.join("tests/runtime_publication_activation/final_archive.rs"))?;
+    support::assert_structured_literals(
+        &final_archive,
+        "final archive shell paths",
+        &[".arg_path(&fixture.staged_archive)", ".arg_path(&fixture.final_archive)"],
+    );
+    let artifact_download = fs::read_to_string(root.join("tests/runtime_publication_activation/artifact_download.rs"))?;
+    support::assert_structured_literals(
+        &artifact_download,
+        "artifact downloader shell paths",
+        &[
+            ".arg_path(self.root.join(\"staging\"))",
+            ".env_path_list(\"PATH\", path_entries)",
+            ".env_path(\"FAKE_RUN\", run_path)",
+            ".env_path(\"FAKE_ARTIFACTS\", artifacts_path)",
+            ".env_path(\"FAKE_ZIP\", self.root.join(\"fixture-artifact.zip\"))",
+        ],
+    );
+    Ok(())
+}
+
 pub(super) type Workflow = (PathBuf, String, Yaml);
 
 pub(super) fn has_dispatch(document: &Yaml) -> bool {

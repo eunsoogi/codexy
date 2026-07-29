@@ -20,8 +20,18 @@ fn downloads_one_authenticated_unexpired_staging_artifact()
         "authenticated staging download failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(fixture.temp.path().join("staging/runtime-staging-receipt.json").is_file());
-    assert!(fixture.temp.path().join("staging/runtime-staging-run.json").is_file());
+    assert!(fixture.root.join("staging/runtime-staging-receipt.json").is_file());
+    assert!(fixture.root.join("staging/runtime-staging-run.json").is_file());
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn staging_download_projects_paths_with_spaces_for_the_windows_shell()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true)?;
+    assert!(output.status.success(), "Windows path projection failed: {}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }
 
@@ -62,20 +72,23 @@ fn rejects_unauthenticated_staging_download() -> Result<(), Box<dyn std::error::
 }
 
 struct Fixture {
-    temp: tempfile::TempDir,
+    _temp: tempfile::TempDir,
+    root: PathBuf,
     gh: PathBuf,
 }
 
 impl Fixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        let gh = temp.path().join("gh");
+        let root = temp.path().join("staging fixture with spaces");
+        fs::create_dir(&root)?;
+        let gh = root.join("gh");
         fs::write(
             &gh,
             "#!/bin/sh\ncase \"$*\" in\n  *'/actions/artifacts/'*'/zip') cat \"$FAKE_ZIP\" ;;\n  *'/artifacts') cat \"$FAKE_ARTIFACTS\" ;;\n  *'/actions/runs/'*) cat \"$FAKE_RUN\" ;;\n  *) exit 91 ;;\nesac\n",
         )?;
         support::make_executable(&gh)?;
-        let archive = temp.path().join("fixture-artifact.zip");
+        let archive = root.join("fixture-artifact.zip");
         let status = Command::new("python3")
             .args([
                 "-c",
@@ -84,7 +97,7 @@ impl Fixture {
             .arg(&archive)
             .status()?;
         assert!(status.success(), "failed to create staging zip fixture");
-        Ok(Self { temp, gh })
+        Ok(Self { _temp: temp, root, gh })
     }
 
     fn run(
@@ -93,22 +106,20 @@ impl Fixture {
         artifacts: &str,
         authenticated: bool,
     ) -> Result<Output, Box<dyn std::error::Error>> {
-        let run_path = self.temp.path().join("run.json");
-        let artifacts_path = self.temp.path().join("artifacts.json");
+        let run_path = self.root.join("run.json");
+        let artifacts_path = self.root.join("artifacts.json");
         fs::write(&run_path, run)?;
         fs::write(&artifacts_path, artifacts)?;
-        let path = format!(
-            "{}:{}",
-            self.gh.parent().ok_or("fake gh parent")?.display(),
-            std::env::var("PATH")?
-        );
+        let host_path = std::env::var_os("PATH").ok_or("host PATH")?;
+        let mut path_entries = vec![self.gh.parent().ok_or("fake gh parent")?.to_path_buf()];
+        path_entries.extend(std::env::split_paths(&host_path));
         let mut command = Command::new(script());
         command
-            .arg(self.temp.path().join("staging"))
-            .env("PATH", path)
-            .env("FAKE_RUN", run_path)
-            .env("FAKE_ARTIFACTS", artifacts_path)
-            .env("FAKE_ZIP", self.temp.path().join("fixture-artifact.zip"))
+            .arg_path(self.root.join("staging"))
+            .env_path_list("PATH", path_entries)
+            .env_path("FAKE_RUN", run_path)
+            .env_path("FAKE_ARTIFACTS", artifacts_path)
+            .env_path("FAKE_ZIP", self.root.join("fixture-artifact.zip"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("GITHUB_REPOSITORY_ID", REPOSITORY_ID)
             .env("SOURCE_COMMIT", SOURCE_COMMIT)
