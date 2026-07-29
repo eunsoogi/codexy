@@ -10,6 +10,7 @@ from pathlib import Path
 
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
 RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
+RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
 RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
 
 
@@ -78,15 +79,42 @@ def parse_inventory(output: str) -> tuple[Counter[str], set[str]]:
 
 
 def observed_test_inventory(output: str) -> tuple[Counter[str], set[str]]:
-    return parse_tests(output, RUN_PATTERN)
+    tests, targets, _ = observed_test_records(output)
+    return tests, targets
 
 
 def observed_test_outcomes(output: str) -> Counter[str]:
-    return Counter(
-        match.group("result")
-        for line in output.splitlines()
-        if (match := RUN_PATTERN.match(line))
-    )
+    _, _, outcomes = observed_test_records(output)
+    return outcomes
+
+
+def observed_test_records(output: str) -> tuple[Counter[str], set[str], Counter[str]]:
+    current = None
+    pending = None
+    tests: Counter[str] = Counter()
+    targets: set[str] = set()
+    outcomes: Counter[str] = Counter()
+    for line in output.splitlines():
+        if "Running " in line:
+            current = target_name(line)
+            targets.add(current)
+            pending = None
+        elif current and (match := RUN_PATTERN.match(line)):
+            pending = None
+            record_observed_test(tests, outcomes, current, match.group("name"), match.group("result"))
+        elif current and (match := RUN_START_PATTERN.match(line)):
+            pending = match.group("name")
+        elif current and pending and line in {"ok", "FAILED", "ignored"}:
+            record_observed_test(tests, outcomes, current, pending, line)
+            pending = None
+    return tests, targets, outcomes
+
+
+def record_observed_test(
+    tests: Counter[str], outcomes: Counter[str], target: str, name: str, result: str
+) -> None:
+    tests[f"{target}::{canonical_test_name(name)}"] += 1
+    outcomes[result] += 1
 
 
 def parse_tests(
