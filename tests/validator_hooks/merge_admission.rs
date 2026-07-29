@@ -142,10 +142,14 @@ fn canonical_wrapper_rejects_bad_github_authorization_captures() -> TestResult {
 }
 
 fn admission(root: &std::path::Path, message: &std::path::Path, authorization: &std::path::Path, state: &std::path::Path) -> std::io::Result<std::process::Output> {
-    Command::new(root.join("hooks/codexy-merge-admission-check.sh"))
-        .args(["--expected-pr", "128", "--expected-issue", "503", "--merge-message-file"])
-        .arg(message).args(["--merge-authorization-file"]).arg(authorization)
-        .args(["--merge-authorization-pr-state-file"]).arg(state).output()
+    let mut command = Command::new(root.join("hooks/codexy-merge-admission-check.sh"));
+    command.args(["--expected-pr", "128", "--expected-issue", "503", "--merge-message-file"]);
+    command.arg_path(message);
+    command.args(["--merge-authorization-file"]);
+    command.arg_path(authorization);
+    command.args(["--merge-authorization-pr-state-file"]);
+    command.arg_path(state);
+    command.output()
 }
 
 #[cfg(unix)]

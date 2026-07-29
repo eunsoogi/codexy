@@ -1,8 +1,10 @@
 mod admission_artifact;
 mod command;
 mod policy_inventory;
+mod policy_inventory_contract;
 mod policy_inventory_discovery;
 mod policy_inventory_frontmatter;
+mod policy_inventory_suite;
 mod safety;
 
 use std::path::Path;

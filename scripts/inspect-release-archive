@@ -7,6 +7,10 @@ max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
 max_entries=${MAX_ARCHIVE_ENTRIES:-10000}
 max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+checkout_root=$(dirname "$script_dir")
+evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
+canonical_admission_suite="$checkout_root/tests/suites/all.rs"
+admission_suite="$evidence_root/tests/suites/all.rs"
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
@@ -62,6 +66,14 @@ PY
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
+"$script_dir/require-regular-file" "$canonical_admission_suite" "canonical checkout admission suite"
+"$script_dir/require-regular-file" "$admission_suite" "checkout admission suite"
+cmp -s "$canonical_admission_suite" "$admission_suite" || {
+  echo "checkout admission suite differs from canonical evidence" >&2
+  exit 1
+}
+mkdir -p "$extract_root/tests/suites"
+cp "$admission_suite" "$extract_root/tests/suites/all.rs"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 python3 - "$release_contract" "$release_state" >"$tmp_dir/expected-runtime" <<'PY'
@@ -99,6 +111,8 @@ while IFS= read -r relative; do
 done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 mkdir -p "$source_check_root"
+mkdir -p "$tmp_dir/source-check/tests/suites"
+cp "$admission_suite" "$tmp_dir/source-check/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
 if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
