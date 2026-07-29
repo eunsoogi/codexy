@@ -2,7 +2,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
-use regex::Regex;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -10,6 +9,7 @@ use crate::codegraph::{build_graph, neighborhood, reverse_deps};
 use crate::mcp::{ToolDef, text_result};
 
 use super::files::{repo_root, result_limit, walk_code_files};
+use super::search::search;
 
 #[must_use]
 pub fn tools() -> Vec<ToolDef> {
@@ -59,7 +59,11 @@ pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
         "codegraph_overview" => text_json(&overview(&root, limit(args))),
         "codegraph_search" => {
             let query = string_arg(args, "query")?;
-            Ok(text_result(&rg_lines(&root, query, limit(args))?))
+            Ok(text_result(&serde_json::to_string(&search(
+                &root,
+                query,
+                limit(args),
+            )?)?))
         }
         "codegraph_neighbors" => text_json(&imports_for(&root, string_arg(args, "path")?)),
         "codegraph_index" => text_json(&build_graph(&root, limit(args))),
@@ -145,26 +149,6 @@ fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
         })
         .take(80)
         .collect()
-}
-
-fn rg_lines(root: &Path, query: &str, limit: Option<usize>) -> Result<String> {
-    let bounded_limit = result_limit(limit);
-    let pattern = Regex::new(query).with_context(|| format!("invalid search regex: {query}"))?;
-    let mut lines = Vec::new();
-    for file in walk_code_files(root) {
-        let Ok(source) = fs::read_to_string(root.join(&file)) else {
-            continue;
-        };
-        for (index, line) in source.lines().enumerate() {
-            if pattern.is_match(line) {
-                lines.push(format!("./{file}:{}:{line}", index + 1));
-                if lines.len() >= bounded_limit {
-                    return Ok(lines.join("\n"));
-                }
-            }
-        }
-    }
-    Ok(lines.join("\n"))
 }
 
 fn text_json<T: Serialize>(value: &T) -> Result<Value> {
