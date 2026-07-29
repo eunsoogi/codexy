@@ -46,8 +46,6 @@ mod repository_eol_contract;
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
-#[path = "../runtime_candidate_asset_recovery.rs"]
-mod runtime_candidate_asset_recovery;
 
 #[path = "../runtime_activation_branch_recovery.rs"]
 mod runtime_activation_branch_recovery;

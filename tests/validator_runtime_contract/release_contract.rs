@@ -53,11 +53,11 @@ fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn validator_accepts_only_safe_candidate_release_tags() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_accepts_only_version_release_tags() -> Result<(), Box<dyn std::error::Error>> {
     let valid = tempfile::tempdir()?;
     let valid_root = copy_plugin_to(valid.path())?;
     declare_bundled_platforms(&valid_root)?;
-    write_candidate_release(&valid_root, "runtime-candidate-1.3.0")?;
+    write_candidate_release(&valid_root, "v1.3.0")?;
     let output = validate(&valid_root)?;
     assert!(
         output.status.success(),
@@ -65,7 +65,7 @@ fn validator_accepts_only_safe_candidate_release_tags() -> Result<(), Box<dyn st
         String::from_utf8_lossy(&output.stderr)
     );
 
-    for tag in ["runtime-candidate-", "runtime-candidate-bad/tag", "v1.3.0"] {
+    for tag in ["runtime-candidate-1.3.0", "v1.3", "v1.3.0-rc1"] {
         let temp = tempfile::tempdir()?;
         let plugin_root = copy_plugin_to(temp.path())?;
         declare_bundled_platforms(&plugin_root)?;
@@ -90,7 +90,7 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     let candidate = serde_json::json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": release["source"].clone(),
-        "artifact": {"tag": tag},
+        "artifact": {"stagingRunId": 1, "stagingRunAttempt": 1},
         "compatibility": release["compatibility"].clone(),
         "platforms": release["platforms"].clone(),
     });

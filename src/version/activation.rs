@@ -48,11 +48,8 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         );
     }
     let receipt = read_json(receipt_path, "candidate receipt")?;
-    let (release, candidate) = receipt::activation_from_receipt(&receipt)?;
-    let candidate_tag = candidate["artifact"]["tag"]
-        .as_str()
-        .context("validated receipt lost candidate tag")?
-        .to_owned();
+    let release_tag = format!("v{bootstrap_version}");
+    let (release, candidate) = receipt::activation_from_receipt(&receipt, &release_tag)?;
     let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
     let expected_manifest_sha = release["artifact"]["payloadManifestSha256"]
         .as_str()
@@ -63,7 +60,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     }
     let mut updates = vec![
         bootstrap_update(repo_root, bootstrap_version)?,
-        publish_contract_update(repo_root, bootstrap_version, &candidate_tag)?,
+        publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
         Update {
             path: repo_root.join("plugins/codexy/runtime-release.json"),
             bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),

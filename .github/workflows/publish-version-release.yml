@@ -1,0 +1,85 @@
+name: Publish verified version release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: "Exact selected protected-main commit"
+        required: true
+        type: string
+      staging_run_id:
+        description: "Successful authenticated runtime staging run"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  publish-v1-3-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify selected protected-main source
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
+      - name: Download authenticated staging artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID" > run.json
+          test "$(jq -r .head_sha run.json)" = "${{ inputs.source_commit }}"
+          test "$(jq -r .path run.json)" = .github/workflows/runtime-candidate.yml
+          test "$(jq -r .status run.json)" = completed
+          test "$(jq -r .conclusion run.json)" = success
+          run_attempt="$(jq -r .run_attempt run.json)"
+          artifact_name="runtime-staging-${STAGING_RUN_ID}-${run_attempt}"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID/artifacts" > artifacts.json
+          artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id' artifacts.json)"
+          test "$(printf '%s\n' "$artifact_id" | sed '/^$/d' | wc -l | tr -d ' ')" = 1
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > staging.zip
+          unzip -q staging.zip -d staging
+      - name: Verify selected archive identity
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+        run: |
+          receipt=staging/runtime-staging-receipt.json
+          test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
+          test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
+          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt run.json)"
+          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt run.json)"
+          jq -cS .provenance "$receipt" | tr -d '\n' > receipt-provenance.json
+          jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
+          cmp receipt-provenance.json staged-provenance.json
+          sha256sum staging/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 "$receipt")"
+          test "$(jq -r .artifact.tag plugins/codexy/runtime-release.json)" = v1.3.0
+          test "$(jq -r .source.commit plugins/codexy/runtime-release.json)" = "$SOURCE_COMMIT"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: staging/codexy-marketplace-plugin.tar.gz
+      - name: Create and verify the only public version release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          gh release create v1.3.0 staging/codexy-marketplace-plugin.tar.gz staging/runtime-staging-receipt.json --target "$SOURCE_COMMIT" --title v1.3.0 --notes "Verified version release."
+          base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"
+          curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
+          curl --fail --location "$base/runtime-staging-receipt.json" -o public-receipt.json
+          sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
+          jq -cS .provenance public-receipt.json | tr -d '\n' > public-provenance.json
+          cmp receipt-provenance.json public-provenance.json
+          gh attestation verify public.tar.gz --repo "$GITHUB_REPOSITORY"
+          python -m venv public-bootstrap
+          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple getcodexy==1.3.0
+          public-bootstrap/bin/codexy-mcp-runtime --help
