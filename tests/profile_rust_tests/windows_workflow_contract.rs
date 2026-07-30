@@ -5,8 +5,8 @@ use super::super::GateFixture;
 const RUST_JOB: &str =
     "    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n";
 const WINDOWS_STEPS: &str =
-    "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n";
-const NESTED_BLOCK_STEPS: &str = "      - name: Archive prerequisite\n        run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n\n        # The parser keeps step metadata separate from the run scalar.\n        run: |\n          rustup toolchain install\n      - name: Profile\n        run: >\n          python scripts/profile-rust-tests --windows\n";
+    "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n      - run: python scripts/profile-rust-tests --windows\n";
+const NESTED_BLOCK_STEPS: &str = "      - name: Archive prerequisite\n        run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n\n        # The parser keeps step metadata separate from the run scalar.\n        run: |\n          rustup toolchain install\n          cargo fetch --locked\n\n      - name: Profile\n        run: >\n          python scripts/profile-rust-tests --windows\n";
 
 fn workflow(rust_job: &str, windows_runner: &str, timeout: u8, steps: &str) -> String {
     format!(
@@ -30,7 +30,7 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
             "runs-on: windows-latest",
             "timeout-minutes: 20",
             "name: Prepare Windows Rust toolchain",
-            "run: rustup toolchain install",
+            "run: |\n          rustup toolchain install\n          cargo fetch --locked",
             "run: python scripts/profile-rust-tests --windows",
         ],
     );
@@ -86,13 +86,29 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
 fn gate_rejects_a_windows_profile_without_prior_toolchain_bootstrap(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    let steps = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: python scripts/profile-rust-tests --windows\n";
+    let steps = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n";
     std::fs::write(
         &fixture.workflow,
         workflow(RUST_JOB, "windows-latest", 20, steps),
     )?;
 
     assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_rejects_missing_misordered_or_unlocked_windows_prefetch(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    for steps in [
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n",
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch\n      - run: python scripts/profile-rust-tests --windows\n",
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n      - run: python scripts/profile-rust-tests --windows\n      - run: cargo fetch --locked\n",
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo test --locked --all-targets\n          rustup toolchain install\n          cargo fetch --locked\n      - run: python scripts/profile-rust-tests --windows\n",
+    ] {
+        std::fs::write(&fixture.workflow, workflow(RUST_JOB, "windows-latest", 20, steps))?;
+        assert!(!fixture.run(&[])?.status.success());
+    }
     Ok(())
 }
 
@@ -132,17 +148,15 @@ fn gate_rejects_empty_or_misaligned_folded_runs_without_parser_errors(
 fn gate_rejects_skipped_or_fail_open_required_windows_steps(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    for steps in [
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n        if: false\n      - run: python scripts/profile-rust-tests --windows\n",
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n        continue-on-error: true\n      - run: python scripts/profile-rust-tests --windows\n",
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        if: false\n",
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        continue-on-error: true\n",
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n        \"if\": false\n      - run: python scripts/profile-rust-tests --windows\n",
-        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        'continue-on-error': true\n",
-    ] {
+    for control in ["if: false", "continue-on-error: true", "\"if\": false", "'continue-on-error': true"] {
+        let steps = WINDOWS_STEPS.replacen(
+            "      - run: python scripts/profile-rust-tests --windows",
+            &format!("        {control}\n      - run: python scripts/profile-rust-tests --windows"),
+            1,
+        );
         std::fs::write(
             &fixture.workflow,
-            workflow(RUST_JOB, "windows-latest", 20, steps),
+            workflow(RUST_JOB, "windows-latest", 20, &steps),
         )?;
         assert!(!fixture.run(&[])?.status.success());
     }

@@ -43,7 +43,9 @@ jobs:
 
       - name: Prepare Windows Rust toolchain
         shell: pwsh
-        run: rustup toolchain install
+        run: |
+          rustup toolchain install
+          cargo fetch --locked
 
       - name: Enforce exact full Rust workload and coverage
         run: python scripts/profile-rust-tests --windows

@@ -68,7 +68,7 @@ impl GateFixture {
             }
             if !workflow.contains("windows-rust-test:") {
                 workflow.push_str(
-                    "  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 20\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n",
+                    "  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 20\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n      - run: python scripts/profile-rust-tests --windows\n",
                 );
             }
             std::fs::write(&self.workflow, workflow)?;

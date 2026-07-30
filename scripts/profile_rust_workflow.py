@@ -12,6 +12,8 @@ from profile_rust_shell import invocation_count
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 WINDOWS_TOOLCHAIN_BOOTSTRAP = "rustup toolchain install"
+WINDOWS_REGISTRY_PREFETCH = "cargo fetch --locked"
+WINDOWS_PREPARATION = f"{WINDOWS_TOOLCHAIN_BOOTSTRAP}\n{WINDOWS_REGISTRY_PREFETCH}"
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20
 WorkflowStep = tuple[str, frozenset[str]]
@@ -91,7 +93,7 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
         (len(line) - len(line.lstrip(" ")) for line in lines if line.strip()), default=0
     )
     if style == "|":
-        return "\n".join(line[content_indentation:] if line.strip() else "" for line in lines)
+        return "\n".join(line[content_indentation:] if line.strip() else "" for line in lines).strip()
     paragraphs: list[list[str]] = []
     paragraph: list[str] = []
     for line in lines:
@@ -106,7 +108,7 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
         paragraph.append(line)
     if paragraph:
         paragraphs.append(paragraph)
-    return "\n".join(" ".join(line[content_indentation:] for line in lines) for lines in paragraphs)
+    return "\n".join(" ".join(line[content_indentation:] for line in lines) for lines in paragraphs).strip()
 
 
 def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
@@ -166,7 +168,7 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
                 step_keys.add(step_entry[0].casefold())
             command = step_run_command(line)
             if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = indentation, command[0], []
+                block_run = indentation + (2 if line.lstrip().startswith("-") else 0), command[0], []
             elif command is not None:
                 step_command = command
     if block_run is not None:
@@ -228,8 +230,8 @@ def enforce_workflow_contract(
     windows_workload_count = sum(
         invocation_count(command, workload) for command in windows_runs
     )
-    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE]
-    required_windows_step_keys = [keys for command, keys in windows_steps if command in {WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE}]
+    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_PREPARATION, WINDOWS_GATE]
+    required_windows_step_keys = [keys for command, keys in windows_steps if command in {WINDOWS_PREPARATION, WINDOWS_GATE}]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
         or windows_timeouts != [str(WINDOWS_JOB_TIMEOUT_MINUTES)]
