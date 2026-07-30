@@ -22,15 +22,15 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
+        if state.code.is_some() && inline_code_block_boundary(raw) {
+            state.code = None;
+        }
         if !active_markdown_line(raw) {
             lines.push(String::new());
             continue;
         }
-        if state.code.is_some() && inline_code_block_boundary(raw) {
-            state.code = None;
-        }
         if !state.comment {
-            let line = normalize_metadata_prefix(raw);
+            let line = markdown_block_prefix(raw);
             if let Some((marker, length, _tail)) = fence_marker(line) {
                 fence = Some((marker, length));
                 lines.push(String::new());
@@ -143,9 +143,36 @@ fn closes_later(lines: &[&str], width: usize) -> bool {
 }
 
 fn inline_code_block_boundary(line: &str) -> bool {
-    line.trim().is_empty()
-        || atx_heading(line)
-        || fence_marker(normalize_metadata_prefix(line)).is_some()
+    if line.trim().is_empty() {
+        return true;
+    }
+    if !active_markdown_line(line) {
+        return false;
+    }
+    let normalized = markdown_block_prefix(line);
+    atx_heading(normalized) || fence_marker(normalized).is_some()
+}
+
+fn markdown_block_prefix(line: &str) -> &str {
+    let line = line.trim_start();
+    let bytes = line.as_bytes();
+    if matches!(bytes.first(), Some(b'-' | b'+' | b'*'))
+        && matches!(bytes.get(1), Some(b' ' | b'\t'))
+    {
+        return &line[2..];
+    }
+    let digits = bytes
+        .iter()
+        .take_while(|byte| byte.is_ascii_digit())
+        .count();
+    if (1..=9).contains(&digits)
+        && line[..digits].parse::<u32>() == Ok(1)
+        && matches!(bytes.get(digits), Some(b'.' | b')'))
+        && matches!(bytes.get(digits + 1), Some(b' ' | b'\t'))
+    {
+        return &line[digits + 2..];
+    }
+    line
 }
 
 fn atx_heading(line: &str) -> bool {
