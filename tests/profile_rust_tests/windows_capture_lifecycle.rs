@@ -165,7 +165,7 @@ module = runpy.run_path(script)
 directory = pathlib.Path(tempfile.mkdtemp())
 pid_file = directory / "writer.pid"
 waits = []
-wait_timeout, return_status = [False], [0]
+hold_root, return_status = [False], [0]
 parent = "import pathlib,subprocess,sys; sys.stdout.buffer.write(b'first\\r\\n\\xce\\xbc-tail\\r\\n'); sys.stdout.buffer.flush(); sys.stdin.buffer.read(1); p=subprocess.Popen([sys.executable,'-c','import sys; sys.stdin.buffer.read(1)'], stdout=sys.stdout.buffer, stderr=sys.stdout.buffer, close_fds=False); pathlib.Path(sys.argv[1]).write_text(str(p.pid))"
 
 class RaceProcess:
@@ -175,18 +175,20 @@ class RaceProcess:
         self._handle = self.child._handle
         self.status, self.done = return_status[0], False
     def release(self):
-        self.child.stdin.write(b"x")
-        self.child.stdin.flush()
+        if not hold_root[0]:
+            self.child.stdin.write(b"x")
+            self.child.stdin.flush()
     def wait(self, timeout=None):
-        if wait_timeout[0]:
+        try:
+            self.child.wait(timeout)
+        except subprocess.TimeoutExpired:
             waits.append((timeout, "timeout"))
             raise subprocess.TimeoutExpired("cargo", timeout)
-        self.child.wait(timeout)
         self.done = True
         waits.append((timeout, self.status))
         return self.status
     def poll(self):
-        return self.status if self.done else None
+        return self.status if self.done else self.child.poll()
 
 def spawn(*_args, **kwargs):
     return RaceProcess(kwargs["stdout"], pid_file)
@@ -223,9 +225,9 @@ module["run_workload"].__globals__["WindowsJob"] = ReleasingJob
 try:
     timeout = module["run_workload"](None, 0.1)
     success = module["run_workload"](None, 1.0)
-    wait_timeout[0] = True
+    hold_root[0] = True
     running = module["run_workload"](None, 0.1)
-    wait_timeout[0], return_status[0] = False, 7
+    hold_root[0], return_status[0] = False, 7
     nonzero = module["run_workload"](None, 0.1)
 finally:
     import shutil
