@@ -67,7 +67,7 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
     let temp = tempfile::tempdir()?;
     let bin = temp.path().join("fixture bin with spaces");
     std::fs::create_dir(&bin)?;
-    let command = bin.join("fixture-command");
+    let command = bin.join("git");
     super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf '%s\\n' \"$1\"\n")?;
     #[cfg(windows)]
     {
@@ -75,22 +75,39 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
             command.is_file(),
             "nested sh needs the bare fixture command"
         );
+        assert!(!command.with_extension("cmd").exists());
+        assert!(!command.with_extension("bat").exists());
     }
+    let target = temp.path().join("nested shell target");
+    std::fs::write(&target, "#!/bin/sh\ngit 'argument with spaces'\n")?;
+    super::super::make_executable(&target)?;
     let runner = temp.path().join("nested shell runner");
-    std::fs::write(
+    super::super::write_posix_fixture_shell_runner(
         &runner,
-        "#!/bin/sh\nfixture-command 'argument with spaces'\n",
+        "CODEXY_FIXTURE_TARGET",
+        &[("git", "CODEXY_FIXTURE_COMMAND")],
     )?;
-    super::super::make_executable(&runner)?;
+    let poison_bin = temp.path().join("host bin");
+    std::fs::create_dir(&poison_bin)?;
+    let poison = temp.path().join("host git ran");
+    let poison_git = poison_bin.join("git");
+    std::fs::write(
+        &poison_git,
+        "#!/bin/sh\nprintf '%s\\n' host > \"$CODEXY_FIXTURE_POISON\"\nexit 91\n",
+    )?;
+    super::super::make_executable(&poison_git)?;
     let host_path = std::env::var_os("PATH").ok_or("PATH")?;
-    let mut paths = vec![bin];
+    let mut paths = vec![poison_bin];
     paths.extend(std::env::split_paths(&host_path));
     let trace = temp.path().join("command trace");
     let mut fixture = FixtureCommand::new(&runner);
     fixture.current_dir(temp.path());
     fixture
         .env_path_list("PATH", paths)
-        .env_path("CODEXY_FIXTURE_COMMAND_TRACE", &trace);
+        .env_path("CODEXY_FIXTURE_COMMAND", &command)
+        .env_path("CODEXY_FIXTURE_TARGET", &target)
+        .env_path("CODEXY_FIXTURE_COMMAND_TRACE", &trace)
+        .env_path("CODEXY_FIXTURE_POISON", &poison);
     let output = fixture.output()?;
     assert!(
         output.status.success(),
@@ -98,7 +115,8 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
         String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(String::from_utf8(output.stdout)?, "argument with spaces\n");
-    assert_eq!(std::fs::read_to_string(trace)?, "fixture-command\n");
+    assert_eq!(std::fs::read_to_string(trace)?, "git\n");
+    assert!(!poison.exists(), "same-shell binding reached host git");
     Ok(())
 }
 

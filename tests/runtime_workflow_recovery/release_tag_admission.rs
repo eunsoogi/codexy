@@ -1,8 +1,11 @@
-use std::{env, fs, path::Path, path::PathBuf, process::Output};
+use std::{fs, path::Path, path::PathBuf, process::Output};
 
 use serde_yaml::Value;
 
-use crate::support::{self, FixtureCommand as Command, write_posix_fixture_command};
+use crate::support::{
+    self, FixtureCommand as Command, write_posix_fixture_command,
+    write_posix_fixture_shell_runner,
+};
 
 const STAGING: &str = "0123456789abcdef0123456789abcdef01234567";
 const ACTIVATION: &str = "89abcdef0123456789abcdef0123456789abcdef";
@@ -85,7 +88,7 @@ impl RemoteTag {
     }
 }
 
-struct Fixture { _temp: tempfile::TempDir, root: PathBuf, script: PathBuf, calls: PathBuf, pushes: PathBuf, api_calls: PathBuf }
+struct Fixture { _temp: tempfile::TempDir, root: PathBuf, script: PathBuf, runner: PathBuf, calls: PathBuf, pushes: PathBuf, api_calls: PathBuf }
 
 impl Fixture {
     fn new(state: RemoteTag) -> Result<Self, Box<dyn std::error::Error>> {
@@ -102,12 +105,22 @@ impl Fixture {
         let script = root.join("release-step.sh");
         fs::write(&script, format!("#!/bin/sh\nset -e\n{}", release_step()?))?;
         support::make_executable(&script)?;
+        let runner = root.join("bound-release-step.sh");
+        write_posix_fixture_shell_runner(
+            &runner,
+            "CODEXY_FIXTURE_RELEASE_STEP",
+            &[
+                ("git", "CODEXY_FIXTURE_GIT"),
+                ("jq", "CODEXY_FIXTURE_JQ"),
+                ("gh", "CODEXY_FIXTURE_GH"),
+            ],
+        )?;
         fs::write(root.join("remote-state"), remote_state(state))?;
         fs::write(root.join("remote-queries"), "0")?;
         let calls = root.join("release-calls");
         let pushes = root.join("git-push-calls");
         let api_calls = root.join("api-calls");
-        Ok(Self { _temp: temp, root, script, calls, pushes, api_calls })
+        Ok(Self { _temp: temp, root, script, runner, calls, pushes, api_calls })
     }
 
     fn run(&self) -> Result<Output, Box<dyn std::error::Error>> {
@@ -118,10 +131,7 @@ impl Fixture {
         &self,
         inherited: &[(&str, &str)],
     ) -> Result<Output, Box<dyn std::error::Error>> {
-        let host_path = env::var_os("PATH").ok_or("host PATH")?;
-        let mut paths = vec![self.root.join("bin")];
-        paths.extend(env::split_paths(&host_path));
-        let mut command = Command::new(&self.script);
+        let mut command = Command::new(&self.runner);
         command.current_dir(&self.root);
         for (key, value) in inherited {
             command.env(key, value);
@@ -140,7 +150,10 @@ impl Fixture {
             command.env_remove(key);
         }
         command
-            .env_path_list("PATH", paths)
+            .env_path("CODEXY_FIXTURE_RELEASE_STEP", &self.script)
+            .env_path("CODEXY_FIXTURE_GIT", self.root.join("bin/git"))
+            .env_path("CODEXY_FIXTURE_JQ", self.root.join("bin/jq"))
+            .env_path("CODEXY_FIXTURE_GH", self.root.join("bin/gh"))
             .env_path("REMOTE_STATE", self.root.join("remote-state"))
             .env_path("REMOTE_QUERIES", self.root.join("remote-queries"))
             .env_path("FETCHED_STATE", self.root.join("fetched-state"))

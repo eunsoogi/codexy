@@ -7,9 +7,12 @@ use std::{
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
-use crate::support::{FixtureCommand, write_posix_fixture_command};
+use crate::support::{
+    FixtureCommand, write_posix_fixture_command,
+};
 
 mod metadata;
+mod shell_runner;
 
 #[test]
 fn real_base_activator_authenticates_retry_and_metadata_matrix()
@@ -52,6 +55,7 @@ struct Fixture {
     repo: PathBuf,
     receipt: PathBuf,
     bin: PathBuf,
+    runner: PathBuf,
 }
 
 impl Fixture {
@@ -110,28 +114,29 @@ impl Fixture {
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;
         write_posix_fixture_command(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;
+        let runner = shell_runner::write_activation_verifier_runner(temp.path())?;
         Ok(Self {
             _temp: temp,
             repo,
             receipt,
             bin,
+            runner,
         })
     }
 
     fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        let host_path = std::env::var_os("PATH").ok_or("PATH")?;
-        let mut paths = vec![self.bin.clone()];
-        paths.extend(std::env::split_paths(&host_path));
-        let mut command = FixtureCommand::new(
-            self.repo.join("scripts/verify-runtime-activation-branch"),
-        );
+        let mut command = FixtureCommand::new(&self.runner);
         command
             .args(["activation", base, version])
             .arg(&self.receipt)
             .current_dir(&self.repo);
         command
-            .env_path_list("PATH", paths)
             .env("CODEXY_TEST_MODE", "1")
+            .env_path(
+                "CODEXY_FIXTURE_VERIFY_RUNTIME_ACTIVATION_BRANCH",
+                self.repo.join("scripts/verify-runtime-activation-branch"),
+            )
+            .env_path("CODEXY_FIXTURE_GH", self.bin.join("gh"))
             .env_path(
                 "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),

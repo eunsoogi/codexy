@@ -7,6 +7,7 @@ mod child_thread_ledger_skill;
 mod digest;
 mod executable_path;
 mod fixture_command;
+mod fixture_command_bindings;
 mod fixture_command_mock;
 mod fixture_command_windows;
 mod fixture_hook_path;
@@ -51,6 +52,9 @@ pub(crate) use child_thread_ledger_skill::{
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
 pub(crate) use fixture_command::FixtureCommand;
+pub(crate) use fixture_command_bindings::{
+    write_posix_fixture_shell_runner, write_single_posix_fixture_shell_runner,
+};
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
