@@ -44,7 +44,11 @@ pub(crate) fn fixture_path_environment_value(
 
 pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Result<String, String> {
     if POSIX_PATH_ENVIRONMENTS.contains(&key) {
-        windows_to_posix_fixture_path(value)
+        match windows_to_posix_fixture_path(value) {
+            Ok(path) => Ok(path),
+            Err(_) if matches!(key, "GIT_COMMON_DIR" | "GIT_DIR") => Ok(value.to_owned()),
+            Err(error) => Err(error),
+        }
     } else {
         Ok(value.to_owned())
     }
@@ -115,5 +119,21 @@ fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
     assert_eq!(
         windows_fixture_environment_value("CODEXY_RUNTIME_PLATFORM", "windows-x86_64"),
         Ok("windows-x86_64".into())
+    );
+    assert_eq!(
+        windows_fixture_environment_value("GIT_DIR", "host-git-dir"),
+        Ok("host-git-dir".into())
+    );
+    assert_eq!(
+        windows_fixture_environment_value("GIT_DIR", "C:\\work\\git-dir"),
+        Ok("/c/work/git-dir".into())
+    );
+    assert_eq!(
+        windows_fixture_environment_value("GIT_COMMON_DIR", "host-common"),
+        Ok("host-common".into())
+    );
+    assert_eq!(
+        windows_fixture_environment_value("GIT_COMMON_DIR", "D:/work/common"),
+        Ok("/d/work/common".into())
     );
 }

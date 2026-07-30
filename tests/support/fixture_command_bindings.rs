@@ -104,8 +104,12 @@ mod tests {
             "function", "if", "in", "select", "then", "time", "until", "while", "{",
         ];
         let temp = tempfile::tempdir()?;
-        for identifier in SUPPORTED_SH_KEYWORDS.into_iter().chain(["}"].into_iter()) {
-            let shell_script = temp.path().join(format!("shell-{identifier}"));
+        for (index, identifier) in SUPPORTED_SH_KEYWORDS
+            .into_iter()
+            .chain(["}"].into_iter())
+            .enumerate()
+        {
+            let shell_script = temp.path().join(format!("shell-keyword-{index}"));
             write_posix_fixture_command(
                 &shell_script,
                 &format!("#!/bin/sh\n{identifier}() {{ :; }}\n"),
@@ -114,7 +118,7 @@ mod tests {
                 .output()?
                 .status
                 .success();
-            let runner = temp.path().join(format!("runner-{identifier}"));
+            let runner = temp.path().join(format!("runner-keyword-{index}"));
             let runner_accepts = write_posix_fixture_shell_runner(
                 &runner,
                 "CODEXY_FIXTURE_TARGET",
