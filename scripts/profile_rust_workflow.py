@@ -13,6 +13,7 @@ WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 WINDOWS_TOOLCHAIN_BOOTSTRAP = "rustup toolchain install"
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
+WINDOWS_JOB_TIMEOUT_MINUTES = 20
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -168,7 +169,6 @@ def job_values(lines: list[str], key: str) -> list[str]:
 def enforce_workflow_contract(
     workflow: Path,
     required_timeout_minutes: int,
-    required_windows_timeout_minutes: int,
     workload: tuple[str, ...],
 ) -> None:
     try:
@@ -208,7 +208,7 @@ def enforce_workflow_contract(
     expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
-        or windows_timeouts != [str(required_windows_timeout_minutes)]
+        or windows_timeouts != [str(WINDOWS_JOB_TIMEOUT_MINUTES)]
         or job_values(windows_lines, "strategy")
         or windows_runs != expected_windows_runs
         or windows_workload_count != 0

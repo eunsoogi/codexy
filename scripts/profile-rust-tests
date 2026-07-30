@@ -27,7 +27,6 @@ BUDGET_SECONDS = 180.0
 WINDOWS_BUDGET_SECONDS = 540.0
 MINIMUM_PASSED_TESTS = 1802
 REQUIRED_JOB_TIMEOUT_MINUTES = 4
-REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES = 10
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 RESULT_PATTERN = re.compile(
@@ -137,7 +136,7 @@ def main() -> int:
         arguments.budget_seconds = WINDOWS_BUDGET_SECONDS
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(
-        workflow, REQUIRED_JOB_TIMEOUT_MINUTES, REQUIRED_WINDOWS_JOB_TIMEOUT_MINUTES, WORKLOAD
+        workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD
     )
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     started = time.perf_counter()
