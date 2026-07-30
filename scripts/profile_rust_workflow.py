@@ -24,7 +24,7 @@ def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
     match = WORKFLOW_KEY_PATTERN.match(stripped)
     if match is None:
         return None
-    return match.group("key").strip(), yaml_value_without_comment(match.group("value")).strip()
+    return yaml_scalar_value(match.group("key").strip()), yaml_value_without_comment(match.group("value")).strip()
 
 
 def yaml_value_without_comment(value: str) -> str:
@@ -229,15 +229,13 @@ def enforce_workflow_contract(
         invocation_count(command, workload) for command in windows_runs
     )
     expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE]
-    required_windows_step_keys = [
-        keys
-        for command, keys in windows_steps
-        if command in {WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE}
-    ]
+    required_windows_step_keys = [keys for command, keys in windows_steps if command in {WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE}]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
         or windows_timeouts != [str(WINDOWS_JOB_TIMEOUT_MINUTES)]
         or job_values(windows_lines, "strategy")
+        or job_values(windows_lines, "if")
+        or job_values(windows_lines, "continue-on-error")
         or windows_runs != expected_windows_runs
         or any({"if", "continue-on-error"} & keys for keys in required_windows_step_keys)
         or windows_workload_count != 0

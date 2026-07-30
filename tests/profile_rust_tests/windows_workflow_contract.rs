@@ -104,11 +104,22 @@ fn gate_rejects_skipped_or_fail_open_required_windows_steps(
         "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n        continue-on-error: true\n      - run: python scripts/profile-rust-tests --windows\n",
         "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        if: false\n",
         "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        continue-on-error: true\n",
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n        \"if\": false\n      - run: python scripts/profile-rust-tests --windows\n",
+        "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n        'continue-on-error': true\n",
     ] {
         std::fs::write(
             &fixture.workflow,
             workflow(RUST_JOB, "windows-latest", 20, steps),
         )?;
+        assert!(!fixture.run(&[])?.status.success());
+    }
+    for control in ["if: false", "continue-on-error: true"] {
+        let workflow = workflow(RUST_JOB, "windows-latest", 20, WINDOWS_STEPS).replacen(
+            "    timeout-minutes: 20",
+            &format!("    {control}\n    timeout-minutes: 20"),
+            1,
+        );
+        std::fs::write(&fixture.workflow, workflow)?;
         assert!(!fixture.run(&[])?.status.success());
     }
     Ok(())
