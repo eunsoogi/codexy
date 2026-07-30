@@ -14,6 +14,7 @@ WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 WINDOWS_TOOLCHAIN_BOOTSTRAP = "rustup toolchain install"
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20
+WorkflowStep = tuple[str, frozenset[str]]
 
 
 def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
@@ -108,11 +109,13 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
     return "\n".join(" ".join(lines) for lines in paragraphs)
 
 
-def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
+def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
     timeouts: list[str] = []
-    runs: list[str] = []
+    steps: list[WorkflowStep] = []
     in_steps = False
     step_open = False
+    step_command: str | None = None
+    step_keys: set[str] = set()
     block_run: tuple[int, str, list[str]] | None = None
     for line in lines:
         indentation = len(line) - len(line.lstrip(" "))
@@ -123,13 +126,17 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
             if indentation > block_run[0]:
                 block_run[2].append(line)
                 continue
-            runs.append(block_scalar_command(block_run[1], block_run[2]))
+            step_command = block_scalar_command(block_run[1], block_run[2])
             block_run = None
         if not line.strip():
             continue
         entry = yaml_mapping_entry(line)
         if indentation == 4:
+            if step_open and step_command is not None:
+                steps.append((step_command, frozenset(step_keys)))
             step_open = False
+            step_command = None
+            step_keys = set()
             in_steps = entry == ("steps", "")
             if entry is not None and entry[0] == "timeout-minutes":
                 timeouts.append(entry[1])
@@ -137,22 +144,36 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[str]]:
         if not in_steps:
             continue
         if indentation < 6:
+            if step_open and step_command is not None:
+                steps.append((step_command, frozenset(step_keys)))
             in_steps = False
             step_open = False
+            step_command = None
+            step_keys = set()
             continue
         if indentation == 6 and line.lstrip().startswith("-"):
+            if step_open and step_command is not None:
+                steps.append((step_command, frozenset(step_keys)))
             step_open = True
+            step_command = None
+            step_keys = set()
         if (indentation == 6 and line.lstrip().startswith("-")) or (
             indentation == 8 and step_open
         ):
+            stripped = line.strip().removeprefix("-").lstrip()
+            step_entry = yaml_mapping_entry(stripped)
+            if step_entry is not None:
+                step_keys.add(step_entry[0].casefold())
             command = step_run_command(line)
             if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = indentation, command[0], []
+                block_run = indentation + 2, command[0], []
             elif command is not None:
-                runs.append(command)
+                step_command = command
     if block_run is not None:
-        runs.append(block_scalar_command(block_run[1], block_run[2]))
-    return timeouts, runs
+        step_command = block_scalar_command(block_run[1], block_run[2])
+    if step_open and step_command is not None:
+        steps.append((step_command, frozenset(step_keys)))
+    return timeouts, steps
 
 
 def job_values(lines: list[str], key: str) -> list[str]:
@@ -180,7 +201,8 @@ def enforce_workflow_contract(
     if set(jobs) != {"rust-test", "windows-rust-test"}:
         sys.stderr.write("Rust workflow must define only the Ubuntu and Windows Rust jobs\n")
         raise SystemExit(1)
-    timeouts, rust_runs = job_contract(jobs["rust-test"])
+    timeouts, rust_steps = job_contract(jobs["rust-test"])
+    rust_runs = [command for command, _ in rust_steps]
     found = int(timeouts[0]) if len(timeouts) == 1 and timeouts[0].isdigit() else None
     if found != required_timeout_minutes:
         sys.stderr.write(
@@ -192,7 +214,7 @@ def enforce_workflow_contract(
     ):
         sys.stderr.write("Rust test job must run once on ubuntu-latest without a matrix\n")
         raise SystemExit(1)
-    runs = [command for lines in jobs.values() for command in job_contract(lines)[1]]
+    runs = [command for lines in jobs.values() for command, _ in job_contract(lines)[1]]
     profiler = ("scripts/profile-rust-tests",)
     profiler_count = sum(invocation_count(command, profiler) for command in runs)
     rust_profiler_count = sum(invocation_count(command, profiler) for command in rust_runs)
@@ -201,16 +223,23 @@ def enforce_workflow_contract(
         sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
         raise SystemExit(1)
     windows_lines = jobs["windows-rust-test"]
-    windows_timeouts, windows_runs = job_contract(windows_lines)
+    windows_timeouts, windows_steps = job_contract(windows_lines)
+    windows_runs = [command for command, _ in windows_steps]
     windows_workload_count = sum(
         invocation_count(command, workload) for command in windows_runs
     )
     expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE]
+    required_windows_step_keys = [
+        keys
+        for command, keys in windows_steps
+        if command in {WINDOWS_TOOLCHAIN_BOOTSTRAP, WINDOWS_GATE}
+    ]
     if (
         job_values(windows_lines, "runs-on") != ["windows-latest"]
         or windows_timeouts != [str(WINDOWS_JOB_TIMEOUT_MINUTES)]
         or job_values(windows_lines, "strategy")
         or windows_runs != expected_windows_runs
+        or any({"if", "continue-on-error"} & keys for keys in required_windows_step_keys)
         or windows_workload_count != 0
         or workload_count != 0
     ):
