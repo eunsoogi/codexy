@@ -102,6 +102,7 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
                 raise
             finally:
                 observer.join()
+                del process
         output = capture_path.read_bytes()
     live_output = first_line[0] if first_line else b""
     tail = output[len(live_output) :]
@@ -109,9 +110,7 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
         replay_output(tail)
     flush_output()
     output_text = output.decode("utf-8")
-    if status == 124:
-        return output_text, budget_seconds, 124
-    elapsed = time.perf_counter() - started
+    elapsed = budget_seconds if status == 124 else time.perf_counter() - started
     return output_text, elapsed, status
 
 
@@ -121,7 +120,8 @@ def terminate_workload(process: subprocess.Popen[str]) -> None:
     if os.name == "posix":
         os.killpg(process.pid, signal.SIGKILL)
     else:
-        process.kill()
+        command = ("taskkill", "/F", "/T", "/PID", str(process.pid))
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     process.wait()
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

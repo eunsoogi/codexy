@@ -21,6 +21,10 @@ mod live_output;
 #[path = "profile_rust_tests/output_batching.rs"]
 mod output_batching;
 
+#[cfg(any(unix, windows))]
+#[path = "profile_rust_tests/windows_capture_lifecycle.rs"]
+mod windows_capture_lifecycle;
+
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_accounting.rs"]
 mod windows_accounting;
