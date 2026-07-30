@@ -197,7 +197,10 @@ try:
 finally:
     import shutil
     shutil.rmtree(directory)
-if timeout != ("first\r\nμ-tail\r\n", 0.1, 124) or success[0] != "first\r\nμ-tail\r\n" or not 0 <= success[1] < 1.0 or success[2] != 0 or waits != [(None, 0)]:
+def observed(result, status, active_zero):
+    output, _elapsed, actual_status, phases = result
+    return output == "first\r\nμ-tail\r\n" and actual_status == status and phases.get("windows-job-active-zero") == active_zero and all(0 <= phases.get(phase, -1) < 10 for phase in ("workload-seconds", "capture-seconds", "replay-seconds"))
+if not observed(timeout, 124, "deadline") or not observed(success, 0, "completed") or not 0 <= success[1] < 1.0 or waits != [(None, 0)]:
     raise SystemExit(f"timeout={timeout!r} success={success!r} waits={waits!r}")
 "#;
     let output = Command::new("python")
