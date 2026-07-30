@@ -1,5 +1,10 @@
 use std::{fs, io, path::Path};
 
+const SUPPORTED_SH_RESERVED_FUNCTION_NAMES: [&str; 16] = [
+    "case", "do", "done", "elif", "else", "esac", "fi", "for", "function", "if", "in", "select",
+    "then", "time", "until", "while",
+];
+
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
 /// Git Bash can reject an extensionless PATH script despite a valid shebang and
@@ -38,22 +43,7 @@ fn validate_identifier(value: &str) -> io::Result<()> {
     let starts_identifier = matches!(characters.next(), Some('_' | 'a'..='z' | 'A'..='Z'));
     let continues_identifier =
         characters.all(|character| character == '_' || character.is_ascii_alphanumeric());
-    let reserved = matches!(
-        value,
-        "case"
-            | "do"
-            | "done"
-            | "elif"
-            | "else"
-            | "esac"
-            | "fi"
-            | "for"
-            | "if"
-            | "in"
-            | "then"
-            | "until"
-            | "while"
-    );
+    let reserved = SUPPORTED_SH_RESERVED_FUNCTION_NAMES.contains(&value);
     (starts_identifier && continues_identifier && !reserved)
         .then_some(())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture shell identifier"))
@@ -70,7 +60,7 @@ mod tests {
     fn shell_runner_rejects_unsafe_function_identifiers_before_writing()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        for identifier in ["", "9git", "git-name", "if"] {
+        for identifier in ["", "9git", "git-name", "if", "function", "select", "time"] {
             let runner = temp.path().join(format!("{identifier}.sh"));
             let error = write_posix_fixture_shell_runner(
                 &runner,
@@ -80,6 +70,41 @@ mod tests {
             .expect_err("unsafe shell function identifier must fail closed");
             assert_eq!(error.kind(), ErrorKind::InvalidInput, "{identifier:?}");
             assert!(!runner.exists(), "{identifier:?} wrote a runner");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn shell_runner_matches_the_supported_shell_keyword_boundary()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // Every grammar keyword accepted by the supported sh, including words that are
+        // not identifiers. `coproc` is a control: it is a valid function name here.
+        const SUPPORTED_SH_KEYWORDS: [&str; 21] = [
+            "!", "[[", "]]", "case", "coproc", "do", "done", "elif", "else", "esac", "fi", "for",
+            "function", "if", "in", "select", "then", "time", "until", "while", "{",
+        ];
+        let temp = tempfile::tempdir()?;
+        for identifier in SUPPORTED_SH_KEYWORDS.into_iter().chain(["}"].into_iter()) {
+            let shell_script = temp.path().join(format!("shell-{identifier}"));
+            write_posix_fixture_command(
+                &shell_script,
+                &format!("#!/bin/sh\n{identifier}() {{ :; }}\n"),
+            )?;
+            let shell_accepts = FixtureCommand::new(&shell_script)
+                .output()?
+                .status
+                .success();
+            let runner = temp.path().join(format!("runner-{identifier}"));
+            let runner_accepts = write_posix_fixture_shell_runner(
+                &runner,
+                "CODEXY_FIXTURE_TARGET",
+                &[(identifier, "CODEXY_FIXTURE_GIT")],
+            )
+            .is_ok();
+            assert_eq!(runner_accepts, shell_accepts, "{identifier:?}");
+            if !shell_accepts {
+                assert!(!runner.exists(), "{identifier:?} wrote a runner");
+            }
         }
         Ok(())
     }
