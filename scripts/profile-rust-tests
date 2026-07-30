@@ -76,15 +76,21 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
             try:
                 if job is None:
                     status = process.wait(timeout=budget_seconds)
-                elif job.wait_for_empty_until(deadline):
-                    phases["windows-job-active-zero"] = "completed"
-                    status = process.wait()
-                    phases.update(job.diagnostics(process))
                 else:
-                    phases["windows-job-active-zero"] = "deadline"
-                    phases.update(job.diagnostics(process))
-                    job.terminate_and_wait()
-                    status = 124
+                    try:
+                        status = process.wait(timeout=max(0, deadline - time.monotonic()))
+                    except subprocess.TimeoutExpired:
+                        phases["windows-job-active-zero"] = "deadline"
+                        phases.update(job.diagnostics(process))
+                        job.terminate_and_wait()
+                        status = 124
+                    else:
+                        phases.update(job.diagnostics(process))
+                        if job.wait_for_empty_until(time.monotonic()):
+                            phases["windows-job-active-zero"] = "completed"
+                        else:
+                            phases["windows-job-active-zero"] = "drained"
+                            job.terminate_and_wait()
             except subprocess.TimeoutExpired:
                 stop_workload(process, job)
                 status = 124
@@ -116,10 +122,7 @@ def terminate_workload(process: subprocess.Popen[str]) -> None:
     os.killpg(process.pid, signal.SIGKILL)
     process.wait()
 def stop_workload(process: subprocess.Popen[str], job: WindowsJob | None) -> None:
-    if job is None:
-        terminate_workload(process)
-    else:
-        job.terminate_and_wait()
+    job.terminate_and_wait() if job is not None else terminate_workload(process)
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)

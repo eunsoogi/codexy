@@ -41,6 +41,8 @@ class CargoParent:
         locked[0] = mode[0] != "success"
     def wait(self, timeout=None):
         self.waits.append(timeout)
+        if root_status[0] is None:
+            raise subprocess.TimeoutExpired("cargo", timeout)
         return root_status[0]
     def poll(self):
         return root_status[0]
@@ -92,12 +94,12 @@ mode[0] = "success"
 success = module["run_workload"](None, 1.0)
 def observed(result, status, root, pids, images):
     return result[:3] == ("", 1.0 if status == 124 else 0.0, status) and result[3].get("cargo-root-status") == root and result[3].get("windows-job-pids-json") == json.dumps(pids) and result[3].get("windows-job-images-json") == json.dumps(images, sort_keys=True)
-if not observed(timeout, 124, "0", [701], [{"pid": 701, "error": "OpenProcess: 5"}]) or not observed(running, 124, "running", [702], [{"pid": 702, "error": "QueryFullProcessImageNameW: 122"}]) or not observed(nonzero, 124, "7", [703], [{"pid": 703, "image": "C:/writer.exe"}]) or not observed(success, 0, "0", [], []) or locked[0] or len(jobs) != 4:
+if not observed(timeout, 0, "0", [701], [{"pid": 701, "error": "OpenProcess: 5"}]) or not observed(running, 124, "running", [702], [{"pid": 702, "error": "QueryFullProcessImageNameW: 122"}]) or not observed(nonzero, 7, "7", [703], [{"pid": 703, "image": "C:/writer.exe"}]) or not observed(success, 0, "0", [], []) or locked[0] or len(jobs) != 4:
     raise SystemExit(f"timeout={timeout!r} running={running!r} nonzero={nonzero!r} success={success!r} locked={locked[0]!r} jobs={jobs!r}")
-if [job.deadline for job in jobs] != [11.0] * 4 or any(parent.waits for parent in parents[:3]) or parents[3].waits != [None] or not all(job.assigned for job in jobs) or not all(job.terminated for job in jobs[:3]) or jobs[3].terminated:
+if [getattr(job, "deadline", None) for job in jobs] != [10.0, None, 10.0, 10.0] or [parent.waits for parent in parents] != [[1.0]] * 4 or not all(job.assigned for job in jobs) or not all(job.terminated for job in jobs[:3]) or jobs[3].terminated:
     raise SystemExit(f"jobs={jobs!r}")
-if timeout[3]["windows-job-active-zero"] != "deadline" or success[3]["windows-job-active-zero"] != "completed":
-    raise SystemExit(f"timeout={timeout!r} success={success!r}")
+if [result[3]["windows-job-active-zero"] for result in (timeout, running, nonzero, success)] != ["drained", "deadline", "drained", "completed"]:
+    raise SystemExit(f"timeout={timeout!r} running={running!r} nonzero={nonzero!r} success={success!r}")
 
 main_globals = module["main"].__globals__
 main_globals["enforce_workflow_contract"] = lambda *_args: None
