@@ -52,6 +52,30 @@ fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
     Ok(())
 }
 
+#[test]
+fn fixture_discards_inherited_git_and_gh_state() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
+    let output = fixture.run_with_inherited_state(&[
+        ("GIT_DIR", "host-git-dir"),
+        ("GIT_WORK_TREE", "host-work-tree"),
+        ("GIT_INDEX_FILE", "host-index"),
+        ("GIT_COMMON_DIR", "host-common"),
+        ("GH_CONFIG_DIR", "host-gh-config"),
+        ("GH_HOST", "host-gh"),
+        ("GH_ENTERPRISE_TOKEN", "host-enterprise-token"),
+        ("GH_TOKEN", "host-gh-token"),
+        ("GITHUB_TOKEN", "host-token"),
+    ])?;
+    assert!(!output.status.success(), "concurrent wrong tag unexpectedly admitted");
+    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
+    assert_eq!(fixture.release_calls()?, 0, "wrong tag reached release creation");
+    assert_eq!(fixture.git_push_calls()?, 0, "used unauthenticated git push");
+    assert_eq!(fixture.command_calls("git")?, 6, "host git fallthrough");
+    assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
+    assert_eq!(fixture.command_calls("gh")?, 1, "host gh fallthrough");
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug)]
 enum RemoteTag { Wrong, Unpeelable, Changed, Exact, Absent, ConcurrentExact, ConcurrentWrong, ConcurrentUnpeelable, ApiAuth, ApiFailure }
 
@@ -87,11 +111,34 @@ impl Fixture {
     }
 
     fn run(&self) -> Result<Output, Box<dyn std::error::Error>> {
+        self.run_with_inherited_state(&[])
+    }
+
+    fn run_with_inherited_state(
+        &self,
+        inherited: &[(&str, &str)],
+    ) -> Result<Output, Box<dyn std::error::Error>> {
         let host_path = env::var_os("PATH").ok_or("host PATH")?;
         let mut paths = vec![self.root.join("bin")];
         paths.extend(env::split_paths(&host_path));
         let mut command = Command::new(&self.script);
         command.current_dir(&self.root);
+        for (key, value) in inherited {
+            command.env(key, value);
+        }
+        for key in [
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+            "GIT_COMMON_DIR",
+            "GH_CONFIG_DIR",
+            "GH_HOST",
+            "GH_ENTERPRISE_TOKEN",
+            "GH_TOKEN",
+            "GITHUB_TOKEN",
+        ] {
+            command.env_remove(key);
+        }
         command
             .env_path_list("PATH", paths)
             .env_path("REMOTE_STATE", self.root.join("remote-state"))
@@ -141,7 +188,7 @@ fn remote_state(state: RemoteTag) -> &'static str {
 }
 
 fn git_fixture() -> &'static str {
-    "#!/bin/sh\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); case \"$value\" in absent|concurrent-exact|concurrent-wrong|concurrent-unpeelable|api-auth|api-failure) exit 0 ;; changed) [ \"$count\" -ge 2 ] && value=wrong ;; esac; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) printf '%s\\n' push >> \"$GIT_PUSH_CALLS\"; exit 91 ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
+    "#!/bin/sh\nif test -n \"${GIT_DIR+x}${GIT_WORK_TREE+x}${GIT_INDEX_FILE+x}${GIT_COMMON_DIR+x}\"; then printf '%s\\n' 'inherited Git state reached fixture' >&2; exit 92; fi\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); case \"$value\" in absent|concurrent-exact|concurrent-wrong|concurrent-unpeelable|api-auth|api-failure) exit 0 ;; changed) [ \"$count\" -ge 2 ] && value=wrong ;; esac; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) printf '%s\\n' push >> \"$GIT_PUSH_CALLS\"; exit 91 ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
 }
 
 fn jq_fixture() -> &'static str {
@@ -149,5 +196,5 @@ fn jq_fixture() -> &'static str {
 }
 
 fn gh_fixture() -> &'static str {
-    "#!/bin/sh\nstate() { cat \"$REMOTE_STATE\"; }\nif [ \"$1\" = api ]; then\n  printf '%s\\n' api >> \"$API_CALLS\"\n  [ \"$GH_TOKEN\" = fixture-token ] || { printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }\n  case \"$(state)\" in absent) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 201 Created'; exit 0 ;; concurrent-exact) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-wrong) printf '%s\\n' wrong > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-unpeelable) printf '%s\\n' unpeelable > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; api-auth) printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;; api-failure) printf '%s\\n' 'HTTP/2.0 500 Server Error'; exit 1 ;; *) exit 91 ;; esac\nfi\nprintf '%s\\n' release >> \"$RELEASE_CALLS\"\nprintf '%s\\n' 'release-create sentinel' >&2\nexit 83\n"
+    "#!/bin/sh\nif test -n \"${GH_CONFIG_DIR+x}${GH_HOST+x}${GH_ENTERPRISE_TOKEN+x}${GITHUB_TOKEN+x}\"; then printf '%s\\n' 'inherited GitHub state reached fixture' >&2; exit 92; fi\nstate() { cat \"$REMOTE_STATE\"; }\nif [ \"$1\" = api ]; then\n  printf '%s\\n' api >> \"$API_CALLS\"\n  [ \"$GH_TOKEN\" = fixture-token ] || { printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }\n  case \"$(state)\" in absent) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 201 Created'; exit 0 ;; concurrent-exact) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-wrong) printf '%s\\n' wrong > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-unpeelable) printf '%s\\n' unpeelable > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; api-auth) printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;; api-failure) printf '%s\\n' 'HTTP/2.0 500 Server Error'; exit 1 ;; *) exit 91 ;; esac\nfi\nprintf '%s\\n' release >> \"$RELEASE_CALLS\"\nprintf '%s\\n' 'release-create sentinel' >&2\nexit 83\n"
 }

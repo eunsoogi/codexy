@@ -65,23 +65,40 @@ fn windows_fixture_companion_selects_only_a_paired_shell_entrypoint()
 fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;
-    let command = temp.path().join("fixture command with spaces");
-    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf fixture\n")?;
+    let bin = temp.path().join("fixture bin with spaces");
+    std::fs::create_dir(&bin)?;
+    let command = bin.join("fixture-command");
+    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf '%s\\n' \"$1\"\n")?;
     #[cfg(windows)]
     {
-        assert!(!command.exists());
-        assert!(command.with_extension("cmd").is_file());
-        assert!(command.with_extension("sh").is_file());
-    }
-    #[cfg(not(windows))]
-    {
-        let source = std::fs::read_to_string(command)?;
-        super::super::assert_structured_literals(
-            &source,
-            "POSIX fixture command trace",
-            &["CODEXY_FIXTURE_COMMAND_TRACE", "printf fixture\n"],
+        assert!(
+            command.is_file(),
+            "nested sh needs the bare fixture command"
         );
     }
+    let runner = temp.path().join("nested shell runner");
+    std::fs::write(
+        &runner,
+        "#!/bin/sh\nfixture-command 'argument with spaces'\n",
+    )?;
+    super::super::make_executable(&runner)?;
+    let host_path = std::env::var_os("PATH").ok_or("PATH")?;
+    let mut paths = vec![bin];
+    paths.extend(std::env::split_paths(&host_path));
+    let trace = temp.path().join("command trace");
+    let mut fixture = FixtureCommand::new(&runner);
+    fixture.current_dir(temp.path());
+    fixture
+        .env_path_list("PATH", paths)
+        .env_path("CODEXY_FIXTURE_COMMAND_TRACE", &trace);
+    let output = fixture.output()?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(String::from_utf8(output.stdout)?, "argument with spaces\n");
+    assert_eq!(std::fs::read_to_string(trace)?, "fixture-command\n");
     Ok(())
 }
 
