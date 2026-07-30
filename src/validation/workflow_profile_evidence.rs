@@ -26,6 +26,9 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
+        if state.code.is_some() && inline_code_block_boundary(raw) {
+            state.code = None;
+        }
         if !state.comment {
             let line = normalize_metadata_prefix(raw);
             if let Some((marker, length, _tail)) = fence_marker(line) {
@@ -129,7 +132,7 @@ fn closes_later(lines: &[&str], width: usize) -> bool {
         if !active_markdown_line(line) {
             continue;
         }
-        if fence_marker(normalize_metadata_prefix(line)).is_some() {
+        if inline_code_block_boundary(line) {
             return false;
         }
         if matching_backticks(line, width).is_some() {
@@ -137,6 +140,22 @@ fn closes_later(lines: &[&str], width: usize) -> bool {
         }
     }
     false
+}
+
+fn inline_code_block_boundary(line: &str) -> bool {
+    line.trim().is_empty()
+        || atx_heading(line)
+        || fence_marker(normalize_metadata_prefix(line)).is_some()
+}
+
+fn atx_heading(line: &str) -> bool {
+    let indent = line.bytes().take_while(|byte| *byte == b' ').count();
+    if indent > 3 {
+        return false;
+    }
+    let line = &line[indent..];
+    let markers = line.bytes().take_while(|byte| *byte == b'#').count();
+    (1..=6).contains(&markers) && matches!(line.as_bytes().get(markers), None | Some(b' ' | b'\t'))
 }
 
 fn invalid_fence_header(line: &str) -> bool {

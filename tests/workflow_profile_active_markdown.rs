@@ -134,6 +134,14 @@ fn prospective_inline_code_closers_stay_fence_local() -> TestResult {
             "removing the genuine closer exposes security metadata before the fence",
             "Workflow profile: light\nContext: `carried\nTask kind: security review\ncode\n```text\nignored\n```",
         ),
+        (
+            "a blank line ends carried inline code before active security metadata",
+            "Workflow profile: light\nContext: `open\n\nTask kind: security review\nclose`",
+        ),
+        (
+            "an atx heading ends carried inline code before active security metadata",
+            "Workflow profile: light\nContext: `open\n# New section\nTask kind: security review\nclose`",
+        ),
     ] {
         assert_profile_result(name, evidence, false)?;
     }
