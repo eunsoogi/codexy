@@ -105,6 +105,7 @@ sys.path.insert(0, str(script.parent))
 module = runpy.run_path(script)
 directory = pathlib.Path(tempfile.mkdtemp())
 pid_file = directory / "writer.pid"
+waits = []
 parent = "import pathlib,subprocess,sys; sys.stdout.buffer.write(b'first\\r\\n\\xce\\xbc-tail\\r\\n'); sys.stdout.buffer.flush(); sys.stdin.buffer.read(1); p=subprocess.Popen([sys.executable,'-c','import sys; sys.stdin.buffer.read(1)'], stdout=sys.stdout.buffer, stderr=sys.stdout.buffer, close_fds=False); pathlib.Path(sys.argv[1]).write_text(str(p.pid))"
 
 class RaceProcess:
@@ -115,6 +116,10 @@ class RaceProcess:
     def release(self):
         self.child.stdin.write(b"x")
         self.child.stdin.flush()
+    def wait(self, timeout=None):
+        status = self.child.wait(timeout)
+        waits.append((timeout, status))
+        return status
     def poll(self):
         return None
 
@@ -157,8 +162,8 @@ try:
 finally:
     import shutil
     shutil.rmtree(directory)
-if timeout != ("first\r\nμ-tail\r\n", 0.1, 124) or success[0] != "first\r\nμ-tail\r\n" or not 0 <= success[1] < 1.0 or success[2] != 0:
-    raise SystemExit(f"timeout={timeout!r} success={success!r}")
+if timeout != ("first\r\nμ-tail\r\n", 0.1, 124) or success[0] != "first\r\nμ-tail\r\n" or not 0 <= success[1] < 1.0 or success[2] != 0 or waits != [(None, 0)]:
+    raise SystemExit(f"timeout={timeout!r} success={success!r} waits={waits!r}")
 "#;
     let output = Command::new("python")
         .args(["-c", probe])
