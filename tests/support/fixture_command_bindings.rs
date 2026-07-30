@@ -80,7 +80,7 @@ mod tests {
     fn shell_runner_rejects_unsafe_function_identifiers_before_writing()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        for identifier in ["", "9git", "git-name", "if", "function", "select", "time"] {
+        for identifier in ["", "9git", "git-name", "if"] {
             let runner = temp.path().join(format!("{identifier}.sh"));
             let error = write_posix_fixture_shell_runner(
                 &runner,

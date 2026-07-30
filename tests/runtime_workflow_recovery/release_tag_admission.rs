@@ -56,29 +56,40 @@ fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
 }
 
 #[test]
-fn fixture_discards_inherited_git_and_gh_state() -> Result<(), Box<dyn std::error::Error>> {
-    const POISONED: [(&str, &str); 9] = [
-        ("GIT_DIR", "host-git-dir"),
-        ("GIT_WORK_TREE", "host-work-tree"),
-        ("GIT_INDEX_FILE", "host-index"),
-        ("GIT_COMMON_DIR", "host-common"),
-        ("GH_CONFIG_DIR", "host-gh-config"),
-        ("GH_HOST", "host-gh"),
-        ("GH_ENTERPRISE_TOKEN", "host-enterprise-token"),
-        ("GH_TOKEN", "host-gh-token"),
-        ("GITHUB_TOKEN", "host-token"),
-    ];
-    for poison in POISONED {
-        let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
-        let output = fixture.run_with_inherited_state(&[poison])?;
-        assert!(!output.status.success(), "{0} admitted concurrent wrong tag", poison.0);
-        assert_eq!(fixture.api_calls()?, 1, "{0} blocked authenticated API", poison.0);
-        assert_eq!(fixture.release_calls()?, 0, "{0} reached release", poison.0);
-        assert_eq!(fixture.git_push_calls()?, 0, "{0} used git push", poison.0);
-        assert_eq!(fixture.command_calls("git")?, 6, "{0} leaked host git", poison.0);
-        assert_eq!(fixture.command_calls("jq")?, 3, "{0} leaked host jq", poison.0);
-        assert_eq!(fixture.command_calls("gh")?, 1, "{0} leaked host gh", poison.0);
-    }
+fn fixture_discards_inherited_git_dir() -> Result<(), Box<dyn std::error::Error>> {
+    assert_inherited_state_discarded(("GIT_DIR", "host-git-dir"))
+}
+
+macro_rules! inherited_state_case {
+    ($name:ident, $key:literal, $value:literal) => {
+        #[test]
+        fn $name() -> Result<(), Box<dyn std::error::Error>> {
+            assert_inherited_state_discarded(($key, $value))
+        }
+    };
+}
+
+inherited_state_case!(fixture_discards_inherited_git_work_tree, "GIT_WORK_TREE", "host-work-tree");
+inherited_state_case!(fixture_discards_inherited_git_index_file, "GIT_INDEX_FILE", "host-index");
+inherited_state_case!(fixture_discards_inherited_git_common_dir, "GIT_COMMON_DIR", "host-common");
+inherited_state_case!(fixture_discards_inherited_gh_config_dir, "GH_CONFIG_DIR", "host-gh-config");
+inherited_state_case!(fixture_discards_inherited_gh_host, "GH_HOST", "host-gh");
+inherited_state_case!(fixture_discards_inherited_gh_enterprise_token, "GH_ENTERPRISE_TOKEN", "host-enterprise-token");
+inherited_state_case!(fixture_discards_inherited_gh_token, "GH_TOKEN", "host-gh-token");
+inherited_state_case!(fixture_discards_inherited_github_token, "GITHUB_TOKEN", "host-token");
+
+fn assert_inherited_state_discarded(
+    poison: (&str, &str),
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
+    let output = fixture.run_with_inherited_state(&[poison])?;
+    assert!(!output.status.success(), "{0} admitted concurrent wrong tag", poison.0);
+    assert_eq!(fixture.api_calls()?, 1, "{0} blocked authenticated API", poison.0);
+    assert_eq!(fixture.release_calls()?, 0, "{0} reached release", poison.0);
+    assert_eq!(fixture.git_push_calls()?, 0, "{0} used git push", poison.0);
+    assert_eq!(fixture.command_calls("git")?, 6, "{0} leaked host git", poison.0);
+    assert_eq!(fixture.command_calls("jq")?, 3, "{0} leaked host jq", poison.0);
+    assert_eq!(fixture.command_calls("gh")?, 1, "{0} leaked host gh", poison.0);
     Ok(())
 }
 
