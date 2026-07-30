@@ -1,9 +1,4 @@
-use std::{fs, io, path::Path};
-
-const SUPPORTED_SH_RESERVED_FUNCTION_NAMES: [&str; 16] = [
-    "case", "do", "done", "elif", "else", "esac", "fi", "for", "function", "if", "in", "select",
-    "then", "time", "until", "while",
-];
+use std::{fs, io, path::Path, process::Command};
 
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
@@ -15,7 +10,26 @@ pub(crate) fn write_posix_fixture_shell_runner(
     target_environment: &str,
     bindings: &[(&str, &str)],
 ) -> io::Result<()> {
+    write_posix_fixture_shell_runner_with_scrub(path, target_environment, bindings, &[], &[])
+}
+
+pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
+    path: &Path,
+    target_environment: &str,
+    bindings: &[(&str, &str)],
+    scrubbed_environment: &[&str],
+    rebound_environment: &[(&str, &str)],
+) -> io::Result<()> {
     let mut source = String::from("#!/bin/sh\nset -eu\n");
+    for name in scrubbed_environment {
+        validate_identifier(name)?;
+        source.push_str(&format!("unset {name}\n"));
+    }
+    for (name, value_environment) in rebound_environment {
+        validate_identifier(name)?;
+        validate_identifier(value_environment)?;
+        source.push_str(&format!("{name}=\"${value_environment}\"\nexport {name}\n"));
+    }
     for (command, payload_environment) in bindings {
         validate_identifier(command)?;
         validate_identifier(payload_environment)?;
@@ -43,8 +57,14 @@ fn validate_identifier(value: &str) -> io::Result<()> {
     let starts_identifier = matches!(characters.next(), Some('_' | 'a'..='z' | 'A'..='Z'));
     let continues_identifier =
         characters.all(|character| character == '_' || character.is_ascii_alphanumeric());
-    let reserved = SUPPORTED_SH_RESERVED_FUNCTION_NAMES.contains(&value);
-    (starts_identifier && continues_identifier && !reserved)
+    let parser_accepts = starts_identifier
+        && continues_identifier
+        && Command::new("sh")
+            .args(["-n", "-c", &format!("{value}() {{ :; }}")])
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false);
+    parser_accepts
         .then_some(())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture shell identifier"))
 }
@@ -101,7 +121,10 @@ mod tests {
                 &[(identifier, "CODEXY_FIXTURE_GIT")],
             )
             .is_ok();
-            assert_eq!(runner_accepts, shell_accepts, "{identifier:?}");
+            assert_eq!(
+                runner_accepts, shell_accepts,
+                "first divergent token: {identifier:?}"
+            );
             if !shell_accepts {
                 assert!(!runner.exists(), "{identifier:?} wrote a runner");
             }

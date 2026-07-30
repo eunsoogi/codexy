@@ -4,7 +4,7 @@ use serde_yaml::Value;
 
 use crate::support::{
     self, FixtureCommand as Command, write_posix_fixture_command,
-    write_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner_with_scrub,
 };
 
 const STAGING: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -57,8 +57,7 @@ fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
 
 #[test]
 fn fixture_discards_inherited_git_and_gh_state() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
-    let output = fixture.run_with_inherited_state(&[
+    const POISONED: [(&str, &str); 9] = [
         ("GIT_DIR", "host-git-dir"),
         ("GIT_WORK_TREE", "host-work-tree"),
         ("GIT_INDEX_FILE", "host-index"),
@@ -68,14 +67,18 @@ fn fixture_discards_inherited_git_and_gh_state() -> Result<(), Box<dyn std::erro
         ("GH_ENTERPRISE_TOKEN", "host-enterprise-token"),
         ("GH_TOKEN", "host-gh-token"),
         ("GITHUB_TOKEN", "host-token"),
-    ])?;
-    assert!(!output.status.success(), "concurrent wrong tag unexpectedly admitted");
-    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
-    assert_eq!(fixture.release_calls()?, 0, "wrong tag reached release creation");
-    assert_eq!(fixture.git_push_calls()?, 0, "used unauthenticated git push");
-    assert_eq!(fixture.command_calls("git")?, 6, "host git fallthrough");
-    assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
-    assert_eq!(fixture.command_calls("gh")?, 1, "host gh fallthrough");
+    ];
+    for poison in POISONED {
+        let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
+        let output = fixture.run_with_inherited_state(&[poison])?;
+        assert!(!output.status.success(), "{0} admitted concurrent wrong tag", poison.0);
+        assert_eq!(fixture.api_calls()?, 1, "{0} blocked authenticated API", poison.0);
+        assert_eq!(fixture.release_calls()?, 0, "{0} reached release", poison.0);
+        assert_eq!(fixture.git_push_calls()?, 0, "{0} used git push", poison.0);
+        assert_eq!(fixture.command_calls("git")?, 6, "{0} leaked host git", poison.0);
+        assert_eq!(fixture.command_calls("jq")?, 3, "{0} leaked host jq", poison.0);
+        assert_eq!(fixture.command_calls("gh")?, 1, "{0} leaked host gh", poison.0);
+    }
     Ok(())
 }
 
@@ -106,7 +109,7 @@ impl Fixture {
         fs::write(&script, format!("#!/bin/sh\nset -e\n{}", release_step()?))?;
         support::make_executable(&script)?;
         let runner = root.join("bound-release-step.sh");
-        write_posix_fixture_shell_runner(
+        write_posix_fixture_shell_runner_with_scrub(
             &runner,
             "CODEXY_FIXTURE_RELEASE_STEP",
             &[
@@ -114,6 +117,11 @@ impl Fixture {
                 ("jq", "CODEXY_FIXTURE_JQ"),
                 ("gh", "CODEXY_FIXTURE_GH"),
             ],
+            &[
+                "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GH_CONFIG_DIR",
+                "GH_HOST", "GH_ENTERPRISE_TOKEN", "GH_TOKEN", "GITHUB_TOKEN",
+            ],
+            &[("GH_TOKEN", "CODEXY_FIXTURE_GH_TOKEN")],
         )?;
         fs::write(root.join("remote-state"), remote_state(state))?;
         fs::write(root.join("remote-queries"), "0")?;
@@ -136,19 +144,6 @@ impl Fixture {
         for (key, value) in inherited {
             command.env(key, value);
         }
-        for key in [
-            "GIT_DIR",
-            "GIT_WORK_TREE",
-            "GIT_INDEX_FILE",
-            "GIT_COMMON_DIR",
-            "GH_CONFIG_DIR",
-            "GH_HOST",
-            "GH_ENTERPRISE_TOKEN",
-            "GH_TOKEN",
-            "GITHUB_TOKEN",
-        ] {
-            command.env_remove(key);
-        }
         command
             .env_path("CODEXY_FIXTURE_RELEASE_STEP", &self.script)
             .env_path("CODEXY_FIXTURE_GIT", self.root.join("bin/git"))
@@ -162,7 +157,7 @@ impl Fixture {
             .env_path("API_CALLS", &self.api_calls)
             .env_path("CODEXY_FIXTURE_COMMAND_TRACE", self.root.join("command-trace"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-            .env("GH_TOKEN", "fixture-token")
+            .env("CODEXY_FIXTURE_GH_TOKEN", "fixture-token")
             .env("STAGING_SOURCE_COMMIT", STAGING)
             .env("ACTIVATION_COMMIT", ACTIVATION)
             .env("STAGING_RUN_ID", "42");

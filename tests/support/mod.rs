@@ -53,7 +53,8 @@ pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
 pub(crate) use fixture_command::FixtureCommand;
 pub(crate) use fixture_command_bindings::{
-    write_posix_fixture_shell_runner, write_single_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
+    write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
