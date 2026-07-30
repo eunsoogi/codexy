@@ -21,9 +21,9 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
     let fixture = Fixture::new()?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
     assert_eq!(
-        fixture.activator_invocations(),
-        2,
-        "real matrix must retain only setup and successful verifier activation",
+        fixture.external_activation_process_invocations(),
+        1,
+        "real matrix must retain only the successful verifier activation process",
     );
     Ok(())
 }
@@ -44,7 +44,7 @@ struct Fixture {
     receipt: PathBuf,
     bin: PathBuf,
     runner: PathBuf,
-    activator_invocations: Cell<usize>,
+    external_activation_process_invocations: Cell<usize>,
 }
 
 impl Fixture {
@@ -85,14 +85,8 @@ impl Fixture {
         git(&repo, &["switch", "-c", "activation"])?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
-        let activator_invocations = Cell::new(0);
-        command(
-            Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
-                .args(["--repo-root", repo.to_str().ok_or("repo")?])
-                .args(["--bootstrap-version", "1.3.0"])
-                .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
-        )?;
-        activator_invocations.set(1);
+        let external_activation_process_invocations = Cell::new(0);
+        codexy_runtime::version::activation::activate(&repo, "1.3.0", &receipt)?;
         let mut sync = FixtureCommand::new(repo.join("scripts/sync-plugin-version"));
         sync.args(["--version", "1.3.0"]).current_dir(&repo);
         command(&mut sync)?;
@@ -112,7 +106,7 @@ impl Fixture {
             receipt,
             bin,
             runner,
-            activator_invocations,
+            external_activation_process_invocations,
         })
     }
 
@@ -134,17 +128,17 @@ impl Fixture {
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),
             );
         let output = command.output()?;
-        self.record_activator_invocation();
+        self.record_external_activation_process_invocation();
         Ok(output)
     }
 
-    fn activator_invocations(&self) -> usize {
-        self.activator_invocations.get()
+    fn external_activation_process_invocations(&self) -> usize {
+        self.external_activation_process_invocations.get()
     }
 
-    fn record_activator_invocation(&self) {
-        self.activator_invocations
-            .set(self.activator_invocations.get() + 1);
+    fn record_external_activation_process_invocation(&self) {
+        self.external_activation_process_invocations
+            .set(self.external_activation_process_invocations.get() + 1);
     }
 
 }
