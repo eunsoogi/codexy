@@ -21,6 +21,14 @@ mod live_output;
 #[path = "profile_rust_tests/output_batching.rs"]
 mod output_batching;
 
+#[cfg(any(unix, windows))]
+#[path = "profile_rust_tests/windows_capture_lifecycle.rs"]
+mod windows_capture_lifecycle;
+
+#[cfg(any(unix, windows))]
+#[path = "profile_rust_tests/windows_atomic_assignment.rs"]
+mod windows_atomic_assignment;
+
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_accounting.rs"]
 mod windows_accounting;
@@ -41,6 +49,30 @@ fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::e
 
 #[cfg(unix)]
 #[test]
+fn gate_bridges_windows_preparation_to_one_profiled_workload(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    let output = fixture.run(&[])?;
+
+    assert!(output.status.success(), "{output:?}");
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    crate::support::assert_structured_literals(
+        &workflow,
+        "profile bridge Windows preparation",
+        &[
+            "timeout-minutes: 20",
+            "rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        ],
+    );
+    assert_eq!(
+        std::fs::read_to_string(&fixture.marker)?,
+        "test --locked --all-targets\n"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
@@ -48,7 +80,7 @@ fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
     std::fs::create_dir(&clock)?;
     std::fs::write(
         clock.join("sitecustomize.py"),
-        "import time\n_values = iter((0.0, 0.0, 0.0, 196.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
+        "import time\n_values = iter((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 196.0, 196.0, 196.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
     )?;
     let output = fixture.run(&[("PYTHONPATH", clock.as_os_str())])?;
 
