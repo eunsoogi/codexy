@@ -11,6 +11,7 @@ from pathlib import Path
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
 RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
 RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
+RUNNING_NOTICE_PATTERN = re.compile(r"^test (?P<name>.+) has been running for over 60 seconds$")
 RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
 
 
@@ -86,6 +87,42 @@ def observed_test_inventory(output: str) -> tuple[Counter[str], set[str]]:
 def observed_test_outcomes(output: str) -> Counter[str]:
     _, _, outcomes = observed_test_records(output)
     return outcomes
+
+
+def deadline_test_context(output: str) -> tuple[str | None, list[str], str | None]:
+    current = None
+    pending = None
+    active: set[str] = set()
+    last_completed = None
+    for line in output.splitlines():
+        if "Running " in line:
+            current = target_name(line)
+            pending = None
+        elif current and (match := RUN_PATTERN.match(line)):
+            pending = None
+            completed = f"{current}::{canonical_test_name(match.group('name'))}"
+            active.discard(completed)
+            last_completed = completed
+        elif current and (match := RUNNING_NOTICE_PATTERN.match(line)):
+            pending = None
+            active.add(f"{current}::{canonical_test_name(match.group('name'))}")
+        elif current and (match := RUN_START_PATTERN.match(line)):
+            pending = match.group("name")
+        elif current and pending and line in {"ok", "FAILED", "ignored"}:
+            completed = f"{current}::{canonical_test_name(pending)}"
+            active.discard(completed)
+            last_completed = completed
+            pending = None
+    return current, sorted(active), last_completed
+
+
+def deadline_report_lines(output: str) -> list[str]:
+    last_target, active_tests, last_completed = deadline_test_context(output)
+    return [
+        f"deadline-last-running-target\t{last_target or 'not-observed'}",
+        *(f"deadline-active-test\t{test}" for test in active_tests),
+        f"deadline-last-completed-test\t{last_completed or 'not-observed'}",
+    ]
 
 
 def observed_test_records(output: str) -> tuple[Counter[str], set[str], Counter[str]]:
