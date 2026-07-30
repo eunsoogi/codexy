@@ -45,6 +45,30 @@ fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::e
 
 #[cfg(unix)]
 #[test]
+fn gate_bridges_windows_preparation_to_one_profiled_workload(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    let output = fixture.run(&[])?;
+
+    assert!(output.status.success(), "{output:?}");
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    crate::support::assert_structured_literals(
+        &workflow,
+        "profile bridge Windows preparation",
+        &[
+            "timeout-minutes: 20",
+            "rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        ],
+    );
+    assert_eq!(
+        std::fs::read_to_string(&fixture.marker)?,
+        "test --locked --all-targets\n"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
