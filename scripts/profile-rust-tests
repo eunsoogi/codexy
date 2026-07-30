@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Run and enforce the exact complete Rust test workload once."""
-
 from __future__ import annotations
-
 import argparse
 import json
 import os
@@ -15,14 +13,13 @@ import threading
 import time
 from collections import Counter
 from pathlib import Path
-
 from profile_rust_accounting import (
     listed_test_inventory_from_completed_binaries,
     observed_test_inventory,
     observed_test_outcomes,
 )
 from profile_rust_workflow import enforce_workflow_contract
-
+from profile_rust_windows_job import WindowsJob
 BUDGET_SECONDS = 180.0
 WINDOWS_BUDGET_SECONDS = 540.0
 MINIMUM_PASSED_TESTS = 1802
@@ -34,7 +31,6 @@ RESULT_PATTERN = re.compile(
     r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; "
     r"(\d+) ignored; \d+ measured; \d+ filtered out"
 )
-
 def archive_fixture_nested_cargo_build_count(root: Path) -> int:
     helper = root / "tests/support/release_archive.rs"
     try:
@@ -43,8 +39,6 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
         sys.stderr.write(f"archive fixture helper is unreadable: {error}\n")
         raise SystemExit(1) from None
     return source.count('Command::new("cargo")')
-
-
 def replay_output(output: bytes) -> bool:
     binary = getattr(sys.stdout, "buffer", None)
     if binary is None:
@@ -52,12 +46,8 @@ def replay_output(output: bytes) -> bool:
         return False
     binary.write(output)
     return True
-
-
 def flush_output() -> None:
     getattr(sys.stdout, "buffer", sys.stdout).flush()
-
-
 def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lines: list[bytes]) -> None:
     with capture_path.open("rb", buffering=0) as capture:
         while process.poll() is None:
@@ -69,8 +59,6 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
                 flush_output()
                 return
             time.sleep(0.01)
-
-
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     started = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="codexy-profile-") as directory:
@@ -78,6 +66,7 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
         capture_path.touch(mode=0o600)
         first_line: list[bytes] = []
         with capture_path.open("wb", buffering=0) as capture:
+            job = WindowsJob() if os.name == "nt" else None
             process = subprocess.Popen(
                 WORKLOAD,
                 cwd=root,
@@ -85,6 +74,8 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
                 stderr=subprocess.STDOUT,
                 start_new_session=os.name == "posix",
             )
+            if job is not None:
+                job.assign(process)
             observer = threading.Thread(
                 target=observe_first_line,
                 args=(capture_path, process, first_line),
@@ -94,13 +85,23 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
             observer.start()
             try:
                 status = process.wait(timeout=budget_seconds)
+                if job is not None:
+                    job.wait_for_empty()
             except subprocess.TimeoutExpired:
-                terminate_workload(process)
+                if job is None:
+                    terminate_workload(process)
+                else:
+                    job.terminate_and_wait()
                 status = 124
             except KeyboardInterrupt:
-                terminate_workload(process)
+                if job is None:
+                    terminate_workload(process)
+                else:
+                    job.terminate_and_wait()
                 raise
             finally:
+                if job is not None:
+                    job.close()
                 observer.join()
                 del process
         output = capture_path.read_bytes()
@@ -112,16 +113,10 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     output_text = output.decode("utf-8")
     elapsed = budget_seconds if status == 124 else time.perf_counter() - started
     return output_text, elapsed, status
-
-
 def terminate_workload(process: subprocess.Popen[str]) -> None:
     if process.poll() is not None:
         return
-    if os.name == "posix":
-        os.killpg(process.pid, signal.SIGKILL)
-    else:
-        command = ("taskkill", "/F", "/T", "/PID", str(process.pid))
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    os.killpg(process.pid, signal.SIGKILL)
     process.wait()
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
