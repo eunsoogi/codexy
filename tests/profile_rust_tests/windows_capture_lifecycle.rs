@@ -16,6 +16,7 @@ import types
 locked = [False]
 parents = []
 jobs = []
+mode = ["timeout"]
 script = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(script.parent))
 module = runpy.run_path(script)
@@ -33,14 +34,13 @@ class WindowsTemporaryDirectory:
 class CargoParent:
     pid = 521
     def __init__(self):
-        self.running = True
-        locked[0] = True
+        self.waits = []
+        locked[0] = mode[0] == "timeout"
     def wait(self, timeout=None):
-        if self.running:
-            raise subprocess.TimeoutExpired("cargo", timeout)
-        return 0
+        self.waits.append(timeout)
+        return 7
     def poll(self):
-        return None if self.running else 0
+        return 0
     def kill(self):
         self.running = False
 
@@ -58,11 +58,10 @@ class WindowsJob:
         self.assigned = True
     def terminate_and_wait(self):
         self.terminated = True
-        parents[0].running = False
         locked[0] = False
-    def wait_for_empty(self):
-        if locked[0]:
-            raise SystemExit("capture writer was not released")
+    def wait_for_empty_until(self, deadline):
+        self.deadline = deadline
+        return mode[0] == "success"
     def close(self):
         pass
 
@@ -70,9 +69,14 @@ module["tempfile"].TemporaryDirectory = WindowsTemporaryDirectory
 module["subprocess"].Popen = spawn
 module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt")
 module["run_workload"].__globals__["WindowsJob"] = WindowsJob
-output, _elapsed, status = module["run_workload"](None, 1.0)
-if output or status != 124 or locked[0] or len(jobs) != 1 or not jobs[0].assigned or not jobs[0].terminated:
-    raise SystemExit(f"output={output!r} status={status!r} locked={locked[0]!r} jobs={jobs!r}")
+module["run_workload"].__globals__["time"] = types.SimpleNamespace(monotonic=lambda: 10.0, perf_counter=lambda: 10.0, sleep=lambda _seconds: None)
+timeout = module["run_workload"](None, 1.0)
+mode[0] = "success"
+success = module["run_workload"](None, 1.0)
+if timeout != ("", 1.0, 124) or success != ("", 0.0, 7) or locked[0] or len(jobs) != 2:
+    raise SystemExit(f"timeout={timeout!r} success={success!r} locked={locked[0]!r} jobs={jobs!r}")
+if [job.deadline for job in jobs] != [11.0, 11.0] or parents[0].waits or parents[1].waits != [None] or not jobs[0].assigned or not jobs[0].terminated or not jobs[1].assigned or jobs[1].terminated:
+    raise SystemExit(f"jobs={jobs!r}")
 "#;
     let output = Command::new("python3")
         .args(["-c", probe])
@@ -108,17 +112,9 @@ class RaceProcess:
         self.child = subprocess.Popen((sys.executable, "-c", parent, str(writer_pid)), stdin=subprocess.PIPE, stdout=capture, stderr=subprocess.STDOUT, close_fds=False)
         self.pid = self.child.pid
         self._handle = self.child._handle
-    def wait(self, timeout=None):
-        if timeout is None:
-            return self.child.wait()
-        try:
-            self.child.wait(timeout)
-        except subprocess.TimeoutExpired:
-            self.child.stdin.write(b"x")
-            self.child.stdin.flush()
-            self.child.wait()
-            raise subprocess.TimeoutExpired("cargo", timeout)
-        raise SystemExit("race root exited before timeout")
+    def release(self):
+        self.child.stdin.write(b"x")
+        self.child.stdin.flush()
     def poll(self):
         return None
 
@@ -131,10 +127,8 @@ legacy_pid = legacy_root / "writer.pid"
 legacy_capture = legacy_root / "cargo-output"
 with legacy_capture.open("wb", buffering=0) as capture:
     legacy = RaceProcess(capture, legacy_pid)
-    try:
-        legacy.wait(0.1)
-    except subprocess.TimeoutExpired:
-        pass
+    legacy.release()
+    legacy.child.wait()
 taskkill = subprocess.run(("taskkill", "/F", "/T", "/PID", str(legacy.pid)), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 try:
     legacy_capture.unlink()
@@ -147,16 +141,24 @@ legacy_directory.cleanup()
 if taskkill.returncode != 128 or not locked:
     raise SystemExit(f"legacy returncode={taskkill.returncode!r} locked={locked!r} stderr={taskkill.stderr!r}")
 
+class ReleasingJob(module["WindowsJob"]):
+    def assign(self, process):
+        super().assign(process)
+        process.release()
+
 proxy = types.SimpleNamespace(Popen=spawn, STDOUT=subprocess.STDOUT, TimeoutExpired=subprocess.TimeoutExpired)
 module["run_workload"].__globals__["subprocess"] = proxy
 module["run_workload"].__globals__["WORKLOAD"] = ("cargo",)
+module["run_workload"].__globals__["WindowsJob"] = ReleasingJob
 try:
-    output, elapsed, status = module["run_workload"](None, 0.1)
+    timeout = module["run_workload"](None, 0.1)
+    parent = "import subprocess,sys; sys.stdout.buffer.write(b'first\\r\\n\\xce\\xbc-tail\\r\\n'); sys.stdout.buffer.flush(); sys.stdin.buffer.read(1); subprocess.Popen([sys.executable,'-c','pass'], stdout=sys.stdout.buffer, stderr=sys.stdout.buffer, close_fds=False)"
+    success = module["run_workload"](None, 1.0)
 finally:
     import shutil
     shutil.rmtree(directory)
-if output != "first\r\nμ-tail\r\n" or elapsed != 0.1 or status != 124:
-    raise SystemExit(f"output={output!r} elapsed={elapsed!r} status={status!r}")
+if timeout != ("first\r\nμ-tail\r\n", 0.1, 124) or success[0] != "first\r\nμ-tail\r\n" or not 0 <= success[1] < 1.0 or success[2] != 0:
+    raise SystemExit(f"timeout={timeout!r} success={success!r}")
 "#;
     let output = Command::new("python")
         .args(["-c", probe])

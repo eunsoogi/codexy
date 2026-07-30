@@ -61,6 +61,7 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
             time.sleep(0.01)
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
     started = time.perf_counter()
+    deadline = time.monotonic() + budget_seconds
     with tempfile.TemporaryDirectory(prefix="codexy-profile-") as directory:
         capture_path = Path(directory) / "cargo-output"
         capture_path.touch(mode=0o600)
@@ -84,20 +85,18 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int]:
             )
             observer.start()
             try:
-                status = process.wait(timeout=budget_seconds)
-                if job is not None:
-                    job.wait_for_empty()
-            except subprocess.TimeoutExpired:
                 if job is None:
-                    terminate_workload(process)
+                    status = process.wait(timeout=budget_seconds)
+                elif job.wait_for_empty_until(deadline):
+                    status = process.wait()
                 else:
                     job.terminate_and_wait()
+                    status = 124
+            except subprocess.TimeoutExpired:
+                stop_workload(process, job)
                 status = 124
             except KeyboardInterrupt:
-                if job is None:
-                    terminate_workload(process)
-                else:
-                    job.terminate_and_wait()
+                stop_workload(process, job)
                 raise
             finally:
                 if job is not None:
@@ -118,6 +117,11 @@ def terminate_workload(process: subprocess.Popen[str]) -> None:
         return
     os.killpg(process.pid, signal.SIGKILL)
     process.wait()
+def stop_workload(process: subprocess.Popen[str], job: WindowsJob | None) -> None:
+    if job is None:
+        terminate_workload(process)
+    else:
+        job.terminate_and_wait()
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)

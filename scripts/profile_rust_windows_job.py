@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import time
 from ctypes import wintypes
 
 
@@ -10,7 +11,8 @@ _ASSOCIATE_COMPLETION_PORT = 7
 _EXTENDED_LIMIT_INFORMATION = 9
 _ACTIVE_PROCESS_ZERO = 4
 _KILL_ON_JOB_CLOSE = 0x00002000
-_WAIT_MILLISECONDS = 10_000
+_CLEANUP_SECONDS = 10.0
+_WAIT_TIMEOUT = 258
 _INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 
@@ -105,21 +107,25 @@ class WindowsJob:
 
     def terminate_and_wait(self) -> None:
         _require(self._kernel32.TerminateJobObject(self._job, 124), "TerminateJobObject")
-        self.wait_for_empty()
+        if not self.wait_for_empty_until(time.monotonic() + _CLEANUP_SECONDS):
+            raise TimeoutError("Job Object did not reach active-process-zero after termination")
 
-    def wait_for_empty(self) -> None:
+    def wait_for_empty_until(self, deadline: float) -> bool:
         transferred = wintypes.DWORD()
         key = ctypes.c_size_t()
         overlapped = wintypes.LPVOID()
         while True:
-            _require(
-                self._kernel32.GetQueuedCompletionStatus(
-                    self._port, ctypes.byref(transferred), ctypes.byref(key), ctypes.byref(overlapped), _WAIT_MILLISECONDS
-                ),
-                "GetQueuedCompletionStatus",
+            remaining = max(0, int((deadline - time.monotonic()) * 1000))
+            completed = self._kernel32.GetQueuedCompletionStatus(
+                self._port, ctypes.byref(transferred), ctypes.byref(key), ctypes.byref(overlapped), remaining
             )
+            if not completed:
+                error = ctypes.get_last_error()
+                if error == _WAIT_TIMEOUT:
+                    return False
+                raise OSError(error, "GetQueuedCompletionStatus")
             if transferred.value == _ACTIVE_PROCESS_ZERO:
-                return
+                return True
 
     def close(self) -> None:
         _require(self._kernel32.CloseHandle(self._job), "CloseHandle(job)")
