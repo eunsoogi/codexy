@@ -21,6 +21,11 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
     let fixture = Fixture::new()?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
     assert_eq!(
+        fixture.cargo_invocations()?,
+        0,
+        "the verifier must use the injected prebuilt sync binary instead of cargo",
+    );
+    assert_eq!(
         fixture.external_activation_process_invocations(),
         1,
         "real matrix must retain only the successful verifier activation process",
@@ -43,6 +48,7 @@ struct Fixture {
     repo: PathBuf,
     receipt: PathBuf,
     bin: PathBuf,
+    command_trace: PathBuf,
     runner: PathBuf,
     external_activation_process_invocations: Cell<usize>,
 }
@@ -99,18 +105,23 @@ impl Fixture {
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;
         write_posix_fixture_command(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;
+        write_posix_fixture_command(&bin.join("cargo"), "#!/bin/sh\nexit 97\n")?;
+        let command_trace = temp.path().join("command-trace");
         let runner = shell_runner::write_activation_verifier_runner(temp.path())?;
         Ok(Self {
             _temp: temp,
             repo,
             receipt,
             bin,
+            command_trace,
             runner,
             external_activation_process_invocations,
         })
     }
 
     fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        let mut path = vec![self.bin.clone()];
+        path.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
         let mut command = FixtureCommand::new(&self.runner);
         command
             .args(["activation", base, version])
@@ -123,10 +134,16 @@ impl Fixture {
                 self.repo.join("scripts/verify-runtime-activation-branch"),
             )
             .env_path("CODEXY_FIXTURE_GH", self.bin.join("gh"))
+            .env_path("CODEXY_FIXTURE_COMMAND_TRACE", &self.command_trace)
             .env_path(
                 "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),
-            );
+            )
+            .env_path(
+                "CODEXY_TEST_SYNC_VERSION_BINARY",
+                env!("CARGO_BIN_EXE_codexy-sync-version"),
+            )
+            .env_path_list("PATH", path);
         let output = command.output()?;
         self.record_external_activation_process_invocation();
         Ok(output)
@@ -134,6 +151,14 @@ impl Fixture {
 
     fn external_activation_process_invocations(&self) -> usize {
         self.external_activation_process_invocations.get()
+    }
+
+    fn cargo_invocations(&self) -> Result<usize, Box<dyn std::error::Error>> {
+        match fs::read_to_string(&self.command_trace) {
+            Ok(trace) => Ok(trace.lines().filter(|command| *command == "cargo").count()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(0),
+            Err(error) => Err(error.into()),
+        }
     }
 
     fn record_external_activation_process_invocation(&self) {

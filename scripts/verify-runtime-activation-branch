@@ -49,7 +49,21 @@ test -f "$sync_version" && test ! -L "$sync_version" && test -x "$sync_version" 
   printf '%s\n' "verified base is missing its version-selection contract" >&2
   exit 1
 }
-"$sync_version" --version "$bootstrap_version"
+if test -n "${CODEXY_TEST_SYNC_VERSION_BINARY:-}"; then
+  test "${CODEXY_TEST_MODE:-}" = 1 || {
+    printf '%s\n' "test sync-version binary requires CODEXY_TEST_MODE=1" >&2
+    exit 1
+  }
+  test -f "$CODEXY_TEST_SYNC_VERSION_BINARY" && \
+    test ! -L "$CODEXY_TEST_SYNC_VERSION_BINARY" && \
+    test -x "$CODEXY_TEST_SYNC_VERSION_BINARY" || {
+    printf '%s\n' "test sync-version binary must be a regular executable" >&2
+    exit 1
+  }
+  CODEXY_REPO_ROOT="$expected_root" "$CODEXY_TEST_SYNC_VERSION_BINARY" --version "$bootstrap_version"
+else
+  "$sync_version" --version "$bootstrap_version"
+fi
 for path in $expected; do
   test -f "$path" && test ! -L "$path"
   test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
