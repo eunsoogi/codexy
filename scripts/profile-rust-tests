@@ -14,6 +14,7 @@ import time
 from collections import Counter
 from pathlib import Path
 from profile_rust_accounting import listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_windows_launcher import launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
 BUDGET_SECONDS = 180.0
@@ -51,8 +52,6 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
                 flush_output()
                 return
             time.sleep(0.01)
-
-
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
@@ -63,9 +62,10 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
         first_line: list[bytes] = []
         with capture_path.open("wb", buffering=0) as capture:
             job = WindowsJob() if os.name == "nt" else None
-            process = subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
-            if job is not None:
-                job.assign(process)
+            process = (
+                subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
+                if job is None else launch_windows_workload(job, root, capture, WORKLOAD)
+            )
             observer = threading.Thread(
                 target=observe_first_line,
                 args=(capture_path, process, first_line),

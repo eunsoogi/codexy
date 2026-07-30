@@ -25,6 +25,10 @@ mod output_batching;
 #[path = "profile_rust_tests/windows_capture_lifecycle.rs"]
 mod windows_capture_lifecycle;
 
+#[cfg(any(unix, windows))]
+#[path = "profile_rust_tests/windows_atomic_assignment.rs"]
+mod windows_atomic_assignment;
+
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_accounting.rs"]
 mod windows_accounting;
