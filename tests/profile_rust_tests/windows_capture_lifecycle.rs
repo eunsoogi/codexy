@@ -165,6 +165,7 @@ module = runpy.run_path(script)
 directory = pathlib.Path(tempfile.mkdtemp())
 pid_file = directory / "writer.pid"
 waits = []
+clock_tolerance = .001
 hold_root, return_status = [False], [0]
 parent = "import pathlib,subprocess,sys; sys.stdout.buffer.write(b'first\\r\\n\\xce\\xbc-tail\\r\\n'); sys.stdout.buffer.flush(); sys.stdin.buffer.read(1); p=subprocess.Popen([sys.executable,'-c','import sys; sys.stdin.buffer.read(1)'], stdout=sys.stdout.buffer, stderr=sys.stdout.buffer, close_fds=False); pathlib.Path(sys.argv[1]).write_text(str(p.pid))"
 
@@ -236,7 +237,7 @@ def observed(result, status, active_zero, root_status):
     output, _elapsed, actual_status, phases = result
     pids, images = json.loads(phases.get("windows-job-pids-json", "null")), json.loads(phases.get("windows-job-images-json", "null"))
     return output == "first\r\nμ-tail\r\n" and actual_status == status and phases.get("windows-job-active-zero") == active_zero and phases.get("cargo-root-status") == root_status and pids and isinstance(images, list) and all(any(image.get("pid") == pid for image in images) for pid in pids) and all(0 <= phases.get(phase, -1) < 10 for phase in ("workload-seconds", "capture-seconds", "replay-seconds"))
-if not observed(timeout, 0, "drained", "0") or not observed(success, 0, "drained", "0") or not observed(running, 124, "deadline", "running") or not observed(nonzero, 7, "drained", "7") or not all(0 < timeout <= budget and status == expected for (timeout, status), budget, expected in zip(waits, (.1, 1, .1, .1), (0, 0, "timeout", 7))):
+if not observed(timeout, 0, "drained", "0") or not observed(success, 0, "drained", "0") or not observed(running, 124, "deadline", "running") or not observed(nonzero, 7, "drained", "7") or not all(0 < timeout <= budget + clock_tolerance and status == expected for (timeout, status), budget, expected in zip(waits, (.1, 1, .1, .1), (0, 0, "timeout", 7))):
     raise SystemExit(f"timeout={timeout!r} success={success!r} running={running!r} nonzero={nonzero!r} waits={waits!r}")
 "#;
     let output = Command::new("python")
