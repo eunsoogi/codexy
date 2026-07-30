@@ -116,6 +116,7 @@ def fake_workload(_root, _budget):
         "cargo-root-status": "0" if mode[0] == 0 else "running",
         "windows-job-pids-json": "[]",
         "windows-job-images-json": "[]",
+        "linux-cargo-descendants-json": "not-applicable",
         "workload-seconds": 0.6,
         "capture-seconds": 0.2,
         "replay-seconds": 0.1,
@@ -184,6 +185,7 @@ main_globals["run_workload"] = lambda *_args: (
         "cargo-root-status": "running",
         "windows-job-pids-json": "[]",
         "windows-job-images-json": "[]",
+        "linux-cargo-descendants-json": '[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]',
         "workload-seconds": 1.0,
         "capture-seconds": 0.0,
         "replay-seconds": 0.0,
@@ -202,8 +204,11 @@ for line in stream.getvalue().splitlines():
     fields.setdefault(key, []).append(values)
 expected = {
     "deadline-last-running-target": [["suite_all"]],
+    "deadline-terminal-target": [["not-observed"]],
+    "deadline-next-target-not-started": [["suite_archive"]],
     "deadline-active-test": [["suite_all::system::still_running"]],
     "deadline-last-completed-test": [["suite_all::system::last_completed"]],
+    "deadline-linux-cargo-descendants-json": [['[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]']],
 }
 if status != 124 or any(fields.get(key) != value for key, value in expected.items()):
     raise SystemExit(f"status={status!r} fields={fields!r}")

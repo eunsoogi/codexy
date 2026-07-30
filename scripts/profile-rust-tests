@@ -13,7 +13,7 @@ import threading
 import time
 from collections import Counter
 from pathlib import Path
-from profile_rust_accounting import deadline_report_lines, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_windows_launcher import launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
@@ -24,14 +24,6 @@ REQUIRED_JOB_TIMEOUT_MINUTES = 4
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 RESULT_PATTERN = re.compile(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out")
-def archive_fixture_nested_cargo_build_count(root: Path) -> int:
-    helper = root / "tests/support/release_archive.rs"
-    try:
-        source = helper.read_text()
-    except OSError as error:
-        sys.stderr.write(f"archive fixture helper is unreadable: {error}\n")
-        raise SystemExit(1) from None
-    return source.count('Command::new("cargo")')
 def replay_output(output: bytes) -> bool:
     binary = getattr(sys.stdout, "buffer", None)
     if binary is None:
@@ -55,7 +47,7 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
 def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
-    phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json"), "not-applicable")}
+    phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json", "linux-cargo-descendants-json"), "not-applicable")}
     with tempfile.TemporaryDirectory(prefix="codexy-profile-") as directory:
         capture_path = Path(directory) / "cargo-output"
         capture_path.touch(mode=0o600)
@@ -92,6 +84,8 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
                             phases["windows-job-active-zero"] = "drained"
                             job.terminate_and_wait()
             except subprocess.TimeoutExpired:
+                if sys.platform.startswith("linux"):
+                    phases["linux-cargo-descendants-json"] = json.dumps(linux_cargo_descendants_snapshot(process.pid), sort_keys=True)
                 stop_workload(process, job)
                 status = 124
             except KeyboardInterrupt:
@@ -206,7 +200,9 @@ def main() -> int:
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}")
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")
-    if status == 124: print(*deadline_report_lines(output), sep="\n")
+    if status == 124:
+        manifest = __import__("tomllib").loads((root / "Cargo.toml").read_text())
+        print(*deadline_report_lines(output, declared_test_target_order(manifest)), f"deadline-linux-cargo-descendants-json\t{phases['linux-cargo-descendants-json']}", sep="\n")
     for phase in ("workload", "capture", "replay", "inventory", "accounting"):
         print(f"phase-{phase}-seconds\t{phases[f'{phase}-seconds']:.3f}")
     print(f"compile-seconds\t{compile_seconds:.3f}")
