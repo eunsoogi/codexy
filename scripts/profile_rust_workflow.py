@@ -11,9 +11,9 @@ from profile_rust_shell import invocation_count
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
-WINDOWS_TOOLCHAIN_BOOTSTRAP = "rustup toolchain install"
-WINDOWS_REGISTRY_PREFETCH = "cargo fetch --locked"
-WINDOWS_PREPARATION = f"{WINDOWS_TOOLCHAIN_BOOTSTRAP}\n{WINDOWS_REGISTRY_PREFETCH}"
+WINDOWS_PREPARATION = "\n".join(
+    ("rustup toolchain install", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", "cargo fetch --locked", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }")
+)
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20
 WorkflowStep = tuple[str, frozenset[str]]

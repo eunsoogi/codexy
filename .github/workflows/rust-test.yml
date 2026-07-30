@@ -45,7 +45,9 @@ jobs:
         shell: pwsh
         run: |
           rustup toolchain install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Enforce exact full Rust workload and coverage
         run: python scripts/profile-rust-tests --windows
