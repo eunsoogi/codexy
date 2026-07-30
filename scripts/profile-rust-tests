@@ -13,7 +13,7 @@ import threading
 import time
 from collections import Counter
 from pathlib import Path
-from profile_rust_accounting import listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_accounting import deadline_report_lines, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_windows_launcher import launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
@@ -206,6 +206,7 @@ def main() -> int:
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}")
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")
+    if status == 124: print(*deadline_report_lines(output), sep="\n")
     for phase in ("workload", "capture", "replay", "inventory", "accounting"):
         print(f"phase-{phase}-seconds\t{phases[f'{phase}-seconds']:.3f}")
     print(f"compile-seconds\t{compile_seconds:.3f}")
