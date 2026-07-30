@@ -87,11 +87,11 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
 
 
 def block_scalar_command(style: str, lines: list[str]) -> str:
-    if style == "|":
-        return "\n".join(lines)
     content_indentation = min(
-        len(line) - len(line.lstrip(" ")) for line in lines if line.strip()
+        (len(line) - len(line.lstrip(" ")) for line in lines if line.strip()), default=0
     )
+    if style == "|":
+        return "\n".join(line[content_indentation:] if line.strip() else "" for line in lines)
     paragraphs: list[list[str]] = []
     paragraph: list[str] = []
     for line in lines:
@@ -106,7 +106,7 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
         paragraph.append(line)
     if paragraph:
         paragraphs.append(paragraph)
-    return "\n".join(" ".join(lines) for lines in paragraphs)
+    return "\n".join(" ".join(line[content_indentation:] for line in lines) for lines in paragraphs)
 
 
 def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
@@ -166,7 +166,7 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
                 step_keys.add(step_entry[0].casefold())
             command = step_run_command(line)
             if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = indentation + 2, command[0], []
+                block_run = indentation, command[0], []
             elif command is not None:
                 step_command = command
     if block_run is not None:

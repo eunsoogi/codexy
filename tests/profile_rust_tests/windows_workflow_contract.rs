@@ -6,6 +6,7 @@ const RUST_JOB: &str =
     "    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n";
 const WINDOWS_STEPS: &str =
     "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: rustup toolchain install\n      - run: python scripts/profile-rust-tests --windows\n";
+const NESTED_BLOCK_STEPS: &str = "      - name: Archive prerequisite\n        run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n\n        # The parser keeps step metadata separate from the run scalar.\n        run: |\n          rustup toolchain install\n      - name: Profile\n        run: >\n          python scripts/profile-rust-tests --windows\n";
 
 fn workflow(rust_job: &str, windows_runner: &str, timeout: u8, steps: &str) -> String {
     format!(
@@ -92,6 +93,38 @@ fn gate_rejects_a_windows_profile_without_prior_toolchain_bootstrap(
     )?;
 
     assert!(!fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_accepts_required_windows_runs_in_nested_block_scalars(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(
+        &fixture.workflow,
+        workflow(RUST_JOB, "windows-latest", 20, NESTED_BLOCK_STEPS),
+    )?;
+
+    assert!(fixture.run(&[])?.status.success());
+    Ok(())
+}
+
+#[test]
+fn gate_rejects_empty_or_misaligned_folded_runs_without_parser_errors(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    for bootstrap in ["        run: >\n", "        run: >\n        rustup toolchain install\n"] {
+        let steps = format!(
+            "      - run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n{bootstrap}      - run: python scripts/profile-rust-tests --windows\n"
+        );
+        std::fs::write(
+            &fixture.workflow,
+            workflow(RUST_JOB, "windows-latest", 20, &steps),
+        )?;
+        let output = fixture.run(&[])?;
+        assert!(!output.status.success());
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("ValueError"));
+    }
     Ok(())
 }
 
