@@ -88,7 +88,7 @@ def measure(chunks):
     original_stdout = sys.stdout
     sys.stdout = recorder
     try:
-        output, _elapsed, status = module["run_workload"](None, 1.0)
+        output, _elapsed, status, _phases = module["run_workload"](None, 1.0)
     finally:
         sys.stdout = original_stdout
     return (
