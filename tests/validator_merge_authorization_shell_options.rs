@@ -41,3 +41,22 @@ fn policy_allows_generic_long_option_wrapper_and_delimiter_controls() -> Result<
     }
     Ok(())
 }
+
+#[test]
+fn policy_checks_init_file_operands_before_a_shell_command() -> Result<(), Box<dyn std::error::Error>> {
+    for route in [
+        r#"bash --init-file /dev/null -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash --init-file -c 'gh pr merge "$pr_number" --squash'"#,
+        r#"bash --init-file --noprofile -c 'gh pr merge "$pr_number" --squash'"#,
+    ] {
+        assert!(policy_errors(route)?.iter().any(|error| error.contains("before mutation")), "{route}");
+    }
+    for route in [
+        r#"bash --init-file /dev/null -c 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
+        r#"bash --init-file --noprofile -c 'plugins/codexy/hooks/codexy-authorized-squash-merge.sh --expected-pr "$pr_number"'"#,
+        r#"bash --init-file /dev/null -- -c 'gh pr merge "$pr_number" --squash'"#,
+    ] {
+        assert!(policy_errors(route)?.is_empty(), "{route}");
+    }
+    Ok(())
+}
