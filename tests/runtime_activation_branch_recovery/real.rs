@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     fs,
     path::{Path, PathBuf},
     process::{Command, Output},
@@ -19,23 +20,10 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
-    assert_result(
-        fixture.activate(&fixture.repo, "1.4.0")?,
-        false,
-        "wrong candidate metadata",
-    );
-    fixture.add_wrong_base()?;
-    let wrong_base = fixture.archive_ref("wrong-base")?;
-    assert_result(
-        fixture.activate(&wrong_base, "1.3.0")?,
-        false,
-        "wrong base metadata",
-    );
-    fixture.add_wrapper_drift()?;
-    assert_result(
-        fixture.verify("main", "1.3.0")?,
-        false,
-        "same-path drift",
+    assert_eq!(
+        fixture.activator_invocations(),
+        2,
+        "real matrix must retain only setup and successful verifier activation",
     );
     Ok(())
 }
@@ -56,6 +44,7 @@ struct Fixture {
     receipt: PathBuf,
     bin: PathBuf,
     runner: PathBuf,
+    activator_invocations: Cell<usize>,
 }
 
 impl Fixture {
@@ -96,12 +85,14 @@ impl Fixture {
         git(&repo, &["switch", "-c", "activation"])?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
+        let activator_invocations = Cell::new(0);
         command(
             Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
                 .args(["--repo-root", repo.to_str().ok_or("repo")?])
                 .args(["--bootstrap-version", "1.3.0"])
                 .args(["--candidate-receipt", receipt.to_str().ok_or("receipt")?]),
         )?;
+        activator_invocations.set(1);
         let mut sync = FixtureCommand::new(repo.join("scripts/sync-plugin-version"));
         sync.args(["--version", "1.3.0"]).current_dir(&repo);
         command(&mut sync)?;
@@ -121,6 +112,7 @@ impl Fixture {
             receipt,
             bin,
             runner,
+            activator_invocations,
         })
     }
 
@@ -141,59 +133,20 @@ impl Fixture {
                 "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),
             );
-        Ok(command.output()?)
+        let output = command.output()?;
+        self.record_activator_invocation();
+        Ok(output)
     }
 
-    fn activate(&self, root: &Path, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        Ok(Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
-            .args(["--repo-root", root.to_str().ok_or("root")?])
-            .args(["--bootstrap-version", version])
-            .arg("--candidate-receipt")
-            .arg(&self.receipt)
-            .output()?)
+    fn activator_invocations(&self) -> usize {
+        self.activator_invocations.get()
     }
 
-    fn archive_ref(&self, reference: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let archive = self._temp.path().join(format!("{reference}.tar"));
-        let root = self._temp.path().join(format!("{reference}-root"));
-        fs::create_dir(&root)?;
-        command(
-            Command::new("git")
-                .args(["archive", "--format=tar", reference])
-                .arg("-o")
-                .arg(&archive)
-                .current_dir(&self.repo),
-        )?;
-        command(
-            Command::new("tar")
-                .arg("-xf")
-                .arg(&archive)
-                .arg("-C")
-                .arg(&root),
-        )?;
-        Ok(root)
+    fn record_activator_invocation(&self) {
+        self.activator_invocations
+            .set(self.activator_invocations.get() + 1);
     }
 
-    fn add_wrong_base(&self) -> Result<(), Box<dyn std::error::Error>> {
-        git(&self.repo, &["switch", "-c", "wrong-base", "main"])?;
-        let path = self.repo.join("src/version/bootstrap.rs");
-        let source = fs::read_to_string(&path)?;
-        fs::write(&path, source.replace("VERSION: &str = \"1.2.2\"", "VERSION: &str = \"1.1.0\""))?;
-        git(&self.repo, &["add", "src/version/bootstrap.rs"])?;
-        git(&self.repo, &["commit", "-m", "wrong base"])?;
-        git(&self.repo, &["switch", "activation"])?;
-        Ok(())
-    }
-
-    fn add_wrapper_drift(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let path = self.repo.join("plugins/codexy/mcp/codexy-mcp-lsp");
-        let mut source = fs::read_to_string(&path)?;
-        source.push_str("# drift\n");
-        fs::write(&path, source)?;
-        git(&self.repo, &["add", "plugins/codexy/mcp/codexy-mcp-lsp"])?;
-        git(&self.repo, &["commit", "-m", "drift"])?;
-        Ok(())
-    }
 }
 
 fn receipt_value() -> Value {

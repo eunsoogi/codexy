@@ -76,34 +76,36 @@ fn activation_updates_the_complete_selected_identity_transaction() -> Result<()>
 #[test]
 fn selected_bootstrap_cannot_activate_a_candidate() -> Result<()> {
     let fixture = Fixture::new()?;
-    let before = fixture.tracked()?;
-    assert!(activate(&fixture.root, "1.2.2", &fixture.receipt).is_err());
-    assert_eq!(fixture.tracked()?, before);
-    Ok(())
+    assert_activation_rejected_without_mutation(&fixture, "1.2.2")
+}
+
+#[test]
+fn stale_selected_bootstrap_metadata_cannot_activate_and_leaves_targets_byte_identical()
+-> Result<()> {
+    let fixture = Fixture::new()?;
+    fs::write(
+        fixture.bootstrap(),
+        "pub(super) const VERSION: &str = \"1.1.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+    )?;
+    assert_activation_rejected_without_mutation(&fixture, "1.3.0")
 }
 
 #[test]
 fn mismatched_candidate_digest_leaves_targets_byte_identical() -> Result<()> {
     let fixture = Fixture::new()?;
-    let before = fixture.tracked()?;
     let mut receipt = receipt_value();
     receipt["artifact"]["payloadManifestSha256"] = json!("0".repeat(64));
     fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
-    assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
-    assert_eq!(fixture.tracked()?, before);
-    Ok(())
+    assert_activation_rejected_without_mutation(&fixture, "1.3.0")
 }
 
 #[test]
 fn mismatched_staging_run_attempt_leaves_targets_byte_identical() -> Result<()> {
     let fixture = Fixture::new()?;
-    let before = fixture.tracked()?;
     let mut receipt = receipt_value();
     receipt["candidate"]["artifact"]["stagingRunAttempt"] = json!(2);
     fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
-    assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
-    assert_eq!(fixture.tracked()?, before);
-    Ok(())
+    assert_activation_rejected_without_mutation(&fixture, "1.3.0")
 }
 
 #[test]
@@ -113,10 +115,7 @@ fn mismatched_selected_publish_identity_leaves_targets_byte_identical() -> Resul
         fixture.publish(),
         r#"{"bootstrap":{"selectedVersion":"1.2.1"},"runtime":{"selectedTag":"v1.2.2"}}"#,
     )?;
-    let before = fixture.tracked()?;
-    assert!(activate(&fixture.root, "1.3.0", &fixture.receipt).is_err());
-    assert_eq!(fixture.tracked()?, before);
-    Ok(())
+    assert_activation_rejected_without_mutation(&fixture, "1.3.0")
 }
 
 #[test]
@@ -125,6 +124,13 @@ fn injected_staging_failure_leaves_targets_byte_identical() -> Result<()> {
     let before = fixture.tracked()?;
     let updates = prepare(&fixture.root, "1.3.0", &fixture.receipt)?;
     assert!(apply_with(&updates, |_| bail!("injected staging failure")).is_err());
+    assert_eq!(fixture.tracked()?, before);
+    Ok(())
+}
+
+fn assert_activation_rejected_without_mutation(fixture: &Fixture, version: &str) -> Result<()> {
+    let before = fixture.tracked()?;
+    assert!(activate(&fixture.root, version, &fixture.receipt).is_err());
     assert_eq!(fixture.tracked()?, before);
     Ok(())
 }
