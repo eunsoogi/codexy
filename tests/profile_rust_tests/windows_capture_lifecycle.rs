@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import types
+import io
 
 locked = [False]
 parents = []
@@ -73,10 +74,44 @@ module["run_workload"].__globals__["time"] = types.SimpleNamespace(monotonic=lam
 timeout = module["run_workload"](None, 1.0)
 mode[0] = "success"
 success = module["run_workload"](None, 1.0)
-if timeout != ("", 1.0, 124) or success != ("", 0.0, 7) or locked[0] or len(jobs) != 2:
+if timeout[:3] != ("", 1.0, 124) or success[:3] != ("", 0.0, 7) or locked[0] or len(jobs) != 2:
     raise SystemExit(f"timeout={timeout!r} success={success!r} locked={locked[0]!r} jobs={jobs!r}")
 if [job.deadline for job in jobs] != [11.0, 11.0] or parents[0].waits or parents[1].waits != [None] or not jobs[0].assigned or not jobs[0].terminated or not jobs[1].assigned or jobs[1].terminated:
     raise SystemExit(f"jobs={jobs!r}")
+if timeout[3]["windows-job-active-zero"] != "deadline" or success[3]["windows-job-active-zero"] != "completed":
+    raise SystemExit(f"timeout={timeout!r} success={success!r}")
+
+main_globals = module["main"].__globals__
+main_globals["enforce_workflow_contract"] = lambda *_args: None
+main_globals["archive_fixture_nested_cargo_build_count"] = lambda _root: 0
+main_globals["observed_test_outcomes"] = lambda _output: {"ok": 1802, "FAILED": 0, "ignored": 0}
+def fake_workload(_root, _budget):
+    return "test result: ok. 1802 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out", 1.0, mode[0], {
+        "windows-job-active-zero": "completed" if mode[0] == 0 else "deadline",
+        "workload-seconds": 0.6,
+        "capture-seconds": 0.2,
+        "replay-seconds": 0.1,
+    }
+main_globals["run_workload"] = fake_workload
+def report(status):
+    mode[0] = status
+    stream, saved, saved_argv = io.StringIO(), sys.stdout, sys.argv
+    sys.stdout = stream
+    sys.argv = [str(script)]
+    try:
+        result = module["main"]()
+    finally:
+        sys.stdout, sys.argv = saved, saved_argv
+    return result, stream.getvalue()
+passed, passed_output = report(0)
+deadline, deadline_output = report(124)
+for output, status, active_zero, result in [(passed_output, 0, "completed", "PASS"), (deadline_output, 124, "deadline", "FAIL")]:
+    required = {f"child-status\t{status}", f"windows-job-active-zero\t{active_zero}", "phase-workload-seconds\t0.600", "phase-capture-seconds\t0.200", "phase-replay-seconds\t0.100", "phase-inventory-seconds\t0.000", f"result\t{result}"}
+    lines = set(output.splitlines())
+    if not required <= lines or not any(line.startswith("phase-accounting-seconds\t") for line in lines):
+        raise SystemExit(f"output={output!r}")
+if passed != 0 or deadline != 124:
+    raise SystemExit(f"passed={passed!r} deadline={deadline!r}")
 "#;
     let output = Command::new("python3")
         .args(["-c", probe])

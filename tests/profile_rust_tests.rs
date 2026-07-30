@@ -76,7 +76,7 @@ fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
     std::fs::create_dir(&clock)?;
     std::fs::write(
         clock.join("sitecustomize.py"),
-        "import time\n_values = iter((0.0, 0.0, 0.0, 196.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
+        "import time\n_values = iter((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 196.0, 196.0, 196.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
     )?;
     let output = fixture.run(&[("PYTHONPATH", clock.as_os_str())])?;
 
