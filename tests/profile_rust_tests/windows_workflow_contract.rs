@@ -185,10 +185,10 @@ fn gate_rejects_skipped_or_fail_open_required_windows_steps(
 }
 
 #[test]
-fn gate_rejects_windows_preparation_that_can_mask_native_failure(
+fn gate_rejects_windows_preparation_without_rustup_failure_propagation(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    let steps = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n      - run: python scripts/profile-rust-tests --windows\n";
+    let steps = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n";
     std::fs::write(&fixture.workflow, workflow(RUST_JOB, "windows-latest", 20, steps))?;
 
     assert!(!fixture.run(&[])?.status.success());
