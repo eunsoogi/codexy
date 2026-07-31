@@ -12,16 +12,18 @@ evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
 canonical_admission_suite="$checkout_root/tests/suites/all.rs"
 admission_suite="$evidence_root/tests/suites/all.rs"
 
+if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -r "$script_dir/archive-inspection-receipt.sh" ]; then . "$script_dir/archive-inspection-receipt.sh"; fi
+
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
-if command -v sha256sum >/dev/null 2>&1; then
-  digest_file() { sha256sum "$1" | awk '{print $1}'; }
-elif command -v shasum >/dev/null 2>&1; then
-  digest_file() { shasum -a 256 "$1" | awk '{print $1}'; }
-else
+for digest_command in sha256sum 'shasum -a 256'; do
+  command -v "${digest_command%% *}" >/dev/null 2>&1 && break
+done
+if ! command -v "${digest_command%% *}" >/dev/null 2>&1; then
   echo "sha256sum or shasum is required" >&2
   exit 127
 fi
+digest_file() { $digest_command "$1" | awk '{print $1}'; }
 response_checker="$script_dir/inspect-mcp-response"
 [ -x "$response_checker" ] || { echo "MCP response checker missing" >&2; exit 1; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
@@ -187,6 +189,7 @@ scan_grep_content() {
     -exec grep -a -Hn -E "$pattern" {} +
 }
 if command -v rg >/dev/null 2>&1; then
+  archive_inspection_receipt_marker "backend=rg" 2>/dev/null || :
   set +e
   scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
   hygiene_status=$?
@@ -194,6 +197,7 @@ if command -v rg >/dev/null 2>&1; then
   local_path_status=$?
   set -e
 else
+  archive_inspection_receipt_marker "backend=grep" 2>/dev/null || :
   command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"

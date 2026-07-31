@@ -1,5 +1,9 @@
 use std::ffi::{OsStr, OsString};
-use std::process::Command;
+use std::process::{Command, Output};
+
+#[path = "archive_inspection_receipt.rs"]
+mod archive_inspection_receipt;
+use archive_inspection_receipt as receipt;
 
 use super::fixture_command_windows::fixture_script_interpreter;
 #[cfg(windows)]
@@ -12,12 +16,12 @@ use super::{
     fixture_text::materialized_script_source,
 };
 
-/// A test-only command factory that preserves direct native execution and launches POSIX
-/// fixture scripts through `sh` on Windows.
+/// A test-only factory for native commands and POSIX fixture scripts on Windows.
 #[derive(Debug)]
 pub(crate) struct FixtureCommand {
     command: Command,
     uses_posix_paths: bool,
+    receipt: Option<receipt::ArchiveInspectorReceipt>,
 }
 
 impl FixtureCommand {
@@ -27,19 +31,16 @@ impl FixtureCommand {
         if let Some(command) = windows_static_python_command(std::path::Path::new(program))
             .unwrap_or_else(|error| panic!("{error}"))
         {
-            return Self::native(command);
+            return Self::from_command(command, false, program);
         }
         #[cfg(windows)]
         if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
-            return Self::native(Command::new(companion));
+            return Self::from_command(Command::new(companion), false, program);
         }
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let (command, uses_posix_paths) = materialized_script_command(program, &source)
                 .unwrap_or_else(|error| panic!("{error}"));
-            return Self {
-                command,
-                uses_posix_paths,
-            };
+            return Self::from_command(command, uses_posix_paths, program);
         }
         #[cfg(windows)]
         {
@@ -58,23 +59,30 @@ impl FixtureCommand {
                             program.to_owned()
                         };
                         command.arg(program);
-                        return Self {
-                            command,
-                            uses_posix_paths: uses_posix_path,
-                        };
+                        return Self::from_command(command, uses_posix_path, program);
                     }
                     Ok(None) => {}
                     Err(error) => panic!("{error}"),
                 }
             }
         }
-        Self::native(Command::new(program))
+        Self::from_command(Command::new(program), false, program)
     }
 
-    fn native(command: Command) -> Self {
+    fn from_command(mut command: Command, uses_posix_paths: bool, program: &OsStr) -> Self {
+        let receipt = receipt::configure_command(&mut command, program, |directory| {
+            if uses_posix_paths {
+                fixture_path_text(directory)
+                    .unwrap_or_else(|error| panic!("{error}"))
+                    .into()
+            } else {
+                directory.as_os_str().to_owned()
+            }
+        });
         Self {
             command,
-            uses_posix_paths: false,
+            uses_posix_paths,
+            receipt,
         }
     }
 
@@ -151,6 +159,10 @@ impl FixtureCommand {
         self.arg_path(path)
     }
 
+    pub(crate) fn output(&mut self) -> std::io::Result<Output> {
+        receipt::output(&mut self.command, self.receipt.as_ref())
+    }
+
     fn path_value(&self, value: &OsStr) -> OsString {
         if self.uses_posix_paths {
             fixture_path_text(value)
@@ -220,7 +232,11 @@ impl std::ops::DerefMut for FixtureCommand {
 
 impl From<Command> for FixtureCommand {
     fn from(command: Command) -> Self {
-        Self::native(command)
+        Self {
+            command,
+            uses_posix_paths: false,
+            receipt: None,
+        }
     }
 }
 

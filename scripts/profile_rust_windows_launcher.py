@@ -37,7 +37,8 @@ def _release(process: object) -> None:
 
 
 def launch_windows_workload(
-    job: object, root: Path, capture: object, workload: tuple[str, ...], spawn: object = None
+    job: object, root: Path, capture: object, workload: tuple[str, ...], spawn: object = None,
+    environment: dict[str, str] | None = None,
 ) -> object:
     import subprocess
 
@@ -45,7 +46,7 @@ def launch_windows_workload(
     spawn = spawn or subprocess.Popen
     try:
         process = spawn(
-            command, cwd=root, stdin=subprocess.PIPE, stdout=capture, stderr=subprocess.STDOUT
+            command, cwd=root, stdin=subprocess.PIPE, stdout=capture, stderr=subprocess.STDOUT, env=environment
         )
     except Exception as error:
         _raise_after(error, (job.close,))
