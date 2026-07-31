@@ -58,7 +58,7 @@ impl FixtureCommand {
                         } else {
                             program.to_owned()
                         };
-                        command.arg(program);
+                        command.arg(&program);
                         return Self::from_command(command, uses_posix_path, &program);
                     }
                     Ok(None) => {}
