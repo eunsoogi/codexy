@@ -1,14 +1,19 @@
 use std::path::Path;
 use std::process::Command;
 
+#[path = "archive_inspection_receipts.rs"]
+mod archive_inspection_receipts;
+
 #[test]
 fn windows_timeout_job_releases_writer_before_capture_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r#"
+import contextlib
 import pathlib
 import runpy
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -82,8 +87,16 @@ class WindowsJob:
 
 module["tempfile"].TemporaryDirectory = WindowsTemporaryDirectory
 module["subprocess"].Popen = spawn
-module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt")
+module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt", environ=os.environ)
 module["run_workload"].__globals__["WindowsJob"] = WindowsJob
+@contextlib.contextmanager
+def receipt_environment(root):
+    directory = pathlib.Path(root) / "archive-inspector-receipts"
+    directory.mkdir()
+    yield directory, os.environ.copy()
+
+
+module["run_workload"].__globals__["receipt_environment"] = receipt_environment
 def launch(job, _root, capture, _workload):
     process = spawn(stdout=capture)
     job.assign(process)

@@ -14,6 +14,7 @@ import time
 from collections import Counter
 from pathlib import Path
 from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_archive_accounting import emit_receipt_report, load_archive_inspection_receipts, rank_archive_inspection_receipts, receipt_environment
 from profile_rust_windows_launcher import launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
@@ -44,7 +45,7 @@ def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lin
                 flush_output()
                 return
             time.sleep(0.01)
-def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str]]:
+def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str | Path]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
     phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json", "linux-cargo-descendants-json"), "not-applicable")}
@@ -54,10 +55,11 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
         first_line: list[bytes] = []
         with capture_path.open("wb", buffering=0) as capture:
             job = WindowsJob() if os.name == "nt" else None
-            process = (
-                subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
-                if job is None else launch_windows_workload(job, root, capture, WORKLOAD)
-            )
+            with receipt_environment(Path(directory)) as (receipt_dir, environment):
+                if job is None:
+                    process = subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix", env=environment)
+                else:
+                    process = launch_windows_workload(job, root, capture, WORKLOAD)
             observer = threading.Thread(
                 target=observe_first_line,
                 args=(capture_path, process, first_line),
@@ -98,6 +100,7 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
                 observer.join()
                 del process
         output = capture_path.read_bytes()
+        phases["archive-inspector-receipt-dir"] = receipt_dir
     phases["workload-seconds"] = capture_started - started
     phases["capture-seconds"] = time.perf_counter() - capture_started
     live_output = first_line[0] if first_line else b""
@@ -198,6 +201,7 @@ def main() -> int:
         print(f"compiled-targets\t{len(expected_targets)}\t{'PASS' if target_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}")
+    emit_receipt_report(phases.get("archive-inspector-receipt-dir"))
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")
     if status == 124:
