@@ -59,7 +59,7 @@ impl FixtureCommand {
                             program.to_owned()
                         };
                         command.arg(program);
-                        return Self::from_command(command, uses_posix_path, program);
+                        return Self::from_command(command, uses_posix_path, &program);
                     }
                     Ok(None) => {}
                     Err(error) => panic!("{error}"),

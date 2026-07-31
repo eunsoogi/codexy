@@ -117,31 +117,10 @@ mkdir -p "$tmp_dir/source-check/tests/suites"
 cp "$admission_suite" "$tmp_dir/source-check/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
-if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
-  echo "archive contains a debug artifact" >&2
-  exit 1
-fi
-(cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
-diff -u "$tmp_dir/expected" "$tmp_dir/actual"
-(cd "$extract_root/plugins/codexy" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
-while IFS= read -r relative; do
-  case "$relative" in
-    runtime) ;;
-    runtime/*) echo "unexpected runtime directory: $relative" >&2; exit 1 ;;
-  esac
-done <"$tmp_dir/directories"
-
-python3 "$script_dir/check-release-archive-content" "$tmp_dir/expected" "$plugin_root" "$extract_root/plugins/codexy"
-
-if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
-  echo "archive contains an oversized file" >&2
-  exit 1
-fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 # A leading slash is an MSYS path-conversion candidate when this reaches native
 # rg.exe through Git Bash. The character class still matches only a slash.
 local_path_pattern='[\/](Users|home|tmp|private/var)/'
-scan_output="$tmp_dir/archive-scan-output"
 inventory="$extract_root/plugins/codexy/hooks/policy-inventory.json"
 set +e
 MSYS2_ENV_CONV_EXCL=LOCAL_PATH_PATTERN LOCAL_PATH_PATTERN="$local_path_pattern" python3 - "$inventory" <<'PY'
@@ -179,6 +158,27 @@ case "$inventory_path_status" in
   1) echo "archive contains a secret or local path" >&2; exit 1 ;;
   *) echo "archive policy inventory hygiene scan failed: status $inventory_path_status" >&2; exit 1 ;;
 esac
+if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
+  echo "archive contains a debug artifact" >&2
+  exit 1
+fi
+(cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
+diff -u "$tmp_dir/expected" "$tmp_dir/actual"
+(cd "$extract_root/plugins/codexy" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
+while IFS= read -r relative; do
+  case "$relative" in
+    runtime) ;;
+    runtime/*) echo "unexpected runtime directory: $relative" >&2; exit 1 ;;
+  esac
+done <"$tmp_dir/directories"
+
+python3 "$script_dir/check-release-archive-content" "$tmp_dir/expected" "$plugin_root" "$extract_root/plugins/codexy"
+
+if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
+  echo "archive contains an oversized file" >&2
+  exit 1
+fi
+scan_output="$tmp_dir/archive-scan-output"
 scan_archive_content() {
   "$@" >"$scan_output" 2>&1
 }

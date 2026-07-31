@@ -91,10 +91,19 @@ impl Fixture {
         git(&repo, &["switch", "-c", "activation"])?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
+        let bin = temp.path().join("bin");
+        fs::create_dir(&bin)?;
+        let command_trace = temp.path().join("command-trace");
+        write_posix_fixture_command(
+            &bin.join("cargo"),
+            "#!/bin/sh\nprintf 'cargo\\n' >> \"$CODEXY_FIXTURE_COMMAND_TRACE\"\nexit 97\n",
+        )?;
         let external_activation_process_invocations = Cell::new(0);
         codexy_runtime::version::activation::activate(&repo, "1.3.0", &receipt)?;
-        let mut sync = FixtureCommand::new(repo.join("scripts/sync-plugin-version"));
-        sync.args(["--version", "1.3.0"]).current_dir(&repo);
+        let mut sync = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"));
+        sync.args(["--version", "1.3.0"])
+            .current_dir(&repo)
+            .env("CODEXY_REPO_ROOT", &repo);
         command(&mut sync)?;
         git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
         git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
@@ -102,11 +111,7 @@ impl Fixture {
         git(&repo, &["add", "plugins/codexy/runtime-release.json", "src/version/bootstrap.rs"])?;
         git(&repo, &["add", "Cargo.toml", "Cargo.lock"])?;
         git(&repo, &["commit", "-m", "activation"])?;
-        let bin = temp.path().join("bin");
-        fs::create_dir(&bin)?;
         write_posix_fixture_command(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;
-        write_posix_fixture_command(&bin.join("cargo"), "#!/bin/sh\nexit 97\n")?;
-        let command_trace = temp.path().join("command-trace");
         let runner = shell_runner::write_activation_verifier_runner(temp.path())?;
         Ok(Self {
             _temp: temp,
