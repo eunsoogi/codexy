@@ -58,24 +58,43 @@ fn real_workload_renders_receipts_before_its_tempdir_is_deleted(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r#"
-import io, json, pathlib, runpy, sys
+import io, json, os, pathlib, runpy, sys, types
 script = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(script.parent))
 module = runpy.run_path(script)
 directories = []
+processes = []
+jobs = []
+class Control:
+    def __init__(self): self.writes, self.closed = [], False
+    def write(self, value): self.writes.append(value)
+    def flush(self): pass
+    def close(self): self.closed = True
 class Process:
     pid = 1
     def __init__(self, **kwargs):
+        self.stdin, self.killed = Control(), False
+        processes.append(self)
         directory = pathlib.Path(kwargs["env"]["CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR"])
         directories.append(directory)
         receipt = {"schema":"codexy.archive-inspector.receipt/v1","id":"real-1","test":"suite_archive::candidate","fixture":"candidate.tar.gz","backend":"rg","started_epoch_us":10,"ended_epoch_us":30,"duration_us":20,"inspector_outcome":"success","content_comparator_ran":True}
         (directory / "real-1.json").write_text(json.dumps(receipt), encoding="utf-8")
     def poll(self): return 0
     def wait(self, timeout): return 0
+    def kill(self): self.killed = True
+class WindowsJob:
+    def __init__(self): self.assigned, self.closed, self.terminated = None, False, False; jobs.append(self)
+    def assign(self, process): self.assigned = process
+    def diagnostics(self, process): return {"cargo-root-status": str(process.poll()), "windows-job-pids-json": "[]", "windows-job-images-json": "[]"}
+    def wait_for_empty_until(self, _deadline): return True
+    def terminate_and_wait(self): self.terminated = True
+    def close(self): self.closed = True
 module["subprocess"].Popen = lambda *_args, **kwargs: Process(**kwargs)
+module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt", environ=os.environ)
+module["run_workload"].__globals__["WindowsJob"] = WindowsJob
 _output, _elapsed, status, phases = module["run_workload"](pathlib.Path("."), 1.0)
-if status != 0 or len(directories) != 1 or directories[0].exists():
-    raise SystemExit(f"status={status!r} directories={directories!r}")
+if status != 0 or len(directories) != 1 or directories[0].exists() or len(jobs) != 1 or jobs[0].assigned is not processes[0] or not jobs[0].closed or jobs[0].terminated or processes[0].killed or processes[0].stdin.writes != [b"R"] or not processes[0].stdin.closed:
+    raise SystemExit(f"status={status!r} directories={directories!r} jobs={jobs!r} processes={processes!r}")
 stream, saved = io.StringIO(), sys.stdout
 sys.stdout = stream
 try:

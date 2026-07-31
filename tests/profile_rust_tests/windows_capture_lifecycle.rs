@@ -130,7 +130,7 @@ if forwarded.get("env", {}).get("CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR") != "C
     raise SystemExit(f"launcher env={forwarded!r}")
 child = real_popen((sys.executable, str(script.parent / "profile_rust_windows_launcher.py"), sys.executable, "-c", "import os; print(os.environ['CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR'])"), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={"CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR": "C:/receipts"})
 child_stdout, child_stderr = child.communicate(b"R")
-if child.returncode or child_stdout != b"C:/receipts\n":
+if child.returncode or child_stdout not in {b"C:/receipts\n", b"C:/receipts\r\n"} or child_stderr != b"":
     raise SystemExit(f"child={(child.returncode, child_stdout, child_stderr)!r}")
 
 main_globals = module["main"].__globals__

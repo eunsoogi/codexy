@@ -71,7 +71,7 @@ fn validate_identifier(value: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::ErrorKind;
+    use std::{io::ErrorKind, process::Command};
 
     use super::write_posix_fixture_shell_runner;
     use crate::support::{FixtureCommand, write_posix_fixture_command};
@@ -112,11 +112,12 @@ mod tests {
             let shell_script = temp.path().join(format!("shell-keyword-{index}"));
             write_posix_fixture_command(
                 &shell_script,
-                &format!("#!/bin/sh\n{identifier}() {{ :; }}\n"),
+                &format!("#!/bin/sh\n{identifier}() {{ :; }}\nexit 99\n"),
             )?;
-            let shell_accepts = FixtureCommand::new(&shell_script)
-                .output()?
-                .status
+            let shell_accepts = Command::new("sh")
+                .arg("-n")
+                .arg(&shell_script)
+                .status()?
                 .success();
             let runner = temp.path().join(format!("runner-keyword-{index}"));
             let runner_accepts = write_posix_fixture_shell_runner(
