@@ -49,6 +49,23 @@ fn windows_candidate_verifier_creates_its_fresh_extraction_directory() {
     assert!(root < reject_ambient && reject_ambient < create && create < extract, "candidate extraction root must be fresh before tar -C");
 }
 
+#[test]
+fn windows_candidate_verifier_uses_powershell_loop_syntax() {
+    let workflow = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".github/workflows/plugin-runtime-binaries.yml"),
+    )
+    .expect("read plugin runtime workflow");
+    let workflow: serde_yaml::Value = serde_yaml::from_str(&workflow).expect("runtime workflow YAML");
+    let verifier = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify immutable native Windows candidate bytes"))
+        .and_then(|step| step["run"].as_str())
+        .expect("native Windows verifier step");
+    assert!(!verifier.contains("for server in lsp codegraph; do"));
+    assert!(verifier.contains("foreach ($server in @(\"lsp\", \"codegraph\")) {"));
+}
+
 #[cfg(windows)]
 #[test]
 fn windows_candidate_verifier_rejects_an_ambient_extraction_root() {

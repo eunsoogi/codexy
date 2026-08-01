@@ -135,7 +135,7 @@ jobs:
           New-Item -ItemType Directory -Path $public -ErrorAction Stop | Out-Null
           & $windowsTar -xzf dist/codexy-marketplace-plugin.tar.gz -C $public
           if ($LASTEXITCODE -ne 0) { throw "native Windows public archive extraction failed" }
-          for server in lsp codegraph; do
+          foreach ($server in @("lsp", "codegraph")) {
             $runtime = Join-Path $public "plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe"
             $entrypoint = Join-Path $public "plugins/codexy/mcp/codexy-mcp-$server.exe"
             if ((Get-FileHash $runtime).Hash -ne (Get-FileHash $entrypoint).Hash) { throw "$server entrypoint differs from its runtime" }
