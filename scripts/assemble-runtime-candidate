@@ -181,6 +181,8 @@ for server in ("lsp", "codegraph"):
     shutil.copyfile(f"{root}/runtime/codexy-mcp-{server}-windows-x86_64.exe", f"{root}/mcp/codexy-mcp-{server}.exe")
 PY
 
+python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
+
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"

@@ -6,22 +6,21 @@ import sys
 from pathlib import Path
 
 PUBLIC_PLATFORMS = ["darwin-arm64", "linux-x86_64"]
-CANDIDATE_PLATFORMS = [*PUBLIC_PLATFORMS, "windows-x86_64"]
+SOURCE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64"'
+CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
 
 
-def projected_wrapper(text: str) -> str:
-    candidate = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
-    source = 'bundled_platforms="darwin-arm64 linux-x86_64"'
+def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> str:
     lines = text.splitlines(keepends=True)
-    declarations = wrapper_declarations(lines, candidate)
+    declarations = wrapper_declarations(lines, allowed)
     if len(declarations) != 1:
         raise SystemExit("candidate source projection requires three-platform wrappers")
     index = declarations[0]
-    lines[index] = lines[index].replace(candidate, source)
+    lines[index] = lines[index].replace(lines[index].rstrip("\r\n"), replacement)
     return "".join(lines)
 
 
-def wrapper_declarations(lines: list[str], candidate: str) -> list[int]:
+def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int]:
     declarations, heredocs, index = [], [], 0
     while index < len(lines):
         source = lines[index].rstrip("\r\n")
@@ -41,59 +40,75 @@ def wrapper_declarations(lines: list[str], candidate: str) -> list[int]:
                 heredocs.extend(heredoc_delimiters(source))
             except ValueError:
                 return []
-            if source == candidate and not continued:
+            if source in allowed and not continued:
                 declarations.append(index)
-            elif command_name(source) == "eval" or "bundled_platforms" in shell_code(source).replace("$bundled_platforms", ""):
+            elif has_platform_mutation(source):
                 return []
         index += 1
     return declarations if not heredocs else []
 
 
-def shell_code(source: str) -> str:
-    characters = list(source)
+def has_platform_mutation(source: str) -> bool:
+    for words in logical_commands(source):
+        command = 0
+        while command < len(words) and "=" in words[command]:
+            if words[command].split("=", 1)[0] == "bundled_platforms":
+                return True
+            command += 1
+        if command == len(words):
+            continue
+        name = words[command]
+        if name == "eval" or name in {"command", "builtin"} and "eval" in words[command + 1:]:
+            return True
+        if name in {"declare", "export", "local", "readonly", "typeset", "unset", "read"} and any(
+            word == "bundled_platforms" or word.startswith("bundled_platforms=") for word in words[command + 1:]
+        ):
+            return True
+        if any("${bundled_platforms:=" in word for word in words):
+            return True
+    return False
+
+
+def logical_commands(source: str) -> list[list[str]]:
+    commands, words, word = [], [], []
     quote = None
     index = 0
-    while index < len(characters):
-        character = characters[index]
-        if quote is not None:
-            characters[index] = " "
-            if character == "\\" and quote == '"' and index + 1 < len(characters):
-                index += 1
-                characters[index] = " "
-            elif character == quote:
-                quote = None
-        elif character in "'\"":
-            quote = character
-            characters[index] = " "
-        elif character == "#" and (index == 0 or source[index - 1].isspace() or source[index - 1] in ";|&()<>"):
-            characters[index:] = " " * (len(characters) - index)
-            break
-        index += 1
-    return "".join(characters)
-
-
-def command_name(source: str) -> str:
-    word, quote, index = [], None, 0
-    while index < len(source) and source[index].isspace():
-        index += 1
     while index < len(source):
         character = source[index]
         if quote is not None:
-            if character == quote:
+            if character == "\\" and quote == '"' and index + 1 < len(source):
+                index += 1
+                word.append(source[index])
+            elif character == quote:
                 quote = None
             else:
                 word.append(character)
         elif character in "'\"":
             quote = character
-        elif character.isspace() or character in ";|&()<>":
-            break
         elif character == "\\" and index + 1 < len(source):
             index += 1
             word.append(source[index])
+        elif character == "#" and not word:
+            break
+        elif character.isspace():
+            if word:
+                words.append("".join(word))
+                word = []
+        elif character in ";|&()<>":
+            if word:
+                words.append("".join(word))
+                word = []
+            if words:
+                commands.append(words)
+                words = []
         else:
             word.append(character)
         index += 1
-    return "".join(word)
+    if word:
+        words.append("".join(word))
+    if words:
+        commands.append(words)
+    return commands
 
 
 def continues_line(line: str) -> bool:
@@ -170,19 +185,24 @@ def source_projection(root: Path) -> None:
         raise SystemExit("candidate source projection requires runtime contracts")
     manifest_path = root / ".codex-plugin/plugin.json"
     manifest = json.loads(manifest_path.read_text())
-    if manifest.get("supportedPlatforms") != CANDIDATE_PLATFORMS:
+    if manifest.get("supportedPlatforms") != [*PUBLIC_PLATFORMS, "windows-x86_64"]:
         raise SystemExit("candidate source projection requires three-platform manifest")
     wrappers = []
     for server in ("lsp", "codegraph"):
         path = root / "mcp" / f"codexy-mcp-{server}"
-        text = path.read_text()
-        wrappers.append((path, projected_wrapper(text)))
-    for path in contracts:
-        path.unlink()
+        text = open(path, encoding="utf-8", newline="").read()
+        wrappers.append((path, rewritten_wrapper(text, (CANDIDATE_WRAPPER,), SOURCE_WRAPPER)))
+    for path in contracts: path.unlink()
     manifest["supportedPlatforms"] = PUBLIC_PLATFORMS
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    for path, text in wrappers:
-        path.write_text(text)
+    for path, text in wrappers: open(path, "w", encoding="utf-8", newline="").write(text)
+
+
+def candidate_assembly(root: Path) -> None:
+    for server in ("lsp", "codegraph"):
+        path = root / "mcp" / f"codexy-mcp-{server}"
+        text = open(path, encoding="utf-8", newline="").read()
+        open(path, "w", encoding="utf-8", newline="").write(rewritten_wrapper(text, (SOURCE_WRAPPER, CANDIDATE_WRAPPER), CANDIDATE_WRAPPER))
 
 
 def main() -> None:
@@ -203,8 +223,8 @@ def main() -> None:
             for server in ("lsp", "codegraph"):
                 print(f"runtime/codexy-mcp-{server}-{platform}.{extension}")
         return
-    if mode == "source-projection":
-        source_projection(root)
+    if mode in {"source-projection", "candidate-assembly"}:
+        {"source-projection": source_projection, "candidate-assembly": candidate_assembly}[mode](root)
         return
     if mode == "staged":
         release = json.loads((root / "runtime-release.json").read_text())

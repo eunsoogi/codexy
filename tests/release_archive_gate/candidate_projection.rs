@@ -33,11 +33,19 @@ fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_tex
         ("eval 'bundled_platforms=darwin-arm64'", false),
         ("\"eval\" 'bundled_platforms=darwin-arm64'", false),
         ("'eval' 'bundled_platforms=darwin-arm64'", false),
+        ("true && eval 'bundled_''platforms=darwin-arm64'", false),
+        ("eval 'bundled_''platforms=darwin-arm64' && true", false),
+        ("\"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "command \"ev\"\"al\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
         (
             "# bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
             true,
         ),
         ("printf '%s\\n' 'bundled_platforms=darwin-arm64'", true),
+        ("printf '%s\\n' 'bundled_''platforms=darwin-arm64'", true),
     ] {
         assert_eq!(projection(line).status.success(), succeeds, "{line}");
     }
