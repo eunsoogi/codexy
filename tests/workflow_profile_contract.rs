@@ -90,6 +90,9 @@ fn ordinary_list_boundaries_preserve_only_active_formal_triggers() -> TestResult
         ("document-start numeral-two fenced metadata stays inactive", "2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", true),
         ("document-start numeral-two plus metadata stays active", "2. + Task kind: security review", false),
         ("document-start numeral-two nested-one metadata stays active", "2. 1. Task kind: security review", false),
+        ("ATX predecessor numeral-two plus metadata stays active", "# Section\n2. + Task kind: security review\nWorkflow profile: light", false),
+        ("ATX predecessor numeral-two nested-one metadata stays active", "# Section\n2. 1. Task kind: security review\nWorkflow profile: light", false),
+        ("ATX predecessor numeral-two fenced metadata stays inactive", "# Section\n2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", true),
     ] {
         assert_profile_result(name, evidence, expected)?;
     }

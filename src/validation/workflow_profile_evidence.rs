@@ -29,7 +29,10 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
-        let block_boundary = lines.is_empty() || lines.last().is_some_and(String::is_empty);
+        let block_boundary = lines.is_empty()
+            || lines
+                .last()
+                .is_some_and(|line| line.is_empty() || atx_heading(line));
         if !state.comment {
             let line = markdown_block_prefix(raw, block_boundary);
             if let Some((marker, length, _tail)) = fence_marker(line) {
