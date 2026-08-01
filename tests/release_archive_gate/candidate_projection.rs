@@ -31,6 +31,8 @@ fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_tex
             false,
         ),
         ("eval 'bundled_platforms=darwin-arm64'", false),
+        ("\"eval\" 'bundled_platforms=darwin-arm64'", false),
+        ("'eval' 'bundled_platforms=darwin-arm64'", false),
         (
             "# bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
             true,

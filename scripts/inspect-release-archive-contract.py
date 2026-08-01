@@ -43,7 +43,7 @@ def wrapper_declarations(lines: list[str], candidate: str) -> list[int]:
                 return []
             if source == candidate and not continued:
                 declarations.append(index)
-            elif shell_code(source).lstrip().startswith("eval ") or "bundled_platforms" in shell_code(source).replace("$bundled_platforms", ""):
+            elif command_name(source) == "eval" or "bundled_platforms" in shell_code(source).replace("$bundled_platforms", ""):
                 return []
         index += 1
     return declarations if not heredocs else []
@@ -70,6 +70,30 @@ def shell_code(source: str) -> str:
             break
         index += 1
     return "".join(characters)
+
+
+def command_name(source: str) -> str:
+    word, quote, index = [], None, 0
+    while index < len(source) and source[index].isspace():
+        index += 1
+    while index < len(source):
+        character = source[index]
+        if quote is not None:
+            if character == quote:
+                quote = None
+            else:
+                word.append(character)
+        elif character in "'\"":
+            quote = character
+        elif character.isspace() or character in ";|&()<>":
+            break
+        elif character == "\\" and index + 1 < len(source):
+            index += 1
+            word.append(source[index])
+        else:
+            word.append(character)
+        index += 1
+    return "".join(word)
 
 
 def continues_line(line: str) -> bool:
