@@ -61,6 +61,24 @@ fn candidate_source_projection_rejects_mixed_windows_wrapper_declarations() {
 }
 
 #[test]
+fn candidate_source_projection_rejects_duplicate_or_overriding_declarations() {
+    for appended in [
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+    ] {
+        let root = tempdir().expect("candidate projection root");
+        let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
+        make_candidate_proven_windows_package(&plugin_root);
+        let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
+        let text = std::fs::read_to_string(&wrapper).expect("candidate wrapper");
+        std::fs::write(wrapper, format!("{text}\n{appended}\n")).expect("ambiguous wrapper");
+        let output = run_source_projection(&plugin_root);
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("three-platform wrappers"));
+    }
+}
+
+#[test]
 fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     let (root, plugin_root, archive) = complete_archive_fixture("candidate-runtime-path");
     make_candidate_proven_windows_package(&plugin_root);

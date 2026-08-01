@@ -1,8 +1,6 @@
+use super::wrapper_copy::is_generated_fixture_directory;
 #[allow(unused_imports)]
 use std::process::Command;
-
-use super::wrapper_copy::is_generated_fixture_directory;
-
 #[path = "release_archive/archive_entry.rs"]
 mod archive_entry;
 #[path = "release_archive/archive_evidence.rs"]
@@ -14,7 +12,6 @@ mod archive_evidence_tests;
 mod archive_process;
 #[allow(unused_imports)]
 pub(crate) use archive_process::{create_archive, create_archive_with_commands};
-
 pub(crate) fn inspect_archive(
     archive: &std::path::Path,
     plugin_root: &std::path::Path,
@@ -29,7 +26,6 @@ pub(crate) fn inspect_archive(
     }
     command.output()
 }
-
 pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
     let missing: Vec<_> = required
         .iter()
@@ -40,8 +36,6 @@ pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[
         "structured contract {rule_id} is missing required literals {missing:?}"
     );
 }
-
-#[allow(dead_code)]
 pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, checker: &str) {
     assert_structured_literals(
         script,
@@ -80,8 +74,6 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, check
         ],
     );
 }
-
-#[allow(dead_code)]
 pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector: &str) {
     let workflow: serde_yaml::Value =
         serde_yaml::from_str(workflow).expect("runtime workflow YAML");
@@ -96,8 +88,13 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
         job,
         "Assemble state-aware marketplace package without rebuilding",
     );
-    for exact_line in ["legacy-public)", "candidate-proven)"] {
-        assert!(workflow_lines(assembly).any(|line| line == exact_line));
+    for marker in ["legacy-public)", "candidate-proven)"] {
+        assert_eq!(
+            workflow_lines(assembly)
+                .filter(|line| *line == marker)
+                .count(),
+            1
+        );
     }
     let legacy = workflow_branch(assembly, "legacy-public)");
     for binary in [
@@ -106,7 +103,11 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
         "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin",
         "plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin",
     ] {
-        assert!(workflow_lines(legacy).any(|line| line.starts_with(binary)));
+        assert!(workflow_lines(legacy).any(|line| {
+            line.split_whitespace()
+                .next()
+                .is_some_and(|word| word.trim_end_matches(';') == binary)
+        }));
     }
     let candidate = workflow_branch(assembly, "candidate-proven)");
     for line in [
@@ -131,16 +132,24 @@ fn workflow_run<'a>(job: &'a serde_yaml::Value, name: &str) -> &'a str {
         .and_then(|step| step["run"].as_str())
         .expect("workflow step")
 }
-
 fn workflow_lines(run: &str) -> impl Iterator<Item = &str> {
     run.lines().map(str::trim).filter(|line| !line.is_empty())
 }
-
 fn workflow_branch<'a>(assembly: &'a str, marker: &str) -> &'a str {
-    assembly
-        .split(marker)
-        .nth(1)
-        .and_then(|case| case.split(";;").next())
+    let mut start = None;
+    let mut offset = 0;
+    for line in assembly.split_inclusive('\n') {
+        if line.trim() == marker {
+            assert!(
+                start.replace(offset + line.len()).is_none(),
+                "duplicate workflow package branch"
+            );
+        }
+        offset += line.len();
+    }
+    assembly[start.expect("workflow package branch")..]
+        .split(";;")
+        .next()
         .expect("workflow package branch")
 }
 pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
@@ -162,11 +171,7 @@ pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> s
     }
     Ok(())
 }
-
-pub(crate) fn make_executable(path: &std::path::Path) -> std::io::Result<()> {
-    crate::support::make_executable(path)
-}
-
+pub(crate) use crate::support::make_executable;
 pub(crate) fn governed_archive_mode(
     is_windows: bool,
     is_governed_wrapper: bool,
@@ -174,14 +179,12 @@ pub(crate) fn governed_archive_mode(
 ) -> Option<u32> {
     (is_windows && is_governed_wrapper).then_some(0o755)
 }
-
 #[test]
 fn windows_archive_fixture_forces_only_governed_shebang_wrappers_to_posix_0755() {
     assert_eq!(governed_archive_mode(true, true, 0o644), Some(0o755));
     assert_eq!(governed_archive_mode(true, false, 0o644), None);
     assert_eq!(governed_archive_mode(false, true, 0o644), None);
 }
-
 fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
     match (os, architecture) {
         ("macos", "aarch64") => Ok("darwin-arm64"),
@@ -192,7 +195,6 @@ fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'stat
         ))),
     }
 }
-
 #[test]
 fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
     assert_eq!(
@@ -201,19 +203,16 @@ fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
     );
     assert!(fixture_host_platform("plan9", "mips64").is_err());
 }
-
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
     complete_plugin_fixture_with_runtime(root, true)
 }
-
 pub(crate) fn complete_plugin_fixture_with_stubbed_runtime(
     root: &std::path::Path,
 ) -> std::io::Result<std::path::PathBuf> {
     complete_plugin_fixture_with_runtime(root, false)
 }
-
 fn complete_plugin_fixture_with_runtime(
     root: &std::path::Path,
     native_host_runtime: bool,

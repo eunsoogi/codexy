@@ -9,6 +9,18 @@ PUBLIC_PLATFORMS = ["darwin-arm64", "linux-x86_64"]
 CANDIDATE_PLATFORMS = [*PUBLIC_PLATFORMS, "windows-x86_64"]
 
 
+def projected_wrapper(text: str) -> str:
+    candidate = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
+    source = 'bundled_platforms="darwin-arm64 linux-x86_64"'
+    lines = text.splitlines(keepends=True)
+    declarations = [index for index, line in enumerate(lines) if line.lstrip().startswith("bundled_platforms=")]
+    if len(declarations) != 1 or lines[declarations[0]].strip() != candidate:
+        raise SystemExit("candidate source projection requires three-platform wrappers")
+    index = declarations[0]
+    lines[index] = lines[index].replace(candidate, source)
+    return "".join(lines)
+
+
 def source_projection(root: Path) -> None:
     contracts = [root / name for name in ("runtime-release.json", "runtime-candidate.json")]
     if not all(path.is_file() for path in contracts):
@@ -18,14 +30,10 @@ def source_projection(root: Path) -> None:
     if manifest.get("supportedPlatforms") != CANDIDATE_PLATFORMS:
         raise SystemExit("candidate source projection requires three-platform manifest")
     wrappers = []
-    candidate = "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\""
-    source = "bundled_platforms=\"darwin-arm64 linux-x86_64\""
     for server in ("lsp", "codegraph"):
         path = root / "mcp" / f"codexy-mcp-{server}"
         text = path.read_text()
-        if text.count(candidate) != 1:
-            raise SystemExit("candidate source projection requires three-platform wrappers")
-        wrappers.append((path, text.replace(candidate, source)))
+        wrappers.append((path, projected_wrapper(text)))
     for path in contracts:
         path.unlink()
     manifest["supportedPlatforms"] = PUBLIC_PLATFORMS
