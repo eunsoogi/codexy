@@ -30,7 +30,9 @@ def wrapper_declarations(lines: list[str], candidate: str) -> list[int]:
             if (source.lstrip("\t") if strip_tabs else source) == delimiter:
                 heredocs.pop(0)
         else:
+            continued = False
             while continues_line(source):
+                continued = True
                 index += 1
                 if index == len(lines):
                     return []
@@ -39,9 +41,9 @@ def wrapper_declarations(lines: list[str], candidate: str) -> list[int]:
                 heredocs.extend(heredoc_delimiters(source))
             except ValueError:
                 return []
-            if source == candidate:
+            if source == candidate and not continued:
                 declarations.append(index)
-            elif "bundled_platforms" in shell_code(source).replace("$bundled_platforms", ""):
+            elif shell_code(source).lstrip().startswith("eval ") or "bundled_platforms" in shell_code(source).replace("$bundled_platforms", ""):
                 return []
         index += 1
     return declarations if not heredocs else []
@@ -119,6 +121,8 @@ def heredoc_delimiters(line: str) -> list[tuple[str, bool]]:
             quoted = line[index:index + 1]
             if quoted in ("'", '"'):
                 end = line.find(quoted, index + 1)
+                if end < 0:
+                    raise ValueError("unterminated heredoc delimiter")
                 delimiter, index = line[index + 1:end], end + 1
             else:
                 end = index

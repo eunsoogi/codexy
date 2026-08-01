@@ -34,66 +34,6 @@ fn archive_gate_rejects_a_candidate_windows_entrypoint_with_wrong_identity() {
     assert!(!output.status.success());
 }
 #[test]
-fn candidate_source_projection_rejects_mixed_windows_wrapper_declarations() {
-    let root = tempdir().expect("candidate projection root");
-    let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
-    make_candidate_proven_windows_package(&plugin_root);
-    let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
-    let text = std::fs::read_to_string(&wrapper)
-        .expect("candidate wrapper")
-        .replace(
-            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
-        );
-    std::fs::write(wrapper, text).expect("mixed candidate wrapper");
-    let output = run_source_projection(&plugin_root);
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("candidate source projection requires three-platform wrappers")
-    );
-}
-#[test]
-fn candidate_source_projection_rejects_effective_declarations_and_ignores_inert_text() {
-    for (appended, succeeds) in [
-        (
-            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        ("bundled_platforms=\"darwin-arm64 linux-x86_64\"", false),
-        (
-            "export bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        (
-            ":; bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        (
-            "# bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            true,
-        ),
-        (
-            "printf '%s\\n' 'bundled_platforms=darwin-arm64 linux-x86_64 windows-x86_64'",
-            true,
-        ),
-    ] {
-        let root = tempdir().expect("candidate projection root");
-        let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
-        make_candidate_proven_windows_package(&plugin_root);
-        let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
-        let text = std::fs::read_to_string(&wrapper).expect("candidate wrapper");
-        std::fs::write(wrapper, format!("{text}\n{appended}\n")).expect("ambiguous wrapper");
-        let output = run_source_projection(&plugin_root);
-        assert_eq!(
-            output.status.success(),
-            succeeds,
-            "{appended:?}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-}
-#[test]
 fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     let (root, plugin_root, archive) = complete_archive_fixture("candidate-runtime-path");
     make_candidate_proven_windows_package(&plugin_root);
@@ -145,7 +85,7 @@ fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::p
         .output()
         .expect("archive gate should start")
 }
-fn run_source_projection(plugin_root: &Path) -> std::process::Output {
+pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output {
     let mut command = FixtureCommand::new("python3");
     command
         .arg(
@@ -163,7 +103,7 @@ fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let target = repo_root.join(relative);
     std::fs::copy(source, target).expect("candidate source contract");
 }
-fn make_candidate_proven_windows_package(plugin_root: &Path) {
+pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
     let mut manifest: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join(".codex-plugin/plugin.json")).expect("manifest"),
     )
