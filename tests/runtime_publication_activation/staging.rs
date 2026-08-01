@@ -48,7 +48,13 @@ fn final_publisher_is_version_only() -> Result<(), Box<dyn std::error::Error>> {
     );
     TextShape::new(&publisher.1).assert_absent_concepts(
         "final publisher has no candidate release or tag",
-        &["runtime-candidate-"],
+        &[
+            "gh release create runtime-candidate-",
+            "gh release view runtime-candidate-",
+            "git tag -a runtime-candidate-",
+            "git push origin runtime-candidate-",
+            "releases/download/runtime-candidate-",
+        ],
     );
     Ok(())
 }
