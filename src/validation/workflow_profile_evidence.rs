@@ -9,8 +9,8 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
         (None, MarkdownState::default(), Vec::new(), false);
     for (index, raw) in raw_lines.iter().enumerate() {
         let block_boundary = index == 0 || previous_block_boundary;
-        previous_block_boundary =
-            raw.trim().is_empty() || atx_heading(markdown_block_prefix(raw, block_boundary));
+        previous_block_boundary = raw.trim().is_empty()
+            || (!indented_code(raw) && atx_heading(markdown_block_prefix(raw, block_boundary)));
         if fence.is_some() {
             if !active_markdown_line(raw) {
                 lines.push(String::new());

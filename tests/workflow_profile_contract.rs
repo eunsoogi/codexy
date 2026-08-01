@@ -48,22 +48,14 @@ fn workflow_profiles_are_exactly_versioned_and_have_one_invariant_floor() -> Tes
 
 #[test]
 fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
-    assert_profile_result("strict requires formal evidence", "Workflow profile: strict", false)?;
-    assert_profile_result(
-        "light durable delegation requires formal evidence",
-        "Workflow profile: light\nDurable delegation: yes",
-        false,
-    )?;
-    assert_profile_result(
-        "standard multi-lane work requires formal evidence",
-        "Workflow profile: standard\nMulti-lane ownership: yes",
-        false,
-    )?;
-    assert_profile_result(
-        "light audit request requires formal evidence",
-        "Workflow profile: light\nExplicit audit evidence: requested",
-        false,
-    )?;
+    for (name, evidence) in [
+        ("strict requires formal evidence", "Workflow profile: strict"),
+        ("light durable delegation requires formal evidence", "Workflow profile: light\nDurable delegation: yes"),
+        ("standard multi-lane work requires formal evidence", "Workflow profile: standard\nMulti-lane ownership: yes"),
+        ("light audit request requires formal evidence", "Workflow profile: light\nExplicit audit evidence: requested"),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
     assert_profile_result("light read-only work stays lightweight", "Workflow profile: light\nTask kind: read-only", true)?;
     assert_profile_result(
         "standard routine mutation stays lightweight",
@@ -99,6 +91,9 @@ fn ordinary_list_boundaries_preserve_only_active_formal_triggers() -> TestResult
         ("inline-code-only predecessor plus metadata stays inactive", "`label`\n2. + Task kind: security review\nWorkflow profile: light", true),
         ("inline-code-only predecessor nested-one metadata stays inactive", "`label`\n2. 1. Task kind: security review\nWorkflow profile: light", true),
         ("inline-code-only predecessor fenced metadata stays active", "`label`\n2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", false),
+        ("indented-code predecessor plus metadata stays inactive", "Context\n    # Section\n2. + Task kind: security review\nWorkflow profile: light", true),
+        ("indented-code predecessor nested-one metadata stays inactive", "Context\n    # Section\n2. 1. Task kind: security review\nWorkflow profile: light", true),
+        ("indented-code predecessor fenced metadata stays active", "Context\n    # Section\n2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", false),
         ("inline-code pseudo-heading plus metadata stays inactive", "`label` # Section\n2. + Task kind: security review\nWorkflow profile: light", true),
         ("inline-code pseudo-heading nested-one metadata stays inactive", "`label` # Section\n2. 1. Task kind: security review\nWorkflow profile: light", true),
         ("inline-code pseudo-heading fenced metadata stays active", "`label` # Section\n2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", false),
