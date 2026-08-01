@@ -67,6 +67,18 @@ mod validator_prompt_host_limits;
 #[path = "../task_classification_presentation.rs"]
 mod task_classification_presentation;
 
+#[path = "../workflow_profile_contract.rs"]
+mod workflow_profile_contract;
+
+#[path = "../workflow_profile_active_markdown.rs"]
+mod workflow_profile_active_markdown;
+
+#[path = "../workflow_profile_signals.rs"]
+mod workflow_profile_signals;
+
+#[path = "../workflow_profile_grammar.rs"]
+mod workflow_profile_grammar;
+
 #[path = "../validator_role_instruction_policy.rs"]
 mod validator_role_instruction_policy;
 
