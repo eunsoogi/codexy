@@ -30,7 +30,10 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             continue;
         }
         if !state.comment {
-            let line = markdown_block_prefix(raw, lines.last().is_some_and(String::is_empty));
+            let line = markdown_block_prefix(
+                raw,
+                lines.is_empty() || lines.last().is_some_and(String::is_empty),
+            );
             if let Some((marker, length, _tail)) = fence_marker(line) {
                 fence = Some((marker, length));
                 lines.push(String::new());

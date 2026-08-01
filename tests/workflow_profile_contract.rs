@@ -87,6 +87,7 @@ fn ordinary_list_boundaries_preserve_only_active_formal_triggers() -> TestResult
         ("bullet ends carried inline code", "Workflow profile: light\nContext: `open\n- Task kind: security review\nclose`", false),
         ("ordered item ends carried inline code", "Workflow profile: light\nContext: `open\n1. Task kind: security review\nclose`", false),
         ("blank-separated numeral-two fenced metadata stays inactive", "Workflow profile: light\n\n2. ```text\n   Task kind: security review\n   ```", true),
+        ("document-start numeral-two fenced metadata stays inactive", "2. ```text\n   Task kind: security review\n```\nWorkflow profile: light", true),
     ] {
         assert_profile_result(name, evidence, expected)?;
     }
