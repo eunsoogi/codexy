@@ -101,6 +101,9 @@ mkdir -p "$source_check_root"
 mkdir -p "$tmp_dir/source-check/tests/suites"
 cp "$admission_suite" "$tmp_dir/source-check/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
+if [ "$release_state" = candidate-proven ]; then
+  python3 "$contract_checker" source-projection "$source_check_root"
+fi
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
 fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'

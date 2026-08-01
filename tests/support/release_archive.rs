@@ -99,18 +99,21 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
     for exact_line in ["legacy-public)", "candidate-proven)"] {
         assert!(workflow_lines(assembly).any(|line| line == exact_line));
     }
+    let legacy = workflow_branch(assembly, "legacy-public)");
     for binary in [
         "plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin",
         "plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin",
         "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin",
         "plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin",
     ] {
-        assert!(
-            assembly
-                .split_whitespace()
-                .map(|token| token.trim_end_matches('\\'))
-                .any(|token| token == binary)
-        );
+        assert!(workflow_lines(legacy).any(|line| line.starts_with(binary)));
+    }
+    let candidate = workflow_branch(assembly, "candidate-proven)");
+    for line in [
+        "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
+        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+    ] {
+        assert!(workflow_lines(candidate).any(|current| current == line));
     }
     assert!(workflow_lines(assembly).any(|line| line
         == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
@@ -121,7 +124,6 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
             .any(|line| line == "\"$response_checker\" \"$response_file\" \"$server\"")
     );
 }
-
 fn workflow_run<'a>(job: &'a serde_yaml::Value, name: &str) -> &'a str {
     job["steps"]
         .as_sequence()
@@ -134,6 +136,13 @@ fn workflow_lines(run: &str) -> impl Iterator<Item = &str> {
     run.lines().map(str::trim).filter(|line| !line.is_empty())
 }
 
+fn workflow_branch<'a>(assembly: &'a str, marker: &str) -> &'a str {
+    assembly
+        .split(marker)
+        .nth(1)
+        .and_then(|case| case.split(";;").next())
+        .expect("workflow package branch")
+}
 pub(crate) fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
