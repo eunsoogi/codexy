@@ -5,8 +5,12 @@ use super::workflow_profile_grammar::value_has_strict_signal;
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
     let raw_lines = evidence.lines().collect::<Vec<_>>();
-    let (mut fence, mut state, mut lines) = (None, MarkdownState::default(), Vec::new());
+    let (mut fence, mut state, mut lines, mut previous_block_boundary) =
+        (None, MarkdownState::default(), Vec::new(), false);
     for (index, raw) in raw_lines.iter().enumerate() {
+        let block_boundary = index == 0 || previous_block_boundary;
+        previous_block_boundary =
+            raw.trim().is_empty() || atx_heading(markdown_block_prefix(raw, block_boundary));
         if fence.is_some() {
             if !active_markdown_line(raw) {
                 lines.push(String::new());
@@ -29,11 +33,6 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
-        let block_boundary = lines.is_empty()
-            || lines.last().is_some_and(String::is_empty)
-            || index.checked_sub(1).is_some_and(|previous| {
-                atx_heading(markdown_block_prefix(raw_lines[previous], false))
-            });
         if !state.comment {
             let line = markdown_block_prefix(raw, block_boundary);
             if let Some((marker, length, _tail)) = fence_marker(line) {
