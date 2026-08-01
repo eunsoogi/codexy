@@ -29,11 +29,9 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             lines.push(String::new());
             continue;
         }
+        let block_boundary = lines.is_empty() || lines.last().is_some_and(String::is_empty);
         if !state.comment {
-            let line = markdown_block_prefix(
-                raw,
-                lines.is_empty() || lines.last().is_some_and(String::is_empty),
-            );
+            let line = markdown_block_prefix(raw, block_boundary);
             if let Some((marker, length, _tail)) = fence_marker(line) {
                 fence = Some((marker, length));
                 lines.push(String::new());
@@ -41,7 +39,8 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             }
         }
         let active = active_markdown(raw, &raw_lines[index + 1..], &mut state);
-        let line = normalize_metadata_prefix(markdown_block_prefix(&active, false));
+        let line = markdown_block_prefix(&active, block_boundary);
+        let line = normalize_metadata_prefix(markdown_block_prefix(line, false));
         lines.push(line.to_owned());
     }
     let references = lines.iter().map(String::as_str).collect::<Vec<_>>();
