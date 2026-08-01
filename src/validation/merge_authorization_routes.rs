@@ -87,14 +87,20 @@ fn command_segments(line: &str) -> Vec<&str> {
             } else {
                 quote
             };
-        } else if quote.is_none()
-            && (byte == b';'
-                || bytes.get(index..index + 2) == Some(b"&&")
-                || bytes.get(index..index + 2) == Some(b"||"))
-        {
+        } else if quote.is_none() {
+            let width = match byte {
+                b';' | b'|' if bytes.get(index..index + 2) != Some(b"||") => 1,
+                b'&' if bytes.get(index..index + 2) == Some(b"&&") => 2,
+                b'|' if bytes.get(index..index + 2) == Some(b"||") => 2,
+                _ => {
+                    index += 1;
+                    continue;
+                }
+            };
             segments.push(&line[start..index]);
-            index += usize::from(byte != b';');
-            start = index + 1;
+            index += width;
+            start = index;
+            continue;
         }
         index += 1;
     }
@@ -210,10 +216,31 @@ fn command_blocks(text: &str) -> Vec<Vec<String>> {
                 fence = Some(marker);
             }
         } else if fence.is_some() && !line.starts_with('#') {
-            current.push(line.to_owned());
+            append_logical_command(&mut current, line);
         }
     }
     blocks
+}
+
+fn append_logical_command(commands: &mut Vec<String>, line: &str) {
+    match commands.last_mut() {
+        Some(previous) if line_continues(previous) => {
+            previous.pop();
+            previous.push(' ');
+            previous.push_str(line);
+        }
+        _ => commands.push(line.to_owned()),
+    }
+}
+
+fn line_continues(line: &str) -> bool {
+    line.as_bytes()
+        .iter()
+        .rev()
+        .take_while(|&&byte| byte == b'\\')
+        .count()
+        % 2
+        == 1
 }
 
 fn fence_marker(line: &str) -> Option<char> {
