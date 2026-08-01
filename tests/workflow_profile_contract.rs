@@ -80,6 +80,20 @@ fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
 }
 
 #[test]
+fn ordinary_list_boundaries_preserve_only_active_formal_triggers() -> TestResult {
+    for (name, evidence, expected) in [
+        ("plus metadata stays active", "Workflow profile: light\n+ Task kind: security review", false),
+        ("nested numeral-one metadata stays active", "Workflow profile: light\n1. 1. Task kind: security review", false),
+        ("bullet ends carried inline code", "Workflow profile: light\nContext: `open\n- Task kind: security review\nclose`", false),
+        ("ordered item ends carried inline code", "Workflow profile: light\nContext: `open\n1. Task kind: security review\nclose`", false),
+        ("blank-separated numeral-two fenced metadata stays inactive", "Workflow profile: light\n\n2. ```text\n   Task kind: security review\n   ```", true),
+    ] {
+        assert_profile_result(name, evidence, expected)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn strict_formal_profiles_are_owner_neutral_but_child_setup_is_not() -> TestResult {
     for (source, owner) in [
         ("current-thread-classified", "parent-owned"),

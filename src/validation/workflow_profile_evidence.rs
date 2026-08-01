@@ -30,7 +30,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             continue;
         }
         if !state.comment {
-            let line = markdown_block_prefix(raw);
+            let line = markdown_block_prefix(raw, lines.last().is_some_and(String::is_empty));
             if let Some((marker, length, _tail)) = fence_marker(line) {
                 fence = Some((marker, length));
                 lines.push(String::new());
@@ -38,7 +38,7 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
             }
         }
         let active = active_markdown(raw, &raw_lines[index + 1..], &mut state);
-        let line = normalize_metadata_prefix(&active);
+        let line = normalize_metadata_prefix(markdown_block_prefix(&active, false));
         lines.push(line.to_owned());
     }
     let references = lines.iter().map(String::as_str).collect::<Vec<_>>();
@@ -149,11 +149,11 @@ fn inline_code_block_boundary(line: &str) -> bool {
     if !active_markdown_line(line) {
         return false;
     }
-    let normalized = markdown_block_prefix(line);
-    atx_heading(normalized) || fence_marker(normalized).is_some()
+    let normalized = markdown_block_prefix(line, false);
+    normalized != line.trim_start() || atx_heading(normalized) || fence_marker(normalized).is_some()
 }
 
-fn markdown_block_prefix(line: &str) -> &str {
+fn markdown_block_prefix(line: &str, blank_precedes: bool) -> &str {
     let line = line.trim_start();
     let bytes = line.as_bytes();
     if matches!(bytes.first(), Some(b'-' | b'+' | b'*'))
@@ -166,7 +166,7 @@ fn markdown_block_prefix(line: &str) -> &str {
         .take_while(|byte| byte.is_ascii_digit())
         .count();
     if (1..=9).contains(&digits)
-        && line[..digits].parse::<u32>() == Ok(1)
+        && (blank_precedes || line[..digits].parse::<u32>() == Ok(1))
         && matches!(bytes.get(digits), Some(b'.' | b')'))
         && matches!(bytes.get(digits + 1), Some(b' ' | b'\t'))
     {
