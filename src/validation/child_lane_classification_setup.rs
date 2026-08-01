@@ -55,6 +55,17 @@ pub(super) fn formal_child_classification_complete_index_before(
     .then_some(snapshot.start)
 }
 
+pub(super) fn formal_classification_complete_index_before(
+    lines: &[&str],
+    end: usize,
+) -> Option<usize> {
+    let snapshot = latest_classification_before(lines, end)?;
+    snapshot
+        .fields
+        .has_complete_authority_record()
+        .then_some(snapshot.start)
+}
+
 pub(super) struct ClassificationSnapshot {
     start: usize,
     authority: Option<super::child_lane_classification_authority::LaneAuthority>,
