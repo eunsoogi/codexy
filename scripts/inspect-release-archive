@@ -3,6 +3,7 @@ set -eu
 
 archive=${1:?archive path required}
 plugin_root=${2:?staged plugin root required}
+archive_mode=${3:-staged}
 max_bytes=${MAX_ARCHIVE_FILE_BYTES:-52428800}
 max_entries=${MAX_ARCHIVE_ENTRIES:-10000}
 max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
@@ -25,6 +26,7 @@ if ! command -v "${digest_command%% *}" >/dev/null 2>&1; then
 fi
 digest_file() { $digest_command "$1" | awk '{print $1}'; }
 response_checker="$script_dir/inspect-mcp-response"
+contract_checker="$script_dir/inspect-release-archive-contract.py"
 [ -x "$response_checker" ] || { echo "MCP response checker missing" >&2; exit 1; }
 [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
 [ -d "$plugin_root" ] || { echo "staged plugin root missing: $plugin_root" >&2; exit 1; }
@@ -43,6 +45,9 @@ extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
 release_contract="$extract_root/plugins/codexy/runtime-release.json"
+if [ "$archive_mode" = public-release ]; then
+  python3 "$contract_checker" public-release "$extract_root/plugins/codexy" >"$tmp_dir/expected-runtime"
+else
 [ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
 release_state=$(python3 - "$release_contract" <<'PY'
 import json, sys
@@ -67,6 +72,7 @@ PY
     ;;
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
+fi
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
 "$script_dir/require-regular-file" "$canonical_admission_suite" "canonical checkout admission suite"
 "$script_dir/require-regular-file" "$admission_suite" "checkout admission suite"
@@ -78,31 +84,9 @@ mkdir -p "$extract_root/tests/suites"
 cp "$admission_suite" "$extract_root/tests/suites/all.rs"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
-python3 - "$release_contract" "$release_state" >"$tmp_dir/expected-runtime" <<'PY'
-import json, sys
-
-contract_path, state = sys.argv[1:]
-try:
-    with open(contract_path, encoding="utf-8") as source:
-        platforms = json.load(source)["platforms"]
-    expected_platforms = (
-        ("darwin-arm64", "linux-x86_64")
-        if state == "legacy-public"
-        else ("darwin-arm64", "linux-x86_64", "windows-x86_64")
-    )
-    if set(platforms) != set(expected_platforms):
-        raise ValueError("platform set")
-    for platform in expected_platforms:
-        extension = "exe" if platform == "windows-x86_64" else "bin"
-        for server in ("lsp", "codegraph"):
-            expected = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
-            artifact = platforms[platform][server]
-            if state == "candidate-proven" and artifact.get("path") != expected:
-                raise ValueError("candidate runtime path")
-            print(expected)
-except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-    raise SystemExit("runtime release artifact contract is invalid")
-PY
+if [ "$archive_mode" != public-release ]; then
+  python3 "$contract_checker" staged "$extract_root/plugins/codexy" >"$tmp_dir/expected-runtime"
+fi
 while IFS= read -r relative; do
   case "$relative" in runtime/*)
     grep -Fxq "$relative" "$tmp_dir/expected-runtime" || {
@@ -112,11 +96,13 @@ while IFS= read -r relative; do
   esac
 done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
+if [ "$archive_mode" != public-release ]; then
 mkdir -p "$source_check_root"
 mkdir -p "$tmp_dir/source-check/tests/suites"
 cp "$admission_suite" "$tmp_dir/source-check/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 "$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
+fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 # A leading slash is an MSYS path-conversion candidate when this reaches native
 # rg.exe through Git Bash. The character class still matches only a slash.

@@ -8,6 +8,7 @@ staging_source_commit=${STAGING_SOURCE_COMMIT:?staging source commit required}
 activation_commit=${ACTIVATION_COMMIT:?activation commit required}
 runtime_asset=codexy-runtime-package.tar.gz
 source_plugin=plugins/codexy
+activation_record=.agents/plugins/runtime-activation.json
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 for commit in "$staging_source_commit" "$activation_commit"; do
@@ -17,6 +18,7 @@ done
 test "$staging_source_commit" != "$activation_commit"
 test -f "$staged_archive"
 test -d "$source_plugin"
+test -f "$activation_record"
 
 if command -v sha256sum >/dev/null 2>&1; then
   digest_file() { sha256sum "$1" | awk '{print $1}'; }
@@ -42,39 +44,28 @@ if test -d .git; then
 fi
 
 STAGED_SHA=$(digest_file "$staged_archive") \
-RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" \
-RUNTIME_ASSET="$runtime_asset" SOURCE_PLUGIN="$source_plugin" \
+RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" STAGING_RUN_ID="${STAGING_RUN_ID:?staging run id required}" \
+SOURCE_PLUGIN="$source_plugin" ACTIVATION_RECORD="$activation_record" \
 STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
 import hashlib, json, os, re
 from pathlib import Path
 
 source = Path(os.environ["SOURCE_PLUGIN"])
 staged = Path(os.environ["STAGED_PLUGIN"])
-release = json.loads((source / "runtime-release.json").read_text())
+record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
 manifest = json.loads((source / ".codex-plugin/plugin.json").read_text())
-candidate = (source / "runtime-candidate.json").read_bytes()
-if candidate != (staged / "runtime-candidate.json").read_bytes():
-    raise SystemExit("staged candidate identity differs from activated source")
-artifact = release["artifact"]
-tag = os.environ["RELEASE_TAG"]
-if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
-    raise SystemExit("release tag is not version-only")
-expected_url = (
-    f"https://github.com/eunsoogi/codexy/releases/download/{tag}/"
-    f"{os.environ['RUNTIME_ASSET']}"
-)
+candidate = record["candidate"]
+candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
 if (
-    release.get("state") != "candidate-proven"
-    or release["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
-    or json.loads(candidate)["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
-    or artifact["tag"] != tag
-    or artifact["url"] != expected_url
-    or artifact["sha256"] != os.environ["STAGED_SHA"]
-    or artifact["payloadManifestSha256"] != hashlib.sha256(candidate).hexdigest()
-    or manifest.get("version") != tag.removeprefix("v")
+    record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
+    or record["artifact"]["payloadManifestSha256"] != hashlib.sha256(candidate_bytes).hexdigest()
+    or candidate["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
+    or candidate["artifact"]["stagingRunId"] != int(os.environ["STAGING_RUN_ID"])
+    or json.loads(candidate_bytes) != candidate
+    or manifest.get("version") != os.environ["RELEASE_TAG"].removeprefix("v")
 ):
-    raise SystemExit("activated release metadata does not match staged identity")
-for inventory in release["platforms"].values():
+    raise SystemExit("private activation record does not match staged identity")
+for inventory in candidate["platforms"].values():
     for binary in inventory.values():
         path = staged / binary["path"]
         if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
@@ -129,19 +120,26 @@ for path in sorted(source.rglob("*"), key=lambda value: len(value.parts)):
         raise SystemExit(f"unsupported activated source entry: {relative}")
 PY
 SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" \
-PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
+ACTIVATION_RECORD="$activation_record" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
 import hashlib, json, os
 from pathlib import Path
 
 source = Path(os.environ["SOURCE_PLUGIN"])
 staged = Path(os.environ["STAGED_PLUGIN"])
-for relative in [
-    ".codex-plugin/plugin.json",
-    "runtime-candidate.json",
-    "runtime-release.json",
-]:
-    if (source / relative).read_bytes() != (staged / relative).read_bytes():
-        raise SystemExit(f"activated metadata was not materialized: {relative}")
+record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
+if (staged / "runtime-release.json").exists() or (staged / "runtime-candidate.json").exists():
+    raise SystemExit("public release archive must not contain runtime contracts")
+platforms = list(record["candidate"]["platforms"])
+manifest_path = staged / ".codex-plugin/plugin.json"
+manifest = json.loads(manifest_path.read_text())
+manifest["supportedPlatforms"] = platforms
+manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+for server in ("lsp", "codegraph"):
+    wrapper = staged / "mcp" / f"codexy-mcp-{server}"
+    text = wrapper.read_text()
+    bundled = " ".join(platforms)
+    text = text.replace('bundled_platforms="darwin-arm64 linux-x86_64"', f'bundled_platforms="{bundled}"')
+    wrapper.write_text(text)
 protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
 for relative, digest in protected.items():
     if hashlib.sha256((staged / relative).read_bytes()).hexdigest() != digest:

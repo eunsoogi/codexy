@@ -25,8 +25,8 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
                 |value| value["runtime"]["selectedTag"] = json!("v1.2.2"),
             )?,
             "legacy-runtime" => mutate_json(
-                &root.join("plugins/codexy/runtime-release.json"),
-                |value| value["state"] = json!("legacy-public"),
+                &root.join(".agents/plugins/runtime-activation.json"),
+                |value| value["candidate"]["artifact"]["stagingRunId"] = json!(false),
             )?,
             "wrapper-drift" => fs::write(
                 root.join("plugins/codexy/mcp/codexy-mcp-lsp"),
@@ -34,16 +34,24 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }
+        let output = admit(&root, "1.3.0")?;
         assert_eq!(
-            admit(&root, "1.3.0")?.status.success(),
+            output.status.success(),
             case == "exact",
-            "unexpected admission result for {case}"
+            "unexpected admission result for {case}: {}",
+            String::from_utf8_lossy(&output.stderr),
         );
     }
     Ok(())
 }
 
 pub(super) fn activate(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = ".github/workflows/plugin-runtime-binaries.yml";
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join(workflow);
+    let target = root.join(workflow);
+    fs::create_dir_all(target.parent().ok_or("workflow parent")?)
+        .map_err(|error| format!("creating workflow parent: {error}"))?;
+    fs::copy(source, target).map_err(|error| format!("copying current workflow: {error}"))?;
     let receipt = root.join("candidate-receipt.json");
     fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))

@@ -33,14 +33,32 @@ pub fn admit(target: &str) -> Result<VersionAdvanceAdmission> {
     }
     super::wrappers::check_version_at(&root, target)?;
 
-    let release = super::load_json(&root.join("plugins/codexy/runtime-release.json"))?;
-    if release["state"] != "candidate-proven" {
-        bail!("version advance requires an activated candidate-proven runtime");
+    let plugin = root.join("plugins/codexy");
+    if plugin.join("runtime-release.json").exists()
+        || plugin.join("runtime-candidate.json").exists()
+    {
+        bail!("version advance requires public-bootstrap source without plugin runtime contracts");
+    }
+    let record = super::load_json(&root.join(".agents/plugins/runtime-activation.json"))?;
+    let candidate = record
+        .get("candidate")
+        .and_then(Value::as_object)
+        .context("version advance activation record must contain candidate")?;
+    let artifact = candidate
+        .get("artifact")
+        .and_then(Value::as_object)
+        .context("version advance activation record candidate must contain artifact")?;
+    for field in ["stagingRunId", "stagingRunAttempt"] {
+        if !artifact
+            .get(field)
+            .is_some_and(|value| value.is_u64() && value.as_u64() > Some(0))
+        {
+            bail!("version advance activation record {field} must be a positive integer");
+        }
     }
     let selected_tag = nested_string(&publish, &["runtime", "selectedTag"])?;
-    let release_tag = nested_string(&release, &["artifact", "tag"])?;
-    if selected_tag != release_tag {
-        bail!("version advance runtime selection does not match runtime-release.json");
+    if selected_tag != format!("v{target}") {
+        bail!("version advance runtime selection does not match the public bootstrap tag");
     }
     crate::validation::run(&root.join("plugins/codexy"), crate::validation::Mode::All)?;
     Ok(VersionAdvanceAdmission::ActivatedSelection)

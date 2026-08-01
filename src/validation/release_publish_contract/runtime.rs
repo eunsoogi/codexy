@@ -4,6 +4,7 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 use crate::paths::display_relative;
+use crate::validation::json_array_strings;
 
 use super::require_exact;
 
@@ -74,4 +75,22 @@ pub(super) fn check(contract: &Value, path: &Path) -> Result<()> {
         );
     }
     Ok(())
+}
+
+pub(super) fn release_archive_platforms(contract: &Value, path: &Path) -> Result<Vec<String>> {
+    let archive = contract
+        .get("releaseArchive")
+        .and_then(Value::as_object)
+        .with_context(|| {
+            format!(
+                "{} releaseArchive must be an object",
+                display_relative(path)
+            )
+        })?;
+    json_array_strings(archive.get("platforms")).with_context(|| {
+        format!(
+            "{} releaseArchive.platforms must be an array",
+            display_relative(path)
+        )
+    })
 }

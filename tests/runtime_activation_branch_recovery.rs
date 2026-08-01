@@ -9,23 +9,28 @@ use crate::support::{FixtureCommand, make_executable};
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
 
-const AUTHORIZED: [&str; 10] = [
+const AUTHORIZED: [&str; 9] = [
     "Cargo.lock",
     "Cargo.toml",
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
+    ".agents/plugins/runtime-activation.json",
     "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy/mcp/codexy-mcp-codegraph",
     "plugins/codexy/mcp/codexy-mcp-lsp",
-    "plugins/codexy/runtime-candidate.json",
-    "plugins/codexy/runtime-release.json",
     "src/version/bootstrap.rs",
 ];
+const REMOVED: [&str; 1] = ["plugins/codexy/runtime-release.json"];
 
 #[test]
 fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
 -> Result<(), Box<dyn std::error::Error>> {
-    assert!(Fixture::new(Change::Exact)?.run("OPEN")?.status.success());
+    let exact = Fixture::new(Change::Exact)?.run("OPEN")?;
+    assert!(
+        exact.status.success(),
+        "exact activation failed: {}",
+        String::from_utf8_lossy(&exact.stderr)
+    );
     for change in [
         Change::WrapperDrift,
         Change::BootstrapDrift,
@@ -84,12 +89,16 @@ impl Fixture {
             write(&repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
+        for path in REMOVED {
+            write(&repo, path, format!("base:{path}\n").as_bytes())?;
+        }
         fs::create_dir_all(repo.join("scripts"))?;
         fake_sync_version(&repo.join("scripts/sync-plugin-version"))?;
         git(&repo, &["add", "."])?;
         git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
         copy_tree(&expected, &repo)?;
+        fs::remove_file(repo.join("plugins/codexy/runtime-release.json"))?;
         match change {
             Change::Exact => {}
             Change::WrapperDrift => write(&repo, "plugins/codexy/mcp/codexy-mcp-codegraph", b"drift\n")?,
@@ -97,7 +106,7 @@ impl Fixture {
             Change::ReleaseContractDrift => write(&repo, ".agents/plugins/release-publish-contract.json", b"drift\n")?,
             Change::CargoVersionDrift => write(&repo, "Cargo.toml", b"drift\n")?,
             Change::Extra => write(&repo, "docs/extra.md", b"extra\n")?,
-            Change::Missing => fs::remove_file(repo.join("plugins/codexy/runtime-candidate.json"))?,
+            Change::Missing => fs::remove_file(repo.join(".agents/plugins/runtime-activation.json"))?,
         }
         git(&repo, &["add", "-A"])?;
         git(&repo, &["commit", "-m", "activation"])?;
@@ -197,16 +206,16 @@ done
 for path in \
   .agents/plugins/marketplace.json \
   .agents/plugins/release-publish-contract.json \
+  .agents/plugins/runtime-activation.json \
   plugins/codexy/.codex-plugin/plugin.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
-  plugins/codexy/runtime-candidate.json \
-  plugins/codexy/runtime-release.json \
   src/version/bootstrap.rs
 do
   mkdir -p "$root/$(dirname "$path")"
   cp "$EXPECTED_ROOT/$path" "$root/$path"
 done
+rm -f "$root/plugins/codexy/runtime-release.json"
 "##,
     )
 }

@@ -6,7 +6,7 @@ use serde_yaml::Value;
 mod runtime_negatives;
 
 #[test]
-fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(), Box<dyn std::error::Error>> {
+fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Result<(), Box<dyn std::error::Error>> {
     let workflow = document("plugin-runtime-binaries.yml")?;
     let job = &workflow["jobs"]["verify-selected-package"];
     assert_eq!(job["strategy"]["matrix"]["include"].as_sequence().ok_or("matrix")?.len(), 2);
@@ -20,8 +20,8 @@ fn runtime_check_workflow_assembles_state_aware_immutable_packages() -> Result<(
         assert!(lines(download).any(|line| line == portable_digest_line));
     }
     let assemble = run(job, "Assemble state-aware marketplace package without rebuilding")?;
-    for state in ["legacy-public)", "candidate-proven)"] { assert!(lines(assemble).any(|line| line == state)); }
-    assert!(lines(assemble).any(|line| line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
+    assert!(lines(assemble).any(|line| line == "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz"));
+    assert!(lines(assemble).any(|line| line.ends_with("public-release")));
     assert!(!lines(assemble).any(|line| line.split_ascii_whitespace().take(2).eq(["cargo", "build"])));
     let upload = job["steps"].as_sequence().ok_or("steps")?.iter().find(|step| step["uses"] == "actions/upload-artifact@v7").ok_or("upload")?;
     assert_eq!(upload["with"]["name"], "codexy-marketplace-plugin-${{ matrix.platform }}");
@@ -36,7 +36,9 @@ fn contract_names_selected_and_authenticated_staging_identities() -> Result<(), 
     assert_eq!(contract["version"], "1.2.2");
     assert_eq!(contract["bootstrap"]["selectedVersion"], "1.2.2");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
-    assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));
+    assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
+    assert_eq!(contract["sourceMarketplace"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));
+    assert_eq!(contract["releaseArchive"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(contract["runtime"]["artifactRetentionDays"], 14);
     assert!(contract["runtime"].get("candidateTagPrefix").is_none());
     for path in [contract["bootstrap"]["publicationWorkflow"].as_str(), contract["runtime"]["stagingWorkflow"].as_str(), contract["runtime"]["activationWorkflow"].as_str(), contract["runtime"]["finalPublisherWorkflow"].as_str()] { assert!(root.join(path.ok_or("workflow")?).is_file()); }

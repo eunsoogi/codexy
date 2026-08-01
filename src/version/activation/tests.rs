@@ -12,63 +12,46 @@ const WRAPPERS: [&str; 2] = [
 ];
 
 #[test]
-fn activation_writes_only_the_derived_release_and_pins() -> Result<()> {
+fn activation_keeps_private_staging_evidence_outside_the_source_plugin() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
-    let release: Value = serde_json::from_str(&fs::read_to_string(fixture.release())?)?;
-    assert_eq!(release["state"], "candidate-proven");
-    assert_eq!(release["artifact"]["tag"], "v1.3.0");
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 7);
+    assert!(!fixture.release().exists());
+    assert!(!fixture.candidate().exists());
     assert_eq!(
-        release["artifact"]["url"],
-        "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz"
-    );
-    assert_eq!(release["source"]["commit"], "a".repeat(40));
-    assert_eq!(
-        release["platforms"]["darwin-arm64"]["lsp"]["path"],
-        "runtime/codexy-mcp-lsp-darwin-arm64.bin"
-    );
-    assert_eq!(
-        release["platforms"]["windows-x86_64"]["lsp"]["path"],
-        "runtime/codexy-mcp-lsp-windows-x86_64.exe"
+        fs::read(fixture.record())?,
+        serde_json::to_vec(&canonical(receipt_value()))?
     );
     for wrapper in fixture.wrappers() {
         let wrapper = fs::read_to_string(wrapper)?;
         assert!(wrapper.contains("getcodexy==1.3.0"));
-        assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\""));
+        assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
     }
     let manifest: Value = serde_json::from_str(&fs::read_to_string(fixture.manifest())?)?;
     assert_eq!(
         manifest["supportedPlatforms"],
-        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+        json!(["darwin-arm64", "linux-x86_64"])
     );
     assert_eq!(
         fs::read_to_string(fixture.bootstrap())?,
         "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n"
     );
-    let candidate_bytes = fs::read(fixture.candidate())?;
-    assert_eq!(
-        candidate_bytes,
-        serde_json::to_vec(&canonical(receipt_value()["candidate"].clone()))?
-    );
-    let candidate: Value = serde_json::from_slice(&candidate_bytes)?;
-    assert_eq!(candidate, receipt_value()["candidate"]);
     Ok(())
 }
 
 #[test]
 fn activation_updates_the_complete_selected_identity_transaction() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 8);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 7);
     let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
     assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(publish["runtime"]["selectedTag"], "v1.3.0");
     assert_eq!(
         publish["runtime"]["platforms"],
-        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+        json!(["darwin-arm64", "linux-x86_64"])
     );
     assert_eq!(
         publish["package"]["platforms"],
-        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
+        json!(["darwin-arm64", "linux-x86_64"])
     );
     Ok(())
 }
@@ -197,6 +180,9 @@ impl Fixture {
     fn candidate(&self) -> PathBuf {
         self.root.join("plugins/codexy/runtime-candidate.json")
     }
+    fn record(&self) -> PathBuf {
+        self.root.join(".agents/plugins/runtime-activation.json")
+    }
     fn bootstrap(&self) -> PathBuf {
         self.root.join("src/version/bootstrap.rs")
     }
@@ -211,6 +197,7 @@ impl Fixture {
             .chain(std::iter::once(self.release()))
             .chain(std::iter::once(self.publish()))
             .chain(std::iter::once(self.candidate()))
+            .chain(std::iter::once(self.record()))
             .chain(std::iter::once(self.bootstrap()))
             .chain(std::iter::once(self.manifest()))
             .chain(std::iter::once(

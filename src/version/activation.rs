@@ -1,4 +1,3 @@
-mod metadata;
 mod receipt;
 
 use std::{
@@ -8,20 +7,17 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, bail};
-use serde_json::{Value, json};
+use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
-use super::{
-    activation::receipt::PLATFORMS,
-    wrappers::{self, WrapperUpdate},
-};
-use metadata::platform_updates;
+use super::wrappers::{self, WrapperUpdate};
 
 #[derive(Debug)]
 struct Update {
     path: PathBuf,
     bytes: Vec<u8>,
+    delete: bool,
 }
 
 /// Validates a candidate receipt and atomically stages its activation updates.
@@ -49,9 +45,9 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     }
     let receipt = read_json(receipt_path, "candidate receipt")?;
     let release_tag = format!("v{bootstrap_version}");
-    let (release, candidate) = receipt::activation_from_receipt(&receipt, &release_tag)?;
+    let (_, candidate) = receipt::activation_from_receipt(&receipt, &release_tag)?;
     let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
-    let expected_manifest_sha = release["artifact"]["payloadManifestSha256"]
+    let expected_manifest_sha = receipt["artifact"]["payloadManifestSha256"]
         .as_str()
         .context("validated receipt lost payload manifest SHA")?;
     let actual_manifest_sha = format!("{:x}", Sha256::digest(&candidate_bytes));
@@ -62,15 +58,21 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         bootstrap_update(repo_root, bootstrap_version)?,
         publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
         Update {
+            path: repo_root.join(".agents/plugins/runtime-activation.json"),
+            bytes: serde_json::to_vec(&canonical(receipt))?,
+            delete: false,
+        },
+        Update {
             path: repo_root.join("plugins/codexy/runtime-release.json"),
-            bytes: format!("{}\n", serde_json::to_string_pretty(&release)?).into_bytes(),
+            bytes: Vec::new(),
+            delete: true,
         },
         Update {
             path: repo_root.join("plugins/codexy/runtime-candidate.json"),
-            bytes: candidate_bytes,
+            bytes: Vec::new(),
+            delete: true,
         },
     ];
-    updates.extend(platform_updates(repo_root)?);
     updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
 }
@@ -92,20 +94,10 @@ fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Res
     }
     contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
     contract["runtime"]["selectedTag"] = Value::String(release_tag.to_owned());
-    for section in ["runtime", "package"] {
-        let platforms = contract
-            .get_mut(section)
-            .and_then(Value::as_object_mut)
-            .and_then(|object| object.get_mut("platforms"))
-            .with_context(|| format!("release publish contract lacks {section}.platforms"))?;
-        if !platforms.is_array() {
-            bail!("release publish contract {section}.platforms must be an array");
-        }
-        *platforms = json!(PLATFORMS);
-    }
     Ok(Update {
         path,
         bytes: format!("{}\n", serde_json::to_string_pretty(&contract)?).into_bytes(),
+        delete: false,
     })
 }
 
@@ -124,6 +116,7 @@ fn bootstrap_update(root: &Path, version: &str) -> Result<Update> {
     Ok(Update {
         path,
         bytes: source.replacen(&previous, &replacement, 1).into_bytes(),
+        delete: false,
     })
 }
 
@@ -135,27 +128,36 @@ where
 }
 
 fn wrapper_updates(root: &Path, version: &str) -> Result<Vec<Update>> {
-    Ok(
-        wrappers::prepare_activation_updates(root, version, &PLATFORMS)?
-            .into_iter()
-            .map(wrapper_update)
-            .collect(),
-    )
+    Ok(wrappers::prepare_version_updates(root, version)?
+        .into_iter()
+        .map(wrapper_update)
+        .collect())
 }
 
 fn wrapper_update(update: WrapperUpdate) -> Update {
     Update {
         path: update.path,
         bytes: update.bytes,
+        delete: false,
     }
 }
 
 fn write_staged(updates: &[Update]) -> Result<()> {
-    let staged = updates.iter().map(stage).collect::<Result<Vec<_>>>()?;
+    let staged = updates
+        .iter()
+        .filter(|update| !update.delete)
+        .map(stage)
+        .collect::<Result<Vec<_>>>()?;
     for (target, temporary) in staged {
         temporary
             .persist(&target)
             .map_err(|error| anyhow::anyhow!("replacing {}: {}", target.display(), error.error))?;
+    }
+    for update in updates.iter().filter(|update| update.delete) {
+        if update.path.exists() {
+            fs::remove_file(&update.path)
+                .with_context(|| format!("removing {}", update.path.display()))?;
+        }
     }
     Ok(())
 }

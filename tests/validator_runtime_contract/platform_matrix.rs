@@ -68,7 +68,7 @@ fn validator_cli_rejects_candidate_platform_without_matching_publish_contract()
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("package.platforms must match supportedPlatforms"),
+            .contains("source marketplace must retain the darwin/linux public-bootstrap platforms"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

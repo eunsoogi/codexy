@@ -73,6 +73,17 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
+        let workflow = ".github/workflows/plugin-runtime-binaries.yml";
+        let workflow_target = repo.join(workflow);
+        fs::create_dir_all(workflow_target.parent().ok_or("workflow parent")?)?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(workflow),
+            workflow_target,
+        )?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(".agents/plugins/release-publish-contract.json"),
+            repo.join(".agents/plugins/release-publish-contract.json"),
+        )?;
         for relative in [
             "scripts/activate-runtime-contract",
             "scripts/verify-runtime-activation-branch",
@@ -105,10 +116,7 @@ impl Fixture {
             .current_dir(&repo)
             .env("CODEXY_REPO_ROOT", &repo);
         command(&mut sync)?;
-        git(&repo, &["add", ".agents/plugins/marketplace.json", ".agents/plugins/release-publish-contract.json"])?;
-        git(&repo, &["add", "plugins/codexy/.codex-plugin/plugin.json"])?;
-        git(&repo, &["add", "plugins/codexy/mcp", "plugins/codexy/runtime-candidate.json"])?;
-        git(&repo, &["add", "plugins/codexy/runtime-release.json", "src/version/bootstrap.rs"])?;
+        git(&repo, &["add", ".agents/plugins", "plugins/codexy", "src/version/bootstrap.rs"])?;
         git(&repo, &["add", "Cargo.toml", "Cargo.lock"])?;
         git(&repo, &["commit", "-m", "activation"])?;
         write_posix_fixture_command(&bin.join("gh"), "#!/bin/sh\nprintf 'OPEN\\n'\n")?;

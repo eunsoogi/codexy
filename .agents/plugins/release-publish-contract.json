@@ -15,7 +15,8 @@
     "artifactRetentionDays": 14,
     "platforms": [
       "darwin-arm64",
-      "linux-x86_64"
+      "linux-x86_64",
+      "windows-x86_64"
     ]
   },
   "currentMarketplace": {
@@ -31,11 +32,23 @@
     "futureInstallRef": "version-tags",
     "platforms": [
       "darwin-arm64",
-      "linux-x86_64"
+      "linux-x86_64",
+      "windows-x86_64"
     ]
   },
   "sourceMarketplace": {
     "path": ".agents/plugins/marketplace.json",
-    "mode": "source-checkout-dev"
+    "mode": "source-checkout-dev",
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64"
+    ]
+  },
+  "releaseArchive": {
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64",
+      "windows-x86_64"
+    ]
   }
 }

@@ -2,7 +2,7 @@ use super::*;
 use std::io::Write as _;
 
 #[test]
-fn validator_rejects_missing_runtime_release_contract() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_accepts_contract_free_public_bootstrap_source() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
     declare_bundled_platforms(&plugin_root)?;
@@ -16,12 +16,7 @@ fn validator_rejects_missing_runtime_release_contract() -> Result<(), Box<dyn st
         ])
         .output()?;
 
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("runtime-release.json"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "unexpected stderr: {}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }
 

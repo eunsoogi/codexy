@@ -5,8 +5,6 @@ use sha2::{Digest as _, Sha256};
 
 use crate::support::FixtureCommand as Command;
 
-const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
-
 #[test]
 fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -54,6 +52,14 @@ impl LifecycleFixture {
         }
         fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.2.2\"}\n")?;
         fs::write(plugin.join("runtime-release.json"), b"{\"state\":\"legacy-public\"}\n")?;
+        let mcp = plugin.join("mcp");
+        fs::create_dir_all(&mcp)?;
+        for server in ["lsp", "codegraph"] {
+            fs::write(
+                mcp.join(format!("codexy-mcp-{server}")),
+                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.3.0 codexy-mcp-runtime {server} -- \"$@\"\n"),
+            )?;
+        }
         git(&root, &["add", "."])?;
         git(&root, &["commit", "-m", "stage source"])?;
         let staging_commit = git(&root, &["rev-parse", "HEAD"])?;
@@ -67,8 +73,15 @@ impl LifecycleFixture {
         assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy").status()?.success());
         let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));
         fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.3.0\"}\n")?;
-        fs::write(plugin.join("runtime-candidate.json"), &bytes)?;
-        fs::write(plugin.join("runtime-release.json"), serde_json::to_vec(&release(&candidate, &digest))?)?;
+        fs::remove_file(plugin.join("runtime-release.json"))?;
+        fs::create_dir_all(root.join(".agents/plugins"))?;
+        fs::write(
+            root.join(".agents/plugins/runtime-activation.json"),
+            serde_json::to_vec(&json!({
+                "candidate": candidate,
+                "artifact": {"sha256": digest, "payloadManifestSha256": format!("{:x}", Sha256::digest(&bytes))}
+            }))?,
+        )?;
         git(&root, &["add", "."])?;
         git(&root, &["commit", "-m", "activate source"])?;
         let activation_commit = git(&root, &["rev-parse", "HEAD"])?;
@@ -88,6 +101,7 @@ impl LifecycleFixture {
             .env("RELEASE_TAG", "v1.3.0")
             .env("STAGING_SOURCE_COMMIT", staging)
             .env("ACTIVATION_COMMIT", activation)
+            .env("STAGING_RUN_ID", "42")
             .output()
     }
 
@@ -114,8 +128,4 @@ fn git(root: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>>
 
 fn candidate(commit: &str) -> Value {
     json!({"schema":"codexy-runtime-candidate/v1","source":{"repository":"https://github.com/eunsoogi/codexy","commit":commit},"artifact":{"stagingRunId":42,"stagingRunAttempt":1},"compatibility":{"bootstrapApi":1,"pluginRuntimeApi":1,"transport":"stdio-newline-v1","mcpProtocol":"2024-11-05"},"platforms":{}})
-}
-
-fn release(candidate: &Value, archive: &str) -> Value {
-    json!({"schema":"codexy-runtime-release/v1","state":"candidate-proven","source":candidate["source"].clone(),"artifact":{"tag":"v1.3.0","url":format!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/{RUNTIME_ASSET}"),"sha256":archive,"payloadManifestSha256":format!("{:x}", Sha256::digest(serde_json::to_vec(candidate).unwrap()))},"compatibility":candidate["compatibility"].clone(),"platforms":{}})
 }

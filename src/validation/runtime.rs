@@ -17,7 +17,16 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
     check_no_source_runtime_artifacts(plugin_root)?;
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
-    crate::validation::runtime_release_contract::check(plugin_root, &platforms)?;
+    let release = plugin_root.join("runtime-release.json");
+    let candidate = plugin_root.join("runtime-candidate.json");
+    if release.exists() {
+        crate::validation::runtime_release_contract::check(plugin_root, &platforms)?;
+    } else if candidate.exists() || platforms != ["darwin-arm64", "linux-x86_64"] {
+        bail!(
+            "{} public-bootstrap source mode requires no runtime contracts and exactly darwin/linux support",
+            display_relative(plugin_root)
+        );
+    }
     for server in REQUIRED_RUNTIME_SERVERS {
         let wrapper_path = plugin_root.join("mcp").join(format!("codexy-mcp-{server}"));
         let wrapper_platforms = bundled_platforms(&wrapper_path)?;
@@ -90,10 +99,9 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
     let legacy = ["darwin-arm64", "linux-x86_64"];
-    let candidate = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
-    if platforms != legacy && platforms != candidate {
+    if platforms != legacy {
         bail!(
-            "{} immutable runtime package must retain the legacy baseline or verified candidate platforms",
+            "{} source marketplace must retain the darwin/linux public-bootstrap platforms",
             display_relative(&path),
         );
     }
@@ -104,11 +112,10 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         "shasum -a 256",
         "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
         "Assemble state-aware marketplace package without rebuilding",
-        "candidate-proven",
-        "runtime-candidate.json",
-        "payloadManifestSha256",
-        "test ! -e \"$candidate/runtime-release.json\"",
-        "for platform in darwin-arm64 linux-x86_64",
+        ".agents/plugins/runtime-activation.json",
+        "scripts/download-runtime-staging-artifact staging",
+        "scripts/materialize-runtime-release-archive",
+        "public-release",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/inspect-release-archive",
@@ -125,7 +132,6 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     for forbidden in [
         "cargo build",
         "build-runtime",
-        "actions/download-artifact",
         "codexy-mcp-lsp-${PLATFORM}.bin",
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",

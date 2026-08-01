@@ -14,7 +14,6 @@ use super::workflow;
 
 const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-const RUNTIME_ASSET: &str = "codexy-runtime-package.tar.gz";
 
 #[test]
 fn final_publisher_materializes_and_exercises_the_public_archive()
@@ -40,6 +39,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy",
             "gh attestation verify public-runtime.tar.gz",
+            "--plugin-root \"$PWD/plugins/codexy\"",
         ],
     );
     Ok(())
@@ -79,25 +79,22 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     let plugin = extracted.join("plugins/codexy");
     let manifest: Value =
         serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
-    let release: Value =
-        serde_json::from_slice(&fs::read(plugin.join("runtime-release.json"))?)?;
     assert_eq!(manifest["version"], "1.3.0");
-    assert_eq!(release["artifact"]["tag"], "v1.3.0");
     assert_eq!(
-        release["artifact"]["url"],
-        format!(
-            "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/{RUNTIME_ASSET}"
-        )
+        manifest["supportedPlatforms"],
+        json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"])
     );
-    assert_eq!(
-        fs::read(plugin.join("runtime-candidate.json"))?,
-        fixture.candidate
-    );
+    assert!(!plugin.join("runtime-release.json").exists());
+    assert!(!plugin.join("runtime-candidate.json").exists());
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
     assert_eq!(fs::read(&runtime)?, fixture.runtime);
     let smoke = Command::new(runtime).arg("--help").output()?;
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");
+    for server in ["lsp", "codegraph"] {
+        let runtime = plugin.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
+        assert_eq!(fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?, fs::read(runtime)?);
+    }
     Ok(())
 }
 
@@ -106,7 +103,6 @@ struct FinalArchiveFixture {
     root: PathBuf,
     staged_archive: PathBuf,
     final_archive: PathBuf,
-    candidate: Vec<u8>,
     runtime: Vec<u8>,
 }
 
@@ -121,9 +117,6 @@ impl FinalArchiveFixture {
             fs::create_dir_all(plugin.join(".codex-plugin"))?;
             fs::create_dir_all(plugin.join("runtime"))?;
         }
-        let candidate = serde_json::to_vec(&candidate())?;
-        fs::write(source.join("runtime-candidate.json"), &candidate)?;
-        fs::write(staged.join("runtime-candidate.json"), &candidate)?;
         fs::write(
             source.join(".codex-plugin/plugin.json"),
             b"{\"name\":\"codexy\",\"version\":\"1.3.0\"}\n",
@@ -132,10 +125,35 @@ impl FinalArchiveFixture {
             staged.join(".codex-plugin/plugin.json"),
             b"{\"name\":\"codexy\",\"version\":\"1.2.2\"}\n",
         )?;
+        for server in ["lsp", "codegraph"] {
+            let mcp = source.join("mcp");
+            fs::create_dir_all(&mcp)?;
+            fs::write(
+                mcp.join(format!("codexy-mcp-{server}")),
+                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.3.0 codexy-mcp-runtime {server} -- \"$@\"\n"),
+            )?;
+        }
         let runtime = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n".to_vec();
         let runtime_path = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
         fs::write(&runtime_path, &runtime)?;
         support::make_executable(&runtime_path)?;
+        for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+            for server in ["lsp", "codegraph"] {
+                let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+                let path = staged.join(format!("runtime/codexy-mcp-{server}-{platform}.{extension}"));
+                if !path.exists() { fs::write(path, format!("{server}-{platform}\n"))?; }
+            }
+        }
+        fs::create_dir_all(staged.join("mcp"))?;
+        for server in ["lsp", "codegraph"] {
+            fs::copy(
+                staged.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe")),
+                staged.join(format!("mcp/codexy-mcp-{server}.exe")),
+            )?;
+        }
+        let candidate = candidate(&staged)?;
+        let candidate_bytes = serde_json::to_vec(&candidate)?;
+        fs::write(staged.join("runtime-candidate.json"), &candidate_bytes)?;
         let staged_archive = root.join("staging.tar.gz");
         assert!(
             Command::new("tar")
@@ -149,16 +167,19 @@ impl FinalArchiveFixture {
                 .success()
         );
         let staged_sha = format!("{:x}", Sha256::digest(fs::read(&staged_archive)?));
+        fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::write(
-            source.join("runtime-release.json"),
-            serde_json::to_vec_pretty(&release(&candidate, &staged_sha))?,
+            root.join(".agents/plugins/runtime-activation.json"),
+            serde_json::to_vec(&json!({
+                "candidate": candidate,
+                "artifact": {"sha256": staged_sha, "payloadManifestSha256": format!("{:x}", Sha256::digest(&candidate_bytes))}
+            }))?,
         )?;
         Ok(Self {
             _temporary: temporary,
             final_archive: root.join("final.tar.gz"),
             root,
             staged_archive,
-            candidate,
             runtime,
         })
     }
@@ -181,32 +202,27 @@ impl FinalArchiveFixture {
             .env("RELEASE_TAG", "v1.3.0")
             .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
             .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
+            .env("STAGING_RUN_ID", "42")
             .output()
     }
 }
 
-fn candidate() -> Value {
-    json!({
+fn candidate(staged: &Path) -> Result<Value, std::io::Error> {
+    let mut platforms = serde_json::Map::new();
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+        let mut inventory = serde_json::Map::new();
+        for server in ["lsp", "codegraph"] {
+            let path = format!("runtime/codexy-mcp-{server}-{platform}.{extension}");
+            inventory.insert(server.to_owned(), json!({"path": path, "sha256": format!("{:x}", Sha256::digest(fs::read(staged.join(&path))?))}));
+        }
+        platforms.insert(platform.to_owned(), Value::Object(inventory));
+    }
+    Ok(json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": STAGING_COMMIT},
         "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
-        "platforms": {}
-    })
-}
-
-fn release(candidate: &[u8], staged_sha: &str) -> Value {
-    json!({
-        "schema": "codexy-runtime-release/v1",
-        "state": "candidate-proven",
-        "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": STAGING_COMMIT},
-        "artifact": {
-            "tag": "v1.3.0",
-            "url": format!("https://github.com/eunsoogi/codexy/releases/download/v1.3.0/{RUNTIME_ASSET}"),
-            "sha256": staged_sha,
-            "payloadManifestSha256": format!("{:x}", Sha256::digest(candidate))
-        },
-        "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
-        "platforms": {}
-    })
+        "platforms": platforms
+    }))
 }
