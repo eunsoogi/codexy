@@ -12,7 +12,6 @@ fn archive_gate_accepts_a_complete_candidate_proven_windows_package() {
     let archive = root.path().join("candidate-proven-windows.tar.gz");
     make_candidate_proven_windows_package(&plugin_root);
     create_archive(root.path(), &archive).expect("candidate archive");
-
     let output = run_candidate_gate(root.path(), &archive, &plugin_root);
     assert!(
         output.status.success(),
@@ -21,7 +20,6 @@ fn archive_gate_accepts_a_complete_candidate_proven_windows_package() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
-
 #[test]
 fn archive_gate_rejects_a_candidate_windows_entrypoint_with_wrong_identity() {
     let (root, plugin_root, archive) = complete_archive_fixture("candidate-entrypoint-identity");
@@ -32,11 +30,9 @@ fn archive_gate_rejects_a_candidate_windows_entrypoint_with_wrong_identity() {
     )
     .expect("mutate entrypoint");
     create_archive(root.path(), &archive).expect("candidate archive");
-
     let output = run_candidate_gate(root.path(), &archive, &plugin_root);
     assert!(!output.status.success());
 }
-
 #[test]
 fn candidate_source_projection_rejects_mixed_windows_wrapper_declarations() {
     let root = tempdir().expect("candidate projection root");
@@ -50,21 +46,37 @@ fn candidate_source_projection_rejects_mixed_windows_wrapper_declarations() {
             "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
         );
     std::fs::write(wrapper, text).expect("mixed candidate wrapper");
-
     let output = run_source_projection(&plugin_root);
-
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
             .contains("candidate source projection requires three-platform wrappers")
     );
 }
-
 #[test]
-fn candidate_source_projection_rejects_duplicate_or_overriding_declarations() {
-    for appended in [
-        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+fn candidate_source_projection_rejects_effective_declarations_and_ignores_inert_text() {
+    for (appended, succeeds) in [
+        (
+            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            false,
+        ),
+        ("bundled_platforms=\"darwin-arm64 linux-x86_64\"", false),
+        (
+            "export bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            false,
+        ),
+        (
+            ":; bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            false,
+        ),
+        (
+            "# bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            true,
+        ),
+        (
+            "printf '%s\\n' 'bundled_platforms=darwin-arm64 linux-x86_64 windows-x86_64'",
+            true,
+        ),
     ] {
         let root = tempdir().expect("candidate projection root");
         let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
@@ -73,11 +85,14 @@ fn candidate_source_projection_rejects_duplicate_or_overriding_declarations() {
         let text = std::fs::read_to_string(&wrapper).expect("candidate wrapper");
         std::fs::write(wrapper, format!("{text}\n{appended}\n")).expect("ambiguous wrapper");
         let output = run_source_projection(&plugin_root);
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr).contains("three-platform wrappers"));
+        assert_eq!(
+            output.status.success(),
+            succeeds,
+            "{appended:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
-
 #[test]
 fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     let (root, plugin_root, archive) = complete_archive_fixture("candidate-runtime-path");
@@ -94,14 +109,12 @@ fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     )
     .expect("malformed candidate release");
     create_archive(root.path(), &archive).expect("candidate archive");
-
     assert!(
         !run_candidate_gate(root.path(), &archive, &plugin_root)
             .status
             .success()
     );
 }
-
 fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::process::Output {
     let repo_root = root.join("candidate-repository");
     std::fs::create_dir_all(repo_root.join(".agents/plugins")).expect("candidate contract parent");
@@ -132,7 +145,6 @@ fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::p
         .output()
         .expect("archive gate should start")
 }
-
 fn run_source_projection(plugin_root: &Path) -> std::process::Output {
     let mut command = FixtureCommand::new("python3");
     command
@@ -146,13 +158,11 @@ fn run_source_projection(plugin_root: &Path) -> std::process::Output {
         .output()
         .expect("source projection should start")
 }
-
 fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join(relative);
     let target = repo_root.join(relative);
     std::fs::copy(source, target).expect("candidate source contract");
 }
-
 fn make_candidate_proven_windows_package(plugin_root: &Path) {
     let mut manifest: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join(".codex-plugin/plugin.json")).expect("manifest"),
@@ -168,7 +178,6 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
         ),
     )
     .expect("candidate manifest");
-
     for server in ["lsp", "codegraph"] {
         let wrapper = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
         let updated = std::fs::read_to_string(&wrapper).expect("wrapper").replace(
@@ -177,7 +186,6 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
         );
         std::fs::write(wrapper, updated).expect("candidate wrapper");
     }
-
     let mut windows = vec![0; 4096];
     windows[0..2].copy_from_slice(b"MZ");
     windows[0x3c..0x40].copy_from_slice(&0x80_u32.to_le_bytes());
@@ -196,7 +204,6 @@ fn make_candidate_proven_windows_package(plugin_root: &Path) {
         )
         .expect("Windows entrypoint");
     }
-
     let mut release: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join("runtime-release.json")).expect("release contract"),
     )
