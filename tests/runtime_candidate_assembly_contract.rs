@@ -170,7 +170,12 @@ fn candidate_assembly_rejects_compound_split_eval_overrides_and_ignores_inert_te
         ("eval 'bundled_''platforms=darwin-arm64' && true", false),
         ("\"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
         ("command \"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n$runner 'bundled_''platforms=darwin-arm64'", false),
+        ("true && runner=eval\n$runner 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n\"$runner\" 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n${runner} 'bundled_''platforms=darwin-arm64'", false),
         ("printf '%s\\n' 'bundled_''platforms=darwin-arm64'", true),
+        ("runner=eval\nprintf '%s\\n' \"$runner\"", true),
     ] {
         let fixture = CandidateFixture::new(&format!("{FIRST_DECLARATION}{line}\n"))?;
         assert_eq!(fixture.assemble().status.success(), succeeds, "{line}");

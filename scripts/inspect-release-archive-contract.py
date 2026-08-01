@@ -58,7 +58,7 @@ def has_platform_mutation(source: str) -> bool:
         if command == len(words):
             continue
         name = words[command]
-        if name == "eval" or name in {"command", "builtin"} and "eval" in words[command + 1:]:
+        if name.startswith("$") or name == "eval" or name in {"command", "builtin"} and "eval" in words[command + 1:]:
             return True
         if name in {"declare", "export", "local", "readonly", "typeset", "unset", "read"} and any(
             word == "bundled_platforms" or word.startswith("bundled_platforms=") for word in words[command + 1:]
