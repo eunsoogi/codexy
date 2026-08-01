@@ -5,8 +5,12 @@ use crate::paths::display_relative;
 const CANONICAL_WRAPPER: &str = "plugins/codexy/hooks/codexy-authorized-squash-merge.sh";
 const MAX_SHELL_NESTING: usize = 8;
 
+#[path = "merge_authorization_routes/segments.rs"]
+mod segments;
 #[path = "shell_options.rs"]
 mod shell_options;
+
+use segments::{command_blocks, command_segments};
 
 pub(super) fn check(root: &Path, errors: &mut Vec<String>) {
     let mut paths = BTreeSet::new();
@@ -64,48 +68,6 @@ fn executable_tokens<'a>(tokens: &'a [&'a str]) -> Option<&'a [&'a str]> {
     };
     let tokens = strip_assignments(tokens);
     strip_command(tokens)
-}
-
-fn command_segments(line: &str) -> Vec<&str> {
-    let mut segments = Vec::new();
-    let mut start = 0;
-    let mut quote = None;
-    let mut escaped = false;
-    let bytes = line.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        let byte = bytes[index];
-        if escaped {
-            escaped = false;
-        } else if byte == b'\\' && quote != Some(b'\'') {
-            escaped = true;
-        } else if matches!(byte, b'\'' | b'\"') {
-            quote = if quote == Some(byte) {
-                None
-            } else if quote.is_none() {
-                Some(byte)
-            } else {
-                quote
-            };
-        } else if quote.is_none() {
-            let width = match byte {
-                b';' | b'|' if bytes.get(index..index + 2) != Some(b"||") => 1,
-                b'&' if bytes.get(index..index + 2) == Some(b"&&") => 2,
-                b'|' if bytes.get(index..index + 2) == Some(b"||") => 2,
-                _ => {
-                    index += 1;
-                    continue;
-                }
-            };
-            segments.push(&line[start..index]);
-            index += width;
-            start = index;
-            continue;
-        }
-        index += 1;
-    }
-    segments.push(&line[start..]);
-    segments
 }
 
 fn shell_words(segment: &str) -> Vec<String> {
@@ -200,51 +162,4 @@ fn assignment(token: &str) -> bool {
                 .chars()
                 .all(|character| character.is_ascii_alphanumeric() || character == '_')
     })
-}
-
-fn command_blocks(text: &str) -> Vec<Vec<String>> {
-    let mut blocks = Vec::new();
-    let mut current = Vec::new();
-    let mut fence = None;
-    for raw in text.lines() {
-        let line = raw.trim();
-        if let Some(marker) = fence_marker(line) {
-            if fence == Some(marker) {
-                blocks.push(std::mem::take(&mut current));
-                fence = None;
-            } else if fence.is_none() {
-                fence = Some(marker);
-            }
-        } else if fence.is_some() && !line.starts_with('#') {
-            append_logical_command(&mut current, line);
-        }
-    }
-    blocks
-}
-
-fn append_logical_command(commands: &mut Vec<String>, line: &str) {
-    match commands.last_mut() {
-        Some(previous) if line_continues(previous) => {
-            previous.pop();
-            previous.push(' ');
-            previous.push_str(line);
-        }
-        _ => commands.push(line.to_owned()),
-    }
-}
-
-fn line_continues(line: &str) -> bool {
-    line.as_bytes()
-        .iter()
-        .rev()
-        .take_while(|&&byte| byte == b'\\')
-        .count()
-        % 2
-        == 1
-}
-
-fn fence_marker(line: &str) -> Option<char> {
-    line.starts_with("```")
-        .then_some('`')
-        .or_else(|| line.starts_with("~~~").then_some('~'))
 }
