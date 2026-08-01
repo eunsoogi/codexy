@@ -14,12 +14,12 @@ const FIELDS: [&str; 8] = [
 ];
 
 #[test]
-fn task_classification_uses_one_ordered_table() -> TestResult {
+fn task_classification_uses_formal_tables_only_when_required() -> TestResult {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let skill = std::fs::read_to_string(
         root.join("plugins/codexy/skills/task-classification/SKILL.md"),
     )?;
-    let table = required_output_table(&skill)?;
+    let table = formal_output_table(&skill)?;
 
     assert_eq!(field_names(table)?, FIELDS);
     assert!(field_names(&table.replacen("| Stop/blocker |", "", 1)).is_err());
@@ -53,20 +53,20 @@ fn task_classification_uses_one_ordered_table() -> TestResult {
         .ok_or("missing task-classification default prompt")?;
     assert_eq!(
         default_prompt,
-        "You MUST use $task-classification first to render one ordered two-column GFM table with the canonical header row | Field | Value | and exactly these eight ordered rows: Lane type, Secondary surfaces, Owner decision, Atomic scope, Required skills, Required tools/evidence, First allowed action, Stop/blocker; the Owner decision value MUST use affirmative or denied followed by one exact owner token and an optional because rationale. You MUST complete it before Codexy setup, delegation, implementation, PR, review-response, or merge work begins."
+        "You MUST use $task-classification first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
     );
     Ok(())
 }
 
-fn required_output_table(skill: &str) -> Result<&str, String> {
+fn formal_output_table(skill: &str) -> Result<&str, String> {
     let section = skill
         .split_once("## Required Output")
         .map(|(_, section)| section)
         .ok_or("missing Required Output section")?;
     section
-        .split_once("## Classification Output")
+        .split_once("## Formal Classification Output")
         .map(|(table, _)| table)
-        .ok_or_else(|| "missing Classification Output section".to_owned())
+        .ok_or_else(|| "missing Formal Classification Output section".to_owned())
 }
 
 fn field_names(table: &str) -> Result<Vec<&str>, String> {

@@ -119,6 +119,9 @@ mod sentinel_handoff_status_evidence;
 mod touched_loc;
 mod touched_loc_remediation;
 mod value_arrays;
+mod workflow_profile_evidence;
+mod workflow_profile_grammar;
+mod workflow_profiles;
 
 use std::path::Path;
 

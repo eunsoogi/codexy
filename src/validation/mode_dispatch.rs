@@ -6,7 +6,7 @@ use super::{
     Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
     github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp,
     merge_authorization, merge_message, orchestration_routing, review_response_cluster, roles,
-    runtime, touched_loc,
+    runtime, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -27,6 +27,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(roles::check(plugin_root));
             all.extend(instruction_policy::check(plugin_root));
             all.extend(orchestration_routing::check(plugin_root));
+            all.extend(workflow_profiles::check(plugin_root));
             all
         }
         Mode::InstructionPolicy => instruction_policy::check(plugin_root),
@@ -62,6 +63,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => {
             let mut errors = child_lane_ownership::check(&evidence);
+            errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(child_goal_reporting::check(&evidence));
             errors
         }
