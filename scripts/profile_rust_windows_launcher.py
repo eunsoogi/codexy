@@ -27,6 +27,10 @@ class WindowsTempRoot:
         self.runner_temp = runner_temp
         self.selected_temp_root = selected_temp_root
         self.cleanup = "pending"
+        self._cleanup_allowed = False
+
+    def allow_cleanup(self) -> None:
+        self._cleanup_allowed = True
 
     def telemetry(self) -> dict[str, str]:
         return {
@@ -39,7 +43,7 @@ class WindowsTempRoot:
 
 
 @contextmanager
-def isolated_windows_temp(environment: dict[str, str]) -> Iterator[WindowsTempRoot]:
+def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsTempRoot]:
     runner_temp = environment.get("RUNNER_TEMP")
     if runner_temp is None:
         raise OSError("RUNNER_TEMP is required for the Windows Rust workload")
@@ -57,18 +61,30 @@ def isolated_windows_temp(environment: dict[str, str]) -> Iterator[WindowsTempRo
         runner_temp=str(runner_root),
         selected_temp_root=str(child_root),
     )
-    environment["TEMP"] = state.selected_temp_root
-    environment["TMP"] = state.selected_temp_root
     try:
         yield state
     finally:
-        try:
-            shutil.rmtree(child_root)
-        except OSError:
-            state.cleanup = "failed"
-            raise
+        if not state._cleanup_allowed:
+            state.cleanup = "deferred"
         else:
-            state.cleanup = "removed"
+            try:
+                shutil.rmtree(child_root)
+            except OSError:
+                state.cleanup = "failed"
+                raise
+            else:
+                state.cleanup = "removed"
+
+
+def configure_windows_test_runner(environment: dict[str, str], temp_root: WindowsTempRoot) -> None:
+    if "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER" in environment:
+        raise OSError("Windows Rust test runner is already configured")
+    runner = Path(__file__).with_name("profile_rust_windows_test_runner.py")
+    command = (str(Path(sys.executable)), "-I", "-S", str(runner))
+    if any(any(character.isspace() for character in argument) for argument in command):
+        raise OSError("Windows Rust test runner command cannot contain whitespace")
+    environment["CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER"] = " ".join(command)
+    environment["CODEXY_WINDOWS_TEST_TEMP_ROOT"] = temp_root.selected_temp_root
 
 
 def _raise_after(error: Exception, actions: tuple[object, ...]) -> None:

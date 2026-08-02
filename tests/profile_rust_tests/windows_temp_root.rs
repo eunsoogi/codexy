@@ -36,10 +36,10 @@ try:
 finally:
     module["os"].environ = original_environ
 payload = json.loads(phases["windows-telemetry-json"])
-selected = pathlib.Path(seen["TEMP"])
-if status or seen["TEMP"] != seen["TMP"] or selected.parent != runner or selected == native:
+selected = pathlib.Path(payload["selected_temp_root"])
+if status or seen["TEMP"] != str(native) or seen["TMP"] != str(native):
     raise SystemExit(f"status={status!r} seen={seen!r}")
-if selected.exists() or payload.get("temp") != str(native) or payload.get("tmp") != str(native):
+if selected.parent != runner or selected.exists() or payload.get("temp") != str(native) or payload.get("tmp") != str(native):
     raise SystemExit(f"selected={selected!r} payload={payload!r}")
 if payload.get("selected_temp_root") != str(selected) or payload.get("temp_cleanup") != "removed":
     raise SystemExit(f"payload={payload!r}")
@@ -66,7 +66,7 @@ module = runpy.run_path(path)
 root = pathlib.Path(tempfile.mkdtemp())
 for environment in ({}, {"RUNNER_TEMP": "relative"}):
     try:
-        with module["isolated_windows_temp"](environment):
+        with module["isolated_windows_test_root"](environment):
             raise SystemExit("invalid runner temp launched")
     except OSError:
         pass
@@ -74,7 +74,7 @@ saved = module["tempfile"].mkdtemp
 module["tempfile"].mkdtemp = lambda **_kwargs: (_ for _ in ()).throw(PermissionError("unwritable"))
 try:
     try:
-        with module["isolated_windows_temp"]({"RUNNER_TEMP": str(root)}):
+        with module["isolated_windows_test_root"]({"RUNNER_TEMP": str(root)}):
             raise SystemExit("unwritable runner temp launched")
     except PermissionError:
         pass

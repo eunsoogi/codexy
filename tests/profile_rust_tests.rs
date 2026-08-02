@@ -42,6 +42,10 @@ mod telemetry_compatibility;
 mod windows_temp_root;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/windows_test_runner.rs"]
+mod windows_test_runner;
+
+#[cfg(unix)]
 #[test]
 fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(42, 1802, 0)?;
