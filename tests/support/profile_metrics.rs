@@ -24,7 +24,7 @@ pub(crate) fn record_fixture_materialization(
 }
 
 pub(crate) fn record_command_wait(key: &str, program: &OsStr, duration: std::time::Duration) {
-    let family = command_family(program);
+    let family = super::profile_interval_metrics::command_family(program);
     write_command_metric(command_wait_line(
         &format!("{key}:{family}"),
         family,
@@ -100,7 +100,9 @@ mod tests {
         assert_eq!(
             super::command_wait_line(
                 "unattributed:fixture-command:python",
-                super::command_family(OsStr::new("C:/tool/python.exe")),
+                super::super::profile_interval_metrics::command_family(OsStr::new(
+                    "C:/tool/python.exe"
+                )),
                 0.25,
             ),
             "command-wait\tv1\tunattributed:fixture-command:python\tpython\t1\t0.250000"
@@ -119,29 +121,4 @@ fn fixture_materialization_line(
 
 fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
     format!("command-wait\tv1\t{key}\t{family}\t1\t{duration_seconds:.6}")
-}
-
-fn command_family(program: &OsStr) -> &'static str {
-    let name = std::path::Path::new(program)
-        .file_name()
-        .unwrap_or(program)
-        .to_string_lossy()
-        .to_ascii_lowercase();
-    if matches!(name.as_str(), "git" | "git.exe") {
-        "git"
-    } else if matches!(
-        name.as_str(),
-        "python" | "python.exe" | "python3" | "python3.exe" | "py" | "py.exe"
-    ) {
-        "python"
-    } else if matches!(
-        name.as_str(),
-        "sh" | "sh.exe" | "bash" | "bash.exe" | "cmd" | "cmd.exe" | "pwsh" | "pwsh.exe"
-    ) {
-        "shell"
-    } else if name.starts_with("codexy-validate") || name == "validate-plugin-config" {
-        "validator"
-    } else {
-        "other"
-    }
 }

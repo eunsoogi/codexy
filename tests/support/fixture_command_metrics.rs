@@ -8,6 +8,9 @@ use super::{FixtureCommand, receipt};
 const OUTPUT_KEY: &str = "fixture-command.output.unattributed";
 const SPAWN_KEY: &str = "fixture-command.spawn.unattributed";
 const STATUS_KEY: &str = "fixture-command.status.unattributed";
+const OUTPUT_INTERVAL: &str = "fixture-command.output";
+const SPAWN_INTERVAL: &str = "fixture-command.spawn";
+const STATUS_INTERVAL: &str = "fixture-command.status";
 
 impl FixtureCommand {
     pub(crate) fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
@@ -56,29 +59,36 @@ impl FixtureCommand {
 
     pub(crate) fn output(&mut self) -> std::io::Result<Output> {
         let program = self.command.get_program().to_owned();
+        let interval =
+            super::super::profile_interval_metrics::command_interval(OUTPUT_INTERVAL, &program);
         let started = Instant::now();
         let result = receipt::output(&mut self.command, self.receipt.as_ref());
         super::super::profile_metrics::record_command_wait(OUTPUT_KEY, &program, started.elapsed());
+        drop(interval);
         result
     }
 
     pub(crate) fn status(&mut self) -> std::io::Result<ExitStatus> {
-        self.measure(STATUS_KEY, Command::status)
+        self.measure(STATUS_KEY, STATUS_INTERVAL, Command::status)
     }
 
     pub(crate) fn spawn(&mut self) -> std::io::Result<Child> {
-        self.measure(SPAWN_KEY, Command::spawn)
+        self.measure(SPAWN_KEY, SPAWN_INTERVAL, Command::spawn)
     }
 
     fn measure<T>(
         &mut self,
         key: &str,
+        interval_key: &'static str,
         invoke: impl FnOnce(&mut Command) -> std::io::Result<T>,
     ) -> std::io::Result<T> {
         let program = self.command.get_program().to_owned();
+        let interval =
+            super::super::profile_interval_metrics::command_interval(interval_key, &program);
         let started = Instant::now();
         let result = invoke(&mut self.command);
         super::super::profile_metrics::record_command_wait(key, &program, started.elapsed());
+        drop(interval);
         result
     }
 }

@@ -8,7 +8,7 @@ use std::time::Duration;
 use super::fixture_command::FixtureCommand;
 use super::package_fixture::create_runtime_package;
 use super::wrapper_copy::copy_dir;
-pub(crate) use super::wrapper_process::wait_for_wrapper_output;
+use super::wrapper_process::wait_for_wrapper_output as wait_for_wrapper_output_inner;
 
 const WRAPPER_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -133,20 +133,40 @@ pub(crate) fn wait_for_default_wrapper_output(
     wait_for_wrapper_output(child, description, WRAPPER_TIMEOUT)
 }
 
+pub(crate) fn wait_for_wrapper_output(
+    child: Child,
+    description: String,
+    timeout: Duration,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    let interval =
+        super::profile_interval_metrics::generic_interval("wrapper.child-wait.other", "other");
+    let result = wait_for_wrapper_output_inner(child, description, timeout);
+    drop(interval);
+    result
+}
+
 pub(crate) fn run_wrapper_command_with_timeout(
     command: &mut Command,
     timeout: Duration,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    let interval =
+        super::profile_interval_metrics::wrapper_interval("output", command.get_program());
     let description = format!("{command:?}");
     let child = spawn_wrapper_command(command.stdout(Stdio::piped()).stderr(Stdio::piped()))?;
-    wait_for_wrapper_output(child, description, timeout)
+    let result = wait_for_wrapper_output(child, description, timeout);
+    drop(interval);
+    result
 }
 
 /// Spawns a wrapper as a process-group leader so the timeout helper can reap its descendants.
 pub(crate) fn spawn_wrapper_command(command: &mut Command) -> std::io::Result<Child> {
+    let interval =
+        super::profile_interval_metrics::wrapper_interval("spawn", command.get_program());
     #[cfg(unix)]
     command.process_group(0);
-    command.spawn()
+    let result = command.spawn();
+    drop(interval);
+    result
 }
 
 pub(crate) trait WrapperCommandExt {

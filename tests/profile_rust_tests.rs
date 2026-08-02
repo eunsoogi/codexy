@@ -42,6 +42,10 @@ mod interleaved_accounting;
 mod telemetry_compatibility;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/command_intervals.rs"]
+mod command_intervals;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/windows_temp_root.rs"]
 mod windows_temp_root;
 

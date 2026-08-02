@@ -8,6 +8,7 @@ fn telemetry_reports_only_observed_values_without_a_repository_root()
     let probe = r#"
 import importlib.util, json, pathlib, sys
 path = pathlib.Path(sys.argv[1])
+sys.path.insert(0, str(path.parent))
 spec = importlib.util.spec_from_file_location("telemetry", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -185,6 +186,7 @@ fn profiler_ranks_bounded_command_waits_without_sensitive_command_data()
 import importlib.util, json, pathlib, sys, tempfile
 
 path = pathlib.Path(sys.argv[1])
+sys.path.insert(0, str(path.parent))
 spec = importlib.util.spec_from_file_location("profile_telemetry", path)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

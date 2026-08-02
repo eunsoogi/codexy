@@ -149,9 +149,11 @@ impl McpClient {
     pub(super) fn read_stdout_chunk(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut chunk = [0_u8; 4096];
         let stdout = self.child.stdout.as_mut().ok_or("missing child stdout")?;
+        let interval = crate::support::mcp_interval("mcp-client.response");
         let started = Instant::now();
         let read = stdout.read(&mut chunk)?;
         crate::support::record_mcp_wait("mcp-client.response", started.elapsed());
+        drop(interval);
         if read == 0 {
             let mut stderr = String::new();
             if let Some(output) = self.child.stderr.as_mut() {
@@ -166,8 +168,10 @@ impl McpClient {
 impl Drop for McpClient {
     fn drop(&mut self) {
         drop(self.child.stdin.take());
+        let interval = crate::support::mcp_interval("mcp-client.final-wait");
         let started = Instant::now();
         let _ = self.child.wait();
         crate::support::record_mcp_wait("mcp-client.final-wait", started.elapsed());
+        drop(interval);
     }
 }

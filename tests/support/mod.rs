@@ -22,6 +22,7 @@ mod package_fixture;
 mod plugin_fixture;
 mod plugin_fixture_copy;
 mod plugin_fixture_mutable;
+mod profile_interval_metrics;
 mod profile_metrics;
 pub(crate) mod release_archive;
 mod release_cache;
@@ -84,6 +85,7 @@ pub(crate) use plugin_fixture::{
     materialize_admission_runtime_suite, plugin_fixture, plugin_fixture_with_mutable_files,
     roles_fixture,
 };
+pub(crate) use profile_interval_metrics::mcp_interval;
 pub(crate) use profile_metrics::record_mcp_wait;
 pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{
