@@ -1,10 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::process::{Command, Output};
-
 #[path = "archive_inspection_receipt.rs"]
 mod archive_inspection_receipt;
-use archive_inspection_receipt as receipt;
-
 use super::fixture_command_windows::fixture_script_interpreter;
 #[cfg(windows)]
 use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
@@ -15,7 +12,7 @@ use super::{
     fixture_path::{fixture_path_environment_value, fixture_path_text},
     fixture_text::materialized_script_source,
 };
-
+use archive_inspection_receipt as receipt;
 /// A test-only factory for native commands and POSIX fixture scripts on Windows.
 #[derive(Debug)]
 pub(crate) struct FixtureCommand {
@@ -23,7 +20,6 @@ pub(crate) struct FixtureCommand {
     uses_posix_paths: bool,
     receipt: Option<receipt::ArchiveInspectorReceipt>,
 }
-
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
@@ -79,11 +75,20 @@ impl FixtureCommand {
                 directory.as_os_str().to_owned()
             }
         });
-        Self {
+        let test_mode =
+            receipt.is_some() || matches!(std::env::var("CODEXY_TEST_MODE").as_deref(), Ok("1"));
+        let mut fixture = Self {
             command,
             uses_posix_paths,
             receipt,
+        };
+        if test_mode {
+            fixture.env_path(
+                "CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY",
+                env!("CARGO_BIN_EXE_codexy-validate"),
+            );
         }
+        fixture
     }
 
     pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
