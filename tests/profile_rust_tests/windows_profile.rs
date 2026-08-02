@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
-fn windows_profiler_owns_the_test_profile_without_affecting_non_windows()
+fn windows_profiler_preserves_the_default_cargo_environment()
 -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r##"
@@ -35,9 +35,9 @@ if status != 0:
 receipt = json.loads(phases["workload-receipt-json"])
 if receipt["test_threads"] != {"state":"default/unobserved", "value":"not-observed"}:
     raise SystemExit(f"windows thread receipt={receipt!r}")
-if receipt["cargo_test_profile"] != {"state":"configured", "debug":"0", "opt_level":"1"}:
+if "cargo_test_profile" in receipt:
     raise SystemExit(f"windows profile receipt={receipt!r}")
-if marker.read_text().splitlines() != ["|0|1|test --locked --all-targets"]:
+if marker.read_text().splitlines() != ["|||test --locked --all-targets"]:
     raise SystemExit(f"windows cargo={marker.read_text()!r}")
 
 marker.unlink()
@@ -48,25 +48,11 @@ if status != 0:
 receipt = json.loads(phases["workload-receipt-json"])
 if receipt["test_threads"] != {"state":"default/unobserved", "value":"not-observed"}:
     raise SystemExit(f"non-windows thread receipt={receipt!r}")
-if receipt["cargo_test_profile"] != {"state":"default/unobserved", "debug":"not-observed", "opt_level":"not-observed"}:
+if "cargo_test_profile" in receipt:
     raise SystemExit(f"non-windows profile receipt={receipt!r}")
 if marker.read_text().splitlines() != ["|||test --locked --all-targets"]:
     raise SystemExit(f"non-windows cargo={marker.read_text()!r}")
 
-for key in ("RUST_TEST_THREADS", "CARGO_PROFILE_TEST_DEBUG", "CARGO_PROFILE_TEST_OPT_LEVEL"):
-    if marker.exists():
-        marker.unlink()
-    conflict = dict(base, **{key: "3"})
-    os.environ.clear(); os.environ.update(conflict)
-    try:
-        run_workload(root, 5.0, windows=True)
-    except OSError as error:
-        if str(error) != f"{key} is profiler-owned for the Windows Rust workload":
-            raise
-    else:
-        raise SystemExit(f"configured {key} was not rejected")
-    if marker.exists():
-        raise SystemExit(f"conflicting environment launched cargo: {marker.read_text()!r}")
 "##;
     let output = Command::new("python3")
         .args(["-c", probe])

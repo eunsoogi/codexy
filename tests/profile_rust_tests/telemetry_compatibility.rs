@@ -133,8 +133,6 @@ receipt = module.receipt(
 )
 if receipt["test_threads"] != {"state":"configured", "value":"3"}:
     raise SystemExit(receipt)
-if receipt["cargo_test_profile"] != {"state":"default/unobserved", "debug":"not-observed", "opt_level":"not-observed"}:
-    raise SystemExit(receipt)
 if receipt["targets"] != [
     {"target":"lib", "state":"completed", "started_seconds":0.1, "ended_seconds":0.3, "elapsed_seconds":0.2},
     {"target":"suite_all", "state":"started", "started_seconds":0.4, "ended_seconds":"not-observed", "elapsed_seconds":"not-observed"},
@@ -144,20 +142,6 @@ if receipt["process_families"] != {"git":1, "python":1, "shell":1, "validator":0
     raise SystemExit(receipt)
 if module.receipt(("lib",), (), {}, "[]")["test_threads"] != {"state":"default/unobserved", "value":"not-observed"}:
     raise SystemExit("default test-thread state")
-if module.receipt(("lib",), (), {}, "[]")["cargo_test_profile"] != {"state":"default/unobserved", "debug":"not-observed", "opt_level":"not-observed"}:
-    raise SystemExit("default cargo-test-profile state")
-if module.receipt(("lib",), (), {"CARGO_PROFILE_TEST_DEBUG":"0", "CARGO_PROFILE_TEST_OPT_LEVEL":"1"}, "[]")["cargo_test_profile"] != {"state":"configured", "debug":"0", "opt_level":"1"}:
-    raise SystemExit("configured cargo-test-profile state")
-for environment in [
-    {"CARGO_PROFILE_TEST_DEBUG":"0"},
-    {"CARGO_PROFILE_TEST_DEBUG":"1", "CARGO_PROFILE_TEST_OPT_LEVEL":"1"},
-    {"CARGO_PROFILE_TEST_DEBUG":"0", "CARGO_PROFILE_TEST_OPT_LEVEL":"0"},
-]:
-    try:
-        module.receipt(("lib",), (), environment, "[]")
-    except ValueError:
-        continue
-    raise SystemExit(f"accepted invalid cargo-test-profile: {environment!r}")
 if module.process_records('[{"pid":4,"error":"OpenProcess: 5"}]'):
     raise SystemExit("unobserved image became a process family")
 observer = module.RuntimeTelemetry(0.0, (), {})
