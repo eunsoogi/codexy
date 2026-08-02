@@ -12,6 +12,19 @@ pub(crate) fn record(name: &str) {
     }
 }
 
+pub(crate) fn record_fixture_materialization(files: u64, bytes: u64) {
+    let Some(file) = METRICS.get_or_init(open_metrics).as_ref() else {
+        return;
+    };
+    if let Ok(mut file) = file.lock() {
+        let _ = writeln!(file, "{}", fixture_materialization_line(files, bytes));
+    }
+}
+
+pub(crate) fn enabled() -> bool {
+    METRICS.get_or_init(open_metrics).is_some()
+}
+
 fn open_metrics() -> Option<Mutex<std::fs::File>> {
     let path = std::env::var_os("CODEXY_WINDOWS_PROFILE_METRICS")?;
     std::fs::OpenOptions::new()
@@ -20,4 +33,19 @@ fn open_metrics() -> Option<Mutex<std::fs::File>> {
         .open(path)
         .ok()
         .map(Mutex::new)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn fixture_materialization_records_use_the_profiler_contract() {
+        assert_eq!(
+            super::fixture_materialization_line(3, 17),
+            "fixture-materialization\t3\t17"
+        );
+    }
+}
+
+fn fixture_materialization_line(files: u64, bytes: u64) -> String {
+    format!("fixture-materialization\t{files}\t{bytes}")
 }

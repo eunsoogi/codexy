@@ -18,14 +18,10 @@ const PARENT_CLAUSES: &[&str] = &[
     "Parent-stage budget enforcement MUST preserve external-wait heartbeat semantics and the packaged Sentinel review gate.",
 ];
 
-fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
-    plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
-}
-
-fn copy_budget_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    Ok(support::copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
+fn copy_budget_fixture() -> TestResult<support::InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(std::path::Path::new(
         "skills/codex-orchestration/references/execution-budget.md",
-    )])?)
+    ))?)
 }
 
 #[test]
@@ -40,14 +36,14 @@ fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
     );
 
     for clause in PARENT_CLAUSES {
-        let (_temp, plugin_root) = copy_budget_fixture()?;
-        let path = budget_path(&plugin_root);
+        let fixture = copy_budget_fixture()?;
+        let path = fixture.path();
         let original = fs::read_to_string(&path)?;
         fs::write(
             &path,
             original.replace(clause, "removed parent execution-budget policy"),
         )?;
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
         assert!(support::stderr(&output).contains("execution-budget contract"));
     }
@@ -56,8 +52,8 @@ fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
 
 #[test]
 fn validator_rejects_parent_cycles_without_acceptance_progress() -> TestResult {
-    let (_temp, plugin_root) = copy_budget_fixture()?;
-    let path = budget_path(&plugin_root);
+    let fixture = copy_budget_fixture()?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     fs::write(
         &path,
@@ -65,7 +61,7 @@ fn validator_rejects_parent_cycles_without_acceptance_progress() -> TestResult {
             "{original}\nA parent helper or reviewer cycle MAY repeat without acceptance progress or blocker removal.\n"
         ),
     )?;
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("execution-budget contract"));
     Ok(())

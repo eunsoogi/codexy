@@ -63,7 +63,9 @@ pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
 };
-pub(crate) use instruction_policy_fixture::{InstructionPolicyFixture, instruction_policy_fixture};
+pub(crate) use instruction_policy_fixture::{
+    FocusedFixtureProfile, InstructionPolicyFixture, instruction_policy_fixture,
+};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,

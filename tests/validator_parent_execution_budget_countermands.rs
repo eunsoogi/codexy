@@ -4,14 +4,10 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
-    plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
-}
-
-fn copy_budget_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    Ok(support::copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
+fn budget_fixture() -> TestResult<support::InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(std::path::Path::new(
         "skills/codex-orchestration/references/execution-budget.md",
-    )])?)
+    ))?)
 }
 
 #[test]
@@ -20,11 +16,11 @@ fn validator_rejects_repeated_parent_cycles_without_criterion_or_blocker_progres
         "A parent reviewer cycle MAY be repeated without a newly satisfied acceptance criterion or a removed blocker.",
         "A parent helper cycle MAY repeat without acceptance criterion satisfaction or blocker removal.",
     ] {
-        let (_temp, plugin_root) = copy_budget_fixture()?;
-        let path = budget_path(&plugin_root);
+        let fixture = budget_fixture()?;
+        let path = fixture.path();
         let original = fs::read_to_string(&path)?;
         fs::write(&path, format!("{original}\n{clause}\n"))?;
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(!output.status.success(), "validator accepted {clause:?}");
     }
     Ok(())
@@ -38,18 +34,19 @@ fn parent_cycle_countermand_keeps_negated_commented_and_sentence_boundary_contro
         "<!-- A parent helper cycle MAY repeat without acceptance criterion satisfaction or blocker removal. -->",
         "A parent reviewer cycle MAY repeat with a newly satisfied acceptance criterion. Without a blocker, it stops.",
     ] {
-        let (_temp, plugin_root) = copy_budget_fixture()?;
-        let path = budget_path(&plugin_root);
+        let fixture = budget_fixture()?;
+        let path = fixture.path();
         let original = fs::read_to_string(&path)?;
         fs::write(&path, format!("{original}\n{clause}\n"))?;
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(output.status.success(), "validator rejected {clause:?}");
     }
     Ok(())
 }
 
 #[test]
-fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_variants() -> TestResult {
+fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_variants() -> TestResult
+{
     let valid = [
         "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion when an existing blocker is removed.",
         "A parent reviewer cycle MAY repeat if an existing blocker is removed, even if no acceptance criterion is newly satisfied.",
@@ -65,13 +62,15 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
         "A parent reviewer cycle MAY repeat without a newly satisfied acceptance criterion but no blocker is removed.",
     ];
 
-    let (_temp, plugin_root) = copy_budget_fixture()?;
-    let path = budget_path(&plugin_root);
+    let fixture = budget_fixture()?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     for clause in valid {
         fs::write(&path, format!("{original}\n{clause}\n"))?;
         assert!(
-            support::validator_instruction_policy(&plugin_root)?.status.success(),
+            support::validator_instruction_policy_file(path)?
+                .status
+                .success(),
             "validator rejected alternate blocker progress {clause:?}"
         );
     }
@@ -79,7 +78,7 @@ fn parent_cycle_countermand_preserves_alternate_progress_and_rejects_clause_vari
     for clause in invalid {
         fs::write(&path, format!("{original}\n{clause}\n"))?;
         assert!(
-            !support::validator_instruction_policy(&plugin_root)?
+            !support::validator_instruction_policy_file(path)?
                 .status
                 .success(),
             "validator accepted {clause:?}"
@@ -100,20 +99,22 @@ fn parent_cycle_countermand_rejects_continuation_verbs_without_progress() -> Tes
         "A parent helper cycle MAY continue even if no acceptance criterion is newly satisfied and no blocker is removed.",
     ];
 
-    let (_temp, plugin_root) = copy_budget_fixture()?;
-    let path = budget_path(&plugin_root);
+    let fixture = budget_fixture()?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     for clause in valid {
         fs::write(&path, format!("{original}\n{clause}\n"))?;
         assert!(
-            support::validator_instruction_policy(&plugin_root)?.status.success(),
+            support::validator_instruction_policy_file(path)?
+                .status
+                .success(),
             "validator rejected allowed continuation {clause:?}"
         );
     }
     for clause in invalid {
         fs::write(&path, format!("{original}\n{clause}\n"))?;
         assert!(
-            !support::validator_instruction_policy(&plugin_root)?
+            !support::validator_instruction_policy_file(path)?
                 .status
                 .success(),
             "validator accepted continuation countermand {clause:?}"

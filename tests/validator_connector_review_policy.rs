@@ -42,8 +42,8 @@ fn validator_accepts_the_required_manual_connector_review_contract() -> TestResu
 
 #[test]
 fn validator_rejects_missing_historical_or_fenced_connector_review_policy() -> TestResult {
-    let (_temp, plugin_root) = plugin_fixture()?;
-    let reference_path = plugin_root.join(REFERENCE);
+    let fixture = support::instruction_policy_fixture(Path::new(REFERENCE))?;
+    let reference_path = fixture.path();
     let reference = std::fs::read_to_string(&reference_path)?;
 
     for (index, policy) in [
@@ -63,8 +63,9 @@ fn validator_rejects_missing_historical_or_fenced_connector_review_policy() -> T
     .enumerate()
     {
         std::fs::write(&reference_path, policy)?;
-        assert_policy_rejected(
+        assert_policy_file(
             &reference_path,
+            false,
             &format!("connector policy regression escaped at case {index}"),
         )?;
         std::fs::write(&reference_path, &reference)?;
@@ -83,12 +84,13 @@ fn validator_rejects_active_automatic_or_repeated_request_variants() -> TestResu
         "The parent/orchestrator MUST request a second connector review after repair.",
         "The parent/orchestrator MUST request piecemeal connector reviews.",
     ] {
-        let (_temp, plugin_root) = plugin_fixture()?;
-        let reference_path = plugin_root.join(REFERENCE);
+        let fixture = support::instruction_policy_fixture(Path::new(REFERENCE))?;
+        let reference_path = fixture.path();
         let reference = std::fs::read_to_string(&reference_path)?;
         std::fs::write(&reference_path, format!("{reference}\n{variant}\n"))?;
-        assert_policy_rejected(
+        assert_policy_file(
             &reference_path,
+            false,
             &format!("connector request variant escaped: {variant:?}"),
         )?;
     }
@@ -102,12 +104,13 @@ fn validator_allows_active_prohibitions_and_quoted_counterexamples() -> TestResu
         "The statement \"Automatic Codex connector review is enabled for every push.\" MUST NOT be permitted.",
         "A duplicate, second, or piecemeal connector review MUST NOT be requested.",
     ] {
-        let (_temp, plugin_root) = plugin_fixture()?;
-        let reference_path = plugin_root.join(REFERENCE);
+        let fixture = support::instruction_policy_fixture(Path::new(REFERENCE))?;
+        let reference_path = fixture.path();
         let reference = std::fs::read_to_string(&reference_path)?;
         std::fs::write(&reference_path, format!("{reference}\n{control}\n"))?;
-        assert_policy_allowed(
+        assert_policy_file(
             &reference_path,
+            true,
             &format!("valid prohibition was rejected: {control:?}"),
         )?;
     }
@@ -168,10 +171,19 @@ fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() ->
         let original = std::fs::read_to_string(&path)?;
         let catalog = original
             .lines()
-            .filter(|line| line.chars().next().is_some_and(|character| character.is_ascii_digit()))
+            .filter(|line| {
+                line.chars()
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit())
+            })
             .collect::<Vec<_>>()
             .join("\n");
-        std::fs::write(&path, format!("# Manual Codex Connector Review\n\n## Required Procedure\n\n{prefix}{catalog}\n"))?;
+        std::fs::write(
+            &path,
+            format!(
+                "# Manual Codex Connector Review\n\n## Required Procedure\n\n{prefix}{catalog}\n"
+            ),
+        )?;
         assert_policy_rejected(
             &path,
             &format!("excluded catalog satisfied active obligations: {prefix:?}"),
@@ -181,9 +193,9 @@ fn validator_ignores_excluded_policy_contexts_and_rejects_excluded_catalogs() ->
 }
 
 fn plugin_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
-    Ok(support::copy_plugin_fixture_with_mutable_files(&[Path::new(
-        REFERENCE,
-    )])?)
+    Ok(support::copy_plugin_fixture_with_mutable_files(&[
+        Path::new(REFERENCE),
+    ])?)
 }
 
 fn repo_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
@@ -216,6 +228,16 @@ fn validate(plugin_root: &Path) -> Result<std::process::Output, Box<dyn std::err
 fn assert_policy_allowed(path: &Path, context: &str) -> TestResult {
     let diagnostics = validation::instruction_policy_diagnostics(path)?;
     assert!(diagnostics.is_empty(), "{context}: {diagnostics:#?}");
+    Ok(())
+}
+
+fn assert_policy_file(path: &Path, expected: bool, context: &str) -> TestResult {
+    let output = support::validator_instruction_policy_file(path)?;
+    assert!(
+        output.status.success() == expected,
+        "{context}: expected {expected}, got {}",
+        support::stderr(&output)
+    );
     Ok(())
 }
 

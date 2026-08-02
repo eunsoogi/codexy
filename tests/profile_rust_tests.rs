@@ -34,6 +34,10 @@ mod windows_atomic_assignment;
 mod windows_accounting;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/telemetry_compatibility.rs"]
+mod telemetry_compatibility;
+
+#[cfg(unix)]
 #[test]
 fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(42, 1802, 0)?;

@@ -7,6 +7,8 @@ use std::process::{Command, Output};
 mod high_cost_adapters;
 #[path = "validator_library_parity/fixture.rs"]
 mod fixture;
+#[path = "validator_library_parity/instruction_policy_adapter.rs"]
+mod instruction_policy_adapter;
 
 use fixture::{copy_plugin_fixture, normalized_fixture_stderr};
 
@@ -52,37 +54,6 @@ fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
         "--check",
         support::validator_instruction_policy,
     )?;
-    Ok(())
-}
-
-#[test]
-fn single_surface_instruction_policy_adapter_matches_the_manifest_fixture()
--> Result<(), Box<dyn std::error::Error>> {
-    let relative = Path::new("skills/proof-driven-completion/SKILL.md");
-    let canonical = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("plugins/codexy")
-        .join(relative);
-    let original = std::fs::read_to_string(&canonical)?;
-    let fixture = support::instruction_policy_fixture(relative)?;
-    let source = std::fs::read_to_string(fixture.path())?;
-    let replacement = source.replace("MUST NOT accept", "do not accept");
-    std::fs::write(
-        fixture.path(),
-        &replacement,
-    )?;
-    let (_temp, manifest_root) = support::copy_plugin_fixture_with_mutable_files(&[relative])?;
-    std::fs::write(manifest_root.join(relative), replacement)?;
-
-    let single_surface = support::validator_instruction_policy_file(fixture.path())?;
-    let manifest_fixture = support::validator_instruction_policy(&manifest_root)?;
-    assert!(!single_surface.status.success());
-    assert!(String::from_utf8_lossy(&single_surface.stderr).contains("MUST NOT"));
-    assert_eq!(single_surface.status.code(), manifest_fixture.status.code());
-    assert_eq!(
-        normalized_fixture_stderr(&single_surface, fixture.path()),
-        normalized_fixture_stderr(&manifest_fixture, &manifest_root.join(relative)),
-    );
-    assert_eq!(std::fs::read_to_string(canonical)?, original);
     Ok(())
 }
 
