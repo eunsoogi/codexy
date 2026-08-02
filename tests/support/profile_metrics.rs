@@ -1,15 +1,12 @@
+use std::ffi::OsStr;
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
 
 static METRICS: OnceLock<Option<Mutex<std::fs::File>>> = OnceLock::new();
+static COMMAND_METRICS: OnceLock<Option<Mutex<std::fs::File>>> = OnceLock::new();
 
 pub(crate) fn record(name: &str) {
-    let Some(file) = METRICS.get_or_init(open_metrics).as_ref() else {
-        return;
-    };
-    if let Ok(mut file) = file.lock() {
-        let _ = writeln!(file, "{name}");
-    }
+    write_metric(name.to_owned());
 }
 
 pub(crate) fn record_fixture_materialization(
@@ -18,16 +15,25 @@ pub(crate) fn record_fixture_materialization(
     bytes: u64,
     duration_seconds: f64,
 ) {
-    let Some(file) = METRICS.get_or_init(open_metrics).as_ref() else {
-        return;
-    };
-    if let Ok(mut file) = file.lock() {
-        let _ = writeln!(
-            file,
-            "{}",
-            fixture_materialization_line(identity, files, bytes, duration_seconds)
-        );
-    }
+    write_metric(fixture_materialization_line(
+        identity,
+        files,
+        bytes,
+        duration_seconds,
+    ));
+}
+
+pub(crate) fn record_command_wait(key: &str, program: &OsStr, duration: std::time::Duration) {
+    let family = command_family(program);
+    write_command_metric(command_wait_line(
+        &format!("{key}:{family}"),
+        family,
+        duration.as_secs_f64(),
+    ));
+}
+
+pub(crate) fn record_mcp_wait(key: &str, duration: std::time::Duration) {
+    write_command_metric(command_wait_line(key, "other", duration.as_secs_f64()));
 }
 
 pub(crate) fn enabled() -> bool {
@@ -45,13 +51,59 @@ fn open_metrics() -> Option<Mutex<std::fs::File>> {
         .map(Mutex::new)
 }
 
+fn open_command_metrics() -> Option<Mutex<std::fs::File>> {
+    let directory = std::env::var_os("CODEXY_PROFILE_COMMAND_METRICS_DIR")?;
+    std::fs::create_dir_all(&directory).ok()?;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(
+            std::path::Path::new(&directory)
+                .join(format!("command-{}.metrics", std::process::id())),
+        )
+        .ok()
+        .map(Mutex::new)
+}
+
+fn write_metric(line: String) {
+    let Some(file) = METRICS.get_or_init(open_metrics).as_ref() else {
+        return;
+    };
+    if let Ok(mut file) = file.lock() {
+        let _ = file.write_all(format!("{line}\n").as_bytes());
+    }
+}
+
+fn write_command_metric(line: String) {
+    let Some(file) = COMMAND_METRICS.get_or_init(open_command_metrics).as_ref() else {
+        return;
+    };
+    if let Ok(mut file) = file.lock() {
+        let _ = file.write_all(format!("{line}\n").as_bytes());
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsStr;
+
     #[test]
     fn fixture_materialization_records_use_the_profiler_contract() {
         assert_eq!(
             super::fixture_materialization_line("full:tests/example.rs:7", 3, 17, 0.25),
             "fixture-materialization\tfull:tests/example.rs:7\t3\t17\t0.250000"
+        );
+    }
+
+    #[test]
+    fn command_wait_records_keep_only_safe_categories() {
+        assert_eq!(
+            super::command_wait_line(
+                "unattributed:fixture-command:python",
+                super::command_family(OsStr::new("C:/tool/python.exe")),
+                0.25,
+            ),
+            "command-wait\tv1\tunattributed:fixture-command:python\tpython\t1\t0.250000"
         );
     }
 }
@@ -63,4 +115,33 @@ fn fixture_materialization_line(
     duration_seconds: f64,
 ) -> String {
     format!("fixture-materialization\t{identity}\t{files}\t{bytes}\t{duration_seconds:.6}")
+}
+
+fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
+    format!("command-wait\tv1\t{key}\t{family}\t1\t{duration_seconds:.6}")
+}
+
+fn command_family(program: &OsStr) -> &'static str {
+    let name = std::path::Path::new(program)
+        .file_name()
+        .unwrap_or(program)
+        .to_string_lossy()
+        .to_ascii_lowercase();
+    if matches!(name.as_str(), "git" | "git.exe") {
+        "git"
+    } else if matches!(
+        name.as_str(),
+        "python" | "python.exe" | "python3" | "python3.exe" | "py" | "py.exe"
+    ) {
+        "python"
+    } else if matches!(
+        name.as_str(),
+        "sh" | "sh.exe" | "bash" | "bash.exe" | "cmd" | "cmd.exe" | "pwsh" | "pwsh.exe"
+    ) {
+        "shell"
+    } else if name.starts_with("codexy-validate") || name == "validate-plugin-config" {
+        "validator"
+    } else {
+        "other"
+    }
 }

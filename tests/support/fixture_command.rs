@@ -1,7 +1,9 @@
 use std::ffi::{OsStr, OsString};
-use std::process::{Command, Output};
+use std::process::Command;
 #[path = "archive_inspection_receipt.rs"]
 mod archive_inspection_receipt;
+#[path = "fixture_command_metrics.rs"]
+mod metrics;
 use super::fixture_command_windows::fixture_script_interpreter;
 #[cfg(windows)]
 use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
@@ -113,10 +115,9 @@ impl FixtureCommand {
         V: AsRef<OsStr>,
         I: IntoIterator<Item = (K, V)>,
     {
-        for (key, value) in variables {
-            self.env(key, value);
-        }
-        self
+        variables
+            .into_iter()
+            .fold(self, |fixture, (key, value)| fixture.env(key, value))
     }
 
     pub(crate) fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
@@ -158,14 +159,6 @@ impl FixtureCommand {
         };
         self.command.env(key, value);
         self
-    }
-
-    pub(crate) fn path_arg(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
-        self.arg_path(path)
-    }
-
-    pub(crate) fn output(&mut self) -> std::io::Result<Output> {
-        receipt::output(&mut self.command, self.receipt.as_ref())
     }
 
     fn path_value(&self, value: &OsStr) -> OsString {

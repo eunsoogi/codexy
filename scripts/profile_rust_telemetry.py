@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -10,7 +11,19 @@ import re
 
 MAX_METRIC_RECORDS = 4096
 MAX_RANKED_PROFILES = 16
+MAX_COMMAND_METRIC_FILES = 256
+MAX_COMMAND_METRIC_BYTES = 1_048_576
 IDENTITY_PATTERN = re.compile(r"^(?:full:[A-Za-z0-9_./-]+:[1-9][0-9]*|selective:[a-z0-9-]+)$")
+COMMAND_FAMILIES = {"git", "python", "shell", "validator", "other"}
+
+
+def configure_metrics(environment: dict[str, str], directory: Path) -> tuple[Path, Path]:
+    metrics_path = directory / "fixture-metrics"
+    command_metrics_path = directory / "command-metrics"
+    environment["CODEXY_PROFILE_METRICS"] = str(metrics_path)
+    environment["CODEXY_WINDOWS_PROFILE_METRICS"] = str(metrics_path)
+    environment["CODEXY_PROFILE_COMMAND_METRICS_DIR"] = str(command_metrics_path)
+    return metrics_path, command_metrics_path
 
 
 def telemetry(
@@ -18,11 +31,17 @@ def telemetry(
     environment: dict[str, str],
     metrics_path: Path | None,
     temp_root: dict[str, str] | None = None,
+    command_metrics_path: Path | None = None,
 ) -> str:
     target = environment.get("CARGO_TARGET_DIR")
     if target is None and root is not None:
         target = str((root / "target").resolve())
     files, copied_bytes, materializations, duration_seconds, ranked = fixture_metrics(metrics_path)
+    command_ranked, command_unattributed = command_metrics(
+        command_metrics_path
+        or (Path(environment["CODEXY_PROFILE_COMMAND_METRICS_DIR"])
+            if "CODEXY_PROFILE_COMMAND_METRICS_DIR" in environment else None)
+    )
     temp_root = temp_root or {}
     workspace = environment.get("GITHUB_WORKSPACE", str(root) if root else "not-observed")
     return json.dumps(
@@ -44,6 +63,8 @@ def telemetry(
             "fixture_copied_bytes": copied_bytes,
             "fixture_materialization_seconds": duration_seconds,
             "fixture_materialization_ranked": ranked,
+            "command_wait_ranked": command_ranked,
+            "command_wait_unattributed": command_unattributed,
         },
         sort_keys=True,
     )
@@ -106,6 +127,75 @@ def fixture_metrics(metrics_path: Path | None) -> tuple[int, int, int, float, li
 
 def valid_identity(identity: str) -> bool:
     return len(identity) <= 160 and ".." not in identity and IDENTITY_PATTERN.fullmatch(identity) is not None
+
+
+def command_metrics(metrics_path: Path | None) -> tuple[list[dict[str, float | int | str]], dict[str, float | int]]:
+    if metrics_path is None:
+        return [], {"count": 0, "cumulative_wait_seconds": 0.0}
+    if not metrics_path.is_dir():
+        return [], {"count": 0, "cumulative_wait_seconds": 0.0}
+    files = sorted(metrics_path.iterdir())
+    if len(files) > MAX_COMMAND_METRIC_FILES:
+        raise ValueError("command metric file overflow")
+    records = 0
+    families: dict[str, str] = {}
+    ranked: dict[tuple[str, str], dict[str, float | int | str]] = {}
+    for path in files:
+        if not path.is_file() or not re.fullmatch(r"command-[0-9]+\.metrics", path.name):
+            raise ValueError("unknown command metric file")
+        if path.stat().st_size > MAX_COMMAND_METRIC_BYTES:
+            raise ValueError("command metric byte overflow")
+        with path.open(encoding="utf-8") as lines:
+            for raw_line in lines:
+                if not raw_line.endswith("\n"):
+                    raise ValueError("partial command metric")
+                fields = raw_line.rstrip("\n").split("\t")
+                records += 1
+                if records > MAX_METRIC_RECORDS:
+                    raise ValueError("command metric record overflow")
+                if len(fields) != 6 or fields[0] != "command-wait" or fields[1] != "v1":
+                    raise ValueError("malformed command metric")
+                _, _, key, family, count_text, duration_text = fields
+                if family not in COMMAND_FAMILIES or not valid_command_key(key, family):
+                    raise ValueError("unknown command metric identity")
+                if families.setdefault(key, family) != family:
+                    raise ValueError("conflicting command metric identity")
+                try:
+                    count, duration = int(count_text), float(duration_text)
+                except ValueError as error:
+                    raise ValueError("malformed command metric") from error
+                if count != 1 or not math.isfinite(duration) or duration < 0:
+                    raise ValueError("malformed command metric")
+                record = ranked.setdefault(
+                    (key, family),
+                    {"key": key, "family": family, "count": 0, "cumulative_wait_seconds": 0.0},
+                )
+                record["count"] += count
+                record["cumulative_wait_seconds"] += duration
+                if not math.isfinite(float(record["cumulative_wait_seconds"])):
+                    raise ValueError("command metric duration overflow")
+    attributed = [record for record in ranked.values() if ".unattributed:" not in str(record["key"])]
+    ordered = sorted(
+        attributed,
+        key=lambda record: (-float(record["cumulative_wait_seconds"]), -int(record["count"]), str(record["key"])),
+    )[:MAX_RANKED_PROFILES]
+    for record in ordered:
+        record["cumulative_wait_seconds"] = round(float(record["cumulative_wait_seconds"]), 6)
+    unattributed = [record for record in ranked.values() if ".unattributed:" in str(record["key"])]
+    return ordered, {
+        "count": sum(int(record["count"]) for record in unattributed),
+        "cumulative_wait_seconds": round(sum(float(record["cumulative_wait_seconds"]) for record in unattributed), 6),
+    }
+
+
+def valid_command_key(key: str, family: str) -> bool:
+    fixture_operations = {"output", "spawn", "status"}
+    mcp_operations = {"response", "final-wait"}
+    return (
+        any(key == f"fixture-command.{operation}.unattributed:{family}" for operation in fixture_operations)
+        or any(key == f"mcp-client.{operation}" for operation in mcp_operations)
+        and family == "other"
+    )
 
 
 def same_volume(selected: str | None, destination: str | None) -> bool | str:

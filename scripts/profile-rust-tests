@@ -8,7 +8,7 @@ from pathlib import Path
 from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, declared_test_targets, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_archive_accounting import emit_receipt_report, receipt_environment, receipt_report_lines
 from profile_rust_output import flush_output, observe_first_line, replay_output
-from profile_rust_telemetry import telemetry
+from profile_rust_telemetry import configure_metrics, telemetry
 from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
 from profile_rust_windows_launcher import configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
@@ -28,9 +28,7 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
         capture_path.touch(mode=0o600)
         first_line: list[bytes] = []
         with receipt_environment(Path(directory)) as (receipt_dir, environment):
-            metrics_path = Path(directory) / "fixture-metrics"
-            environment["CODEXY_PROFILE_METRICS"] = str(metrics_path)
-            environment["CODEXY_WINDOWS_PROFILE_METRICS"] = str(metrics_path)
+            metrics_path, command_metrics_path = configure_metrics(environment, Path(directory))
             temporary_root = isolated_windows_test_root(environment) if windows else nullcontext(None)
             with temporary_root as temp_root, capture_path.open("wb", buffering=0) as capture:
                 if temp_root:
@@ -94,7 +92,10 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
             status = status or 1
         phases["archive-inspector-receipt-lines"] = receipt_report_lines(receipt_dir)
         phases["fixture-telemetry-json"] = telemetry(
-            root, environment, metrics_path, temp_root.telemetry() if temp_root else None
+            root,
+            environment,
+            metrics_path,
+            temp_root.telemetry() if temp_root else None,
         )
         phases["workload-receipt-json"] = runtime_receipt
         phases["windows-telemetry-json"] = phases["fixture-telemetry-json"]

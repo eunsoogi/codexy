@@ -176,3 +176,55 @@ for events, processes in [
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }
+
+#[test]
+fn profiler_ranks_bounded_command_waits_without_sensitive_command_data()
+-> Result<(), Box<dyn std::error::Error>> {
+    let helper = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile_rust_telemetry.py");
+    let probe = r#"
+import importlib.util, json, pathlib, sys, tempfile
+
+path = pathlib.Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("profile_telemetry", path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+metrics = pathlib.Path(tempfile.mkdtemp())
+record = metrics / "command-1.metrics"
+record.write_text(
+    "command-wait\tv1\tfixture-command.output.unattributed:python\tpython\t1\t0.250000\n"
+    "command-wait\tv1\tfixture-command.output.unattributed:python\tpython\t1\t0.125000\n"
+    "command-wait\tv1\tmcp-client.response\tother\t1\t0.500000\n"
+)
+payload = json.loads(module.telemetry(None, {}, None, command_metrics_path=metrics))
+if payload["command_wait_ranked"] != [
+    {"key":"mcp-client.response", "family":"other", "count":1, "cumulative_wait_seconds":0.5},
+]:
+    raise SystemExit(payload)
+if payload["command_wait_unattributed"] != {"count":2, "cumulative_wait_seconds":0.375}:
+    raise SystemExit(payload)
+if any("/" in json.dumps(record) or "secret" in json.dumps(record) for record in payload["command_wait_ranked"]):
+    raise SystemExit("sensitive command data leaked")
+for line in [
+    "command-wait\tv2\tmcp-client.response\tother\t1\t0.1\n",
+    "command-wait\tv1\tmcp-client.response\tother\t2\t0.1\n",
+    "command-wait\tv1\tmcp-client.response\tpython\t1\t0.1\n",
+    "command-wait\tv1\tfixture-command.output.unattributed:python\tpython\t1\tnan\n",
+    "command-wait\tv1\tmcp-client.response\tother\t1\t0.1\textra\n",
+]:
+    record.write_text(line)
+    try:
+        module.telemetry(None, {}, None, command_metrics_path=metrics)
+    except ValueError:
+        continue
+    raise SystemExit(f"accepted invalid command metric: {line!r}")
+record.unlink()
+if json.loads(module.telemetry(None, {}, None, command_metrics_path=metrics))["command_wait_ranked"]:
+    raise SystemExit("profiling-disabled metrics were invented")
+"#;
+    let output = Command::new("python3")
+        .args(["-c", probe])
+        .arg(helper)
+        .output()?;
+    assert!(output.status.success(), "{output:?}");
+    Ok(())
+}

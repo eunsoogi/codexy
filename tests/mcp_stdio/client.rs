@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Instant;
 
 pub(super) struct InstalledPlugin {
     pub(super) _temp: tempfile::TempDir,
@@ -148,7 +149,9 @@ impl McpClient {
     pub(super) fn read_stdout_chunk(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut chunk = [0_u8; 4096];
         let stdout = self.child.stdout.as_mut().ok_or("missing child stdout")?;
+        let started = Instant::now();
         let read = stdout.read(&mut chunk)?;
+        crate::support::record_mcp_wait("mcp-client.response", started.elapsed());
         if read == 0 {
             let mut stderr = String::new();
             if let Some(output) = self.child.stderr.as_mut() {
@@ -163,6 +166,8 @@ impl McpClient {
 impl Drop for McpClient {
     fn drop(&mut self) {
         drop(self.child.stdin.take());
+        let started = Instant::now();
         let _ = self.child.wait();
+        crate::support::record_mcp_wait("mcp-client.final-wait", started.elapsed());
     }
 }

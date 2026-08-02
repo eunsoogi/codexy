@@ -84,6 +84,7 @@ pub(crate) use plugin_fixture::{
     materialize_admission_runtime_suite, plugin_fixture, plugin_fixture_with_mutable_files,
     roles_fixture,
 };
+pub(crate) use profile_metrics::record_mcp_wait;
 pub(crate) use release_archive::assert_structured_literals;
 pub(super) use release_cache::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
