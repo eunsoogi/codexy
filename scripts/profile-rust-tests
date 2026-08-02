@@ -10,9 +10,8 @@ from profile_rust_archive_accounting import emit_receipt_report, receipt_environ
 from profile_rust_output import flush_output, observe_first_line, replay_output
 from profile_rust_telemetry import configure_metrics, telemetry
 from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
-from profile_rust_windows_launcher import configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
+from profile_rust_windows import WindowsJob, configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
-from profile_rust_windows_job import WindowsJob
 BUDGET_SECONDS = 180.0
 MINIMUM_PASSED_TESTS = 1802
 REQUIRED_JOB_TIMEOUT_MINUTES = 4

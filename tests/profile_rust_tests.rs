@@ -34,6 +34,10 @@ mod windows_atomic_assignment;
 mod windows_accounting;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/windows_threads.rs"]
+mod windows_threads;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/interleaved_accounting.rs"]
 mod interleaved_accounting;
 
