@@ -34,12 +34,20 @@ mod windows_atomic_assignment;
 mod windows_accounting;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/interleaved_accounting.rs"]
+mod interleaved_accounting;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/telemetry_compatibility.rs"]
 mod telemetry_compatibility;
 
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_temp_root.rs"]
 mod windows_temp_root;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/windows_cleanup_receipts.rs"]
+mod windows_cleanup_receipts;
 
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_test_runner.rs"]

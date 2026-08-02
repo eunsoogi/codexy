@@ -12,7 +12,12 @@ pub(crate) fn record(name: &str) {
     }
 }
 
-pub(crate) fn record_fixture_materialization(identity: &str, files: u64, bytes: u64) {
+pub(crate) fn record_fixture_materialization(
+    identity: &str,
+    files: u64,
+    bytes: u64,
+    duration_seconds: f64,
+) {
     let Some(file) = METRICS.get_or_init(open_metrics).as_ref() else {
         return;
     };
@@ -20,7 +25,7 @@ pub(crate) fn record_fixture_materialization(identity: &str, files: u64, bytes: 
         let _ = writeln!(
             file,
             "{}",
-            fixture_materialization_line(identity, files, bytes)
+            fixture_materialization_line(identity, files, bytes, duration_seconds)
         );
     }
 }
@@ -30,7 +35,8 @@ pub(crate) fn enabled() -> bool {
 }
 
 fn open_metrics() -> Option<Mutex<std::fs::File>> {
-    let path = std::env::var_os("CODEXY_WINDOWS_PROFILE_METRICS")?;
+    let path = std::env::var_os("CODEXY_PROFILE_METRICS")
+        .or_else(|| std::env::var_os("CODEXY_WINDOWS_PROFILE_METRICS"))?;
     std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -44,12 +50,17 @@ mod tests {
     #[test]
     fn fixture_materialization_records_use_the_profiler_contract() {
         assert_eq!(
-            super::fixture_materialization_line("full:tests/example.rs:7", 3, 17),
-            "fixture-materialization\tfull:tests/example.rs:7\t3\t17"
+            super::fixture_materialization_line("full:tests/example.rs:7", 3, 17, 0.25),
+            "fixture-materialization\tfull:tests/example.rs:7\t3\t17\t0.250000"
         );
     }
 }
 
-fn fixture_materialization_line(identity: &str, files: u64, bytes: u64) -> String {
-    format!("fixture-materialization\t{identity}\t{files}\t{bytes}")
+fn fixture_materialization_line(
+    identity: &str,
+    files: u64,
+    bytes: u64,
+    duration_seconds: f64,
+) -> String {
+    format!("fixture-materialization\t{identity}\t{files}\t{bytes}\t{duration_seconds:.6}")
 }

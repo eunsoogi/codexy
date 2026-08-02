@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 #[cfg(windows)]
 struct PrivateSeed {
@@ -26,8 +27,18 @@ pub(super) fn materialize(
     #[cfg(not(windows))]
     {
         let _ = mutable_files;
-        let _ = identity;
-        return super::copy_dir(source, target);
+        let started = Instant::now();
+        super::copy_dir(&source, target)?;
+        if super::profile_metrics::enabled() {
+            let profile = materialization_profile(target)?;
+            super::profile_metrics::record_fixture_materialization(
+                identity,
+                profile.files,
+                profile.bytes,
+                started.elapsed().as_secs_f64(),
+            );
+        }
+        return Ok(());
     }
     #[cfg(windows)]
     materialize_windows(&source, target, Path::new(""), mutable_files, identity)
@@ -44,16 +55,35 @@ fn materialize_windows(
     let seed = private_seed(source)?;
     if super::profile_metrics::enabled() {
         let mut profile = FixtureMaterialization::default();
+        let started = Instant::now();
         materialize_seed(&seed, target, relative, mutable_files, Some(&mut profile))?;
         super::profile_metrics::record_fixture_materialization(
             identity,
             profile.files,
             profile.bytes,
+            started.elapsed().as_secs_f64(),
         );
     } else {
         materialize_seed(&seed, target, relative, mutable_files, None)?;
     }
     Ok(())
+}
+
+fn materialization_profile(root: &Path) -> std::io::Result<FixtureMaterialization> {
+    let mut profile = FixtureMaterialization::default();
+    for entry in std::fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let nested = materialization_profile(&path)?;
+            profile.files += nested.files;
+            profile.bytes += nested.bytes;
+        } else {
+            profile.files += 1;
+            profile.bytes += std::fs::metadata(path)?.len();
+        }
+    }
+    Ok(profile)
 }
 
 #[cfg(windows)]

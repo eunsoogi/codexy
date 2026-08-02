@@ -28,6 +28,7 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
         first_line: list[bytes] = []
         with receipt_environment(Path(directory)) as (receipt_dir, environment):
             metrics_path = Path(directory) / "fixture-metrics"
+            environment["CODEXY_PROFILE_METRICS"] = str(metrics_path)
             environment["CODEXY_WINDOWS_PROFILE_METRICS"] = str(metrics_path)
             temporary_root = isolated_windows_test_root(environment) if windows else nullcontext(None)
             with temporary_root as temp_root, capture_path.open("wb", buffering=0) as capture:
@@ -85,10 +86,15 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
                 if temp_root is not None and cleanup_allowed:
                     temp_root.allow_cleanup()
         output = capture_path.read_bytes()
+        if temp_root is not None and temp_root.cleanup != "removed":
+            status = status or 1
         phases["archive-inspector-receipt-lines"] = receipt_report_lines(receipt_dir)
-        phases["windows-telemetry-json"] = telemetry(
+        phases["fixture-telemetry-json"] = telemetry(
             root, environment, metrics_path, temp_root.telemetry() if temp_root else None
         )
+        phases["windows-telemetry-json"] = phases["fixture-telemetry-json"]
+        if temp_root is not None:
+            phases["windows-temp-cleanup-receipt-json"] = json.dumps(temp_root.telemetry(), sort_keys=True)
     phases["workload-seconds"] = capture_started - started
     phases["capture-seconds"] = time.perf_counter() - capture_started
     live_output = first_line[0] if first_line else b""
@@ -189,11 +195,12 @@ def main() -> int:
         print(f"compiled-targets\t{len(expected_targets)}\t{'PASS' if target_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}")
-    telemetry_json = phases.get("windows-telemetry-json")
-    if telemetry_json is None:
-        telemetry_json = telemetry(root, dict(getattr(os, "environ", {})), None)
+    telemetry_json = phases.get("fixture-telemetry-json")
+    if telemetry_json is not None:
+        print(f"fixture-telemetry-json\t{telemetry_json}")
     if arguments.windows and "windows-telemetry-json" in phases:
-        print(f"windows-telemetry-json\t{telemetry_json}")
+        print(f"windows-telemetry-json\t{phases['windows-telemetry-json']}")
+        print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")
     emit_receipt_report(phases.get("archive-inspector-receipt-lines"))
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")

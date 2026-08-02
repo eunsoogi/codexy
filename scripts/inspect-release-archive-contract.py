@@ -10,6 +10,14 @@ from release_archive_contract_shell import wrapper_declarations
 PUBLIC_PLATFORMS = ["darwin-arm64", "linux-x86_64"]
 SOURCE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64"'
 CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
+BATCH_INPUT = "source-projection-batch.json"
+BATCH_RESET_PATHS = (
+    ".codex-plugin/plugin.json",
+    "mcp/codexy-mcp-codegraph",
+    "mcp/codexy-mcp-lsp",
+    "runtime-candidate.json",
+    "runtime-release.json",
+)
 
 
 def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> str:
@@ -41,6 +49,71 @@ def source_projection(root: Path) -> None:
     for path, text in wrappers: open(path, "w", encoding="utf-8", newline="").write(text)
 
 
+def source_projection_batch(root: Path) -> None:
+    document = batch_document(root)
+    snapshots = batch_snapshots(root)
+    results = []
+    for case in document["cases"]:
+        restore_batch_snapshot(root, snapshots)
+        wrapper = root / "mcp" / "codexy-mcp-lsp"
+        text = open(wrapper, encoding="utf-8", newline="").read()
+        open(wrapper, "w", encoding="utf-8", newline="").write(
+            f"{text}\n{case['append']}\n"
+        )
+        try:
+            source_projection(root)
+        except SystemExit as error:
+            results.append({"id": case["id"], "success": False, "diagnostic": str(error)})
+        else:
+            results.append({"id": case["id"], "success": True, "diagnostic": None})
+    restore_batch_snapshot(root, snapshots)
+    if len(results) != document["expectedCaseCount"]:
+        raise SystemExit("candidate source projection batch produced incomplete results")
+    print(json.dumps(results, separators=(",", ":"), sort_keys=True))
+
+
+def batch_document(root: Path) -> dict:
+    path = root / BATCH_INPUT
+    try:
+        document = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit("candidate source projection batch input is invalid") from error
+    if not isinstance(document, dict):
+        raise SystemExit("candidate source projection batch input is invalid")
+    if document.get("resetPaths") != list(BATCH_RESET_PATHS):
+        raise SystemExit("candidate source projection batch reset paths are invalid")
+    cases = document.get("cases")
+    expected = document.get("expectedCaseCount")
+    if not isinstance(cases, list) or type(expected) is not int or expected != len(cases):
+        raise SystemExit("candidate source projection batch results are incomplete")
+    seen = set()
+    for case in cases:
+        if not isinstance(case, dict):
+            raise SystemExit("candidate source projection batch input is invalid")
+        identifier, appended = case.get("id"), case.get("append")
+        if not isinstance(identifier, str) or not identifier or not isinstance(appended, str):
+            raise SystemExit("candidate source projection batch input is invalid")
+        if identifier in seen:
+            raise SystemExit("candidate source projection batch IDs must be unique")
+        seen.add(identifier)
+    return document
+
+
+def batch_snapshots(root: Path) -> dict[str, bytes]:
+    snapshots = {}
+    for relative in BATCH_RESET_PATHS:
+        path = root / relative
+        if not path.is_file():
+            raise SystemExit("candidate source projection batch reset material is missing")
+        snapshots[relative] = path.read_bytes()
+    return snapshots
+
+
+def restore_batch_snapshot(root: Path, snapshots: dict[str, bytes]) -> None:
+    for relative, contents in snapshots.items():
+        (root / relative).write_bytes(contents)
+
+
 def candidate_assembly(root: Path) -> None:
     for server in ("lsp", "codegraph"):
         path = root / "mcp" / f"codexy-mcp-{server}"
@@ -66,8 +139,12 @@ def main() -> None:
             for server in ("lsp", "codegraph"):
                 print(f"runtime/codexy-mcp-{server}-{platform}.{extension}")
         return
-    if mode in {"source-projection", "candidate-assembly"}:
-        {"source-projection": source_projection, "candidate-assembly": candidate_assembly}[mode](root)
+    if mode in {"source-projection", "source-projection-batch", "candidate-assembly"}:
+        {
+            "source-projection": source_projection,
+            "source-projection-batch": source_projection_batch,
+            "candidate-assembly": candidate_assembly,
+        }[mode](root)
         return
     if mode == "staged":
         release = json.loads((root / "runtime-release.json").read_text())

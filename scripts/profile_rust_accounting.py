@@ -15,6 +15,9 @@ RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
 RUNNING_NOTICE_PATTERN = re.compile(r"^test (?P<name>.+) has been running for over 60 seconds$")
 RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
 RESULT_SUMMARY_PATTERN = re.compile(r"^test result: (?:ok|FAILED)\.")
+RESULT_COUNTS_PATTERN = re.compile(
+    r"^test result: (?:ok|FAILED)\. (?P<passed>\d+) passed; (?P<failed>\d+) failed; (?P<ignored>\d+) ignored;"
+)
 
 
 def archive_fixture_nested_cargo_build_count(root: Path) -> int:
@@ -192,6 +195,15 @@ def observed_test_records(output: str) -> tuple[Counter[str], set[str], Counter[
             pending = match.group("name")
         elif current and pending and line in {"ok", "FAILED", "ignored"}:
             record_observed_test(tests, outcomes, current, pending, line)
+            pending = None
+        elif current and pending and (match := RESULT_COUNTS_PATTERN.match(line)):
+            observed = sum(count for name, count in tests.items() if name.startswith(f"{current}::"))
+            if (
+                match.group("failed") == "0"
+                and match.group("ignored") == "0"
+                and int(match.group("passed")) == observed + 1
+            ):
+                record_observed_test(tests, outcomes, current, pending, "ok")
             pending = None
     return tests, targets, outcomes
 

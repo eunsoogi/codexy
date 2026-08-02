@@ -5,6 +5,12 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
+
+
+MAX_METRIC_RECORDS = 4096
+MAX_RANKED_PROFILES = 16
+IDENTITY_PATTERN = re.compile(r"^(?:full:[A-Za-z0-9_./-]+:[1-9][0-9]*|selective:[a-z0-9-]+)$")
 
 
 def telemetry(
@@ -16,7 +22,7 @@ def telemetry(
     target = environment.get("CARGO_TARGET_DIR")
     if target is None and root is not None:
         target = str((root / "target").resolve())
-    files, copied_bytes, materializations, ranked = fixture_metrics(metrics_path)
+    files, copied_bytes, materializations, duration_seconds, ranked = fixture_metrics(metrics_path)
     temp_root = temp_root or {}
     workspace = environment.get("GITHUB_WORKSPACE", str(root) if root else "not-observed")
     return json.dumps(
@@ -36,6 +42,7 @@ def telemetry(
             "fixture_materializations": materializations,
             "fixture_copied_files": files,
             "fixture_copied_bytes": copied_bytes,
+            "fixture_materialization_seconds": duration_seconds,
             "fixture_materialization_ranked": ranked,
         },
         sort_keys=True,
@@ -48,39 +55,57 @@ def observed_cpu_count(name: str) -> int | str:
     return value if isinstance(value, int) else "not-observed"
 
 
-def fixture_metrics(metrics_path: Path | None) -> tuple[int, int, int, list[dict[str, int | str]]]:
+def fixture_metrics(metrics_path: Path | None) -> tuple[int, int, int, float, list[dict[str, float | int | str]]]:
     files = copied_bytes = materializations = 0
-    ranked: dict[str, dict[str, int | str]] = {}
+    duration_seconds = 0.0
+    ranked: dict[str, dict[str, float | int | str]] = {}
     if metrics_path is None:
-        return files, copied_bytes, materializations, []
+        return files, copied_bytes, materializations, duration_seconds, []
     try:
-        lines = metrics_path.read_text(encoding="utf-8").splitlines()
+        lines = metrics_path.open(encoding="utf-8")
     except OSError:
-        return files, copied_bytes, materializations, []
-    for line in lines:
+        return files, copied_bytes, materializations, duration_seconds, []
+    for index, line in enumerate(lines):
+        if index == MAX_METRIC_RECORDS:
+            break
         name, *values = line.split("\t")
-        if name != "fixture-materialization" or len(values) not in {2, 3}:
+        if name != "fixture-materialization" or len(values) not in {2, 3, 4}:
             continue
         try:
             if len(values) == 2:
-                identity, count, size = "not-observed", *(int(value) for value in values)
+                identity, count, size, duration = "not-observed", *(int(value) for value in values), 0.0
+            elif len(values) == 3:
+                identity, count, size, duration = values[0], *(int(value) for value in values[1:]), 0.0
             else:
-                identity, count, size = values[0], *(int(value) for value in values[1:])
+                identity, count, size, duration = values[0], int(values[1]), int(values[2]), float(values[3])
         except ValueError:
             continue
+        identity = identity if valid_identity(identity) else "invalid"
         materializations += 1
         files += count
         copied_bytes += size
+        duration_seconds += duration
         profile = ranked.setdefault(
             identity,
-            {"identity": identity, "materializations": 0, "files": 0, "bytes": 0},
+            {"identity": identity, "materializations": 0, "files": 0, "bytes": 0, "duration_seconds": 0.0},
         )
         profile["materializations"] += 1
         profile["files"] += count
         profile["bytes"] += size
-    return files, copied_bytes, materializations, sorted(
-        ranked.values(), key=lambda profile: (-profile["bytes"], -profile["files"], profile["identity"])
-    )
+        profile["duration_seconds"] += duration
+    return files, copied_bytes, materializations, duration_seconds, sorted(
+        ranked.values(),
+        key=lambda profile: (
+            profile["identity"] != "invalid",
+            -profile["bytes"],
+            -profile["files"],
+            profile["identity"],
+        ),
+    )[:MAX_RANKED_PROFILES]
+
+
+def valid_identity(identity: str) -> bool:
+    return len(identity) <= 160 and ".." not in identity and IDENTITY_PATTERN.fullmatch(identity) is not None
 
 
 def same_volume(selected: str | None, destination: str | None) -> bool | str:

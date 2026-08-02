@@ -1,4 +1,5 @@
 use std::path::{Component, Path, PathBuf};
+use std::time::Instant;
 
 pub(crate) struct InstructionPolicyFixture {
     _temp: tempfile::TempDir,
@@ -50,11 +51,13 @@ pub(crate) fn instruction_policy_fixture(
         files: 1,
         bytes: std::fs::metadata(&source)?.len(),
     };
+    let started = Instant::now();
     std::fs::copy(&source, &path)?;
     super::profile_metrics::record_fixture_materialization(
         "selective:instruction-policy",
         profile.files,
         profile.bytes,
+        started.elapsed().as_secs_f64(),
     );
     Ok(InstructionPolicyFixture {
         _temp: temp,

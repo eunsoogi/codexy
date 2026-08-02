@@ -6,12 +6,20 @@ from contextlib import contextmanager
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import tempfile
 from typing import Iterator
 
 
 _RELEASE = b"R"
+
+
+def retry_readonly_removal(function: object, path: str | Path, error: tuple[object, BaseException, object]) -> None:
+    if not isinstance(error[1], PermissionError):
+        raise error[1]
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
 
 
 class WindowsTempRoot:
@@ -27,6 +35,7 @@ class WindowsTempRoot:
         self.runner_temp = runner_temp
         self.selected_temp_root = selected_temp_root
         self.cleanup = "pending"
+        self.cleanup_error = "not-observed"
         self._cleanup_allowed = False
 
     def allow_cleanup(self) -> None:
@@ -39,6 +48,7 @@ class WindowsTempRoot:
             "runner_temp": self.runner_temp,
             "selected_temp_root": self.selected_temp_root,
             "temp_cleanup": self.cleanup,
+            "temp_cleanup_error": self.cleanup_error,
         }
 
 
@@ -68,10 +78,11 @@ def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsT
             state.cleanup = "deferred"
         else:
             try:
-                shutil.rmtree(child_root)
-            except OSError:
+                shutil.rmtree(child_root, onerror=retry_readonly_removal)
+            except OSError as error:
                 state.cleanup = "failed"
-                raise
+                code = getattr(error, "winerror", None) or getattr(error, "errno", None)
+                state.cleanup_error = f"{type(error).__name__}:{code or 'not-observed'}"
             else:
                 state.cleanup = "removed"
 
