@@ -61,6 +61,9 @@ mod windows_cleanup_receipts;
 #[path = "profile_rust_tests/windows_test_runner.rs"]
 mod windows_test_runner;
 
+#[path = "profile_rust_tests/namespace_diagnostic.rs"]
+mod namespace_diagnostic;
+
 #[cfg(unix)]
 #[test]
 fn gate_propagates_a_single_full_workload_failure() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,0 +1,41 @@
+name: Disposable Rust namespace diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  namespace-diagnostic:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Windows archive scanner prerequisite
+        shell: pwsh
+        run: scripts/install-windows-test-prerequisites.ps1
+
+      - name: Prepare Windows Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Measure namespaces once
+        shell: pwsh
+        run: python scripts/profile_rust_namespace_diagnostic.py --artifact-dir "$env:RUNNER_TEMP/namespace-diagnostic"
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-namespace-diagnostic
+          path: ${{ runner.temp }}/namespace-diagnostic
+          if-no-files-found: error
