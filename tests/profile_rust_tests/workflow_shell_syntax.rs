@@ -18,7 +18,7 @@ fn gate_ignores_shell_data_that_mentions_the_full_workload(
     ] {
         std::fs::write(
             &fixture.workflow,
-            format!("jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
+            format!("jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
         )?;
         assert!(fixture.run(&[])?.status.success(), "{command}");
     }
@@ -153,7 +153,7 @@ fn gate_rejects_shell_wrapped_or_reordered_full_workloads(
         std::fs::write(
             &fixture.workflow,
             format!(
-                "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"
+                "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"
             ),
         )?;
         assert!(!fixture.run(&[])?.status.success(), "{command}");
@@ -225,7 +225,7 @@ fn fixture_with(command: &str) -> Result<GateFixture, Box<dyn std::error::Error>
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        format!("jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
+        format!("jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
     )?;
     Ok(fixture)
 }

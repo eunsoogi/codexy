@@ -10,7 +10,7 @@ fn windows_gate_reconciles_exact_compiled_test_names() -> Result<(), Box<dyn std
     assert_eq!(report.get("coverage-tests"), Some(&vec!["1803", "1803", "PASS"]));
     assert_eq!(report.get("coverage-missing"), Some(&vec!["0"]));
     assert_eq!(report.get("coverage-duplicate-or-extra"), Some(&vec!["0"]));
-    assert_eq!(report.get("budget-seconds"), Some(&vec!["180.000", "PASS"]));
+    assert_eq!(report.get("budget-seconds"), Some(&vec!["300.000", "PASS"]));
     Ok(())
 }
 

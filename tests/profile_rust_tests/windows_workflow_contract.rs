@@ -3,7 +3,7 @@ use std::path::Path;
 use super::super::GateFixture;
 
 const RUST_JOB: &str =
-    "    runs-on: ubuntu-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n";
+    "    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n";
 const WINDOWS_STEPS: &str =
     "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n";
 const NESTED_BLOCK_STEPS: &str = "      - name: Archive prerequisite\n        run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n\n        # The parser keeps step metadata separate from the run scalar.\n        run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n\n      - name: Profile\n        run: >\n          python scripts/profile-rust-tests --windows\n";
@@ -61,10 +61,10 @@ fn gate_accepts_only_the_exact_native_windows_workload() -> Result<(), Box<dyn s
             .run_without_required_windows_job(&[])?.status.success()
     );
 
-    let rust_matrix = "    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        include: [one]\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n";
+    let rust_matrix = "    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        include: [one]\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n";
     for (rust_job, runner, steps) in [
         (
-            "    runs-on: macos-latest\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+            "    runs-on: macos-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n",
             "windows-latest",
             WINDOWS_STEPS,
         ),

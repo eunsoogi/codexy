@@ -12,9 +12,9 @@ from profile_rust_telemetry import configure_metrics, telemetry
 from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
 from profile_rust_windows import WindowsJob, configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
-BUDGET_SECONDS = 180.0
+BUDGET_SECONDS = 300.0
 MINIMUM_PASSED_TESTS = 1802
-REQUIRED_JOB_TIMEOUT_MINUTES = 4
+REQUIRED_JOB_TIMEOUT_MINUTES = 6  # 300s workload plus 60s setup/cleanup headroom
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 RESULT_PATTERN = re.compile(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out")

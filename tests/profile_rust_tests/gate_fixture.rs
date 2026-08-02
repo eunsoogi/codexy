@@ -28,7 +28,7 @@ impl GateFixture {
         let workflow = temp.path().join("rust-test.yml");
         std::fs::write(
             &workflow,
-            "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+            "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n",
         )?;
         Ok(Self {
             temp,
