@@ -174,6 +174,20 @@ fn candidate_assembly_rejects_compound_split_eval_overrides_and_ignores_inert_te
         ("true && runner=eval\n$runner 'bundled_''platforms=darwin-arm64'", false),
         ("runner=eval\n\"$runner\" 'bundled_''platforms=darwin-arm64'", false),
         ("runner=eval\n${runner} 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=eval\ncommand \"$runner\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
+        ("runner=val\ne$runner 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=val\n\"e${runner}\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
+        ("`printf eval` 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=eval\nbuiltin \"$runner\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
         ("printf '%s\\n' 'bundled_''platforms=darwin-arm64'", true),
         ("runner=eval\nprintf '%s\\n' \"$runner\"", true),
     ] {

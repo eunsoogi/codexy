@@ -104,6 +104,10 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
             Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive-contract.py"),
             root.join("scripts/inspect-release-archive-contract.py"),
         )?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/release_archive_contract_shell.py"),
+            root.join("scripts/release_archive_contract_shell.py"),
+        )?;
         let tar = root.join("test-bin/tar");
         fs::write(&tar, "#!/bin/sh\nexit 0\n")?;
         crate::support::make_executable(&tar)?;
