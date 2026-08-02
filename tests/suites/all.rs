@@ -32,3 +32,6 @@ mod system {
 mod workflow {
     include!("workflow.rs");
 }
+
+#[path = "../stage11_harness_benchmark.rs"]
+mod stage11_harness_benchmark;

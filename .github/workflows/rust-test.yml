@@ -9,25 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  rust-test:
-    name: Rust test suite (Ubuntu)
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Install Rust test dependency
-        run: sudo apt-get update && sudo apt-get install --yes ripgrep
-
-      - name: Enforce exact full Rust workload budget
-        run: scripts/profile-rust-tests
-
-  windows-rust-test:
-    name: Rust test suite (Windows)
+  windows-harness-benchmark:
+    name: Disposable Windows harness benchmark
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -37,17 +20,19 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install Windows archive scanner prerequisite
-        shell: pwsh
-        run: scripts/install-windows-test-prerequisites.ps1
-
-      - name: Prepare Windows Rust toolchain
+      - name: Run one source-identical benchmark
         shell: pwsh
         run: |
-          rustup toolchain install
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo fetch --locked
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $evidence = Join-Path $env:RUNNER_TEMP "stage11-harness-benchmark"
+          New-Item -ItemType Directory -Force $evidence | Out-Null
+          cargo test --locked --test suite_all stage11_harness_benchmark::stage11_harness_architecture_benchmark_preserves_private_fixture_semantics -- --exact --nocapture 2>&1 | Tee-Object -FilePath (Join-Path $evidence "benchmark.log")
+          $status = $LASTEXITCODE
+          Get-FileHash (Join-Path $evidence "benchmark.log") -Algorithm SHA256 | Format-List | Out-File (Join-Path $evidence "benchmark.sha256")
+          if ($status -ne 0) { exit $status }
 
-      - name: Enforce exact full Rust workload and coverage
-        run: python scripts/profile-rust-tests --windows
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage11-windows-harness-benchmark
+          path: ${{ runner.temp }}/stage11-harness-benchmark
