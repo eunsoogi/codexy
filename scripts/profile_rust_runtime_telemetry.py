@@ -10,6 +10,16 @@ import threading
 import time
 from typing import Callable, Iterable, Sequence
 
+try:
+    from profile_rust_cargo_profile import cargo_test_profile, test_threads
+except ModuleNotFoundError as error:
+    if error.name != "profile_rust_cargo_profile": raise
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("profile_rust_cargo_profile", Path(__file__).with_name("profile_rust_cargo_profile.py"))
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    cargo_test_profile, test_threads = helper.cargo_test_profile, helper.test_threads
+
 
 _UNOBSERVED = "not-observed"
 _FAMILIES = ("git", "python", "shell", "validator", "other")
@@ -81,11 +91,13 @@ class RuntimeTelemetry:
     def _observe_line(self, line: str) -> None:
         if "Running " in line:
             target = target_name(line)
-            self._events.append((target, "started", elapsed(self._started)))
+            event_time = round(max(0.0, time.perf_counter() - self._started), 6)
+            self._events.append((target, "started", event_time))
         elif line.lstrip().startswith("test result: "):
             started = next((event for event in reversed(self._events) if event[1] == "started"), None)
             if started is not None:
-                self._events.append((started[0], "ended", elapsed(self._started)))
+                event_time = round(max(0.0, time.perf_counter() - self._started), 6)
+                self._events.append((started[0], "ended", event_time))
 
     def _observe_snapshot(self, value: object) -> None:
         for name, count in family_counts(process_records(value)).items():
@@ -113,6 +125,7 @@ def receipt(
     return {
         "schema": "codexy.rust-runtime-telemetry/v1",
         "test_threads": test_threads(environment),
+        "cargo_test_profile": cargo_test_profile(environment),
         "targets": targets,
         "ranked_completed_targets": sorted(
             (record for record in targets if record["state"] == "completed"),
@@ -235,16 +248,3 @@ def process_family(image: str) -> str:
     if name.startswith("codexy-validate"):
         return "validator"
     return "other"
-
-
-def test_threads(environment: dict[str, str]) -> dict[str, str]:
-    value = environment.get("RUST_TEST_THREADS")
-    if value is None:
-        return {"state": "default/unobserved", "value": _UNOBSERVED}
-    if not value.isascii() or not value.isdecimal() or int(value) < 1:
-        raise ValueError("malformed configured test-thread value")
-    return {"state": "configured", "value": value}
-
-
-def elapsed(started: float) -> float:
-    return round(max(0.0, time.perf_counter() - started), 6)

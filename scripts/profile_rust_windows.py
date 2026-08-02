@@ -7,7 +7,7 @@ from profile_rust_windows_launcher import (
     isolated_windows_test_root,
     launch_windows_workload,
 )
-from profile_rust_windows_threads import configure_windows_test_environment
+from profile_rust_windows_profile import configure_windows_test_environment
 
 
 def configure_windows_test_runner(
