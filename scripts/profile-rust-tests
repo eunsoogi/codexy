@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Run and enforce the exact complete Rust test workload once."""
 from __future__ import annotations
-import argparse, json, os, re, signal, subprocess, sys, tempfile, threading, time
+import argparse, json, os, re, subprocess, sys, tempfile, threading, time
 from contextlib import nullcontext
 from collections import Counter
 from pathlib import Path
-from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, declared_test_targets, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_archive_accounting import emit_receipt_report, receipt_environment, receipt_report_lines
 from profile_rust_output import flush_output, observe_first_line, replay_output
 from profile_rust_telemetry import telemetry
+from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
 from profile_rust_windows_launcher import configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
@@ -39,6 +40,8 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
                     process = subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix", env=environment)
                 else:
                     process = launch_windows_workload(job, root, capture, WORKLOAD, environment=environment)
+                runtime = RuntimeTelemetry(started, declared_test_targets(root) if root is not None and (root / "Cargo.toml").is_file() else (), environment)
+                runtime.start(capture_path, process, lambda: job.diagnostics(process)["windows-job-images-json"] if job else json.dumps(linux_cargo_descendants_snapshot(process.pid)) if sys.platform.startswith("linux") else "not-applicable")
                 observer = threading.Thread(
                     target=observe_first_line,
                     args=(capture_path, process, first_line),
@@ -82,6 +85,7 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
                     if job is not None:
                         job.close()
                     observer.join()
+                    runtime_receipt = runtime.finish()
                     del process
                 if temp_root is not None and cleanup_allowed:
                     temp_root.allow_cleanup()
@@ -92,6 +96,7 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
         phases["fixture-telemetry-json"] = telemetry(
             root, environment, metrics_path, temp_root.telemetry() if temp_root else None
         )
+        phases["workload-receipt-json"] = runtime_receipt
         phases["windows-telemetry-json"] = phases["fixture-telemetry-json"]
         if temp_root is not None:
             phases["windows-temp-cleanup-receipt-json"] = json.dumps(temp_root.telemetry(), sort_keys=True)
@@ -107,13 +112,6 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
     output_text = output.decode("utf-8")
     elapsed = budget_seconds if status == 124 else time.perf_counter() - started
     return output_text, elapsed, status, phases
-def terminate_workload(process: subprocess.Popen[str]) -> None:
-    if process.poll() is not None:
-        return
-    os.killpg(process.pid, signal.SIGKILL)
-    process.wait()
-def stop_workload(process: subprocess.Popen[str], job: WindowsJob | None) -> None:
-    job.terminate_and_wait() if job is not None else terminate_workload(process)
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
@@ -198,6 +196,7 @@ def main() -> int:
     telemetry_json = phases.get("fixture-telemetry-json")
     if telemetry_json is not None:
         print(f"fixture-telemetry-json\t{telemetry_json}")
+    if workload_receipt := phases.get("workload-receipt-json"): print(f"workload-receipt-json\t{workload_receipt}")
     if arguments.windows and "windows-telemetry-json" in phases:
         print(f"windows-telemetry-json\t{phases['windows-telemetry-json']}")
         print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")

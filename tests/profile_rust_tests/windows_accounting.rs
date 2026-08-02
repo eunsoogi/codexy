@@ -103,6 +103,7 @@ fn windows_gate_emits_structured_execution_and_fixture_telemetry(
     assert_eq!(telemetry["fixture_materializations"].as_u64(), Some(1));
     assert_eq!(telemetry["fixture_copied_files"].as_u64(), Some(2));
     assert_eq!(telemetry["fixture_copied_bytes"].as_u64(), Some(17));
+    assert!(report.get("workload-receipt-json").is_some(), "missing runtime receipt: {report:?}");
     Ok(())
 }
 

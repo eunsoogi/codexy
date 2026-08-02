@@ -110,3 +110,56 @@ if status != 0 or "fixture-telemetry-json\t" not in output or "windows-telemetry
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }
+
+#[test]
+fn runtime_telemetry_is_bounded_and_rejects_invalid_target_or_process_records()
+-> Result<(), Box<dyn std::error::Error>> {
+    let helper = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("scripts/profile_rust_runtime_telemetry.py");
+    let probe = r#"
+import importlib.util, json, pathlib, sys
+
+path = pathlib.Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("runtime_telemetry", path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+receipt = module.receipt(
+    ("lib", "suite_all"),
+    (("lib", "started", 0.1), ("lib", "ended", 0.3), ("suite_all", "started", 0.4)),
+    {"RUST_TEST_THREADS": "3"},
+    '[{"pid":1,"image":"C:/Git/bin/git.exe"},{"pid":2,"image":"C:/Python/python.exe"}]',
+    '[{"pid":3,"ppid":1,"command":"/bin/bash -c validate"}]',
+)
+if receipt["test_threads"] != {"state":"configured", "value":"3"}:
+    raise SystemExit(receipt)
+if receipt["targets"] != [
+    {"target":"lib", "state":"completed", "started_seconds":0.1, "ended_seconds":0.3, "elapsed_seconds":0.2},
+    {"target":"suite_all", "state":"started", "started_seconds":0.4, "ended_seconds":"not-observed", "elapsed_seconds":"not-observed"},
+]:
+    raise SystemExit(receipt)
+if receipt["process_families"] != {"git":1, "python":1, "shell":1, "validator":0, "other":0}:
+    raise SystemExit(receipt)
+if module.receipt(("lib",), (), {}, "[]")["test_threads"] != {"state":"default/unobserved", "value":"not-observed"}:
+    raise SystemExit("default test-thread state")
+if module.process_records('[{"pid":4,"error":"OpenProcess: 5"}]'):
+    raise SystemExit("unobserved image became a process family")
+for events, processes in [
+    ((("unknown", "started", 0.1),), "[]"),
+    ((("lib", "started", 0.1), ("lib", "started", 0.2)), "[]"),
+    ((("lib", "started", 0.1),), '[{"pid":"bad","image":"git"}]'),
+    ((("lib", "started", 0.1),), '[{"pid":1,"image":"git"},{"pid":1,"image":"git"}]'),
+    ((("lib", "started", 0.1),), '[{"pid":1,"image":"git","extra":true}]'),
+]:
+    try:
+        module.receipt(("lib",), events, {}, processes, "not-applicable")
+    except ValueError:
+        continue
+    raise SystemExit(f"accepted invalid record: {events!r} {processes!r}")
+"#;
+    let output = Command::new("python3")
+        .args(["-c", probe])
+        .arg(helper)
+        .output()?;
+    assert!(output.status.success(), "{output:?}");
+    Ok(())
+}
