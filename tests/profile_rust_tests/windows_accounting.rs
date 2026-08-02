@@ -180,6 +180,7 @@ fn run_case_with_commands(
         .args(["--root", root.to_str().ok_or("fixture root")?, "--windows"])
         .env("PATH", path)
         .env("PROFILE_CASE", case)
+        .env("RUNNER_TEMP", temp.path())
         .env("PROFILE_MARKER", &commands)
         .env("PROFILE_LIB_TEST", &lib_test)
         .env("PROFILE_ALL_TEST", &all_test)

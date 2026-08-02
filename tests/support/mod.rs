@@ -21,6 +21,7 @@ mod package_archive;
 mod package_fixture;
 mod plugin_fixture;
 mod plugin_fixture_copy;
+mod plugin_fixture_mutable;
 mod profile_metrics;
 pub(crate) mod release_archive;
 mod release_cache;

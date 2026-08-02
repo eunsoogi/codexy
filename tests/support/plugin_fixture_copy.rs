@@ -21,14 +21,16 @@ pub(super) fn materialize(
     source: PathBuf,
     target: &Path,
     mutable_files: &[&Path],
+    identity: &str,
 ) -> std::io::Result<()> {
     #[cfg(not(windows))]
     {
         let _ = mutable_files;
+        let _ = identity;
         return super::copy_dir(source, target);
     }
     #[cfg(windows)]
-    materialize_windows(&source, target, Path::new(""), mutable_files)
+    materialize_windows(&source, target, Path::new(""), mutable_files, identity)
 }
 
 #[cfg(windows)]
@@ -37,12 +39,17 @@ fn materialize_windows(
     target: &Path,
     relative: &Path,
     mutable_files: &[&Path],
+    identity: &str,
 ) -> std::io::Result<()> {
     let seed = private_seed(source)?;
     if super::profile_metrics::enabled() {
         let mut profile = FixtureMaterialization::default();
         materialize_seed(&seed, target, relative, mutable_files, Some(&mut profile))?;
-        super::profile_metrics::record_fixture_materialization(profile.files, profile.bytes);
+        super::profile_metrics::record_fixture_materialization(
+            identity,
+            profile.files,
+            profile.bytes,
+        );
     } else {
         materialize_seed(&seed, target, relative, mutable_files, None)?;
     }

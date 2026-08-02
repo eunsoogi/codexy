@@ -51,7 +51,11 @@ pub(crate) fn instruction_policy_fixture(
         bytes: std::fs::metadata(&source)?.len(),
     };
     std::fs::copy(&source, &path)?;
-    super::profile_metrics::record_fixture_materialization(profile.files, profile.bytes);
+    super::profile_metrics::record_fixture_materialization(
+        "selective:instruction-policy",
+        profile.files,
+        profile.bytes,
+    );
     Ok(InstructionPolicyFixture {
         _temp: temp,
         source,

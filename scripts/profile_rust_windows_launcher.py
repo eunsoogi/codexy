@@ -2,11 +2,73 @@
 
 from __future__ import annotations
 
-import sys
+from contextlib import contextmanager
+import os
 from pathlib import Path
+import shutil
+import sys
+import tempfile
+from typing import Iterator
 
 
 _RELEASE = b"R"
+
+
+class WindowsTempRoot:
+    def __init__(
+        self,
+        original_temp: str,
+        original_tmp: str,
+        runner_temp: str,
+        selected_temp_root: str,
+    ) -> None:
+        self.original_temp = original_temp
+        self.original_tmp = original_tmp
+        self.runner_temp = runner_temp
+        self.selected_temp_root = selected_temp_root
+        self.cleanup = "pending"
+
+    def telemetry(self) -> dict[str, str]:
+        return {
+            "original_temp": self.original_temp,
+            "original_tmp": self.original_tmp,
+            "runner_temp": self.runner_temp,
+            "selected_temp_root": self.selected_temp_root,
+            "temp_cleanup": self.cleanup,
+        }
+
+
+@contextmanager
+def isolated_windows_temp(environment: dict[str, str]) -> Iterator[WindowsTempRoot]:
+    runner_temp = environment.get("RUNNER_TEMP")
+    if runner_temp is None:
+        raise OSError("RUNNER_TEMP is required for the Windows Rust workload")
+    runner_root = Path(runner_temp)
+    if not runner_root.is_absolute():
+        raise OSError("RUNNER_TEMP must be absolute for the Windows Rust workload")
+    if not runner_root.is_dir():
+        raise OSError("RUNNER_TEMP must name an existing directory for the Windows Rust workload")
+    child_root = Path(
+        tempfile.mkdtemp(prefix=f"codexy-profile-{os.getpid()}-", dir=runner_root)
+    )
+    state = WindowsTempRoot(
+        original_temp=environment.get("TEMP", "not-observed"),
+        original_tmp=environment.get("TMP", "not-observed"),
+        runner_temp=str(runner_root),
+        selected_temp_root=str(child_root),
+    )
+    environment["TEMP"] = state.selected_temp_root
+    environment["TMP"] = state.selected_temp_root
+    try:
+        yield state
+    finally:
+        try:
+            shutil.rmtree(child_root)
+        except OSError:
+            state.cleanup = "failed"
+            raise
+        else:
+            state.cleanup = "removed"
 
 
 def _raise_after(error: Exception, actions: tuple[object, ...]) -> None:

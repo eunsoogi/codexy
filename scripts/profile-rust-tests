@@ -2,6 +2,7 @@
 """Run and enforce the exact complete Rust test workload once."""
 from __future__ import annotations
 import argparse
+from contextlib import nullcontext
 import json
 import os
 import re
@@ -17,7 +18,7 @@ from profile_rust_accounting import archive_fixture_nested_cargo_build_count, de
 from profile_rust_archive_accounting import emit_receipt_report, receipt_environment, receipt_report_lines
 from profile_rust_output import flush_output, observe_first_line, replay_output
 from profile_rust_telemetry import telemetry
-from profile_rust_windows_launcher import launch_windows_workload
+from profile_rust_windows_launcher import isolated_windows_temp, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
 from profile_rust_windows_job import WindowsJob
 BUDGET_SECONDS = 180.0
@@ -26,7 +27,7 @@ REQUIRED_JOB_TIMEOUT_MINUTES = 4
 WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
 COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
 RESULT_PATTERN = re.compile(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out")
-def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str | Path]]:
+def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tuple[str, float, int, dict[str, float | str | Path]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
     phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json", "linux-cargo-descendants-json"), "not-applicable")}
@@ -34,11 +35,12 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
         capture_path = Path(directory) / "cargo-output"
         capture_path.touch(mode=0o600)
         first_line: list[bytes] = []
-        with capture_path.open("wb", buffering=0) as capture:
-            job = WindowsJob() if os.name == "nt" else None
-            with receipt_environment(Path(directory)) as (receipt_dir, environment):
-                metrics_path = Path(directory) / "fixture-metrics"
-                environment["CODEXY_WINDOWS_PROFILE_METRICS"] = str(metrics_path)
+        with receipt_environment(Path(directory)) as (receipt_dir, environment):
+            metrics_path = Path(directory) / "fixture-metrics"
+            environment["CODEXY_WINDOWS_PROFILE_METRICS"] = str(metrics_path)
+            temporary_root = isolated_windows_temp(environment) if windows else nullcontext(None)
+            with temporary_root as temp_root, capture_path.open("wb", buffering=0) as capture:
+                job = WindowsJob() if os.name == "nt" else None
                 if job is None:
                     process = subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix", env=environment)
                 else:
@@ -84,7 +86,9 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
                 del process
         output = capture_path.read_bytes()
         phases["archive-inspector-receipt-lines"] = receipt_report_lines(receipt_dir)
-        phases["windows-telemetry-json"] = telemetry(root, environment, metrics_path)
+        phases["windows-telemetry-json"] = telemetry(
+            root, environment, metrics_path, temp_root.telemetry() if temp_root else None
+        )
     phases["workload-seconds"] = capture_started - started
     phases["capture-seconds"] = time.perf_counter() - capture_started
     live_output = first_line[0] if first_line else b""
@@ -119,7 +123,8 @@ def main() -> int:
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     started = time.perf_counter()
-    output, elapsed, status, phases = run_workload(root, arguments.budget_seconds)
+    workload_arguments = (root, arguments.budget_seconds, True) if arguments.windows else (root, arguments.budget_seconds)
+    output, elapsed, status, phases = run_workload(*workload_arguments)
     expected_tests: Counter[str] = Counter()
     expected_targets: set[str] = set()
     inventory_status = 0
