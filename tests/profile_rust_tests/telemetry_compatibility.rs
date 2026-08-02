@@ -143,11 +143,24 @@ if module.receipt(("lib",), (), {}, "[]")["test_threads"] != {"state":"default/u
     raise SystemExit("default test-thread state")
 if module.process_records('[{"pid":4,"error":"OpenProcess: 5"}]'):
     raise SystemExit("unobserved image became a process family")
+observer = module.RuntimeTelemetry(0.0, (), {})
+for snapshot in [
+    '[{"pid":42,"image":"git"},{"pid":43,"image":"git"}]',
+    '[{"pid":42,"image":"python3"}]',
+    '[{"pid":44,"image":"python3"},{"pid":45,"image":"python3"}]',
+    '[{"pid":42,"image":"python3"}]',
+]:
+    observer._observe_snapshot(snapshot)
+if observer._families != {"git":2, "python":2, "shell":0, "validator":0, "other":0}:
+    raise SystemExit(observer._families)
+if module.receipt(("lib",), (), {}, [], family_max=observer._families)["process_observation"] != "bounded-snapshot-max-family-concurrency":
+    raise SystemExit("ambiguous process observation")
 for events, processes in [
     ((("unknown", "started", 0.1),), "[]"),
     ((("lib", "started", 0.1), ("lib", "started", 0.2)), "[]"),
     ((("lib", "started", 0.1),), '[{"pid":"bad","image":"git"}]'),
     ((("lib", "started", 0.1),), '[{"pid":1,"image":"git"},{"pid":1,"image":"git"}]'),
+    ((("lib", "started", 0.1),), '[{"pid":1,"image":"git"},{"pid":1,"image":"python3"}]'),
     ((("lib", "started", 0.1),), '[{"pid":1,"image":"git","extra":true}]'),
 ]:
     try:

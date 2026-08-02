@@ -31,7 +31,7 @@ class RuntimeTelemetry:
         self._declared = tuple(sorted(set(declared)))
         self._environment = dict(environment)
         self._events: list[tuple[str, str, float]] = []
-        self._pids: dict[int, str] = {}
+        self._families = {name: 0 for name in _FAMILIES}
         self._error: ValueError | None = None
         self._thread: threading.Thread | None = None
 
@@ -51,10 +51,7 @@ class RuntimeTelemetry:
             self._thread.join()
         if self._error is not None:
             raise self._error
-        return json.dumps(
-            receipt(self._declared, self._events, self._environment, self._pids),
-            sort_keys=True,
-        )
+        return json.dumps(receipt(self._declared, self._events, self._environment, [], family_max=self._families), sort_keys=True)
 
     def _observe(
         self, capture_path: Path, process: object, snapshot: Callable[[], object]
@@ -91,10 +88,8 @@ class RuntimeTelemetry:
                 self._events.append((started[0], "ended", elapsed(self._started)))
 
     def _observe_snapshot(self, value: object) -> None:
-        for pid, image in process_records(value):
-            observed = self._pids.setdefault(pid, image)
-            if observed != image:
-                raise ValueError(f"duplicate process pid with different image: {pid}")
+        for name, count in family_counts(process_records(value)).items():
+            self._families[name] = max(self._families[name], count)
 
 
 def receipt(
@@ -103,19 +98,17 @@ def receipt(
     environment: dict[str, str],
     windows_records: object,
     linux_records: object = _UNOBSERVED,
+    family_max: dict[str, int] | None = None,
 ) -> dict[str, object]:
     parsed = parse_events(declared, events)
     records = process_records(windows_records)
-    if linux_records != _UNOBSERVED:
-        records += process_records(linux_records)
-    families = {name: 0 for name in _FAMILIES}
+    records += [] if linux_records == _UNOBSERVED else process_records(linux_records)
     seen: dict[int, str] = {}
     for pid, image in records:
         existing = seen.setdefault(pid, image)
         if existing != image:
             raise ValueError(f"duplicate process pid with different image: {pid}")
-    for image in seen.values():
-        families[process_family(image)] += 1
+    families = family_max if family_max is not None else family_counts(list(seen.items()))
     targets = target_records(declared, parsed)
     return {
         "schema": "codexy.rust-runtime-telemetry/v1",
@@ -126,7 +119,7 @@ def receipt(
             key=lambda record: (-float(record["elapsed_seconds"]), str(record["target"])),
         ),
         "process_families": families,
-        "process_observation": "bounded-observed-unique-pids",
+        "process_observation": "bounded-snapshot-max-family-concurrency",
     }
 
 
@@ -204,6 +197,13 @@ def process_records(value: object) -> list[tuple[int, str]]:
     if len({pid for pid, _ in records}) != len(records):
         raise ValueError("duplicate process record")
     return records
+
+
+def family_counts(records: Iterable[tuple[int, str]]) -> dict[str, int]:
+    counts = {name: 0 for name in _FAMILIES}
+    for _, image in records:
+        counts[process_family(image)] += 1
+    return counts
 
 
 def valid_target(target: str, known: set[str]) -> bool:
