@@ -196,14 +196,15 @@ def observed_test_records(output: str) -> tuple[Counter[str], set[str], Counter[
         elif current and pending and line in {"ok", "FAILED", "ignored"}:
             record_observed_test(tests, outcomes, current, pending, line)
             pending = None
-        elif current and pending and (match := RESULT_COUNTS_PATTERN.match(line)):
-            observed = sum(count for name, count in tests.items() if name.startswith(f"{current}::"))
-            if (
-                match.group("failed") == "0"
-                and match.group("ignored") == "0"
-                and int(match.group("passed")) == observed + 1
-            ):
-                record_observed_test(tests, outcomes, current, pending, "ok")
+        elif current and pending:
+            if match := RESULT_COUNTS_PATTERN.match(line):
+                observed = sum(count for name, count in tests.items() if name.startswith(f"{current}::"))
+                if (
+                    match.group("failed") == "0"
+                    and match.group("ignored") == "0"
+                    and int(match.group("passed")) == observed + 1
+                ):
+                    record_observed_test(tests, outcomes, current, pending, "ok")
             pending = None
     return tests, targets, outcomes
 
