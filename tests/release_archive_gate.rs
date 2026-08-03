@@ -141,19 +141,6 @@ fn archive_gate_rejects_a_malformed_runtime() {
 }
 
 #[test]
-fn archive_gate_rejects_an_access_key() {
-    let (root, plugin_root, archive) = complete_archive_fixture("secret");
-    std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
-        .expect("secret fixture");
-    create_archive(root.path(), &archive).expect("archive fixture");
-    assert_gate_error(
-        &archive,
-        &plugin_root,
-        "archive contains a secret or local path",
-    );
-}
-
-#[test]
 fn archive_gate_rejects_an_ignored_secret() {
     let (root, plugin_root, archive) = complete_archive_fixture("ignored-secret");
     std::fs::write(plugin_root.join(".rgignore"), "hidden-secret.txt\n").expect("ignore fixture");

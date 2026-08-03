@@ -19,12 +19,12 @@ fn run_gate(archive: &Path, plugin_root: &Path, path: Option<&Path>) -> Output {
     inspect_archive(archive, plugin_root, path).expect("archive gate should start")
 }
 
-fn secret_archive(secret: &str) -> (TempDir, PathBuf, PathBuf) {
+fn secret_archive(path: &str, secret: &str) -> (TempDir, PathBuf, PathBuf) {
     let root = tempdir().expect("tempdir");
     let plugin_root =
         complete_plugin_fixture_with_stubbed_runtime(root.path()).expect("complete plugin fixture");
     fs::write(
-        plugin_root.join("secret.txt"),
+        plugin_root.join(path),
         format!("{MATCHED_LINE}: {secret}\n"),
     )
     .expect("secret fixture");
@@ -84,20 +84,20 @@ fn grep_only_path(root: &Path) -> PathBuf {
 
 #[test]
 fn archive_gate_redacts_default_secret_matches() {
-    let (_root, plugin_root, archive) = secret_archive(AKIA_SECRET);
+    let (_root, plugin_root, archive) = secret_archive("README.md", AKIA_SECRET);
     assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None), AKIA_SECRET);
 }
 
 #[cfg(unix)]
 #[test]
 fn archive_gate_redacts_grep_fallback_secret_matches() {
-    let (root, plugin_root, archive) = secret_archive(AKIA_SECRET);
+    let (root, plugin_root, archive) = secret_archive("secret.txt", AKIA_SECRET);
     let path = grep_only_path(root.path());
     assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, Some(&path)), AKIA_SECRET);
 }
 
 #[test]
 fn archive_gate_redacts_asia_temporary_key_matches() {
-    let (_root, plugin_root, archive) = secret_archive(ASIA_SECRET);
+    let (_root, plugin_root, archive) = secret_archive("secret.txt", ASIA_SECRET);
     assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None), ASIA_SECRET);
 }
