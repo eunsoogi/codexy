@@ -33,8 +33,19 @@ fn archive_gate_allows_documentation_path_examples() {
             .join("scripts/check-release-archive-entries"),
     )
     .expect("archive entry checker");
+    let prerequisite = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/install-windows-test-prerequisites.ps1"),
+    )
+    .expect("Windows archive scanner prerequisite");
     assert_archive_scanner_contract(&script, &entries, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
+    assert!(prerequisite.contains("Get-Command grep"));
+    assert!(prerequisite.contains("Git\\usr\\bin"));
+    assert!(prerequisite.contains("msys64\\usr\\bin"));
+    assert!(prerequisite.contains("grep.exe"));
+    assert!(prerequisite.contains("GITHUB_PATH"));
+    assert!(!prerequisite.contains("choco install ripgrep"));
 }
 
 #[test]
