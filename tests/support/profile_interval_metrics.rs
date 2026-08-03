@@ -20,8 +20,8 @@ pub(crate) struct CommandInterval {
     started: u128,
 }
 
-pub(crate) fn command_interval(key: &'static str, program: &OsStr) -> Option<CommandInterval> {
-    interval(key, command_family(program))
+pub(crate) fn command_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
+    interval(key, family)
 }
 
 pub(crate) fn wrapper_interval(

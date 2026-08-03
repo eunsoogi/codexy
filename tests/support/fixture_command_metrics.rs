@@ -58,12 +58,17 @@ impl FixtureCommand {
     }
 
     pub(crate) fn output(&mut self) -> std::io::Result<Output> {
-        let program = self.command.get_program().to_owned();
-        let interval =
-            super::super::profile_interval_metrics::command_interval(OUTPUT_INTERVAL, &program);
+        let interval = super::super::profile_interval_metrics::command_interval(
+            OUTPUT_INTERVAL,
+            self.command_family,
+        );
         let started = Instant::now();
         let result = receipt::output(&mut self.command, self.receipt.as_ref());
-        super::super::profile_metrics::record_command_wait(OUTPUT_KEY, &program, started.elapsed());
+        super::super::profile_metrics::record_command_wait(
+            OUTPUT_KEY,
+            self.command_family,
+            started.elapsed(),
+        );
         drop(interval);
         result
     }
@@ -82,12 +87,17 @@ impl FixtureCommand {
         interval_key: &'static str,
         invoke: impl FnOnce(&mut Command) -> std::io::Result<T>,
     ) -> std::io::Result<T> {
-        let program = self.command.get_program().to_owned();
-        let interval =
-            super::super::profile_interval_metrics::command_interval(interval_key, &program);
+        let interval = super::super::profile_interval_metrics::command_interval(
+            interval_key,
+            self.command_family,
+        );
         let started = Instant::now();
         let result = invoke(&mut self.command);
-        super::super::profile_metrics::record_command_wait(key, &program, started.elapsed());
+        super::super::profile_metrics::record_command_wait(
+            key,
+            self.command_family,
+            started.elapsed(),
+        );
         drop(interval);
         result
     }

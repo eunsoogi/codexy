@@ -19,6 +19,7 @@ use archive_inspection_receipt as receipt;
 #[derive(Debug)]
 pub(crate) struct FixtureCommand {
     command: Command,
+    command_family: &'static str,
     uses_posix_paths: bool,
     receipt: Option<receipt::ArchiveInspectorReceipt>,
 }
@@ -68,6 +69,7 @@ impl FixtureCommand {
     }
 
     fn from_command(mut command: Command, uses_posix_paths: bool, program: &OsStr) -> Self {
+        let command_family = super::profile_interval_metrics::command_family(command.get_program());
         let receipt = receipt::configure_command(&mut command, program, |directory| {
             if uses_posix_paths {
                 fixture_path_text(directory)
@@ -81,6 +83,7 @@ impl FixtureCommand {
             receipt.is_some() || matches!(std::env::var("CODEXY_TEST_MODE").as_deref(), Ok("1"));
         let mut fixture = Self {
             command,
+            command_family,
             uses_posix_paths,
             receipt,
         };
@@ -230,8 +233,10 @@ impl std::ops::DerefMut for FixtureCommand {
 
 impl From<Command> for FixtureCommand {
     fn from(command: Command) -> Self {
+        let command_family = super::profile_interval_metrics::command_family(command.get_program());
         Self {
             command,
+            command_family,
             uses_posix_paths: false,
             receipt: None,
         }

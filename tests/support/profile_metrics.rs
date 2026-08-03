@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
 
@@ -23,8 +22,7 @@ pub(crate) fn record_fixture_materialization(
     ));
 }
 
-pub(crate) fn record_command_wait(key: &str, program: &OsStr, duration: std::time::Duration) {
-    let family = super::profile_interval_metrics::command_family(program);
+pub(crate) fn record_command_wait(key: &str, family: &str, duration: std::time::Duration) {
     write_command_metric(command_wait_line(
         &format!("{key}:{family}"),
         family,
