@@ -152,11 +152,9 @@ fn register_codexy_agents_refuses_unmanaged_conflicts() -> Result<(), Box<dyn st
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
     let config_path = temp.path().join("home/.codex/config.toml");
+    let existing = "[agents.codexy-sentinel]\ndescription = \"Existing reviewer\"\n";
     std::fs::create_dir_all(config_path.parent().ok_or("config parent")?)?;
-    std::fs::write(
-        &config_path,
-        "[agents.codexy-sentinel]\ndescription = \"Existing reviewer\"\n",
-    )?;
+    std::fs::write(&config_path, existing)?;
 
     let output = registration_script(&plugin_root)
         .args([
@@ -169,6 +167,7 @@ fn register_codexy_agents_refuses_unmanaged_conflicts() -> Result<(), Box<dyn st
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("already defines unmanaged Codex agent"));
+    assert_eq!(std::fs::read_to_string(config_path)?, existing);
     Ok(())
 }
 

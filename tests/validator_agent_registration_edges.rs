@@ -10,71 +10,67 @@ const MUTABLE_PLUGIN_FILES: &[&str] = &[
 ];
 
 #[test]
-fn register_codexy_agents_refuses_quoted_unmanaged_conflicts()
+fn conflict_detector_covers_quoted_dotted_and_inline_forms()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = plugin_fixture()?;
-    for existing in [
-        "[agents.\"codexy-sentinel\"]\ndescription = \"Existing reviewer\"\n",
-        "[agents.codexy-sentinel.mcp_servers.local]\ncommand = \"local\"\n",
-        "[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n",
-        "[\"agents\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
-        "[\"agents\".\"codexy-sentinel\".mcp_servers.local]\ncommand = \"local\"\n",
-        "[\"ag\\u0065nts\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
-        "[\"\\U00000061gents\".\"codexy-sentinel\"]\nconfig_file = \"existing.toml\"\n",
-        "['agents'.'codexy-sentinel']\nconfig_file = 'existing.toml'\n",
-        "[\"agents\".codexy-cartographer] # local explorer\nconfig_file = \"existing.toml\"\n",
-        "[agents.codexy-sentinel] # local reviewer\nconfig_file = \"existing.toml\"\n",
-        "[agents.\"codexy-sentinel\"] # local reviewer\nconfig_file = \"existing.toml\"\n",
-        "[agents.'codexy-sentinel'] # local reviewer\nconfig_file = \"existing.toml\"\n",
-        "[agents.\"codexy\\u002dsentinel\"]\nconfig_file = \"existing.toml\"\n",
-    ] {
-        assert_conflict(fixture.root(), existing)?;
-    }
-    Ok(())
-}
+    let scripts = fixture
+        .root()
+        .join("skills/codex-orchestration/scripts");
+    let script_path = path(&scripts)?;
+    let body = r#"
+import sys
+sys.path.insert(0, sys.argv[1])
+from agent_registration_support import find_conflicts
 
-#[test]
-fn register_codexy_agents_refuses_dotted_key_unmanaged_conflicts()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = plugin_fixture()?;
-    for existing in [
-        "agents.codexy-sentinel.config_file = \"existing.toml\"\n",
-        "agents.codexy-sentinel = { config_file = \"existing.toml\" }\n",
-        "agents . codexy-sentinel . config_file = \"existing.toml\"\n",
-        "agents.'codexy-sentinel'.config_file = 'existing.toml'\n",
-        "agents.'codexy-sentinel' = { config_file = 'existing.toml' }\n",
-        "agents . 'codexy-sentinel' . config_file = 'existing.toml'\n",
-        "\"agents\".\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "'agents'.'codexy-sentinel'.config_file = 'existing.toml'\n",
-        "agents.codexy-cartographer.config_file = \"existing.toml\"\n",
-        "[agents]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "[agents] # local agents table\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "[\"agents\"]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "[\"ag\\u0065nts\"]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "[\"\\U00000061gents\"]\n\"codexy-sentinel\".config_file = \"existing.toml\"\n",
-        "[agents]\n'codexy-sentinel'.config_file = 'existing.toml'\n",
-        "['agents']\n'codexy-sentinel'.config_file = 'existing.toml'\n",
-        "[agents]\ncodexy-cartographer.config_file = \"existing.toml\"\n",
-        "[agents]\ncodexy-sentinel = { config_file = \"existing.toml\" }\n",
-        "[agents]\n\"codexy-sentinel\" = { config_file = \"existing.toml\" }\n",
-        "[\"agents\"]\n'codexy-sentinel' = { config_file = 'existing.toml' }\n",
-    ] {
-        assert_conflict(fixture.root(), existing)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn register_codexy_agents_refuses_inline_agents_tables() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = plugin_fixture()?;
-    for existing in [
-        "agents = { max_threads = 6 }\n",
-        "\"agents\" = { max_threads = 6 }\n",
-        "'agents' = { max_threads = 6 }\n",
-        "agents = { codexy-sentinel = { config_file = \"existing.toml\" } }\n",
-    ] {
-        assert_conflict(fixture.root(), existing)?;
-    }
+names = {"codexy-sentinel", "codexy-cartographer"}
+cases = [
+    (r'''[agents."codexy-sentinel"]\ndescription = "Existing reviewer"\n''', {"codexy-sentinel"}),
+    (r'''[agents.codexy-sentinel.mcp_servers.local]\ncommand = "local"\n''', {"codexy-sentinel"}),
+    (r'''[agents.'codexy-sentinel']\ndescription = 'Existing reviewer'\n''', {"codexy-sentinel"}),
+    (r'''["agents"."codexy-sentinel"]\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''["agents"."codexy-sentinel".mcp_servers.local]\ncommand = "local"\n''', {"codexy-sentinel"}),
+    (r'''["ag\u0065nts"."codexy-sentinel"]\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''["\U00000061gents"."codexy-sentinel"]\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''['agents'.'codexy-sentinel']\nconfig_file = 'existing.toml'\n''', {"codexy-sentinel"}),
+    (r'''["agents".codexy-cartographer] # local explorer\nconfig_file = "existing.toml"\n''', {"codexy-cartographer"}),
+    (r'''[agents.codexy-sentinel] # local reviewer\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''[agents."codexy-sentinel"] # local reviewer\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''[agents.'codexy-sentinel'] # local reviewer\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''[agents."codexy\u002dsentinel"]\nconfig_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''agents.codexy-sentinel.config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''agents.codexy-sentinel = { config_file = "existing.toml" }\n''', {"codexy-sentinel"}),
+    (r'''agents . codexy-sentinel . config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''agents.'codexy-sentinel'.config_file = 'existing.toml'\n''', {"codexy-sentinel"}),
+    (r'''agents.'codexy-sentinel' = { config_file = 'existing.toml' }\n''', {"codexy-sentinel"}),
+    (r'''agents . 'codexy-sentinel' . config_file = 'existing.toml'\n''', {"codexy-sentinel"}),
+    (r'''"agents"."codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r"""'agents'.'codexy-sentinel'.config_file = 'existing.toml'\n""", {"codexy-sentinel"}),
+    (r'''agents.codexy-cartographer.config_file = "existing.toml"\n''', {"codexy-cartographer"}),
+    (r'''[agents]\n"codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''[agents] # local agents table\n"codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''["agents"]\n"codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''["ag\u0065nts"]\n"codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''["\U00000061gents"]\n"codexy-sentinel".config_file = "existing.toml"\n''', {"codexy-sentinel"}),
+    (r'''[agents]\n'codexy-sentinel'.config_file = 'existing.toml'\n''', {"codexy-sentinel"}),
+    (r'''['agents']\n'codexy-sentinel'.config_file = 'existing.toml'\n''', {"codexy-sentinel"}),
+    (r'''[agents]\ncodexy-cartographer.config_file = "existing.toml"\n''', {"codexy-cartographer"}),
+    (r'''[agents]\ncodexy-sentinel = { config_file = "existing.toml" }\n''', {"codexy-sentinel"}),
+    (r'''[agents]\n"codexy-sentinel" = { config_file = "existing.toml" }\n''', {"codexy-sentinel"}),
+    (r'''["agents"]\n'codexy-sentinel' = { config_file = 'existing.toml' }\n''', {"codexy-sentinel"}),
+    (r'''agents = { max_threads = 6 }\n''', names),
+    (r'''"agents" = { max_threads = 6 }\n''', names),
+    (r"""'agents' = { max_threads = 6 }\n""", names),
+    (r'''agents = { codexy-sentinel = { config_file = "existing.toml" } }\n''', names),
+]
+for encoded, expected in cases:
+    existing = encoded.replace("\\n", "\n")
+    found = find_conflicts(existing, names)
+    assert found == expected, (existing, found, expected)
+"#;
+    let output = Command::new("python3")
+        .args(["-c", body, script_path])
+        .output()?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
@@ -175,27 +171,6 @@ fn plugin_fixture() -> std::io::Result<support::PluginFixture> {
 fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
     std::fs::create_dir_all(path.parent().expect("config parent"))?;
     std::fs::write(path, contents)
-}
-
-fn assert_conflict(
-    plugin_root: &std::path::Path,
-    existing: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let config_path = temp.path().join("home/.codex/config.toml");
-    write_config(&config_path, existing)?;
-    let output = registration_script(plugin_root)
-        .args([
-            "--plugin-root",
-            path(plugin_root)?,
-            "--config",
-            path(&config_path)?,
-        ])
-        .output()?;
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("already defines unmanaged Codex agent"));
-    assert_eq!(std::fs::read_to_string(config_path)?, existing);
-    Ok(())
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {
