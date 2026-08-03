@@ -1,4 +1,4 @@
-#[path = "../support/mod.rs"]
+#[path = "../support/archive.rs"]
 mod support;
 
 #[path = "../archive_binary_hygiene.rs"]
