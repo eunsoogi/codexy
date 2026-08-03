@@ -25,10 +25,15 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive gate script");
-    let checker = std::fs::read_to_string(
+    let checker_script = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
     )
     .expect("MCP response checker");
+    let checker_module = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect_mcp_response.py"),
+    )
+    .expect("MCP response parser module");
+    let checker = format!("{checker_script}\n{checker_module}");
     let entries = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("scripts/check-release-archive-entries"),
