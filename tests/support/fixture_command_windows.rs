@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::process::Command;
 
-pub(super) fn fixture_script_launcher(
+pub(crate) fn fixture_script_launcher(
     is_windows: bool,
     contents: &[u8],
 ) -> Result<Option<&'static str>, String> {
@@ -12,7 +12,7 @@ pub(super) fn fixture_script_launcher(
     fixture_script_interpreter(contents)
 }
 
-pub(super) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     (program
         .extension()
         .is_some_and(|extension| extension == "sh"))
@@ -23,7 +23,7 @@ pub(super) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
 /// The copied admission fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.
-pub(super) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
     let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();

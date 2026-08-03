@@ -53,7 +53,10 @@ pub(crate) use child_thread_ledger_skill::{
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
-pub(crate) use fixture_command::FixtureCommand;
+pub(crate) use fixture_command::{
+    FixtureCommand, fixture_script_launcher, windows_fixture_companion,
+    windows_static_python_fixture,
+};
 pub(crate) use fixture_command_bindings::{
     write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
     write_single_posix_fixture_shell_runner,

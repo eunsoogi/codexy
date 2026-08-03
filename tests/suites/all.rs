@@ -1,6 +1,12 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+#[path = "../support/fixture_command_controls.rs"]
+mod fixture_command_controls;
+
+#[path = "../support/fixture_command_binding_tests.rs"]
+mod fixture_command_binding_tests;
+
 mod agent {
     include!("agent.rs");
 }
