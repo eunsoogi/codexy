@@ -7,11 +7,14 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -> TestResult {
-    for suffix in [
+    for (index, suffix) in [
         "and those helpers MAY spawn another helper",
         "and delegate work to another helper",
         "and create another reviewer task",
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
         let temp = tempfile::tempdir()?;
         let plugin_root = fixture(&temp)?;
         let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
@@ -20,7 +23,12 @@ fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -
             "\nA child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers, {suffix}.\n",
         ));
         std::fs::write(&skill_path, skill)?;
-        assert_recursion_rejected(validator(&plugin_root)?, suffix);
+        let output = if index == 0 {
+            validator_cli(&plugin_root)?
+        } else {
+            validator(&plugin_root)?
+        };
+        assert_recursion_rejected(output, suffix);
     }
     Ok(())
 }
@@ -108,6 +116,10 @@ fn fixture(temp: &tempfile::TempDir) -> TestResult<std::path::PathBuf> {
 }
 
 fn validator(plugin_root: &Path) -> TestResult<Output> {
+    support::validator(plugin_root, "--check-roles")
+}
+
+fn validator_cli(plugin_root: &Path) -> TestResult<Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
@@ -118,7 +130,7 @@ fn validator(plugin_root: &Path) -> TestResult<Output> {
 }
 
 fn assert_validator_succeeds(plugin_root: &Path) -> TestResult {
-    let output = validator(plugin_root)?;
+    let output = validator_cli(plugin_root)?;
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
