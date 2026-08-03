@@ -17,6 +17,8 @@ metrics = pathlib.Path(tempfile.mkdtemp())
 session = "0123456789abcdef0123456789abcdef"
 def row(producer, sequence, start, end, key="fixture-command.output", family="python"):
     return f"command-interval\tv2\t{session}\tsuite_all\t{producer}\t{sequence}\t{key}\t{family}\t{start}\t{end}\n"
+def owner_row(producer, sequence, source, line, start, end, family="python"):
+    return f"fixture-command-owner\tv1\t{session}\tsuite_all\t{producer}\t{sequence}\tfixture-command.output\t{family}\t{source}\t{line}\t{start}\t{end}\n"
 one = metrics / "interval-p11-1.metrics"
 one.write_text(row("p11-1", 1, 0, 10_000_000_000) + row("p11-1", 2, 2_000_000_000, 12_000_000_000))
 payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics))
@@ -27,7 +29,36 @@ expected = {
 }
 if payload["command_interval_ranked"] != [expected]:
     raise SystemExit(payload)
+if payload["command_interval_owner_ranked"] or payload["command_interval_owner_coverage"]["records"] != 0:
+    raise SystemExit("absent owner data changed legacy profiling")
+owners = metrics.parent / (metrics.name + "-owners")
+owners.mkdir()
+(owners / "owner-interval-p11-1.metrics").write_text(
+    owner_row("p11-1", 1, "tests/fixture.rs", 7, 0, 10_000_000_000)
+    + owner_row("p11-1", 2, "tests/fixture.rs", 7, 2_000_000_000, 12_000_000_000)
+)
+payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics, interval_owner_metrics_path=owners))
+owner_expected = {
+    "target":"suite_all", "key":"fixture-command.output", "family":"python",
+    "owner":"tests/fixture.rs:7", "count":2, "producer_count":1,
+    "cumulative_wait_seconds":20.0, "conservative_union_occupancy_seconds":12.0,
+    "overlap_ratio_upper_bound":0.4,
+}
+if payload["command_interval_owner_ranked"] != [owner_expected]:
+    raise SystemExit(payload["command_interval_owner_ranked"])
+if payload["command_interval_owner_coverage"] != {
+    "records":2, "expected_records":2, "groups":1, "unattributed":0, "truncated":False
+}:
+    raise SystemExit(payload["command_interval_owner_coverage"])
+if "runner" in json.dumps(payload["command_interval_owner_ranked"]):
+    raise SystemExit("absolute owner path leaked")
 (metrics / "interval-p12-1.metrics").write_text(row("p12-1", 1, 0, 10_000_000_000))
+(owners / "owner-interval-p12-1.metrics").write_text(
+    owner_row("p12-1", 1, "tests/fixture.rs", 7, 0, 10_000_000_000)
+)
+payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics, interval_owner_metrics_path=owners))
+if payload["command_interval_owner_ranked"][0]["producer_count"] != 2 or payload["command_interval_owner_ranked"][0]["conservative_union_occupancy_seconds"] != 12.0:
+    raise SystemExit("owner intervals merged across producer clocks")
 payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics))
 if payload["command_interval_ranked"][0]["conservative_union_occupancy_seconds"] != 12.0:
     raise SystemExit("cross-process clocks were merged")
@@ -68,6 +99,19 @@ for invalid in [
     except ValueError:
         continue
     raise SystemExit(f"accepted invalid interval record: {invalid!r}")
+one.write_text(row("p11-1", 1, 0, 10) + row("p11-1", 2, 10, 20))
+(metrics / "interval-p12-1.metrics").write_text(row("p12-1", 1, 0, 10))
+for invalid_owner in [
+    owner_row("p11-1", 1, "/runner/tests/fixture.rs", 7, 0, 10),
+    owner_row("p11-1", 1, "tests/../fixture.rs", 7, 0, 10),
+    owner_row("p11-1", 1, "tests/fixture.rs", 0, 0, 10),
+]:
+    (owners / "owner-interval-p11-1.metrics").write_text(invalid_owner)
+    try:
+        module.telemetry(None, {}, None, interval_metrics_path=metrics, interval_owner_metrics_path=owners)
+    except ValueError:
+        continue
+    raise SystemExit(f"accepted invalid owner interval record: {invalid_owner!r}")
 if json.loads(module.telemetry(None, {}, None))["command_interval_ranked"]:
     raise SystemExit("disabled transport fabricated records")
 "#;

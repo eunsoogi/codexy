@@ -8,6 +8,7 @@ static EPOCH: OnceLock<Instant> = OnceLock::new();
 
 struct IntervalMetrics {
     file: std::fs::File,
+    owner_file: Option<std::fs::File>,
     session: String,
     producer: String,
     target: &'static str,
@@ -18,10 +19,19 @@ pub(crate) struct CommandInterval {
     key: &'static str,
     family: &'static str,
     started: u128,
+    caller: Option<&'static std::panic::Location<'static>>,
 }
 
 pub(crate) fn command_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
-    interval(key, family)
+    interval(key, family, None)
+}
+
+pub(crate) fn command_interval_at(
+    key: &'static str,
+    family: &'static str,
+    caller: &'static std::panic::Location<'static>,
+) -> Option<CommandInterval> {
+    interval(key, family, Some(caller))
 }
 
 pub(crate) fn wrapper_interval(
@@ -42,24 +52,29 @@ pub(crate) fn wrapper_interval(
         ("spawn", _) => "wrapper.spawn.other",
         _ => "wrapper.child-wait.other",
     };
-    interval(key, category)
+    interval(key, category, None)
 }
 
 pub(crate) fn mcp_interval(key: &'static str) -> Option<CommandInterval> {
-    interval(key, "other")
+    interval(key, "other", None)
 }
 
 pub(crate) fn generic_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
-    interval(key, family)
+    interval(key, family, None)
 }
 
-fn interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
+fn interval(
+    key: &'static str,
+    family: &'static str,
+    caller: Option<&'static std::panic::Location<'static>>,
+) -> Option<CommandInterval> {
     METRICS.get_or_init(open_metrics).as_ref()?;
     let epoch = EPOCH.get_or_init(Instant::now);
     Some(CommandInterval {
         key,
         family,
         started: epoch.elapsed().as_nanos(),
+        caller,
     })
 }
 
@@ -83,6 +98,26 @@ impl Drop for CommandInterval {
                 end
             );
             let _ = writeln!(metrics.file, "{line}");
+            let owner_line = self.caller.and_then(|caller| {
+                normalized_source_file(caller.file()).map(|source| {
+                    format!(
+                        "fixture-command-owner\tv1\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                        metrics.session,
+                        metrics.target,
+                        metrics.producer,
+                        metrics.sequence,
+                        self.key,
+                        self.family,
+                        source,
+                        caller.line(),
+                        self.started,
+                        end
+                    )
+                })
+            });
+            if let (Some(line), Some(owner_file)) = (owner_line, metrics.owner_file.as_mut()) {
+                let _ = writeln!(owner_file, "{line}");
+            }
         }
     }
 }
@@ -106,8 +141,21 @@ fn open_metrics() -> Option<Mutex<IntervalMetrics>> {
             .create_new(true)
             .open(std::path::Path::new(&directory).join(format!("interval-{producer}.metrics")))
         {
+            let owner_file = std::env::var_os("CODEXY_PROFILE_INTERVAL_OWNER_METRICS_DIR")
+                .and_then(|directory| {
+                    std::fs::create_dir_all(&directory).ok()?;
+                    std::fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(
+                            std::path::Path::new(&directory)
+                                .join(format!("owner-interval-{producer}.metrics")),
+                        )
+                        .ok()
+                });
             return Some(Mutex::new(IntervalMetrics {
                 file,
+                owner_file,
                 session,
                 producer,
                 target: profiler_target(),
@@ -116,6 +164,24 @@ fn open_metrics() -> Option<Mutex<IntervalMetrics>> {
         }
     }
     None
+}
+
+fn normalized_source_file(file: &str) -> Option<String> {
+    let file = file.replace('\\', "/");
+    let relative = file
+        .strip_prefix("tests/")
+        .or_else(|| file.rsplit_once("/tests/").map(|(_, suffix)| suffix))?;
+    let mut parts: Vec<&str> = Vec::new();
+    for part in relative.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            part => parts.push(part),
+        }
+    }
+    (!parts.is_empty()).then(|| format!("tests/{}", parts.join("/")))
 }
 
 fn profiler_target() -> &'static str {

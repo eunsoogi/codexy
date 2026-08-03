@@ -26,6 +26,10 @@ expected = {
 }
 if any(payload.get(key) != value for key, value in expected.items()):
     raise SystemExit(f"payload={payload!r}")
+if payload["command_interval_ranked"] or payload["command_interval_owner_ranked"]:
+    raise SystemExit("legacy telemetry fabricated interval records")
+if payload["command_interval_owner_coverage"]["unattributed"] != "not-observed":
+    raise SystemExit("legacy telemetry changed owner absence semantics")
 for key in ("logical_cpus", "available_parallelism"):
     if payload.get(key) != "not-observed" and not isinstance(payload.get(key), int):
         raise SystemExit(f"{key}={payload[key]!r}")

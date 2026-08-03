@@ -57,10 +57,12 @@ impl FixtureCommand {
         self
     }
 
+    #[track_caller]
     pub(crate) fn output(&mut self) -> std::io::Result<Output> {
-        let interval = super::super::profile_interval_metrics::command_interval(
+        let interval = super::super::profile_interval_metrics::command_interval_at(
             OUTPUT_INTERVAL,
             self.command_family,
+            std::panic::Location::caller(),
         );
         let started = Instant::now();
         let result = receipt::output(&mut self.command, self.receipt.as_ref());
