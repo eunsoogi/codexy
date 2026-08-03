@@ -35,11 +35,28 @@ one.write_text(row("p11-1", 1, 0, 10_000_000_000) + row("p11-1", 2, 20_000_000_0
 payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics))
 if payload["command_interval_ranked"][0]["conservative_union_occupancy_seconds"] != 20.0:
     raise SystemExit("disjoint local union was not exact")
+one.write_text(row("p11-1", 1, 0, 240_000_000_000))
+payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics))
+if payload["command_interval_ranked"][0]["conservative_union_occupancy_seconds"] != 240.0:
+    raise SystemExit("valid interval above 180 seconds was rejected")
+one.write_text(row("p11-1", 1, 0, 300_000_000_000))
+payload = json.loads(module.telemetry(None, {}, None, interval_metrics_path=metrics))
+if payload["command_interval_ranked"][0]["conservative_union_occupancy_seconds"] != 300.0:
+    raise SystemExit("exact 300-second interval was rejected")
 if "/" in json.dumps(payload) or "session" in json.dumps(payload["command_interval_ranked"]):
     raise SystemExit("unsafe interval data leaked")
+one.write_text(row("p11-1", 1, 0, 300_000_000_001))
+try:
+    module.telemetry(None, {}, None, interval_metrics_path=metrics)
+except ValueError as error:
+    if str(error) != "invalid interval bounds":
+        raise
+else:
+    raise SystemExit("accepted interval above 300 seconds")
 for invalid in [
     row("p11-1", 1, 11, 10),
-    row("p11-1", 1, 0, 181_000_000_000),
+    row("p11-1", 1, -1, 10),
+    row("p11-1", "not-an-integer", 0, 10),
     row("p11-1", 1, 0, 10, "unknown"),
     row("p11-1", 1, 0, 10, "wrapper.output.git", "python"),
     row("p11-1", 1, 0, 10) + row("p11-1", 1, 10, 20),
