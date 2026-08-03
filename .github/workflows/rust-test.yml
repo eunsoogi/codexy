@@ -2,6 +2,11 @@ name: Rust tests
 
 on:
   pull_request:
+    paths-ignore:
+      - ".github/workflows/rust-test.yml"
+      - ".github/workflows/stage15-windows-fixture-command-union.yml"
+      - "scripts/stage15_windows_fixture_command_union.py"
+      - "tests/test_stage15_windows_fixture_command_union.py"
   push:
     branches: [main]
 

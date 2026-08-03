@@ -1,0 +1,54 @@
+name: Stage 15 Windows fixture command union diagnostic
+
+on:
+  push:
+    branches: [codexy/526-stage15-fixture-command-union-diagnostic-recovery]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-stage15-fixture-command-union:
+    name: Stage 15 Windows fixture command union trace
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic head
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Windows archive scanner prerequisite
+        shell: pwsh
+        run: scripts/install-windows-test-prerequisites.ps1
+
+      - name: Prepare Windows Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run unchanged full workload through union observer
+        shell: pwsh
+        run: |
+          $trace = Join-Path $env:RUNNER_TEMP "stage15-windows-fixture-command-union.json"
+          $log = Join-Path $env:RUNNER_TEMP "stage15-windows-profile.log"
+          python scripts/stage15_windows_fixture_command_union.py --trace $trace 2>&1 |
+            Tee-Object -FilePath $log
+          $profileExit = $LASTEXITCODE
+          "stage15-profile-exit=$profileExit"
+          exit $profileExit
+
+      - name: Upload diagnostic receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage15-windows-fixture-command-union
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/stage15-windows-fixture-command-union.json
+            ${{ runner.temp }}/stage15-windows-profile.log
+          retention-days: 7
