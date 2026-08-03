@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_does_not_treat_lane_owner_metadata_as_current_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     for metadata in ["Lane owner", "Lane owners"] {
@@ -36,7 +30,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_does_not_treat_lane_ownership_metadata_as_current_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -63,7 +56,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_does_not_treat_lane_owner_decision_metadata_as_current_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -89,7 +81,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_does_not_treat_lane_metadata_as_current_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -115,7 +106,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_checks_same_lane_markers_before_rejecting_handler_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -140,7 +130,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_same_lane_fallback_path_metadata_before_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -165,7 +154,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_same_lane_followup_metadata_before_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -190,7 +178,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_current_lane_review_thread_metadata_before_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -215,7 +202,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_generic_issue_metadata_before_later_lane_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -236,5 +222,19 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_does_not_treat_lane_owner_metadata_as_current_lane_header()?;
+    validator_does_not_treat_lane_ownership_metadata_as_current_lane_header()?;
+    validator_does_not_treat_lane_owner_decision_metadata_as_current_lane_header()?;
+    validator_does_not_treat_lane_metadata_as_current_lane_header()?;
+    validator_checks_same_lane_markers_before_rejecting_handler_metadata()?;
+    validator_allows_same_lane_fallback_path_metadata_before_capture()?;
+    validator_allows_same_lane_followup_metadata_before_capture()?;
+    validator_allows_current_lane_review_thread_metadata_before_capture()?;
+    validator_rejects_generic_issue_metadata_before_later_lane_capture()?;
     Ok(())
 }

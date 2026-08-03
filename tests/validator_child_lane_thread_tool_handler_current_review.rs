@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_allows_handler_capture_under_generic_metadata_key()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -29,7 +23,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_preceding_non_bulleted_handler_defect_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -50,7 +43,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_inline_defect_capture_after_unrelated_no_defect_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -71,7 +63,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_defect_capture_after_invocation_with_prior_no_defect_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -93,7 +84,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_bulleted_invocation_capture_after_prior_no_defect_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -115,7 +105,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_placeholder_capture_without_handler_defect_on_capture_line()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -139,7 +128,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_negated_placeholder_fallback_capture() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -158,7 +146,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_combined_defect_label_capture_negation()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -177,7 +164,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_later_clause_handler_failure_after_prior_negation()
 -> Result<(), Box<dyn std::error::Error>> {
     for invocation_line in [
@@ -198,7 +184,6 @@ fn validator_rejects_later_clause_handler_failure_after_prior_negation()
     Ok(())
 }
 
-#[test]
 fn validator_rejects_handler_failure_after_unrelated_did_not_produce()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -219,7 +204,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_tool_only_defect_capture_without_handler_marker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -240,5 +224,21 @@ Maintainer reassignment: none
         "stderr should name the missing handler evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_handler_capture_under_generic_metadata_key()?;
+    validator_allows_preceding_non_bulleted_handler_defect_capture()?;
+    validator_allows_inline_defect_capture_after_unrelated_no_defect_metadata()?;
+    validator_allows_defect_capture_after_invocation_with_prior_no_defect_metadata()?;
+    validator_allows_bulleted_invocation_capture_after_prior_no_defect_metadata()?;
+    validator_rejects_placeholder_capture_without_handler_defect_on_capture_line()?;
+    validator_rejects_negated_placeholder_fallback_capture()?;
+    validator_rejects_combined_defect_label_capture_negation()?;
+    validator_rejects_later_clause_handler_failure_after_prior_negation()?;
+    validator_rejects_handler_failure_after_unrelated_did_not_produce()?;
+    validator_rejects_tool_only_defect_capture_without_handler_marker()?;
     Ok(())
 }

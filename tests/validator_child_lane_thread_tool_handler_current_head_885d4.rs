@@ -1,13 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_markdown_wrapped_pending_issue_urls() -> Result<(), Box<dyn std::error::Error>>
 {
     for issue in [
@@ -31,7 +26,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_negated_fallback_path_no_route_claims()
 -> Result<(), Box<dyn std::error::Error>> {
     for route in [
@@ -58,7 +52,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_issue_descriptions_with_not_provided_text()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -79,7 +72,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_negated_tracked_by_issue_clauses() -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
         "not tracked by issue #205",
@@ -103,7 +95,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_false_tracking_issue_answers() -> Result<(), Box<dyn std::error::Error>> {
     for issue in ["Tracking issue: #205? no", "tracked by issue #205: false"] {
         let output = run_ownership_validator(&format!(
@@ -123,7 +114,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_wrapped_pending_issue_references() -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
         "Tracking issue: [#205] not filed yet",
@@ -146,7 +136,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_split_off_tracking_issue_negations() -> Result<(), Box<dyn std::error::Error>>
 {
     for issue in [
@@ -167,5 +156,17 @@ Maintainer reassignment: none
             "validator should reject split-off tracking issue negation: {issue}"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_markdown_wrapped_pending_issue_urls()?;
+    validator_rejects_negated_fallback_path_no_route_claims()?;
+    validator_allows_issue_descriptions_with_not_provided_text()?;
+    validator_rejects_negated_tracked_by_issue_clauses()?;
+    validator_rejects_false_tracking_issue_answers()?;
+    validator_rejects_wrapped_pending_issue_references()?;
+    validator_rejects_split_off_tracking_issue_negations()?;
     Ok(())
 }

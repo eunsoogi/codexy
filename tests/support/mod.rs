@@ -48,9 +48,9 @@ pub(crate) use agent_model_assignments::{
     validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
-    stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
-    validator_in_process, validator_instruction_policy, validator_instruction_policy_file,
-    validator_pr_labels, validator_routing,
+    stderr, validator, validator_child_lane_ownership, validator_child_lane_ownership_file,
+    validator_completion_handoff_files, validator_in_process, validator_instruction_policy,
+    validator_instruction_policy_file, validator_pr_labels, validator_routing,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;

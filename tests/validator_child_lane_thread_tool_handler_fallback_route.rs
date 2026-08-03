@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_separate_negated_fallback_route_field()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -33,7 +27,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_no_fallback_route_used_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -57,7 +50,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_bare_no_fallback_route_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -81,7 +73,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_no_fallback_path_used_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -105,7 +96,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_bare_no_fallback_path_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -129,7 +119,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_hyphenated_fallback_route_fields() -> Result<(), Box<dyn std::error::Error>> {
     for field in "Not a fallback-route|Not a fallback-path|No fallback-route|No fallback-path|Fallback route not used|Fallback path not used|Fallback route: not used|Fallback path: not used".split('|') {
         let output = run_ownership_validator(&format!(
@@ -150,7 +139,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_explicit_no_fallback_route_available_without_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -172,7 +160,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_without_fallback_route_available_without_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -194,7 +181,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_repeated_no_fallback_route_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -219,7 +205,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_repeated_no_fallback_path_field() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -241,5 +226,20 @@ Maintainer reassignment: none
         "stderr should name the missing handler evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_separate_negated_fallback_route_field()?;
+    validator_rejects_no_fallback_route_used_field()?;
+    validator_rejects_bare_no_fallback_route_field()?;
+    validator_rejects_no_fallback_path_used_field()?;
+    validator_rejects_bare_no_fallback_path_field()?;
+    validator_rejects_hyphenated_fallback_route_fields()?;
+    validator_rejects_explicit_no_fallback_route_available_without_issue()?;
+    validator_rejects_without_fallback_route_available_without_issue()?;
+    validator_rejects_repeated_no_fallback_route_field()?;
+    validator_rejects_repeated_no_fallback_path_field()?;
     Ok(())
 }
