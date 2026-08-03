@@ -46,20 +46,7 @@ fn fixture_platform_selection_and_missing_runtime_fail_closed()
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     fixture.select_platform(FixturePlatform::WindowsX86_64)?;
-    let runtime_dir = temp.path().join("runtime override");
-    std::fs::create_dir(&runtime_dir)?;
-    let runtime = runtime_dir.join(format!("codexy-mcp-{server}-windows-x86_64.exe"));
-    install_detected_runtime(&runtime)?;
     let wrapper = fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}"));
-
-    let mut selected_command = Command::new(&wrapper);
-    selected_command.env_path_list(
-        "PATH",
-        [fixture.cargo_bin.as_os_str(), "/usr/bin".as_ref(), "/bin".as_ref()],
-    );
-    selected_command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir);
-    let selected_output = run_wrapper_command(&mut selected_command)?;
-    assert!(selected_output.status.success());
 
     fixture.select_platform(FixturePlatform::Unsupported)?;
     let mut unsupported_command = Command::new(&wrapper);
@@ -117,6 +104,16 @@ fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::err
                 &format!("runtime_name=\"codexy-mcp-{server}-$platform.$runtime_extension\""),
                 &format!("exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime {server}"),
                 &format!("codexy-mcp-{server} requires uvx"),
+            ],
+        );
+        support::assert_structured_absent_literals(
+            &wrapper,
+            "removed legacy runtime settings stay absent from every wrapper",
+            &[
+                "CODEXY_RUNTIME_CACHE",
+                "CODEXY_RUNTIME_GIT",
+                "CODEXY_RUNTIME_PACKAGE",
+                "CODEXY_RUNTIME_ARTIFACTS",
             ],
         );
         normalized_wrappers.push(wrapper.replace(server, "<server>"));

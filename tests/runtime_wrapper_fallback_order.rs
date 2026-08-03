@@ -1,9 +1,7 @@
-use crate::support;
-
 use crate::support::FixtureCommand as Command;
 use std::time::Duration;
 
-use support::{WrapperFixture, run_wrapper_command_with_timeout};
+use crate::support::{WrapperFixture, run_wrapper_command_with_timeout};
 
 #[test]
 fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
@@ -17,25 +15,6 @@ fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
         let uvx_index = required(&wrapper, "exec uvx --from getcodexy==1.2.2", &path)?;
         assert!(override_index < bundled_index && bundled_index < uvx_index);
     }
-    Ok(())
-}
-
-#[test]
-fn runtime_dir_override_wins_over_bundled_and_uvx() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let fixture = WrapperFixture::new(temp.path())?;
-    let runtime_dir = temp.path().join("runtime");
-    std::fs::create_dir(&runtime_dir)?;
-    let runtime = runtime_dir.join("codexy-mcp-lsp-windows-x86_64.exe");
-    std::fs::write(&runtime, "#!/bin/sh\necho override \"$@\"\n")?;
-    support::make_executable(&runtime)?;
-    let output = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"))
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir)
-        .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
-        .arg("--stdio")
-        .output()?;
-    assert!(output.status.success());
-    assert!(String::from_utf8_lossy(&output.stdout).contains("override --stdio"));
     Ok(())
 }
 

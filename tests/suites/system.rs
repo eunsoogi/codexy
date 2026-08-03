@@ -25,9 +25,6 @@ mod mcp_stdio;
 #[path = "../mcp_wrapper_bootstrap.rs"]
 mod mcp_wrapper_bootstrap;
 
-#[path = "../mcp_wrapper_release_cache.rs"]
-mod mcp_wrapper_release_cache;
-
 #[path = "../profile_rust_tests.rs"]
 mod profile_rust_tests;
 
