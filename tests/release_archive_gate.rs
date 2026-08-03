@@ -3,6 +3,7 @@ use crate::support::FixtureCommand as Command;
 use tempfile::tempdir;
 
 use crate::support::release_archive as release_archive_support;
+use crate::support::windows_archive_prerequisite::assert_windows_prerequisite_contract;
 use release_archive_support::{
     assert_archive_scanner_contract, complete_plugin_fixture,
     complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive, make_executable,
@@ -40,12 +41,7 @@ fn archive_gate_allows_documentation_path_examples() {
     .expect("Windows archive scanner prerequisite");
     assert_archive_scanner_contract(&script, &entries, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
-    assert!(prerequisite.contains("Get-Command grep"));
-    assert!(prerequisite.contains("Git\\usr\\bin"));
-    assert!(prerequisite.contains("msys64\\usr\\bin"));
-    assert!(prerequisite.contains("grep.exe"));
-    assert!(prerequisite.contains("GITHUB_PATH"));
-    assert!(!prerequisite.contains("choco install ripgrep"));
+    assert_windows_prerequisite_contract(&prerequisite);
 }
 
 #[test]
