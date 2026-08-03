@@ -7,12 +7,13 @@ use sha2::{Digest as _, Sha256};
 fn version_admission_matrix_is_ordered_and_fail_closed()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let current = super::archive_repository(&temp, "current")?;
+    let archive = super::shared_repository_archive()?;
+    let current = super::archive_repository(archive, &temp, "current")?;
     assert!(admit(&current, "1.2.2")?.status.success());
     assert!(!admit(&current, "1.1.0")?.status.success());
 
     for case in ["exact", "stale-bootstrap", "stale-runtime", "legacy-runtime", "wrapper-drift"] {
-        let root = super::archive_repository(&temp, case)?;
+        let root = super::archive_repository(archive, &temp, case)?;
         activate(&root)?;
         match case {
             "exact" => {}
