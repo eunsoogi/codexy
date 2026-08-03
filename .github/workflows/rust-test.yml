@@ -2,6 +2,11 @@ name: Rust tests
 
 on:
   pull_request:
+    paths-ignore:
+      - ".github/workflows/rust-test.yml"
+      - ".github/workflows/stage13-windows-slow-path.yml"
+      - "scripts/stage13_windows_slow_path.py"
+      - "tests/test_stage13_windows_slow_path.py"
   push:
     branches: [main]
 
