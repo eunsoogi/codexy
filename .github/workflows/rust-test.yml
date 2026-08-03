@@ -24,7 +24,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
 
       - name: Enforce exact full Rust workload budget
-        run: scripts/profile-rust-tests
+        run: scripts/profile-rust-tests --verify-coverage
 
   windows-rust-test:
     name: Rust test suite (Windows)
