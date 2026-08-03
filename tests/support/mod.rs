@@ -90,7 +90,7 @@ pub(crate) use plugin_fixture::{
 };
 pub(crate) use profile_interval_metrics::mcp_interval;
 pub(crate) use profile_metrics::record_mcp_wait;
-pub(crate) use release_archive::assert_structured_literals;
+pub(crate) use release_archive::{assert_structured_absent_literals, assert_structured_literals};
 pub(super) use release_cache::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,

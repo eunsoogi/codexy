@@ -33,6 +33,17 @@ pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[
         "structured contract {rule_id} is missing required literals {missing:?}"
     );
 }
+
+pub(crate) fn assert_structured_absent_literals(text: &str, rule_id: &str, forbidden: &[&str]) {
+    let present: Vec<_> = forbidden
+        .iter()
+        .filter(|literal| text.contains(**literal))
+        .collect();
+    assert!(
+        present.is_empty(),
+        "structured contract {rule_id} contains forbidden literals {present:?}"
+    );
+}
 pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, checker: &str) {
     assert_structured_literals(
         script,

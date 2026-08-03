@@ -46,17 +46,16 @@ fn legacy_runtime_environment_cannot_change_pinned_dispatch()
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy/mcp");
     for server in ["lsp", "codegraph"] {
         let wrapper = std::fs::read_to_string(root.join(format!("codexy-mcp-{server}")))?;
-        for legacy_name in [
-            "CODEXY_RUNTIME_CACHE",
-            "CODEXY_RUNTIME_GIT",
-            "CODEXY_RUNTIME_PACKAGE",
-            "CODEXY_RUNTIME_ARTIFACTS",
-        ] {
-            assert!(
-                !wrapper.contains(legacy_name),
-                "{server} wrapper must not read removed legacy setting {legacy_name}"
-            );
-        }
+        support::assert_structured_absent_literals(
+            &wrapper,
+            "removed legacy runtime settings stay absent from every wrapper",
+            &[
+                "CODEXY_RUNTIME_CACHE",
+                "CODEXY_RUNTIME_GIT",
+                "CODEXY_RUNTIME_PACKAGE",
+                "CODEXY_RUNTIME_ARTIFACTS",
+            ],
+        );
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     assert!(
