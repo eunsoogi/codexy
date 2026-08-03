@@ -79,10 +79,10 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
                     raise
                 finally:
                     capture_started = time.perf_counter()
+                    runtime_receipt = runtime.finish()
                     if job is not None:
                         job.close()
                     observer.join()
-                    runtime_receipt = runtime.finish()
                     del process
                 if temp_root is not None and cleanup_allowed:
                     temp_root.allow_cleanup()

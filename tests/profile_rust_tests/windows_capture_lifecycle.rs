@@ -9,20 +9,12 @@ fn windows_timeout_job_releases_writer_before_capture_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r#"
-import contextlib
-import pathlib
-import runpy
-import json
-import os
-import subprocess
-import sys
-import tempfile
-import types
-import io
+import contextlib, io, json, os, pathlib, runpy, subprocess, sys, tempfile, types
 
 locked = [False]
 parents = []
 jobs = []
+events = []
 mode = ["timeout"]
 root_status = [0]
 script = pathlib.Path(sys.argv[1])
@@ -84,12 +76,18 @@ class WindowsJob:
         pids, images = payloads[mode[0]]
         return {"cargo-root-status": "running" if process.poll() is None else str(process.poll()), "windows-job-pids-json": json.dumps(pids), "windows-job-images-json": json.dumps(images, sort_keys=True)}
     def close(self):
-        pass
+        events.append("job-close")
+
+class RuntimeTelemetry:
+    def __init__(self, *_args): pass
+    def start(self, *_args): pass
+    def finish(self): events.append("runtime-finish"); return "{}"
 
 module["tempfile"].TemporaryDirectory = WindowsTemporaryDirectory
 module["subprocess"].Popen = spawn
 module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt", environ=os.environ)
 module["run_workload"].__globals__["WindowsJob"] = WindowsJob
+module["run_workload"].__globals__["RuntimeTelemetry"] = RuntimeTelemetry
 @contextlib.contextmanager
 def receipt_environment(root):
     directory = pathlib.Path(root) / "archive-inspector-receipts"
@@ -121,6 +119,8 @@ if [getattr(job, "deadline", None) for job in jobs] != [10.0, None, 10.0, 10.0] 
     raise SystemExit(f"jobs={jobs!r}")
 if [result[3]["windows-job-active-zero"] for result in (timeout, running, nonzero, success)] != ["drained", "deadline", "drained", "completed"]:
     raise SystemExit(f"timeout={timeout!r} running={running!r} nonzero={nonzero!r} success={success!r}")
+if events.index("runtime-finish") > events.index("job-close"):
+    raise SystemExit(f"runtime telemetry finished after Job close: {events!r}")
 
 forwarded = {}
 def launcher_spawn(*_args, **kwargs):
