@@ -50,3 +50,41 @@ fn check_tool(path: &Path, server: &str, tool: &str, value: &Value, errors: &mut
         ));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use toml::Value;
+
+    use super::check;
+
+    #[test]
+    fn invalid_tools_matrix_preserves_exact_diagnostics() {
+        let path = Path::new("agents/codexy-pathfinder.toml");
+        for (fragment, expected) in [
+            (
+                "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\ntools = \"bad\"\n",
+                "agents/codexy-pathfinder.toml mcp_servers.grep_app.tools must be a table",
+            ),
+            (
+                "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\napproval_mode = \"always\"\n",
+                "agents/codexy-pathfinder.toml mcp_servers.docs.tools.search.approval_mode has an unsupported value",
+            ),
+            (
+                "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\nunknown = true\n",
+                "agents/codexy-pathfinder.toml mcp_servers.docs.tools.search.unknown is not part of the supported Codex MCP tool override schema",
+            ),
+        ] {
+            let parsed = toml::from_str::<toml::Table>(fragment).expect("valid TOML fragment");
+            let servers = parsed
+                .get("mcp_servers")
+                .and_then(Value::as_table)
+                .expect("MCP server table");
+            let (server, entry) = servers.iter().next().expect("MCP server");
+            let mut errors = Vec::new();
+            check(path, server, entry.get("tools"), &mut errors);
+            assert_eq!(errors, vec![expected.to_owned()], "input: {fragment:?}");
+        }
+    }
+}

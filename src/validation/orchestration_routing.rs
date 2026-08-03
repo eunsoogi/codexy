@@ -11,6 +11,9 @@ mod evidence;
 mod policy;
 mod required_bullets;
 
+#[cfg(test)]
+mod tests;
+
 use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
 use required_bullets::missing_required_bullets;
 
