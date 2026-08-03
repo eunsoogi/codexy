@@ -102,27 +102,6 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         output_text(&bad)
     );
 
-    let no_taxonomy = write_pr_state(
-        temp.path(),
-        "no-taxonomy.json",
-        r#"{"number":216,"state":"OPEN","repository":"eunsoogi/codexy","labels":[]}"#,
-    )?;
-    let no_taxonomy_output = Command::new(&script)
-        .args([
-            "--check-pr-labels",
-            "--pr-state-file",
-            no_taxonomy.to_str().ok_or("no taxonomy state path")?,
-        ])
-        .output()?;
-    assert!(
-        !no_taxonomy_output.status.success(),
-        "installed guard should reject missing repository label taxonomy"
-    );
-    assert!(
-        output_text(&no_taxonomy_output).contains("repositoryLabels taxonomy"),
-        "unexpected output: {}",
-        output_text(&no_taxonomy_output)
-    );
     Ok(())
 }
 

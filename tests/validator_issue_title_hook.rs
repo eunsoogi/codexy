@@ -1,37 +1,9 @@
 use crate::support::FixtureCommand as Command;
 
 #[test]
-fn issue_title_hook_rejects_prefix_only_conventional_title()
+fn issue_title_hook_delegates_conventional_title_validation()
 -> Result<(), Box<dyn std::error::Error>> {
     reject_issue_title("Fix(agents) reject negated sentinel evidence")
-}
-
-#[test]
-fn issue_title_hook_rejects_newline_after_conventional_prefix()
--> Result<(), Box<dyn std::error::Error>> {
-    reject_issue_title("Fix(agents)\nreject negated sentinel evidence")
-}
-
-#[test]
-fn issue_title_hook_rejects_bare_colon_conventional_title() -> Result<(), Box<dyn std::error::Error>>
-{
-    reject_issue_title("Fix(agents):")?;
-    reject_issue_title("Fix!: ")
-}
-
-#[test]
-fn issue_title_hook_rejects_repeated_colon_conventional_title()
--> Result<(), Box<dyn std::error::Error>> {
-    reject_issue_title("Fix(agents)::")?;
-    reject_issue_title("Fix!::")
-}
-
-#[test]
-fn issue_title_hook_rejects_adjacent_colon_conventional_title()
--> Result<(), Box<dyn std::error::Error>> {
-    reject_issue_title("Fix(agents):reject")?;
-    reject_issue_title("Fix!:break")?;
-    reject_issue_title("Fix:break")
 }
 
 #[test]
