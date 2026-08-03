@@ -1,20 +1,20 @@
-use std::{fs, path::Path};
+use std::fs;
 
-use crate::support::{self, PluginFixture};
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn plugin_fixture() -> TestResult<PluginFixture> {
-    crate::support::plugin_fixture_with_mutable_files(&[
-        std::path::Path::new("skills/codex-orchestration/SKILL.md"),
-    ])
-    .map_err(Into::into)
+fn plugin_fixture() -> TestResult<support::InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(std::path::Path::new(
+        "skills/codex-orchestration/SKILL.md",
+    ))?)
 }
 
-fn reset_orchestration_file(fixture: &PluginFixture) -> TestResult<(std::path::PathBuf, String)> {
-    let relative = Path::new("skills/codex-orchestration/SKILL.md");
-    fixture.reset_file(relative)?;
-    let path = fixture.root().join(relative);
+fn reset_orchestration_file(
+    fixture: &support::InstructionPolicyFixture,
+) -> TestResult<(std::path::PathBuf, String)> {
+    fixture.reset()?;
+    let path = fixture.path().to_path_buf();
     Ok((path.clone(), fs::read_to_string(path)?))
 }
 
@@ -51,7 +51,7 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
         let (path, original) = reset_orchestration_file(&fixture)?;
         fs::write(&path, original.replace(required, replacement))?;
 
-        let output = support::validator_instruction_policy(fixture.root())?;
+        let output = support::validator_instruction_policy_file(fixture.path())?;
         assert!(
             !output.status.success(),
             "validator accepted missing policy {required:?}"
@@ -69,12 +69,9 @@ fn validator_rejects_blocked_goal_or_replacement_thread_policy() -> TestResult {
         "MUST create a replacement thread after a Sentinel BLOCK.",
     ] {
         let (path, original) = reset_orchestration_file(&fixture)?;
-        fs::write(
-            &path,
-            format!("{original}\n{forbidden}\n"),
-        )?;
+        fs::write(&path, format!("{original}\n{forbidden}\n"))?;
 
-        let output = support::validator_instruction_policy(fixture.root())?;
+        let output = support::validator_instruction_policy_file(fixture.path())?;
         assert!(
             !output.status.success(),
             "validator accepted forbidden BLOCK policy {forbidden:?}"
@@ -96,7 +93,7 @@ fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("external-gate goal retention"));
     Ok(())
@@ -114,7 +111,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
         ),
     )?;
 
-    let required_only_historically = support::validator_instruction_policy(fixture.root())?;
+    let required_only_historically = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!required_only_historically.status.success());
     assert!(
         support::stderr(&required_only_historically)
@@ -127,7 +124,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\n## Historical Example\nThis is retained only for historical context.\nMUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let forbidden_only_historically = support::validator_instruction_policy(fixture.root())?;
+    let forbidden_only_historically = support::validator_instruction_policy_file(fixture.path())?;
     assert!(
         forbidden_only_historically.status.success(),
         "{}",
@@ -140,7 +137,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "{original}\nLogging is not required, but MUST keep polling and keep the goal active.\n"
         ),
     )?;
-    let unrelated_negation = support::validator_instruction_policy(fixture.root())?;
+    let unrelated_negation = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!unrelated_negation.status.success());
     assert!(support::stderr(&unrelated_negation).contains("autonomous polling"));
 
@@ -151,7 +148,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
             "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Child external-gate wait MUST end its active goal and plan before waiting",
         ),
     )?;
-    let heading_only = support::validator_instruction_policy(fixture.root())?;
+    let heading_only = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!heading_only.status.success());
     assert!(
         support::stderr(&heading_only)
@@ -169,7 +166,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
                 negated_clause,
             ),
         )?;
-        let negated_required = support::validator_instruction_policy(fixture.root())?;
+        let negated_required = support::validator_instruction_policy_file(fixture.path())?;
         assert!(!negated_required.status.success(), "{negated_clause}");
     }
     Ok(())
@@ -187,7 +184,7 @@ fn validator_rejects_required_ledger_phrases_that_appear_only_in_headings() -> T
         ),
     )?;
 
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("latest evidence"));
     Ok(())
@@ -205,7 +202,7 @@ fn validator_allows_compliant_negated_polling_prohibitions() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(output.status.success(), "{}", support::stderr(&output));
     Ok(())
 }
@@ -221,7 +218,7 @@ fn validator_rejects_inline_code_delimited_forbidden_policy() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(fixture.root())?;
+    let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("must not block a usable owner"));
     Ok(())

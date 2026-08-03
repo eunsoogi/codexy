@@ -44,19 +44,13 @@ pub(crate) fn install_fixture_probe(
     Ok(FixtureProbeExecutable { logical_path: path })
 }
 
-fn fixture_probe_path(path: &Path) -> PathBuf {
+pub(crate) fn fixture_probe_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
         return path.to_path_buf();
     }
     #[cfg(not(windows))]
     path.to_path_buf()
-}
-
-#[test]
-fn fixture_probe_preserves_the_requested_platform_artifact_name() {
-    let path = Path::new("runtime/codexy-mcp-lsp-darwin-arm64.bin");
-    assert_eq!(fixture_probe_path(path), path);
 }
 
 fn write_posix_probe(path: &Path, configuration: &str) -> std::io::Result<()> {
@@ -66,25 +60,4 @@ fn write_posix_probe(path: &Path, configuration: &str) -> std::io::Result<()> {
         _ => String::new(),
     };
     std::fs::write(path, script)
-}
-
-#[test]
-fn fixture_probe_preserves_argv_stdout_stderr_and_exit_status()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let probe = install_fixture_probe(
-        temp.path().join("argv probe").as_path(),
-        FixtureProbe::Arguments,
-    )?;
-    assert_eq!(probe.logical_path(), temp.path().join("argv probe"));
-    let output = probe
-        .command()
-        .arg("value with spaces")
-        .env("CODEXY_FIXTURE_PROBE_STDERR", "stderr mirror")
-        .env("CODEXY_FIXTURE_PROBE_EXIT", "23")
-        .output()?;
-    assert_eq!(output.status.code(), Some(23));
-    assert_eq!(String::from_utf8(output.stdout)?, "value with spaces\n");
-    assert_eq!(String::from_utf8(output.stderr)?, "stderr mirror\n");
-    Ok(())
 }

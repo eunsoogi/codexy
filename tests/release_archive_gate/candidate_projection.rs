@@ -1,5 +1,8 @@
 use tempfile::tempdir;
 
+#[path = "candidate_projection_batch.rs"]
+mod candidate_projection_batch;
+
 use super::{
     candidate::{make_candidate_proven_windows_package, run_source_projection},
     complete_plugin_fixture,
@@ -17,72 +20,7 @@ fn projection(appended: &str) -> std::process::Output {
 
 #[test]
 fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_text() {
-    for (line, succeeds) in [
-        (
-            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        (
-            "export bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        (
-            ":; bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            false,
-        ),
-        ("eval 'bundled_platforms=darwin-arm64'", false),
-        ("\"eval\" 'bundled_platforms=darwin-arm64'", false),
-        ("'eval' 'bundled_platforms=darwin-arm64'", false),
-        ("true && eval 'bundled_''platforms=darwin-arm64'", false),
-        ("eval 'bundled_''platforms=darwin-arm64' && true", false),
-        ("\"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
-        (
-            "command \"ev\"\"al\" 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=eval\n$runner 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "true && runner=eval\n$runner 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=eval\n\"$runner\" 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=eval\n${runner} 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=eval\ncommand \"$runner\" 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=val\ne$runner 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "runner=val\n\"e${runner}\" 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        ("`printf eval` 'bundled_''platforms=darwin-arm64'", false),
-        (
-            "runner=eval\nbuiltin \"$runner\" 'bundled_''platforms=darwin-arm64'",
-            false,
-        ),
-        (
-            "# bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-            true,
-        ),
-        ("printf '%s\\n' 'bundled_platforms=darwin-arm64'", true),
-        ("printf '%s\\n' 'bundled_''platforms=darwin-arm64'", true),
-        ("runner=eval\nprintf '%s\\n' \"$runner\"", true),
-    ] {
-        assert_eq!(projection(line).status.success(), succeeds, "{line}");
-    }
+    candidate_projection_batch::assert_projection_matrix();
 }
 
 #[test]

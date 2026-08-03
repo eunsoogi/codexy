@@ -2,7 +2,6 @@ use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-#[test]
 fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResult {
     for parent_task in ["/root", "agents.send_message('/root')", "codex task/thread"] {
         let output = run_validator(&terminal_only_evidence(parent_task))?;
@@ -27,7 +26,6 @@ fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResul
     Ok(())
 }
 
-#[test]
 fn validator_normalizes_bullet_terminal_records() -> TestResult {
     let missing_handoff = run_validator(
         "Lane ownership: child-owned\n- Terminal child transition: action=archive\n",
@@ -49,7 +47,6 @@ fn validator_normalizes_bullet_terminal_records() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn validator_rejects_placeholder_or_local_child_tasks_in_terminal_handoffs() -> TestResult {
     for child_task in ["codex task/thread", "child task", "/root", "agents.worker"] {
         let output = run_validator(&terminal_only_evidence_for_tasks("parent-375", child_task))?;
@@ -68,7 +65,6 @@ fn validator_rejects_placeholder_or_local_child_tasks_in_terminal_handoffs() -> 
     Ok(())
 }
 
-#[test]
 fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
     let output = run_validator(
         "Lane ownership: child-owned\nTerminal child transition: action=archive; reason=done\n",
@@ -83,7 +79,6 @@ fn validator_requires_handoff_for_suffixed_terminal_actions() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn validator_rejects_duplicate_handoffs_before_one_terminal_transition() -> TestResult {
     let handoff = terminal_handoff("archive:first");
     let duplicate = run_validator(&format!(
@@ -109,7 +104,6 @@ fn validator_rejects_duplicate_handoffs_before_one_terminal_transition() -> Test
     Ok(())
 }
 
-#[test]
 fn validator_keeps_one_handoff_for_related_terminal_transitions() -> TestResult {
     let output = run_validator(
         "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|375|complete; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nTerminal child transition: action=stop\nTerminal child transition: action=ownership release\n",
@@ -118,7 +112,6 @@ fn validator_keeps_one_handoff_for_related_terminal_transitions() -> TestResult 
     Ok(())
 }
 
-#[test]
 fn validator_rejects_handoff_after_stop_before_ownership_release() -> TestResult {
     let handoff = terminal_handoff("complete:stop");
     let duplicate = run_validator(&format!(
@@ -135,7 +128,6 @@ fn validator_rejects_handoff_after_stop_before_ownership_release() -> TestResult
     Ok(())
 }
 
-#[test]
 fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
     for status in ["complete", "blocked"] {
         let missing = run_validator(&format!(
@@ -154,7 +146,6 @@ fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> TestResult {
     let missing_second_handoff = format!(
         "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}{}",
@@ -220,8 +211,19 @@ fn terminal_goal_transition(status: &str, key: &str, include_handoff: bool) -> S
 }
 
 fn run_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
+}
+
+#[test]
+fn validator_child_terminal_handoff_matrix() -> TestResult {
+    validator_rejects_local_parent_tasks_in_terminal_only_handoffs()?;
+    validator_normalizes_bullet_terminal_records()?;
+    validator_rejects_placeholder_or_local_child_tasks_in_terminal_handoffs()?;
+    validator_requires_handoff_for_suffixed_terminal_actions()?;
+    validator_rejects_duplicate_handoffs_before_one_terminal_transition()?;
+    validator_keeps_one_handoff_for_related_terminal_transitions()?;
+    validator_rejects_handoff_after_stop_before_ownership_release()?;
+    validator_requires_handoff_for_status_form_goal_transitions()?;
+    validator_requires_a_fresh_handoff_for_each_terminal_goal_transition()?;
+    Ok(())
 }

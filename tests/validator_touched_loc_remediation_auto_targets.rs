@@ -8,60 +8,51 @@ use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, v
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
-fn touched_loc_rejects_roots_disabled_by_cargo_automatic_target_settings() -> TestResult {
-    for (setting, source, helper) in [
+fn automatic_target_settings_are_omitted_and_rejected_as_a_matrix() -> TestResult {
+    let targets = [
         ("autobins", "src/bin/ignored.rs", "src/bin/helper.rs"),
         ("autoexamples", "examples/ignored.rs", "examples/helper.rs"),
+        ("autotests", "tests/ignored.rs", "tests/helper.rs"),
         ("autobenches", "benches/ignored.rs", "benches/helper.rs"),
-    ] {
-        let repo = fixture(source, regular_lines(252))?;
-        write(
-            repo.path(),
-            "Cargo.toml",
-            &format!("[package]\nname = \"app\"\n{setting} = false\n"),
-        )?;
-        write(repo.path(), "src/lib.rs", "")?;
-        amend(repo.path())?;
-        assert_cargo_omits_automatic_target(repo.path(), source)?;
+    ];
+    let repo = fixture(targets[0].1, regular_lines(252))?;
+    write(
+        repo.path(),
+        "Cargo.toml",
+        "[package]\nname = \"app\"\nversion = \"0.1.0\"\nautobins = false\nautoexamples = false\nautotests = false\nautobenches = false\n",
+    )?;
+    write(repo.path(), "src/lib.rs", "")?;
+    for (_, source, _) in targets.iter().skip(1) {
+        write(repo.path(), source, &regular_lines(252))?;
+    }
+    amend(repo.path())?;
+    assert_cargo_omits_automatic_targets(repo.path(), &targets)?;
+
+    let rejected_targets = [targets[0], targets[1], targets[3]];
+    for (_, source, helper) in rejected_targets {
         write(
             repo.path(),
             source,
             &format!("mod helper;\n{}", regular_lines(249)),
         )?;
         write(repo.path(), helper, &regular_lines_from(249, 3))?;
-
-        let output = validate(repo.path())?;
+    }
+    let output = validate(repo.path())?;
+    assert!(!output.status.success(), "stderr:\n{}", stderr(&output));
+    for (_, source, _) in rejected_targets {
         assert!(
-            !output.status.success(),
-            "setting: {setting}\nstderr:\n{}",
+            stderr(&output).contains(source),
+            "missing disabled-target diagnostic for {source}\nstderr:\n{}",
             stderr(&output)
         );
     }
     Ok(())
 }
 
-#[test]
-fn cargo_metadata_omits_each_disabled_automatic_target_kind() -> TestResult {
-    for (setting, source) in [
-        ("autobins", "src/bin/ignored.rs"),
-        ("autoexamples", "examples/ignored.rs"),
-        ("autotests", "tests/ignored.rs"),
-        ("autobenches", "benches/ignored.rs"),
-    ] {
-        let repo = fixture(source, String::new())?;
-        write(
-            repo.path(),
-            "Cargo.toml",
-            &format!("[package]\nname = \"app\"\n{setting} = false\n"),
-        )?;
-        write(repo.path(), "src/lib.rs", "")?;
-        amend(repo.path())?;
-        assert_cargo_omits_automatic_target(repo.path(), source)?;
-    }
-    Ok(())
-}
-
-fn assert_cargo_omits_automatic_target(root: &std::path::Path, source: &str) -> TestResult {
+fn assert_cargo_omits_automatic_targets(
+    root: &std::path::Path,
+    targets: &[(&str, &str, &str)],
+) -> TestResult {
     let metadata = run(
         root,
         "cargo",
@@ -79,17 +70,20 @@ fn assert_cargo_omits_automatic_target(root: &std::path::Path, source: &str) -> 
         stderr(&metadata)
     );
     let metadata: Value = serde_json::from_slice(&metadata.stdout)?;
-    assert!(
-        metadata["packages"][0]["targets"]
-            .as_array()
-            .is_some_and(|targets| {
-                targets.iter().all(|target| {
-                    !target["src_path"]
-                        .as_str()
-                        .is_some_and(|path| path.ends_with(source))
-                })
-            })
-    );
+    for (_, source, _) in targets {
+        assert!(
+            metadata["packages"][0]["targets"]
+                .as_array()
+                .is_some_and(|cargo_targets| {
+                    cargo_targets.iter().all(|target| {
+                        !target["src_path"]
+                            .as_str()
+                            .is_some_and(|path| path.ends_with(source))
+                    })
+                }),
+            "Cargo metadata unexpectedly retained {source}"
+        );
+    }
     Ok(())
 }
 

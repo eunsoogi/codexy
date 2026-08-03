@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_uncaptured_handler_before_later_same_lane_review_metadata_and_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -31,7 +25,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_lowercase_multi_letter_lane_before_later_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -54,7 +47,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_lowercase_multi_letter_lane_before_unqualified_later_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -77,7 +69,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lowercase_multi_letter_lane_with_generic_lane_setup_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -101,7 +92,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lowercase_multi_letter_lane_with_this_lane_prose()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -125,7 +115,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_handler_before_later_same_lane_review_metadata_without_current_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -147,7 +136,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_handler_before_inline_later_lane_same_lane_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -167,7 +155,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_handler_before_later_unlabeled_lane_metadata_and_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -188,7 +175,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_handler_before_other_lane_metadata_and_same_lane_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -209,5 +195,19 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_uncaptured_handler_before_later_same_lane_review_metadata_and_capture()?;
+    validator_rejects_uncaptured_lowercase_multi_letter_lane_before_later_capture()?;
+    validator_rejects_uncaptured_lowercase_multi_letter_lane_before_unqualified_later_capture()?;
+    validator_allows_lowercase_multi_letter_lane_with_generic_lane_setup_context()?;
+    validator_allows_lowercase_multi_letter_lane_with_this_lane_prose()?;
+    validator_rejects_uncaptured_handler_before_later_same_lane_review_metadata_without_current_lane()?;
+    validator_rejects_uncaptured_handler_before_inline_later_lane_same_lane_metadata()?;
+    validator_rejects_uncaptured_handler_before_later_unlabeled_lane_metadata_and_capture()?;
+    validator_rejects_uncaptured_handler_before_other_lane_metadata_and_same_lane_capture()?;
     Ok(())
 }

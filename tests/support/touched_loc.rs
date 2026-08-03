@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::process::{Command, Output};
 use std::sync::{Mutex, OnceLock};
@@ -12,19 +13,23 @@ struct GitFixtureSeed {
     metadata: std::path::PathBuf,
 }
 
-static GIT_FIXTURE_SEED: OnceLock<Mutex<Option<GitFixtureSeed>>> = OnceLock::new();
+static GIT_FIXTURE_SEEDS: OnceLock<Mutex<HashMap<Vec<(String, String)>, GitFixtureSeed>>> =
+    OnceLock::new();
 
 pub(crate) fn fixture(
     path: &str,
     source: String,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
-    let repo = tempfile::tempdir()?;
-    initialize_fixture_repository(repo.path())?;
+    let mut initial_files = Vec::new();
     if ["src/bin/", "tests/", "examples/", "benches/"]
         .iter()
         .any(|prefix| path.starts_with(prefix))
     {
-        write(repo.path(), "Cargo.toml", "[package]\nname = \"app\"\n")?;
+        set_initial_file(
+            &mut initial_files,
+            "Cargo.toml",
+            "[package]\nname = \"app\"\n",
+        );
     }
     if let Some(target) = match path {
         "src/custom_bin.rs" => Some("src/custom_bin.rs"),
@@ -33,57 +38,72 @@ pub(crate) fn fixture(
         "src/custom_escape.rs" => Some("../src/custom_escape.rs"),
         _ => None,
     } {
-        write(
-            repo.path(),
+        set_initial_file(
+            &mut initial_files,
             "Cargo.toml",
             &format!(
                 "[package]\nname = \"app\"\n[[bin]]\nname = \"custom\"\npath = \"{target}\"\n"
             ),
-        )?;
+        );
     }
     if path.starts_with("crates/app/") {
-        write(
-            repo.path(),
+        set_initial_file(
+            &mut initial_files,
             "crates/app/Cargo.toml",
             "[package]\nname = \"app\"\n",
-        )?;
+        );
     }
-    write(repo.path(), path, &source)?;
-    run(repo.path(), &["add", "."])?;
-    run(repo.path(), &["commit", "-qm", "initial"])?;
+    set_initial_file(&mut initial_files, path, &source);
+    let seed = git_fixture_seed(&initial_files)?;
+    let repo = tempfile::tempdir()?;
+    super::copy_dir(&seed, &repo.path().join(".git"))?;
+    for (path, source) in &initial_files {
+        write(repo.path(), path, source)?;
+    }
     Ok(repo)
 }
 
-fn initialize_fixture_repository(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let seed = git_fixture_seed()?;
-    super::copy_dir(seed, &root.join(".git"))?;
-    Ok(())
+fn set_initial_file(files: &mut Vec<(String, String)>, path: &str, source: &str) {
+    if let Some((_, existing)) = files.iter_mut().find(|(existing, _)| existing == path) {
+        *existing = source.to_owned();
+    } else {
+        files.push((path.to_owned(), source.to_owned()));
+    }
 }
 
-fn git_fixture_seed() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    let seeds = GIT_FIXTURE_SEED.get_or_init(|| Mutex::new(None));
+fn git_fixture_seed(
+    files: &[(String, String)],
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let key = files.to_vec();
+    let seeds = GIT_FIXTURE_SEEDS.get_or_init(|| Mutex::new(HashMap::new()));
     let mut seed = seeds
         .lock()
         .map_err(|_| std::io::Error::other("touched-LOC Git fixture seed lock"))?;
-    if seed.is_none() {
-        let temporary = tempfile::tempdir()?;
-        let root = temporary.path().join("repository");
-        std::fs::create_dir_all(&root)?;
-        // Later mutation cases amend their initial commit. Keep identity in the
-        // private seed so every ordinary-copy fixture ignores host Git settings.
-        run(&root, &["init", "-q"])?;
-        run(&root, &["config", "user.email", "codexy@example.test"])?;
-        run(&root, &["config", "user.name", "Codexy Test"])?;
-        *seed = Some(GitFixtureSeed {
-            metadata: root.join(".git"),
-            _temporary: temporary,
-        });
+    if let Some(existing) = seed.get(&key) {
+        return Ok(existing.metadata.clone());
     }
-    Ok(seed
-        .as_ref()
-        .expect("private Git fixture seed")
-        .metadata
-        .clone())
+    let temporary = tempfile::tempdir()?;
+    let root = temporary.path().join("repository");
+    std::fs::create_dir_all(&root)?;
+    for (path, source) in files {
+        write(&root, path, source)?;
+    }
+    // Later mutation cases amend their initial commit. Keep every immutable
+    // seed private so one fixture can never affect a sibling fixture.
+    run(&root, &["init", "-q"])?;
+    run(&root, &["config", "user.email", "codexy@example.test"])?;
+    run(&root, &["config", "user.name", "Codexy Test"])?;
+    run(&root, &["add", "."])?;
+    run(&root, &["commit", "-qm", "initial"])?;
+    let metadata = root.join(".git");
+    seed.insert(
+        key,
+        GitFixtureSeed {
+            metadata: metadata.clone(),
+            _temporary: temporary,
+        },
+    );
+    Ok(metadata)
 }
 
 pub(crate) fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {

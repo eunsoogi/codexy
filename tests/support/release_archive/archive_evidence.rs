@@ -11,7 +11,7 @@ pub(super) fn record_archive_header_receipt(
     append_archive_header_receipt(std::path::Path::new(&path), phase, archive, wrappers)
 }
 
-pub(super) fn append_archive_header_receipt(
+pub(crate) fn append_archive_header_receipt(
     receipt: &std::path::Path,
     phase: &str,
     archive: &std::path::Path,

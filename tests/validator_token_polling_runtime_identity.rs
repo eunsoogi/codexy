@@ -9,10 +9,10 @@ const HEARTBEAT_IDENTITY: &str = "heartbeat route MUST bind";
 const PROCESS_IDENTITY: &str = "separate process-backed monitor MUST bind";
 
 fn validate_polling_policy(removed_identity: Option<&str>) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+    let fixture = support::instruction_policy_fixture(Path::new(
         "skills/token-efficient-orchestration/SKILL.md",
-    )])?;
-    let path = plugin_root.join("skills/token-efficient-orchestration/SKILL.md");
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let updated = removed_identity.map_or_else(
         || original.clone(),
@@ -25,7 +25,7 @@ fn validate_polling_policy(removed_identity: Option<&str>) -> TestResult<std::pr
         );
     }
     fs::write(path, updated)?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 #[test]

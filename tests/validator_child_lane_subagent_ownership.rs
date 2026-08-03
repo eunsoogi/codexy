@@ -3,14 +3,9 @@ use std::process::Output;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
 
-#[test]
 fn validator_rejects_subagent_as_child_subthread_owner() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane assigned to subagent Gauss via multi_agent_v1.spawn_agent
@@ -27,7 +22,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_explicit_subagent_assignment_despite_substitute_denial() -> TestResult {
     for evidence in [
         r#"Owner decision: child-owned implementation lane assigned to subagent Gauss; not a subagent substitute for a Codex thread
@@ -49,7 +43,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_hyphenated_multi_agent_owner_assignment() -> TestResult {
     for evidence in [
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required; multi-agent owner Gauss
@@ -72,7 +65,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_subagent_routes_and_negated_thread_owner_claims() -> TestResult {
     for evidence in [
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required; routed to multi_agent_v1 subagent Gauss
@@ -131,7 +123,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_specialist_helper_as_child_subthread_owner() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: child-owned implementation lane assigned to specialist helper Gauss
@@ -148,7 +139,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_role_only_spawned_agent_owners() -> TestResult {
     for evidence in [
         r#"Owner decision: child-owned implementation lane
@@ -234,5 +224,16 @@ Maintainer reassignment: none
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_subagent_ownership_matrix() -> TestResult {
+    validator_rejects_subagent_as_child_subthread_owner()?;
+    validator_rejects_explicit_subagent_assignment_despite_substitute_denial()?;
+    validator_rejects_hyphenated_multi_agent_owner_assignment()?;
+    validator_rejects_subagent_routes_and_negated_thread_owner_claims()?;
+    validator_rejects_specialist_helper_as_child_subthread_owner()?;
+    validator_rejects_role_only_spawned_agent_owners()?;
     Ok(())
 }

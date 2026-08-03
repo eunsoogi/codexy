@@ -7,12 +7,14 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_rejects_line_wrapped_recursive_permissions() -> TestResult {
-    for permission in [
+    let permissions = [
         "Allowed actions:\n- spawning another helper for QA.",
         "Allowed actions:\n1. Spawning another helper for QA.",
         "A helper MAY\nspawn another helper.",
         "A helper is allowed to spawn\nanother helper.",
-    ] {
+    ];
+    assert_recursive_role_permission_rejected_cli(permissions[0])?;
+    for &permission in &permissions[1..] {
         assert_recursive_role_permission_rejected(permission)?;
     }
     Ok(())
@@ -23,7 +25,7 @@ fn validator_rejects_allowed_action_bullets_and_circumstantial_must() -> TestRes
     assert_recursive_role_permission_rejected(
         "Allowed actions:\n- Map files.\n- Spawn another helper.",
     )?;
-    assert_role_recursion_not_reported(
+    assert_role_recursion_not_reported_cli(
         "A helper MUST, under no circumstances, spawn another helper.",
     )?;
     assert_role_recursion_not_reported("A helper MUST never spawn another helper.")?;
@@ -111,6 +113,17 @@ fn validator_resets_allowed_actions_context_at_boundaries() -> TestResult {
 }
 
 fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
+    assert_recursive_role_permission_rejected_with(permission, validator)
+}
+
+fn assert_recursive_role_permission_rejected_cli(permission: &str) -> TestResult {
+    assert_recursive_role_permission_rejected_with(permission, validator_cli)
+}
+
+fn assert_recursive_role_permission_rejected_with(
+    permission: &str,
+    validate: fn(&Path) -> TestResult<Output>,
+) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
     let role_path = plugin_root.join("agents/codexy-cartographer.toml");
@@ -119,11 +132,22 @@ fn assert_recursive_role_permission_rejected(permission: &str) -> TestResult {
         &role_path,
         role.replacen("\n\"\"\"", &format!("\n{permission}\n\"\"\""), 1),
     )?;
-    assert_recursion_rejected(validator(&plugin_root)?, permission);
+    assert_recursion_rejected(validate(&plugin_root)?, permission);
     Ok(())
 }
 
 fn assert_role_recursion_not_reported(instruction: &str) -> TestResult {
+    assert_role_recursion_not_reported_with(instruction, validator)
+}
+
+fn assert_role_recursion_not_reported_cli(instruction: &str) -> TestResult {
+    assert_role_recursion_not_reported_with(instruction, validator_cli)
+}
+
+fn assert_role_recursion_not_reported_with(
+    instruction: &str,
+    validate: fn(&Path) -> TestResult<Output>,
+) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
     let role_path = plugin_root.join("agents/codexy-cartographer.toml");
@@ -132,7 +156,7 @@ fn assert_role_recursion_not_reported(instruction: &str) -> TestResult {
         &role_path,
         role.replacen("\n\"\"\"", &format!("\n{instruction}\n\"\"\""), 1),
     )?;
-    assert!(!stderr(&validator(&plugin_root)?).contains("permits recursive delegation"));
+    assert!(!stderr(&validate(&plugin_root)?).contains("permits recursive delegation"));
     Ok(())
 }
 
@@ -146,6 +170,10 @@ fn fixture(temp: &tempfile::TempDir) -> TestResult<std::path::PathBuf> {
 }
 
 fn validator(plugin_root: &Path) -> TestResult<Output> {
+    support::validator(plugin_root, "--check-roles")
+}
+
+fn validator_cli(plugin_root: &Path) -> TestResult<Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",

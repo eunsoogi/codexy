@@ -8,7 +8,8 @@ use std::{
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let diagnostic_root = super::archive_repository(&temp, "diagnostic-root")?;
+    let archive = super::shared_repository_archive()?;
+    let diagnostic_root = super::archive_repository(archive, &temp, "diagnostic-root")?;
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let source_root_before = version_surface_contents(source_root)?;
     super::admission::activate(&diagnostic_root)?;

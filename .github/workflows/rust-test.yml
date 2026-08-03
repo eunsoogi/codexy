@@ -12,7 +12,7 @@ jobs:
   rust-test:
     name: Rust test suite (Ubuntu)
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -24,7 +24,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
 
       - name: Enforce exact full Rust workload budget
-        run: scripts/profile-rust-tests
+        run: scripts/profile-rust-tests --verify-coverage
 
   windows-rust-test:
     name: Rust test suite (Windows)

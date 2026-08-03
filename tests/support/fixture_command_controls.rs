@@ -1,4 +1,4 @@
-use super::{
+use crate::support::{
     FixtureCommand, fixture_script_launcher, windows_fixture_companion,
     windows_static_python_fixture,
 };
@@ -68,7 +68,7 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
     let bin = temp.path().join("fixture bin with spaces");
     std::fs::create_dir(&bin)?;
     let command = bin.join("git");
-    super::super::write_posix_fixture_command(&command, "#!/bin/sh\nprintf '%s\\n' \"$1\"\n")?;
+    crate::support::write_posix_fixture_command(&command, "#!/bin/sh\nprintf '%s\\n' \"$1\"\n")?;
     #[cfg(windows)]
     {
         assert!(
@@ -80,9 +80,9 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
     }
     let target = temp.path().join("nested shell target");
     std::fs::write(&target, "#!/bin/sh\ngit 'argument with spaces'\n")?;
-    super::super::make_executable(&target)?;
+    crate::support::make_executable(&target)?;
     let runner = temp.path().join("nested shell runner");
-    super::super::write_posix_fixture_shell_runner(
+    crate::support::write_posix_fixture_shell_runner(
         &runner,
         "CODEXY_FIXTURE_TARGET",
         &[("git", "CODEXY_FIXTURE_COMMAND")],
@@ -95,7 +95,7 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> Result<(), Box<dy
         &poison_git,
         "#!/bin/sh\nprintf '%s\\n' host > \"$CODEXY_FIXTURE_POISON\"\nexit 91\n",
     )?;
-    super::super::make_executable(&poison_git)?;
+    crate::support::make_executable(&poison_git)?;
     let host_path = std::env::var_os("PATH").ok_or("PATH")?;
     let mut paths = vec![poison_bin];
     paths.extend(std::env::split_paths(&host_path));
@@ -159,7 +159,7 @@ fn fixture_command_preserves_script_arguments_cwd_stdin_and_exit_status()
         &script,
         "#!/bin/sh\ninput=$(cat)\nprintf '%s\\n%s\\n%s\\n' \"$PWD\" \"$1\" \"$input\"\nexit 17\n",
     )?;
-    super::super::make_executable(&script)?;
+    crate::support::make_executable(&script)?;
 
     let mut child = FixtureCommand::new(&script)
         .arg("argument with spaces")
@@ -195,7 +195,7 @@ fn fixture_command_preserves_python_arguments_stdout_stderr_and_exit_status()
         &script,
         "#!/usr/bin/env python3\nimport sys\nprint(sys.argv[1])\nprint('stderr mirror', file=sys.stderr)\nsys.exit(23)\n",
     )?;
-    super::super::make_executable(&script)?;
+    crate::support::make_executable(&script)?;
 
     let output = FixtureCommand::new(&script)
         .arg("argument with spaces")
@@ -231,10 +231,10 @@ fn large_materialized_script_preserves_source_relative_scanner_diagnostics()
         "#!/bin/sh\nprintf '%s scanner: archive contains a secret or local path\\n' \"$1\" >&2\nexit 1\n",
     )?;
     for path in [&source, &scanner] {
-        super::super::make_executable(path)?;
+        crate::support::make_executable(path)?;
     }
 
-    super::super::materialize_lf_text_fixture(&source, &target)?;
+    crate::support::materialize_lf_text_fixture(&source, &target)?;
 
     for backend in ["rg", "grep"] {
         let output = FixtureCommand::new(&target).arg(backend).output()?;

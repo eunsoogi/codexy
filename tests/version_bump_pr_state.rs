@@ -22,7 +22,7 @@ fn production_pr_state_enriches_issue_labels_and_passes_handoff() -> TestResult 
         &handoff,
         "Verification completed. PR #999 is open for CI and review; this automation does not claim completion.\n",
     )?;
-    let validation = Command::new(root.join("scripts/validate-plugin-config"))
+    let validation = std::process::Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-completion-handoff", "--handoff-file"])
         .arg(&handoff)
         .arg("--pr-state-file")

@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_allows_handoff_fields_after_exact_error_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -31,7 +25,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_concrete_issue_with_no_extra_follow_up_needed()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -54,7 +47,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_placeholder_with_exact_error_for_failed_tool_only()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -78,7 +70,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_unused_fallback_route_followup() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -98,7 +89,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_later_handler_defect_without_own_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -121,7 +111,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_later_handler_defect_borrowing_prior_exact_error_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -142,5 +131,16 @@ Maintainer reassignment: none
         !output.status.success(),
         "validator should keep exact-error and handoff metadata scoped to the prior defect"
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_handoff_fields_after_exact_error_metadata()?;
+    validator_allows_concrete_issue_with_no_extra_follow_up_needed()?;
+    validator_allows_placeholder_with_exact_error_for_failed_tool_only()?;
+    validator_rejects_unused_fallback_route_followup()?;
+    validator_rejects_later_handler_defect_without_own_handoff_fields()?;
+    validator_rejects_later_handler_defect_borrowing_prior_exact_error_metadata()?;
     Ok(())
 }

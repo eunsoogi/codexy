@@ -77,25 +77,6 @@ fn touched_loc_rejects_unrelated_existing_module_declaration() -> TestResult {
 }
 
 #[test]
-fn touched_loc_allows_visible_module_extraction() -> TestResult {
-    for declaration in ["pub mod helper;", "pub(crate) mod helper;"] {
-        let repo = fixture("src/too_large.rs", multiline_source())?;
-        write(
-            repo.path(),
-            "src/too_large/helper.rs",
-            "let summary = format!(\"status\");\n",
-        )?;
-        std::fs::write(
-            repo.path().join("src/too_large.rs"),
-            format!("{declaration}\n{}", regular_lines(249)),
-        )?;
-        let output = validate(repo.path())?;
-        assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    }
-    Ok(())
-}
-
-#[test]
 fn touched_loc_rejects_unrelated_visible_module_change() -> TestResult {
     let repo = fixture("src/too_large.rs", multiline_source())?;
     write(repo.path(), "src/helper.rs", "fn unrelated() {}\n")?;

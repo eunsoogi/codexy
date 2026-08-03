@@ -1,51 +1,19 @@
 #!/usr/bin/env python3
 """Run and enforce the exact complete Rust test workload once."""
 from __future__ import annotations
-import argparse
-import json
-import os
-import re
-import signal
-import subprocess
-import sys
-import tempfile
-import threading
-import time
+import argparse, json, os, subprocess, sys, tempfile, threading, time
+from contextlib import nullcontext
 from collections import Counter
 from pathlib import Path
-from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
+from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, declared_test_targets, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_archive_accounting import emit_receipt_report, receipt_environment, receipt_report_lines
-from profile_rust_windows_launcher import launch_windows_workload
+from profile_rust_contract import BUDGET_SECONDS, COMPILE_PATTERN, MINIMUM_PASSED_TESTS, REQUIRED_JOB_TIMEOUT_MINUTES, RESULT_PATTERN, WORKLOAD
+from profile_rust_output import flush_output, observe_first_line, replay_output
+from profile_rust_telemetry import configure_metrics, telemetry
+from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
+from profile_rust_windows import WindowsJob, configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
-from profile_rust_windows_job import WindowsJob
-BUDGET_SECONDS = 180.0
-WINDOWS_BUDGET_SECONDS = 540.0
-MINIMUM_PASSED_TESTS = 1802
-REQUIRED_JOB_TIMEOUT_MINUTES = 4
-WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
-COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
-RESULT_PATTERN = re.compile(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out")
-def replay_output(output: bytes) -> bool:
-    binary = getattr(sys.stdout, "buffer", None)
-    if binary is None:
-        sys.stdout.write(output.decode("utf-8"))
-        return False
-    binary.write(output)
-    return True
-def flush_output() -> None:
-    getattr(sys.stdout, "buffer", sys.stdout).flush()
-def observe_first_line(capture_path: Path, process: subprocess.Popen[bytes], lines: list[bytes]) -> None:
-    with capture_path.open("rb", buffering=0) as capture:
-        while process.poll() is None:
-            capture.seek(0)
-            line = capture.readline()
-            if line.endswith(b"\n"):
-                lines.append(line)
-                replay_output(line)
-                flush_output()
-                return
-            time.sleep(0.01)
-def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, dict[str, float | str | Path]]:
+def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tuple[str, float, int, dict[str, float | str | Path]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
     phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json", "linux-cargo-descendants-json"), "not-applicable")}
@@ -53,54 +21,86 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
         capture_path = Path(directory) / "cargo-output"
         capture_path.touch(mode=0o600)
         first_line: list[bytes] = []
-        with capture_path.open("wb", buffering=0) as capture:
-            job = WindowsJob() if os.name == "nt" else None
-            with receipt_environment(Path(directory)) as (receipt_dir, environment):
+        with receipt_environment(Path(directory)) as (receipt_dir, environment):
+            metrics_path, command_metrics_path = configure_metrics(environment, Path(directory))
+            temporary_root = isolated_windows_test_root(environment) if windows else nullcontext(None)
+            with temporary_root as temp_root, capture_path.open("wb", buffering=0) as capture:
+                if temp_root:
+                    configure_windows_test_runner(environment, temp_root)
+                job = WindowsJob() if os.name == "nt" else None
                 if job is None:
                     process = subprocess.Popen(WORKLOAD, cwd=root, stdout=capture, stderr=subprocess.STDOUT, start_new_session=os.name == "posix", env=environment)
                 else:
                     process = launch_windows_workload(job, root, capture, WORKLOAD, environment=environment)
-            observer = threading.Thread(
-                target=observe_first_line,
-                args=(capture_path, process, first_line),
-                name="cargo-first-line",
-                daemon=True,
-            )
-            observer.start()
-            try:
-                if job is None:
-                    status = process.wait(timeout=budget_seconds)
-                else:
-                    try:
-                        status = process.wait(timeout=max(0, deadline - time.monotonic()))
-                    except subprocess.TimeoutExpired:
-                        phases["windows-job-active-zero"] = "deadline"
-                        phases.update(job.diagnostics(process))
-                        job.terminate_and_wait()
-                        status = 124
+                runtime = RuntimeTelemetry(started, declared_test_targets(root) if root is not None and (root / "Cargo.toml").is_file() else (), environment)
+                runtime.start(capture_path, process, lambda: job.diagnostics(process)["windows-job-images-json"] if job else json.dumps(linux_cargo_descendants_snapshot(process.pid)) if sys.platform.startswith("linux") else "not-applicable")
+                observer = threading.Thread(
+                    target=observe_first_line,
+                    args=(capture_path, process, first_line),
+                    name="cargo-first-line",
+                    daemon=True,
+                )
+                observer.start()
+                cleanup_allowed = job is None
+                try:
+                    if job is None:
+                        status = process.wait(timeout=budget_seconds)
                     else:
-                        phases.update(job.diagnostics(process))
-                        if job.wait_for_empty_until(time.monotonic()):
-                            phases["windows-job-active-zero"] = "completed"
-                        else:
-                            phases["windows-job-active-zero"] = "drained"
+                        try:
+                            status = process.wait(timeout=max(0, deadline - time.monotonic()))
+                        except subprocess.TimeoutExpired:
+                            phases["windows-job-active-zero"] = "deadline"
+                            phases.update(job.diagnostics(process))
                             job.terminate_and_wait()
-            except subprocess.TimeoutExpired:
-                if sys.platform.startswith("linux"):
-                    phases["linux-cargo-descendants-json"] = json.dumps(linux_cargo_descendants_snapshot(process.pid), sort_keys=True)
-                stop_workload(process, job)
-                status = 124
-            except KeyboardInterrupt:
-                stop_workload(process, job)
-                raise
-            finally:
-                capture_started = time.perf_counter()
-                if job is not None:
-                    job.close()
-                observer.join()
-                del process
+                            status = 124
+                            cleanup_allowed = True
+                        else:
+                            phases.update(job.diagnostics(process))
+                            if job.wait_for_empty_until(time.monotonic()):
+                                phases["windows-job-active-zero"] = "completed"
+                                cleanup_allowed = True
+                            else:
+                                phases["windows-job-active-zero"] = "drained"
+                                job.terminate_and_wait()
+                                cleanup_allowed = True
+                except subprocess.TimeoutExpired:
+                    if sys.platform.startswith("linux"):
+                        phases["linux-cargo-descendants-json"] = json.dumps(linux_cargo_descendants_snapshot(process.pid), sort_keys=True)
+                    stop_workload(process, job)
+                    status = 124
+                    cleanup_allowed = True
+                except KeyboardInterrupt:
+                    stop_workload(process, job)
+                    raise
+                finally:
+                    capture_started = time.perf_counter()
+                    try:
+                        runtime_receipt = runtime.finish()
+                    finally:
+                        try:
+                            if job is not None:
+                                job.close()
+                        finally:
+                            try:
+                                observer.join()
+                            finally:
+                                del process
+                if temp_root is not None and cleanup_allowed:
+                    temp_root.allow_cleanup()
         output = capture_path.read_bytes()
+        if temp_root is not None and temp_root.cleanup != "removed":
+            status = status or 1
         phases["archive-inspector-receipt-lines"] = receipt_report_lines(receipt_dir)
+        phases["fixture-telemetry-json"] = telemetry(
+            root,
+            environment,
+            metrics_path,
+            temp_root.telemetry() if temp_root else None,
+        )
+        phases["workload-receipt-json"] = runtime_receipt
+        phases["windows-telemetry-json"] = phases["fixture-telemetry-json"]
+        if temp_root is not None:
+            phases["windows-temp-cleanup-receipt-json"] = json.dumps(temp_root.telemetry(), sort_keys=True)
     phases["workload-seconds"] = capture_started - started
     phases["capture-seconds"] = time.perf_counter() - capture_started
     live_output = first_line[0] if first_line else b""
@@ -113,13 +113,6 @@ def run_workload(root: Path, budget_seconds: float) -> tuple[str, float, int, di
     output_text = output.decode("utf-8")
     elapsed = budget_seconds if status == 124 else time.perf_counter() - started
     return output_text, elapsed, status, phases
-def terminate_workload(process: subprocess.Popen[str]) -> None:
-    if process.poll() is not None:
-        return
-    os.killpg(process.pid, signal.SIGKILL)
-    process.wait()
-def stop_workload(process: subprocess.Popen[str], job: WindowsJob | None) -> None:
-    job.terminate_and_wait() if job is not None else terminate_workload(process)
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
@@ -131,12 +124,12 @@ def main() -> int:
     root = arguments.root.resolve()
     if arguments.windows:
         arguments.verify_coverage = True
-        arguments.budget_seconds = WINDOWS_BUDGET_SECONDS
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     started = time.perf_counter()
-    output, elapsed, status, phases = run_workload(root, arguments.budget_seconds)
+    workload_arguments = (root, arguments.budget_seconds, True) if arguments.windows else (root, arguments.budget_seconds)
+    output, elapsed, status, phases = run_workload(*workload_arguments)
     expected_tests: Counter[str] = Counter()
     expected_targets: set[str] = set()
     inventory_status = 0
@@ -201,6 +194,13 @@ def main() -> int:
         print(f"compiled-targets\t{len(expected_targets)}\t{'PASS' if target_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_fixture_nested_cargo_pass else 'FAIL'}")
+    telemetry_json = phases.get("fixture-telemetry-json")
+    if telemetry_json is not None:
+        print(f"fixture-telemetry-json\t{telemetry_json}")
+    if workload_receipt := phases.get("workload-receipt-json"): print(f"workload-receipt-json\t{workload_receipt}")
+    if arguments.windows and "windows-telemetry-json" in phases:
+        print(f"windows-telemetry-json\t{phases['windows-telemetry-json']}")
+        print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")
     emit_receipt_report(phases.get("archive-inspector-receipt-lines"))
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")

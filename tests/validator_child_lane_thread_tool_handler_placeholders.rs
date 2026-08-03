@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_placeholder_handler_missing_for_exposed_thread_tools()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -32,7 +26,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_split_line_placeholder_handler_missing_for_exposed_thread_tools()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -56,7 +49,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_visible_thread_surface_handler_missing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -80,7 +72,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_bulleted_visible_thread_surface_handler_missing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -105,7 +96,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_blank_line_separated_visible_surface_handler_missing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -131,7 +121,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_broader_bulleted_visible_thread_surface_handler_missing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -157,7 +146,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_placeholder_handler_missing_after_invocation_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -180,5 +168,17 @@ Maintainer reassignment: none
         "stderr should name the header-separated placeholder evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_placeholder_handler_missing_for_exposed_thread_tools()?;
+    validator_rejects_split_line_placeholder_handler_missing_for_exposed_thread_tools()?;
+    validator_rejects_visible_thread_surface_handler_missing()?;
+    validator_rejects_bulleted_visible_thread_surface_handler_missing()?;
+    validator_rejects_blank_line_separated_visible_surface_handler_missing()?;
+    validator_rejects_broader_bulleted_visible_thread_surface_handler_missing()?;
+    validator_rejects_placeholder_handler_missing_after_invocation_header()?;
     Ok(())
 }

@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_excluded_lane_metadata_that_names_a_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -33,7 +27,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_excluded_lane_metadata_after_multiline_defect_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -60,7 +53,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_multiline_lane_metadata_headings_inside_current_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     for heading in ["Lane owner:", "Lane ownership:", "Lane metadata:"] {
@@ -107,7 +99,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_handoff_metadata_that_names_a_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     for (field, qualifier) in [
@@ -139,7 +130,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_preceding_handoff_metadata_that_names_a_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -173,7 +163,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_generic_lane_nouns_in_same_lane_handoff_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -197,7 +186,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_current_lane_fallback_metadata_named_for_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -218,5 +206,17 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_excluded_lane_metadata_that_names_a_later_lane()?;
+    validator_allows_excluded_lane_metadata_after_multiline_defect_capture()?;
+    validator_allows_multiline_lane_metadata_headings_inside_current_lane()?;
+    validator_rejects_handoff_metadata_that_names_a_later_lane()?;
+    validator_rejects_preceding_handoff_metadata_that_names_a_later_lane()?;
+    validator_allows_generic_lane_nouns_in_same_lane_handoff_metadata()?;
+    validator_allows_current_lane_fallback_metadata_named_for_lane()?;
     Ok(())
 }

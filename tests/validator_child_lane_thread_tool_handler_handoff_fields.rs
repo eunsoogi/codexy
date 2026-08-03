@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_allows_missing_handler_defect_with_no_fallback_route_and_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -29,7 +23,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_missing_handler_defect_with_fallback_route_and_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -50,7 +43,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_without_route_or_no_route()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -69,7 +61,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_without_tracking_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -88,7 +79,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_negated_tracking_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -107,7 +97,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_empty_tracking_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -126,7 +115,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_empty_fallback_route()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -145,7 +133,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_future_tracking_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -164,7 +151,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_tbd_tracking_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -183,7 +169,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_pending_follow_up_issue()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -202,7 +187,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_negated_issue_reference()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue_evidence in [
@@ -226,7 +210,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_missing_handler_defect_with_date_instead_of_issue_reference()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -242,5 +225,22 @@ Maintainer reassignment: none
         !output.status.success(),
         "validator should reject numeric tokens that are not issue references"
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_missing_handler_defect_with_no_fallback_route_and_issue()?;
+    validator_allows_missing_handler_defect_with_fallback_route_and_issue()?;
+    validator_rejects_missing_handler_defect_without_route_or_no_route()?;
+    validator_rejects_missing_handler_defect_without_tracking_issue()?;
+    validator_rejects_missing_handler_defect_with_negated_tracking_issue()?;
+    validator_rejects_missing_handler_defect_with_empty_tracking_issue()?;
+    validator_rejects_missing_handler_defect_with_empty_fallback_route()?;
+    validator_rejects_missing_handler_defect_with_future_tracking_issue()?;
+    validator_rejects_missing_handler_defect_with_tbd_tracking_issue()?;
+    validator_rejects_missing_handler_defect_with_pending_follow_up_issue()?;
+    validator_rejects_missing_handler_defect_with_negated_issue_reference()?;
+    validator_rejects_missing_handler_defect_with_date_instead_of_issue_reference()?;
     Ok(())
 }

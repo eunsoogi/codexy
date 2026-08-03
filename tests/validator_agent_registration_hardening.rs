@@ -125,43 +125,38 @@ fn no_op_uninstall_still_honors_the_registration_lock() -> TestResult {
 }
 
 #[test]
-fn diagnostics_confirm_v2_only_from_the_real_table() -> TestResult {
+fn diagnostics_parser_covers_v2_table_boundaries() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin = fixture(temp.path())?;
     let home = temp.path().join("home");
-    assert!(run(&plugin, &home, &[])?.status.success());
-    assert_unconfirmed(&run(&plugin, &home, &["--diagnose"])?);
-    std::fs::write(
-        home.join("config.toml"),
-        "note = '''\n[features.multi_agent_v2]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n'''\n",
+    let output = python(
+        &plugin,
+        &home,
+        r#"
+from agent_registration_support import multi_agent_v2_values
+
+def values(encoded):
+    return multi_agent_v2_values(encoded.replace("\\n", "\n"))
+
+assert values(r"""note = '''\n[features.multi_agent_v2]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n'''\n""") is None
+for header in ("[[profiles]]", "[[\"profiles]\"]]", "[\"profiles]\"]"):
+    assert values(
+        f"[features.multi_agent_v2]\\n{header}\\ntool_namespace = \\\"agents\\\"\\nhide_spawn_agent_metadata = false\\n"
+    ) == {}
+for config in (
+    r'''[features.multi_agent_v2]\nprobe = [\n  ["nested"],\n]\ntool_namespace = "agents"\nhide_spawn_agent_metadata = false\n''',
+    r'''["features"."multi_agent_v2"]\ntool_namespace = "agents"\nhide_spawn_agent_metadata = false\n''',
+    r'''[features.multi_agent_v2]\nprobe = ["""\nnested\n"""]\ntool_namespace = "agents"\nhide_spawn_agent_metadata = false\n''',
+    r'''[features.multi_agent_v2]\nprobe = ["""\nnested\n"""] # """\ntool_namespace = "agents"\nhide_spawn_agent_metadata = false\n''',
+    r'''[features.multi_agent_v2]\nprobe = ["""nested"""]\ntool_namespace = "agents"\nhide_spawn_agent_metadata = false\n''',
+):
+    assert values(config) == {
+        "tool_namespace": "agents",
+        "hide_spawn_agent_metadata": "false",
+    }
+"#,
     )?;
-    assert_unconfirmed(&run(&plugin, &home, &["--diagnose"])?);
-    for header in ["[[profiles]]", "[[\"profiles]\"]]", "[\"profiles]\"]"] {
-        std::fs::write(
-            home.join("config.toml"),
-            format!(
-                "[features.multi_agent_v2]\n{header}\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n"
-            ),
-        )?;
-        let output = run(&plugin, &home, &["--diagnose"])?;
-        assert!(stdout(&output).contains(
-            "B tool-schema: CONFIGURED (namespace=default/unobserved, agent_type-visible=unconfirmed)"
-        ));
-    }
-    for config in [
-        "[features.multi_agent_v2]\nprobe = [\n  [\"nested\"],\n]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n",
-        "[\"features\".\"multi_agent_v2\"]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n",
-        "[features.multi_agent_v2]\nprobe = [\"\"\"\nnested\n\"\"\"]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n",
-        "[features.multi_agent_v2]\nprobe = [\"\"\"\nnested\n\"\"\"] # \"\"\"\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n",
-        "[features.multi_agent_v2]\nprobe = [\"\"\"nested\"\"\"]\ntool_namespace = \"agents\"\nhide_spawn_agent_metadata = false\n",
-    ] {
-        std::fs::write(home.join("config.toml"), config)?;
-        let output = run(&plugin, &home, &["--diagnose"])?;
-        assert!(
-            stdout(&output)
-                .contains("B tool-schema: CONFIGURED (namespace=agents, agent_type-visible=true)")
-        );
-    }
+    assert_python_success(output)?;
     Ok(())
 }
 
@@ -202,15 +197,6 @@ fn assert_python_success(output: Output) -> TestResult {
         stderr(&output)
     );
     Ok(())
-}
-
-fn assert_unconfirmed(output: &Output) {
-    assert!(output.status.success(), "stderr:\n{}", stderr(output));
-    assert!(
-        stdout(output).contains("B tool-schema: UNCONFIRMED"),
-        "stdout:\n{}",
-        stdout(output)
-    );
 }
 
 fn stdout(output: &Output) -> String {
