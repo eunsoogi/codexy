@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
 """Run and enforce the exact complete Rust test workload once."""
 from __future__ import annotations
-import argparse, json, os, re, subprocess, sys, tempfile, threading, time
+import argparse, json, os, subprocess, sys, tempfile, threading, time
 from contextlib import nullcontext
 from collections import Counter
 from pathlib import Path
 from profile_rust_accounting import archive_fixture_nested_cargo_build_count, declared_test_target_order, declared_test_targets, deadline_report_lines, linux_cargo_descendants_snapshot, listed_test_inventory_from_completed_binaries, observed_test_inventory, observed_test_outcomes
 from profile_rust_archive_accounting import emit_receipt_report, receipt_environment, receipt_report_lines
+from profile_rust_contract import BUDGET_SECONDS, COMPILE_PATTERN, MINIMUM_PASSED_TESTS, REQUIRED_JOB_TIMEOUT_MINUTES, RESULT_PATTERN, WORKLOAD
 from profile_rust_output import flush_output, observe_first_line, replay_output
 from profile_rust_telemetry import configure_metrics, telemetry
 from profile_rust_runtime_telemetry import RuntimeTelemetry, stop_workload
 from profile_rust_windows import WindowsJob, configure_windows_test_runner, isolated_windows_test_root, launch_windows_workload
 from profile_rust_workflow import enforce_workflow_contract
-BUDGET_SECONDS = 300.0
-MINIMUM_PASSED_TESTS = 1802
-REQUIRED_JOB_TIMEOUT_MINUTES = 6  # 300s workload plus 60s setup/cleanup headroom
-WORKLOAD = ("cargo", "test", "--locked", "--all-targets")
-COMPILE_PATTERN = re.compile(r"Finished `test` profile .* in (?:(\d+)m )?([0-9.]+)s")
-RESULT_PATTERN = re.compile(r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; \d+ measured; \d+ filtered out")
 def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tuple[str, float, int, dict[str, float | str | Path]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
@@ -79,11 +74,17 @@ def run_workload(root: Path, budget_seconds: float, windows: bool = False) -> tu
                     raise
                 finally:
                     capture_started = time.perf_counter()
-                    runtime_receipt = runtime.finish()
-                    if job is not None:
-                        job.close()
-                    observer.join()
-                    del process
+                    try:
+                        runtime_receipt = runtime.finish()
+                    finally:
+                        try:
+                            if job is not None:
+                                job.close()
+                        finally:
+                            try:
+                                observer.join()
+                            finally:
+                                del process
                 if temp_root is not None and cleanup_allowed:
                     temp_root.allow_cleanup()
         output = capture_path.read_bytes()

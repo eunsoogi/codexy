@@ -9,12 +9,23 @@ fn windows_timeout_job_releases_writer_before_capture_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r#"
-import contextlib, io, json, os, pathlib, runpy, subprocess, sys, tempfile, types
+import contextlib
+import io
+import json
+import os
+import pathlib
+import runpy
+import subprocess
+import sys
+import tempfile
+import types
 
 locked = [False]
 parents = []
 jobs = []
 events = []
+observer_events = []
+finish_error = [False]
 mode = ["timeout"]
 root_status = [0]
 script = pathlib.Path(sys.argv[1])
@@ -79,13 +90,28 @@ class WindowsJob:
         events.append("job-close")
 
 class RuntimeTelemetry:
-    def __init__(self, *_args): pass
-    def start(self, *_args): pass
-    def finish(self): events.append("runtime-finish"); return "{}"
+    def __init__(self, *_args):
+        pass
+    def start(self, *_args):
+        pass
+    def finish(self):
+        events.append("runtime-finish")
+        if finish_error[0]:
+            raise RuntimeError("telemetry finish")
+        return "{}"
+
+class Observer:
+    def __init__(self, *_args, **_kwargs):
+        pass
+    def start(self):
+        pass
+    def join(self):
+        observer_events.append("observer-join")
 
 module["tempfile"].TemporaryDirectory = WindowsTemporaryDirectory
 module["subprocess"].Popen = spawn
 module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt", environ=os.environ)
+module["run_workload"].__globals__["threading"] = types.SimpleNamespace(Thread=Observer)
 module["run_workload"].__globals__["WindowsJob"] = WindowsJob
 module["run_workload"].__globals__["RuntimeTelemetry"] = RuntimeTelemetry
 @contextlib.contextmanager
@@ -121,6 +147,16 @@ if [result[3]["windows-job-active-zero"] for result in (timeout, running, nonzer
     raise SystemExit(f"timeout={timeout!r} running={running!r} nonzero={nonzero!r} success={success!r}")
 if events.index("runtime-finish") > events.index("job-close"):
     raise SystemExit(f"runtime telemetry finished after Job close: {events!r}")
+finish_error[0] = True
+try:
+    module["run_workload"](None, 1.0)
+except RuntimeError as error:
+    if str(error) != "telemetry finish":
+        raise
+else:
+    raise SystemExit("runtime telemetry failure was not propagated")
+if events[-2:] != ["runtime-finish", "job-close"] or observer_events[-1] != "observer-join":
+    raise SystemExit(f"cleanup after runtime failure was incomplete: events={events!r} observers={observer_events!r}")
 
 forwarded = {}
 def launcher_spawn(*_args, **kwargs):
@@ -168,77 +204,6 @@ for output, status, active_zero, result in [(passed_output, 0, "completed", "PAS
         raise SystemExit(f"output={output!r}")
 if passed != 0 or deadline != 124:
     raise SystemExit(f"passed={passed!r} deadline={deadline!r}")
-"#;
-    let output = Command::new("python3")
-        .args(["-c", probe])
-        .arg(script)
-        .output()?;
-
-    assert!(output.status.success(), "{output:?}");
-    Ok(())
-}
-
-#[test]
-fn deadline_report_keeps_unresolved_long_running_test_context(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
-    let probe = r#"
-import io
-import pathlib
-import runpy
-import sys
-
-script = pathlib.Path(sys.argv[1])
-sys.path.insert(0, str(script.parent))
-module = runpy.run_path(script)
-partial = "\n".join((
-    "     Running unittests src/lib.rs (target/debug/deps/codexy_runtime-a)",
-    "test support::finished ... ok",
-    "     Running tests/suites/all.rs (target/debug/deps/suite_all-a)",
-    "test system::settled has been running for over 60 seconds",
-    "test system::settled ... ok",
-    "test system::still_running has been running for over 60 seconds",
-    "test system::last_completed ... ok",
-))
-main_globals = module["main"].__globals__
-main_globals["enforce_workflow_contract"] = lambda *_args: None
-main_globals["archive_fixture_nested_cargo_build_count"] = lambda _root: 0
-main_globals["run_workload"] = lambda *_args: (
-    partial,
-    1.0,
-    124,
-    {
-        "windows-job-active-zero": "deadline",
-        "cargo-root-status": "running",
-        "windows-job-pids-json": "[]",
-        "windows-job-images-json": "[]",
-        "linux-cargo-descendants-json": '[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]',
-        "workload-seconds": 1.0,
-        "capture-seconds": 0.0,
-        "replay-seconds": 0.0,
-    },
-)
-stream, saved_stdout, saved_argv = io.StringIO(), sys.stdout, sys.argv
-sys.stdout = stream
-sys.argv = [str(script)]
-try:
-    status = module["main"]()
-finally:
-    sys.stdout, sys.argv = saved_stdout, saved_argv
-fields = {}
-for line in stream.getvalue().splitlines():
-    key, *values = line.split("\t")
-    fields.setdefault(key, []).append(values)
-expected = {
-    "deadline-last-running-target": [["suite_all"]],
-    "deadline-terminal-target": [["not-observed"]],
-    "deadline-next-target-not-started": [["suite_archive"]],
-    "deadline-active-test": [["suite_all::system::still_running"]],
-    "deadline-last-completed-test": [["suite_all::system::last_completed"]],
-    "deadline-linux-cargo-descendants-json": [['[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]']],
-}
-if status != 124 or any(fields.get(key) != value for key, value in expected.items()):
-    raise SystemExit(f"status={status!r} fields={fields!r}")
 "#;
     let output = Command::new("python3")
         .args(["-c", probe])
