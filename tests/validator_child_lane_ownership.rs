@@ -1,6 +1,5 @@
-use std::process::Command;
+use std::process::{Command, Output};
 
-#[test]
 fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     for review_response in [
@@ -24,22 +23,12 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
         "Review response: parent patched the child-owned branch with commit abc123",
         "Review response: orchestrator patched the child-owned branch with commit abc123",
     ] {
-        let temp = tempfile::tempdir()?;
-        let evidence_path = temp.path().join("handoff.md");
-        std::fs::write(
-            &evidence_path,
-            format!(
-                "Lane ownership: child-owned\n\
-                 PR: #128\n\
-                 {review_response}\n\
-                 Maintainer reassignment: none\n"
-            ),
-        )?;
-
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args(["--check-child-lane-ownership", "--evidence-file"])
-            .arg(&evidence_path)
-            .output()?;
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n\
+             PR: #128\n\
+             {review_response}\n\
+             Maintainer reassignment: none\n"
+        ))?;
 
         assert!(
             !output.status.success(),
@@ -56,7 +45,6 @@ fn validator_rejects_parent_authored_child_lane_fix_without_reassignment()
     Ok(())
 }
 
-#[test]
 fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
 -> Result<(), Box<dyn std::error::Error>> {
     for phrase in [
@@ -69,22 +57,12 @@ fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
         "Maintainer reassignment: reassigns implementation ownership to the parent",
         "Maintainer reassignment: reassigns implementation ownership to the orchestrator",
     ] {
-        let temp = tempfile::tempdir()?;
-        let evidence_path = temp.path().join("handoff.md");
-        std::fs::write(
-            &evidence_path,
-            format!(
-                "Lane ownership: child-owned\n\
-                 PR: #128\n\
-                 Review response: parent-authored implementation commit abc123 fixed feedback.\n\
-                 {phrase}\n"
-            ),
-        )?;
-
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args(["--check-child-lane-ownership", "--evidence-file"])
-            .arg(&evidence_path)
-            .output()?;
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n\
+             PR: #128\n\
+             Review response: parent-authored implementation commit abc123 fixed feedback.\n\
+             {phrase}\n"
+        ))?;
 
         assert!(
             output.status.success(),
@@ -96,7 +74,6 @@ fn validator_allows_parent_authored_child_lane_fix_with_reassignment()
     Ok(())
 }
 
-#[test]
 fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std::error::Error>> {
     for phrase in [
         "Explicit maintainer reassignment: no",
@@ -152,21 +129,11 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
         "Maintainer reassignment: explicit maintainer reassignment to the parent is missing",
         "Maintainer reassignment: reassigns implementation ownership to the parent was not granted",
     ] {
-        let temp = tempfile::tempdir()?;
-        let evidence_path = temp.path().join("handoff.md");
-        std::fs::write(
-            &evidence_path,
-            format!(
-                "Lane ownership: child-owned\n\
-                 Review response: parent-authored implementation commit abc123 fixed feedback.\n\
-                 {phrase}\n"
-            ),
-        )?;
-
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args(["--check-child-lane-ownership", "--evidence-file"])
-            .arg(&evidence_path)
-            .output()?;
+        let output = run_ownership_validator(&format!(
+            "Lane ownership: child-owned\n\
+             Review response: parent-authored implementation commit abc123 fixed feedback.\n\
+             {phrase}\n"
+        ))?;
 
         assert!(
             !output.status.success(),
@@ -176,7 +143,6 @@ fn validator_rejects_negative_reassignment_phrasing() -> Result<(), Box<dyn std:
     Ok(())
 }
 
-#[test]
 fn validator_allows_absent_parent_authored_fix_evidence() -> Result<(), Box<dyn std::error::Error>>
 {
     for evidence in [
@@ -189,14 +155,7 @@ Parent-authored implementation commits: false
 Maintainer reassignment: none
 "#,
     ] {
-        let temp = tempfile::tempdir()?;
-        let evidence_path = temp.path().join("handoff.md");
-        std::fs::write(&evidence_path, evidence)?;
-
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args(["--check-child-lane-ownership", "--evidence-file"])
-            .arg(&evidence_path)
-            .output()?;
+        let output = run_ownership_validator(evidence)?;
 
         assert!(
             output.status.success(),
@@ -208,7 +167,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_child_owned_lane_without_parent_authored_fixes()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -230,14 +188,7 @@ Review response: parent-authored draft diff was routed to the child; child-autho
 Maintainer reassignment: none
 "#,
     ] {
-        let temp = tempfile::tempdir()?;
-        let evidence_path = temp.path().join("handoff.md");
-        std::fs::write(&evidence_path, evidence)?;
-
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-            .args(["--check-child-lane-ownership", "--evidence-file"])
-            .arg(&evidence_path)
-            .output()?;
+        let output = run_ownership_validator(evidence)?;
 
         assert!(
             output.status.success(),
@@ -246,5 +197,39 @@ Maintainer reassignment: none
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    Ok(())
+}
+
+fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    crate::support::validator_child_lane_ownership(evidence)
+}
+
+fn cli_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let evidence_path = temp.path().join("handoff.md");
+    std::fs::write(&evidence_path, evidence)?;
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-child-lane-ownership", "--evidence-file"])
+        .arg(evidence_path)
+        .output()?)
+}
+
+#[test]
+fn validator_child_lane_ownership_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_parent_authored_child_lane_fix_without_reassignment()?;
+    validator_allows_parent_authored_child_lane_fix_with_reassignment()?;
+    validator_rejects_negative_reassignment_phrasing()?;
+    validator_allows_absent_parent_authored_fix_evidence()?;
+    validator_allows_child_owned_lane_without_parent_authored_fixes()?;
+
+    let output = cli_ownership_validator(
+        "Lane ownership: child-owned\n\
+         Review response: parent-authored implementation commit abc123 fixed feedback.\n\
+         Maintainer reassignment: none\n",
+    )?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "child-owned lane contains parent-authored implementation or review-response evidence"
+    ));
     Ok(())
 }
