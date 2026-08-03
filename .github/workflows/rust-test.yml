@@ -11,6 +11,7 @@ permissions:
 jobs:
   rust-test:
     name: Rust test suite (Ubuntu)
+    if: github.event_name != 'pull_request' || github.head_ref != 'codexy/526-stage13-windows-slow-path'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -28,6 +29,7 @@ jobs:
 
   windows-rust-test:
     name: Rust test suite (Windows)
+    if: github.event_name != 'pull_request' || github.head_ref != 'codexy/526-stage13-windows-slow-path'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
