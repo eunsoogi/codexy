@@ -1,0 +1,54 @@
+name: Stage 14 Windows completion diagnostic
+
+on:
+  push:
+    branches: [codexy/526-stage14-windows-completion]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-stage14-completion:
+    name: Stage 14 Windows full-workload completion trace
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic head
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Windows archive scanner prerequisite
+        shell: pwsh
+        run: scripts/install-windows-test-prerequisites.ps1
+
+      - name: Prepare Windows Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo fetch --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run unchanged full workload through completion observer
+        shell: pwsh
+        run: |
+          $trace = Join-Path $env:RUNNER_TEMP "stage14-windows-completion.json"
+          $log = Join-Path $env:RUNNER_TEMP "stage14-windows-profile.log"
+          python scripts/stage14_windows_completion.py --trace $trace 2>&1 |
+            Tee-Object -FilePath $log
+          $profileExit = $LASTEXITCODE
+          "stage14-profile-exit=$profileExit"
+          exit $profileExit
+
+      - name: Upload diagnostic receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stage14-windows-completion
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/stage14-windows-completion.json
+            ${{ runner.temp }}/stage14-windows-profile.log
+          retention-days: 7

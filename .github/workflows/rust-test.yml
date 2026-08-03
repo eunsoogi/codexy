@@ -2,6 +2,11 @@ name: Rust tests
 
 on:
   pull_request:
+    paths-ignore:
+      - ".github/workflows/rust-test.yml"
+      - ".github/workflows/stage14-windows-completion.yml"
+      - "scripts/stage14_windows_completion.py"
+      - "tests/test_stage14_windows_completion.py"
   push:
     branches: [main]
 
