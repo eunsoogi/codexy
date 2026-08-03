@@ -1,4 +1,6 @@
 use std::process::{Child, Output};
+#[cfg(windows)]
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub(crate) fn wait_for_wrapper_output(
@@ -37,6 +39,19 @@ fn terminate_wrapper_process_tree(child: &mut Child) {
         unsafe {
             let _ = libc::kill(process_group, libc::SIGKILL);
         }
+    }
+    #[cfg(windows)]
+    {
+        let pid = child.id().to_string();
+        let taskkill = std::env::var_os("SystemRoot")
+            .map(|root| std::path::PathBuf::from(root).join("System32/taskkill.exe"))
+            .unwrap_or_else(|| "taskkill.exe".into());
+        let _ = Command::new(taskkill)
+            .args(["/F", "/T", "/PID", &pid])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
     // On non-Unix targets this is the portable fallback. On Unix it also handles the direct
     // child if the process-group operation raced with process exit.
