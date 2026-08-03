@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use super::fixture_command::FixtureCommand;
 use super::package_fixture::create_runtime_package;
-use super::wrapper_copy::copy_dir;
+use super::wrapper_copy::copy_wrapper_surface;
 use super::wrapper_process::wait_for_wrapper_output as wait_for_wrapper_output_inner;
 
 const WRAPPER_TIMEOUT: Duration = Duration::from_secs(10);
@@ -22,10 +22,8 @@ pub(crate) struct WrapperFixture<'a> {
 impl<'a> WrapperFixture<'a> {
     pub(crate) fn new(home: &'a std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
         let plugin_root = home.join("codexy");
-        copy_dir(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
+        let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
+        copy_wrapper_surface(&source_root, &plugin_root)?;
         let cargo_bin = home.join("fake-bin");
         std::fs::create_dir_all(&cargo_bin)?;
         let cargo_log = home.join("cargo.log");

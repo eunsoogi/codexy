@@ -20,6 +20,17 @@ pub(crate) fn copy_dir(
     Ok(())
 }
 
+pub(crate) fn copy_wrapper_surface(
+    source_root: &std::path::Path,
+    target_root: &std::path::Path,
+) -> std::io::Result<()> {
+    copy_dir(source_root.join("mcp"), &target_root.join("mcp"))?;
+    copy_dir(
+        source_root.join(".codex-plugin"),
+        &target_root.join(".codex-plugin"),
+    )
+}
+
 pub(super) fn is_generated_fixture_directory(path: &std::path::Path) -> bool {
     path.file_name().is_some_and(|name| name == "__pycache__")
 }
