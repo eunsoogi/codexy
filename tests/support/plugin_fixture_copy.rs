@@ -13,9 +13,9 @@ struct PrivateSeed {
 static PRIVATE_SEED: OnceLock<Mutex<Option<PrivateSeed>>> = OnceLock::new();
 
 #[derive(Default)]
-struct FixtureMaterialization {
-    files: u64,
-    bytes: u64,
+pub(crate) struct FixtureMaterialization {
+    pub(crate) files: u64,
+    pub(crate) bytes: u64,
 }
 
 pub(super) fn materialize(
@@ -103,7 +103,7 @@ fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
 }
 
 #[cfg(any(test, windows))]
-fn materialize_seed(
+pub(crate) fn materialize_seed(
     source: &Path,
     target: &Path,
     relative: &Path,
@@ -144,7 +144,7 @@ fn materialize_seed(
 }
 
 #[cfg(any(test, windows))]
-fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
+pub(crate) fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
     for entry in std::fs::read_dir(root)? {
         let entry = entry?;
         let path = entry.path();
@@ -157,60 +157,4 @@ fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{FixtureMaterialization, make_seed_readonly, materialize_seed};
-    #[cfg(unix)]
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::Path;
-
-    #[test]
-    fn clearing_readonly_cannot_mutate_the_seed_or_a_sibling_overlay()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let seed = temp.path().join("seed");
-        let first = temp.path().join("first");
-        let second = temp.path().join("second");
-        let relative = Path::new("agents/codexy-sentinel.toml");
-        let original = b"name = \"codexy-sentinel\"\n";
-        std::fs::create_dir_all(seed.join("agents"))?;
-        std::fs::write(seed.join(relative), original)?;
-        make_seed_readonly(&seed)?;
-        materialize_seed(&seed, &first, Path::new(""), &[], None)?;
-        materialize_seed(&seed, &second, Path::new(""), &[], None)?;
-
-        let first_path = first.join(relative);
-        let mut permissions = std::fs::metadata(&first_path)?.permissions();
-        #[cfg(unix)]
-        permissions.set_mode(permissions.mode() | 0o200);
-        #[cfg(windows)]
-        permissions.set_readonly(false);
-        std::fs::set_permissions(&first_path, permissions)?;
-        std::fs::write(first_path, b"name = \"mutated\"\n")?;
-
-        assert_eq!(std::fs::read(seed.join(relative))?, original);
-        assert_eq!(std::fs::read(second.join(relative))?, original);
-        Ok(())
-    }
-
-    #[test]
-    fn materialization_profile_counts_each_private_file_and_byte()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let seed = temp.path().join("seed");
-        let target = temp.path().join("target");
-        std::fs::create_dir_all(seed.join("nested"))?;
-        std::fs::write(seed.join("one.txt"), b"one")?;
-        std::fs::write(seed.join("nested/two.txt"), b"twenty")?;
-        let mut profile = FixtureMaterialization::default();
-
-        materialize_seed(&seed, &target, Path::new(""), &[], Some(&mut profile))?;
-
-        assert_eq!((profile.files, profile.bytes), (2, 9));
-        assert_eq!(std::fs::read(target.join("one.txt"))?, b"one");
-        assert_eq!(std::fs::read(target.join("nested/two.txt"))?, b"twenty");
-        Ok(())
-    }
 }

@@ -83,34 +83,7 @@ fn write_command_metric(line: String) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::ffi::OsStr;
-
-    #[test]
-    fn fixture_materialization_records_use_the_profiler_contract() {
-        assert_eq!(
-            super::fixture_materialization_line("full:tests/example.rs:7", 3, 17, 0.25),
-            "fixture-materialization\tfull:tests/example.rs:7\t3\t17\t0.250000"
-        );
-    }
-
-    #[test]
-    fn command_wait_records_keep_only_safe_categories() {
-        assert_eq!(
-            super::command_wait_line(
-                "unattributed:fixture-command:python",
-                super::super::profile_interval_metrics::command_family(OsStr::new(
-                    "C:/tool/python.exe"
-                )),
-                0.25,
-            ),
-            "command-wait\tv1\tunattributed:fixture-command:python\tpython\t1\t0.250000"
-        );
-    }
-}
-
-fn fixture_materialization_line(
+pub(crate) fn fixture_materialization_line(
     identity: &str,
     files: u64,
     bytes: u64,
@@ -119,6 +92,6 @@ fn fixture_materialization_line(
     format!("fixture-materialization\t{identity}\t{files}\t{bytes}\t{duration_seconds:.6}")
 }
 
-fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
+pub(crate) fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
     format!("command-wait\tv1\t{key}\t{family}\t1\t{duration_seconds:.6}")
 }

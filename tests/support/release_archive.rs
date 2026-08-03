@@ -2,12 +2,9 @@ use super::wrapper_copy::is_generated_fixture_directory;
 #[allow(unused_imports)]
 use std::process::Command;
 #[path = "release_archive/archive_entry.rs"]
-mod archive_entry;
+pub(crate) mod archive_entry;
 #[path = "release_archive/archive_evidence.rs"]
-mod archive_evidence;
-#[cfg(test)]
-#[path = "release_archive/archive_evidence_tests.rs"]
-mod archive_evidence_tests;
+pub(crate) mod archive_evidence;
 #[path = "release_archive/archive_process.rs"]
 mod archive_process;
 #[allow(unused_imports)]
@@ -179,13 +176,7 @@ pub(crate) fn governed_archive_mode(
 ) -> Option<u32> {
     (is_windows && is_governed_wrapper).then_some(0o755)
 }
-#[test]
-fn windows_archive_fixture_forces_only_governed_shebang_wrappers_to_posix_0755() {
-    assert_eq!(governed_archive_mode(true, true, 0o644), Some(0o755));
-    assert_eq!(governed_archive_mode(true, false, 0o644), None);
-    assert_eq!(governed_archive_mode(false, true, 0o644), None);
-}
-fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
+pub(crate) fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'static str> {
     match (os, architecture) {
         ("macos", "aarch64") => Ok("darwin-arm64"),
         ("linux", "x86_64") => Ok("linux-x86_64"),
@@ -194,14 +185,6 @@ fn fixture_host_platform(os: &str, architecture: &str) -> std::io::Result<&'stat
             "unsupported test host platform: {os}-{architecture}"
         ))),
     }
-}
-#[test]
-fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
-    assert_eq!(
-        fixture_host_platform("windows", "x86_64").unwrap(),
-        "windows-x86_64"
-    );
-    assert!(fixture_host_platform("plan9", "mips64").is_err());
 }
 pub(crate) fn complete_plugin_fixture(
     root: &std::path::Path,

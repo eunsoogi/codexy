@@ -24,17 +24,8 @@ pub(super) fn record(root: &Path, mutable_files: &[&Path]) {
     }
 }
 
-fn normalized(path: &Path) -> PathBuf {
+pub(crate) fn normalized(path: &Path) -> PathBuf {
     path.components()
         .map(|component| component.as_os_str())
         .collect()
-}
-
-#[cfg(all(test, windows))]
-#[test]
-fn records_mutable_paths_with_native_component_separators() {
-    assert_eq!(
-        normalized(Path::new("agents/codexy-sentinel.toml")),
-        Path::new("agents").join("codexy-sentinel.toml")
-    );
 }

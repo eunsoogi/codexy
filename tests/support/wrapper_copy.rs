@@ -39,33 +39,6 @@ fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::i
     std::fs::copy(source, target).map(|_| ())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::copy_dir;
-
-    #[test]
-    fn fixture_copy_omits_generated_python_bytecode() -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let source = temp.path().join("source");
-        let target = temp.path().join("target");
-        std::fs::create_dir_all(source.join("codexy_policy/__pycache__"))?;
-        std::fs::write(
-            source.join("codexy_policy/filesystem_state.py"),
-            "state = 'source'\n",
-        )?;
-        std::fs::write(
-            source.join("codexy_policy/__pycache__/filesystem_state.pyc"),
-            b"bytecode",
-        )?;
-
-        copy_dir(&source, &target)?;
-
-        assert!(target.join("codexy_policy/filesystem_state.py").is_file());
-        assert!(!target.join("codexy_policy/__pycache__").exists());
-        Ok(())
-    }
-}
-
 #[cfg(not(target_os = "macos"))]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     super::profile_metrics::record("fixture_copy_file");
