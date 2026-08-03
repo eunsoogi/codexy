@@ -98,6 +98,7 @@ fn matrix_cases() -> Vec<serde_json::Value> {
     }
 
     let no_fetch = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n";
+    let no_toolchain = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n";
     let unlocked_fetch = no_fetch.replace(
         "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python",
         "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python",
@@ -105,7 +106,7 @@ fn matrix_cases() -> Vec<serde_json::Value> {
     let extra_fetch = format!("{}      - run: cargo fetch --locked\n", super::WINDOWS_STEPS);
     let early_test = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo test --locked --all-targets\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n";
     for (label, steps) in [
-        ("missing-toolchain-bootstrap", no_fetch.to_string()),
+        ("missing-toolchain-bootstrap", no_toolchain.to_string()),
         ("missing-cargo-fetch", no_fetch.to_string()),
         ("unlocked-cargo-fetch", unlocked_fetch),
         ("extra-cargo-fetch", extra_fetch),
