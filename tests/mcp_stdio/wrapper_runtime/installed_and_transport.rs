@@ -90,7 +90,8 @@ fn codegraph_wrapper_uses_bundled_runtime_without_global_path()
 }
 
 #[test]
-fn codegraph_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::error::Error>> {
+fn codegraph_stdio_accepts_newline_and_content_type_json_rpc()
+-> Result<(), Box<dyn std::error::Error>> {
     let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
     let init =
         client.send_line(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
@@ -104,6 +105,22 @@ fn codegraph_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn st
             .iter()
             .any(|tool| tool["name"] == "codegraph_index"),
         "newline stdio tools/list must include codegraph_index, got {list:#}"
+    );
+
+    let init = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":3,"method":"initialize","params":{}}),
+    )?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    let list = client.send_with_leading_content_type(
+        &json!({"jsonrpc":"2.0","id":4,"method":"tools/list","params":{}}),
+    )?;
+    assert!(
+        list["result"]["tools"]
+            .as_array()
+            .ok_or("tools must be array")?
+            .iter()
+            .any(|tool| tool["name"] == "codegraph_index"),
+        "leading Content-Type header must not prevent tools/list, got {list:#}"
     );
     Ok(())
 }
@@ -123,28 +140,6 @@ fn lsp_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn std::err
             .iter()
             .any(|tool| tool["name"] == "lsp_status"),
         "newline stdio tools/list must include lsp_status, got {list:#}"
-    );
-    Ok(())
-}
-
-#[test]
-fn content_length_stdio_accepts_leading_content_type_header()
--> Result<(), Box<dyn std::error::Error>> {
-    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
-    let init = client.send_with_leading_content_type(
-        &json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
-    )?;
-    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
-    let list = client.send_with_leading_content_type(
-        &json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}),
-    )?;
-    assert!(
-        list["result"]["tools"]
-            .as_array()
-            .ok_or("tools must be array")?
-            .iter()
-            .any(|tool| tool["name"] == "codegraph_index"),
-        "leading Content-Type header must not prevent tools/list, got {list:#}"
     );
     Ok(())
 }
