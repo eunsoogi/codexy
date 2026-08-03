@@ -129,3 +129,87 @@ fn is_windows_reparse_point(metadata: &std::fs::Metadata) -> bool {
 const fn is_windows_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PACKAGED_RUNTIME_CASES: [(&str, &str); 6] = [
+        ("codexy-mcp-lsp-darwin-arm64.bin", "darwin-arm64"),
+        ("codexy-mcp-codegraph-darwin-arm64.bin", "darwin-arm64"),
+        ("codexy-mcp-lsp-linux-x86_64.bin", "linux-x86_64"),
+        ("codexy-mcp-codegraph-linux-x86_64.bin", "linux-x86_64"),
+        ("codexy-mcp-lsp-windows-x86_64.exe", "windows-x86_64"),
+        ("codexy-mcp-codegraph-windows-x86_64.exe", "windows-x86_64"),
+    ];
+
+    #[test]
+    fn invalid_runtime_format_matrix_preserves_cli_inputs_and_diagnostics()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        for (runtime_name, platform) in PACKAGED_RUNTIME_CASES {
+            let path = temp.path().join(runtime_name);
+            std::fs::write(&path, b"#!/bin/sh\nexit 0\n")?;
+            assert_invalid_format(&path, platform)?;
+        }
+
+        let invalid_signature = temp.path().join("invalid-signature.exe");
+        let mut bytes = valid_runtime_bytes("windows-x86_64");
+        bytes[0x80..0x84].copy_from_slice(b"PX\0\0");
+        std::fs::write(&invalid_signature, bytes)?;
+        assert_invalid_format(&invalid_signature, "windows-x86_64")?;
+
+        for scenario in ["x86", "pe32", "dll", "missing-optional-header", "truncated"] {
+            let path = temp.path().join(format!("{scenario}.exe"));
+            let mut bytes = valid_runtime_bytes("windows-x86_64");
+            match scenario {
+                "x86" => bytes[0x84..0x86].copy_from_slice(&0x014c_u16.to_le_bytes()),
+                "pe32" => bytes[0x98..0x9a].copy_from_slice(&0x010b_u16.to_le_bytes()),
+                "dll" => bytes[0x96..0x98].copy_from_slice(&0x2022_u16.to_le_bytes()),
+                "missing-optional-header" => {
+                    bytes[0x94..0x96].copy_from_slice(&0_u16.to_le_bytes());
+                }
+                "truncated" => bytes.truncate(0x90),
+                _ => unreachable!(),
+            }
+            std::fs::write(&path, bytes)?;
+            assert_invalid_format(&path, "windows-x86_64")?;
+        }
+        Ok(())
+    }
+
+    fn assert_invalid_format(
+        path: &Path,
+        platform: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let error = check(path, platform).expect_err("invalid runtime format unexpectedly passed");
+        assert!(
+            error.to_string().ends_with(&format!(
+                "bundled MCP runtime has invalid binary format for {platform}"
+            )),
+            "unexpected runtime format diagnostic: {error}"
+        );
+        Ok(())
+    }
+
+    fn valid_runtime_bytes(platform: &str) -> Vec<u8> {
+        let mut bytes = if platform == "windows-x86_64" {
+            let mut bytes = vec![0; 4096];
+            bytes[0..2].copy_from_slice(b"MZ");
+            bytes[0x3c..0x40].copy_from_slice(&(0x80_u32).to_le_bytes());
+            bytes[0x80..0x84].copy_from_slice(b"PE\0\0");
+            bytes[0x84..0x86].copy_from_slice(&0x8664_u16.to_le_bytes());
+            bytes[0x86..0x88].copy_from_slice(&1_u16.to_le_bytes());
+            bytes[0x94..0x96].copy_from_slice(&0xf0_u16.to_le_bytes());
+            bytes[0x96..0x98].copy_from_slice(&0x0022_u16.to_le_bytes());
+            bytes[0x98..0x9a].copy_from_slice(&0x20b_u16.to_le_bytes());
+            bytes
+        } else if platform == "darwin-arm64" {
+            vec![0xcf, 0xfa, 0xed, 0xfe]
+        } else {
+            vec![0x7f, b'E', b'L', b'F']
+        };
+        bytes.resize(4096, 0);
+        bytes
+    }
+}
