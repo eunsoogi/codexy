@@ -1,6 +1,18 @@
+use std::collections::HashMap;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
+
+#[derive(Hash, PartialEq, Eq)]
+struct InterpreterCacheKey {
+    interpreter: String,
+    path: OsString,
+    pathext: OsString,
+}
+
+static INTERPRETER_CACHE: OnceLock<Mutex<HashMap<InterpreterCacheKey, PathBuf>>> = OnceLock::new();
 
 pub(crate) fn fixture_script_launcher(
     is_windows: bool,
@@ -72,6 +84,23 @@ pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf,
         format!("Windows fixture interpreter `{interpreter}` cannot discover PATH")
     })?;
     let extensions = std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
+    let cache_key = InterpreterCacheKey {
+        interpreter: interpreter.to_owned(),
+        path: path.clone(),
+        pathext: extensions.clone(),
+    };
+    if let Ok(mut cache) = INTERPRETER_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+    {
+        if let Some(candidate) = cache
+            .get(&cache_key)
+            .filter(|candidate| candidate.is_file())
+        {
+            return Ok(candidate.clone());
+        }
+        cache.remove(&cache_key);
+    }
     let extensions = extensions.to_string_lossy();
     let candidates = std::iter::once(interpreter.to_owned()).chain(
         extensions
@@ -83,6 +112,12 @@ pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf,
         for candidate in candidates.clone() {
             let candidate = directory.join(candidate);
             if candidate.is_file() {
+                if let Ok(mut cache) = INTERPRETER_CACHE
+                    .get_or_init(|| Mutex::new(HashMap::new()))
+                    .lock()
+                {
+                    cache.insert(cache_key, candidate.clone());
+                }
                 return Ok(candidate);
             }
         }
