@@ -4,7 +4,6 @@ use std::{
     process::Output,
 };
 
-use crate::support::executable_path;
 use tempfile::{TempDir, tempdir};
 
 use crate::support::release_archive as release_archive_support;
@@ -43,10 +42,6 @@ fn assert_secret_rejected_quietly(output: Output, secret: &str) {
     assert!(!stderr.contains(secret));
     assert!(!stdout.contains(MATCHED_LINE));
     assert!(!stderr.contains(MATCHED_LINE));
-}
-
-fn command_path(command: &str) -> PathBuf {
-    executable_path(command).unwrap_or_else(|error| panic!("{error}"))
 }
 
 #[cfg(unix)]
@@ -88,8 +83,7 @@ fn grep_only_path(root: &Path) -> PathBuf {
 }
 
 #[test]
-fn archive_gate_redacts_rg_secret_matches() {
-    assert!(command_path("rg").is_file());
+fn archive_gate_redacts_default_secret_matches() {
     let (_root, plugin_root, archive) = secret_archive(AKIA_SECRET);
     assert_secret_rejected_quietly(run_gate(&archive, &plugin_root, None), AKIA_SECRET);
 }
