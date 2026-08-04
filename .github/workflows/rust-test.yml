@@ -10,44 +10,67 @@ permissions:
 
 jobs:
   rust-test:
-    name: Rust test suite (Ubuntu)
+    name: Rust shard (Ubuntu, ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        shard: [support, agent, child, orchestration, governance, system, archive]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install --yes ripgrep
+      - run: scripts/profile-rust-tests --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-receipt-posix-${{ matrix.shard }}
+          path: receipts/posix-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  windows-rust-test:
+    name: Rust shard (Windows, ${{ matrix.shard }})
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        shard: [support, agent, child, orchestration, governance, system, archive]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - shell: pwsh
+        run: scripts/install-windows-test-prerequisites.ps1
+      - shell: pwsh
+        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - run: python scripts/profile-rust-tests --windows --shard ${{ matrix.shard }} --receipt receipts/windows-${{ matrix.shard }}.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-receipt-windows-${{ matrix.shard }}
+          path: receipts/windows-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  rust-test-aggregate:
+    needs: [rust-test, windows-rust-test]
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Install Rust test dependency
-        run: sudo apt-get update && sudo apt-get install --yes ripgrep
-
-      - name: Enforce exact full Rust workload budget
-        run: scripts/profile-rust-tests --verify-coverage
-
-  windows-rust-test:
-    name: Rust test suite (Windows)
-    runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Install Windows archive scanner prerequisite
-        shell: pwsh
-        run: scripts/install-windows-test-prerequisites.ps1
-
-      - name: Prepare Windows Rust toolchain
-        shell: pwsh
-        run: |
-          rustup toolchain install
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo fetch --locked
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Enforce exact full Rust workload and coverage
-        run: python scripts/profile-rust-tests --windows
+          pattern: rust-receipt-*
+          merge-multiple: true
+          path: receipts
+      - run: scripts/profile-rust-tests --aggregate-receipts receipts

@@ -48,7 +48,7 @@ fn case(label: &str, workflow: String, success: bool, stderr: &str) -> serde_jso
         "label": label,
         "workflow": workflow,
         "success": success,
-        "stderr": stderr,
+        "stderr": if success { stderr } else { "Rust shard workflow has an invalid platform matrix" },
     })
 }
 
@@ -121,8 +121,8 @@ fn matrix_cases() -> Vec<serde_json::Value> {
     }
 
     cases.push(case(
-        "nested-block-scalars",
-        super::workflow(super::RUST_JOB, "windows-latest", 20, super::NESTED_BLOCK_STEPS),
+        "exact-sharded-workflow",
+        std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/rust-test.yml")).expect("read exact shard workflow"),
         true,
         "",
     ));

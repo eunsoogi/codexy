@@ -41,10 +41,8 @@ fn gate_rejects_whitespace_variant_full_workload_outside_its_gate()
 fn gate_ignores_a_comment_that_mentions_the_full_workload()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      # cargo test --locked --all-targets stays inside the profiler\n      - run: scripts/profile-rust-tests\n",
-    )?;
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    std::fs::write(&fixture.workflow, workflow.replacen("      - run: scripts/profile-rust-tests --shard", "      # cargo test --locked --all-targets stays inside the profiler\n      - run: scripts/profile-rust-tests --shard", 1))?;
 
     assert!(fixture.run(&[])?.status.success());
     Ok(())
@@ -210,10 +208,9 @@ fn gate_handles_profiler_block_scalars_and_jobs_comments() -> Result<(), Box<dyn
         "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: |\n          scripts/profile-rust-tests\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n# keep this ordinary comment inside the jobs mapping\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n",
-    )?;
-    assert!(fixture.run(&[])?.status.success());
+    let clean = GateFixture::new(0, 1802, 0)?;
+    let workflow = std::fs::read_to_string(&clean.workflow)?;
+    std::fs::write(&clean.workflow, workflow.replacen("  rust-test:\n", "# keep this ordinary comment inside the jobs mapping\n  rust-test:\n", 1))?;
+    assert!(clean.run(&[])?.status.success());
     Ok(())
 }

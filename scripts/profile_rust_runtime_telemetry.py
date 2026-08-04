@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+
+SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
+if SCRIPT_DIRECTORY not in sys.path:
+    sys.path.insert(0, SCRIPT_DIRECTORY)
+
+from profile_rust_targets import target_name
 import signal
 import threading
 import time
@@ -208,20 +215,6 @@ def family_counts(records: Iterable[tuple[int, str]]) -> dict[str, int]:
 
 def valid_target(target: str, known: set[str]) -> bool:
     return target in known or target.startswith("other:")
-
-
-def target_name(line: str) -> str:
-    path = line.replace("\\", "/")
-    if "tests/suites/all.rs" in path:
-        return "suite_all"
-    if "tests/suites/archive.rs" in path:
-        return "suite_archive"
-    if "src/lib.rs" in path:
-        return "lib"
-    if "src/bin/" in path:
-        return Path(path.split("src/bin/", 1)[1].split(" ", 1)[0]).stem
-    source = path.split("Running ", 1)[-1].split(" (", 1)[0].strip()
-    return f"other:{source}" if source else "unknown"
 
 
 def process_family(image: str) -> str:

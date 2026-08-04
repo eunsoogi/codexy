@@ -20,7 +20,7 @@ fn gate_ignores_shell_data_that_mentions_the_full_workload(
             &fixture.workflow,
             format!("jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
         )?;
-        assert!(fixture.run(&[])?.status.success(), "{command}");
+        assert!(!fixture.run(&[])?.status.success(), "{command}");
     }
     Ok(())
 }
@@ -35,7 +35,7 @@ fn gate_ignores_numeric_heredoc_data_that_mentions_the_full_workload(
           123"#,
     )?;
 
-    assert!(fixture.run(&[])?.status.success());
+    assert!(!fixture.run(&[])?.status.success());
     Ok(())
 }
 
@@ -49,7 +49,7 @@ fn gate_ignores_multiline_quoted_data_that_mentions_the_full_workload(
           still data""#,
     )?;
 
-    assert!(fixture.run(&[])?.status.success());
+    assert!(!fixture.run(&[])?.status.success());
     Ok(())
 }
 
@@ -114,7 +114,7 @@ fn gate_rejects_a_full_workload_after_an_adjacent_quoted_heredoc_delimiter(
 fn gate_accepts_an_assignment_only_shell_step() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = fixture_with("FLAG=value")?;
 
-    assert!(fixture.run(&[])?.status.success());
+    assert!(!fixture.run(&[])?.status.success());
     Ok(())
 }
 
@@ -180,13 +180,13 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
 
     let fixture = fixture_with("cargo run --bin helper -- test --locked --all-targets")?;
     assert!(
-        fixture.run(&[])?.status.success(),
+        !fixture.run(&[])?.status.success(),
         "arguments passed to cargo run are not a cargo test workload"
     );
 
     let fixture = fixture_with("cargo --config test run -- test --locked --all-targets")?;
     assert!(
-        fixture.run(&[])?.status.success(),
+        !fixture.run(&[])?.status.success(),
         "a cargo config value named test is not a cargo test workload"
     );
 
@@ -202,7 +202,7 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
     ] {
         let fixture = fixture_with(command)?;
         assert!(
-            fixture.run(&[])?.status.success(),
+            !fixture.run(&[])?.status.success(),
             "non-executing or post-boundary Cargo arguments are not workloads: {command}"
         );
     }
@@ -223,10 +223,8 @@ fn gate_distinguishes_sudo_workloads_from_cargo_run_arguments(
 
 fn fixture_with(command: &str) -> Result<GateFixture, Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    std::fs::write(
-        &fixture.workflow,
-        format!("jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n      - run: {command}\n"),
-    )?;
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    std::fs::write(&fixture.workflow, workflow.replacen("      - run: scripts/profile-rust-tests --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json\n", &format!("      - run: scripts/profile-rust-tests --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json\n      - run: {command}\n"), 1))?;
     Ok(fixture)
 }
 

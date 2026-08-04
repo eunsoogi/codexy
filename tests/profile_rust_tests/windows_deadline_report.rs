@@ -17,7 +17,7 @@ module = runpy.run_path(script)
 partial = "\n".join((
     "     Running unittests src/lib.rs (target/debug/deps/codexy_runtime-a)",
     "test support::finished ... ok",
-    "     Running tests/suites/all.rs (target/debug/deps/suite_all-a)",
+    "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test system::settled has been running for over 60 seconds",
     "test system::settled ... ok",
     "test system::still_running has been running for over 60 seconds",
@@ -35,7 +35,7 @@ main_globals["run_workload"] = lambda *_args: (
         "cargo-root-status": "running",
         "windows-job-pids-json": "[]",
         "windows-job-images-json": "[]",
-        "linux-cargo-descendants-json": '[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]',
+        "linux-cargo-descendants-json": '[{"command":"target/debug/deps/suite_system-a","pid":641,"ppid":521}]',
         "workload-seconds": 1.0,
         "capture-seconds": 0.0,
         "replay-seconds": 0.0,
@@ -53,12 +53,12 @@ for line in stream.getvalue().splitlines():
     key, *values = line.split("\t")
     fields.setdefault(key, []).append(values)
 expected = {
-    "deadline-last-running-target": [["suite_all"]],
+    "deadline-last-running-target": [["suite_system"]],
     "deadline-terminal-target": [["not-observed"]],
     "deadline-next-target-not-started": [["suite_archive"]],
-    "deadline-active-test": [["suite_all::system::still_running"]],
-    "deadline-last-completed-test": [["suite_all::system::last_completed"]],
-    "deadline-linux-cargo-descendants-json": [['[{"command":"target/debug/deps/suite_all-a","pid":641,"ppid":521}]']],
+    "deadline-active-test": [["suite_system::system::still_running"]],
+    "deadline-last-completed-test": [["suite_system::system::last_completed"]],
+    "deadline-linux-cargo-descendants-json": [['[{"command":"target/debug/deps/suite_system-a","pid":641,"ppid":521}]']],
 }
 if status != 124 or any(fields.get(key) != value for key, value in expected.items()):
     raise SystemExit(f"status={status!r} fields={fields!r}")

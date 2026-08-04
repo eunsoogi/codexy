@@ -9,6 +9,12 @@ import tomllib
 from collections import Counter
 from pathlib import Path
 
+SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
+if SCRIPT_DIRECTORY not in sys.path:
+    sys.path.insert(0, SCRIPT_DIRECTORY)
+
+from profile_rust_targets import canonical_test_name, target_name
+
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
 RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
 RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
@@ -30,11 +36,11 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
 
 
 def listed_test_inventory_from_completed_binaries(
-    root: Path, output: str
+    root: Path, output: str, required_targets: set[str] | None = None
 ) -> tuple[tuple[Counter[str], set[str]], int]:
     tests: Counter[str] = Counter()
     binaries = dict(completed_test_binaries(root, output))
-    targets = declared_test_targets(root) | set(binaries)
+    targets = (required_targets if required_targets is not None else declared_test_targets(root)) | set(binaries)
     status = 0
     for target in sorted(targets):
         binary = binaries.get(target) or compiled_test_binary(root, target)
@@ -229,21 +235,3 @@ def parse_tests(
         elif current and (match := pattern.match(line)):
             tests[f"{current}::{canonical_test_name(match.group('name'))}"] += 1
     return tests, targets
-
-
-def target_name(line: str) -> str:
-    path = line.replace("\\", "/")
-    if "tests/suites/all.rs" in path:
-        return "suite_all"
-    if "tests/suites/archive.rs" in path:
-        return "suite_archive"
-    if "src/lib.rs" in path:
-        return "lib"
-    if "src/bin/" in path:
-        return Path(path.split("src/bin/", 1)[1].split(" ", 1)[0]).stem
-    source = path.split("Running ", 1)[-1].split(" (", 1)[0]
-    return f"other:{source}"
-
-
-def canonical_test_name(name: str) -> str:
-    return name.removesuffix(" - should panic")
