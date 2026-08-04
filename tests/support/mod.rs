@@ -6,15 +6,11 @@ mod cache_fixture;
 mod child_thread_ledger_skill;
 mod digest;
 pub(crate) mod executable_path;
-mod fixture_command;
 mod fixture_command_bindings;
 mod fixture_command_mock;
-mod fixture_command_windows;
 pub(crate) mod fixture_hook_path;
 pub(crate) mod fixture_hook_path_windows;
-pub(crate) mod fixture_path;
 pub(crate) mod fixture_probe;
-pub(crate) mod fixture_text;
 mod instruction_policy_fixture;
 mod package;
 mod package_archive;
@@ -22,8 +18,6 @@ mod package_fixture;
 pub(crate) mod plugin_fixture;
 pub(crate) mod plugin_fixture_copy;
 pub(crate) mod plugin_fixture_mutable;
-pub(crate) mod profile_interval_metrics;
-pub(crate) mod profile_metrics;
 pub(crate) mod release_archive;
 mod release_cache;
 mod release_cache_audit;
@@ -34,11 +28,60 @@ mod release_cache_resources;
 mod release_version;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
-pub(crate) mod windows_archive_prerequisite;
 pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
-pub(crate) mod wrapper_copy;
+pub(crate) mod fixture_command {
+    pub(crate) use super::FixtureCommand;
+}
+pub(crate) mod fixture_command_windows {
+    pub(crate) use codexy_test_support::fixture_command_windows::*;
+}
+pub(crate) mod fixture_path {
+    pub(crate) use codexy_test_support::fixture_path::*;
+}
+pub(crate) mod fixture_text {
+    pub(crate) use codexy_test_support::fixture_text::*;
+}
+pub(crate) mod profile_interval_metrics {
+    pub(crate) use codexy_test_support::profile_interval_metrics::*;
+}
+pub(crate) mod profile_metrics {
+    pub(crate) use codexy_test_support::profile_metrics::*;
+}
+pub(crate) mod windows_archive_prerequisite {
+    pub(crate) use codexy_test_support::windows_archive_prerequisite::*;
+}
+pub(crate) mod wrapper_copy {
+    pub(crate) use codexy_test_support::wrapper_copy::*;
+}
+
+#[derive(Debug)]
+pub(crate) struct FixtureCommand(codexy_test_support::FixtureCommand);
+impl FixtureCommand {
+    pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
+        Self(codexy_test_support::FixtureCommand::new(
+            program,
+            std::ffi::OsStr::new(env!("CARGO_BIN_EXE_codexy-validate")),
+        ))
+    }
+}
+impl std::ops::Deref for FixtureCommand {
+    type Target = codexy_test_support::FixtureCommand;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for FixtureCommand {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl From<std::process::Command> for FixtureCommand {
+    fn from(command: std::process::Command) -> Self {
+        Self(command.into())
+    }
+}
 pub(crate) mod wrapper_platform;
 mod wrapper_process;
 
@@ -53,23 +96,22 @@ pub(crate) use child_thread_ledger_skill::{
     validator_instruction_policy, validator_instruction_policy_file, validator_pr_labels,
     validator_routing,
 };
+pub(crate) use codexy_test_support::fixture_path_text;
+pub(crate) use codexy_test_support::fixture_text::{
+    materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
+};
+pub(crate) use codexy_test_support::{
+    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
+};
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
-pub(crate) use fixture_command::{
-    FixtureCommand, fixture_script_launcher, windows_fixture_companion,
-    windows_static_python_fixture,
-};
 pub(crate) use fixture_command_bindings::{
     write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
     write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
-pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
-pub(crate) use fixture_text::{
-    materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
-};
 pub(crate) use instruction_policy_fixture::{
     FocusedFixtureProfile, InstructionPolicyFixture, instruction_policy_fixture,
 };

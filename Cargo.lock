@@ -144,6 +144,7 @@ version = "1.2.2"
 dependencies = [
  "anyhow",
  "clap",
+ "codexy-test-support",
  "ignore",
  "libc",
  "regex",
@@ -156,6 +157,16 @@ dependencies = [
  "unicase",
  "unicode-normalization",
  "unicode_categories",
+]
+
+[[package]]
+name = "codexy-test-support"
+version = "0.0.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

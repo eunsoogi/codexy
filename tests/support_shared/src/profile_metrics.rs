@@ -4,11 +4,11 @@ use std::sync::{Mutex, OnceLock};
 static METRICS: OnceLock<Option<Mutex<std::fs::File>>> = OnceLock::new();
 static COMMAND_METRICS: OnceLock<Option<Mutex<std::fs::File>>> = OnceLock::new();
 
-pub(crate) fn record(name: &str) {
+pub fn record(name: &str) {
     write_metric(name.to_owned());
 }
 
-pub(crate) fn record_fixture_materialization(
+pub fn record_fixture_materialization(
     identity: &str,
     files: u64,
     bytes: u64,
@@ -22,7 +22,7 @@ pub(crate) fn record_fixture_materialization(
     ));
 }
 
-pub(crate) fn record_command_wait(key: &str, family: &str, duration: std::time::Duration) {
+pub fn record_command_wait(key: &str, family: &str, duration: std::time::Duration) {
     write_command_metric(command_wait_line(
         &format!("{key}:{family}"),
         family,
@@ -30,11 +30,11 @@ pub(crate) fn record_command_wait(key: &str, family: &str, duration: std::time::
     ));
 }
 
-pub(crate) fn record_mcp_wait(key: &str, duration: std::time::Duration) {
+pub fn record_mcp_wait(key: &str, duration: std::time::Duration) {
     write_command_metric(command_wait_line(key, "other", duration.as_secs_f64()));
 }
 
-pub(crate) fn enabled() -> bool {
+pub fn enabled() -> bool {
     METRICS.get_or_init(open_metrics).is_some()
 }
 
@@ -81,7 +81,7 @@ fn write_command_metric(line: String) {
     }
 }
 
-pub(crate) fn fixture_materialization_line(
+pub fn fixture_materialization_line(
     identity: &str,
     files: u64,
     bytes: u64,
@@ -90,6 +90,6 @@ pub(crate) fn fixture_materialization_line(
     format!("fixture-materialization\t{identity}\t{files}\t{bytes}\t{duration_seconds:.6}")
 }
 
-pub(crate) fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
+pub fn command_wait_line(key: &str, family: &str, duration_seconds: f64) -> String {
     format!("command-wait\tv1\t{key}\t{family}\t1\t{duration_seconds:.6}")
 }

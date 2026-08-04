@@ -7,16 +7,16 @@ static MATERIALIZED_SCRIPT_SOURCES: OnceLock<
     Mutex<HashMap<std::path::PathBuf, std::path::PathBuf>>,
 > = OnceLock::new();
 
-pub(crate) fn normalize_fixture_text(text: &str) -> String {
+pub fn normalize_fixture_text(text: &str) -> String {
     text.replace("\r\n", "\n")
 }
 
-pub(crate) fn read_text_fixture(path: &std::path::Path) -> std::io::Result<String> {
+pub fn read_text_fixture(path: &std::path::Path) -> std::io::Result<String> {
     let text = std::fs::read_to_string(path)?;
     Ok(normalize_fixture_text(&text))
 }
 
-pub(crate) fn materialize_lf_text_fixture(
+pub fn materialize_lf_text_fixture(
     source: &std::path::Path,
     target: &std::path::Path,
 ) -> std::io::Result<()> {
@@ -41,7 +41,7 @@ pub(crate) fn materialize_lf_text_fixture(
     Ok(())
 }
 
-pub(crate) fn materialized_script_source(path: &std::path::Path) -> Option<std::path::PathBuf> {
+pub fn materialized_script_source(path: &std::path::Path) -> Option<std::path::PathBuf> {
     MATERIALIZED_SCRIPT_SOURCES
         .get_or_init(|| Mutex::new(HashMap::new()))
         .lock()

@@ -65,6 +65,9 @@ debug = 0
 strip = "symbols"
 incremental = false
 
+[dev-dependencies]
+codexy-test-support = { path = "tests/support_shared" }
+
 [[test]]
 name = "suite_all"
 path = "tests/suites/all.rs"

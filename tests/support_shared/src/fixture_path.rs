@@ -13,7 +13,7 @@ const POSIX_PATH_ENVIRONMENTS: &[&str] = &[
     "PLUGIN_ROOT",
 ];
 
-pub(crate) fn fixture_path_text(value: impl AsRef<OsStr>) -> Result<String, String> {
+pub fn fixture_path_text(value: impl AsRef<OsStr>) -> Result<String, String> {
     let value = value.as_ref();
     #[cfg(windows)]
     {
@@ -25,10 +25,7 @@ pub(crate) fn fixture_path_text(value: impl AsRef<OsStr>) -> Result<String, Stri
     }
 }
 
-pub(crate) fn fixture_path_environment_value(
-    key: &OsStr,
-    value: &OsStr,
-) -> Result<OsString, String> {
+pub fn fixture_path_environment_value(key: &OsStr, value: &OsStr) -> Result<OsString, String> {
     #[cfg(windows)]
     {
         return windows_fixture_environment_value(
@@ -42,7 +39,7 @@ pub(crate) fn fixture_path_environment_value(
     Ok(value.to_owned())
 }
 
-pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Result<String, String> {
+pub fn windows_fixture_environment_value(key: &str, value: &str) -> Result<String, String> {
     if POSIX_PATH_ENVIRONMENTS.contains(&key) {
         match windows_to_posix_fixture_path(value) {
             Ok(path) => Ok(path),
@@ -54,7 +51,7 @@ pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Resul
     }
 }
 
-pub(crate) fn windows_to_posix_fixture_path(value: &str) -> Result<String, String> {
+pub fn windows_to_posix_fixture_path(value: &str) -> Result<String, String> {
     let value = value.strip_prefix(r"\\?\").unwrap_or(value);
     if value.starts_with(r"\\") {
         return Err(format!(

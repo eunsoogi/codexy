@@ -117,16 +117,21 @@ fn plugin_fixture_mutations_do_not_leak_between_manifest_aware_overlays()
 #[test]
 fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
-    let source = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper_copy.rs"),
-    )?;
-    let copy_dir = source
-        .split("pub(crate) fn copy_dir")
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let facade = std::fs::read_to_string(root.join("tests/support/mod.rs"))?;
+    let implementation = std::fs::read_to_string(root.join("tests/support_shared/src/wrapper_copy.rs"))?;
+    let copy_dir = implementation
+        .split("pub fn copy_dir")
         .nth(1)
         .ok_or("shared fixture copier")?;
 
     support::assert_structured_literals(
-        &source,
+        &facade,
+        "copy-on-write fixture façade",
+        &["codexy_test_support::wrapper_copy::*"],
+    );
+    support::assert_structured_literals(
+        &implementation,
         "copy-on-write fixture overlay",
         &["fn clone_seed_file"],
     );
@@ -147,15 +152,16 @@ fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
 fn archive_fixture_compression_is_shared_and_uses_the_fast_lossless_mode()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let helper = std::fs::read_to_string(root.join("tests/support/release_archive.rs"))?;
+    let facade = std::fs::read_to_string(root.join("tests/support/release_archive.rs"))?;
+    let helper = std::fs::read_to_string(root.join("tests/support_shared/src/release_archive.rs"))?;
     let process = std::fs::read_to_string(
-        root.join("tests/support/release_archive/archive_process.rs"),
+        root.join("tests/support_shared/src/release_archive/archive_process.rs"),
     )?;
-    let shared_archive_fixture = format!("{helper}\n{process}");
+    let shared_archive_fixture = format!("{facade}\n{helper}\n{process}");
     support::assert_structured_literals(
         &shared_archive_fixture,
         "shared archive fixture compression",
-        &["pub(crate) fn create_archive", "[\"-1\", \"-c\"]"],
+        &["pub fn create_archive", "[\"-1\", \"-c\"]"],
     );
     for relative in [
         "tests/archive_binary_hygiene.rs",

@@ -1,45 +1,46 @@
-use std::ffi::{OsStr, OsString};
-use std::process::Command;
-#[path = "archive_inspection_receipt.rs"]
-mod archive_inspection_receipt;
-#[path = "fixture_command_metrics.rs"]
-mod metrics;
-use super::fixture_command_windows::fixture_script_interpreter;
+use crate::archive_inspection_receipt as receipt;
+use crate::fixture_command_windows::fixture_script_interpreter;
 #[cfg(windows)]
-use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
-pub(crate) use super::fixture_command_windows::{
+use crate::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
+pub use crate::fixture_command_windows::{
     fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
 };
-use super::{
+use crate::{
     fixture_path::{fixture_path_environment_value, fixture_path_text},
     fixture_text::materialized_script_source,
 };
-use archive_inspection_receipt as receipt;
+use std::ffi::{OsStr, OsString};
+use std::process::Command;
 /// A test-only factory for native commands and POSIX fixture scripts on Windows.
 #[derive(Debug)]
-pub(crate) struct FixtureCommand {
-    command: Command,
-    command_family: &'static str,
-    uses_posix_paths: bool,
-    receipt: Option<receipt::ArchiveInspectorReceipt>,
+pub struct FixtureCommand {
+    pub(crate) command: Command,
+    pub(crate) command_family: &'static str,
+    pub(crate) uses_posix_paths: bool,
+    pub(crate) receipt: Option<receipt::ArchiveInspectorReceipt>,
 }
 impl FixtureCommand {
-    pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
+    pub fn new(program: impl AsRef<OsStr>, validate_config_binary: &OsStr) -> Self {
         let program = program.as_ref();
         #[cfg(windows)]
         if let Some(command) = windows_static_python_command(std::path::Path::new(program))
             .unwrap_or_else(|error| panic!("{error}"))
         {
-            return Self::from_command(command, false, program);
+            return Self::from_command(command, false, program, validate_config_binary);
         }
         #[cfg(windows)]
         if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
-            return Self::from_command(Command::new(companion), false, program);
+            return Self::from_command(
+                Command::new(companion),
+                false,
+                program,
+                validate_config_binary,
+            );
         }
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let (command, uses_posix_paths) = materialized_script_command(program, &source)
                 .unwrap_or_else(|error| panic!("{error}"));
-            return Self::from_command(command, uses_posix_paths, program);
+            return Self::from_command(command, uses_posix_paths, program, validate_config_binary);
         }
         #[cfg(windows)]
         {
@@ -58,18 +59,32 @@ impl FixtureCommand {
                             program.to_owned()
                         };
                         command.arg(&program);
-                        return Self::from_command(command, uses_posix_path, &program);
+                        return Self::from_command(
+                            command,
+                            uses_posix_path,
+                            &program,
+                            validate_config_binary,
+                        );
                     }
                     Ok(None) => {}
                     Err(error) => panic!("{error}"),
                 }
             }
         }
-        Self::from_command(Command::new(program), false, program)
+        Self::from_command(
+            Command::new(program),
+            false,
+            program,
+            validate_config_binary,
+        )
     }
-
-    fn from_command(mut command: Command, uses_posix_paths: bool, program: &OsStr) -> Self {
-        let command_family = super::profile_interval_metrics::command_family(command.get_program());
+    fn from_command(
+        mut command: Command,
+        uses_posix_paths: bool,
+        program: &OsStr,
+        validate_config_binary: &OsStr,
+    ) -> Self {
+        let command_family = crate::profile_interval_metrics::command_family(command.get_program());
         let receipt = receipt::configure_command(&mut command, program, |directory| {
             if uses_posix_paths {
                 fixture_path_text(directory)
@@ -90,13 +105,12 @@ impl FixtureCommand {
         if test_mode {
             fixture.env_path(
                 "CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY",
-                env!("CARGO_BIN_EXE_codexy-validate"),
+                validate_config_binary,
             );
         }
         fixture
     }
-
-    pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -111,8 +125,7 @@ impl FixtureCommand {
         self.command.env(key, value);
         self
     }
-
-    pub(crate) fn envs<K, V, I>(&mut self, variables: I) -> &mut Self
+    pub fn envs<K, V, I>(&mut self, variables: I) -> &mut Self
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -122,14 +135,12 @@ impl FixtureCommand {
             .into_iter()
             .fold(self, |fixture, (key, value)| fixture.env(key, value))
     }
-
-    pub(crate) fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
+    pub fn arg_path(&mut self, path: impl AsRef<OsStr>) -> &mut Self {
         let path = self.path_value(path.as_ref());
         self.command.arg(path);
         self
     }
-
-    pub(crate) fn env_path<K, V>(&mut self, key: K, value: V) -> &mut Self
+    pub fn env_path<K, V>(&mut self, key: K, value: V) -> &mut Self
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -138,8 +149,7 @@ impl FixtureCommand {
         self.command.env(key, value);
         self
     }
-
-    pub(crate) fn env_path_list<K, I, V>(&mut self, key: K, values: I) -> &mut Self
+    pub fn env_path_list<K, I, V>(&mut self, key: K, values: I) -> &mut Self
     where
         K: AsRef<OsStr>,
         I: IntoIterator<Item = V>,
@@ -163,7 +173,6 @@ impl FixtureCommand {
         self.command.env(key, value);
         self
     }
-
     fn path_value(&self, value: &OsStr) -> OsString {
         if self.uses_posix_paths {
             fixture_path_text(value)
@@ -174,7 +183,6 @@ impl FixtureCommand {
         }
     }
 }
-
 fn materialized_script_command(
     program: &OsStr,
     source: &std::path::Path,
@@ -216,24 +224,20 @@ fn materialized_script_command(
         .arg(materialized);
     Ok((command, uses_posix_path))
 }
-
 impl std::ops::Deref for FixtureCommand {
     type Target = Command;
-
     fn deref(&self) -> &Self::Target {
         &self.command
     }
 }
-
 impl std::ops::DerefMut for FixtureCommand {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.command
     }
 }
-
 impl From<Command> for FixtureCommand {
     fn from(command: Command) -> Self {
-        let command_family = super::profile_interval_metrics::command_family(command.get_program());
+        let command_family = crate::profile_interval_metrics::command_family(command.get_program());
         Self {
             command,
             command_family,
