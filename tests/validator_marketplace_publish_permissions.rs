@@ -42,6 +42,21 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
     assert!(!checkout_persists(&publisher, "publish-v1-3-0")?);
     let publish = run(&publisher, "publish-v1-3-0", "Create and verify the only public version release")?;
     assert!(command(publish, &["gh", "release", "create", "v1.3.0"]));
+    let public = mapping(&publisher["jobs"]["verify-v1-3-0"]["permissions"])?;
+    assert_exact(public, "contents", "read")?;
+    assert!(!checkout_persists(&publisher, "verify-v1-3-0")?);
+    let verify = run(
+        &publisher,
+        "verify-v1-3-0",
+        "Verify reconciled public release without a write token",
+    )?;
+    assert!(verify.contains("python -m venv public-bootstrap"));
+    let step = publisher["jobs"]["verify-v1-3-0"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify reconciled public release without a write token"))
+        .ok_or("public release verification step")?;
+    assert_eq!(step["env"]["GH_TOKEN"], "");
+    assert_eq!(step["env"]["GITHUB_TOKEN"], "");
     Ok(())
 }
 

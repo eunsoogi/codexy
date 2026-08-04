@@ -31,7 +31,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             )?,
             "wrapper-drift" => fs::write(
                 root.join("plugins/codexy/mcp/codexy-mcp-lsp"),
-                "#!/bin/sh\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime lsp -- \"$@\"\n",
+                "#!/bin/sh\nexec uvx --from getcodexy==1.2.1 codexy-mcp-runtime lsp -- \"$@\"\n",
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }

@@ -11,8 +11,6 @@ use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
-use super::wrappers::{self, WrapperUpdate};
-
 #[derive(Debug)]
 struct Update {
     path: PathBuf,
@@ -54,7 +52,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     if actual_manifest_sha != expected_manifest_sha {
         bail!("candidate manifest bytes do not match receipt payload SHA-256");
     }
-    let mut updates = vec![
+    let updates = vec![
         bootstrap_update(repo_root, bootstrap_version)?,
         publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
         Update {
@@ -63,17 +61,11 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
             delete: false,
         },
         Update {
-            path: repo_root.join("plugins/codexy/runtime-release.json"),
-            bytes: Vec::new(),
-            delete: true,
-        },
-        Update {
             path: repo_root.join("plugins/codexy/runtime-candidate.json"),
             bytes: Vec::new(),
             delete: true,
         },
     ];
-    updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
     Ok(updates)
 }
 
@@ -125,21 +117,6 @@ where
     F: FnOnce(&[Update]) -> Result<()>,
 {
     apply(updates)
-}
-
-fn wrapper_updates(root: &Path, version: &str) -> Result<Vec<Update>> {
-    Ok(wrappers::prepare_version_updates(root, version)?
-        .into_iter()
-        .map(wrapper_update)
-        .collect())
-}
-
-fn wrapper_update(update: WrapperUpdate) -> Update {
-    Update {
-        path: update.path,
-        bytes: update.bytes,
-        delete: false,
-    }
 }
 
 fn write_staged(updates: &[Update]) -> Result<()> {

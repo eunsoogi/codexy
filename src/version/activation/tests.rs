@@ -12,10 +12,13 @@ const WRAPPERS: [&str; 2] = [
 ];
 
 #[test]
-fn activation_keeps_private_staging_evidence_outside_the_source_plugin() -> Result<()> {
+fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 7);
-    assert!(!fixture.release().exists());
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 4);
+    assert_eq!(
+        fs::read_to_string(fixture.release())?,
+        r#"{"artifact":{"tag":"v1.2.2"}}"#
+    );
     assert!(!fixture.candidate().exists());
     assert_eq!(
         fs::read(fixture.record())?,
@@ -23,7 +26,7 @@ fn activation_keeps_private_staging_evidence_outside_the_source_plugin() -> Resu
     );
     for wrapper in fixture.wrappers() {
         let wrapper = fs::read_to_string(wrapper)?;
-        assert!(wrapper.contains("getcodexy==1.3.0"));
+        assert!(wrapper.contains("getcodexy==0.0.1"));
         assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
     }
     let manifest: Value = serde_json::from_str(&fs::read_to_string(fixture.manifest())?)?;

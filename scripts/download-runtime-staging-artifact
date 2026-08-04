@@ -30,8 +30,9 @@ test "$(jq -r .repository.id "$run")" = "$GITHUB_REPOSITORY_ID" ||
   fail "staging run repository identity mismatch"
 test "$(jq -r .head_branch "$run")" = main ||
   fail "staging run is not bound to protected main"
-test "$(jq -r .head_sha "$run")" = "$SOURCE_COMMIT" ||
-  fail "staging run source commit mismatch"
+head_sha="$(jq -r .head_sha "$run")"
+case "$head_sha" in *[!0-9a-f]*|'') fail "staging run head commit is invalid" ;; esac
+test "${#head_sha}" -eq 40 || fail "staging run head commit is invalid"
 test "$(jq -r .path "$run")" = .github/workflows/runtime-candidate.yml ||
   fail "staging run workflow identity mismatch"
 test "$(jq -r .status "$run")" = completed ||
@@ -55,3 +56,12 @@ artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name ==
 case "$artifact_id" in *[!0-9]*|'') fail "staging artifact id is invalid" ;; esac
 gh api --method GET "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$archive"
 unzip -q "$archive" -d "$output"
+
+receipt="$output/runtime-staging-receipt.json"
+test -f "$receipt" || fail "staging artifact receipt is missing"
+test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT" ||
+  fail "staging receipt source commit mismatch"
+test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID" ||
+  fail "staging receipt run identity mismatch"
+test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$run_attempt" ||
+  fail "staging receipt run attempt mismatch"

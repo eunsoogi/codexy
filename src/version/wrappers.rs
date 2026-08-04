@@ -1,8 +1,4 @@
-use std::{
-    fs,
-    ops::Range,
-    path::{Path, PathBuf},
-};
+use std::{fs, ops::Range, path::Path};
 
 use anyhow::{Context as _, Result, bail};
 
@@ -32,34 +28,12 @@ pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn prepare_version_updates(root: &Path, version: &str) -> Result<Vec<WrapperUpdate>> {
-    super::require_semver(version)?;
-    WRAPPERS
-        .iter()
-        .map(|(relative, server)| {
-            let path = root.join(relative);
-            let (mut text, pin) = wrapper_pin_with_range(&path, server)?;
-            text.replace_range(pin, version);
-            Ok(WrapperUpdate {
-                path,
-                bytes: text.into_bytes(),
-            })
-        })
-        .collect()
-}
-
-#[derive(Debug)]
-pub(super) struct WrapperUpdate {
-    pub(super) path: PathBuf,
-    pub(super) bytes: Vec<u8>,
-}
-
-fn wrapper_pin(path: &PathBuf, server: &str) -> Result<String> {
+fn wrapper_pin(path: &Path, server: &str) -> Result<String> {
     let (text, range) = wrapper_pin_with_range(path, server)?;
     Ok(text[range].to_owned())
 }
 
-fn wrapper_pin_with_range(path: &PathBuf, server: &str) -> Result<(String, Range<usize>)> {
+fn wrapper_pin_with_range(path: &Path, server: &str) -> Result<(String, Range<usize>)> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
     let dispatch = format!("exec uvx --from {PACKAGE_PREFIX}");

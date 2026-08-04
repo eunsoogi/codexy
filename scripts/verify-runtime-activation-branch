@@ -14,8 +14,8 @@ expected="$(printf '%s\n' \
   plugins/codexy/.codex-plugin/plugin.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
-  plugins/codexy/runtime-release.json \
   src/version/bootstrap.rs | LC_ALL=C sort)"
+preserved="plugins/codexy/runtime-release.json"
 actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
 test "$actual" = "$expected" || {
   printf '%s\n%s\n' "expected:" "$expected" >&2
@@ -66,8 +66,7 @@ if test -n "${CODEXY_TEST_SYNC_VERSION_BINARY:-}"; then
 else
   "$sync_version" --version "$bootstrap_version"
 fi
-present="$(printf '%s\n' "$expected" | grep -vx -e plugins/codexy/runtime-release.json)"
-for path in $present; do
+for path in $expected $preserved; do
   test -f "$path" && test ! -L "$path"
   test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
   cmp "$expected_root/$path" "$path"
@@ -77,7 +76,6 @@ for path in $present; do
     test ! -x "$path"
   fi
 done
-test ! -e plugins/codexy/runtime-release.json
 
 states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
 case "$states" in

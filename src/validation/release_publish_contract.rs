@@ -178,7 +178,6 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     for forbidden in [
         "cargo build",
         "build-runtime",
-        "gh release",
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",
         "dist/marketplace-root",

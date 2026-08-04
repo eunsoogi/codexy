@@ -8,6 +8,8 @@ use crate::support;
 mod release_lineage;
 #[path = "runtime_workflow_recovery/release_tag_admission.rs"]
 mod release_tag_admission;
+#[path = "runtime_workflow_recovery/durable_selection.rs"]
+mod durable_selection;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()

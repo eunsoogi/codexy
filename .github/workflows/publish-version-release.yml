@@ -36,6 +36,10 @@ jobs:
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
+          for commit in "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"; do
+            case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
+            test "${#commit}" -eq 40
+          done
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
           test "$STAGING_SOURCE_COMMIT" != "$ACTIVATION_COMMIT"
@@ -70,7 +74,6 @@ jobs:
           test "$(jq -r .candidate.artifact.stagingRunId "$record")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.source.commit "$record")" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .artifact.sha256 "$record")" = "$(jq -r .artifact.sha256 "$receipt")"
-          test ! -e plugins/codexy/runtime-release.json
           test ! -e plugins/codexy/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
         env:
@@ -155,7 +158,57 @@ jobs:
             printf '%s\n' "remote v1.3.0 tag changed during admission" >&2
             exit 1
           }
-          gh release create v1.3.0 dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz dist/runtime-release-receipt.json --verify-tag --title v1.3.0 --notes "Verified version release."
+          if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json 2>/dev/null; then
+            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "Verified version release."
+            gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
+          fi
+          for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+            if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
+              mkdir -p existing-release
+              gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir existing-release --pattern "$asset"
+              cmp "dist/$asset" "existing-release/$asset" || {
+                printf '%s\n' "release asset differs from verified bytes: $asset" >&2
+                exit 1
+              }
+            else
+              gh release upload v1.3.0 "dist/$asset"
+            fi
+          done
+          gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
+          for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+            jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || {
+              printf '%s\n' "release asset is missing after reconciliation: $asset" >&2
+              exit 1
+            }
+            mkdir -p verified-release
+            gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir verified-release --pattern "$asset"
+            cmp "dist/$asset" "verified-release/$asset" || {
+              printf '%s\n' "release asset differs from verified bytes: $asset" >&2
+              exit 1
+            }
+          done
+          if test "$(jq -r .isDraft release-state.json)" = true; then
+            gh release edit v1.3.0 --draft=false
+          fi
+
+  verify-v1-3-0:
+    needs: publish-v1-3-0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify reconciled public release without a write token
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+        run: |
           base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
           curl --fail --location "$base/codexy-runtime-package.tar.gz" -o public-runtime.tar.gz
@@ -166,7 +219,8 @@ jobs:
           test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .source.stagingSourceCommit public-receipt.json)" = "$STAGING_SOURCE_COMMIT"
           jq -cS .provenance public-receipt.json | tr -d '\n' > public-provenance.json
-          cmp receipt-provenance.json public-provenance.json
+          jq -cS .provenance .agents/plugins/runtime-activation.json | tr -d '\n' > activated-provenance.json
+          cmp activated-provenance.json public-provenance.json
           gh attestation verify public.tar.gz --repo "$GITHUB_REPOSITORY"
           gh attestation verify public-runtime.tar.gz --repo "$GITHUB_REPOSITORY"
           mkdir -p public-inspect

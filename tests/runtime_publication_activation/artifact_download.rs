@@ -14,7 +14,7 @@ const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 fn downloads_authenticated_staging_with_space_safe_paths()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
-    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true)?;
+    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true, SOURCE_COMMIT)?;
     assert!(
         output.status.success(),
         "authenticated staging download failed: {}",
@@ -33,18 +33,37 @@ fn downloads_authenticated_staging_with_space_safe_paths()
 fn rejects_mismatched_staging_identity() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     let output = fixture.run(
-        &run_json("ffffffffffffffffffffffffffffffffffffffff"),
+        &run_json(SOURCE_COMMIT),
         &artifacts_json(false, 1),
         true,
+        "ffffffffffffffffffffffffffffffffffffffff",
     )?;
-    assert_failure(&output, "staging run source commit mismatch");
+    assert_failure(&output, "staging receipt source commit mismatch");
+    Ok(())
+}
+
+#[test]
+fn accepts_an_ancestor_input_when_the_dispatch_run_is_on_main()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let output = fixture.run(
+        &run_json_at_head("fedcba9876543210fedcba9876543210fedcba98"),
+        &artifacts_json(false, 1),
+        true,
+        SOURCE_COMMIT,
+    )?;
+    assert!(
+        output.status.success(),
+        "protected-main staging run rejected its distinct input: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
 #[test]
 fn rejects_expired_staging_artifact() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
-    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(true, 1), true)?;
+    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(true, 1), true, SOURCE_COMMIT)?;
     assert_failure(&output, "staging artifact expired");
     Ok(())
 }
@@ -52,7 +71,7 @@ fn rejects_expired_staging_artifact() -> Result<(), Box<dyn std::error::Error>> 
 #[test]
 fn rejects_duplicate_staging_artifact_identity() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
-    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 2), true)?;
+    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 2), true, SOURCE_COMMIT)?;
     assert_failure(&output, "staging artifact identity is not unique");
     Ok(())
 }
@@ -60,7 +79,7 @@ fn rejects_duplicate_staging_artifact_identity() -> Result<(), Box<dyn std::erro
 #[test]
 fn rejects_unauthenticated_staging_download() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
-    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), false)?;
+    let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(false, 1), false, SOURCE_COMMIT)?;
     assert_failure(&output, "authenticated GitHub token is required");
     Ok(())
 }
@@ -82,15 +101,6 @@ impl Fixture {
             "#!/bin/sh\ncase \"$*\" in\n  *'/actions/artifacts/'*'/zip') cat \"$FAKE_ZIP\" ;;\n  *'/artifacts') cat \"$FAKE_ARTIFACTS\" ;;\n  *'/actions/runs/'*) cat \"$FAKE_RUN\" ;;\n  *) exit 91 ;;\nesac\n",
         )?;
         support::make_executable(&gh)?;
-        let archive = root.join("fixture-artifact.zip");
-        let status = Command::new("python3")
-            .args([
-                "-c",
-                "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1],'w'); z.writestr('runtime-staging-receipt.json','{}'); z.close()",
-            ])
-            .arg(&archive)
-            .status()?;
-        assert!(status.success(), "failed to create staging zip fixture");
         Ok(Self { _temp: temp, root, gh })
     }
 
@@ -99,11 +109,26 @@ impl Fixture {
         run: &str,
         artifacts: &str,
         authenticated: bool,
+        receipt_source: &str,
     ) -> Result<Output, Box<dyn std::error::Error>> {
         let run_path = self.root.join("run.json");
         let artifacts_path = self.root.join("artifacts.json");
         fs::write(&run_path, run)?;
         fs::write(&artifacts_path, artifacts)?;
+        let receipt = self.root.join("receipt.json");
+        fs::write(
+            &receipt,
+            format!(
+                r#"{{"candidate":{{"source":{{"commit":"{receipt_source}"}},"artifact":{{"stagingRunId":42,"stagingRunAttempt":3}}}}}}"#
+            ),
+        )?;
+        let archive = self.root.join("fixture-artifact.zip");
+        let status = Command::new("python3")
+            .args(["-c", "import pathlib,sys,zipfile; z=zipfile.ZipFile(sys.argv[1],'w'); z.writestr('runtime-staging-receipt.json', pathlib.Path(sys.argv[2]).read_text()); z.close()"])
+            .arg(&archive)
+            .arg(&receipt)
+            .status()?;
+        assert!(status.success(), "failed to create staging zip fixture");
         let host_path = std::env::var_os("PATH").ok_or("host PATH")?;
         let mut path_entries = vec![self.gh.parent().ok_or("fake gh parent")?.to_path_buf()];
         path_entries.extend(std::env::split_paths(&host_path));
@@ -113,7 +138,7 @@ impl Fixture {
             .env_path_list("PATH", path_entries)
             .env_path("FAKE_RUN", run_path)
             .env_path("FAKE_ARTIFACTS", artifacts_path)
-            .env_path("FAKE_ZIP", self.root.join("fixture-artifact.zip"))
+            .env_path("FAKE_ZIP", archive)
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("GITHUB_REPOSITORY_ID", REPOSITORY_ID)
             .env("SOURCE_COMMIT", SOURCE_COMMIT)
@@ -131,8 +156,12 @@ fn script() -> PathBuf {
 }
 
 fn run_json(commit: &str) -> String {
+    run_json_at_head(commit)
+}
+
+fn run_json_at_head(head_commit: &str) -> String {
     format!(
-        r#"{{"id":42,"repository":{{"id":{REPOSITORY_ID}}},"head_branch":"main","head_sha":"{commit}","path":".github/workflows/runtime-candidate.yml","status":"completed","conclusion":"success","run_attempt":3}}"#
+        r#"{{"id":42,"repository":{{"id":{REPOSITORY_ID}}},"head_branch":"main","head_sha":"{head_commit}","path":".github/workflows/runtime-candidate.yml","status":"completed","conclusion":"success","run_attempt":3}}"#
     )
 }
 

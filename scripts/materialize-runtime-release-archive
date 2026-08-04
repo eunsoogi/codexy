@@ -87,7 +87,9 @@ source = Path(os.environ["SOURCE_PLUGIN"])
 staged = Path(os.environ["STAGED_PLUGIN"])
 
 def excluded(relative: Path) -> bool:
-    return relative.parts[0] == "runtime" or (
+    return relative.parts[0] == "runtime" or relative.name in {
+        "runtime-release.json", "runtime-candidate.json",
+    } or (
         relative.parent == Path("mcp") and relative.suffix == ".exe"
     )
 
@@ -118,10 +120,13 @@ for path in sorted(source.rglob("*"), key=lambda value: len(value.parts)):
         shutil.copy2(path, target)
     else:
         raise SystemExit(f"unsupported activated source entry: {relative}")
+
+for contract in ("runtime-release.json", "runtime-candidate.json"):
+    (staged / contract).unlink(missing_ok=True)
 PY
-SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" \
+SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" RELEASE_TAG="$release_tag" \
 ACTIVATION_RECORD="$activation_record" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
-import hashlib, json, os
+import hashlib, json, os, re
 from pathlib import Path
 
 source = Path(os.environ["SOURCE_PLUGIN"])
@@ -139,6 +144,7 @@ for server in ("lsp", "codegraph"):
     text = wrapper.read_text()
     bundled = " ".join(platforms)
     text = text.replace('bundled_platforms="darwin-arm64 linux-x86_64"', f'bundled_platforms="{bundled}"')
+    text = re.sub(r'(?<=exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+', os.environ["RELEASE_TAG"].removeprefix("v"), text)
     wrapper.write_text(text)
 protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
 for relative, digest in protected.items():

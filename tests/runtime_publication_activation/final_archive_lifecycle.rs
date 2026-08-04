@@ -14,7 +14,23 @@ fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
         Some("work with spaces")
     );
     assert!(fixture.admits_activation(&fixture.activation_commit)?);
-    assert!(fixture.materialize(&fixture.staging_commit, &fixture.activation_commit)?.status.success());
+    let materialized = fixture.materialize(&fixture.staging_commit, &fixture.activation_commit)?;
+    assert!(materialized.status.success());
+    let entries = Command::new("tar")
+        .args(["-tzf"])
+        .arg(&fixture.final_archive)
+        .output()?;
+    assert!(entries.status.success());
+    let entries = String::from_utf8(entries.stdout)?;
+    assert!(!entries.contains("runtime-release.json"));
+    assert!(!entries.contains("runtime-candidate.json"));
+    let wrapper = Command::new("tar")
+        .args(["-xOzf"])
+        .arg(&fixture.final_archive)
+        .arg("plugins/codexy/mcp/codexy-mcp-lsp")
+        .output()?;
+    assert!(wrapper.status.success());
+    assert!(String::from_utf8(wrapper.stdout)?.contains("getcodexy==1.3.0"));
     assert!(!fixture.materialize(&"e".repeat(40), &fixture.activation_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.activation_commit, &fixture.staging_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.staging_commit, &"f".repeat(40))?.status.success());
@@ -27,6 +43,7 @@ struct LifecycleFixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,
     archive: PathBuf,
+    final_archive: PathBuf,
     staging_commit: String,
     activation_commit: String,
 }
@@ -57,7 +74,7 @@ impl LifecycleFixture {
         for server in ["lsp", "codegraph"] {
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
-                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.3.0 codexy-mcp-runtime {server} -- \"$@\"\n"),
+                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime {server} -- \"$@\"\n"),
             )?;
         }
         git(&root, &["add", "."])?;
@@ -73,7 +90,6 @@ impl LifecycleFixture {
         assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy").status()?.success());
         let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));
         fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.3.0\"}\n")?;
-        fs::remove_file(plugin.join("runtime-release.json"))?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::write(
             root.join(".agents/plugins/runtime-activation.json"),
@@ -86,7 +102,8 @@ impl LifecycleFixture {
         git(&root, &["commit", "-m", "activate source"])?;
         let activation_commit = git(&root, &["rev-parse", "HEAD"])?;
         git(&root, &["push", "origin", "main"])?;
-        Ok(Self { _temporary: temporary, root, archive, staging_commit, activation_commit })
+        let final_archive = root.join("final.tar.gz");
+        Ok(Self { _temporary: temporary, root, archive, final_archive, staging_commit, activation_commit })
     }
 
     fn materialize(&self, staging: &str, activation: &str) -> Result<Output, std::io::Error> {
@@ -96,7 +113,7 @@ impl LifecycleFixture {
         );
         command
             .arg_path(&self.archive)
-            .arg_path(self.root.join("final.tar.gz"))
+            .arg_path(&self.final_archive)
             .current_dir(&self.root)
             .env("RELEASE_TAG", "v1.3.0")
             .env("STAGING_SOURCE_COMMIT", staging)

@@ -31,13 +31,16 @@ pub fn admit(target: &str) -> Result<VersionAdvanceAdmission> {
     if bootstrap_version(&root)? != target {
         bail!("version advance target does not match selected bootstrap source");
     }
-    super::wrappers::check_version_at(&root, target)?;
-
     let plugin = root.join("plugins/codexy");
-    if plugin.join("runtime-release.json").exists()
-        || plugin.join("runtime-candidate.json").exists()
-    {
-        bail!("version advance requires public-bootstrap source without plugin runtime contracts");
+    let prior_release = super::load_json(&plugin.join("runtime-release.json"))?;
+    let prior_tag = nested_string(&prior_release, &["artifact", "tag"])?;
+    let prior_version = prior_tag
+        .strip_prefix('v')
+        .context("prior public runtime tag must start with v")?;
+    super::require_semver(prior_version)?;
+    super::wrappers::check_version_at(&root, prior_version)?;
+    if plugin.join("runtime-candidate.json").exists() {
+        bail!("version advance requires no private runtime candidate in the source plugin");
     }
     let record = super::load_json(&root.join(".agents/plugins/runtime-activation.json"))?;
     let candidate = record

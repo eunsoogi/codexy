@@ -39,8 +39,18 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy",
             "gh attestation verify public-runtime.tar.gz",
+            "gh release view v1.3.0",
+            "gh release upload v1.3.0",
+            "--draft",
+            "gh release edit v1.3.0 --draft=false",
+            "gh release download v1.3.0",
+            "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy\"",
         ],
+    );
+    assert!(
+        !run.contains("--clobber"),
+        "immutable release assets must be verified, never overwritten"
     );
     Ok(())
 }
@@ -86,6 +96,17 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     );
     assert!(!plugin.join("runtime-release.json").exists());
     assert!(!plugin.join("runtime-candidate.json").exists());
+    for server in ["lsp", "codegraph"] {
+        let wrapper = fs::read_to_string(plugin.join(format!("mcp/codexy-mcp-{server}")))?;
+        assert!(
+            wrapper.contains("getcodexy==1.3.0"),
+            "final archive must project the release version into {server} wrapper"
+        );
+        assert!(
+            !wrapper.contains("getcodexy==1.2.2"),
+            "final archive must not retain the pre-release {server} wrapper pin"
+        );
+    }
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
     assert_eq!(fs::read(&runtime)?, fixture.runtime);
     let smoke = Command::new(runtime).arg("--help").output()?;
@@ -130,7 +151,7 @@ impl FinalArchiveFixture {
             fs::create_dir_all(&mcp)?;
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
-                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.3.0 codexy-mcp-runtime {server} -- \"$@\"\n"),
+                format!("#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime {server} -- \"$@\"\n"),
             )?;
         }
         let runtime = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n".to_vec();

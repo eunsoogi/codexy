@@ -19,7 +19,7 @@ const AUTHORIZED: [&str; 9] = [
     "plugins/codexy/mcp/codexy-mcp-lsp",
     "src/version/bootstrap.rs",
 ];
-const REMOVED: [&str; 1] = ["plugins/codexy/runtime-release.json"];
+const PRESERVED: [&str; 1] = ["plugins/codexy/runtime-release.json"];
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Change {
@@ -69,8 +69,9 @@ impl FixtureMatrix {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
-        for path in REMOVED {
+        for path in PRESERVED {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
+            write(&expected, path, format!("base:{path}\n").as_bytes())?;
         }
         fs::create_dir_all(seed_repo.join("scripts"))?;
         fake_sync_version(&seed_repo.join("scripts/sync-plugin-version"))?;
@@ -78,7 +79,6 @@ impl FixtureMatrix {
         git(&seed_repo, &["commit", "-m", "base"], &git_starts)?;
         git(&seed_repo, &["switch", "-c", "activation"], &git_starts)?;
         copy_tree(&expected, &seed_repo)?;
-        fs::remove_file(seed_repo.join("plugins/codexy/runtime-release.json"))?;
         git(&seed_repo, &["add", "-A"], &git_starts)?;
         git(&seed_repo, &["commit", "-m", "activation"], &git_starts)?;
         fake_gh(&bin.join("gh"))?;
@@ -218,7 +218,6 @@ do
   mkdir -p "$root/$(dirname "$path")"
   cp "$EXPECTED_ROOT/$path" "$root/$path"
 done
-rm -f "$root/plugins/codexy/runtime-release.json"
 "##,
     )
 }
