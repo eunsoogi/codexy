@@ -31,7 +31,17 @@ impl GateFixture {
             ),
         )?;
         let workflow = temp.path().join("rust-test.yml");
-        std::fs::write(&workflow, format!("{WORKFLOW_ROOT}{SHARDED_WORKFLOW}"))?;
+        let checkout = "          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n          persist-credentials: false";
+        std::fs::write(
+            &workflow,
+            format!(
+                "{WORKFLOW_ROOT}{}",
+                SHARDED_WORKFLOW.replace(
+                    "          fetch-depth: 0\n          persist-credentials: false",
+                    checkout,
+                )
+            ),
+        )?;
         Ok(Self {
             temp,
             marker,

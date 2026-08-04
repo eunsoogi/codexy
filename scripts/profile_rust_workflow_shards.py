@@ -5,7 +5,14 @@ from collections.abc import Callable
 
 SHARDS = "[support, agent, child, orchestration, governance, system, archive]"
 JOBS = {"rust-test", "windows-rust-test", "rust-test-aggregate"}
-CHECKOUT = {"uses": "actions/checkout@v7", "with": {"fetch-depth": "0", "persist-credentials": "false"}}
+CHECKOUT = {
+    "uses": "actions/checkout@v7",
+    "with": {
+        "ref": "${{ github.event.pull_request.head.sha }}",
+        "fetch-depth": "0",
+        "persist-credentials": "false",
+    },
+}
 WINDOWS_SETUP = ({"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"}, {"shell": "pwsh", "run": "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"})
 
 

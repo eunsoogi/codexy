@@ -33,11 +33,18 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
             "runs-on: windows-latest",
             "timeout-minutes: 20",
             "max-parallel: 7",
+            "ref: ${{ github.event.pull_request.head.sha }}",
             "run: python scripts/profile-rust-tests --windows --shard ${{ matrix.shard }}",
         ],
     );
     assert_eq!(workflow.matches("windows-rust-profile").count(), 0);
     assert_eq!(workflow.matches("scripts/profile-rust-tests").count(), 3);
+    assert_eq!(
+        workflow
+            .matches("ref: ${{ github.event.pull_request.head.sha }}")
+            .count(),
+        3
+    );
 
     for invalid_workflow in [
         workflow.replacen("max-parallel: 7", "max-parallel: 6", 1),
@@ -45,7 +52,12 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
         workflow.replacen("          persist-credentials: false\n", "", 1).replacen("          merge-multiple: true\n", "          merge-multiple: true\n          persist-credentials: false\n", 1),
         workflow.replacen("      - if: always()\n        uses: actions/upload-artifact@v7", "      - uses: actions/upload-artifact@v7\n        # if: always()", 1),
         workflow.replacen("        shard: [support, agent, child, orchestration, governance, system, archive]", "        include:\n          - shard: support\n        # shard: [support, agent, child, orchestration, governance, system, archive]", 1),
-        workflow.replacen("      - uses: actions/checkout@v7\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n", "", 1),
+        workflow.replacen("      - uses: actions/checkout@v7\n        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n          persist-credentials: false\n", "", 1),
+        workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "", 1),
+        workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}", "          ref: ${{ github.sha }}", 1),
+        workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "          # ref: ${{ github.event.pull_request.head.sha }}\n", 1),
+        workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "", 2).replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "          ref: refs/pull/516/merge\n", 1),
+        workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n", "          fetch-depth: 0\n      - run: echo '${{ github.event.pull_request.head.sha }}'\n", 1),
         workflow.replacen("      - shell: pwsh\n        run: scripts/install-windows-test-prerequisites.ps1\n", "", 1),
         workflow.replacen("      - shell: pwsh\n        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1),
         workflow.replacen("    steps:\n", "    env:\n      RUST_TEST_THREADS: 1\n    steps:\n", 1),
