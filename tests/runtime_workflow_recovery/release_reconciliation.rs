@@ -9,6 +9,7 @@ const ASSETS: [&str; 3] = [
 ];
 
 #[test]
+#[cfg(unix)]
 fn release_reconciliation_recovers_only_exact_draft_assets()
 -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;

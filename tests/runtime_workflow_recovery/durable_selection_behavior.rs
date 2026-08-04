@@ -6,6 +6,7 @@ use sha2::{Digest as _, Sha256};
 const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
+#[cfg(unix)]
 fn public_release_selection_never_falls_back_after_a_present_release_fails_identity()
 -> Result<(), Box<dyn std::error::Error>> {
     let public = Fixture::new("present", false)?;

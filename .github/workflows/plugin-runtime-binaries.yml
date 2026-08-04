@@ -178,6 +178,7 @@ jobs:
           $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
+          New-Item -ItemType Directory -Path dist -ErrorAction Stop | Out-Null
           if ($publicArchive) {
             Copy-Item -LiteralPath $archive -Destination dist/codexy-marketplace-plugin.tar.gz
           } else {

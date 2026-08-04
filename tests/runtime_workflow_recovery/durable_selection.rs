@@ -28,5 +28,23 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "public release receipt does not match activated staging identity",
         ],
     );
+    let windows = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
+        .as_sequence()
+        .and_then(|steps| {
+            steps
+                .iter()
+                .find(|step| step["name"] == "Verify immutable native Windows candidate bytes")
+        })
+        .and_then(|step| step["run"].as_str())
+        .ok_or("Windows selected immutable runtime proof")?;
+    support::assert_structured_literals(
+        windows,
+        "Windows public-release archive projection",
+        &[
+            "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
+            "if ($publicArchive)",
+            "Copy-Item -LiteralPath $archive -Destination dist/codexy-marketplace-plugin.tar.gz",
+        ],
+    );
     Ok(())
 }
