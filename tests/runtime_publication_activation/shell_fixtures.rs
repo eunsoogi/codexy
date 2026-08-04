@@ -19,11 +19,14 @@ fn runtime_publication_shell_fixtures_project_every_path()
         )?,
         "artifact downloader shell paths",
         &[
-            ".arg_path(self.root.join(\"staging\"))",
-            ".env_path_list(\"PATH\", path_entries)",
-            ".env_path(\"FAKE_RUN\", run_path)",
-            ".env_path(\"FAKE_ARTIFACTS\", artifacts_path)",
-            ".env_path(\"FAKE_ZIP\", archive)",
+            ".arg_path(&manifest)",
+            ".arg_path(&results)",
+            ".arg_path(script())",
+            ".env_path_list(\"PATH\", path)",
+            "fixture_path_text(root.join(\"staging\"))",
+            "fixture_path_text(run)",
+            "fixture_path_text(artifacts)",
+            "fixture_path_text(archive)",
         ],
     );
     assert_shell_paths(
