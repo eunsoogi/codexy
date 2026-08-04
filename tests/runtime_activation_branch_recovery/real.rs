@@ -59,10 +59,11 @@ impl Fixture {
         let temp = tempfile::tempdir()?;
         let repo = temp.path().join("repo with spaces");
         let archive = temp.path().join("repo.tar");
+        let pre_activation_revision = metadata::pre_activation_revision()?;
         fs::create_dir(&repo)?;
         command(
             Command::new("git")
-                .args(["archive", "--format=tar", "HEAD^"])
+                .args(["archive", "--format=tar", &pre_activation_revision])
                 .arg("-o")
                 .arg(&archive)
                 .current_dir(env!("CARGO_MANIFEST_DIR")),
@@ -104,7 +105,7 @@ impl Fixture {
         let activator = bin.join("activate-current-bootstrap");
         write_posix_fixture_command(
             &activator,
-            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = '1.3.0'\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'], root / 'src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
+            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = '1.3.0'\ndata['runtime']['selectedTag'] = 'v1.2.2'\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'], root / 'src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
         )?;
         let command_trace = temp.path().join("command-trace");
         write_posix_fixture_command(

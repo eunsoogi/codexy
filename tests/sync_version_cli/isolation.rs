@@ -4,6 +4,8 @@ use std::{
     process::Command,
 };
 
+use serde_json::{Value, json};
+
 #[test]
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -12,9 +14,11 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     let diagnostic_root = super::archive_repository(archive, &temp, "diagnostic-root")?;
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let source_root_before = version_surface_contents(source_root)?;
+    select_next_public_identities(&diagnostic_root)?;
+    let diagnostic_versions_before = version_surface_contents(&diagnostic_root)?;
     let bootstrap_before = bootstrap_surface_contents(&diagnostic_root)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", "1.3.0"])
+        .args(["--version", "1.3.1"])
         .env("CODEXY_REPO_ROOT", &diagnostic_root)
         .current_dir(&diagnostic_root)
         .output()?;
@@ -29,16 +33,31 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
         bootstrap_surface_contents(&diagnostic_root)?,
         bootstrap_before
     );
-    for (path, contents) in version_surface_contents(&diagnostic_root)? {
+    let diagnostic_versions_after = version_surface_contents(&diagnostic_root)?;
+    assert_ne!(diagnostic_versions_after, diagnostic_versions_before);
+    for (path, contents) in diagnostic_versions_after {
         let text = String::from_utf8_lossy(&contents);
         assert!(
             text.lines()
                 .map(str::trim)
-                .any(|line| matches!(line, "version = \"1.3.0\"" | "\"version\": \"1.3.0\",")),
+                .any(|line| matches!(line, "version = \"1.3.1\"" | "\"version\": \"1.3.1\",")),
             "supplied diagnostic root was not updated at {}",
             path.display()
         );
     }
+    Ok(())
+}
+
+fn select_next_public_identities(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let path = root.join(".agents/plugins/release-publish-contract.json");
+    let mut contract: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
+    contract["bootstrap"]["selectedVersion"] = json!("1.3.1");
+    contract["runtime"]["selectedTag"] = json!("v1.3.1");
+    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
+    fs::write(
+        root.join("src/version/bootstrap.rs"),
+        "pub(super) const VERSION: &str = \"1.3.1\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+    )?;
     Ok(())
 }
 
