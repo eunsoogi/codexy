@@ -45,7 +45,8 @@ fn shell_runner_matches_the_supported_shell_keyword_boundary()
         let shell_accepts = Command::new("sh")
             .arg("-n")
             .arg(&shell_script)
-            .status()?
+            .output()?
+            .status
             .success();
         let runner = temp.path().join(format!("runner-keyword-{index}"));
         let runner_accepts = write_posix_fixture_shell_runner(

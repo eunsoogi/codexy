@@ -61,8 +61,8 @@ fn validate_identifier(value: &str) -> io::Result<()> {
         && continues_identifier
         && Command::new("sh")
             .args(["-n", "-c", &format!("{value}() {{ :; }}")])
-            .status()
-            .map(|status| status.success())
+            .output()
+            .map(|output| output.status.success())
             .unwrap_or(false);
     parser_accepts
         .then_some(())

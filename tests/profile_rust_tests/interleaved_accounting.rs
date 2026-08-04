@@ -47,6 +47,16 @@ assert_no_inference("non-adjacent summary", (
     "unrelated diagnostic output",
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
+hosted_spliced = "\n".join((
+    "     Running tests/suites/support_suite.rs (target/debug/deps/suite_support-hosted)",
+    "test support_shared_fixture_tests::materialized_text_fixture_keeps_executable_mode_and_canonical_lf ... /tmp/.tmpsl13GD/shell-keyword-13: 3: okSyntax error: \")\" unexpected",
+    "",
+    "test support_shared_fixture_tests::text_fixture_normalization_preserves_raw_binary_reads ... ok",
+    "test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+))
+tests, _, outcomes = module.observed_test_records(hosted_spliced)
+if tests.get("suite_support::support_shared_fixture_tests::materialized_text_fixture_keeps_executable_mode_and_canonical_lf") or outcomes.get("ok") != 1:
+    raise SystemExit(f"hosted spliced completion: tests={tests!r} outcomes={outcomes!r}")
 assert_no_inference("malformed summary", (
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-e)",
     "test support::malformed ... child output",
