@@ -24,6 +24,8 @@ mod final_archive_lifecycle;
 mod shell_fixtures;
 #[path = "runtime_publication_activation/staging.rs"]
 mod staging;
+#[path = "runtime_publication_activation/staging_zip_fixture.rs"]
+mod staging_zip_fixture;
 
 const CANDIDATE_SCHEMA: &str = "codexy-runtime-candidate/v1";
 

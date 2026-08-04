@@ -54,7 +54,6 @@ class WindowsTempRoot:
 
 @contextmanager
 def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsTempRoot]:
-    environment.setdefault("RUST_TEST_THREADS", "2")
     runner_temp = environment.get("RUNNER_TEMP")
     if runner_temp is None:
         raise OSError("RUNNER_TEMP is required for the Windows Rust workload")

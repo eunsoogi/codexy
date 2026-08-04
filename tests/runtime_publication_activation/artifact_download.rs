@@ -6,6 +6,8 @@ use std::{
 
 use crate::support::{self, FixtureCommand as Command};
 
+use super::staging_zip_fixture;
+
 const REPOSITORY_ID: &str = "1269350143";
 const RUN_ID: &str = "42";
 const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -164,12 +166,7 @@ impl Fixture {
             ),
         )?;
         let archive = self.root.join("fixture-artifact.zip");
-        let status = Command::new("python3")
-            .args(["-c", "import pathlib,sys,zipfile; z=zipfile.ZipFile(sys.argv[1],'w'); z.writestr('runtime-staging-receipt.json', pathlib.Path(sys.argv[2]).read_text()); z.close()"])
-            .arg(&archive)
-            .arg(&receipt)
-            .status()?;
-        assert!(status.success(), "failed to create staging zip fixture");
+        staging_zip_fixture::write_receipt_archive(&archive, &fs::read(&receipt)?)?;
         let host_path = std::env::var_os("PATH").ok_or("host PATH")?;
         let mut path_entries = vec![self.gh.parent().ok_or("fake gh parent")?.to_path_buf()];
         path_entries.extend(std::env::split_paths(&host_path));

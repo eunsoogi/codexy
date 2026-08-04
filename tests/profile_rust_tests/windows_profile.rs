@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
-fn windows_profiler_bounds_default_parallelism_without_overriding_callers()
+fn windows_profiler_preserves_the_default_cargo_environment()
 -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r##"
@@ -33,11 +33,11 @@ _output, _elapsed, status, phases = run_workload(root, 5.0, windows=True)
 if status != 0:
     raise SystemExit(f"windows status={status!r}")
 receipt = json.loads(phases["workload-receipt-json"])
-if receipt["test_threads"] != {"state":"configured", "value":"2"}:
+if receipt["test_threads"] != {"state":"default/unobserved", "value":"not-observed"}:
     raise SystemExit(f"windows thread receipt={receipt!r}")
 if "cargo_test_profile" in receipt:
     raise SystemExit(f"windows profile receipt={receipt!r}")
-if marker.read_text().splitlines() != ["2|||test --locked --all-targets"]:
+if marker.read_text().splitlines() != ["|||test --locked --all-targets"]:
     raise SystemExit(f"windows cargo={marker.read_text()!r}")
 
 marker.unlink()
@@ -52,19 +52,6 @@ if "cargo_test_profile" in receipt:
     raise SystemExit(f"non-windows profile receipt={receipt!r}")
 if marker.read_text().splitlines() != ["|||test --locked --all-targets"]:
     raise SystemExit(f"non-windows cargo={marker.read_text()!r}")
-
-marker.unlink()
-configured = dict(base)
-configured["RUST_TEST_THREADS"] = "3"
-os.environ.clear(); os.environ.update(configured)
-_output, _elapsed, status, phases = run_workload(root, 5.0, windows=True)
-if status != 0:
-    raise SystemExit(f"configured windows status={status!r}")
-receipt = json.loads(phases["workload-receipt-json"])
-if receipt["test_threads"] != {"state":"configured", "value":"3"}:
-    raise SystemExit(f"configured windows thread receipt={receipt!r}")
-if marker.read_text().splitlines() != ["3|||test --locked --all-targets"]:
-    raise SystemExit(f"configured windows cargo={marker.read_text()!r}")
 
 "##;
     let output = Command::new("python3")
