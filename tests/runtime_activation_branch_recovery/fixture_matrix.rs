@@ -35,22 +35,23 @@ pub(super) enum Change {
 }
 
 pub(super) struct FixtureMatrix {
-    _temp: tempfile::TempDir,
+    pub(super) temp: tempfile::TempDir,
     seed_repo: PathBuf,
-    expected: PathBuf,
-    bin: PathBuf,
-    receipt: PathBuf,
+    pub(super) expected: PathBuf,
+    pub(super) bin: PathBuf,
+    pub(super) receipt: PathBuf,
     git_starts: Rc<Cell<usize>>,
-    verifier_starts: Rc<Cell<usize>>,
+    pub(super) verifier_starts: Rc<Cell<usize>>,
+    pub(super) batched_case_count: Rc<Cell<usize>>,
 }
 
 pub(super) struct Fixture {
     _temp: tempfile::TempDir,
-    repo: PathBuf,
-    expected: PathBuf,
-    bin: PathBuf,
-    receipt: PathBuf,
-    verifier_starts: Rc<Cell<usize>>,
+    pub(super) repo: PathBuf,
+    pub(super) expected: PathBuf,
+    pub(super) bin: PathBuf,
+    pub(super) receipt: PathBuf,
+    pub(super) verifier_starts: Rc<Cell<usize>>,
 }
 
 impl FixtureMatrix {
@@ -61,6 +62,7 @@ impl FixtureMatrix {
         let bin = temp.path().join("bin");
         let git_starts = Rc::new(Cell::new(0));
         let verifier_starts = Rc::new(Cell::new(0));
+        let batched_case_count = Rc::new(Cell::new(0));
         fs::create_dir_all(&seed_repo)?;
         fs::create_dir_all(&expected)?;
         fs::create_dir_all(&bin)?;
@@ -88,7 +90,7 @@ impl FixtureMatrix {
         fake_activator(&bin.join("activate"))?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, "{}")?;
-        Ok(Self { _temp: temp, seed_repo, expected, bin, receipt, git_starts, verifier_starts })
+        Ok(Self { temp, seed_repo, expected, bin, receipt, git_starts, verifier_starts, batched_case_count })
     }
 
     pub(super) fn case(
@@ -123,18 +125,12 @@ impl FixtureMatrix {
 
     pub(super) fn git_setup_starts(&self) -> usize { self.git_starts.get() }
     pub(super) fn verifier_starts(&self) -> usize { self.verifier_starts.get() }
+    pub(super) fn batched_case_count(&self) -> usize { self.batched_case_count.get() }
 }
 
 impl Fixture {
     pub(super) fn run(&self, pr_state: &str) -> Result<Output, Box<dyn std::error::Error>> {
         self.run_with_test_mode(pr_state, true)
-    }
-
-    pub(super) fn run_without_test_mode(
-        &self,
-        pr_state: &str,
-    ) -> Result<Output, Box<dyn std::error::Error>> {
-        self.run_with_test_mode(pr_state, false)
     }
 
     fn run_with_test_mode(
@@ -196,7 +192,7 @@ fn git(root: &Path, arguments: &[&str], starts: &Cell<usize>) -> Result<(), Box<
 }
 
 fn fake_gh(path: &Path) -> std::io::Result<()> {
-    executable(path, "#!/bin/sh\nprintf '%s\n' \"$FAKE_PR_STATE\"\n")
+    executable(path, "#!/bin/sh\nif test -n \"${FAKE_PR_STATE_FILE:-}\"; then cat \"$FAKE_PR_STATE_FILE\"; else printf '%s\\n' \"$FAKE_PR_STATE\"; fi\n")
 }
 
 fn fake_activator(path: &Path) -> std::io::Result<()> {
