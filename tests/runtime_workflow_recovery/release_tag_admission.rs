@@ -34,6 +34,9 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api() -> Result<(
         RemoteTag::Wrong,
         RemoteTag::Unpeelable,
         RemoteTag::Changed,
+        RemoteTag::ExactOutsideProtectedMain,
+        RemoteTag::ExactLosesProtectedMainAfterSource,
+        RemoteTag::AbsentAfterMainAdvance,
         RemoteTag::ConcurrentWrong,
         RemoteTag::ConcurrentUnpeelable,
         RemoteTag::ApiAuth,
@@ -46,7 +49,7 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api() -> Result<(
         assert_eq!(fixture.git_push_calls()?, 0, "{state:?} used unauthenticated git push");
         assert_eq!(fixture.api_calls()?, state.create_api_calls(), "{state:?} API admission count");
     }
-    for state in [RemoteTag::Exact, RemoteTag::Absent, RemoteTag::ConcurrentExact] {
+    for state in [RemoteTag::Exact, RemoteTag::ExactAfterMainAdvance, RemoteTag::Absent, RemoteTag::ConcurrentExact] {
         let fixture = Fixture::new(state)?;
         let output = fixture.run()?;
         assert!(!output.status.success(), "fixture must stop at fake release boundary");
@@ -67,7 +70,7 @@ fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
     assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
     assert_eq!(fixture.remote_state()?, "wrong", "API did not set wrong remote ref");
     assert_eq!(fixture.release_calls()?, 0, "wrong tag reached release creation");
-    assert_eq!(fixture.command_calls("git")?, 6, "host git fallthrough");
+    assert_eq!(fixture.command_calls("git")?, 13, "host git fallthrough");
     assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
     assert_eq!(fixture.command_calls("gh")?, 1, "host gh fallthrough");
     Ok(())
@@ -98,22 +101,22 @@ fn assert_inherited_state_discarded(
     assert_eq!(fixture.api_calls()?, 1, "inherited state blocked authenticated API");
     assert_eq!(fixture.release_calls()?, 0, "inherited state reached release");
     assert_eq!(fixture.git_push_calls()?, 0, "inherited state used git push");
-    assert_eq!(fixture.command_calls("git")?, 6, "inherited Git state leaked");
+    assert_eq!(fixture.command_calls("git")?, 13, "inherited Git state leaked");
     assert_eq!(fixture.command_calls("jq")?, 3, "inherited state leaked into jq");
     assert_eq!(fixture.command_calls("gh")?, 1, "inherited GitHub state leaked");
     Ok(())
 }
 
 #[derive(Clone, Copy, Debug)]
-enum RemoteTag { Wrong, Unpeelable, Changed, Exact, Absent, ConcurrentExact, ConcurrentWrong, ConcurrentUnpeelable, ApiAuth, ApiFailure }
+enum RemoteTag { Wrong, Unpeelable, Changed, Exact, ExactAfterMainAdvance, ExactOutsideProtectedMain, ExactLosesProtectedMainAfterSource, AbsentAfterMainAdvance, Absent, ConcurrentExact, ConcurrentWrong, ConcurrentUnpeelable, ApiAuth, ApiFailure }
 
 impl RemoteTag {
     fn create_api_calls(self) -> usize {
-        usize::from(!matches!(self, Self::Wrong | Self::Unpeelable | Self::Changed | Self::Exact))
+        usize::from(!matches!(self, Self::Wrong | Self::Unpeelable | Self::Changed | Self::Exact | Self::ExactAfterMainAdvance | Self::ExactOutsideProtectedMain | Self::ExactLosesProtectedMainAfterSource | Self::AbsentAfterMainAdvance))
     }
 }
 
-struct Fixture { _temp: tempfile::TempDir, root: PathBuf, script: PathBuf, runner: PathBuf, calls: PathBuf, pushes: PathBuf, api_calls: PathBuf }
+struct Fixture { _temp: tempfile::TempDir, root: PathBuf, script: PathBuf, runner: PathBuf, calls: PathBuf, pushes: PathBuf, api_calls: PathBuf, merge_base_calls: PathBuf }
 
 impl Fixture {
     fn new(state: RemoteTag) -> Result<Self, Box<dyn std::error::Error>> {
@@ -162,7 +165,8 @@ impl Fixture {
         let calls = root.join("release-calls");
         let pushes = root.join("git-push-calls");
         let api_calls = root.join("api-calls");
-        Ok(Self { _temp: temp, root, script, runner, calls, pushes, api_calls })
+        let merge_base_calls = root.join("merge-base-calls");
+        Ok(Self { _temp: temp, root, script, runner, calls, pushes, api_calls, merge_base_calls })
     }
 
     fn run(&self) -> Result<Output, Box<dyn std::error::Error>> {
@@ -189,6 +193,7 @@ impl Fixture {
             .env_path("RELEASE_CALLS", &self.calls)
             .env_path("GIT_PUSH_CALLS", &self.pushes)
             .env_path("API_CALLS", &self.api_calls)
+            .env_path("MERGE_BASE_CALLS", &self.merge_base_calls)
             .env_path("CODEXY_FIXTURE_COMMAND_TRACE", self.root.join("command-trace"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("CODEXY_FIXTURE_GH_TOKEN", "fixture-token")
@@ -215,22 +220,25 @@ fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> { Ok(fs::read
 fn release_step() -> Result<String, Box<dyn std::error::Error>> {
     let workflow = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
     let publisher: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
-    publisher["jobs"]["publish-v1-3-0"]["steps"].as_sequence()
-        .and_then(|steps| steps.iter().find(|step| step["name"] == "Create and verify the only public version release"))
-        .and_then(|step| step["run"].as_str()).map(str::to_owned).ok_or_else(|| "final release step".into())
+    let steps = publisher["jobs"]["publish-v1-3-0"]["steps"].as_sequence().ok_or("release steps")?;
+    let source = steps.iter().find(|step| step["name"] == "Verify selected protected-main source")
+        .and_then(|step| step["run"].as_str()).ok_or("protected main source")?;
+    let release = steps.iter().find(|step| step["name"] == "Create and verify the only public version release")
+        .and_then(|step| step["run"].as_str()).ok_or("final release step")?;
+    Ok(format!("{source}\n{release}"))
 }
 
 fn remote_state(state: RemoteTag) -> &'static str {
     match state {
         RemoteTag::Wrong => "wrong", RemoteTag::Unpeelable => "unpeelable", RemoteTag::Changed => "changed",
-        RemoteTag::Exact => "exact", RemoteTag::Absent => "absent", RemoteTag::ConcurrentExact => "concurrent-exact",
+        RemoteTag::Exact => "exact", RemoteTag::ExactAfterMainAdvance => "exact-after-main-advance", RemoteTag::ExactOutsideProtectedMain => "exact-outside-protected-main", RemoteTag::ExactLosesProtectedMainAfterSource => "exact-loses-protected-main-after-source", RemoteTag::AbsentAfterMainAdvance => "absent-after-main-advance", RemoteTag::Absent => "absent", RemoteTag::ConcurrentExact => "concurrent-exact",
         RemoteTag::ConcurrentWrong => "concurrent-wrong", RemoteTag::ConcurrentUnpeelable => "concurrent-unpeelable",
         RemoteTag::ApiAuth => "api-auth", RemoteTag::ApiFailure => "api-failure",
     }
 }
 
 fn git_fixture() -> &'static str {
-    "#!/bin/sh\nif test -n \"${GIT_DIR+x}${GIT_WORK_TREE+x}${GIT_INDEX_FILE+x}${GIT_COMMON_DIR+x}\"; then printf '%s\\n' 'inherited Git state reached fixture' >&2; exit 92; fi\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); case \"$value\" in absent|concurrent-exact|concurrent-wrong|concurrent-unpeelable|api-auth|api-failure) exit 0 ;; changed) [ \"$count\" -ge 2 ] && value=wrong ;; esac; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) printf '%s\\n' push >> \"$GIT_PUSH_CALLS\"; exit 91 ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
+    "#!/bin/sh\nif test -n \"${GIT_DIR+x}${GIT_WORK_TREE+x}${GIT_INDEX_FILE+x}${GIT_COMMON_DIR+x}\"; then printf '%s\\n' 'inherited Git state reached fixture' >&2; exit 92; fi\nstate() { cat \"$REMOTE_STATE\"; }\nremote_oid() { case \"$1\" in wrong) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; unpeelable) printf '%s\\n' bad-object ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac; }\ncase \"$1\" in\n  fetch) case \"$*\" in *refs/tags/v1.3.0*) value=$(state); [ \"$value\" = changed ] && value=exact; printf '%s\\n' \"$value\" > \"$FETCHED_STATE\" ;; esac ;;\n  ls-remote) count=$(cat \"$REMOTE_QUERIES\"); printf '%s\\n' $((count + 1)) > \"$REMOTE_QUERIES\"; value=$(state); case \"$value\" in absent|absent-after-main-advance|concurrent-exact|concurrent-wrong|concurrent-unpeelable|api-auth|api-failure) exit 0 ;; changed) [ \"$count\" -ge 2 ] && value=wrong ;; esac; remote_oid \"$value\" | awk '{printf \"%s\\trefs/tags/v1.3.0\\n\", $1}' ;;\n  push) printf '%s\\n' push >> \"$GIT_PUSH_CALLS\"; exit 91 ;;\n  checkout) : ;;\n  merge-base) if [ \"$2\" = --is-ancestor ] && [ \"$3\" = \"$STAGING_SOURCE_COMMIT\" ] && [ \"$4\" = \"$ACTIVATION_COMMIT\" ]; then :; elif [ \"$2\" = --is-ancestor ] && [ \"$3\" = \"$ACTIVATION_COMMIT\" ] && [ \"$4\" = origin/main ]; then calls=$(cat \"$MERGE_BASE_CALLS\" 2>/dev/null || printf 0); printf '%s\\n' $((calls + 1)) > \"$MERGE_BASE_CALLS\"; case \"$(state)\" in exact-outside-protected-main) exit 1 ;; exact-loses-protected-main-after-source) test \"$calls\" -eq 0 ;; esac; else exit 91; fi ;;\n  rev-parse) case \"$*\" in *FETCH_HEAD*) value=$(cat \"$FETCHED_STATE\"); [ \"$value\" = unpeelable ] && exit 1; remote_oid \"$value\" ;; *origin/main*) case \"$(state)\" in exact-after-main-advance|absent-after-main-advance) printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff ;; *) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; esac ;; *) printf '%s\\n' \"$2\" ;; esac ;;\n  *) exit 91 ;;\nesac\n"
 }
 
 fn jq_fixture() -> &'static str {

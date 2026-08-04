@@ -17,6 +17,8 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         "for commit in \"$STAGING_SOURCE_COMMIT\" \"$ACTIVATION_COMMIT\"; do",
         "case \"$commit\" in *[!0-9a-f]*|'') exit 1 ;; esac",
         "test \"${#commit}\" -eq 40",
+        "git ls-remote --refs origin refs/tags/v1.3.0",
+        "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
     ]);
     let step = publisher["jobs"]["publish-v1-3-0"]["steps"]
         .as_sequence()
@@ -45,6 +47,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         "cannot resolve remote v1.3.0 tag",
         "remote v1.3.0 tag does not match activation commit",
         "remote v1.3.0 tag changed during admission",
+        "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }

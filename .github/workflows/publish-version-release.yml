@@ -43,7 +43,11 @@ jobs:
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
           test "$STAGING_SOURCE_COMMIT" != "$ACTIVATION_COMMIT"
-          test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+          if remote_tag="$(git ls-remote --refs origin refs/tags/v1.3.0)" && test -n "$remote_tag"; then
+            remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
+            test "$remote_tag_oid" = "$ACTIVATION_COMMIT"
+            git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+          else test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"; fi
           test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
           test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
           git checkout --detach "$ACTIVATION_COMMIT"
@@ -118,7 +122,7 @@ jobs:
           test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
-          test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+          git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
           tag_ref=refs/tags/v1.3.0
           remote_tag="$(git ls-remote --refs origin "$tag_ref")"
           if test -z "$remote_tag"; then
