@@ -112,7 +112,7 @@ fn version_advance_requires_selected_public_identities_before_mutation(
     let repo = archive_repository(archive, &temp, "pre-activation")?;
     let before = isolation::version_surface_contents(&repo)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", "1.3.0"])
+        .args(["--version", "1.3.1"])
         .env("CODEXY_REPO_ROOT", &repo)
         .current_dir(&repo)
         .output()?;

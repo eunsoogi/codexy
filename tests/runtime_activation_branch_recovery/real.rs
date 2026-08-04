@@ -48,6 +48,7 @@ struct Fixture {
     repo: PathBuf,
     receipt: PathBuf,
     bin: PathBuf,
+    activator: PathBuf,
     command_trace: PathBuf,
     runner: PathBuf,
     external_activation_process_invocations: Cell<usize>,
@@ -61,7 +62,7 @@ impl Fixture {
         fs::create_dir(&repo)?;
         command(
             Command::new("git")
-                .args(["archive", "--format=tar", "HEAD"])
+                .args(["archive", "--format=tar", "HEAD^"])
                 .arg("-o")
                 .arg(&archive)
                 .current_dir(env!("CARGO_MANIFEST_DIR")),
@@ -80,10 +81,6 @@ impl Fixture {
             Path::new(env!("CARGO_MANIFEST_DIR")).join(workflow),
             workflow_target,
         )?;
-        fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join(".agents/plugins/release-publish-contract.json"),
-            repo.join(".agents/plugins/release-publish-contract.json"),
-        )?;
         for relative in [
             "scripts/activate-runtime-contract",
             "scripts/verify-runtime-activation-branch",
@@ -93,17 +90,22 @@ impl Fixture {
                 repo.join(relative),
             )?;
         }
-        metadata::restore_legacy_platform_metadata(&repo)?;
         git(&repo, &["init", "-b", "main"])?;
         git(&repo, &["config", "user.name", "test"])?;
         git(&repo, &["config", "user.email", "test@example.com"])?;
         git(&repo, &["add", "."])?;
         git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
+        metadata::select_current_bootstrap(&repo)?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;
+        let activator = bin.join("activate-current-bootstrap");
+        write_posix_fixture_command(
+            &activator,
+            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = '1.3.0'\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'], root / 'src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
+        )?;
         let command_trace = temp.path().join("command-trace");
         write_posix_fixture_command(
             &bin.join("cargo"),
@@ -126,6 +128,7 @@ impl Fixture {
             repo,
             receipt,
             bin,
+            activator,
             command_trace,
             runner,
             external_activation_process_invocations,
@@ -151,6 +154,11 @@ impl Fixture {
             .env_path(
                 "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
                 env!("CARGO_BIN_EXE_codexy-activate-runtime"),
+            )
+            .env_path("CODEXY_TEST_ACTIVATE_RUNTIME", &self.activator)
+            .env_path(
+                "CODEXY_TEST_BOOTSTRAP_SOURCE",
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("src/version/bootstrap.rs"),
             )
             .env_path(
                 "CODEXY_TEST_SYNC_VERSION_BINARY",

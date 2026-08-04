@@ -138,7 +138,7 @@ impl Fixture {
         fs::create_dir_all(&mcp)?;
         fs::write(
             root.join("src/version/bootstrap.rs"),
-            "pub(super) const VERSION: &str = \"1.2.2\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+            "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
         )?;
         fs::write(
             root.join("plugins/codexy/runtime-release.json"),
@@ -146,7 +146,7 @@ impl Fixture {
         )?;
         fs::write(
             root.join(".agents/plugins/release-publish-contract.json"),
-            r#"{"bootstrap":{"selectedVersion":"1.2.2"},"runtime":{"selectedTag":"v1.2.2","platforms":["darwin-arm64","linux-x86_64"]},"package":{"platforms":["darwin-arm64","linux-x86_64"]}}"#,
+            r#"{"bootstrap":{"selectedVersion":"1.3.0"},"runtime":{"selectedTag":"v1.2.2","platforms":["darwin-arm64","linux-x86_64"]},"package":{"platforms":["darwin-arm64","linux-x86_64"]}}"#,
         )?;
         fs::write(
             root.join("plugins/codexy/.codex-plugin/plugin.json"),

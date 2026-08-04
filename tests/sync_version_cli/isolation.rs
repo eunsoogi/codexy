@@ -12,7 +12,6 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     let diagnostic_root = super::archive_repository(archive, &temp, "diagnostic-root")?;
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let source_root_before = version_surface_contents(source_root)?;
-    super::admission::activate(&diagnostic_root)?;
     let bootstrap_before = bootstrap_surface_contents(&diagnostic_root)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--version", "1.3.0"])
