@@ -14,7 +14,7 @@ struct InterpreterCacheKey {
 
 static INTERPRETER_CACHE: OnceLock<Mutex<HashMap<InterpreterCacheKey, PathBuf>>> = OnceLock::new();
 
-pub fn fixture_script_launcher(
+pub(crate) fn fixture_script_launcher(
     is_windows: bool,
     contents: &[u8],
 ) -> Result<Option<&'static str>, String> {
@@ -24,7 +24,7 @@ pub fn fixture_script_launcher(
     fixture_script_interpreter(contents)
 }
 
-pub fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     (program
         .extension()
         .is_some_and(|extension| extension == "sh"))
@@ -35,7 +35,7 @@ pub fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
 /// The copied admission fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.
-pub fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
     let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();
@@ -79,7 +79,7 @@ pub(super) fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'sta
 }
 
 #[cfg(windows)]
-pub fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf, String> {
+pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf, String> {
     let path = std::env::var_os("PATH").ok_or_else(|| {
         format!("Windows fixture interpreter `{interpreter}` cannot discover PATH")
     })?;

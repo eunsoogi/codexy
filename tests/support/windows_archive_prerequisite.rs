@@ -1,5 +1,5 @@
-pub fn assert_windows_prerequisite_contract(text: &str) {
-    crate::release_archive::assert_structured_literals(
+pub(crate) fn assert_windows_prerequisite_contract(text: &str) {
+    super::release_archive::assert_structured_literals(
         text,
         "Windows archive scanner prerequisite",
         &[
@@ -10,7 +10,7 @@ pub fn assert_windows_prerequisite_contract(text: &str) {
             "GITHUB_PATH",
         ],
     );
-    crate::release_archive::assert_structured_absent_literals(
+    super::release_archive::assert_structured_absent_literals(
         text,
         "Windows archive scanner prerequisite",
         &["choco install ripgrep"],

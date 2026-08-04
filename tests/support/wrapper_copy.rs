@@ -1,8 +1,8 @@
-pub fn copy_dir(
+pub(crate) fn copy_dir(
     source: impl AsRef<std::path::Path>,
     target: &std::path::Path,
 ) -> std::io::Result<()> {
-    crate::profile_metrics::record("fixture_copy_dir");
+    super::profile_metrics::record("fixture_copy_dir");
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
         let entry = entry?;
@@ -20,7 +20,7 @@ pub fn copy_dir(
     Ok(())
 }
 
-pub fn copy_wrapper_surface(
+pub(crate) fn copy_wrapper_surface(
     source_root: &std::path::Path,
     target_root: &std::path::Path,
 ) -> std::io::Result<()> {
@@ -37,7 +37,7 @@ pub(super) fn is_generated_fixture_directory(path: &std::path::Path) -> bool {
 
 #[cfg(target_os = "macos")]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
-    crate::profile_metrics::record("fixture_copy_file");
+    super::profile_metrics::record("fixture_copy_file");
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
@@ -52,6 +52,6 @@ fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::i
 
 #[cfg(not(target_os = "macos"))]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
-    crate::profile_metrics::record("fixture_copy_file");
+    super::profile_metrics::record("fixture_copy_file");
     std::fs::copy(source, target).map(|_| ())
 }

@@ -4,20 +4,20 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-pub const DIRECTORY_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR";
-pub const ID_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_ID";
-pub const TEST_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_TEST";
+pub(crate) const DIRECTORY_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR";
+pub(crate) const ID_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_ID";
+pub(crate) const TEST_ENV: &str = "CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_TEST";
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
-pub struct ArchiveInspectorReceipt {
+pub(crate) struct ArchiveInspectorReceipt {
     directory: PathBuf,
     id: String,
     test: String,
 }
 
 impl ArchiveInspectorReceipt {
-    pub fn new(program: &OsStr) -> Option<Self> {
+    pub(crate) fn new(program: &OsStr) -> Option<Self> {
         let file_name = Path::new(program).file_name()?.to_str()?;
         if file_name != "inspect-release-archive"
             && !file_name.starts_with("inspect-release-archive-")
@@ -36,7 +36,7 @@ impl ArchiveInspectorReceipt {
         })
     }
 
-    pub fn write(
+    pub(crate) fn write(
         &self,
         output: &std::io::Result<Output>,
         started_epoch_us: u64,
@@ -68,7 +68,7 @@ impl ArchiveInspectorReceipt {
     }
 }
 
-pub fn configure_command<F>(
+pub(crate) fn configure_command<F>(
     command: &mut std::process::Command,
     program: &OsStr,
     path: F,
@@ -87,7 +87,7 @@ where
     Some(receipt)
 }
 
-pub fn record_output(
+pub(crate) fn record_output(
     receipt: Option<&ArchiveInspectorReceipt>,
     output: &std::io::Result<Output>,
     started_epoch_us: u64,
@@ -99,7 +99,7 @@ pub fn record_output(
     }
 }
 
-pub fn output(
+pub(crate) fn output(
     command: &mut Command,
     receipt: Option<&ArchiveInspectorReceipt>,
 ) -> std::io::Result<Output> {
@@ -116,7 +116,7 @@ pub fn output(
     output
 }
 
-pub fn epoch_microseconds() -> u64 {
+pub(crate) fn epoch_microseconds() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_micros() as u64)

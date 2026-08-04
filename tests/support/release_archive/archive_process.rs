@@ -6,11 +6,14 @@ use std::{
 
 const ARCHIVE_PROCESS_TIMEOUT: Duration = Duration::from_secs(30);
 
-pub fn create_archive(root: &std::path::Path, archive: &std::path::Path) -> std::io::Result<()> {
+pub(crate) fn create_archive(
+    root: &std::path::Path,
+    archive: &std::path::Path,
+) -> std::io::Result<()> {
     create_archive_with_commands(root, archive, "tar", "gzip", ARCHIVE_PROCESS_TIMEOUT)
 }
 
-pub fn create_archive_with_commands(
+pub(crate) fn create_archive_with_commands(
     root: &std::path::Path,
     archive: &std::path::Path,
     tar_command: &str,

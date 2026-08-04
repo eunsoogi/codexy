@@ -1,62 +1,30 @@
 #![allow(clippy::redundant_pub_crate)]
 #![allow(dead_code, unused_imports)]
 
+#[path = "fixture_command.rs"]
+mod fixture_command;
+#[path = "fixture_command_windows.rs"]
+mod fixture_command_windows;
+#[path = "fixture_path.rs"]
+mod fixture_path;
+#[path = "fixture_text.rs"]
+mod fixture_text;
+#[path = "profile_interval_metrics.rs"]
+mod profile_interval_metrics;
+#[path = "profile_metrics.rs"]
+mod profile_metrics;
 #[path = "release_archive.rs"]
 pub(crate) mod release_archive;
-mod fixture_command {
-    pub(crate) use super::FixtureCommand;
-}
-mod fixture_command_windows {
-    pub(crate) use codexy_test_support::fixture_command_windows::*;
-}
-mod fixture_path {
-    pub(crate) use codexy_test_support::fixture_path::*;
-}
-mod fixture_text {
-    pub(crate) use codexy_test_support::fixture_text::*;
-}
-mod profile_interval_metrics {
-    pub(crate) use codexy_test_support::profile_interval_metrics::*;
-}
-mod profile_metrics {
-    pub(crate) use codexy_test_support::profile_metrics::*;
-}
-pub(crate) mod windows_archive_prerequisite {
-    pub(crate) use codexy_test_support::windows_archive_prerequisite::*;
-}
-mod wrapper_copy {
-    pub(crate) use codexy_test_support::wrapper_copy::*;
-}
-#[derive(Debug)]
-pub(crate) struct FixtureCommand(codexy_test_support::FixtureCommand);
-impl FixtureCommand {
-    pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
-        Self(codexy_test_support::FixtureCommand::new(
-            program,
-            std::ffi::OsStr::new(env!("CARGO_BIN_EXE_codexy-validate")),
-        ))
-    }
-}
-impl std::ops::Deref for FixtureCommand {
-    type Target = codexy_test_support::FixtureCommand;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl std::ops::DerefMut for FixtureCommand {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-impl From<std::process::Command> for FixtureCommand {
-    fn from(command: std::process::Command) -> Self {
-        Self(command.into())
-    }
-}
-pub(crate) use codexy_test_support::{
-    fixture_script_launcher, normalize_fixture_text, windows_fixture_companion,
+#[path = "windows_archive_prerequisite.rs"]
+pub(crate) mod windows_archive_prerequisite;
+#[path = "wrapper_copy.rs"]
+mod wrapper_copy;
+
+pub(crate) use fixture_command::{
+    FixtureCommand, fixture_script_launcher, windows_fixture_companion,
     windows_static_python_fixture,
 };
+pub(crate) use fixture_text::normalize_fixture_text;
 
 #[cfg(windows)]
 use std::process::Command;

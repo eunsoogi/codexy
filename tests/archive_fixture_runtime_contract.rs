@@ -1,8 +1,6 @@
 use crate::support::release_archive as release_archive_support;
 
-use release_archive_support::{
-    assert_runtime_workflow_contract, assert_structured_absent_literals, assert_structured_literals,
-};
+use release_archive_support::assert_runtime_workflow_contract;
 
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
@@ -46,46 +44,25 @@ fn workflow_sources() -> (String, String) {
 
 #[test]
 fn archive_fixture_uses_cargo_provided_runtime_binaries_without_nested_builds() {
-    let facade = std::fs::read_to_string(
+    let source = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/release_archive.rs"),
     )
     .expect("archive fixture support source");
-    let shared = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/support_shared/src/release_archive.rs"),
-    )
-    .expect("shared archive fixture support source");
-    assert_structured_absent_literals(
-        &facade,
-        "root archive fixture nested Cargo boundary",
-        &["let build = Command::new(\"cargo\")"],
+    assert!(
+        source
+            .lines()
+            .all(|line| line.trim() != "let build = Command::new(\"cargo\")"),
+        "archive fixtures must not invoke a nested Cargo build"
     );
-    assert_structured_absent_literals(
-        &shared,
-        "shared archive fixture Cargo boundary",
-        &[
-            "let build = Command::new(\"cargo\")",
-            "CARGO_MANIFEST_DIR",
-            "CARGO_BIN_EXE_",
-        ],
-    );
-    assert_structured_literals(
-        &facade,
-        "root archive fixture Cargo context",
-        &[
-            "CARGO_MANIFEST_DIR",
-            "CARGO_BIN_EXE_codexy-mcp-lsp",
-            "CARGO_BIN_EXE_codexy-mcp-codegraph",
-        ],
-    );
-    assert_structured_literals(
-        &shared,
-        "shared archive fixture caller context",
-        &[
-            "host.manifest_dir()",
-            "host.mcp_lsp_binary()",
-            "host.mcp_codegraph_binary()",
-            "host.materialize_admission_runtime_suite(",
-        ],
-    );
+    for binary in [
+        "CARGO_BIN_EXE_codexy-mcp-lsp",
+        "CARGO_BIN_EXE_codexy-mcp-codegraph",
+    ] {
+        assert!(
+            source
+                .lines()
+                .any(|line| line.split('"').any(|token| token == binary)),
+            "archive fixture must use Cargo-provided runtime {binary}"
+        );
+    }
 }

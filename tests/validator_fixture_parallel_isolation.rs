@@ -207,19 +207,9 @@ fn manifest_aware_materialization_copies_from_a_private_readonly_seed()
             "fixture_private_seed_copy",
         ],
     );
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let facade = std::fs::read_to_string(root.join("tests/support/mod.rs"))?;
-    let copy_source = std::fs::read_to_string(root.join("tests/support_shared/src/wrapper_copy.rs"))?;
-    support::assert_structured_literals(
-        &facade,
-        "private fixture copy façade",
-        &["codexy_test_support::wrapper_copy::*"],
-    );
-    support::assert_structured_literals(
-        &copy_source,
-        "private fixture copy implementation",
-        &["fn copy_dir", "fn clone_seed_file"],
-    );
+    let copy_source = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/wrapper_copy.rs"),
+    )?;
     assert_eq!(copy_source.matches("hard_link").count(), 0);
     Ok(())
 }

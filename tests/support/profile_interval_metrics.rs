@@ -15,18 +15,18 @@ struct IntervalMetrics {
     sequence: u64,
 }
 
-pub struct CommandInterval {
+pub(crate) struct CommandInterval {
     key: &'static str,
     family: &'static str,
     started: u128,
     caller: Option<&'static std::panic::Location<'static>>,
 }
 
-pub fn command_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
+pub(crate) fn command_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
     interval(key, family, None)
 }
 
-pub fn command_interval_at(
+pub(crate) fn command_interval_at(
     key: &'static str,
     family: &'static str,
     caller: &'static std::panic::Location<'static>,
@@ -34,7 +34,10 @@ pub fn command_interval_at(
     interval(key, family, Some(caller))
 }
 
-pub fn wrapper_interval(operation: &'static str, program: &OsStr) -> Option<CommandInterval> {
+pub(crate) fn wrapper_interval(
+    operation: &'static str,
+    program: &OsStr,
+) -> Option<CommandInterval> {
     let category = command_family(program);
     let key = match (operation, category) {
         ("output", "git") => "wrapper.output.git",
@@ -52,11 +55,11 @@ pub fn wrapper_interval(operation: &'static str, program: &OsStr) -> Option<Comm
     interval(key, category, None)
 }
 
-pub fn mcp_interval(key: &'static str) -> Option<CommandInterval> {
+pub(crate) fn mcp_interval(key: &'static str) -> Option<CommandInterval> {
     interval(key, "other", None)
 }
 
-pub fn generic_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
+pub(crate) fn generic_interval(key: &'static str, family: &'static str) -> Option<CommandInterval> {
     interval(key, family, None)
 }
 
@@ -200,7 +203,7 @@ fn profiler_target() -> &'static str {
     }
 }
 
-pub fn command_family(program: &OsStr) -> &'static str {
+pub(crate) fn command_family(program: &OsStr) -> &'static str {
     let name = std::path::Path::new(program)
         .file_name()
         .unwrap_or(program)
