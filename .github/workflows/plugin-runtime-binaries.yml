@@ -51,7 +51,7 @@ jobs:
           if test -f .agents/plugins/runtime-activation.json; then
             record=.agents/plugins/runtime-activation.json
             RELEASE_TAG="$(jq -r .runtime.selectedTag .agents/plugins/release-publish-contract.json)"
-            if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2> release-view-error; then
               mkdir public-release
               gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir public-release --pattern codexy-marketplace-plugin.tar.gz --pattern runtime-release-receipt.json
               receipt=public-release/runtime-release-receipt.json
@@ -69,12 +69,18 @@ jobs:
               test "$(digest_file dist/selected.tar.gz)" = "$(jq -r .artifact.sha256 "$receipt")"
               : > dist/public-release
             else
+              release_status=$?
+              if ! grep -Eq 'HTTP 404|release not found' release-view-error; then
+                cat release-view-error >&2
+                exit "$release_status"
+              fi
               export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId "$record")"
               export SOURCE_COMMIT="$(jq -r .candidate.source.commit "$record")"
               scripts/download-runtime-staging-artifact staging
               cp staging/codexy-marketplace-plugin.tar.gz dist/selected.tar.gz
               test "$(digest_file dist/selected.tar.gz)" = "$(jq -r .artifact.sha256 "$record")"
             fi
+            rm -f release-view-error
           else
             url="$(jq -r .artifact.url plugins/codexy/runtime-release.json)"
             digest="$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
@@ -149,8 +155,9 @@ jobs:
           $env:SOURCE_COMMIT = $env:STAGING_SOURCE_COMMIT
           $env:ACTIVATION_COMMIT = (git rev-parse HEAD)
           $env:RELEASE_TAG = (Get-Content -Raw ".agents/plugins/release-publish-contract.json" | ConvertFrom-Json).runtime.selectedTag
-          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $releaseOutput = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 2>&1
+          $releaseStatus = $LASTEXITCODE
+          if ($releaseStatus -eq 0) {
             New-Item -ItemType Directory -Path public-release -ErrorAction Stop | Out-Null
             gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --dir public-release --pattern codexy-marketplace-plugin.tar.gz --pattern runtime-release-receipt.json
             if ($LASTEXITCODE -ne 0) { throw "public release download failed" }
@@ -166,6 +173,10 @@ jobs:
             if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $receipt.artifact.sha256) { throw "public release archive digest mismatch" }
             $publicArchive = $true
           } else {
+            if ($releaseOutput -notmatch "HTTP 404|release not found") {
+              $releaseOutput | Write-Error
+              exit $releaseStatus
+            }
             bash scripts/download-runtime-staging-artifact staging
             if ($LASTEXITCODE -ne 0) { throw "authenticated candidate download failed" }
             $archive = "staging/codexy-marketplace-plugin.tar.gz"

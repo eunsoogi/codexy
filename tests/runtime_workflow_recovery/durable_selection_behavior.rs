@@ -7,7 +7,7 @@ const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
 #[cfg(unix)]
-fn public_release_selection_never_falls_back_after_a_present_release_fails_identity()
+fn public_release_selection_falls_back_only_when_release_is_confirmed_absent()
 -> Result<(), Box<dyn std::error::Error>> {
     let public = Fixture::new("present", false)?;
     public.assert_result(true, false)?;
@@ -17,6 +17,9 @@ fn public_release_selection_never_falls_back_after_a_present_release_fails_ident
 
     let staging = Fixture::new("absent", false)?;
     staging.assert_result(true, true)?;
+
+    let unavailable = Fixture::new("error", false)?;
+    unavailable.assert_result(false, false)?;
     Ok(())
 }
 
@@ -108,5 +111,5 @@ fn executable(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn fake_gh() -> &'static str {
-    "#!/bin/sh\nset -eu\ncase \"$1 $2\" in\n  'release view') test \"$(cat \"$FAKE_RELEASE_STATE\")\" = present ;;\n  'release download')\n    while test \"$#\" -gt 0; do case \"$1\" in --dir) directory=$2; shift 2 ;; --pattern) pattern=$2; mkdir -p \"$directory\"; case \"$pattern\" in codexy-marketplace-plugin.tar.gz) cp \"$PUBLIC_ARCHIVE\" \"$directory/$pattern\" ;; runtime-release-receipt.json) cp \"$PUBLIC_RECEIPT\" \"$directory/$pattern\" ;; esac; shift 2 ;; *) shift ;; esac; done\n    ;;\n  *) exit 91 ;;\nesac\n"
+    "#!/bin/sh\nset -eu\ncase \"$1 $2\" in\n  'release view')\n    case \"$(cat \"$FAKE_RELEASE_STATE\")\" in\n      present) ;;\n      absent) printf '%s\\n' 'release not found' >&2; exit 1 ;;\n      error) printf '%s\\n' 'HTTP 403 release lookup denied' >&2; exit 1 ;;\n    esac\n    ;;\n  'release download')\n    while test \"$#\" -gt 0; do case \"$1\" in --dir) directory=$2; shift 2 ;; --pattern) pattern=$2; mkdir -p \"$directory\"; case \"$pattern\" in codexy-marketplace-plugin.tar.gz) cp \"$PUBLIC_ARCHIVE\" \"$directory/$pattern\" ;; runtime-release-receipt.json) cp \"$PUBLIC_RECEIPT\" \"$directory/$pattern\" ;; esac; shift 2 ;; *) shift ;; esac; done\n    ;;\n  *) exit 91 ;;\nesac\n"
 }

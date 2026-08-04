@@ -30,6 +30,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         "durable selected runtime verification",
         &[
             "gh release view \"$RELEASE_TAG\"",
+            "grep -Eq 'HTTP 404|release not found' release-view-error",
             "runtime-release-receipt.json",
             "public release receipt does not match activated staging identity",
         ],
@@ -50,6 +51,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
             "if ($publicArchive)",
             "Copy-Item -LiteralPath $archive -Destination dist/codexy-marketplace-plugin.tar.gz",
+            "$releaseOutput -notmatch \"HTTP 404|release not found\"",
         ],
     );
     Ok(())

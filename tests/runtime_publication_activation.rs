@@ -16,8 +16,12 @@ mod activation_immutability;
 mod artifact_download;
 #[path = "runtime_publication_activation/final_archive.rs"]
 mod final_archive;
+#[path = "runtime_publication_activation/final_archive_fixture.rs"]
+mod final_archive_fixture;
 #[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
 mod final_archive_lifecycle;
+#[path = "runtime_publication_activation/shell_fixtures.rs"]
+mod shell_fixtures;
 #[path = "runtime_publication_activation/staging.rs"]
 mod staging;
 
@@ -154,40 +158,6 @@ fn runtime_contract_requires_authenticated_windows_staging_identity()
             assert!(windows[server]["sha256"].as_str().is_some());
         }
     }
-    Ok(())
-}
-
-#[test]
-fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn std::error::Error>> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let final_archive = fs::read_to_string(root.join("tests/runtime_publication_activation/final_archive.rs"))?;
-    support::assert_structured_literals(
-        &final_archive,
-        "final archive shell paths",
-        &[".arg_path(&self.staged_archive)", ".arg_path(&self.final_archive)"],
-    );
-    let artifact_download = fs::read_to_string(root.join("tests/runtime_publication_activation/artifact_download.rs"))?;
-    support::assert_structured_literals(
-        &artifact_download,
-        "artifact downloader shell paths",
-        &[
-            ".arg_path(self.root.join(\"staging\"))",
-            ".env_path_list(\"PATH\", path_entries)",
-            ".env_path(\"FAKE_RUN\", run_path)",
-            ".env_path(\"FAKE_ARTIFACTS\", artifacts_path)",
-            ".env_path(\"FAKE_ZIP\", archive)",
-        ],
-    );
-    let lifecycle = fs::read_to_string(root.join("tests/runtime_publication_activation/final_archive_lifecycle.rs"))?;
-    support::assert_structured_literals(
-        &lifecycle,
-        "lifecycle materializer shell launch",
-        &[
-            "FixtureCommand as Command",
-            ".arg_path(&self.archive)",
-            ".arg_path(&self.final_archive)",
-        ],
-    );
     Ok(())
 }
 
