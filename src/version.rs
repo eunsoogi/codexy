@@ -11,6 +11,7 @@ mod admission;
 mod bootstrap;
 mod cargo;
 mod mutation;
+mod runtime_selection;
 mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -225,7 +226,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             &display_relative(&manifest_path),
         )?;
     }
-    wrappers::check_version(bootstrap::VERSION)?;
+    wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");

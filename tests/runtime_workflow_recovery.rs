@@ -6,10 +6,14 @@ use crate::support;
 
 #[path = "runtime_workflow_recovery/release_lineage.rs"]
 mod release_lineage;
+#[path = "runtime_workflow_recovery/release_reconciliation.rs"]
+mod release_reconciliation;
 #[path = "runtime_workflow_recovery/release_tag_admission.rs"]
 mod release_tag_admission;
 #[path = "runtime_workflow_recovery/durable_selection.rs"]
 mod durable_selection;
+#[path = "runtime_workflow_recovery/durable_selection_behavior.rs"]
+mod durable_selection_behavior;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()

@@ -48,15 +48,21 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
     let verify = run(
         &publisher,
         "verify-v1-3-0",
-        "Verify reconciled public release without a write token",
+        "Smoke public release without a token",
     )?;
     assert!(verify.contains("python -m venv public-bootstrap"));
     let step = publisher["jobs"]["verify-v1-3-0"]["steps"]
         .as_sequence()
-        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify reconciled public release without a write token"))
-        .ok_or("public release verification step")?;
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Smoke public release without a token"))
+        .ok_or("public release smoke step")?;
     assert_eq!(step["env"]["GH_TOKEN"], "");
     assert_eq!(step["env"]["GITHUB_TOKEN"], "");
+    let attestation = publisher["jobs"]["verify-v1-3-0"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify public release attestations with a read-only token"))
+        .ok_or("public release attestation step")?;
+    assert_eq!(attestation["env"]["GH_TOKEN"], "${{ github.token }}");
+    assert_eq!(attestation["env"]["GITHUB_TOKEN"], "");
     Ok(())
 }
 

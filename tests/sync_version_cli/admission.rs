@@ -42,6 +42,20 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             "unexpected admission result for {case}: {}",
             String::from_utf8_lossy(&output.stderr),
         );
+        if case == "exact" {
+            let advance = sync_version(&root, "1.3.0")?;
+            assert!(
+                advance.status.success(),
+                "activated source failed sync --version: {}",
+                String::from_utf8_lossy(&advance.stderr),
+            );
+            let check = sync_check(&root)?;
+            assert!(
+                check.status.success(),
+                "activated source with its preserved runtime selection failed sync --check: {}",
+                String::from_utf8_lossy(&check.stderr),
+            );
+        }
     }
     Ok(())
 }
@@ -106,6 +120,22 @@ fn canonical(value: Value) -> Value {
 fn admit(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
     Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--admit-version", version])
+        .env("CODEXY_REPO_ROOT", root)
+        .current_dir(root)
+        .output()
+}
+
+fn sync_check(root: &Path) -> Result<std::process::Output, std::io::Error> {
+    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .arg("--check")
+        .env("CODEXY_REPO_ROOT", root)
+        .current_dir(root)
+        .output()
+}
+
+fn sync_version(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
+    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", version])
         .env("CODEXY_REPO_ROOT", root)
         .current_dir(root)
         .output()
