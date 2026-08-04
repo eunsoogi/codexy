@@ -16,6 +16,13 @@ impl FixtureProbeExecutable {
     }
 
     pub(crate) fn command(&self) -> FixtureCommand {
+        #[cfg(unix)]
+        {
+            let mut command = FixtureCommand::new("/bin/sh");
+            command.arg(&self.logical_path);
+            return command;
+        }
+        #[cfg(not(unix))]
         FixtureCommand::new(&self.logical_path)
     }
 }

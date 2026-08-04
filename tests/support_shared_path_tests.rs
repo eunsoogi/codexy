@@ -216,6 +216,10 @@ fn fixture_probe_preserves_argv_stdout_stderr_and_exit_status()
         FixtureProbe::Arguments,
     )?;
     assert_eq!(probe.logical_path(), temp.path().join("argv probe"));
+    #[cfg(target_os = "linux")]
+    let _open_for_writing = std::fs::OpenOptions::new()
+        .write(true)
+        .open(probe.logical_path())?;
     let output = probe
         .command()
         .arg("value with spaces")
