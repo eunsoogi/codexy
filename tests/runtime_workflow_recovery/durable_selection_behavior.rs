@@ -1,8 +1,16 @@
-use std::{fs, path::{Path, PathBuf}, process::Command};
+#[cfg(unix)]
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
+#[cfg(unix)]
 use serde_yaml::Value;
+#[cfg(unix)]
 use sha2::{Digest as _, Sha256};
 
+#[cfg(unix)]
 const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
@@ -23,11 +31,13 @@ fn public_release_selection_falls_back_only_when_release_is_confirmed_absent()
     Ok(())
 }
 
+#[cfg(unix)]
 struct Fixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,
 }
 
+#[cfg(unix)]
 impl Fixture {
     fn new(release: &str, mismatch: bool) -> Result<Self, Box<dyn std::error::Error>> {
         let temporary = tempfile::tempdir()?;
@@ -89,6 +99,7 @@ impl Fixture {
     }
 }
 
+#[cfg(unix)]
 fn selection() -> Result<String, Box<dyn std::error::Error>> {
     let workflow = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/plugin-runtime-binaries.yml");
     let parsed: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
@@ -100,16 +111,20 @@ fn selection() -> Result<String, Box<dyn std::error::Error>> {
         .ok_or_else(|| "selected immutable bytes step".into())
 }
 
+#[cfg(unix)]
 fn digest(path: &Path) -> Result<String, std::io::Error> {
     Ok(format!("{:x}", Sha256::digest(fs::read(path)?)))
 }
 
+#[cfg(unix)]
 fn executable(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(unix)]
-    { use std::os::unix::fs::PermissionsExt; fs::set_permissions(path, fs::Permissions::from_mode(0o755))?; }
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
     Ok(())
 }
 
+#[cfg(unix)]
 fn fake_gh() -> &'static str {
     "#!/bin/sh\nset -eu\ncase \"$1 $2\" in\n  'release view')\n    case \"$(cat \"$FAKE_RELEASE_STATE\")\" in\n      present) ;;\n      absent) printf '%s\\n' 'release not found' >&2; exit 1 ;;\n      error) printf '%s\\n' 'HTTP 403 release lookup denied' >&2; exit 1 ;;\n    esac\n    ;;\n  'release download')\n    while test \"$#\" -gt 0; do case \"$1\" in --dir) directory=$2; shift 2 ;; --pattern) pattern=$2; mkdir -p \"$directory\"; case \"$pattern\" in codexy-marketplace-plugin.tar.gz) cp \"$PUBLIC_ARCHIVE\" \"$directory/$pattern\" ;; runtime-release-receipt.json) cp \"$PUBLIC_RECEIPT\" \"$directory/$pattern\" ;; esac; shift 2 ;; *) shift ;; esac; done\n    ;;\n  *) exit 91 ;;\nesac\n"
 }
