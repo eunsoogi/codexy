@@ -42,9 +42,9 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
 }
 
 #[test]
-fn activation_updates_the_complete_selected_identity_transaction() -> Result<()> {
+fn activation_updates_the_publication_identity_without_repointing_runtime() -> Result<()> {
     let fixture = Fixture::new()?;
-    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 7);
+    assert_eq!(activate(&fixture.root, "1.3.0", &fixture.receipt)?, 4);
     let publish: Value = serde_json::from_str(&fs::read_to_string(fixture.publish())?)?;
     assert_eq!(publish["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(publish["runtime"]["selectedTag"], "v1.3.0");
