@@ -2,9 +2,10 @@ use std::ffi::{OsStr, OsString};
 use std::process::Command;
 #[path = "archive_inspection_receipt.rs"]
 mod archive_inspection_receipt;
+#[path = "fixture_command_dispatch.rs"]
+mod dispatch;
 #[path = "fixture_command_metrics.rs"]
 mod metrics;
-use super::fixture_command_windows::fixture_script_interpreter;
 #[cfg(windows)]
 use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
 pub(crate) use super::fixture_command_windows::{
@@ -37,9 +38,14 @@ impl FixtureCommand {
             return Self::from_command(Command::new(companion), false, program);
         }
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
-            let (command, uses_posix_paths) = materialized_script_command(program, &source)
-                .unwrap_or_else(|error| panic!("{error}"));
+            let (command, uses_posix_paths) =
+                dispatch::materialized_script_command(program, &source)
+                    .unwrap_or_else(|error| panic!("{error}"));
             return Self::from_command(command, uses_posix_paths, program);
+        }
+        #[cfg(unix)]
+        if let Some(command) = dispatch::generated_fixture_script_command(program) {
+            return Self::from_command(command, false, program);
         }
         #[cfg(windows)]
         {
@@ -173,48 +179,6 @@ impl FixtureCommand {
             value.to_owned()
         }
     }
-}
-
-fn materialized_script_command(
-    program: &OsStr,
-    source: &std::path::Path,
-) -> Result<(Command, bool), String> {
-    let contents = std::fs::read(std::path::Path::new(program))
-        .map_err(|error| format!("reading materialized fixture script: {error}"))?;
-    let interpreter = match fixture_script_interpreter(&contents) {
-        Ok(Some(interpreter)) => interpreter,
-        Ok(None) => return Ok((Command::new(program), false)),
-        #[cfg(not(windows))]
-        Err(_) => return Ok((Command::new(program), false)),
-        #[cfg(windows)]
-        Err(error) => return Err(error),
-    };
-    let uses_posix_path = matches!(interpreter, "sh" | "bash");
-    #[cfg(windows)]
-    let interpreter = discover_windows_interpreter(interpreter)?;
-    #[cfg(not(windows))]
-    let interpreter = if interpreter == "python" {
-        "python3"
-    } else {
-        interpreter
-    };
-    let source: OsString = if uses_posix_path {
-        fixture_path_text(source)?.into()
-    } else {
-        source.as_os_str().to_owned()
-    };
-    let materialized: OsString = if uses_posix_path {
-        fixture_path_text(program)?.into()
-    } else {
-        program.to_owned()
-    };
-    let mut command = Command::new(interpreter);
-    command
-        .arg("-c")
-        .arg("materialized=$1\nshift\n. \"$materialized\"")
-        .arg(source)
-        .arg(materialized);
-    Ok((command, uses_posix_path))
 }
 
 impl std::ops::Deref for FixtureCommand {
