@@ -196,6 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      attestations: read
     steps:
       - uses: actions/checkout@v7
         with:

@@ -106,5 +106,32 @@ fn make_executable(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn fake_gh() -> &'static str {
-    "#!/bin/sh\nset -eu\nstate=$(cat \"$FAKE_RELEASE_STATE\")\nassets=\"$FAKE_RELEASE_ASSETS\"\nlog=\"$FAKE_RELEASE_LOG\"\ncase \"$1 $2\" in\n  'release view')\n    test \"$state\" != absent || exit 1\n    draft=false; test \"$state\" = draft && draft=true\n    printf '{\\\"isDraft\\\":%s,\\\"assets\\\":[' \"$draft\"\n    separator=\n    for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do\n      if test -f \"$assets/$asset\"; then printf '%s{\\\"name\\\":\\\"%s\\\"}' \"$separator\" \"$asset\"; separator=,; fi\n    done\n    printf ']}\\n'\n    ;;\n  'release create') printf '%s\\n' draft > \"$FAKE_RELEASE_STATE\"; printf '%s\\n' create >> \"$log\" ;;\n  'release upload') asset=$(basename \"$4\"); cp \"$4\" \"$assets/$asset\"; printf '%s\\n' upload >> \"$log\" ;;\n  'release download')\n    while test \"$#\" -gt 0; do\n      case \"$1\" in --dir) directory=$2; shift 2 ;; --pattern) asset=$2; shift 2 ;; *) shift ;; esac\n    done\n    mkdir -p \"$directory\"; cp \"$assets/$asset\" \"$directory/$asset\"\n    ;;\n  'release edit') printf '%s\\n' published > \"$FAKE_RELEASE_STATE\"; printf '%s\\n' edit >> \"$log\" ;;\n  *) exit 91 ;;\nesac\n"
+    r#"#!/bin/sh
+set -eu
+state=$(cat "$FAKE_RELEASE_STATE")
+assets="$FAKE_RELEASE_ASSETS"
+log="$FAKE_RELEASE_LOG"
+case "$1 $2" in
+  'release view')
+    test "$state" != absent || exit 1
+    draft=false; test "$state" = draft && draft=true
+    printf '{"isDraft":%s,"assets":[' "$draft"
+    separator=
+    for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+      if test -f "$assets/$asset"; then printf '%s{"name":"%s"}' "$separator" "$asset"; separator=,; fi
+    done
+    printf ']}\n'
+    ;;
+  'release create') printf '%s\n' draft > "$FAKE_RELEASE_STATE"; printf '%s\n' create >> "$log" ;;
+  'release upload') asset=$(basename "$4"); cp "$4" "$assets/$asset"; printf '%s\n' upload >> "$log" ;;
+  'release download')
+    while test "$#" -gt 0; do
+      case "$1" in --dir) directory=$2; shift 2 ;; --pattern) asset=$2; shift 2 ;; *) shift ;; esac
+    done
+    mkdir -p "$directory"; cp "$assets/$asset" "$directory/$asset"
+    ;;
+  'release edit') printf '%s\n' published > "$FAKE_RELEASE_STATE"; printf '%s\n' edit >> "$log" ;;
+  *) exit 91 ;;
+esac
+"#
 }

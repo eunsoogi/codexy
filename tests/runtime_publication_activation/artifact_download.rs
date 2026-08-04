@@ -61,6 +61,35 @@ fn accepts_an_ancestor_input_when_the_dispatch_run_is_on_main()
 }
 
 #[test]
+fn rejects_a_malformed_protected_main_run_head() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let output = fixture.run(
+        &run_json_at_head("not-a-commit"),
+        &artifacts_json(false, 1),
+        true,
+        SOURCE_COMMIT,
+    )?;
+    assert_failure(&output, "staging run head commit is invalid");
+    Ok(())
+}
+
+#[test]
+fn rejects_a_receipt_with_a_different_staging_run_or_attempt()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let run_mismatch = fixture.run_with_receipt(
+        &run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true, SOURCE_COMMIT, 99, 3,
+    )?;
+    assert_failure(&run_mismatch, "staging receipt run identity mismatch");
+    let attempt_fixture = Fixture::new()?;
+    let attempt_mismatch = attempt_fixture.run_with_receipt(
+        &run_json(SOURCE_COMMIT), &artifacts_json(false, 1), true, SOURCE_COMMIT, 42, 4,
+    )?;
+    assert_failure(&attempt_mismatch, "staging receipt run attempt mismatch");
+    Ok(())
+}
+
+#[test]
 fn rejects_expired_staging_artifact() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     let output = fixture.run(&run_json(SOURCE_COMMIT), &artifacts_json(true, 1), true, SOURCE_COMMIT)?;
@@ -111,6 +140,18 @@ impl Fixture {
         authenticated: bool,
         receipt_source: &str,
     ) -> Result<Output, Box<dyn std::error::Error>> {
+        self.run_with_receipt(run, artifacts, authenticated, receipt_source, 42, 3)
+    }
+
+    fn run_with_receipt(
+        &self,
+        run: &str,
+        artifacts: &str,
+        authenticated: bool,
+        receipt_source: &str,
+        receipt_run_id: u64,
+        receipt_run_attempt: u64,
+    ) -> Result<Output, Box<dyn std::error::Error>> {
         let run_path = self.root.join("run.json");
         let artifacts_path = self.root.join("artifacts.json");
         fs::write(&run_path, run)?;
@@ -119,7 +160,7 @@ impl Fixture {
         fs::write(
             &receipt,
             format!(
-                r#"{{"candidate":{{"source":{{"commit":"{receipt_source}"}},"artifact":{{"stagingRunId":42,"stagingRunAttempt":3}}}}}}"#
+                r#"{{"candidate":{{"source":{{"commit":"{receipt_source}"}},"artifact":{{"stagingRunId":{receipt_run_id},"stagingRunAttempt":{receipt_run_attempt}}}}}}}"#
             ),
         )?;
         let archive = self.root.join("fixture-artifact.zip");
