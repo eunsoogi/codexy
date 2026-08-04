@@ -146,6 +146,10 @@ impl Fixture {
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/verify-runtime-activation-branch"),
         );
+        let mut path = vec![self.bin.clone()];
+        path.extend(std::env::split_paths(
+            &std::env::var_os("PATH").ok_or("PATH")?,
+        ));
         command.args([
             "activation",
             "main",
@@ -153,13 +157,10 @@ impl Fixture {
             self.receipt.to_str().ok_or("receipt")?,
         ])
         .current_dir(&self.repo)
-        .env(
-            "PATH",
-            format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
-        )
         .env("CODEXY_TEST_ACTIVATE_RUNTIME", self.bin.join("activate"))
         .env("EXPECTED_ROOT", &self.expected)
-        .env("FAKE_PR_STATE", pr_state);
+        .env("FAKE_PR_STATE", pr_state)
+        .env_path_list("PATH", path);
         if test_mode {
             command.env("CODEXY_TEST_MODE", "1");
         }
