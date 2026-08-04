@@ -98,6 +98,6 @@ fn windows_release_branch() -> Result<String, Box<dyn std::error::Error>> {
     let workflow: serde_yaml::Value = serde_yaml::from_str(&fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/plugin-runtime-binaries.yml"))?)?;
     let run = workflow["jobs"]["verify-windows-selected-candidate"]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Verify immutable native Windows candidate bytes")).and_then(|step| step["run"].as_str()).ok_or("windows verifier")?;
     let start = run.find("gh release view $env:RELEASE_TAG").ok_or("release view")?;
-    let end = run.find("          $root =").ok_or("extraction")?;
+    let end = run.find("$root = Join-Path").ok_or("extraction")?;
     Ok(run[start..end].to_owned())
 }

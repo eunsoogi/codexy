@@ -67,6 +67,7 @@ impl FixtureMatrix {
         git(&seed_repo, &["init", "-b", "main"], &git_starts)?;
         git(&seed_repo, &["config", "user.name", "test"], &git_starts)?;
         git(&seed_repo, &["config", "user.email", "test@example.com"], &git_starts)?;
+        git(&seed_repo, &["config", "core.autocrlf", "false"], &git_starts)?;
         for path in AUTHORIZED {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;

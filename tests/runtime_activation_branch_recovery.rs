@@ -38,7 +38,7 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
             .status
             .success()
     );
-    assert_eq!(matrix.git_setup_starts(), 20, "seed plus mutation setup inventory");
+    assert_eq!(matrix.git_setup_starts(), 21, "seed plus mutation setup inventory");
     assert_eq!(matrix.verifier_starts(), 10, "all outer verifier E2Es must remain");
     Ok(())
 }
