@@ -12,10 +12,11 @@ expected="$(printf '%s\n' \
   .agents/plugins/release-publish-contract.json \
   .agents/plugins/runtime-activation.json \
   plugins/codexy/.codex-plugin/plugin.json \
+  src/version/bootstrap.rs | LC_ALL=C sort)"
+preserved="$(printf '%s\n' \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
-  src/version/bootstrap.rs | LC_ALL=C sort)"
-preserved="plugins/codexy/runtime-release.json"
+  plugins/codexy/runtime-release.json)"
 actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
 test "$actual" = "$expected" || {
   printf '%s\n%s\n' "expected:" "$expected" >&2

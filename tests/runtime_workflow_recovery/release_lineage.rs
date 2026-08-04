@@ -2,6 +2,8 @@ use std::{fs, path::Path};
 
 use serde_yaml::Value;
 
+use crate::support;
+
 #[test]
 fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
@@ -11,13 +13,11 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify selected protected-main source"))
         .and_then(|step| step["run"].as_str())
         .ok_or("protected main source verification")?;
-    for required in [
+    support::assert_structured_literals(source, "protected main commit admission", &[
         "for commit in \"$STAGING_SOURCE_COMMIT\" \"$ACTIVATION_COMMIT\"; do",
         "case \"$commit\" in *[!0-9a-f]*|'') exit 1 ;; esac",
         "test \"${#commit}\" -eq 40",
-    ] {
-        assert!(source.contains(required), "missing commit admission: {required}");
-    }
+    ]);
     let step = publisher["jobs"]["publish-v1-3-0"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Create and verify the only public version release"))
@@ -51,13 +51,11 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     assert!(!release.lines().any(|line| {
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));
-    let create_arguments = release[create..]
-        .lines()
-        .next()
-        .ok_or("version release command")?
-        .split_ascii_whitespace()
-        .collect::<Vec<_>>();
-    assert!(create_arguments.contains(&"--verify-tag"));
-    assert!(!create_arguments.iter().any(|argument| *argument == "--target"));
+    support::assert_structured_literals(
+        release,
+        "exact-tag release creation",
+        &["gh release create v1.3.0 --verify-tag"],
+    );
+    support::assert_structured_absent_literals(release, "exact-tag release creation", &["--target"]);
     Ok(())
 }

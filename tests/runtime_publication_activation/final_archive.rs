@@ -4,10 +4,8 @@ use std::{
     path::{Path, PathBuf},
     process::Output,
 };
-
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
-
 use crate::support::{self, FixtureCommand as Command};
 
 use super::workflow;
@@ -48,9 +46,10 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "--plugin-root \"$PWD/plugins/codexy\"",
         ],
     );
-    assert!(
-        !run.contains("--clobber"),
-        "immutable release assets must be verified, never overwritten"
+    support::assert_structured_absent_literals(
+        &run,
+        "immutable release asset reconciliation",
+        &["--clobber"],
     );
     Ok(())
 }
@@ -98,13 +97,15 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     assert!(!plugin.join("runtime-candidate.json").exists());
     for server in ["lsp", "codegraph"] {
         let wrapper = fs::read_to_string(plugin.join(format!("mcp/codexy-mcp-{server}")))?;
-        assert!(
-            wrapper.contains("getcodexy==1.3.0"),
-            "final archive must project the release version into {server} wrapper"
+        support::assert_structured_literals(
+            &wrapper,
+            &format!("final archive {server} wrapper pin"),
+            &["getcodexy==1.3.0"],
         );
-        assert!(
-            !wrapper.contains("getcodexy==1.2.2"),
-            "final archive must not retain the pre-release {server} wrapper pin"
+        support::assert_structured_absent_literals(
+            &wrapper,
+            &format!("final archive {server} wrapper must not retain prior pin"),
+            &["getcodexy==1.2.2"],
         );
     }
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");

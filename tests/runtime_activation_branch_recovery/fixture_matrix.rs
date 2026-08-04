@@ -8,18 +8,20 @@ use std::{
 
 use crate::support::{self, FixtureCommand, make_executable};
 
-const AUTHORIZED: [&str; 9] = [
+const AUTHORIZED: [&str; 7] = [
     "Cargo.lock",
     "Cargo.toml",
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
     ".agents/plugins/runtime-activation.json",
     "plugins/codexy/.codex-plugin/plugin.json",
-    "plugins/codexy/mcp/codexy-mcp-codegraph",
-    "plugins/codexy/mcp/codexy-mcp-lsp",
     "src/version/bootstrap.rs",
 ];
-const PRESERVED: [&str; 1] = ["plugins/codexy/runtime-release.json"];
+const PRESERVED: [&str; 3] = [
+    "plugins/codexy/mcp/codexy-mcp-codegraph",
+    "plugins/codexy/mcp/codexy-mcp-lsp",
+    "plugins/codexy/runtime-release.json",
+];
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Change {

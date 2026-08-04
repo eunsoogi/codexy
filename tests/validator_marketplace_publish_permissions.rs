@@ -1,5 +1,7 @@
 use serde_yaml::{Mapping, Value};
 
+use crate::support;
+
 #[test]
 fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Result<(), Box<dyn std::error::Error>> {
     for name in ["python-package.yml", "plugin-runtime-binaries.yml"] {
@@ -50,7 +52,11 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
         "verify-v1-3-0",
         "Smoke public release without a token",
     )?;
-    assert!(verify.contains("python -m venv public-bootstrap"));
+    support::assert_structured_literals(
+        verify,
+        "tokenless public release smoke",
+        &["python -m venv public-bootstrap"],
+    );
     let step = publisher["jobs"]["verify-v1-3-0"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Smoke public release without a token"))

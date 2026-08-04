@@ -3,7 +3,7 @@ use std::{fs, path::{Path, PathBuf}, process::Output};
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
-use crate::support::FixtureCommand as Command;
+use crate::support::{self, FixtureCommand as Command};
 
 #[test]
 fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
@@ -22,15 +22,22 @@ fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
         .output()?;
     assert!(entries.status.success());
     let entries = String::from_utf8(entries.stdout)?;
-    assert!(!entries.contains("runtime-release.json"));
-    assert!(!entries.contains("runtime-candidate.json"));
+    support::assert_structured_absent_literals(
+        &entries,
+        "public lifecycle archive contracts",
+        &["runtime-release.json", "runtime-candidate.json"],
+    );
     let wrapper = Command::new("tar")
         .args(["-xOzf"])
         .arg(&fixture.final_archive)
         .arg("plugins/codexy/mcp/codexy-mcp-lsp")
         .output()?;
     assert!(wrapper.status.success());
-    assert!(String::from_utf8(wrapper.stdout)?.contains("getcodexy==1.3.0"));
+    support::assert_structured_literals(
+        &String::from_utf8(wrapper.stdout)?,
+        "public lifecycle archive wrapper pin",
+        &["getcodexy==1.3.0"],
+    );
     assert!(!fixture.materialize(&"e".repeat(40), &fixture.activation_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.activation_commit, &fixture.staging_commit)?.status.success());
     assert!(!fixture.materialize(&fixture.staging_commit, &"f".repeat(40))?.status.success());
