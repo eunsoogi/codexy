@@ -8,6 +8,11 @@ pub(crate) struct GateFixture {
     pub(crate) workflow: PathBuf,
 }
 
+const WORKFLOW_ROOT: &str =
+    "name: Rust tests\n\non:\n  pull_request:\n  push:\n    branches: [main]\n\npermissions:\n  contents: read\n\n";
+
+const SHARDED_WORKFLOW: &str = "jobs:\n  rust-test:\n    name: Rust shard (Ubuntu, ${{ matrix.shard }})\n    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    strategy:\n      fail-fast: false\n      max-parallel: 7\n      matrix:\n        shard: [support, agent, child, orchestration, governance, system, archive]\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n      - run: sudo apt-get update && sudo apt-get install --yes ripgrep\n      - run: scripts/profile-rust-tests --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json\n      - if: always()\n        uses: actions/upload-artifact@v7\n        with:\n          name: rust-receipt-posix-${{ matrix.shard }}\n          path: receipts/posix-${{ matrix.shard }}.json\n          if-no-files-found: error\n  windows-rust-test:\n    name: Rust shard (Windows, ${{ matrix.shard }})\n    runs-on: windows-latest\n    timeout-minutes: 20\n    strategy:\n      fail-fast: false\n      max-parallel: 7\n      matrix:\n        shard: [support, agent, child, orchestration, governance, system, archive]\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n      - shell: pwsh\n        run: scripts/install-windows-test-prerequisites.ps1\n      - shell: pwsh\n        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows --shard ${{ matrix.shard }} --receipt receipts/windows-${{ matrix.shard }}.json\n      - if: always()\n        uses: actions/upload-artifact@v7\n        with:\n          name: rust-receipt-windows-${{ matrix.shard }}\n          path: receipts/windows-${{ matrix.shard }}.json\n          if-no-files-found: error\n  rust-test-aggregate:\n    needs: [rust-test, windows-rust-test]\n    if: always()\n    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    steps:\n      - uses: actions/checkout@v7\n        with:\n          fetch-depth: 0\n          persist-credentials: false\n      - uses: actions/download-artifact@v8\n        with:\n          pattern: rust-receipt-*\n          merge-multiple: true\n          path: receipts\n      - run: scripts/profile-rust-tests --aggregate-receipts receipts\n";
+
 impl GateFixture {
     pub(crate) fn new(
         exit: i32,
@@ -26,9 +31,16 @@ impl GateFixture {
             ),
         )?;
         let workflow = temp.path().join("rust-test.yml");
+        let checkout = "          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n          persist-credentials: false";
         std::fs::write(
             &workflow,
-            "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+            format!(
+                "{WORKFLOW_ROOT}{}",
+                SHARDED_WORKFLOW.replace(
+                    "          fetch-depth: 0\n          persist-credentials: false",
+                    checkout,
+                )
+            ),
         )?;
         Ok(Self {
             temp,
@@ -57,21 +69,17 @@ impl GateFixture {
         environment: &[(&str, &std::ffi::OsStr)],
         include_windows_job: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        if include_windows_job {
-            let mut workflow = std::fs::read_to_string(&self.workflow)?;
-            if !workflow.contains("runs-on: ubuntu-latest") {
-                workflow = workflow.replacen(
-                    "  rust-test:\n",
-                    "  rust-test:\n    runs-on: ubuntu-latest\n",
-                    1,
-                );
+        if !include_windows_job {
+            let workflow = std::fs::read_to_string(&self.workflow)?;
+            if let Some((producers, remainder)) = workflow.split_once("  windows-rust-test:\n") {
+                let (_, aggregate) = remainder
+                    .split_once("  rust-test-aggregate:\n")
+                    .ok_or("missing aggregate fixture job")?;
+                std::fs::write(
+                    &self.workflow,
+                    format!("{producers}  rust-test-aggregate:\n{aggregate}"),
+                )?;
             }
-            if !workflow.contains("windows-rust-test:") {
-                workflow.push_str(
-                    "  windows-rust-test:\n    runs-on: windows-latest\n    timeout-minutes: 20\n    steps:\n      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests --windows\n",
-                );
-            }
-            std::fs::write(&self.workflow, workflow)?;
         }
         let path = format!("{}:{}", self.bin_dir.display(), std::env::var("PATH")?);
         let mut command = Command::new("python3");

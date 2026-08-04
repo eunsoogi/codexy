@@ -11,6 +11,7 @@ mod admission;
 mod bootstrap;
 mod cargo;
 mod mutation;
+mod runtime_selection;
 mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -178,6 +179,23 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         manifest_version,
         &display_relative(&manifest_path),
     )?;
+    let archive_platforms = publish
+        .get("releaseArchive")
+        .and_then(Value::as_object)
+        .map(|archive| {
+            string_array_field(
+                &Value::Object(archive.clone()),
+                "platforms",
+                "release archive",
+            )
+        })
+        .transpose()?
+        .with_context(|| {
+            format!(
+                "{} releaseArchive must be an object",
+                display_relative(&publish_path)
+            )
+        })?;
     let package_platforms = publish
         .get("package")
         .and_then(Value::as_object)
@@ -189,18 +207,12 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             )
         })
         .transpose()?
-        .with_context(|| {
-            format!(
-                "{} package must be an object",
-                display_relative(&publish_path)
-            )
-        })?;
-    if package_platforms != manifest_platforms {
+        .context("publish package must be an object")?;
+    if package_platforms != archive_platforms {
         bail!(
-            "supportedPlatforms mismatch: {}={:?}, {} package.platforms={:?}",
-            display_relative(&manifest_path),
-            manifest_platforms,
+            "release archive platforms mismatch: {} releaseArchive.platforms={:?}, package.platforms={:?}",
             display_relative(&publish_path),
+            archive_platforms,
             package_platforms
         );
     }
@@ -214,7 +226,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             &display_relative(&manifest_path),
         )?;
     }
-    wrappers::check_version(bootstrap::VERSION)?;
+    wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     cargo::check_version(manifest_version)?;
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");

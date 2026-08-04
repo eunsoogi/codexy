@@ -44,7 +44,11 @@ pub(crate) fn fixture_path_environment_value(
 
 pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Result<String, String> {
     if POSIX_PATH_ENVIRONMENTS.contains(&key) {
-        windows_to_posix_fixture_path(value)
+        match windows_to_posix_fixture_path(value) {
+            Ok(path) => Ok(path),
+            Err(_) if matches!(key, "GIT_COMMON_DIR" | "GIT_DIR") => Ok(value.to_owned()),
+            Err(error) => Err(error),
+        }
     } else {
         Ok(value.to_owned())
     }
@@ -84,36 +88,4 @@ fn windows_fixture_path_os(value: &OsStr) -> Result<OsString, String> {
         .to_str()
         .ok_or_else(|| "Windows fixture path is not valid UTF-8".to_owned())?;
     windows_to_posix_fixture_path(value).map(Into::into)
-}
-
-#[test]
-fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
-    assert_eq!(
-        windows_to_posix_fixture_path("C:\\work\\fixture path"),
-        Ok("/c/work/fixture path".into())
-    );
-    assert_eq!(
-        windows_to_posix_fixture_path("D:/runtime/cache"),
-        Ok("/d/runtime/cache".into())
-    );
-    assert_eq!(
-        windows_to_posix_fixture_path(r"\\?\D:\runtime\cache"),
-        Ok("/d/runtime/cache".into())
-    );
-    assert_eq!(
-        windows_to_posix_fixture_path("C:relative"),
-        Err("Windows fixture path must be absolute: C:relative".into())
-    );
-    assert_eq!(
-        windows_to_posix_fixture_path("\\\\server\\share"),
-        Err("Windows fixture paths do not support UNC values: \\\\server\\share".into())
-    );
-    assert_eq!(
-        windows_fixture_environment_value("CODEXY_RUNTIME_DIR", "C:\\runtime\\with spaces"),
-        Ok("/c/runtime/with spaces".into())
-    );
-    assert_eq!(
-        windows_fixture_environment_value("CODEXY_RUNTIME_PLATFORM", "windows-x86_64"),
-        Ok("windows-x86_64".into())
-    );
 }

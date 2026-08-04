@@ -1,8 +1,5 @@
-use std::collections::BTreeMap;
+use std::panic::Location;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
-
-static FIXTURE_MUTABLE_FILES: OnceLock<Mutex<BTreeMap<PathBuf, Vec<PathBuf>>>> = OnceLock::new();
 
 #[derive(Debug)]
 pub(crate) struct PluginFixture {
@@ -26,10 +23,12 @@ impl PluginFixture {
     }
 }
 
+#[track_caller]
 pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
     #[cfg(windows)]
     {
-        return materialize_fixture(&[]).map_err(Into::into);
+        return materialize_fixture(&[], fixture_identity("full", Location::caller()))
+            .map_err(Into::into);
     }
     #[cfg(not(windows))]
     {
@@ -42,27 +41,42 @@ pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
     }
 }
 
+#[track_caller]
 pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let fixture = plugin_fixture()?;
-    Ok((fixture._temp, fixture.root))
+    #[cfg(windows)]
+    {
+        let fixture = materialize_fixture(&[], fixture_identity("full", Location::caller()))?;
+        return Ok((fixture._temp, fixture.root));
+    }
+    #[cfg(not(windows))]
+    {
+        let fixture = plugin_fixture()?;
+        Ok((fixture._temp, fixture.root))
+    }
 }
 
+#[track_caller]
 pub(crate) fn plugin_fixture_with_mutable_files(
     mutable_files: &[&Path],
 ) -> std::io::Result<PluginFixture> {
     for path in mutable_files {
         validate_relative_file(path)?;
     }
-    materialize_fixture(mutable_files)
+    materialize_fixture(mutable_files, fixture_identity("full", Location::caller()))
 }
 
+#[track_caller]
 pub(crate) fn copy_plugin_fixture_with_mutable_files(
     mutable_files: &[&Path],
 ) -> std::io::Result<(tempfile::TempDir, PathBuf)> {
+    #[cfg(windows)]
+    let fixture = materialize_fixture(mutable_files, fixture_identity("full", Location::caller()))?;
+    #[cfg(not(windows))]
     let fixture = plugin_fixture_with_mutable_files(mutable_files)?;
     Ok((fixture._temp, fixture.root))
 }
 
+#[track_caller]
 pub(crate) fn copy_plugin_fixture_into_with_mutable_files(
     target: &Path,
     mutable_files: &[&Path],
@@ -71,54 +85,61 @@ pub(crate) fn copy_plugin_fixture_into_with_mutable_files(
         validate_relative_file(path)?;
     }
     super::profile_metrics::record("plugin_fixture");
-    super::plugin_fixture_copy::materialize(source_root(), target, mutable_files)?;
+    super::plugin_fixture_copy::materialize(
+        source_root(),
+        target,
+        mutable_files,
+        &fixture_identity("full", Location::caller()),
+    )?;
     materialize_admission_runtime_suite(target)?;
-    record_fixture_mutable_files(target, mutable_files);
+    super::plugin_fixture_mutable::record(target, mutable_files);
     Ok(())
 }
 
+#[track_caller]
 pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {
-    plugin_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")])
-        .map_err(Into::into)
-}
-
-fn materialize_fixture(mutable_files: &[&Path]) -> std::io::Result<PluginFixture> {
-    super::profile_metrics::record("plugin_fixture");
-    let temp = tempfile::tempdir()?;
-    let root = temp.path().join("codexy");
-    super::plugin_fixture_copy::materialize(source_root(), &root, mutable_files)?;
-    materialize_admission_runtime_suite(&root)?;
-    record_fixture_mutable_files(&root, mutable_files);
-    Ok(PluginFixture::from_parts(temp, root))
-}
-
-pub(crate) fn fixture_mutable_files(root: &Path) -> Option<Vec<PathBuf>> {
-    FIXTURE_MUTABLE_FILES
-        .get_or_init(|| Mutex::new(BTreeMap::new()))
-        .lock()
-        .ok()
-        .and_then(|fixtures| fixtures.get(root).cloned())
-}
-
-fn record_fixture_mutable_files(root: &Path, mutable_files: &[&Path]) {
-    let mut declared = mutable_files
-        .iter()
-        .map(|path| normalized_relative_file(path))
-        .collect::<Vec<_>>();
-    declared.sort();
-    declared.dedup();
-    if let Ok(mut fixtures) = FIXTURE_MUTABLE_FILES
-        .get_or_init(|| Mutex::new(BTreeMap::new()))
-        .lock()
+    #[cfg(windows)]
     {
-        fixtures.insert(root.to_path_buf(), declared);
+        return materialize_fixture(
+            &[Path::new("agents/codexy-sentinel.toml")],
+            fixture_identity("full", Location::caller()),
+        )
+        .map_err(Into::into);
+    }
+    #[cfg(not(windows))]
+    {
+        plugin_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")])
+            .map_err(Into::into)
     }
 }
 
-fn normalized_relative_file(path: &Path) -> PathBuf {
-    path.components()
-        .map(|component| component.as_os_str())
-        .collect()
+fn materialize_fixture(
+    mutable_files: &[&Path],
+    identity: String,
+) -> std::io::Result<PluginFixture> {
+    super::profile_metrics::record("plugin_fixture");
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().join("codexy");
+    super::plugin_fixture_copy::materialize(source_root(), &root, mutable_files, &identity)?;
+    materialize_admission_runtime_suite(&root)?;
+    super::plugin_fixture_mutable::record(&root, mutable_files);
+    Ok(PluginFixture::from_parts(temp, root))
+}
+
+fn fixture_identity(profile: &str, caller: &'static Location<'static>) -> String {
+    let file = Path::new(caller.file());
+    let relative = file
+        .strip_prefix(env!("CARGO_MANIFEST_DIR"))
+        .ok()
+        .filter(|path| path.is_relative())
+        .or_else(|| (!file.is_absolute()).then_some(file))
+        .unwrap_or_else(|| Path::new(file.file_name().unwrap_or_default()));
+    let path = relative.to_string_lossy().replace('\\', "/");
+    format!("{profile}:{path}:{}", caller.line())
+}
+
+pub(crate) fn fixture_mutable_files(root: &Path) -> Option<Vec<PathBuf>> {
+    super::plugin_fixture_mutable::files(root)
 }
 
 fn source_root() -> PathBuf {
@@ -171,64 +192,6 @@ fn validate_relative_file(relative: &Path) -> std::io::Result<()> {
         ));
     }
     Ok(())
-}
-
-#[cfg(all(test, windows))]
-#[test]
-fn records_mutable_paths_with_native_component_separators() {
-    assert_eq!(
-        normalized_relative_file(Path::new("agents/codexy-sentinel.toml")),
-        Path::new("agents").join("codexy-sentinel.toml")
-    );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::materialize_admission_runtime_suite;
-    use std::path::Path;
-
-    #[test]
-    fn materializes_the_canonical_nested_repository_suite() -> std::io::Result<()> {
-        let temp = tempfile::tempdir()?;
-        let repository = temp.path().join("repository");
-        let plugin_root = repository.join("plugins/codexy");
-        std::fs::create_dir_all(&plugin_root)?;
-
-        materialize_admission_runtime_suite(&plugin_root)?;
-
-        assert!(repository.join("tests/suites/all.rs").is_file());
-        assert!(!repository.join("plugins/tests/suites/all.rs").exists());
-        Ok(())
-    }
-
-    #[test]
-    fn materializes_root_layouts_without_promoting_lookalike_parents() -> std::io::Result<()> {
-        let temp = tempfile::tempdir()?;
-        let root = temp.path().join("root-layout/codexy");
-        let lookalike = temp.path().join("lookalike/plugins-shadow/codexy");
-        std::fs::create_dir_all(&root)?;
-        std::fs::create_dir_all(&lookalike)?;
-
-        materialize_admission_runtime_suite(&root)?;
-        materialize_admission_runtime_suite(&lookalike)?;
-
-        assert!(
-            root.parent()
-                .expect("root parent")
-                .join("tests/suites/all.rs")
-                .is_file()
-        );
-        assert!(
-            lookalike
-                .parent()
-                .expect("lookalike parent")
-                .join("tests/suites/all.rs")
-                .is_file()
-        );
-        assert!(!temp.path().join("lookalike/tests/suites/all.rs").exists());
-        assert!(materialize_admission_runtime_suite(Path::new("")).is_err());
-        Ok(())
-    }
 }
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;

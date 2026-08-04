@@ -1,14 +1,14 @@
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::path::Path;
+use std::process::Output;
 
-use crate::support;
+use crate::support::{self, InstructionPolicyFixture};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_cli_rejects_wrapped_modal_continuation_prohibition() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [
         "The agent MUST use codegraph output to\navoid direct edits.",
@@ -17,7 +17,7 @@ fn validator_cli_rejects_wrapped_modal_continuation_prohibition() -> TestResult 
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator(skill_path, "--check")?;
 
         assert!(
             !output.status.success(),
@@ -30,8 +30,8 @@ fn validator_cli_rejects_wrapped_modal_continuation_prohibition() -> TestResult 
 
 #[test]
 fn validator_cli_rejects_wrapped_modal_continuation_clause_imperatives() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [
         "The agent MUST use codegraph output to\nidentify nearby files, run the validator.",
@@ -39,7 +39,7 @@ fn validator_cli_rejects_wrapped_modal_continuation_clause_imperatives() -> Test
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = validator(skill_path, "--check")?;
 
         assert!(
             !output.status.success(),
@@ -52,37 +52,31 @@ fn validator_cli_rejects_wrapped_modal_continuation_clause_imperatives() -> Test
 
 #[test]
 fn validator_cli_accepts_wrapped_modal_continuation_without_new_instruction() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
         format!("{skill}\nThe agent MUST use codegraph output to\nidentify nearby files.\n"),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator(skill_path, "--check")?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    Ok(support::copy_plugin_fixture_with_mutable_files(&[Path::new(
+fn copy_plugin_fixture() -> TestResult<InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(Path::new(
         "skills/proof-driven-completion/SKILL.md",
-    )])?)
+    ))?)
 }
 
-fn validator(plugin_root: &Path, mode: &str) -> TestResult<Output> {
+fn validator(path: &Path, mode: &str) -> TestResult<Output> {
     if mode == "--check" {
-        return support::validator_instruction_policy(plugin_root);
+        return support::validator_instruction_policy_file(path);
     }
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root")?,
-            mode,
-        ])
-        .output()?)
+    Err(format!("unsupported focused validator mode {mode}").into())
 }
 
 fn stderr(output: &Output) -> String {

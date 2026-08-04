@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 #[cfg(windows)]
 struct PrivateSeed {
@@ -11,18 +12,36 @@ struct PrivateSeed {
 #[cfg(windows)]
 static PRIVATE_SEED: OnceLock<Mutex<Option<PrivateSeed>>> = OnceLock::new();
 
+#[derive(Default)]
+pub(crate) struct FixtureMaterialization {
+    pub(crate) files: u64,
+    pub(crate) bytes: u64,
+}
+
 pub(super) fn materialize(
     source: PathBuf,
     target: &Path,
     mutable_files: &[&Path],
+    identity: &str,
 ) -> std::io::Result<()> {
     #[cfg(not(windows))]
     {
         let _ = mutable_files;
-        return super::copy_dir(source, target);
+        let started = Instant::now();
+        super::copy_dir(&source, target)?;
+        if super::profile_metrics::enabled() {
+            let profile = materialization_profile(target)?;
+            super::profile_metrics::record_fixture_materialization(
+                identity,
+                profile.files,
+                profile.bytes,
+                started.elapsed().as_secs_f64(),
+            );
+        }
+        return Ok(());
     }
     #[cfg(windows)]
-    materialize_windows(&source, target, Path::new(""), mutable_files)
+    materialize_windows(&source, target, Path::new(""), mutable_files, identity)
 }
 
 #[cfg(windows)]
@@ -31,9 +50,40 @@ fn materialize_windows(
     target: &Path,
     relative: &Path,
     mutable_files: &[&Path],
+    identity: &str,
 ) -> std::io::Result<()> {
     let seed = private_seed(source)?;
-    materialize_seed(&seed, target, relative, mutable_files)
+    if super::profile_metrics::enabled() {
+        let mut profile = FixtureMaterialization::default();
+        let started = Instant::now();
+        materialize_seed(&seed, target, relative, mutable_files, Some(&mut profile))?;
+        super::profile_metrics::record_fixture_materialization(
+            identity,
+            profile.files,
+            profile.bytes,
+            started.elapsed().as_secs_f64(),
+        );
+    } else {
+        materialize_seed(&seed, target, relative, mutable_files, None)?;
+    }
+    Ok(())
+}
+
+fn materialization_profile(root: &Path) -> std::io::Result<FixtureMaterialization> {
+    let mut profile = FixtureMaterialization::default();
+    for entry in std::fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let nested = materialization_profile(&path)?;
+            profile.files += nested.files;
+            profile.bytes += nested.bytes;
+        } else {
+            profile.files += 1;
+            profile.bytes += std::fs::metadata(path)?.len();
+        }
+    }
+    Ok(profile)
 }
 
 #[cfg(windows)]
@@ -53,11 +103,12 @@ fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
 }
 
 #[cfg(any(test, windows))]
-fn materialize_seed(
+pub(crate) fn materialize_seed(
     source: &Path,
     target: &Path,
     relative: &Path,
     mutable_files: &[&Path],
+    mut profile: Option<&mut FixtureMaterialization>,
 ) -> std::io::Result<()> {
     std::fs::create_dir_all(target)?;
     for entry in std::fs::read_dir(source)? {
@@ -66,22 +117,34 @@ fn materialize_seed(
         let target_path = target.join(entry.file_name());
         let entry_relative = relative.join(entry.file_name());
         if source_path.is_dir() {
-            materialize_seed(&source_path, &target_path, &entry_relative, mutable_files)?;
-        } else if mutable_files.iter().any(|path| *path == entry_relative) {
-            std::fs::copy(&source_path, &target_path)?;
-            let mut permissions = std::fs::metadata(&target_path)?.permissions();
-            permissions.set_readonly(false);
-            std::fs::set_permissions(&target_path, permissions)?;
+            materialize_seed(
+                &source_path,
+                &target_path,
+                &entry_relative,
+                mutable_files,
+                profile.as_deref_mut(),
+            )?;
         } else {
-            std::fs::copy(&source_path, &target_path)?;
-            super::profile_metrics::record("fixture_private_seed_copy");
+            if mutable_files.iter().any(|path| *path == entry_relative) {
+                std::fs::copy(&source_path, &target_path)?;
+                let mut permissions = std::fs::metadata(&target_path)?.permissions();
+                permissions.set_readonly(false);
+                std::fs::set_permissions(&target_path, permissions)?;
+            } else {
+                std::fs::copy(&source_path, &target_path)?;
+                super::profile_metrics::record("fixture_private_seed_copy");
+            }
+            if let Some(profile) = profile.as_deref_mut() {
+                profile.files += 1;
+                profile.bytes += std::fs::metadata(source_path)?.len();
+            }
         }
     }
     Ok(())
 }
 
 #[cfg(any(test, windows))]
-fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
+pub(crate) fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
     for entry in std::fs::read_dir(root)? {
         let entry = entry?;
         let path = entry.path();
@@ -94,41 +157,4 @@ fn make_seed_readonly(root: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{make_seed_readonly, materialize_seed};
-    #[cfg(unix)]
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::Path;
-
-    #[test]
-    fn clearing_readonly_cannot_mutate_the_seed_or_a_sibling_overlay()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let seed = temp.path().join("seed");
-        let first = temp.path().join("first");
-        let second = temp.path().join("second");
-        let relative = Path::new("agents/codexy-sentinel.toml");
-        let original = b"name = \"codexy-sentinel\"\n";
-        std::fs::create_dir_all(seed.join("agents"))?;
-        std::fs::write(seed.join(relative), original)?;
-        make_seed_readonly(&seed)?;
-        materialize_seed(&seed, &first, Path::new(""), &[])?;
-        materialize_seed(&seed, &second, Path::new(""), &[])?;
-
-        let first_path = first.join(relative);
-        let mut permissions = std::fs::metadata(&first_path)?.permissions();
-        #[cfg(unix)]
-        permissions.set_mode(permissions.mode() | 0o200);
-        #[cfg(windows)]
-        permissions.set_readonly(false);
-        std::fs::set_permissions(&first_path, permissions)?;
-        std::fs::write(first_path, b"name = \"mutated\"\n")?;
-
-        assert_eq!(std::fs::read(seed.join(relative))?, original);
-        assert_eq!(std::fs::read(second.join(relative))?, original);
-        Ok(())
-    }
 }

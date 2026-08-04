@@ -36,15 +36,15 @@ const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MC
 
 #[test]
 fn validator_cli_rejects_agent_instruction_policy_false_negative() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
+    let fixture = support::instruction_policy_fixture(Path::new("agents/codexy-sentinel.toml"))?;
+    let agent_path = fixture.path();
     let agent = std::fs::read_to_string(&agent_path)?;
     for replacement in ["shall not edit files", "do not edit files"] {
         std::fs::write(
             &agent_path,
             agent.replace("MUST NOT edit files", replacement),
         )?;
-        let output = validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy_file(agent_path)?;
         assert!(!output.status.success());
         assert!(stderr(&output).contains("MUST NOT"));
     }
@@ -53,8 +53,9 @@ fn validator_cli_rejects_agent_instruction_policy_false_negative() -> TestResult
 
 #[test]
 fn validator_cli_rejects_bare_run_instruction() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let fixture =
+        support::instruction_policy_fixture(Path::new("skills/proof-driven-completion/SKILL.md"))?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [
         "- MUST run `git diff --check`. Use Codexy codegraph MCP. Stop parent implementation routing. Stage only intended files. Preserve unrelated dirty work.",
@@ -65,7 +66,7 @@ fn validator_cli_rejects_bare_run_instruction() -> TestResult {
         "1. **Read `~/.config/example.json`**.",
     ] {
         std::fs::write(&skill_path, format!("{skill}\n{addition}\n"))?;
-        let output = validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy_file(skill_path)?;
         assert!(!output.status.success());
         assert!(stderr(&output).contains("mandatory instructions must use MUST"));
     }
@@ -74,14 +75,15 @@ fn validator_cli_rejects_bare_run_instruction() -> TestResult {
 
 #[test]
 fn validator_cli_allows_tilde_fenced_command_examples() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/proof-driven-completion/SKILL.md");
+    let fixture =
+        support::instruction_policy_fixture(Path::new("skills/proof-driven-completion/SKILL.md"))?;
+    let skill_path = fixture.path();
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str(
         "\n~~~sh\nRun dangerous-example\n~~~\n> No wiki found. Run `/wiki init` first.\n",
     );
     std::fs::write(&skill_path, skill)?;
-    let output = validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy_file(skill_path)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
@@ -203,16 +205,14 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     Ok(())
 }
 
-fn copy_fixture(plugin_root: &Path) -> std::io::Result<()> {
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        plugin_root,
-    )
-}
-
 fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let mutable_files = MUTABLE_PLUGIN_FILES.iter().map(Path::new).collect::<Vec<_>>();
-    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
+    let mutable_files = MUTABLE_PLUGIN_FILES
+        .iter()
+        .map(Path::new)
+        .collect::<Vec<_>>();
+    Ok(support::copy_plugin_fixture_with_mutable_files(
+        &mutable_files,
+    )?)
 }
 
 fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
@@ -225,7 +225,10 @@ fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
         &agents_path,
     )?;
-    copy_fixture(&plugin_root)?;
+    support::copy_dir(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin_root,
+    )?;
     Ok((temp, plugin_root, agents_path))
 }
 

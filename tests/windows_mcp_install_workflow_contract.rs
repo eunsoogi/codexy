@@ -49,6 +49,34 @@ fn windows_candidate_verifier_creates_its_fresh_extraction_directory() {
     assert!(root < reject_ambient && reject_ambient < create && create < extract, "candidate extraction root must be fresh before tar -C");
 }
 
+#[test]
+fn windows_candidate_verifier_uses_powershell_loop_syntax() {
+    let workflow = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(".github/workflows/plugin-runtime-binaries.yml"),
+    )
+    .expect("read plugin runtime workflow");
+    let workflow: serde_yaml::Value = serde_yaml::from_str(&workflow).expect("runtime workflow YAML");
+    let verifier = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify immutable native Windows candidate bytes"))
+        .and_then(|step| step["run"].as_str())
+        .expect("native Windows verifier step");
+    let lines = verifier.lines().map(str::trim).collect::<Vec<_>>();
+    let bash_loop = lines.iter().position(|line| *line == "for server in lsp codegraph; do");
+    let powershell_loop = lines
+        .iter()
+        .position(|line| *line == "foreach ($server in @(\"lsp\", \"codegraph\")) {")
+        .expect("PowerShell server loop");
+    let runtime = lines
+        .iter()
+        .position(|line| *line == "$runtime = Join-Path $public \"plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe\"")
+        .expect("loop runtime path");
+
+    assert_eq!(bash_loop, None, "native verifier must not use Bash loop syntax");
+    assert!(powershell_loop < runtime, "PowerShell loop must contain runtime verification");
+}
+
 #[cfg(windows)]
 #[test]
 fn windows_candidate_verifier_rejects_an_ambient_extraction_root() {

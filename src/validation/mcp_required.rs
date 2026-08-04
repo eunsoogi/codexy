@@ -30,3 +30,38 @@ pub(super) fn check(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use serde_json::{Map, Value};
+
+    use super::check;
+
+    #[test]
+    fn cross_host_entrypoint_matrix_preserves_exact_diagnostics() {
+        let path = Path::new(".mcp.json");
+        let mut object = Map::new();
+        object.insert("cwd".to_owned(), Value::String(".".to_owned()));
+        let expected = format!(
+            ".mcp.json lsp.command must use the exact cross-platform plugin entrypoint {:?}",
+            ["./mcp/codexy-mcp-lsp", "--stdio"]
+        );
+
+        for command in [
+            "python3.exe",
+            r"C:\tools\codexy-mcp-lsp.exe",
+            "C:/tools/codexy-mcp-lsp.exe",
+            r".\..\outside.exe",
+            r"\\server\share\codexy-mcp-lsp.exe",
+            r"\\?\C:\codexy-mcp-lsp.exe",
+        ] {
+            let command = vec![command.to_owned(), "--stdio".to_owned()];
+            let error = check(path, "lsp", &object, &command)
+                .expect_err("noncanonical cross-host entrypoint unexpectedly passed")
+                .to_string();
+            assert_eq!(error, expected, "unexpected diagnostic for {command:?}");
+        }
+    }
+}

@@ -1,27 +1,36 @@
 use std::path::Path;
 use std::process::Command;
 
+#[path = "archive_inspection_receipts.rs"]
+mod archive_inspection_receipts;
+
 #[test]
 fn windows_timeout_job_releases_writer_before_capture_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/profile-rust-tests");
     let probe = r#"
+import contextlib
+import io
+import json
+import os
 import pathlib
 import runpy
-import json
 import subprocess
 import sys
 import tempfile
 import types
-import io
 
 locked = [False]
 parents = []
 jobs = []
+events = []
+observer_events = []
+finish_error = [False]
 mode = ["timeout"]
 root_status = [0]
 script = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(script.parent))
+real_popen = subprocess.Popen
 module = runpy.run_path(script)
 
 class WindowsTemporaryDirectory:
@@ -78,13 +87,44 @@ class WindowsJob:
         pids, images = payloads[mode[0]]
         return {"cargo-root-status": "running" if process.poll() is None else str(process.poll()), "windows-job-pids-json": json.dumps(pids), "windows-job-images-json": json.dumps(images, sort_keys=True)}
     def close(self):
+        events.append("job-close")
+
+class RuntimeTelemetry:
+    def __init__(self, *_args):
         pass
+    def start(self, *_args):
+        pass
+    def finish(self):
+        events.append("runtime-finish")
+        if finish_error[0]:
+            raise RuntimeError("telemetry finish")
+        return "{}"
+
+class Observer:
+    def __init__(self, *_args, **_kwargs):
+        pass
+    def start(self):
+        pass
+    def join(self):
+        observer_events.append("observer-join")
 
 module["tempfile"].TemporaryDirectory = WindowsTemporaryDirectory
 module["subprocess"].Popen = spawn
-module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt")
+module["run_workload"].__globals__["os"] = types.SimpleNamespace(name="nt", environ=os.environ)
+module["run_workload"].__globals__["threading"] = types.SimpleNamespace(Thread=Observer)
 module["run_workload"].__globals__["WindowsJob"] = WindowsJob
-def launch(job, _root, capture, _workload):
+module["run_workload"].__globals__["RuntimeTelemetry"] = RuntimeTelemetry
+@contextlib.contextmanager
+def receipt_environment(root):
+    directory = pathlib.Path(root) / "archive-inspector-receipts"
+    directory.mkdir()
+    environment = os.environ.copy()
+    environment["CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR"] = str(directory)
+    yield directory, environment
+
+
+module["run_workload"].__globals__["receipt_environment"] = receipt_environment
+def launch(job, _root, capture, _workload, environment=None):
     process = spawn(stdout=capture)
     job.assign(process)
     return process
@@ -105,6 +145,29 @@ if [getattr(job, "deadline", None) for job in jobs] != [10.0, None, 10.0, 10.0] 
     raise SystemExit(f"jobs={jobs!r}")
 if [result[3]["windows-job-active-zero"] for result in (timeout, running, nonzero, success)] != ["drained", "deadline", "drained", "completed"]:
     raise SystemExit(f"timeout={timeout!r} running={running!r} nonzero={nonzero!r} success={success!r}")
+if events.index("runtime-finish") > events.index("job-close"):
+    raise SystemExit(f"runtime telemetry finished after Job close: {events!r}")
+finish_error[0] = True
+try:
+    module["run_workload"](None, 1.0)
+except RuntimeError as error:
+    if str(error) != "telemetry finish":
+        raise
+else:
+    raise SystemExit("runtime telemetry failure was not propagated")
+if events[-2:] != ["runtime-finish", "job-close"] or observer_events[-1] != "observer-join":
+    raise SystemExit(f"cleanup after runtime failure was incomplete: events={events!r} observers={observer_events!r}")
+
+forwarded = {}
+def launcher_spawn(*_args, **kwargs):
+    forwarded.update(kwargs); return types.SimpleNamespace(stdin=types.SimpleNamespace(write=lambda _value: None, flush=lambda: None, close=lambda: None))
+runpy.run_path(script.parent / "profile_rust_windows_launcher.py")["launch_windows_workload"](WindowsJob(), pathlib.Path("."), io.BytesIO(), ("cargo",), launcher_spawn, {"CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR": "C:/receipts"})
+if forwarded.get("env", {}).get("CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR") != "C:/receipts":
+    raise SystemExit(f"launcher env={forwarded!r}")
+child = real_popen((sys.executable, str(script.parent / "profile_rust_windows_launcher.py"), sys.executable, "-c", "import os; print(os.environ['CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR'])"), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={"CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR": "C:/receipts"})
+child_stdout, child_stderr = child.communicate(b"R")
+if child.returncode or child_stdout not in {b"C:/receipts\n", b"C:/receipts\r\n"} or child_stderr != b"":
+    raise SystemExit(f"child={(child.returncode, child_stdout, child_stderr)!r}")
 
 main_globals = module["main"].__globals__
 main_globals["enforce_workflow_contract"] = lambda *_args: None
@@ -116,6 +179,7 @@ def fake_workload(_root, _budget):
         "cargo-root-status": "0" if mode[0] == 0 else "running",
         "windows-job-pids-json": "[]",
         "windows-job-images-json": "[]",
+        "linux-cargo-descendants-json": "not-applicable",
         "workload-seconds": 0.6,
         "capture-seconds": 0.2,
         "replay-seconds": 0.1,

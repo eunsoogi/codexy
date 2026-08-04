@@ -105,38 +105,24 @@ fn validator_cli_allows_supported_custom_agent_config_layers()
 
 #[test]
 fn validator_cli_rejects_invalid_mcp_tools_config() -> Result<(), Box<dyn std::error::Error>> {
-    for (fragment, expected) in [
-        (
-            "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\ntools = \"bad\"\n",
-            "mcp_servers.grep_app.tools must be a table",
-        ),
-        (
-            "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\napproval_mode = \"always\"\n",
-            "mcp_servers.docs.tools.search.approval_mode has an unsupported value",
-        ),
-        (
-            "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\nunknown = true\n",
-            "mcp_servers.docs.tools.search.unknown is not part",
-        ),
-    ] {
-        let output = validate_planner_fragment(fragment)?;
-        assert!(!output.status.success());
-        assert!(
-            stderr(&output).contains(expected),
-            "stderr:\n{}",
-            stderr(&output)
-        );
-    }
+    let fragment = "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\ntools = \"bad\"\n";
+    let expected = "mcp_servers.grep_app.tools must be a table";
+    let output = validate_planner_fragment(fragment)?;
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains(expected),
+        "stderr:\n{}",
+        stderr(&output)
+    );
     Ok(())
 }
 
 #[test]
 fn validator_cli_rejects_non_table_skills() -> Result<(), Box<dyn std::error::Error>> {
-    for fragment in ["\nskills = []\n", "\nskills = \"disabled\"\n"] {
-        let output = validate_planner_fragment(fragment)?;
-        assert!(!output.status.success());
-        assert!(stderr(&output).contains("skills must be a table"));
-    }
+    let fragment = "\nskills = []\n";
+    let output = validate_planner_fragment(fragment)?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("skills must be a table"));
     Ok(())
 }
 

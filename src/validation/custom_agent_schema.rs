@@ -69,3 +69,25 @@ fn check_config_entries(path: &Path, value: &Value, errors: &mut Vec<String>) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::check_skills_config;
+
+    #[test]
+    fn non_table_skills_matrix_preserves_exact_diagnostics() {
+        let path = Path::new("agents/codexy-pathfinder.toml");
+        for fragment in ["\nskills = []\n", "\nskills = \"disabled\"\n"] {
+            let parsed = toml::from_str::<toml::Table>(fragment).expect("valid TOML fragment");
+            let mut errors = Vec::new();
+            check_skills_config(path, parsed.get("skills"), &mut errors);
+            assert_eq!(
+                errors,
+                vec!["agents/codexy-pathfinder.toml skills must be a table".to_owned()],
+                "input: {fragment:?}"
+            );
+        }
+    }
+}

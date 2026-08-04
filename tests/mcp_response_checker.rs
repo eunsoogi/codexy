@@ -3,36 +3,6 @@ use crate::support::FixtureCommand as Command;
 use tempfile::tempdir;
 
 #[test]
-fn rejects_boolean_wrong_version_and_duplicate_ids() {
-    let root = tempdir().expect("tempdir");
-    let checker =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
-    let cases = [
-        (
-            "{\"jsonrpc\":\"2.0\",\"id\":true,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n",
-            "boolean",
-        ),
-        (
-            "{\"jsonrpc\":\"1.0\",\"id\":1,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n",
-            "version",
-        ),
-        (
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n",
-            "duplicate",
-        ),
-    ];
-    for (index, (payload, name)) in cases.into_iter().enumerate() {
-        let file = root.path().join(format!("{index}.jsonl"));
-        std::fs::write(&file, payload).expect("response fixture");
-        let output = Command::new(&checker)
-            .args([file.to_str().unwrap(), "lsp"])
-            .output()
-            .expect("checker");
-        assert!(!output.status.success(), "{name} response should fail");
-    }
-}
-
-#[test]
 fn rejects_non_json_stdout_and_keeps_valid_json_responses() {
     let root = tempdir().expect("tempdir");
     let checker =
@@ -69,93 +39,19 @@ fn rejects_non_json_stdout_and_keeps_valid_json_responses() {
 }
 
 #[test]
-fn rejects_structured_stdout_noise() {
-    let root = tempdir().expect("tempdir");
-    let checker =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
-    let response = root.path().join("structured-noise.jsonl");
-    std::fs::write(
-        &response,
-        "{\"level\":\"info\"}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-lsp\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"lsp_status\"}]}}\n",
-    )
-    .expect("response fixture");
-    let output = Command::new(&checker)
-        .args([response.to_str().unwrap(), "lsp"])
+fn parser_matrix_is_cargo_covered_in_one_python_process() {
+    let module = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("scripts/inspect_mcp_response.py");
+    let output = Command::new("python3")
+        .args([module.to_str().unwrap(), "--matrix"])
         .output()
-        .expect("checker");
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("id-less MCP stdout"));
-}
-
-#[test]
-fn rejects_non_object_json_stdout() {
-    let root = tempdir().expect("tempdir");
-    let checker =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
-    for (name, noise) in [("array", "[]"), ("string", "\"info\""), ("number", "1")] {
-        let response = root.path().join(format!("{name}.jsonl"));
-        std::fs::write(
-            &response,
-            format!(
-                "{noise}\n{{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{{\"serverInfo\":{{\"name\":\"codexy-lsp\"}}}}}}\n{{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{{\"tools\":[{{\"name\":\"lsp_status\"}}]}}}}\n"
-            ),
-        )
-        .expect("response fixture");
-        let output = Command::new(&checker)
-            .args([response.to_str().unwrap(), "lsp"])
-            .output()
-            .expect("checker");
-        assert!(!output.status.success(), "{name} stdout should fail");
-        assert!(String::from_utf8_lossy(&output.stderr).contains("non-object MCP stdout"));
-    }
-}
-
-#[test]
-fn rejects_wrong_mcp_server_and_tool_identity() {
-    let root = tempdir().expect("tempdir");
-    let checker =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
-    let cases = [
-        (
-            "wrong-server",
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-codegraph\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"codegraph_index\"}]}}\n",
-            "unexpected MCP server identity",
-        ),
-        (
-            "wrong-tool",
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"serverInfo\":{\"name\":\"codexy-lsp\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"codegraph_index\"}]}}\n",
-            "expected MCP tool is missing",
-        ),
-    ];
-    for (name, payload, diagnostic) in cases {
-        let response = root.path().join(format!("{name}.jsonl"));
-        std::fs::write(&response, payload).expect("response fixture");
-        let output = Command::new(&checker)
-            .args([response.to_str().unwrap(), "lsp"])
-            .output()
-            .expect("checker");
-        assert!(!output.status.success(), "{name} identity should fail");
-        assert!(String::from_utf8_lossy(&output.stderr).contains(diagnostic));
-    }
-}
-
-#[test]
-fn rejects_unsolicited_json_rpc_response_ids() {
-    let root = tempdir().expect("tempdir");
-    let checker =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response");
-    let response = root.path().join("unsolicited-id.jsonl");
-    std::fs::write(
-        &response,
-        "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n{\"jsonrpc\":\"2.0\",\"id\":99,\"result\":{}}\n",
-    )
-    .expect("response fixture");
-    let output = Command::new(&checker)
-        .args([response.to_str().unwrap(), "lsp"])
-        .output()
-        .expect("checker");
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("unexpected MCP response id"));
+        .expect("parser matrix");
+    assert!(
+        output.status.success(),
+        "parser matrix failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]

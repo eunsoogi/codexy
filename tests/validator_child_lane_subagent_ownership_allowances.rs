@@ -1,14 +1,9 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
 
-#[test]
 fn validator_allows_subagent_helper_with_true_worktree_owner()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -37,7 +32,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_multi_agent_rationale_with_true_worktree_owner()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -57,7 +51,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_multi_agent_rationale_on_true_worktree_owner_field()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -85,7 +78,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_helper_metadata_after_true_worktree_owner_field()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -106,7 +98,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_codexy_helper_non_owner_on_true_worktree_owner_field()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -126,7 +117,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_negated_subagent_owner_phrase_with_true_worktree_owner()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -153,7 +143,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_multi_agent_rationale_with_true_child_thread_owner()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -173,7 +162,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_parent_owned_routing_only_multi_agent_rationale()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -199,7 +187,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_non_agent_codexy_slugs_in_non_child_owner_decisions()
 -> Result<(), Box<dyn std::error::Error>> {
     for evidence in [
@@ -224,7 +211,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_no_subagent_substitute_exposure_blocker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -241,5 +227,21 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_subagent_ownership_allowances_matrix()
+-> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_subagent_helper_with_true_worktree_owner()?;
+    validator_allows_multi_agent_rationale_with_true_worktree_owner()?;
+    validator_allows_multi_agent_rationale_on_true_worktree_owner_field()?;
+    validator_allows_helper_metadata_after_true_worktree_owner_field()?;
+    validator_allows_codexy_helper_non_owner_on_true_worktree_owner_field()?;
+    validator_allows_negated_subagent_owner_phrase_with_true_worktree_owner()?;
+    validator_allows_multi_agent_rationale_with_true_child_thread_owner()?;
+    validator_allows_parent_owned_routing_only_multi_agent_rationale()?;
+    validator_allows_non_agent_codexy_slugs_in_non_child_owner_decisions()?;
+    validator_allows_no_subagent_substitute_exposure_blocker()?;
     Ok(())
 }

@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+: "${GH_TOKEN:?authenticated GitHub token is required}"
+: "${GITHUB_REPOSITORY:?}"
+: "${GITHUB_REPOSITORY_ID:?}"
+: "${SOURCE_COMMIT:?}"
+: "${STAGING_RUN_ID:?}"
+
+case "$GITHUB_REPOSITORY_ID:$STAGING_RUN_ID" in
+  *[!0-9:]*|:*|*:) echo "repository and staging run ids must be positive integers" >&2; exit 1 ;;
+esac
+
+output=${1:-staging}
+archive="${output}.zip"
+test ! -e "$output"
+test ! -e "$archive"
+mkdir -p "$output"
+
+fail() {
+  echo "$1" >&2
+  exit 1
+}
+
+run="$output/runtime-staging-run.json"
+artifacts="$output/runtime-staging-artifacts.json"
+gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID" > "$run"
+
+test "$(jq -r .repository.id "$run")" = "$GITHUB_REPOSITORY_ID" ||
+  fail "staging run repository identity mismatch"
+test "$(jq -r .head_branch "$run")" = main ||
+  fail "staging run is not bound to protected main"
+head_sha="$(jq -r .head_sha "$run")"
+case "$head_sha" in *[!0-9a-f]*|'') fail "staging run head commit is invalid" ;; esac
+test "${#head_sha}" -eq 40 || fail "staging run head commit is invalid"
+test "$(jq -r .path "$run")" = .github/workflows/runtime-candidate.yml ||
+  fail "staging run workflow identity mismatch"
+test "$(jq -r .status "$run")" = completed ||
+  fail "staging run is incomplete"
+test "$(jq -r .conclusion "$run")" = success ||
+  fail "staging run did not succeed"
+
+run_attempt="$(jq -r .run_attempt "$run")"
+case "$run_attempt" in *[!0-9]*|'') fail "staging run attempt is invalid" ;; esac
+test "$run_attempt" -gt 0 || fail "staging run attempt is invalid"
+
+artifact_name="runtime-staging-${STAGING_RUN_ID}-${run_attempt}"
+gh api "repos/$GITHUB_REPOSITORY/actions/runs/$STAGING_RUN_ID/artifacts" > "$artifacts"
+matching="$(jq --arg name "$artifact_name" '[.artifacts[] | select(.name == $name)] | length' "$artifacts")"
+available="$(jq --arg name "$artifact_name" '[.artifacts[] | select(.name == $name and .expired == false)] | length' "$artifacts")"
+test "$matching" -gt 0 || fail "staging artifact identity is missing"
+test "$available" -gt 0 || fail "staging artifact expired"
+test "$available" -eq 1 || fail "staging artifact identity is not unique"
+
+artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id' "$artifacts")"
+case "$artifact_id" in *[!0-9]*|'') fail "staging artifact id is invalid" ;; esac
+gh api --method GET "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$archive"
+unzip -q "$archive" -d "$output"
+
+receipt="$output/runtime-staging-receipt.json"
+test -f "$receipt" || fail "staging artifact receipt is missing"
+test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT" ||
+  fail "staging receipt source commit mismatch"
+test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID" ||
+  fail "staging receipt run identity mismatch"
+test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$run_attempt" ||
+  fail "staging receipt run attempt mismatch"

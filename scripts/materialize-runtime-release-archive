@@ -1,0 +1,179 @@
+#!/bin/sh
+set -eu
+
+staged_archive=${1:?staged archive path required}
+final_archive=${2:?final archive path required}
+release_tag=${RELEASE_TAG:?release tag required}
+staging_source_commit=${STAGING_SOURCE_COMMIT:?staging source commit required}
+activation_commit=${ACTIVATION_COMMIT:?activation commit required}
+runtime_asset=codexy-runtime-package.tar.gz
+source_plugin=plugins/codexy
+activation_record=.agents/plugins/runtime-activation.json
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+for commit in "$staging_source_commit" "$activation_commit"; do
+  case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
+  test "${#commit}" -eq 40
+done
+test "$staging_source_commit" != "$activation_commit"
+test -f "$staged_archive"
+test -d "$source_plugin"
+test -f "$activation_record"
+
+if command -v sha256sum >/dev/null 2>&1; then
+  digest_file() { sha256sum "$1" | awk '{print $1}'; }
+elif command -v shasum >/dev/null 2>&1; then
+  digest_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  echo "sha256sum or shasum is required" >&2
+  exit 127
+fi
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+"$script_dir/check-release-archive-entries" \
+  "$staged_archive" 52428800 10000 268435456
+mkdir "$tmp_dir/extracted"
+tar --no-same-owner --no-same-permissions -xzf "$staged_archive" -C "$tmp_dir/extracted"
+staged_plugin="$tmp_dir/extracted/plugins/codexy"
+test -d "$staged_plugin/runtime"
+test -f "$staged_plugin/runtime-candidate.json"
+
+if test -d .git; then
+  test "$(git rev-parse HEAD)" = "$activation_commit"
+fi
+
+STAGED_SHA=$(digest_file "$staged_archive") \
+RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" STAGING_RUN_ID="${STAGING_RUN_ID:?staging run id required}" \
+SOURCE_PLUGIN="$source_plugin" ACTIVATION_RECORD="$activation_record" \
+STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
+import hashlib, json, os, re
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
+manifest = json.loads((source / ".codex-plugin/plugin.json").read_text())
+candidate = record["candidate"]
+candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
+if (
+    record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
+    or record["artifact"]["payloadManifestSha256"] != hashlib.sha256(candidate_bytes).hexdigest()
+    or candidate["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
+    or candidate["artifact"]["stagingRunId"] != int(os.environ["STAGING_RUN_ID"])
+    or json.loads(candidate_bytes) != candidate
+    or manifest.get("version") != os.environ["RELEASE_TAG"].removeprefix("v")
+):
+    raise SystemExit("private activation record does not match staged identity")
+for inventory in candidate["platforms"].values():
+    for binary in inventory.values():
+        path = staged / binary["path"]
+        if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
+            raise SystemExit(f"staged runtime digest mismatch: {binary['path']}")
+protected = {}
+for path in sorted((staged / "runtime").rglob("*")):
+    if path.is_file():
+        protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
+for path in sorted((staged / "mcp").glob("*.exe")):
+    protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
+Path(os.environ["PROTECTED"]).write_text(json.dumps(protected, sort_keys=True))
+PY
+
+SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" python3 - <<'PY'
+import os, shutil
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+
+def excluded(relative: Path) -> bool:
+    return relative.parts[0] == "runtime" or relative.name in {
+        "runtime-release.json", "runtime-candidate.json",
+    } or (
+        relative.parent == Path("mcp") and relative.suffix == ".exe"
+    )
+
+def remove(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+for path in sorted(staged.rglob("*"), key=lambda value: len(value.parts), reverse=True):
+    relative = path.relative_to(staged)
+    if not excluded(relative) and not (source / relative).exists():
+        remove(path)
+
+for path in sorted(source.rglob("*"), key=lambda value: len(value.parts)):
+    relative = path.relative_to(source)
+    if excluded(relative):
+        continue
+    target = staged / relative
+    if path.is_dir():
+        if target.exists() and not target.is_dir():
+            remove(target)
+        target.mkdir(parents=True, exist_ok=True)
+    elif path.is_file():
+        if target.exists() and target.is_dir():
+            remove(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+    else:
+        raise SystemExit(f"unsupported activated source entry: {relative}")
+
+for contract in ("runtime-release.json", "runtime-candidate.json"):
+    (staged / contract).unlink(missing_ok=True)
+PY
+SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" RELEASE_TAG="$release_tag" \
+ACTIVATION_RECORD="$activation_record" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
+import hashlib, json, os, re
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_PLUGIN"])
+staged = Path(os.environ["STAGED_PLUGIN"])
+record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
+if (staged / "runtime-release.json").exists() or (staged / "runtime-candidate.json").exists():
+    raise SystemExit("public release archive must not contain runtime contracts")
+platforms = list(record["candidate"]["platforms"])
+manifest_path = staged / ".codex-plugin/plugin.json"
+manifest = json.loads(manifest_path.read_text())
+manifest["supportedPlatforms"] = platforms
+manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+for server in ("lsp", "codegraph"):
+    wrapper = staged / "mcp" / f"codexy-mcp-{server}"
+    text = wrapper.read_text()
+    bundled = " ".join(platforms)
+    text = text.replace('bundled_platforms="darwin-arm64 linux-x86_64"', f'bundled_platforms="{bundled}"')
+    text = re.sub(r'(?<=exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+', os.environ["RELEASE_TAG"].removeprefix("v"), text)
+    wrapper.write_text(text)
+protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
+for relative, digest in protected.items():
+    if hashlib.sha256((staged / relative).read_bytes()).hexdigest() != digest:
+        raise SystemExit(f"verified staged bytes changed: {relative}")
+PY
+
+mkdir -p "$(dirname -- "$final_archive")"
+ARCHIVE_ROOT="$tmp_dir/extracted" FINAL_ARCHIVE="$final_archive" python3 - <<'PY'
+import gzip, os, tarfile
+from pathlib import Path
+
+root = Path(os.environ["ARCHIVE_ROOT"])
+plugin = root / "plugins/codexy"
+paths = [plugin, *sorted(plugin.rglob("*"))]
+with (
+    Path(os.environ["FINAL_ARCHIVE"]).open("wb") as raw,
+    gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
+    tarfile.open(fileobj=compressed, mode="w", format=tarfile.GNU_FORMAT) as archive,
+):
+    for path in paths:
+        relative = path.relative_to(root)
+        info = archive.gettarinfo(str(path), str(relative))
+        info.uid = info.gid = 0
+        info.uname = info.gname = ""
+        info.mtime = 0
+        if info.isfile():
+            with path.open("rb") as source:
+                archive.addfile(info, source)
+        else:
+            archive.addfile(info)
+PY

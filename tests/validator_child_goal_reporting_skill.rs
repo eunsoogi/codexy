@@ -1,14 +1,13 @@
 use crate::support;
 
-use support::{TestResult, copy_plugin_fixture_with_mutable_files, stderr, validator};
+use support::{TestResult, stderr, validator_instruction_policy_file};
 
 #[test]
 fn validator_rejects_missing_parent_goal_transition_reporting_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&[
-        std::path::Path::new("skills/codex-orchestration/references/goal-transition-reporting.md"),
-    ])?;
-    let reference =
-        plugin_root.join("skills/codex-orchestration/references/goal-transition-reporting.md");
+    let fixture = support::instruction_policy_fixture(std::path::Path::new(
+        "skills/codex-orchestration/references/goal-transition-reporting.md",
+    ))?;
+    let reference = fixture.path();
     let text = std::fs::read_to_string(&reference)?;
     assert!(text.contains("Before `create_goal`"));
     assert!(text.contains("After every goal tool call, including `get_goal`"));
@@ -32,7 +31,7 @@ fn validator_rejects_missing_parent_goal_transition_reporting_contract() -> Test
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = validator_instruction_policy_file(reference)?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("must not execute until parent delivery is confirmed"));
     Ok(())

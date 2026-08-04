@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_allows_documented_capture_before_unrelated_no_defect_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -30,7 +24,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_documented_capture_before_unrelated_recorded_no_defect_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -52,7 +45,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_ownership_metadata_before_unprefixed_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -75,7 +67,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_hyphenated_handoff_fields_before_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -98,7 +89,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_markdown_lane_heading_cross_lane_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -121,7 +111,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_same_lane_header_handoff_fields_before_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -145,7 +134,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lane_header_with_prefixed_following_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -169,7 +157,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_numbered_handoff_fields_after_defect() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -192,7 +179,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_numbered_defect_list_with_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -216,7 +202,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_explicit_lane_defect_capture_without_prior_lane_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -234,5 +219,20 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_documented_capture_before_unrelated_no_defect_evidence()?;
+    validator_allows_documented_capture_before_unrelated_recorded_no_defect_metadata()?;
+    validator_allows_ownership_metadata_before_unprefixed_handoff_fields()?;
+    validator_allows_hyphenated_handoff_fields_before_defect()?;
+    validator_rejects_markdown_lane_heading_cross_lane_borrowing()?;
+    validator_allows_same_lane_header_handoff_fields_before_defect()?;
+    validator_allows_lane_header_with_prefixed_following_defect()?;
+    validator_allows_numbered_handoff_fields_after_defect()?;
+    validator_allows_numbered_defect_list_with_handoff_fields()?;
+    validator_allows_explicit_lane_defect_capture_without_prior_lane_context()?;
     Ok(())
 }

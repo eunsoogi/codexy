@@ -10,6 +10,7 @@ fn windows_gate_reconciles_exact_compiled_test_names() -> Result<(), Box<dyn std
     assert_eq!(report.get("coverage-tests"), Some(&vec!["1803", "1803", "PASS"]));
     assert_eq!(report.get("coverage-missing"), Some(&vec!["0"]));
     assert_eq!(report.get("coverage-duplicate-or-extra"), Some(&vec!["0"]));
+    assert_eq!(report.get("budget-seconds"), Some(&vec!["300.000", "PASS"]));
     Ok(())
 }
 
@@ -72,6 +73,41 @@ fn windows_gate_uses_one_cargo_workload_and_lists_completed_test_binaries(
 }
 
 #[test]
+fn windows_gate_emits_structured_execution_and_fixture_telemetry(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = run_case("telemetry")?;
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout)?;
+    let report = report_fields(&stdout);
+    let telemetry: serde_json::Value = serde_json::from_str(
+        report
+            .get("windows-telemetry-json")
+            .and_then(|fields| fields.first())
+            .ok_or("windows telemetry")?,
+    )?;
+    for field in [
+        "temp",
+        "tmp",
+        "runner_temp",
+        "workspace",
+        "target",
+        "logical_cpus",
+        "available_parallelism",
+        "rust_test_threads",
+        "fixture_materializations",
+        "fixture_copied_files",
+        "fixture_copied_bytes",
+    ] {
+        assert!(telemetry.get(field).is_some(), "missing {field}: {telemetry}");
+    }
+    assert_eq!(telemetry["fixture_materializations"].as_u64(), Some(1));
+    assert_eq!(telemetry["fixture_copied_files"].as_u64(), Some(2));
+    assert_eq!(telemetry["fixture_copied_bytes"].as_u64(), Some(17));
+    assert!(report.get("workload-receipt-json").is_some(), "missing runtime receipt: {report:?}");
+    Ok(())
+}
+
+#[test]
 fn windows_gate_counts_observed_test_outcomes_without_target_summaries(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let output = run_case("no-summary")?;
@@ -128,7 +164,7 @@ fn run_case_with_commands(
     let cargo = bin.join("cargo");
     std::fs::write(
         &cargo,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\ncase \"$1\" in\nmetadata) [ \"$PROFILE_CASE\" = metadata-fails ] && exit 9; printf '%s\\n' '{\"packages\":[{\"targets\":[{\"kind\":[\"test\"]}]}]}' ;;\ntest) printf '%s\\n' \"     Running unittests src/lib.rs ($PROFILE_LIB_TEST)\" 'test alpha ... ok' 'test panic - should panic ... ok' \"     Running tests/suites/all.rs ($PROFILE_ALL_TEST)\"; case \"$PROFILE_CASE\" in missing) : ;; fragmented) printf 'test beta ... foreign complete line\\r\\nok\\r\\n' ;; fragmented-eof) printf 'test beta ... foreign complete line\\r\\n'; exit 0 ;; fragmented-new-target) printf 'test beta ... foreign complete line\\r\\n'; printf '%s\\r\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'ok'; exit 0 ;; fragmented-new-status) printf 'test beta ... foreign complete line\\r\\ntest generated-1 ... ok\\r\\nok\\r\\n'; exit 0 ;; foreign-line) printf 'foreign complete line\\r\\nok\\r\\n'; exit 0 ;; *) printf '%s\\n' 'test beta ... ok' ;; esac; index=1; while [ \"$index\" -le 1799 ]; do printf 'test generated-%s ... ok\\n' \"$index\"; index=$((index + 1)); done; case \"$PROFILE_CASE\" in unknown-target) printf '%s\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'test custom ... ok' ;; duplicate) printf '%s\\n' 'test beta ... ok' ;; extra) printf '%s\\n' 'test extra ... ok' ;; run-fails) printf '%s\\n' 'test beta ... FAILED'; exit 101 ;; esac; case \"$PROFILE_CASE\" in unstarted-target) : ;; *) printf '%s\\n' \"     Running tests/suites/archive.rs ($PROFILE_ARCHIVE_TEST)\" 'test archive ... ok' ;; esac; case \"$PROFILE_CASE\" in no-summary) : ;; *) printf '%s\\n' 'Finished `test` profile [unoptimized] target(s) in 0.01s' 'test result: ok. 1803 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac ;;\nesac\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\ncase \"$1\" in\nmetadata) [ \"$PROFILE_CASE\" = metadata-fails ] && exit 9; printf '%s\\n' '{\"packages\":[{\"targets\":[{\"kind\":[\"test\"]}]}]}' ;;\ntest) [ \"$PROFILE_CASE\" = telemetry ] && printf 'fixture-materialization\\t2\\t17\\n' >> \"$CODEXY_WINDOWS_PROFILE_METRICS\"; printf '%s\\n' \"     Running unittests src/lib.rs ($PROFILE_LIB_TEST)\" 'test alpha ... ok' 'test panic - should panic ... ok' \"     Running tests/suites/all.rs ($PROFILE_ALL_TEST)\"; case \"$PROFILE_CASE\" in missing) : ;; fragmented) printf 'test beta ... foreign complete line\\r\\nok\\r\\n' ;; fragmented-eof) printf 'test beta ... foreign complete line\\r\\n'; exit 0 ;; fragmented-new-target) printf 'test beta ... foreign complete line\\r\\n'; printf '%s\\r\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'ok'; exit 0 ;; fragmented-new-status) printf 'test beta ... foreign complete line\\r\\ntest generated-1 ... ok\\r\\nok\\r\\n'; exit 0 ;; foreign-line) printf 'foreign complete line\\r\\nok\\r\\n'; exit 0 ;; *) printf '%s\\n' 'test beta ... ok' ;; esac; index=1; while [ \"$index\" -le 1799 ]; do printf 'test generated-%s ... ok\\n' \"$index\"; index=$((index + 1)); done; case \"$PROFILE_CASE\" in unknown-target) printf '%s\\n' \"     Running tests/custom.rs ($PROFILE_CUSTOM_TEST)\" 'test custom ... ok' ;; duplicate) printf '%s\\n' 'test beta ... ok' ;; extra) printf '%s\\n' 'test extra ... ok' ;; run-fails) printf '%s\\n' 'test beta ... FAILED'; exit 101 ;; esac; case \"$PROFILE_CASE\" in unstarted-target) : ;; *) printf '%s\\n' \"     Running tests/suites/archive.rs ($PROFILE_ARCHIVE_TEST)\" 'test archive ... ok' ;; esac; case \"$PROFILE_CASE\" in no-summary) : ;; *) printf '%s\\n' 'Finished `test` profile [unoptimized] target(s) in 0.01s' 'test result: ok. 1803 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s' ;; esac ;;\nesac\n",
     )?;
     #[cfg(unix)]
     {
@@ -145,6 +181,7 @@ fn run_case_with_commands(
         .args(["--root", root.to_str().ok_or("fixture root")?, "--windows"])
         .env("PATH", path)
         .env("PROFILE_CASE", case)
+        .env("RUNNER_TEMP", temp.path())
         .env("PROFILE_MARKER", &commands)
         .env("PROFILE_LIB_TEST", &lib_test)
         .env("PROFILE_ALL_TEST", &all_test)

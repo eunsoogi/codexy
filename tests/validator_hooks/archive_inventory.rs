@@ -15,6 +15,7 @@ fn inventory_metadata_local_paths_fail_archive_inspector() {
     std::fs::write(&inventory_path, serde_json::to_vec(&inventory).expect("JSON")).expect("inventory fixture");
     let archive = root.path().join("evidence.tar.gz");
     create_archive(root.path(), &archive).expect("archive fixture");
+    std::fs::write(plugin_root.join("hooks/hooks.json"), b"{}").expect("co-invalid staged fixture");
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive");
     let canonical_source = root.path().join("inspect-release-archive");
     materialize_lf_text_fixture(&source, &canonical_source).expect("canonical archive inspector");

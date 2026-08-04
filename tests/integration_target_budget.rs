@@ -5,7 +5,7 @@ use std::path::Path;
 use std::os::unix::fs::MetadataExt as _;
 
 #[test]
-fn cargo_declares_at_most_eight_integration_suites() {
+fn cargo_declares_the_exact_seven_integration_shards() {
     let manifest_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
     let source = std::fs::read_to_string(manifest_path).expect("Cargo manifest");
     let manifest: toml::Value = toml::from_str(&source).expect("Cargo manifest TOML");
@@ -21,14 +21,14 @@ fn cargo_declares_at_most_eight_integration_suites() {
         .get("test")
         .and_then(toml::Value::as_array)
         .expect("explicit integration suites");
-    assert!(
-        !suites.is_empty(),
-        "integration coverage must remain declared"
-    );
-    assert!(
-        suites.len() <= 8,
-        "integration suite budget exceeded: {}",
-        suites.len()
+    let names: Vec<_> = suites
+        .iter()
+        .filter_map(|suite| suite.get("name").and_then(toml::Value::as_str))
+        .collect();
+    assert_eq!(
+        names,
+        ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_system", "suite_archive"],
+        "integration coverage must use the registered shard plan"
     );
     assert_eq!(
         manifest

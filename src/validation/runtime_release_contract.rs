@@ -92,9 +92,14 @@ fn check_artifact(artifact: &Map<String, Value>, state: &str, path: &Path) -> Re
     let tag = string(artifact, "tag", path)?;
     check_tag(tag, state, path)?;
     let url = string(artifact, "url", path)?;
+    let asset = if state == "candidate-proven" {
+        "codexy-runtime-package.tar.gz"
+    } else {
+        "codexy-marketplace-plugin.tar.gz"
+    };
     exact(
         url,
-        &format!("{REPOSITORY}/releases/download/{tag}/codexy-marketplace-plugin.tar.gz"),
+        &format!("{REPOSITORY}/releases/download/{tag}/{asset}"),
         "artifact.url",
         path,
     )?;
@@ -127,16 +132,16 @@ fn check_tag(tag: &str, state: &str, path: &Path) -> Result<()> {
     match state {
         "legacy-public" => exact(tag, LEGACY_TAG, "artifact.tag", path),
         "candidate-proven" => {
-            let slug = tag.strip_prefix("runtime-candidate-").unwrap_or_default();
-            if !slug.is_empty()
-                && slug
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+            let version = tag.strip_prefix('v').unwrap_or_default();
+            if version.split('.').count() == 3
+                && version.split('.').all(|component| {
+                    !component.is_empty() && component.bytes().all(|byte| byte.is_ascii_digit())
+                })
             {
                 Ok(())
             } else {
                 bail!(
-                    "{} artifact.tag must have a safe runtime-candidate slug",
+                    "{} artifact.tag must be a version-only vMAJOR.MINOR.PATCH tag",
                     display_relative(path)
                 )
             }

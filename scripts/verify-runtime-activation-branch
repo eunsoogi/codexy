@@ -1,63 +1,134 @@
 #!/bin/sh
 set -eu
 
-branch="${1:?branch is required}"
-base="${2:-origin/main}"
-bootstrap_version="${3:?bootstrap version is required}"
-receipt="${4:?candidate receipt is required}"
-expected="$(printf '%s\n' \
-  .agents/plugins/marketplace.json \
-  .agents/plugins/release-publish-contract.json \
-  plugins/codexy/.codex-plugin/plugin.json \
-  plugins/codexy/mcp/codexy-mcp-codegraph \
-  plugins/codexy/mcp/codexy-mcp-lsp \
-  plugins/codexy/runtime-candidate.json \
-  plugins/codexy/runtime-release.json \
-  src/version/bootstrap.rs | LC_ALL=C sort)"
-actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
-test "$actual" = "$expected" || {
-  printf '%s\n' "activation branch differs from verified contract" >&2
-  exit 1
+verify_case() {
+  branch="${1:?branch is required}"
+  base="${2:-origin/main}"
+  bootstrap_version="${3:?bootstrap version is required}"
+  receipt="${4:?candidate receipt is required}"
+  expected="$(printf '%s\n' \
+    Cargo.lock \
+    Cargo.toml \
+    .agents/plugins/marketplace.json \
+    .agents/plugins/release-publish-contract.json \
+    .agents/plugins/runtime-activation.json \
+    plugins/codexy/.codex-plugin/plugin.json \
+    src/version/bootstrap.rs | LC_ALL=C sort)"
+  preserved="$(printf '%s\n' \
+    plugins/codexy/mcp/codexy-mcp-codegraph \
+    plugins/codexy/mcp/codexy-mcp-lsp \
+    plugins/codexy/runtime-release.json)"
+  actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
+  test "$actual" = "$expected" || {
+    printf '%s\n%s\n' "expected:" "$expected" >&2
+    printf '%s\n%s\n' "actual:" "$actual" >&2
+    printf '%s\n' "activation branch differs from verified contract" >&2
+    exit 1
+  }
+
+  git diff --quiet
+  git diff --cached --quiet
+  expected_root="$(mktemp -d)"
+  trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
+  git archive "$base" | tar -x -C "$expected_root"
+  if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
+    test "${CODEXY_TEST_MODE:-}" = 1 || {
+      printf '%s\n' "test activator override requires CODEXY_TEST_MODE=1" >&2
+      exit 1
+    }
+    activator="$CODEXY_TEST_ACTIVATE_RUNTIME"
+  else
+    activator="$expected_root/scripts/activate-runtime-contract"
+    test -f "$activator" && test ! -L "$activator" && test -x "$activator" || {
+      printf '%s\n' "verified base is missing its activation contract" >&2
+      exit 1
+    }
+  fi
+  "$activator" \
+    --repo-root "$expected_root" \
+    --bootstrap-version "$bootstrap_version" \
+    --candidate-receipt "$receipt"
+  sync_version="$expected_root/scripts/sync-plugin-version"
+  test -f "$sync_version" && test ! -L "$sync_version" && test -x "$sync_version" || {
+    printf '%s\n' "verified base is missing its version-selection contract" >&2
+    exit 1
+  }
+  if test -n "${CODEXY_TEST_SYNC_VERSION_BINARY:-}"; then
+    test "${CODEXY_TEST_MODE:-}" = 1 || {
+      printf '%s\n' "test sync-version binary requires CODEXY_TEST_MODE=1" >&2
+      exit 1
+    }
+    test -f "$CODEXY_TEST_SYNC_VERSION_BINARY" && \
+      test ! -L "$CODEXY_TEST_SYNC_VERSION_BINARY" && \
+      test -x "$CODEXY_TEST_SYNC_VERSION_BINARY" || {
+      printf '%s\n' "test sync-version binary must be a regular executable" >&2
+      exit 1
+    }
+    CODEXY_REPO_ROOT="$expected_root" "$CODEXY_TEST_SYNC_VERSION_BINARY" --version "$bootstrap_version"
+  else
+    "$sync_version" --version "$bootstrap_version"
+  fi
+  for path in $expected $preserved; do
+    test -f "$path" && test ! -L "$path"
+    test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
+    cmp "$expected_root/$path" "$path"
+    if test -x "$expected_root/$path"; then
+      test -x "$path"
+    else
+      test ! -x "$path"
+    fi
+  done
+
+  states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
+  case "$states" in
+    ''|OPEN) ;;
+    *)
+      printf '%s\n' "activation branch has a closed or ambiguous pull request" >&2
+      exit 1
+      ;;
+  esac
 }
 
-git diff --quiet
-git diff --cached --quiet
-expected_root="$(mktemp -d)"
-trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
-git archive "$base" | tar -x -C "$expected_root"
-if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
-  test "${CODEXY_TEST_MODE:-}" = 1 || {
-    printf '%s\n' "test activator override requires CODEXY_TEST_MODE=1" >&2
-    exit 1
-  }
-  activator="$CODEXY_TEST_ACTIVATE_RUNTIME"
-else
-  activator="$expected_root/scripts/activate-runtime-contract"
-  test -f "$activator" && test ! -L "$activator" && test -x "$activator" || {
-    printf '%s\n' "verified base is missing its activation contract" >&2
-    exit 1
-  }
-fi
-"$activator" \
-  --repo-root "$expected_root" \
-  --bootstrap-version "$bootstrap_version" \
-  --candidate-receipt "$receipt"
-for path in $expected; do
-  test -f "$path" && test ! -L "$path"
-  test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
-  cmp "$expected_root/$path" "$path"
-  if test -x "$expected_root/$path"; then
-    test -x "$path"
-  else
-    test ! -x "$path"
-  fi
-done
+verify_batch() {
+  batch="${1:?batch manifest is required}"
+  results="${2:?batch result directory is required}"
+  test "$#" -eq 2 || { printf '%s\n' "batch accepts exactly a manifest and result directory" >&2; exit 2; }
+  test -f "$batch" && test ! -L "$batch" || { printf '%s\n' "batch manifest must be a regular file" >&2; exit 2; }
+  test ! -e "$results" || { printf '%s\n' "batch result directory already exists" >&2; exit 2; }
+  mkdir -p "$results"
+  tab="$(printf '\t')"
+  count=0
+  while IFS="$tab" read -r id branch base bootstrap receipt repo expected_root state_file test_mode extra; do
+    test -z "$extra" && test -n "$id" && test -n "$branch" && test -n "$base" && \
+      test -n "$bootstrap" && test -n "$receipt" && test -n "$repo" && \
+      test -n "$expected_root" && test -n "$state_file" || {
+      printf '%s\n' "batch manifest record is incomplete" >&2; exit 2;
+    }
+    case "$id" in *[!A-Za-z0-9_-]*) printf '%s\n' "batch case id is invalid" >&2; exit 2 ;; esac
+    case "$test_mode" in 0|1) ;; *) printf '%s\n' "batch test mode is invalid" >&2; exit 2 ;; esac
+    test -f "$state_file" && test ! -L "$state_file" || { printf '%s\n' "batch state file must be regular" >&2; exit 2; }
+    stdout="$results/$id.stdout"
+    stderr="$results/$id.stderr"
+    status="$results/$id.status"
+    test ! -e "$status" || { printf '%s\n' "batch case id is duplicated" >&2; exit 2; }
+    set +e
+    (
+      set -e
+      cd "$repo"
+      EXPECTED_ROOT="$expected_root" FAKE_PR_STATE_FILE="$state_file"
+      export EXPECTED_ROOT FAKE_PR_STATE_FILE
+      if test "$test_mode" = 1; then CODEXY_TEST_MODE=1; export CODEXY_TEST_MODE; else unset CODEXY_TEST_MODE; fi
+      verify_case "$branch" "$base" "$bootstrap" "$receipt"
+    ) >"$stdout" 2>"$stderr"
+    case_status=$?
+    set -e
+    printf '%s\n' "$case_status" >"$status"
+    count=$((count + 1))
+  done <"$batch"
+  test "$count" -gt 0 || { printf '%s\n' "batch manifest is empty" >&2; exit 2; }
+}
 
-states="$(gh pr list --head "$branch" --state all --json state --jq '.[].state')"
-case "$states" in
-  ''|OPEN) ;;
-  *)
-    printf '%s\n' "activation branch has a closed or ambiguous pull request" >&2
-    exit 1
-    ;;
+case "${1:-}" in
+  --batch) shift; verify_batch "$@" ;;
+  *) verify_case "$@" ;;
 esac

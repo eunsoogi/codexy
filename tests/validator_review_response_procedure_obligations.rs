@@ -1,16 +1,11 @@
-use crate::support::{copy_plugin_fixture_with_mutable_files, stderr, TestResult};
+use crate::support::{TestResult, stderr};
 
 const REFERENCE: &str = "skills/git-workflow/references/review-response-clusters.md";
-const RECEIPT_CREATE: &str =
-    "1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.";
-const RECEIPT_VALIDATE: &str =
-    "2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.";
-const CASE_EXCEPTION: &str =
-    "3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.";
-const REOPEN_EVIDENCE: &str =
-    "4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.";
-const FINAL_RECEIPT_VALIDATE: &str =
-    "5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.";
+const RECEIPT_CREATE: &str = "1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.";
+const RECEIPT_VALIDATE: &str = "2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.";
+const CASE_EXCEPTION: &str = "3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.";
+const REOPEN_EVIDENCE: &str = "4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.";
+const FINAL_RECEIPT_VALIDATE: &str = "5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.";
 const COMPLETE: &str = "## Required Procedure\n\n1. [receipt-create] Before editing actionable review feedback, MUST create one typed JSON receipt.\n2. [receipt-validate] Before implementation, MUST validate that exact receipt file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n3. [case-exception-prohibition] During repair, MUST NOT accept a case-specific exception as structural evidence.\n4. [reopen-evidence-restriction] Non-reopened receipt states MUST NOT include reopen evidence.\n5. [final-receipt-validate] After addressing feedback and before push or handoff, MUST set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.\n\n## Typed Receipt\n";
 
 #[test]
@@ -41,22 +36,10 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
             "create one typed JSON receipt",
             "record one typed JSON receipt",
         ),
-        (
-            "--check-review-response-cluster",
-            "--check-plugin-config",
-        ),
-        (
-            "case-specific exception",
-            "quoted feedback example",
-        ),
-        (
-            "Non-reopened receipt states",
-            "Reopened receipt states",
-        ),
-        (
-            "before push or handoff",
-            "after push or handoff",
-        ),
+        ("--check-review-response-cluster", "--check-plugin-config"),
+        ("case-specific exception", "quoted feedback example"),
+        ("Non-reopened receipt states", "Reopened receipt states"),
+        ("before push or handoff", "after push or handoff"),
     ] {
         assert_rejected(&COMPLETE.replacen(required, substituted, 1))?;
     }
@@ -88,13 +71,19 @@ fn procedure_obligation_catalog_is_complete_and_normative() -> TestResult {
         "## Required Procedure\n\n# New top-level section\n\n",
         1,
     ))?;
-    assert_rejected("## Required Procedure\n\n1. [receipt-create] Before editing, MUST create one typed JSON receipt.\n")?;
+    assert_rejected(
+        "## Required Procedure\n\n1. [receipt-create] Before editing, MUST create one typed JSON receipt.\n",
+    )?;
     Ok(())
 }
 
 fn assert_valid(procedure: &str) -> TestResult {
     let output = validate(procedure)?;
-    assert!(output.status.success(), "unexpected failure: {}", stderr(&output));
+    assert!(
+        output.status.success(),
+        "unexpected failure: {}",
+        stderr(&output)
+    );
     Ok(())
 }
 
@@ -113,9 +102,7 @@ fn assert_rejected(procedure: &str) -> TestResult {
 }
 
 fn validate(procedure: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    let (_temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&[std::path::Path::new(
-        REFERENCE,
-    )])?;
-    std::fs::write(plugin_root.join(REFERENCE), procedure)?;
-    Ok(crate::support::validator_instruction_policy(&plugin_root)?)
+    let fixture = crate::support::instruction_policy_fixture(std::path::Path::new(REFERENCE))?;
+    std::fs::write(fixture.path(), procedure)?;
+    crate::support::validator_instruction_policy_file(fixture.path())
 }

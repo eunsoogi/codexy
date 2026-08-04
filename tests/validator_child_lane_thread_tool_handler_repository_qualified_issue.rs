@@ -1,12 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
 fn tracking_issue_evidence(issue_evidence: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -18,7 +14,6 @@ Maintainer reassignment: none
     )
 }
 
-#[test]
 fn validator_allows_repository_qualified_tracking_issue_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence(
@@ -33,7 +28,6 @@ fn validator_allows_repository_qualified_tracking_issue_evidence()
     Ok(())
 }
 
-#[test]
 fn validator_allows_repository_qualified_tracking_issue_after_field_label()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence(
@@ -48,7 +42,6 @@ fn validator_allows_repository_qualified_tracking_issue_after_field_label()
     Ok(())
 }
 
-#[test]
 fn validator_allows_markdown_link_github_issue_url_tracking_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence(
@@ -63,7 +56,6 @@ fn validator_allows_markdown_link_github_issue_url_tracking_evidence()
     Ok(())
 }
 
-#[test]
 fn validator_allows_slash_delimited_bare_tracking_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(&tracking_issue_evidence("tracking issue: #205/#206"))?;
@@ -76,7 +68,6 @@ fn validator_allows_slash_delimited_bare_tracking_issue_references()
     Ok(())
 }
 
-#[test]
 fn validator_allows_punctuation_delimited_bare_tracking_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -96,7 +87,6 @@ fn validator_allows_punctuation_delimited_bare_tracking_issue_references()
     Ok(())
 }
 
-#[test]
 fn validator_rejects_malformed_repository_qualified_issue_references()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -118,5 +108,16 @@ fn validator_rejects_malformed_repository_qualified_issue_references()
             "validator should reject malformed issue evidence `{issue}`"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_repository_qualified_tracking_issue_evidence()?;
+    validator_allows_repository_qualified_tracking_issue_after_field_label()?;
+    validator_allows_markdown_link_github_issue_url_tracking_evidence()?;
+    validator_allows_slash_delimited_bare_tracking_issue_references()?;
+    validator_allows_punctuation_delimited_bare_tracking_issue_references()?;
+    validator_rejects_malformed_repository_qualified_issue_references()?;
     Ok(())
 }

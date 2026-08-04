@@ -1,9 +1,7 @@
-use crate::support;
-
 use crate::support::FixtureCommand as Command;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use support::{WrapperFixture, run_wrapper_command_with_timeout};
+use crate::support::{WrapperFixture, run_wrapper_command_with_timeout};
 
 #[test]
 fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
@@ -21,33 +19,31 @@ fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
 }
 
 #[test]
-fn runtime_dir_override_wins_over_bundled_and_uvx() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let fixture = WrapperFixture::new(temp.path())?;
-    let runtime_dir = temp.path().join("runtime");
-    std::fs::create_dir(&runtime_dir)?;
-    let runtime = runtime_dir.join("codexy-mcp-lsp-windows-x86_64.exe");
-    std::fs::write(&runtime, "#!/bin/sh\necho override \"$@\"\n")?;
-    support::make_executable(&runtime)?;
-    let output = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"))
-        .env("CODEXY_RUNTIME_DIR", &runtime_dir)
-        .env("CODEXY_RUNTIME_PLATFORM", "windows-x86_64")
-        .arg("--stdio")
-        .output()?;
-    assert!(output.status.success());
-    assert!(String::from_utf8_lossy(&output.stdout).contains("override --stdio"));
-    Ok(())
-}
-
-#[test]
 fn wrapper_subprocess_timeout_is_actionable() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
-    fixture.replace_wrapper("lsp", "#!/bin/sh\nexec sleep 45\n")?;
+    let marker = temp.path().join("wrapper-timeout-descendant-marker");
+    fixture.replace_wrapper(
+        "lsp",
+        "#!/bin/sh\nsleep 45 &\n(sleep 3; printf orphan > \"$CODEXY_WRAPPER_TIMEOUT_MARKER\") &\nwait\n",
+    )?;
     let mut command = Command::new(fixture.plugin_root.join("mcp/codexy-mcp-lsp"));
+    command.env("CODEXY_WRAPPER_TIMEOUT_MARKER", &marker);
+    let started = Instant::now();
     let error = run_wrapper_command_with_timeout(&mut command, Duration::from_secs(2))
         .expect_err("wrapper subprocess must time out");
+    let elapsed = started.elapsed();
     assert!(error.to_string().contains("timed out"));
+    assert!(
+        elapsed < Duration::from_secs(10),
+        "wrapper timeout waited for a descendant: {elapsed:?}"
+    );
+    std::thread::sleep(Duration::from_millis(1_500));
+    assert!(
+        !marker.exists(),
+        "wrapper timeout left a descendant writing after reap: {}",
+        marker.display()
+    );
     Ok(())
 }
 

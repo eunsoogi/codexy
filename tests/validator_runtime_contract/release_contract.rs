@@ -2,7 +2,7 @@ use super::*;
 use std::io::Write as _;
 
 #[test]
-fn validator_rejects_missing_runtime_release_contract() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_accepts_contract_free_public_bootstrap_source() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
     declare_bundled_platforms(&plugin_root)?;
@@ -16,12 +16,7 @@ fn validator_rejects_missing_runtime_release_contract() -> Result<(), Box<dyn st
         ])
         .output()?;
 
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("runtime-release.json"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "unexpected stderr: {}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }
 
@@ -53,11 +48,11 @@ fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn validator_accepts_only_safe_candidate_release_tags() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_accepts_only_version_release_tags() -> Result<(), Box<dyn std::error::Error>> {
     let valid = tempfile::tempdir()?;
     let valid_root = copy_plugin_to(valid.path())?;
     declare_bundled_platforms(&valid_root)?;
-    write_candidate_release(&valid_root, "runtime-candidate-1.3.0")?;
+    write_candidate_release(&valid_root, "v1.3.0")?;
     let output = validate(&valid_root)?;
     assert!(
         output.status.success(),
@@ -65,7 +60,7 @@ fn validator_accepts_only_safe_candidate_release_tags() -> Result<(), Box<dyn st
         String::from_utf8_lossy(&output.stderr)
     );
 
-    for tag in ["runtime-candidate-", "runtime-candidate-bad/tag", "v1.3.0"] {
+    for tag in ["runtime-candidate-1.3.0", "v1.3", "v1.3.0-rc1"] {
         let temp = tempfile::tempdir()?;
         let plugin_root = copy_plugin_to(temp.path())?;
         declare_bundled_platforms(&plugin_root)?;
@@ -80,7 +75,7 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     let mut release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     release["state"] = serde_json::json!("candidate-proven");
     release["artifact"]["tag"] = serde_json::json!(tag);
-    release["artifact"]["url"] = serde_json::json!(format!("https://github.com/eunsoogi/codexy/releases/download/{tag}/codexy-marketplace-plugin.tar.gz"));
+    release["artifact"]["url"] = serde_json::json!(format!("https://github.com/eunsoogi/codexy/releases/download/{tag}/codexy-runtime-package.tar.gz"));
     for platform in ["darwin-arm64", "linux-x86_64"] {
         for server in ["lsp", "codegraph"] {
             release["platforms"][platform][server]["path"] = serde_json::json!(format!("runtime/codexy-mcp-{server}-{platform}.bin"));
@@ -90,7 +85,7 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     let candidate = serde_json::json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": release["source"].clone(),
-        "artifact": {"tag": tag},
+        "artifact": {"stagingRunId": 1, "stagingRunAttempt": 1},
         "compatibility": release["compatibility"].clone(),
         "platforms": release["platforms"].clone(),
     });

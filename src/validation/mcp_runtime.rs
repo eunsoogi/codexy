@@ -44,3 +44,28 @@ pub(super) fn check_no_script_runtime(path: &Path, name: &str, command: &[String
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::check_no_script_runtime;
+
+    #[test]
+    fn windows_suffixed_runtime_matrix_preserves_exact_diagnostics() {
+        let path = Path::new(".mcp.json");
+
+        for command in ["python3.exe", "PY.EXE", r"C:\tools\node.exe"] {
+            let argv = [command.to_owned(), "--stdio".to_owned()];
+            let error = check_no_script_runtime(path, "helper", &argv)
+                .expect_err("Windows-suffixed script runtime unexpectedly passed")
+                .to_string();
+            assert_eq!(
+                error,
+                format!(
+                    ".mcp.json helper.command must not use JS/Python runtime command {command}"
+                )
+            );
+        }
+    }
+}

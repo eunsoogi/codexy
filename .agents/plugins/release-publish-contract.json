@@ -9,12 +9,14 @@
   },
   "runtime": {
     "selectedTag": "v1.2.2",
-    "candidateTagPrefix": "runtime-candidate-",
-    "candidateWorkflow": ".github/workflows/runtime-candidate.yml",
+    "stagingWorkflow": ".github/workflows/runtime-candidate.yml",
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
+    "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",
+    "artifactRetentionDays": 14,
     "platforms": [
       "darwin-arm64",
-      "linux-x86_64"
+      "linux-x86_64",
+      "windows-x86_64"
     ]
   },
   "currentMarketplace": {
@@ -30,11 +32,23 @@
     "futureInstallRef": "version-tags",
     "platforms": [
       "darwin-arm64",
-      "linux-x86_64"
+      "linux-x86_64",
+      "windows-x86_64"
     ]
   },
   "sourceMarketplace": {
     "path": ".agents/plugins/marketplace.json",
-    "mode": "source-checkout-dev"
+    "mode": "source-checkout-dev",
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64"
+    ]
+  },
+  "releaseArchive": {
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64",
+      "windows-x86_64"
+    ]
   }
 }

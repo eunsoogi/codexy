@@ -1,12 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
 fn base_evidence(route: &str, issue: &str) -> String {
     format!(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -20,7 +16,6 @@ Maintainer reassignment: none
     )
 }
 
-#[test]
 fn validator_rejects_negated_follow_up_issue_claim() -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
         "No follow-up issue #205",
@@ -49,7 +44,6 @@ fn validator_rejects_negated_follow_up_issue_claim() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-#[test]
 fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::error::Error>> {
     for route in [
         "Fallback route: not used because the child thread was unreachable",
@@ -127,7 +121,6 @@ fn validator_rejects_long_negated_fallback_value() -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-#[test]
 fn validator_allows_concrete_route_after_handler_failure_negation()
 -> Result<(), Box<dyn std::error::Error>> {
     for route in [
@@ -157,7 +150,6 @@ fn validator_allows_concrete_route_after_handler_failure_negation()
     Ok(())
 }
 
-#[test]
 fn validator_allows_metadata_before_defect_line() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -179,7 +171,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_metadata_before_invocation_then_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -202,7 +193,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_metadata_before_same_line_defect() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -223,7 +213,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_metadata_before_bulleted_defect_line() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -243,5 +232,17 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_negated_follow_up_issue_claim()?;
+    validator_rejects_long_negated_fallback_value()?;
+    validator_allows_concrete_route_after_handler_failure_negation()?;
+    validator_allows_metadata_before_defect_line()?;
+    validator_allows_metadata_before_invocation_then_defect()?;
+    validator_allows_metadata_before_same_line_defect()?;
+    validator_allows_metadata_before_bulleted_defect_line()?;
     Ok(())
 }

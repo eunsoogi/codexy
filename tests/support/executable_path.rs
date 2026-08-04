@@ -6,7 +6,11 @@ pub(crate) fn executable_path(command: &str) -> Result<PathBuf, String> {
     executable_path_in(command, &path, &extensions)
 }
 
-fn executable_path_in(command: &str, path: &OsStr, extensions: &OsStr) -> Result<PathBuf, String> {
+pub(crate) fn executable_path_in(
+    command: &str,
+    path: &OsStr,
+    extensions: &OsStr,
+) -> Result<PathBuf, String> {
     let suffixes = executable_suffixes(command, extensions)?;
     for directory in std::env::split_paths(path) {
         for suffix in &suffixes {
@@ -37,31 +41,4 @@ fn executable_suffixes(command: &str, extensions: &OsStr) -> Result<Vec<String>,
         suffixes.push(extension.to_owned());
     }
     Ok(suffixes)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::executable_path_in;
-
-    #[test]
-    fn discovery_resolves_pathext_candidates_and_rejects_missing_or_ambiguous_inputs()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let candidate = temp.path().join("rg.EXE");
-        std::fs::write(&candidate, b"fixture")?;
-        let path = std::env::join_paths([temp.path()])?;
-        assert_eq!(
-            executable_path_in("rg", &path, std::ffi::OsStr::new(".EXE"))?,
-            candidate
-        );
-        assert_eq!(
-            executable_path_in("missing", &path, std::ffi::OsStr::new(".EXE")),
-            Err("required command missing: missing".to_owned())
-        );
-        assert_eq!(
-            executable_path_in("rg", &path, std::ffi::OsStr::new(".EXE;.exe")),
-            Err("ambiguous PATHEXT entry: .exe".to_owned())
-        );
-        Ok(())
-    }
 }

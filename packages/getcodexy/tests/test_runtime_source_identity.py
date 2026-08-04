@@ -120,7 +120,7 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
         candidate = {
             "schema": "codexy-runtime-candidate/v1",
             "source": {"repository": runtime.REPOSITORY, "commit": "a" * 40},
-            "artifact": {"tag": "runtime-candidate-1.3.0"},
+            "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
             "compatibility": {
                 "bootstrapApi": 1,
                 "pluginRuntimeApi": 1,
@@ -144,8 +144,8 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
             "schema": "codexy-runtime-release/v1",
             "state": "candidate-proven",
             "artifact": {
-                "tag": candidate["artifact"]["tag"],
-                "url": f"{runtime.REPOSITORY}/releases/download/runtime-candidate-1.3.0/codexy-marketplace-plugin.tar.gz",
+                "tag": "v1.3.0",
+                "url": f"{runtime.REPOSITORY}/releases/download/v1.3.0/codexy-runtime-package.tar.gz",
                 "sha256": "b" * 64,
                 "payloadManifestSha256": hashlib.sha256(encoded).hexdigest(),
             },

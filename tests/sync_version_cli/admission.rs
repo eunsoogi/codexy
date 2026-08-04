@@ -7,12 +7,13 @@ use sha2::{Digest as _, Sha256};
 fn version_admission_matrix_is_ordered_and_fail_closed()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let current = super::archive_repository(&temp, "current")?;
+    let archive = super::shared_repository_archive()?;
+    let current = super::archive_repository(archive, &temp, "current")?;
     assert!(admit(&current, "1.2.2")?.status.success());
     assert!(!admit(&current, "1.1.0")?.status.success());
 
     for case in ["exact", "stale-bootstrap", "stale-runtime", "legacy-runtime", "wrapper-drift"] {
-        let root = super::archive_repository(&temp, case)?;
+        let root = super::archive_repository(archive, &temp, case)?;
         activate(&root)?;
         match case {
             "exact" => {}
@@ -25,25 +26,47 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
                 |value| value["runtime"]["selectedTag"] = json!("v1.2.2"),
             )?,
             "legacy-runtime" => mutate_json(
-                &root.join("plugins/codexy/runtime-release.json"),
-                |value| value["state"] = json!("legacy-public"),
+                &root.join(".agents/plugins/runtime-activation.json"),
+                |value| value["candidate"]["artifact"]["stagingRunId"] = json!(false),
             )?,
             "wrapper-drift" => fs::write(
                 root.join("plugins/codexy/mcp/codexy-mcp-lsp"),
-                "#!/bin/sh\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime lsp -- \"$@\"\n",
+                "#!/bin/sh\nexec uvx --from getcodexy==1.2.1 codexy-mcp-runtime lsp -- \"$@\"\n",
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }
+        let output = admit(&root, "1.3.0")?;
         assert_eq!(
-            admit(&root, "1.3.0")?.status.success(),
+            output.status.success(),
             case == "exact",
-            "unexpected admission result for {case}"
+            "unexpected admission result for {case}: {}",
+            String::from_utf8_lossy(&output.stderr),
         );
+        if case == "exact" {
+            let advance = sync_version(&root, "1.3.0")?;
+            assert!(
+                advance.status.success(),
+                "activated source failed sync --version: {}",
+                String::from_utf8_lossy(&advance.stderr),
+            );
+            let check = sync_check(&root)?;
+            assert!(
+                check.status.success(),
+                "activated source with its preserved runtime selection failed sync --check: {}",
+                String::from_utf8_lossy(&check.stderr),
+            );
+        }
     }
     Ok(())
 }
 
 pub(super) fn activate(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let workflow = ".github/workflows/plugin-runtime-binaries.yml";
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join(workflow);
+    let target = root.join(workflow);
+    fs::create_dir_all(target.parent().ok_or("workflow parent")?)
+        .map_err(|error| format!("creating workflow parent: {error}"))?;
+    fs::copy(source, target).map_err(|error| format!("copying current workflow: {error}"))?;
     let receipt = root.join("candidate-receipt.json");
     fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
@@ -64,7 +87,7 @@ fn receipt_value() -> Value {
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": "a".repeat(40)},
-        "artifact": {"tag": "runtime-candidate-1.3.0"},
+        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": {
             "darwin-arm64": {"lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": digest}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}},
@@ -77,7 +100,7 @@ fn receipt_value() -> Value {
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1",
         "candidate": candidate,
-        "artifact": {"url": "https://github.com/eunsoogi/codexy/releases/download/runtime-candidate-1.3.0/codexy-marketplace-plugin.tar.gz", "sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
+        "artifact": {"sha256": "f".repeat(64), "payloadManifestSha256": payload_sha},
         "provenance": {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"}
     })
 }
@@ -97,6 +120,22 @@ fn canonical(value: Value) -> Value {
 fn admit(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
     Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--admit-version", version])
+        .env("CODEXY_REPO_ROOT", root)
+        .current_dir(root)
+        .output()
+}
+
+fn sync_check(root: &Path) -> Result<std::process::Output, std::io::Error> {
+    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .arg("--check")
+        .env("CODEXY_REPO_ROOT", root)
+        .current_dir(root)
+        .output()
+}
+
+fn sync_version(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
+    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", version])
         .env("CODEXY_REPO_ROOT", root)
         .current_dir(root)
         .output()

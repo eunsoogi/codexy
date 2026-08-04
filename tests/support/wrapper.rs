@@ -2,13 +2,15 @@
 use std::os::unix::fs::PermissionsExt as _;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt as _;
-use std::process::{Child, Command, Output, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::time::Duration;
 
 use super::fixture_command::FixtureCommand;
 use super::package_fixture::create_runtime_package;
-use super::wrapper_copy::copy_dir;
-pub(crate) use super::wrapper_process::wait_for_wrapper_output;
+use super::wrapper_copy::copy_wrapper_surface;
+use super::wrapper_process::{
+    WrapperChild, wait_for_wrapper_output as wait_for_wrapper_output_inner,
+};
 
 const WRAPPER_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -22,10 +24,8 @@ pub(crate) struct WrapperFixture<'a> {
 impl<'a> WrapperFixture<'a> {
     pub(crate) fn new(home: &'a std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
         let plugin_root = home.join("codexy");
-        copy_dir(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-            &plugin_root,
-        )?;
+        let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy");
+        copy_wrapper_surface(&source_root, &plugin_root)?;
         let cargo_bin = home.join("fake-bin");
         std::fs::create_dir_all(&cargo_bin)?;
         let cargo_log = home.join("cargo.log");
@@ -127,26 +127,46 @@ pub(crate) fn run_wrapper_command(
 }
 
 pub(crate) fn wait_for_default_wrapper_output(
-    child: Child,
+    child: WrapperChild,
     description: String,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     wait_for_wrapper_output(child, description, WRAPPER_TIMEOUT)
+}
+
+pub(crate) fn wait_for_wrapper_output(
+    child: WrapperChild,
+    description: String,
+    timeout: Duration,
+) -> Result<Output, Box<dyn std::error::Error>> {
+    let interval =
+        super::profile_interval_metrics::generic_interval("wrapper.child-wait.other", "other");
+    let result = wait_for_wrapper_output_inner(child, description, timeout);
+    drop(interval);
+    result
 }
 
 pub(crate) fn run_wrapper_command_with_timeout(
     command: &mut Command,
     timeout: Duration,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    let interval =
+        super::profile_interval_metrics::wrapper_interval("output", command.get_program());
     let description = format!("{command:?}");
     let child = spawn_wrapper_command(command.stdout(Stdio::piped()).stderr(Stdio::piped()))?;
-    wait_for_wrapper_output(child, description, timeout)
+    let result = wait_for_wrapper_output(child, description, timeout);
+    drop(interval);
+    result
 }
 
 /// Spawns a wrapper as a process-group leader so the timeout helper can reap its descendants.
-pub(crate) fn spawn_wrapper_command(command: &mut Command) -> std::io::Result<Child> {
+pub(crate) fn spawn_wrapper_command(command: &mut Command) -> std::io::Result<WrapperChild> {
+    let interval =
+        super::profile_interval_metrics::wrapper_interval("spawn", command.get_program());
     #[cfg(unix)]
     command.process_group(0);
-    command.spawn()
+    let result = super::wrapper_process::spawn_wrapper_child(command);
+    drop(interval);
+    result
 }
 
 pub(crate) trait WrapperCommandExt {

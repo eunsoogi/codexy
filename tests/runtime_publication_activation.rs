@@ -12,11 +12,25 @@ use crate::support;
 
 #[path = "runtime_publication_activation/activation_immutability.rs"]
 mod activation_immutability;
+#[path = "runtime_publication_activation/artifact_download.rs"]
+mod artifact_download;
+#[path = "runtime_publication_activation/final_archive.rs"]
+mod final_archive;
+#[path = "runtime_publication_activation/final_archive_fixture.rs"]
+mod final_archive_fixture;
+#[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
+mod final_archive_lifecycle;
+#[path = "runtime_publication_activation/shell_fixtures.rs"]
+mod shell_fixtures;
+#[path = "runtime_publication_activation/staging.rs"]
+mod staging;
+#[path = "runtime_publication_activation/staging_zip_fixture.rs"]
+mod staging_zip_fixture;
 
-const RECEIPT_SCHEMA: &str = "codexy.runtime-candidate-receipt.v1";
+const CANDIDATE_SCHEMA: &str = "codexy-runtime-candidate/v1";
 
 #[test]
-fn publication_workflows_are_independent_and_immutable() -> Result<(), Box<dyn std::error::Error>> {
+fn publication_workflows_are_independent_and_staging_bound() -> Result<(), Box<dyn std::error::Error>> {
     let bootstrap = workflow("bootstrap-package.yml")?;
     let candidate = workflow("runtime-candidate.yml")?;
 
@@ -34,25 +48,25 @@ fn publication_workflows_are_independent_and_immutable() -> Result<(), Box<dyn s
     );
     support::assert_structured_literals(
         &candidate.1,
-        "immutable runtime candidate publication",
+        "immutable runtime staging publication",
         &[
             "git rev-parse",
             "SOURCE_COMMIT",
             "sha256",
             "provenance",
-            "curl --fail",
+            "actions/upload-artifact",
             "runtime-candidate.json",
         ],
     );
     assert_eq!(
-        candidate.1.matches("--clobber").count() + candidate.1.matches("gh release edit").count(),
+        candidate.1.matches("--clobber").count() + candidate.1.matches("gh release create").count(),
         0,
-        "candidate publication must never clobber immutable assets",
+        "runtime staging must never mutate a public release",
     );
     Ok(())
 }
 
-fn workflow(name: &str) -> Result<Workflow, Box<dyn std::error::Error>> {
+pub(super) fn workflow(name: &str) -> Result<Workflow, Box<dyn std::error::Error>> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows").join(name);
     let text = fs::read_to_string(&path)?;
     Ok((path, text.clone(), serde_yaml::from_str(&text)?))
@@ -113,7 +127,8 @@ fn already_selected_version_sync_preserves_runtime_pointers()
 }
 
 #[test]
-fn runtime_contract_requires_a_public_windows_receipt() -> Result<(), Box<dyn std::error::Error>> {
+fn runtime_contract_requires_authenticated_windows_staging_identity()
+-> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let contract: Json = serde_json::from_str(&fs::read_to_string(
         root.join("plugins/codexy/runtime-release.json"),
@@ -131,24 +146,26 @@ fn runtime_contract_requires_a_public_windows_receipt() -> Result<(), Box<dyn st
         .as_object()
         .ok_or("runtime-release platforms must be an object")?;
     if platforms.contains_key("windows-x86_64") {
-        let receipt = candidate_receipt(&root.join("plugins/codexy"))?;
-        assert_eq!(receipt["schema"], RECEIPT_SCHEMA);
-        let windows = receipt["platforms"]["windows-x86_64"]
+        let candidate: Json = serde_json::from_str(&fs::read_to_string(
+            root.join("plugins/codexy/runtime-candidate.json"),
+        )?)?;
+        assert_eq!(candidate["schema"], CANDIDATE_SCHEMA);
+        assert!(candidate["artifact"]["stagingRunId"].as_u64().is_some_and(|value| value > 0));
+        assert!(candidate["artifact"]["stagingRunAttempt"].as_u64().is_some_and(|value| value > 0));
+        let windows = candidate["platforms"]["windows-x86_64"]
             .as_object()
-            .ok_or("Windows lacks candidate proof")?;
-        for proof in ["lsp", "codegraph", "nativeProtocolProof"] {
-            assert!(
-                !windows[proof].is_null(),
-                "Windows candidate receipt lacks {proof}"
-            );
+            .ok_or("Windows lacks authenticated staging proof")?;
+        for server in ["lsp", "codegraph"] {
+            assert!(windows[server]["path"].as_str().is_some());
+            assert!(windows[server]["sha256"].as_str().is_some());
         }
     }
     Ok(())
 }
 
-type Workflow = (PathBuf, String, Yaml);
+pub(super) type Workflow = (PathBuf, String, Yaml);
 
-fn has_dispatch(document: &Yaml) -> bool {
+pub(super) fn has_dispatch(document: &Yaml) -> bool {
     let root = match document.as_mapping() {
         Some(value) => value,
         None => return false,
@@ -200,17 +217,4 @@ fn archive_repository(temp: &tempfile::TempDir) -> Result<PathBuf, Box<dyn std::
             .success()
     );
     Ok(repo)
-}
-
-fn candidate_receipt(plugin_root: &Path) -> Result<Json, Box<dyn std::error::Error>> {
-    for entry in fs::read_dir(plugin_root)? {
-        let path = entry?.path();
-        if path.extension().and_then(|value| value.to_str()) == Some("json") {
-            let receipt: Json = serde_json::from_str(&fs::read_to_string(&path)?)?;
-            if receipt["schema"] == RECEIPT_SCHEMA {
-                return Ok(receipt);
-            }
-        }
-    }
-    Err("Windows advertised without packaged public candidate receipt".into())
 }

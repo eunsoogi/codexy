@@ -1,12 +1,8 @@
-name: Publish immutable runtime candidate
+name: Stage verified runtime artifacts
 
 on:
   workflow_dispatch:
     inputs:
-      candidate_tag:
-        description: "New immutable runtime-candidate-* tag"
-        required: true
-        type: string
       source_commit:
         description: "Exact immutable source commit to build"
         required: true
@@ -169,73 +165,49 @@ jobs:
           }
       - uses: actions/upload-artifact@v7
         with:
-          name: runtime-candidate-${{ matrix.platform }}
+          name: runtime-staging-${{ matrix.platform }}
           path: runtime
           if-no-files-found: error
 
-  publish-candidate:
+  stage-runtime:
     needs: build-runtime
     runs-on: ubuntu-latest
     permissions:
       attestations: write
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
-          pattern: runtime-candidate-*
+          pattern: runtime-staging-*
           path: staged-runtime
           merge-multiple: true
-      - name: Assemble canonical candidate archive and receipt
+      - name: Assemble canonical staged archive and receipt
         env:
-          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
+          STAGING_RUN_ID: ${{ github.run_id }}
+          STAGING_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: scripts/assemble-runtime-candidate
       - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-marketplace-plugin.tar.gz
-      - name: Configure Git identity
+      - name: Verify staged archive and receipt digests
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Create candidate tag and release once
-        env:
-          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
-        run: |
-          remote_commit="$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG^{}" | awk 'NR == 1 {print $1}')"
-          if test -z "$remote_commit"; then
-            remote_commit="$(git ls-remote --tags origin "refs/tags/$CANDIDATE_TAG" | awk 'NR == 1 {print $1}')"
-          fi
-          if test -z "$remote_commit"; then
-            git tag -a "$CANDIDATE_TAG" -m "Runtime candidate $CANDIDATE_TAG" "$SOURCE_COMMIT"
-            git push origin "$CANDIDATE_TAG"
-            remote_commit="$SOURCE_COMMIT"
-          fi
-          test "$remote_commit" = "$SOURCE_COMMIT"
-          if ! gh release view "$CANDIDATE_TAG" >/dev/null 2>&1; then
-            gh release create "$CANDIDATE_TAG" --target "$SOURCE_COMMIT" --title "$CANDIDATE_TAG" --notes "Immutable runtime candidate."
-          fi
-          scripts/reconcile-runtime-candidate-assets dist
-      - name: Re-download and verify anonymous public bytes
-        env:
-          CANDIDATE_TAG: ${{ inputs.candidate_tag }}
-        run: |
-          base="https://github.com/eunsoogi/codexy/releases/download/$CANDIDATE_TAG"
-          curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
-          curl --fail --location "$base/runtime-candidate-receipt.json" -o public-receipt.json
-          curl --fail --location "$base/runtime-candidate-provenance.json" -o public-provenance.json
-          cmp dist/runtime-candidate-receipt.json public-receipt.json
-          cmp dist/runtime-candidate-provenance.json public-provenance.json
-          jq -cS .provenance public-receipt.json | tr -d '\n' > receipt-provenance.json
-          cmp receipt-provenance.json public-provenance.json
-          sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
-          tar -xOf public.tar.gz plugins/codexy/runtime-candidate.json > public-candidate.json
-          cmp dist/candidate/plugins/codexy/runtime-candidate.json public-candidate.json
-          sha256sum public-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 public-receipt.json)"
+          sha256sum dist/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 dist/runtime-staging-receipt.json)"
+          tar -xOf dist/codexy-marketplace-plugin.tar.gz plugins/codexy/runtime-candidate.json > staged-candidate.json
+          sha256sum staged-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 dist/runtime-staging-receipt.json)"
+      - name: Upload authenticated staging bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/codexy-marketplace-plugin.tar.gz
+            dist/runtime-staging-receipt.json
+            dist/runtime-staging-provenance.json
+          if-no-files-found: error
+          retention-days: 14

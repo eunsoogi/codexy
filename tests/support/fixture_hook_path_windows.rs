@@ -58,7 +58,7 @@ pub(super) fn native_shell_fixture_path(value: &str, native_cwd: &str) -> Result
     Ok(native)
 }
 
-fn native_shell_fixture_path_with(
+pub(crate) fn native_shell_fixture_path_with(
     value: &str,
     fixture_root: &str,
     discover: impl Fn(&str) -> Result<String, String>,
@@ -72,70 +72,9 @@ fn native_shell_fixture_path_with(
     }
 }
 
-fn fixture_path_cache_key(value: &str, fixture_root: &str) -> (String, Option<String>) {
+pub(crate) fn fixture_path_cache_key(value: &str, fixture_root: &str) -> (String, Option<String>) {
     (
         value.to_owned(),
         (value == "/var/tmp").then(|| fixture_root.to_owned()),
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{fixture_path_cache_key, native_shell_fixture_path_with};
-
-    #[test]
-    fn native_model_uses_host_identities_for_declared_posix_fixture_paths() {
-        let discover = |name: &str| -> Result<String, String> {
-            match name {
-                "git" => Ok(r"C:\\host\\git.exe".to_owned()),
-                "sh" => Ok(r"C:\\host\\sh.exe".to_owned()),
-                other => Err(format!("missing {other}")),
-            }
-        };
-        let convert =
-            |path: &str| -> Result<String, String> { Ok(format!(r"C:\\converted\\{path}")) };
-
-        assert_eq!(
-            native_shell_fixture_path_with("/usr/bin/git", r"C:\\host\\fixture", discover, convert),
-            Ok(r"C:\\host\\git.exe".to_owned())
-        );
-        assert_eq!(
-            native_shell_fixture_path_with(
-                "/usr/bin/printf",
-                r"C:\\host\\fixture",
-                discover,
-                convert
-            ),
-            Ok(r"C:\\host\\sh.exe".to_owned())
-        );
-        assert_eq!(
-            native_shell_fixture_path_with("/var/tmp", r"C:\\host\\fixture", discover, convert),
-            Ok(r"C:\\host\\fixture".to_owned())
-        );
-        assert_eq!(
-            native_shell_fixture_path_with("/opt/custom", r"C:\\host\\fixture", discover, convert),
-            Ok(r"C:\\converted\\/opt/custom".to_owned())
-        );
-        assert_eq!(
-            native_shell_fixture_path_with(
-                r"\\server\\share",
-                r"C:\\host\\fixture",
-                discover,
-                |_| { Err("Windows fixture paths do not support UNC values".to_owned()) }
-            ),
-            Err("Windows fixture paths do not support UNC values".to_owned())
-        );
-    }
-
-    #[test]
-    fn fixture_path_cache_key_keeps_fixture_root_context() {
-        assert_ne!(
-            fixture_path_cache_key("/var/tmp", r"C:\\host\\fixture-a"),
-            fixture_path_cache_key("/var/tmp", r"C:\\host\\fixture-b")
-        );
-        assert_eq!(
-            fixture_path_cache_key("/usr/bin/git", r"C:\\host\\fixture-a"),
-            fixture_path_cache_key("/usr/bin/git", r"C:\\host\\fixture-b")
-        );
-    }
 }

@@ -3,6 +3,7 @@ use crate::support::FixtureCommand as Command;
 use tempfile::tempdir;
 
 use crate::support::release_archive as release_archive_support;
+use crate::support::windows_archive_prerequisite::assert_windows_prerequisite_contract;
 use release_archive_support::{
     assert_archive_scanner_contract, complete_plugin_fixture,
     complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive, make_executable,
@@ -24,17 +25,28 @@ fn archive_gate_allows_documentation_path_examples() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive"),
     )
     .expect("archive gate script");
-    let checker = std::fs::read_to_string(
+    let checker_script = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-mcp-response"),
     )
     .expect("MCP response checker");
+    let checker_module = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect_mcp_response.py"),
+    )
+    .expect("MCP response parser module");
+    let checker = format!("{checker_script}\n{checker_module}");
     let entries = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("scripts/check-release-archive-entries"),
     )
     .expect("archive entry checker");
+    let prerequisite = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/install-windows-test-prerequisites.ps1"),
+    )
+    .expect("Windows archive scanner prerequisite");
     assert_archive_scanner_contract(&script, &entries, &checker);
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
+    assert_windows_prerequisite_contract(&prerequisite);
 }
 
 #[test]
@@ -134,19 +146,6 @@ fn archive_gate_rejects_a_malformed_runtime() {
 }
 
 #[test]
-fn archive_gate_rejects_an_access_key() {
-    let (root, plugin_root, archive) = complete_archive_fixture("secret");
-    std::fs::write(plugin_root.join("README.md"), "AKIA1234567890ABCDEF\n")
-        .expect("secret fixture");
-    create_archive(root.path(), &archive).expect("archive fixture");
-    assert_gate_error(
-        &archive,
-        &plugin_root,
-        "archive contains a secret or local path",
-    );
-}
-
-#[test]
 fn archive_gate_rejects_an_ignored_secret() {
     let (root, plugin_root, archive) = complete_archive_fixture("ignored-secret");
     std::fs::write(plugin_root.join(".rgignore"), "hidden-secret.txt\n").expect("ignore fixture");
@@ -226,6 +225,8 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
 mod admission_evidence;
 #[path = "release_archive_gate/candidate.rs"]
 mod candidate;
+#[path = "release_archive_gate/candidate_projection.rs"]
+mod candidate_projection;
 #[path = "release_archive_gate/content_compare.rs"]
 mod content_compare;
 #[path = "release_archive_gate/safety.rs"]

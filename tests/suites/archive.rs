@@ -1,4 +1,4 @@
-#[path = "../support/mod.rs"]
+#[path = "../support/archive.rs"]
 mod support;
 
 #[path = "../archive_binary_hygiene.rs"]
@@ -30,3 +30,6 @@ mod release_archive_process_cleanup;
 
 #[path = "../release_archive_windows_safety.rs"]
 mod release_archive_windows_safety;
+
+#[path = "../archive_release_support_tests.rs"]
+mod archive_release_support_tests;
