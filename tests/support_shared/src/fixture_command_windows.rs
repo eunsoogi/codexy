@@ -79,7 +79,7 @@ pub(super) fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'sta
 }
 
 #[cfg(windows)]
-pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf, String> {
+pub fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf, String> {
     let path = std::env::var_os("PATH").ok_or_else(|| {
         format!("Windows fixture interpreter `{interpreter}` cannot discover PATH")
     })?;
