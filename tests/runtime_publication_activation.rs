@@ -175,7 +175,7 @@ fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn
             ".env_path_list(\"PATH\", path_entries)",
             ".env_path(\"FAKE_RUN\", run_path)",
             ".env_path(\"FAKE_ARTIFACTS\", artifacts_path)",
-            ".env_path(\"FAKE_ZIP\", self.root.join(\"fixture-artifact.zip\"))",
+            ".env_path(\"FAKE_ZIP\", archive)",
         ],
     );
     let lifecycle = fs::read_to_string(root.join("tests/runtime_publication_activation/final_archive_lifecycle.rs"))?;
@@ -185,7 +185,7 @@ fn runtime_publication_shell_fixtures_project_every_path() -> Result<(), Box<dyn
         &[
             "FixtureCommand as Command",
             ".arg_path(&self.archive)",
-            ".arg_path(self.root.join(\"final.tar.gz\"))",
+            ".arg_path(&self.final_archive)",
         ],
     );
     Ok(())
