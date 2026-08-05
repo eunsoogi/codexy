@@ -2,6 +2,8 @@ use std::{fs, path::Path, process::Command};
 
 use serde_yaml::Value;
 
+use crate::support;
+
 #[test]
 #[cfg(unix)]
 fn final_publisher_fetches_release_tags_before_generating_notes()
@@ -54,9 +56,10 @@ fn final_publisher_fetches_release_tags_before_generating_notes()
     );
 
     let release = release_step()?;
-    assert!(
-        release.contains("git fetch --tags --force origin"),
-        "final publisher must fetch release tags before generating notes"
+    support::assert_structured_literals(
+        &release,
+        "final publisher release tag fetch",
+        &["git fetch --tags --force origin"],
     );
     run_git(&checkout, &["fetch", "--tags", "--force", "origin"])?;
     let output = Command::new(generator)
@@ -69,24 +72,27 @@ fn final_publisher_fetches_release_tags_before_generating_notes()
         String::from_utf8_lossy(&output.stderr)
     );
     let notes = String::from_utf8(output.stdout)?;
-    assert!(notes.contains("## Codexy v1.3.0"));
-    assert!(notes.contains("Changes since v1.2.2:"));
-    assert!(notes.contains(&format!("- generated notes commit ({short_sha})")));
+    let generated_commit = format!("- generated notes commit ({short_sha})");
+    support::assert_structured_literals(
+        &notes,
+        "generated changelog notes",
+        &["## Codexy v1.3.0", "Changes since v1.2.2:", &generated_commit],
+    );
     Ok(())
 }
 
 #[test]
 fn final_publisher_keeps_changelog_materialization_readable() -> Result<(), Box<dyn std::error::Error>> {
     let release = release_step()?;
-    assert!(
-        release.contains(
-            "if ! gh release view v1.3.0 --repo \"$GITHUB_REPOSITORY\" --json isDraft,assets > release-state.json 2>/dev/null; then\n  changelog_notes=\"$(scripts/generate-release-changelog v1.3.0)\" || exit 1"
-        ),
-        "changelog materialization must use its own readable fail-closed line"
+    support::assert_structured_literals(
+        &release,
+        "readable final publisher changelog materialization",
+        &["if ! gh release view v1.3.0 --repo \"$GITHUB_REPOSITORY\" --json isDraft,assets > release-state.json 2>/dev/null; then\n  changelog_notes=\"$(scripts/generate-release-changelog v1.3.0)\" || exit 1"],
     );
-    assert!(
-        !release.contains("then changelog_notes="),
-        "changelog materialization must not be collapsed into the release-view header"
+    support::assert_structured_absent_literals(
+        &release,
+        "readable final publisher changelog materialization",
+        &["then changelog_notes="],
     );
     Ok(())
 }

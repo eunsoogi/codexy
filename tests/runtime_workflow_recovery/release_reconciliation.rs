@@ -6,6 +6,8 @@ use std::{
 
 use serde_yaml::Value;
 
+use crate::support;
+
 const ASSETS: [&str; 3] = [
     "codexy-marketplace-plugin.tar.gz",
     "codexy-runtime-package.tar.gz",
@@ -99,13 +101,16 @@ impl Fixture {
     fn assert_generated_notes(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.assert_result(true, 1, 3, 1, false)?;
         let args = fs::read_to_string(self.root.join("release-create-args"))?;
-        assert!(
-            args.contains(&format!("--notes\n{GENERATED_NOTES}\n")),
-            "release notes were not generated:\n{args}"
+        let generated_notes_argument = format!("--notes\n{GENERATED_NOTES}\n");
+        support::assert_structured_literals(
+            &args,
+            "generated release notes",
+            &[&generated_notes_argument],
         );
-        assert!(
-            !args.contains("Verified version release."),
-            "release notes used a placeholder:\n{args}"
+        support::assert_structured_absent_literals(
+            &args,
+            "generated release notes",
+            &["Verified version release."],
         );
         Ok(())
     }
