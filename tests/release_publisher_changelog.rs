@@ -75,6 +75,22 @@ fn final_publisher_fetches_release_tags_before_generating_notes()
     Ok(())
 }
 
+#[test]
+fn final_publisher_keeps_changelog_materialization_readable() -> Result<(), Box<dyn std::error::Error>> {
+    let release = release_step()?;
+    assert!(
+        release.contains(
+            "if ! gh release view v1.3.0 --repo \"$GITHUB_REPOSITORY\" --json isDraft,assets > release-state.json 2>/dev/null; then\n  changelog_notes=\"$(scripts/generate-release-changelog v1.3.0)\" || exit 1"
+        ),
+        "changelog materialization must use its own readable fail-closed line"
+    );
+    assert!(
+        !release.contains("then changelog_notes="),
+        "changelog materialization must not be collapsed into the release-view header"
+    );
+    Ok(())
+}
+
 fn release_step() -> Result<String, Box<dyn std::error::Error>> {
     let workflow =
         Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
