@@ -13,23 +13,24 @@ const ASSETS: [&str; 3] = [
 ];
 const GENERATED_NOTES: &str =
     "## Codexy v1.3.0\n\nChanges since v1.2.2:\n- restore generated changelog notes (12345678)";
+const PARTIAL_NOTES: &str = "## Codexy v1.3.0\n\nChanges:";
 
 #[test]
 #[cfg(unix)]
 fn release_reconciliation_recovers_only_exact_draft_assets()
 -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;
-    absent.assert_result(true, 1, 3, 1)?;
+    absent.assert_result(true, 1, 3, 1, false)?;
 
     let partial = Fixture::new("draft", &[ASSETS[0]])?;
-    partial.assert_result(true, 0, 2, 1)?;
+    partial.assert_result(true, 0, 2, 1, false)?;
 
     let published = Fixture::new("published", &ASSETS)?;
-    published.assert_result(true, 0, 0, 0)?;
+    published.assert_result(true, 0, 0, 0, false)?;
 
     let mismatch = Fixture::new("draft", &[ASSETS[0]])?;
     fs::write(mismatch.assets.join(ASSETS[0]), b"mismatch\n")?;
-    mismatch.assert_result(false, 0, 0, 0)?;
+    mismatch.assert_result(false, 0, 0, 0, false)?;
     Ok(())
 }
 
@@ -38,6 +39,14 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
 fn new_release_uses_generated_commit_log_notes() -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;
     absent.assert_generated_notes()?;
+    Ok(())
+}
+
+#[test]
+#[cfg(unix)]
+fn failed_changelog_generation_never_creates_a_release() -> Result<(), Box<dyn std::error::Error>> {
+    let absent = Fixture::new("absent", &[])?;
+    absent.assert_result(false, 0, 0, 0, true)?;
     Ok(())
 }
 
@@ -61,7 +70,7 @@ impl Fixture {
         let changelog = scripts.join("generate-release-changelog");
         fs::write(
             &changelog,
-            "#!/bin/sh\nprintf '%s\\n' \"$CODEXY_GENERATED_RELEASE_NOTES\"\n",
+            "#!/bin/sh\nprintf '%s\\n' \"$CODEXY_GENERATED_RELEASE_NOTES\"\ntest \"${CODEXY_GENERATED_RELEASE_NOTES_FAIL:-false}\" != true\n",
         )?;
         make_executable(&changelog)?;
         fs::write(root.join("release-state"), state)?;
@@ -88,7 +97,7 @@ impl Fixture {
     }
 
     fn assert_generated_notes(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.assert_result(true, 1, 3, 1)?;
+        self.assert_result(true, 1, 3, 1, false)?;
         let args = fs::read_to_string(self.root.join("release-create-args"))?;
         assert!(
             args.contains(&format!("--notes\n{GENERATED_NOTES}\n")),
@@ -107,6 +116,7 @@ impl Fixture {
         creates: usize,
         uploads: usize,
         edits: usize,
+        generator_fails: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let host_path = std::env::var_os("PATH").ok_or("PATH")?;
         let mut paths = vec![self.root.join("bin")];
@@ -121,7 +131,18 @@ impl Fixture {
                 "FAKE_RELEASE_CREATE_ARGS",
                 self.root.join("release-create-args"),
             )
-            .env("CODEXY_GENERATED_RELEASE_NOTES", GENERATED_NOTES)
+            .env(
+                "CODEXY_GENERATED_RELEASE_NOTES",
+                if generator_fails {
+                    PARTIAL_NOTES
+                } else {
+                    GENERATED_NOTES
+                },
+            )
+            .env(
+                "CODEXY_GENERATED_RELEASE_NOTES_FAIL",
+                generator_fails.to_string(),
+            )
             .env("PATH", std::env::join_paths(paths)?)
             .output()?;
         assert_eq!(

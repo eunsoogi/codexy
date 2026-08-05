@@ -225,7 +225,7 @@ fn release_step() -> Result<String, Box<dyn std::error::Error>> {
         .and_then(|step| step["run"].as_str()).ok_or("protected main source")?;
     let release = steps.iter().find(|step| step["name"] == "Create and verify the only public version release")
         .and_then(|step| step["run"].as_str()).ok_or("final release step")?;
-    Ok(format!("{source}\n{release}"))
+    Ok(format!("{source}\n{}", release.replace("scripts/generate-release-changelog v1.3.0", "printf notes")))
 }
 
 fn remote_state(state: RemoteTag) -> &'static str {

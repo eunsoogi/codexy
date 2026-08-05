@@ -162,8 +162,8 @@ jobs:
             printf '%s\n' "remote v1.3.0 tag changed during admission" >&2
             exit 1
           }
-          if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json 2>/dev/null; then
-            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "$(scripts/generate-release-changelog v1.3.0)"
+          if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json 2>/dev/null; then changelog_notes="$(scripts/generate-release-changelog v1.3.0)" || exit 1
+            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "$changelog_notes"
             gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
           fi
           for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
