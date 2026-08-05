@@ -33,8 +33,8 @@ fn contract_names_selected_and_authenticated_staging_identities() -> Result<(), 
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
     assert_eq!(contract["schema"], "codexy.internal.release-publish-contract.v1");
-    assert_eq!(contract["version"], "1.2.2");
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.2.2");
+    assert_eq!(contract["version"], "1.3.0");
+    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
     assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(contract["sourceMarketplace"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));

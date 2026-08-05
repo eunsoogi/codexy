@@ -101,15 +101,17 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
 }
 
 #[test]
-fn bootstrap_candidate_identity_is_independent_from_plugin_version() -> Result<(), Box<dyn std::error::Error>> {
+fn activated_bootstrap_identity_preserves_the_selected_runtime_release() -> Result<(), Box<dyn std::error::Error>> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let package: toml::Value = toml::from_str(&std::fs::read_to_string(root.join("packages/getcodexy/pyproject.toml"))?)?;
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
     assert_eq!(package["project"]["version"].as_str(), Some("1.3.0"));
-    assert_eq!(contract["version"], "1.2.2");
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.2.2");
+    assert_eq!(contract["version"], "1.3.0");
+    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
-    assert_eq!(contract["runtime"]["selectedTag"], "v1.2.2");
+    assert_eq!(contract["runtime"]["selectedTag"], "v1.3.0");
+    let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy/runtime-release.json"))?)?;
+    assert_eq!(runtime_release["artifact"]["tag"], "v1.2.2");
     Ok(())
 }
 
