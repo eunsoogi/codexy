@@ -139,25 +139,7 @@ impl FinalArchiveFixture {
         &self,
         prepend_path: Option<PathBuf>,
     ) -> Result<Output, std::io::Error> {
-        let mut command = Command::new(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("scripts/materialize-runtime-release-archive"),
-        );
-        if let Some(path) = prepend_path {
-            let host_path = env::var_os("PATH").ok_or_else(|| std::io::Error::other("PATH"))?;
-            let mut entries = vec![path];
-            entries.extend(env::split_paths(&host_path));
-            command.env_path_list("PATH", entries);
-        }
-        command
-            .arg_path(&self.staged_archive)
-            .arg_path(&self.final_archive)
-            .current_dir(&self.root)
-            .env("RELEASE_TAG", "v1.3.0")
-            .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
-            .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-            .env("STAGING_RUN_ID", "42")
-            .output()
+        self.materialize_with(&self.staged_archive, STAGING_COMMIT, "42", prepend_path, false)
     }
 
     pub(super) fn materialize_public(&self) -> Result<Output, std::io::Error> {
@@ -171,6 +153,17 @@ impl FinalArchiveFixture {
         run_id: &str,
         prepend_path: Option<PathBuf>,
     ) -> Result<Output, std::io::Error> {
+        self.materialize_with(archive, source_commit, run_id, prepend_path, true)
+    }
+
+    fn materialize_with(
+        &self,
+        archive: &Path,
+        source_commit: &str,
+        run_id: &str,
+        prepend_path: Option<PathBuf>,
+        public: bool,
+    ) -> Result<Output, std::io::Error> {
         let mut command = Command::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/materialize-runtime-release-archive"),
@@ -181,16 +174,52 @@ impl FinalArchiveFixture {
             entries.extend(env::split_paths(&host_path));
             command.env_path_list("PATH", entries);
         }
+        match archive == self.staged_archive {
+            true => command.arg_path(&self.staged_archive),
+            false => command.arg_path(archive),
+        };
         command
-            .arg_path(archive)
             .arg_path(&self.final_archive)
             .current_dir(&self.root)
             .env("RELEASE_TAG", "v1.3.0")
             .env("STAGING_SOURCE_COMMIT", source_commit)
             .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-            .env("STAGING_RUN_ID", run_id)
-            .env("PUBLIC_RELEASE", "1")
-            .output()
+            .env("STAGING_RUN_ID", run_id);
+        if public {
+            command.env("PUBLIC_RELEASE", "1");
+        }
+        command.output()
+    }
+
+    pub(super) fn input_tree(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let output = Command::new("tar")
+            .args(["-C"])
+            .arg(&self.root)
+            .args(["-cf", "-", "plugins/codexy", "staged/plugins/codexy"])
+            .output()?;
+        assert!(output.status.success(), "fixture input snapshot failed");
+        Ok(output.stdout)
+    }
+
+    pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let output = Command::new("python3")
+            .args(["-c", r#"import pathlib, stat, sys, tarfile
+archive, root = map(pathlib.Path, sys.argv[1:])
+source = root / "plugins/codexy"
+with tarfile.open(archive) as entries:
+    def header(path): return entries.getmember(f"plugins/codexy/{path}").mode & 0o777
+    for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):
+        assert header(wrapper) == 0o755, f"{wrapper} mode was {header(wrapper):04o}"
+        assert entries.extractfile(f"plugins/codexy/{wrapper}").read() == (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0"), f"{wrapper} content changed"
+    for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy/mcp/codexy-mcp-lsp.exe"), ("hooks/current-policy.txt", source / "hooks/current-policy.txt")):
+        assert header(path) == stat.S_IMODE(owner.stat().st_mode), f"{path} mode changed"
+"#])
+            .arg(&self.final_archive)
+            .arg(&self.root)
+            .output()?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "public archive mode matrix failed: {stderr}");
+        Ok(())
     }
 }
 
