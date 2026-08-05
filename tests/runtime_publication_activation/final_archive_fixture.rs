@@ -11,6 +11,7 @@ use crate::support::{self, FixtureCommand as Command};
 
 const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+pub(super) const RUNTIME: &[u8] = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n";
 
 pub(super) struct FinalArchiveFixture {
     _temporary: tempfile::TempDir,
@@ -18,7 +19,6 @@ pub(super) struct FinalArchiveFixture {
     pub(super) staged_archive: PathBuf,
     pub(super) public_archive: PathBuf,
     pub(super) final_archive: PathBuf,
-    pub(super) runtime: Vec<u8>,
 }
 
 impl FinalArchiveFixture {
@@ -54,9 +54,8 @@ impl FinalArchiveFixture {
                 ),
             )?;
         }
-        let runtime = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n".to_vec();
         let runtime_path = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
-        fs::write(&runtime_path, &runtime)?;
+        fs::write(&runtime_path, RUNTIME)?;
         support::make_executable(&runtime_path)?;
         for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
             for server in ["lsp", "codegraph"] {
@@ -131,7 +130,6 @@ impl FinalArchiveFixture {
             root,
             staged_archive,
             public_archive,
-            runtime,
         })
     }
 
@@ -193,8 +191,7 @@ impl FinalArchiveFixture {
 
     pub(super) fn input_tree(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let output = Command::new("tar")
-            .args(["-C"])
-            .arg(&self.root)
+            .current_dir(&self.root)
             .args(["-cf", "-", "plugins/codexy", "staged/plugins/codexy"])
             .output()?;
         assert!(output.status.success(), "fixture input snapshot failed");
@@ -203,9 +200,11 @@ impl FinalArchiveFixture {
 
     pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("python3")
-            .args(["-c", r#"import pathlib, stat, sys, tarfile
+            .args(["-c", r#"import pathlib, re, stat, sys, tarfile
 archive, root = map(pathlib.Path, sys.argv[1:])
 source = root / "plugins/codexy"
+matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy/mcp/codexy-mcp-codegraph",', pathlib.Path("scripts/materialize-runtime-release-archive").read_text()).group("expression")
+assert eval(matcher, {"relative": pathlib.PureWindowsPath("plugins/codexy/mcp/codexy-mcp-codegraph")}) in {"plugins/codexy/mcp/codexy-mcp-lsp", "plugins/codexy/mcp/codexy-mcp-codegraph"}, "Windows governed wrapper matcher missed codegraph"
 with tarfile.open(archive) as entries:
     def header(path): return entries.getmember(f"plugins/codexy/{path}").mode & 0o777
     for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):

@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::support::{self, FixtureCommand as Command};
 
-use super::{final_archive_fixture::FinalArchiveFixture, workflow};
+use super::{final_archive_fixture::{FinalArchiveFixture, RUNTIME}, workflow};
 
 #[test]
 fn final_publisher_materializes_and_exercises_the_public_archive()
@@ -102,7 +102,7 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
         );
     }
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
-    assert_eq!(fs::read(&runtime)?, fixture.runtime);
+    assert_eq!(fs::read(&runtime)?, RUNTIME);
     let smoke = Command::new(runtime).arg("--help").output()?;
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");

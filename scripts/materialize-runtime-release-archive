@@ -185,7 +185,7 @@ with (
     for path in paths:
         relative = path.relative_to(root)
         info = archive.gettarinfo(str(path), str(relative))
-        if str(relative) in {
+        if relative.as_posix() in {
             "plugins/codexy/mcp/codexy-mcp-lsp",
             "plugins/codexy/mcp/codexy-mcp-codegraph",
         }:
