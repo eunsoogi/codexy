@@ -11,13 +11,14 @@ use crate::support::{self, FixtureCommand as Command};
 
 const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+pub(super) const RUNTIME: &[u8] = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n";
 
 pub(super) struct FinalArchiveFixture {
     _temporary: tempfile::TempDir,
     pub(super) root: PathBuf,
     pub(super) staged_archive: PathBuf,
+    pub(super) public_archive: PathBuf,
     pub(super) final_archive: PathBuf,
-    pub(super) runtime: Vec<u8>,
 }
 
 impl FinalArchiveFixture {
@@ -31,17 +32,19 @@ impl FinalArchiveFixture {
             fs::create_dir_all(plugin.join(".codex-plugin"))?;
             fs::create_dir_all(plugin.join("runtime"))?;
         }
-        fs::write(
-            source.join(".codex-plugin/plugin.json"),
-            b"{\"name\":\"codexy\",\"version\":\"1.3.0\"}\n",
-        )?;
-        fs::write(
-            staged.join(".codex-plugin/plugin.json"),
-            b"{\"name\":\"codexy\",\"version\":\"1.2.2\"}\n",
-        )?;
+        for (plugin, version) in [(&source, "1.3.0"), (&staged, "1.2.2")] {
+            fs::write(
+                plugin.join(".codex-plugin/plugin.json"),
+                format!("{{\"name\":\"codexy\",\"version\":\"{version}\"}}\n"),
+            )?;
+        }
+        fs::create_dir_all(source.join("hooks"))?;
+        fs::create_dir_all(staged.join("hooks"))?;
+        fs::write(source.join("hooks/current-policy.txt"), b"current policy\n")?;
+        fs::write(staged.join("hooks/current-policy.txt"), b"stale policy\n")?;
+        let mcp = source.join("mcp");
+        fs::create_dir_all(&mcp)?;
         for server in ["lsp", "codegraph"] {
-            let mcp = source.join("mcp");
-            fs::create_dir_all(&mcp)?;
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
                 format!(
@@ -49,9 +52,8 @@ impl FinalArchiveFixture {
                 ),
             )?;
         }
-        let runtime = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n".to_vec();
         let runtime_path = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
-        fs::write(&runtime_path, &runtime)?;
+        fs::write(&runtime_path, RUNTIME)?;
         support::make_executable(&runtime_path)?;
         for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
             for server in ["lsp", "codegraph"] {
@@ -85,6 +87,30 @@ impl FinalArchiveFixture {
                 .success()
         );
         let staged_sha = format!("{:x}", Sha256::digest(fs::read(&staged_archive)?));
+        let public_root = root.join("public");
+        fs::create_dir_all(&public_root)?;
+        assert!(
+            Command::new("tar")
+                .args(["-xzf"])
+                .arg(&staged_archive)
+                .arg("-C")
+                .arg(&public_root)
+                .status()?
+                .success()
+        );
+        fs::remove_file(public_root.join("plugins/codexy/runtime-candidate.json"))?;
+        let public_archive = root.join("public.tar.gz");
+        assert!(
+            Command::new("tar")
+                .env("COPYFILE_DISABLE", "1")
+                .args(["-C"])
+                .arg(&public_root)
+                .args(["-czf"])
+                .arg(&public_archive)
+                .arg("plugins/codexy")
+                .status()?
+                .success()
+        );
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::write(
             root.join(".agents/plugins/runtime-activation.json"),
@@ -101,13 +127,38 @@ impl FinalArchiveFixture {
             final_archive: root.join("final.tar.gz"),
             root,
             staged_archive,
-            runtime,
+            public_archive,
         })
     }
 
     pub(super) fn materialize(
         &self,
         prepend_path: Option<PathBuf>,
+    ) -> Result<Output, std::io::Error> {
+        self.materialize_with(&self.staged_archive, STAGING_COMMIT, "42", prepend_path, false)
+    }
+
+    pub(super) fn materialize_public(&self) -> Result<Output, std::io::Error> {
+        self.materialize_public_with(&self.public_archive, STAGING_COMMIT, "42", None)
+    }
+
+    pub(super) fn materialize_public_with(
+        &self,
+        archive: &Path,
+        source_commit: &str,
+        run_id: &str,
+        prepend_path: Option<PathBuf>,
+    ) -> Result<Output, std::io::Error> {
+        self.materialize_with(archive, source_commit, run_id, prepend_path, true)
+    }
+
+    fn materialize_with(
+        &self,
+        archive: &Path,
+        source_commit: &str,
+        run_id: &str,
+        prepend_path: Option<PathBuf>,
+        public: bool,
     ) -> Result<Output, std::io::Error> {
         let mut command = Command::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -119,15 +170,56 @@ impl FinalArchiveFixture {
             entries.extend(env::split_paths(&host_path));
             command.env_path_list("PATH", entries);
         }
+        match archive == self.staged_archive {
+            true => command.arg_path(&self.staged_archive),
+            false => command.arg_path(archive),
+        };
         command
-            .arg_path(&self.staged_archive)
             .arg_path(&self.final_archive)
             .current_dir(&self.root)
             .env("RELEASE_TAG", "v1.3.0")
-            .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
+            .env("STAGING_SOURCE_COMMIT", source_commit)
             .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-            .env("STAGING_RUN_ID", "42")
-            .output()
+            .env("STAGING_RUN_ID", run_id);
+        if public {
+            command.env("PUBLIC_RELEASE", "1");
+        }
+        command.output()
+    }
+
+    pub(super) fn input_tree(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let output = Command::new("tar")
+            .current_dir(&self.root)
+            .args(["-cf", "-", "plugins/codexy", "staged/plugins/codexy"])
+            .output()?;
+        assert!(output.status.success(), "fixture input snapshot failed");
+        Ok(output.stdout)
+    }
+
+    pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let output = Command::new("python3")
+            .args(["-c", r#"import os, pathlib, re, stat, sys, tarfile
+archive, root = map(pathlib.Path, sys.argv[1:])
+source = root / "plugins/codexy"
+matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy/mcp/codexy-mcp-codegraph",', pathlib.Path("scripts/materialize-runtime-release-archive").read_text()).group("expression")
+assert eval(matcher, {"relative": pathlib.PureWindowsPath("plugins/codexy/mcp/codexy-mcp-codegraph")}) in {"plugins/codexy/mcp/codexy-mcp-lsp", "plugins/codexy/mcp/codexy-mcp-codegraph"}, "Windows governed wrapper matcher missed codegraph"
+with tarfile.open(archive) as entries:
+    def header(path): return entries.getmember(f"plugins/codexy/{path}").mode & 0o777
+    for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):
+        assert header(wrapper) == 0o755, f"{wrapper} mode was {header(wrapper):04o}"
+        legacy = (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0")
+        expected = (source / wrapper).read_text().replace('bundled_platforms="darwin-arm64 linux-x86_64"', 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"').replace("getcodexy==1.2.2", "getcodexy==1.3.0").replace("\n", os.linesep).encode()
+        assert (expected == legacy and b"\r" not in expected) if os.linesep == "\n" else (expected != legacy and b"\r\n" in expected), f"{wrapper} write_text newline semantics were not preserved"
+        assert entries.extractfile(f"plugins/codexy/{wrapper}").read() == expected, f"{wrapper} content changed"
+    for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy/mcp/codexy-mcp-lsp.exe"), ("hooks/current-policy.txt", source / "hooks/current-policy.txt")):
+        assert header(path) == stat.S_IMODE(owner.stat().st_mode), f"{path} mode changed"
+"#])
+            .arg(&self.final_archive)
+            .arg(&self.root)
+            .output()?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "public archive mode matrix failed: {stderr}");
+        Ok(())
     }
 }
 

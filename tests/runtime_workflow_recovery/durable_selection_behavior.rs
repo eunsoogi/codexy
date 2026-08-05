@@ -31,6 +31,15 @@ fn public_release_selection_falls_back_only_when_release_is_confirmed_absent()
     Ok(())
 }
 
+#[test]
+#[cfg(unix)]
+fn public_release_selection_uses_the_current_source_projection_before_inspection()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new("present", false)?;
+    fixture.assert_public_projection()?;
+    Ok(())
+}
+
 #[cfg(unix)]
 struct Fixture {
     _temporary: tempfile::TempDir,
@@ -49,7 +58,20 @@ impl Fixture {
         fs::write(root.join("release-state"), release)?;
         let public = root.join("public.tar.gz");
         let staging = root.join("staging.tar.gz");
-        fs::write(&public, b"public release bytes\n")?;
+        let public_root = root.join("public-root/plugins/codexy");
+        fs::create_dir_all(&public_root)?;
+        fs::write(public_root.join("selected.txt"), b"public release bytes\n")?;
+        assert!(
+            Command::new("tar")
+                .env("COPYFILE_DISABLE", "1")
+                .args(["-C"])
+                .arg(root.join("public-root"))
+                .args(["-czf"])
+                .arg(&public)
+                .arg("plugins/codexy")
+                .status()?
+                .success()
+        );
         fs::write(&staging, b"staged candidate bytes\n")?;
         let public_sha = digest(&public)?;
         let staging_sha = digest(&staging)?;
@@ -69,12 +91,30 @@ impl Fixture {
         let gh = bin.join("gh");
         fs::write(&gh, fake_gh())?;
         executable(&gh)?;
+        let git = bin.join("git");
+        fs::write(&git, format!("#!/bin/sh\nprintf '%s\\n' '{COMMIT}'\n"))?;
+        executable(&git)?;
         let fallback = root.join("scripts/download-runtime-staging-artifact");
         fs::write(&fallback, "#!/bin/sh\nset -eu\nprintf '%s\\n' fallback >> \"$FALLBACK_LOG\"\nmkdir -p \"$1\"\ncp \"$STAGING_ARCHIVE\" \"$1/codexy-marketplace-plugin.tar.gz\"\n")?;
         executable(&fallback)?;
+        let materializer = root.join("scripts/materialize-runtime-release-archive");
+        fs::write(
+            &materializer,
+            "#!/bin/sh\nset -eu\ntest \"${PUBLIC_RELEASE:-0}\" = 1\nprintf '%s\\n' \"$PUBLIC_RELEASE\" > public-projection-log\ncp \"$1\" \"$2\"\n",
+        )?;
+        executable(&materializer)?;
+        let inspector = root.join("scripts/inspect-release-archive");
+        fs::write(
+            &inspector,
+            "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$3\" > public-inspection-log\n",
+        )?;
+        executable(&inspector)?;
         let runner = root.join("run-selection");
         fs::write(&runner, format!("#!/bin/sh\nset -eu\n{}", selection()?) )?;
         executable(&runner)?;
+        let assembly_runner = root.join("run-assembly");
+        fs::write(&assembly_runner, format!("#!/bin/sh\nset -eu\n{}", assembly()?))?;
+        executable(&assembly_runner)?;
         Ok(Self { _temporary: temporary, root })
     }
 
@@ -97,6 +137,21 @@ impl Fixture {
         assert_eq!(self.root.join("fallback-log").exists(), fallback);
         Ok(())
     }
+
+    fn assert_public_projection(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.assert_result(true, false)?;
+        let host_path = std::env::var_os("PATH").ok_or("PATH")?;
+        let mut paths = vec![self.root.join("bin")];
+        paths.extend(std::env::split_paths(&host_path));
+        let output = Command::new(self.root.join("run-assembly"))
+            .current_dir(&self.root)
+            .env("PATH", std::env::join_paths(paths)?)
+            .output()?;
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        assert_eq!(fs::read_to_string(self.root.join("public-projection-log"))?, "1\n");
+        assert_eq!(fs::read_to_string(self.root.join("public-inspection-log"))?, "public-release\n");
+        Ok(())
+    }
 }
 
 #[cfg(unix)]
@@ -109,6 +164,18 @@ fn selection() -> Result<String, Box<dyn std::error::Error>> {
         .and_then(|step| step["run"].as_str())
         .map(str::to_owned)
         .ok_or_else(|| "selected immutable bytes step".into())
+}
+
+#[cfg(unix)]
+fn assembly() -> Result<String, Box<dyn std::error::Error>> {
+    let workflow = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/plugin-runtime-binaries.yml");
+    let parsed: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
+    parsed["jobs"]["verify-selected-package"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Assemble state-aware marketplace package without rebuilding"))
+        .and_then(|step| step["run"].as_str())
+        .map(str::to_owned)
+        .ok_or_else(|| "selected package assembly".into())
 }
 
 #[cfg(unix)]

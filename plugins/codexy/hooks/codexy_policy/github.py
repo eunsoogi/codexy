@@ -9,7 +9,7 @@ from typing import Any
 from .body import has_sections
 from .github_api import forbidden as api_forbidden
 from .github_target import PullRequestSelector, pull_request
-from .merge import cli as cli_merge, message_valid, positive_int
+from .merge import cli as cli_merge, positive_int
 from .pull_request import create as pr_create, shell_update
 from .repository import OWNED, github_identity, read_text
 from .titles import issue_title
@@ -70,7 +70,7 @@ def admitted(mutation: Mutation) -> bool:
         return pr_create({"title": mutation.title, "body": body, "issue": mutation.issue})
     if mutation.kind == MutationKind.PR_UPDATE:
         return shell_update(mutation.number, mutation.title, body, mutation.body is not None)
-    return mutation.merge_method == "squash" and message_valid(mutation.number, mutation.title, body)
+    return False if mutation.kind == MutationKind.PR_MERGE else mutation.merge_method == "squash" and message_valid(mutation.number, mutation.title, body)
 
 
 def connector_admitted(tool: str, data: dict[str, Any]) -> bool:

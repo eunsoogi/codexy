@@ -32,5 +32,9 @@ fn git_workflow_validates_pr_suffix_without_issue_number() -> Result<(), Box<dyn
             .join("plugins/codexy/skills/git-workflow/references/merge-and-main-sync.md"),
     )?;
     assert!(merge_reference.contains("plugins/codexy/hooks/codexy-merge-message-check.sh"));
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .arg("--check")
+        .output()?;
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }

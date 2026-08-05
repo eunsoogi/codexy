@@ -6,6 +6,22 @@ use std::{
 
 use serde_json::{Value, json};
 
+use crate::support::copy_dir;
+
+pub(super) fn synchronize_current_plugin_validation_inputs(
+    repo: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let plugin = repo.join("plugins/codexy");
+    let manifest = fs::read(plugin.join(".codex-plugin/plugin.json"))?;
+    fs::remove_dir_all(&plugin)?;
+    copy_dir(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
+        &plugin,
+    )?;
+    fs::write(plugin.join(".codex-plugin/plugin.json"), manifest)?;
+    Ok(())
+}
+
 pub(super) fn select_current_bootstrap(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
     let mut contract: Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;

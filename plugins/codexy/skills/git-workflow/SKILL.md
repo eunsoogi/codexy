@@ -22,7 +22,7 @@ MUST read these relative references before acting on the matching surface:
   including review thread comment `commit { oid }` evidence.
 - `references/codex-connector-review.md` for the one explicit pre-merge Codex
   connector review and its bounded repair cycle.
-- `references/merge-and-main-sync.md` for merge gates, squash merge body
+- `references/merge-and-main-sync.md` and `references/merge-authorization.md` for merge gates, squash merge body
   preservation, branch deletion, post-merge main sync, and the
   `merge_validation_args=(--check-merge-message --expected-pr "$pr_number")`
   / `post_merge_validation_args=(--check-merge-message --expected-pr "$pr_number")`
@@ -246,3 +246,5 @@ when domain intent is unclear, and MUST stage only resolved files.
 - PR title has been validated with `--check-pr-title`.
 - No unresolved actionable review feedback or review threads remain.
 - Squash merge bodies preserve the PR body exactly; branch deletion and main sync are verified after merge.
+
+A checked contract is the sole merge authorization; generic finish, completion, silence, clean gates, and a ready PR are non-authoritative signals.

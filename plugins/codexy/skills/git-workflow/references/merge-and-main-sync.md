@@ -124,12 +124,7 @@ elif ! cat "$pr_body_file"; then
   printf '%s\n' "failed to display captured PR body" >&2
   exit 1
 fi
-printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "
-IFS= read -r pr_body_approval
-if [ "$pr_body_approval" != "APPROVE_PR_BODY_FOR_MAIN" ]; then
-  printf '%s\n' "PR body approval token mismatch" >&2
-  exit 1
-fi
+printf '%s' "Type APPROVE_PR_BODY_FOR_MAIN to continue: "; IFS= read -r pr_body_approval; [ "$pr_body_approval" = "APPROVE_PR_BODY_FOR_MAIN" ] || { printf '%s\n' "PR body approval token mismatch" >&2; exit 1; }
 
 mkdir -p "$(dirname "$expected_body_file")"
 if ! cp "$pr_body_file" "$expected_body_file"; then
@@ -141,16 +136,18 @@ if ! test -s "$expected_body_file"; then
   exit 1
 fi
 
-if ! gh pr merge "$pr_number" \
+if ! plugins/codexy/hooks/codexy-authorized-squash-merge.sh \
+  --expected-pr "$pr_number" \
+  --expected-issue "$issue_number" \
+  --merge-message-file "$merge_message_file" \
   --repo "$repo" \
-  --squash \
-  --delete-branch \
   --match-head-commit "$head_oid" \
   --subject "$merge_subject" \
   --body-file "$pr_body_file"; then
-  printf '%s\n' "GitHub squash merge failed" >&2
+  printf '%s\n' "packaged authorized squash merge failed" >&2
   exit 1
 fi
+
 ```
 
 `--auto` only waits for configured GitHub requirements, and `--admin` bypasses

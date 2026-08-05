@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::support::{self, FixtureCommand as Command};
 
-use super::{final_archive_fixture::FinalArchiveFixture, workflow};
+use super::{final_archive_fixture::{FinalArchiveFixture, RUNTIME}, workflow};
 
 #[test]
 fn final_publisher_materializes_and_exercises_the_public_archive()
@@ -102,7 +102,7 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
         );
     }
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
-    assert_eq!(fs::read(&runtime)?, fixture.runtime);
+    assert_eq!(fs::read(&runtime)?, RUNTIME);
     let smoke = Command::new(runtime).arg("--help").output()?;
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");
@@ -111,4 +111,132 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
         assert_eq!(fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?, fs::read(runtime)?);
     }
     Ok(())
+}
+
+#[test]
+fn materializer_projects_current_source_onto_an_immutable_public_runtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = FinalArchiveFixture::new()?;
+    let input_tree = fixture.input_tree()?;
+    let output = fixture.materialize_public()?;
+    assert!(
+        output.status.success(),
+        "public projection failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let extraction = tempfile::tempdir()?;
+    assert!(
+        Command::new("tar")
+            .args(["-xzf"])
+            .arg(&fixture.final_archive)
+            .arg("-C")
+            .arg(extraction.path())
+            .status()?
+            .success()
+    );
+    let plugin = extraction.path().join("plugins/codexy");
+    let public_extraction = tempfile::tempdir()?;
+    assert!(
+        Command::new("tar")
+            .args(["-xzf"])
+            .arg(&fixture.public_archive)
+            .arg("-C")
+            .arg(public_extraction.path())
+            .status()?
+            .success()
+    );
+    let public_plugin = public_extraction.path().join("plugins/codexy");
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+        for server in ["lsp", "codegraph"] {
+            let runtime = format!("runtime/codexy-mcp-{server}-{platform}.{extension}");
+            assert_eq!(
+                fs::read(plugin.join(&runtime))?,
+                fs::read(public_plugin.join(runtime))?,
+                "public projection must preserve the immutable {platform} {server} runtime"
+            );
+        }
+    }
+    for server in ["lsp", "codegraph"] {
+        let runtime = plugin.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
+        assert_eq!(
+            fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?,
+            fs::read(runtime)?,
+            "public projection must preserve the immutable Windows entrypoint"
+        );
+    }
+    assert_eq!(
+        fs::read(plugin.join("hooks/current-policy.txt"))?,
+        b"current policy\n",
+        "public projection must replace stale non-runtime source"
+    );
+    let inventory = extraction.path().join("mcp-entrypoints");
+    fs::write(
+        &inventory,
+        "mcp/codexy-mcp-lsp\nmcp/codexy-mcp-codegraph\n",
+    )?;
+    let inspection = Command::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/check-release-archive-entries"),
+    )
+    .arg_path(&fixture.final_archive)
+    .args(["52428800", "10000", "268435456"])
+    .arg_path(&inventory)
+    .output()?;
+    assert!(
+        inspection.status.success(),
+        "public projection must preserve executable MCP wrapper archive modes: {}",
+        String::from_utf8_lossy(&inspection.stderr)
+    );
+    assert_eq!(fixture.input_tree()?, input_tree, "materialization changed source or staged inputs");
+    fixture.assert_public_archive_mode_matrix()?;
+    Ok(())
+}
+
+#[test]
+fn public_materializer_rejects_identity_and_immutable_runtime_mutations()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (label, source, run) in [
+        ("candidate source identity mismatch", "c000000000000000000000000000000000000000", "42"),
+        ("candidate run identity mismatch", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "43"),
+    ] {
+        let fixture = FinalArchiveFixture::new()?;
+        reject_public(&fixture, label, fixture.materialize_public_with(&fixture.public_archive, source, run, None)?);
+    }
+    for (label, path) in [
+        ("runtime digest mismatch", "runtime/codexy-mcp-lsp-darwin-arm64.bin"),
+        ("Windows entrypoint mismatch", "mcp/codexy-mcp-codegraph.exe"),
+        ("forbidden runtime-candidate.json", "runtime-candidate.json"),
+        ("forbidden runtime-release.json", "runtime-release.json"),
+    ] {
+        let fixture = FinalArchiveFixture::new()?;
+        replace_public_entry(&fixture, path)?;
+        reject_public(&fixture, label, fixture.materialize_public()?);
+    }
+    let fixture = FinalArchiveFixture::new()?;
+    reject_public(&fixture, "protected runtime mutation during current-source overlay", fixture.materialize_public_with(&fixture.public_archive, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "42", Some(overlay_mutator(&fixture)?))?);
+    Ok(())
+}
+
+fn reject_public(fixture: &FinalArchiveFixture, label: &str, output: std::process::Output) {
+    assert!(!output.status.success(), "{label} unexpectedly materialized: {output:?}");
+    assert!(!fixture.final_archive.exists(), "{label} produced an accepted final archive");
+}
+
+fn replace_public_entry(fixture: &FinalArchiveFixture, relative: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let root = fixture.root.join("public");
+    let path = root.join("plugins/codexy").join(relative);
+    fs::create_dir_all(path.parent().ok_or("public mutation parent")?)?;
+    fs::write(path, b"mutated public archive\n")?;
+    assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root).args(["-czf"]).arg(&fixture.public_archive).arg("plugins/codexy").status()?.success());
+    Ok(())
+}
+
+fn overlay_mutator(fixture: &FinalArchiveFixture) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let bin = fixture.root.join("overlay mutator");
+    fs::create_dir(&bin)?;
+    let python = bin.join("python3");
+    fs::write(&python, "#!/bin/sh\nset -eu\n/usr/bin/python3 \"$@\"\nstate=\"$STAGED_PLUGIN/.overlay-count\"\ncount=0; test -f \"$state\" && count=$(cat \"$state\")\ncount=$((count + 1)); printf '%s\\n' \"$count\" > \"$state\"\nif test \"$count\" = 2; then printf mutated > \"$STAGED_PLUGIN/runtime/codexy-mcp-lsp-darwin-arm64.bin\"; fi\n")?;
+    support::make_executable(&python)?;
+    Ok(bin)
 }

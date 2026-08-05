@@ -4,8 +4,9 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
-    github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp, merge_message,
-    orchestration_routing, review_response_cluster, roles, runtime, touched_loc, workflow_profiles,
+    github_labels, hooks, instruction_policy, issue_intake, lsp, manifest, mcp,
+    merge_authorization, merge_message, orchestration_routing, review_response_cluster, roles,
+    runtime, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -38,6 +39,10 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             expected_pr,
             message,
         } => merge_message::check(expected_issue, expected_pr, &message),
+        Mode::MergeAuthorization {
+            authorization,
+            pr_state,
+        } => merge_authorization::check(&authorization, &pr_state),
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),

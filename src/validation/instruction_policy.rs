@@ -26,6 +26,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         )];
     };
     check_surfaces(surfaces, &mut errors);
+    errors.extend(super::merge_authorization_policy::check(plugin_root));
     errors
 }
 
