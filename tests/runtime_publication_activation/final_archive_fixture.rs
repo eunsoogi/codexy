@@ -16,6 +16,7 @@ pub(super) struct FinalArchiveFixture {
     _temporary: tempfile::TempDir,
     pub(super) root: PathBuf,
     pub(super) staged_archive: PathBuf,
+    pub(super) public_archive: PathBuf,
     pub(super) final_archive: PathBuf,
     pub(super) runtime: Vec<u8>,
 }
@@ -39,6 +40,10 @@ impl FinalArchiveFixture {
             staged.join(".codex-plugin/plugin.json"),
             b"{\"name\":\"codexy\",\"version\":\"1.2.2\"}\n",
         )?;
+        fs::create_dir_all(source.join("hooks"))?;
+        fs::create_dir_all(staged.join("hooks"))?;
+        fs::write(source.join("hooks/current-policy.txt"), b"current policy\n")?;
+        fs::write(staged.join("hooks/current-policy.txt"), b"stale policy\n")?;
         for server in ["lsp", "codegraph"] {
             let mcp = source.join("mcp");
             fs::create_dir_all(&mcp)?;
@@ -85,6 +90,30 @@ impl FinalArchiveFixture {
                 .success()
         );
         let staged_sha = format!("{:x}", Sha256::digest(fs::read(&staged_archive)?));
+        let public_root = root.join("public");
+        fs::create_dir_all(&public_root)?;
+        assert!(
+            Command::new("tar")
+                .args(["-xzf"])
+                .arg(&staged_archive)
+                .arg("-C")
+                .arg(&public_root)
+                .status()?
+                .success()
+        );
+        fs::remove_file(public_root.join("plugins/codexy/runtime-candidate.json"))?;
+        let public_archive = root.join("public.tar.gz");
+        assert!(
+            Command::new("tar")
+                .env("COPYFILE_DISABLE", "1")
+                .args(["-C"])
+                .arg(&public_root)
+                .args(["-czf"])
+                .arg(&public_archive)
+                .arg("plugins/codexy")
+                .status()?
+                .success()
+        );
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::write(
             root.join(".agents/plugins/runtime-activation.json"),
@@ -101,6 +130,7 @@ impl FinalArchiveFixture {
             final_archive: root.join("final.tar.gz"),
             root,
             staged_archive,
+            public_archive,
             runtime,
         })
     }
@@ -128,6 +158,22 @@ impl FinalArchiveFixture {
             .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
             .env("STAGING_RUN_ID", "42")
             .output()
+    }
+
+    pub(super) fn materialize_public(&self) -> Result<Output, std::io::Error> {
+        Command::new(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("scripts/materialize-runtime-release-archive"),
+        )
+        .arg_path(&self.public_archive)
+        .arg_path(&self.final_archive)
+        .current_dir(&self.root)
+        .env("RELEASE_TAG", "v1.3.0")
+        .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
+        .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
+        .env("STAGING_RUN_ID", "42")
+        .env("PUBLIC_RELEASE", "1")
+        .output()
     }
 }
 

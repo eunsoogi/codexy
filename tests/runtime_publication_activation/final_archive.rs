@@ -112,3 +112,62 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     }
     Ok(())
 }
+
+#[test]
+fn materializer_projects_current_source_onto_an_immutable_public_runtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = FinalArchiveFixture::new()?;
+    let output = fixture.materialize_public()?;
+    assert!(
+        output.status.success(),
+        "public projection failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let extraction = tempfile::tempdir()?;
+    assert!(
+        Command::new("tar")
+            .args(["-xzf"])
+            .arg(&fixture.final_archive)
+            .arg("-C")
+            .arg(extraction.path())
+            .status()?
+            .success()
+    );
+    let plugin = extraction.path().join("plugins/codexy");
+    let public_extraction = tempfile::tempdir()?;
+    assert!(
+        Command::new("tar")
+            .args(["-xzf"])
+            .arg(&fixture.public_archive)
+            .arg("-C")
+            .arg(public_extraction.path())
+            .status()?
+            .success()
+    );
+    let public_plugin = public_extraction.path().join("plugins/codexy");
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+        for server in ["lsp", "codegraph"] {
+            let runtime = format!("runtime/codexy-mcp-{server}-{platform}.{extension}");
+            assert_eq!(
+                fs::read(plugin.join(&runtime))?,
+                fs::read(public_plugin.join(runtime))?,
+                "public projection must preserve the immutable {platform} {server} runtime"
+            );
+        }
+    }
+    for server in ["lsp", "codegraph"] {
+        let runtime = plugin.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
+        assert_eq!(
+            fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?,
+            fs::read(runtime)?,
+            "public projection must preserve the immutable Windows entrypoint"
+        );
+    }
+    assert_eq!(
+        fs::read(plugin.join("hooks/current-policy.txt"))?,
+        b"current policy\n",
+        "public projection must replace stale non-runtime source"
+    );
+    Ok(())
+}

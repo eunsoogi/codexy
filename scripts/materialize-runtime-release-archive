@@ -10,6 +10,9 @@ runtime_asset=codexy-runtime-package.tar.gz
 source_plugin=plugins/codexy
 activation_record=.agents/plugins/runtime-activation.json
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+public_release=${PUBLIC_RELEASE:-0}
+
+case "$public_release" in 0|1) ;; *) exit 1 ;; esac
 
 for commit in "$staging_source_commit" "$activation_commit"; do
   case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
@@ -37,7 +40,12 @@ mkdir "$tmp_dir/extracted"
 tar --no-same-owner --no-same-permissions -xzf "$staged_archive" -C "$tmp_dir/extracted"
 staged_plugin="$tmp_dir/extracted/plugins/codexy"
 test -d "$staged_plugin/runtime"
-test -f "$staged_plugin/runtime-candidate.json"
+if [ "$public_release" = 1 ]; then
+  test ! -e "$staged_plugin/runtime-candidate.json"
+  test ! -e "$staged_plugin/runtime-release.json"
+else
+  test -f "$staged_plugin/runtime-candidate.json"
+fi
 
 if test -d .git; then
   test "$(git rev-parse HEAD)" = "$activation_commit"
@@ -45,7 +53,7 @@ fi
 
 STAGED_SHA=$(digest_file "$staged_archive") \
 RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" STAGING_RUN_ID="${STAGING_RUN_ID:?staging run id required}" \
-SOURCE_PLUGIN="$source_plugin" ACTIVATION_RECORD="$activation_record" \
+SOURCE_PLUGIN="$source_plugin" ACTIVATION_RECORD="$activation_record" PUBLIC_RELEASE="$public_release" \
 STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" python3 - <<'PY'
 import hashlib, json, os, re
 from pathlib import Path
@@ -55,21 +63,30 @@ staged = Path(os.environ["STAGED_PLUGIN"])
 record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
 manifest = json.loads((source / ".codex-plugin/plugin.json").read_text())
 candidate = record["candidate"]
-candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
+public_release = os.environ["PUBLIC_RELEASE"] == "1"
 if (
-    record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
-    or record["artifact"]["payloadManifestSha256"] != hashlib.sha256(candidate_bytes).hexdigest()
-    or candidate["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
+    candidate["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
     or candidate["artifact"]["stagingRunId"] != int(os.environ["STAGING_RUN_ID"])
-    or json.loads(candidate_bytes) != candidate
     or manifest.get("version") != os.environ["RELEASE_TAG"].removeprefix("v")
 ):
-    raise SystemExit("private activation record does not match staged identity")
-for inventory in candidate["platforms"].values():
-    for binary in inventory.values():
+    raise SystemExit("activation record does not match selected identity")
+if not public_release:
+    candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
+    if (
+        record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
+        or record["artifact"]["payloadManifestSha256"] != hashlib.sha256(candidate_bytes).hexdigest()
+        or json.loads(candidate_bytes) != candidate
+    ):
+        raise SystemExit("private activation record does not match staged identity")
+for platform, inventory in candidate["platforms"].items():
+    for server, binary in inventory.items():
         path = staged / binary["path"]
         if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
-            raise SystemExit(f"staged runtime digest mismatch: {binary['path']}")
+            raise SystemExit(f"selected runtime digest mismatch: {binary['path']}")
+        if platform == "windows-x86_64":
+            entrypoint = staged / "mcp" / f"codexy-mcp-{server}.exe"
+            if hashlib.sha256(entrypoint.read_bytes()).hexdigest() != binary["sha256"]:
+                raise SystemExit(f"selected Windows entrypoint digest mismatch: {entrypoint}")
 protected = {}
 for path in sorted((staged / "runtime").rglob("*")):
     if path.is_file():

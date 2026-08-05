@@ -35,6 +35,35 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "public release receipt does not match activated staging identity",
         ],
     );
+    let assemble = workflow["jobs"]["verify-selected-package"]["steps"]
+        .as_sequence()
+        .and_then(|steps| {
+            steps
+                .iter()
+                .find(|step| step["name"] == "Assemble state-aware marketplace package without rebuilding")
+        })
+        .and_then(|step| step["run"].as_str())
+        .ok_or("selected public-release projection")?;
+    let public_start = assemble.find("public-release)").ok_or("public-release branch")?;
+    let public_end = assemble[public_start..]
+        .find("candidate-proven)")
+        .map(|offset| public_start + offset)
+        .ok_or("candidate-proven branch")?;
+    let public = &assemble[public_start..public_end];
+    support::assert_structured_literals(
+        public,
+        "durable public-release source projection",
+        &[
+            "export PUBLIC_RELEASE=1",
+            "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
+            "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+        ],
+    );
+    support::assert_structured_absent_literals(
+        public,
+        "durable public-release must not bypass current source projection",
+        &["cp dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz"],
+    );
     let windows = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
         .as_sequence()
         .and_then(|steps| {
@@ -49,8 +78,9 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         "Windows public-release archive projection",
         &[
             "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
-            "if ($publicArchive)",
-            "Copy-Item -LiteralPath $archive -Destination dist/codexy-marketplace-plugin.tar.gz",
+            "$env:PUBLIC_RELEASE = \"1\"",
+            "bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz",
+            "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy\" public-release",
             "$releaseOutput -notmatch \"HTTP 404|release not found\"",
         ],
     );

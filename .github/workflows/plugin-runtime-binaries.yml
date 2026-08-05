@@ -95,10 +95,15 @@ jobs:
           fi
           case "$state" in
           public-release)
+            export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)"
+            export STAGING_SOURCE_COMMIT="$(jq -r .candidate.source.commit .agents/plugins/runtime-activation.json)"
+            export ACTIVATION_COMMIT="$(git rev-parse HEAD)"
+            export RELEASE_TAG="$(jq -r .runtime.selectedTag .agents/plugins/release-publish-contract.json)"
+            export PUBLIC_RELEASE=1
+            scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
             mkdir -p final-inspect
-            tar -xzf dist/selected.tar.gz -C final-inspect
-            scripts/inspect-release-archive dist/selected.tar.gz final-inspect/plugins/codexy public-release
-            cp dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
+            tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
+            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release
             ;;
           candidate-proven)
             export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)"
@@ -190,16 +195,16 @@ jobs:
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
           New-Item -ItemType Directory -Path dist -ErrorAction Stop | Out-Null
-          if ($publicArchive) {
-            Copy-Item -LiteralPath $archive -Destination dist/codexy-marketplace-plugin.tar.gz
-          } else {
-            bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz
-            if ($LASTEXITCODE -ne 0) { throw "public archive projection failed" }
-          }
+          if ($publicArchive) { $env:PUBLIC_RELEASE = "1" }
+          else { Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue }
+          bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz
+          if ($LASTEXITCODE -ne 0) { throw "public archive projection failed" }
           $public = Join-Path $env:RUNNER_TEMP "public-marketplace"
           New-Item -ItemType Directory -Path $public -ErrorAction Stop | Out-Null
           & $windowsTar -xzf dist/codexy-marketplace-plugin.tar.gz -C $public
           if ($LASTEXITCODE -ne 0) { throw "native Windows public archive extraction failed" }
+          bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$public/plugins/codexy" public-release
+          if ($LASTEXITCODE -ne 0) { throw "public archive inspection failed" }
           foreach ($server in @("lsp", "codegraph")) {
             $runtime = Join-Path $public "plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe"
             $entrypoint = Join-Path $public "plugins/codexy/mcp/codexy-mcp-$server.exe"

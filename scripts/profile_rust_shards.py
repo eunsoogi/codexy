@@ -32,7 +32,7 @@ SPECS = tuple(
 SHARDS = {spec.name: spec.argv for spec in SPECS}
 CANONICAL = {f"suite_{name}": "suite_all" for name in SHARDS if name != "archive"}
 CANONICAL["suite_archive"] = "suite_archive"
-PLATFORM_COUNTS = {"posix": 2019, "windows": 1912}
+PLATFORM_COUNTS = {"posix": 2057, "windows": 1941}
 TOPOLOGY_AUTHORITY = "PR #516 maintainer authority supersedes only #526's monolithic-all-targets and no-shard topology clauses; every other #526 constraint remains binding."
 
 
