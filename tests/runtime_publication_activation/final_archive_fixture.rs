@@ -161,19 +161,36 @@ impl FinalArchiveFixture {
     }
 
     pub(super) fn materialize_public(&self) -> Result<Output, std::io::Error> {
-        Command::new(
+        self.materialize_public_with(&self.public_archive, STAGING_COMMIT, "42", None)
+    }
+
+    pub(super) fn materialize_public_with(
+        &self,
+        archive: &Path,
+        source_commit: &str,
+        run_id: &str,
+        prepend_path: Option<PathBuf>,
+    ) -> Result<Output, std::io::Error> {
+        let mut command = Command::new(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("scripts/materialize-runtime-release-archive"),
-        )
-        .arg_path(&self.public_archive)
-        .arg_path(&self.final_archive)
-        .current_dir(&self.root)
-        .env("RELEASE_TAG", "v1.3.0")
-        .env("STAGING_SOURCE_COMMIT", STAGING_COMMIT)
-        .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
-        .env("STAGING_RUN_ID", "42")
-        .env("PUBLIC_RELEASE", "1")
-        .output()
+        );
+        if let Some(path) = prepend_path {
+            let host_path = env::var_os("PATH").ok_or_else(|| std::io::Error::other("PATH"))?;
+            let mut entries = vec![path];
+            entries.extend(env::split_paths(&host_path));
+            command.env_path_list("PATH", entries);
+        }
+        command
+            .arg_path(archive)
+            .arg_path(&self.final_archive)
+            .current_dir(&self.root)
+            .env("RELEASE_TAG", "v1.3.0")
+            .env("STAGING_SOURCE_COMMIT", source_commit)
+            .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
+            .env("STAGING_RUN_ID", run_id)
+            .env("PUBLIC_RELEASE", "1")
+            .output()
     }
 }
 

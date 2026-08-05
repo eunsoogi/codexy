@@ -171,3 +171,51 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
     );
     Ok(())
 }
+
+#[test]
+fn public_materializer_rejects_identity_and_immutable_runtime_mutations()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (label, source, run) in [
+        ("candidate source identity mismatch", "c000000000000000000000000000000000000000", "42"),
+        ("candidate run identity mismatch", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "43"),
+    ] {
+        let fixture = FinalArchiveFixture::new()?;
+        reject_public(&fixture, label, fixture.materialize_public_with(&fixture.public_archive, source, run, None)?);
+    }
+    for (label, path) in [
+        ("runtime digest mismatch", "runtime/codexy-mcp-lsp-darwin-arm64.bin"),
+        ("Windows entrypoint mismatch", "mcp/codexy-mcp-codegraph.exe"),
+        ("forbidden runtime-candidate.json", "runtime-candidate.json"),
+        ("forbidden runtime-release.json", "runtime-release.json"),
+    ] {
+        let fixture = FinalArchiveFixture::new()?;
+        replace_public_entry(&fixture, path)?;
+        reject_public(&fixture, label, fixture.materialize_public()?);
+    }
+    let fixture = FinalArchiveFixture::new()?;
+    reject_public(&fixture, "protected runtime mutation during current-source overlay", fixture.materialize_public_with(&fixture.public_archive, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "42", Some(overlay_mutator(&fixture)?))?);
+    Ok(())
+}
+
+fn reject_public(fixture: &FinalArchiveFixture, label: &str, output: std::process::Output) {
+    assert!(!output.status.success(), "{label} unexpectedly materialized: {output:?}");
+    assert!(!fixture.final_archive.exists(), "{label} produced an accepted final archive");
+}
+
+fn replace_public_entry(fixture: &FinalArchiveFixture, relative: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let root = fixture.root.join("public");
+    let path = root.join("plugins/codexy").join(relative);
+    fs::create_dir_all(path.parent().ok_or("public mutation parent")?)?;
+    fs::write(path, b"mutated public archive\n")?;
+    assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root).args(["-czf"]).arg(&fixture.public_archive).arg("plugins/codexy").status()?.success());
+    Ok(())
+}
+
+fn overlay_mutator(fixture: &FinalArchiveFixture) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let bin = fixture.root.join("overlay mutator");
+    fs::create_dir(&bin)?;
+    let python = bin.join("python3");
+    fs::write(&python, "#!/bin/sh\nset -eu\n/usr/bin/python3 \"$@\"\nstate=\"$STAGED_PLUGIN/.overlay-count\"\ncount=0; test -f \"$state\" && count=$(cat \"$state\")\ncount=$((count + 1)); printf '%s\\n' \"$count\" > \"$state\"\nif test \"$count\" = 2; then printf mutated > \"$STAGED_PLUGIN/runtime/codexy-mcp-lsp-darwin-arm64.bin\"; fi\n")?;
+    support::make_executable(&python)?;
+    Ok(bin)
+}
