@@ -123,6 +123,13 @@ fn validator_rejects_ambiguous_pr_state_without_rejecting_metadata_values() -> R
     assert_invalid(LOCAL_CONTRACT, r#"{"number":127,"number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#);
     let metadata = EXTERNAL_CONTRACT.replacen("\"revoked\":false", "\"revoked\":false,\"note\":\"kind\"", 1);
     assert_valid(&metadata, CONTRACT_STATE);
+    let nullable = COMMENT_STATE.replacen(
+        "\"comments\":[",
+        "\"comments\":[{\"id\":\"IC_deleted\",\"url\":\"https://github.com/eunsoogi/codexy/pull/128#issuecomment-127\",\"body\":\"ordinary\",\"author\":null,\"authorAssociation\":\"NONE\"},",
+        1,
+    );
+    assert_valid(COMMENT_INTENT, &nullable);
+    assert_invalid(COMMENT_INTENT, &nullable.replacen("\"id\":\"IC_128\"", "\"id\":\"IC_128\",\"id\":\"IC_duplicate\"", 1));
     Ok(())
 }
 

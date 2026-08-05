@@ -27,6 +27,6 @@ done
 set -- --expected-pr "$expected_pr" --merge-message-file "$message_file"
 [ -z "$expected_issue" ] || set -- "$@" --expected-issue "$expected_issue"
 "$script_dir/codexy-merge-message-check.sh" "$@"
-"$script_dir/../../../scripts/validate-plugin-config" --check-merge-authorization \
-  --merge-authorization-file "$authorization_file" \
-  --merge-authorization-pr-state-file "$pr_state_file"
+python3 -I -B "$script_dir/codexy-merge-authorization-check.py" \
+  --authorization-file "$authorization_file" \
+  --pr-state-file "$pr_state_file"

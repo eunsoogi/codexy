@@ -76,7 +76,7 @@ impl<'de> Visitor<'de> for UniqueValue {
     {
         Ok(self)
     }
-    fn visit_none<E>(self) -> Result<Self, E>
+    fn visit_unit<E>(self) -> Result<Self, E>
     where
         E: serde::de::Error,
     {

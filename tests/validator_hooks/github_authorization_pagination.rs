@@ -8,7 +8,8 @@ const HEAD: &str = "32b03a210b3defb2d29dd352283ea2488e60d893";
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_accepts_authorization_on_a_later_comment_page() -> TestResult {
-    let first_page = first_page();
+    let mut first_page = first_page();
+    first_page[0]["author"] = Value::Null;
     let pages = pages(first_page.clone(), vec![authorization("IC_later")]);
     let (output, merged) = wrapper(&state(first_page), &pages, false)?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
