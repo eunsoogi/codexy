@@ -167,31 +167,31 @@ jobs:
             gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "$changelog_notes"
             gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
           fi
+          release_error() {
+            printf '%s\n' "$1" >&2
+            exit 1
+          }
+          verify_release_asset() {
+            gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir "$1" --pattern "$asset" || return 1
+            cmp "dist/$asset" "$1/$asset" || release_error "release asset differs from verified bytes: $asset"
+          }
           mkdir -p existing-release verified-release
-          for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+          release_assets='codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
+          for asset in $release_assets; do
             if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
-              gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir existing-release --pattern "$asset"
-              cmp "dist/$asset" "existing-release/$asset" || {
-                printf '%s\n' "release asset differs from verified bytes: $asset" >&2
-                exit 1
-              }
+              verify_release_asset existing-release
             else
               gh release upload v1.3.0 "dist/$asset"
             fi
           done
           gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
-          for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
-            jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || {
-              printf '%s\n' "release asset is missing after reconciliation: $asset" >&2
-              exit 1
-            }
-            gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir verified-release --pattern "$asset"
-            cmp "dist/$asset" "verified-release/$asset" || {
-              printf '%s\n' "release asset differs from verified bytes: $asset" >&2
-              exit 1
-            }
+          for asset in $release_assets; do
+            jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
+            verify_release_asset verified-release
           done
           if test "$(jq -r .isDraft release-state.json)" = true; then
+            changelog_notes="$(scripts/generate-release-changelog v1.3.0)" || exit 1
+            gh release edit v1.3.0 --notes "$changelog_notes"
             gh release edit v1.3.0 --draft=false
           fi
 

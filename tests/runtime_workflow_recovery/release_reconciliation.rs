@@ -22,10 +22,13 @@ const PARTIAL_NOTES: &str = "## Codexy v1.3.0\n\nChanges:";
 fn release_reconciliation_recovers_only_exact_draft_assets()
 -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;
-    absent.assert_result(true, 1, 3, 1, false)?;
+    absent.assert_result(true, 1, 3, 2, false)?;
 
     let partial = Fixture::new("draft", &[ASSETS[0]])?;
-    partial.assert_result(true, 0, 2, 1, false)?;
+    partial.assert_result(true, 0, 2, 2, false)?;
+
+    let stale_notes = Fixture::new("draft", &ASSETS)?;
+    stale_notes.assert_generated_notes(0, 0, 2)?;
 
     let published = Fixture::new("published", &ASSETS)?;
     published.assert_result(true, 0, 0, 0, false)?;
@@ -40,7 +43,7 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
 #[cfg(unix)]
 fn new_release_uses_generated_commit_log_notes() -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;
-    absent.assert_generated_notes()?;
+    absent.assert_generated_notes(1, 3, 2)?;
     Ok(())
 }
 
@@ -49,6 +52,14 @@ fn new_release_uses_generated_commit_log_notes() -> Result<(), Box<dyn std::erro
 fn failed_changelog_generation_never_creates_a_release() -> Result<(), Box<dyn std::error::Error>> {
     let absent = Fixture::new("absent", &[])?;
     absent.assert_result(false, 0, 0, 0, true)?;
+    Ok(())
+}
+
+#[test]
+#[cfg(unix)]
+fn failed_changelog_generation_never_publishes_stale_draft() -> Result<(), Box<dyn std::error::Error>> {
+    let draft = Fixture::new("draft", &ASSETS)?;
+    draft.assert_result(false, 0, 0, 0, true)?;
     Ok(())
 }
 
@@ -98,9 +109,14 @@ impl Fixture {
         })
     }
 
-    fn assert_generated_notes(&self) -> Result<(), Box<dyn std::error::Error>> {
-        self.assert_result(true, 1, 3, 1, false)?;
-        let args = fs::read_to_string(self.root.join("release-create-args"))?;
+    fn assert_generated_notes(
+        &self,
+        creates: usize,
+        uploads: usize,
+        edits: usize,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.assert_result(true, creates, uploads, edits, false)?;
+        let args = fs::read_to_string(self.root.join("release-notes-args"))?;
         let generated_notes_argument = format!("--notes\n{GENERATED_NOTES}\n");
         support::assert_structured_literals(
             &args,
@@ -112,6 +128,8 @@ impl Fixture {
             "generated release notes",
             &["Verified version release."],
         );
+        let log = fs::read_to_string(self.root.join("release-log"))?;
+        support::assert_structured_literals(&log, "draft note update order", &["notes\nedit"]);
         Ok(())
     }
 
@@ -133,8 +151,8 @@ impl Fixture {
             .env("FAKE_RELEASE_ASSETS", &self.assets)
             .env("FAKE_RELEASE_LOG", self.root.join("release-log"))
             .env(
-                "FAKE_RELEASE_CREATE_ARGS",
-                self.root.join("release-create-args"),
+                "FAKE_RELEASE_NOTES_ARGS",
+                self.root.join("release-notes-args"),
             )
             .env(
                 "CODEXY_GENERATED_RELEASE_NOTES",
@@ -212,7 +230,7 @@ case "$1 $2" in
     done
     printf ']}\n'
     ;;
-  'release create') printf '%s\n' "$@" > "$FAKE_RELEASE_CREATE_ARGS"; printf '%s\n' draft > "$FAKE_RELEASE_STATE"; printf '%s\n' create >> "$log" ;;
+  'release create') printf '%s\n' "$@" > "$FAKE_RELEASE_NOTES_ARGS"; printf '%s\n' draft > "$FAKE_RELEASE_STATE"; printf '%s\n' create >> "$log" ;;
   'release upload') asset=$(basename "$4"); cp "$4" "$assets/$asset"; printf '%s\n' upload >> "$log" ;;
   'release download')
     while test "$#" -gt 0; do
@@ -220,7 +238,7 @@ case "$1 $2" in
     done
     mkdir -p "$directory"; cp "$assets/$asset" "$directory/$asset"
     ;;
-  'release edit') printf '%s\n' published > "$FAKE_RELEASE_STATE"; printf '%s\n' edit >> "$log" ;;
+  'release edit') case "$*" in *--notes*) printf '%s\n' "$@" > "$FAKE_RELEASE_NOTES_ARGS"; printf '%s\n' notes >> "$log" ;; esac; printf '%s\n' published > "$FAKE_RELEASE_STATE"; printf '%s\n' edit >> "$log" ;;
   *) exit 91 ;;
 esac
 "#
