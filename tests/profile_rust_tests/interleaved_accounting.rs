@@ -108,9 +108,9 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 targets = sorted(module.declared_test_targets(repository))
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2014), ("windows", 1911)):
+    for platform, count in (("posix", 2018), ("windows", 1912)):
         for index, shard in enumerate(SHARDS):
-            size = 273 if platform == "windows" else 288 if index < 5 else 287
+            size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
             value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
