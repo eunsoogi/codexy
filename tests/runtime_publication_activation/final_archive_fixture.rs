@@ -32,21 +32,19 @@ impl FinalArchiveFixture {
             fs::create_dir_all(plugin.join(".codex-plugin"))?;
             fs::create_dir_all(plugin.join("runtime"))?;
         }
-        fs::write(
-            source.join(".codex-plugin/plugin.json"),
-            b"{\"name\":\"codexy\",\"version\":\"1.3.0\"}\n",
-        )?;
-        fs::write(
-            staged.join(".codex-plugin/plugin.json"),
-            b"{\"name\":\"codexy\",\"version\":\"1.2.2\"}\n",
-        )?;
+        for (plugin, version) in [(&source, "1.3.0"), (&staged, "1.2.2")] {
+            fs::write(
+                plugin.join(".codex-plugin/plugin.json"),
+                format!("{{\"name\":\"codexy\",\"version\":\"{version}\"}}\n"),
+            )?;
+        }
         fs::create_dir_all(source.join("hooks"))?;
         fs::create_dir_all(staged.join("hooks"))?;
         fs::write(source.join("hooks/current-policy.txt"), b"current policy\n")?;
         fs::write(staged.join("hooks/current-policy.txt"), b"stale policy\n")?;
+        let mcp = source.join("mcp");
+        fs::create_dir_all(&mcp)?;
         for server in ["lsp", "codegraph"] {
-            let mcp = source.join("mcp");
-            fs::create_dir_all(&mcp)?;
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
                 format!(
@@ -200,7 +198,7 @@ impl FinalArchiveFixture {
 
     pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("python3")
-            .args(["-c", r#"import pathlib, re, stat, sys, tarfile
+            .args(["-c", r#"import os, pathlib, re, stat, sys, tarfile
 archive, root = map(pathlib.Path, sys.argv[1:])
 source = root / "plugins/codexy"
 matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy/mcp/codexy-mcp-codegraph",', pathlib.Path("scripts/materialize-runtime-release-archive").read_text()).group("expression")
@@ -209,7 +207,10 @@ with tarfile.open(archive) as entries:
     def header(path): return entries.getmember(f"plugins/codexy/{path}").mode & 0o777
     for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):
         assert header(wrapper) == 0o755, f"{wrapper} mode was {header(wrapper):04o}"
-        assert entries.extractfile(f"plugins/codexy/{wrapper}").read() == (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0"), f"{wrapper} content changed"
+        legacy = (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0")
+        expected = (source / wrapper).read_text().replace('bundled_platforms="darwin-arm64 linux-x86_64"', 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"').replace("getcodexy==1.2.2", "getcodexy==1.3.0").replace("\n", os.linesep).encode()
+        assert (expected == legacy and b"\r" not in expected) if os.linesep == "\n" else (expected != legacy and b"\r\n" in expected), f"{wrapper} write_text newline semantics were not preserved"
+        assert entries.extractfile(f"plugins/codexy/{wrapper}").read() == expected, f"{wrapper} content changed"
     for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy/mcp/codexy-mcp-lsp.exe"), ("hooks/current-policy.txt", source / "hooks/current-policy.txt")):
         assert header(path) == stat.S_IMODE(owner.stat().st_mode), f"{path} mode changed"
 "#])
