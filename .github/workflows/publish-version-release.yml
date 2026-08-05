@@ -149,8 +149,8 @@ jobs:
             printf '%s\n' "remote v1.3.0 tag is not the exact lightweight activation ref" >&2
             exit 1
           }
-          git fetch --no-tags origin "$tag_ref"
-          tag_commit="$(git rev-parse --verify 'FETCH_HEAD^{commit}')" || {
+          git fetch --tags --force origin
+          tag_commit="$(git rev-parse --verify "$tag_ref^{commit}")" || {
             printf '%s\n' "cannot resolve remote v1.3.0 tag" >&2
             exit 1
           }
@@ -163,7 +163,7 @@ jobs:
             exit 1
           }
           if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json 2>/dev/null; then
-            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "Verified version release."
+            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "$(scripts/generate-release-changelog v1.3.0)"
             gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
           fi
           for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do

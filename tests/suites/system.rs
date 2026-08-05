@@ -31,6 +31,9 @@ mod profile_rust_tests;
 #[path = "../release_changelog_script.rs"]
 mod release_changelog_script;
 
+#[path = "../release_publisher_changelog.rs"]
+mod release_publisher_changelog;
+
 #[path = "../release_tag_parity.rs"]
 mod release_tag_parity;
 

@@ -1,4 +1,8 @@
-use std::{fs, path::{Path, PathBuf}, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use serde_yaml::Value;
 
@@ -7,6 +11,8 @@ const ASSETS: [&str; 3] = [
     "codexy-runtime-package.tar.gz",
     "runtime-release-receipt.json",
 ];
+const GENERATED_NOTES: &str =
+    "## Codexy v1.3.0\n\nChanges since v1.2.2:\n- restore generated changelog notes (12345678)";
 
 #[test]
 #[cfg(unix)]
@@ -27,6 +33,14 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
     Ok(())
 }
 
+#[test]
+#[cfg(unix)]
+fn new_release_uses_generated_commit_log_notes() -> Result<(), Box<dyn std::error::Error>> {
+    let absent = Fixture::new("absent", &[])?;
+    absent.assert_generated_notes()?;
+    Ok(())
+}
+
 struct Fixture {
     _temporary: tempfile::TempDir,
     root: PathBuf,
@@ -42,6 +56,14 @@ impl Fixture {
         fs::create_dir_all(&bin)?;
         fs::create_dir_all(&assets)?;
         fs::create_dir_all(root.join("dist"))?;
+        let scripts = root.join("scripts");
+        fs::create_dir_all(&scripts)?;
+        let changelog = scripts.join("generate-release-changelog");
+        fs::write(
+            &changelog,
+            "#!/bin/sh\nprintf '%s\\n' \"$CODEXY_GENERATED_RELEASE_NOTES\"\n",
+        )?;
+        make_executable(&changelog)?;
         fs::write(root.join("release-state"), state)?;
         for asset in ASSETS {
             fs::write(root.join("dist").join(asset), format!("verified {asset}\n"))?;
@@ -53,9 +75,30 @@ impl Fixture {
         fs::write(&gh, fake_gh())?;
         make_executable(&gh)?;
         let runner = root.join("run-release-reconciliation");
-        fs::write(&runner, format!("#!/bin/sh\nset -eu\n{}", reconciliation()?) )?;
+        fs::write(
+            &runner,
+            format!("#!/bin/sh\nset -eu\n{}", reconciliation()?),
+        )?;
         make_executable(&runner)?;
-        Ok(Self { _temporary: temporary, root, assets })
+        Ok(Self {
+            _temporary: temporary,
+            root,
+            assets,
+        })
+    }
+
+    fn assert_generated_notes(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.assert_result(true, 1, 3, 1)?;
+        let args = fs::read_to_string(self.root.join("release-create-args"))?;
+        assert!(
+            args.contains(&format!("--notes\n{GENERATED_NOTES}\n")),
+            "release notes were not generated:\n{args}"
+        );
+        assert!(
+            !args.contains("Verified version release."),
+            "release notes used a placeholder:\n{args}"
+        );
+        Ok(())
     }
 
     fn assert_result(
@@ -74,23 +117,44 @@ impl Fixture {
             .env("FAKE_RELEASE_STATE", self.root.join("release-state"))
             .env("FAKE_RELEASE_ASSETS", &self.assets)
             .env("FAKE_RELEASE_LOG", self.root.join("release-log"))
+            .env(
+                "FAKE_RELEASE_CREATE_ARGS",
+                self.root.join("release-create-args"),
+            )
+            .env("CODEXY_GENERATED_RELEASE_NOTES", GENERATED_NOTES)
             .env("PATH", std::env::join_paths(paths)?)
             .output()?;
-        assert_eq!(output.status.success(), success, "{}", String::from_utf8_lossy(&output.stderr));
+        assert_eq!(
+            output.status.success(),
+            success,
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         let log = fs::read_to_string(self.root.join("release-log")).unwrap_or_default();
-        assert_eq!(log.lines().filter(|line| *line == "create").count(), creates);
-        assert_eq!(log.lines().filter(|line| *line == "upload").count(), uploads);
+        assert_eq!(
+            log.lines().filter(|line| *line == "create").count(),
+            creates
+        );
+        assert_eq!(
+            log.lines().filter(|line| *line == "upload").count(),
+            uploads
+        );
         assert_eq!(log.lines().filter(|line| *line == "edit").count(), edits);
         Ok(())
     }
 }
 
 fn reconciliation() -> Result<String, Box<dyn std::error::Error>> {
-    let workflow = Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
+    let workflow =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/publish-version-release.yml");
     let publisher: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
     let run = publisher["jobs"]["publish-v1-3-0"]["steps"]
         .as_sequence()
-        .and_then(|steps| steps.iter().find(|step| step["name"] == "Create and verify the only public version release"))
+        .and_then(|steps| {
+            steps
+                .iter()
+                .find(|step| step["name"] == "Create and verify the only public version release")
+        })
         .and_then(|step| step["run"].as_str())
         .ok_or("release reconciliation")?;
     Ok(run[run.find("if ! gh release view").ok_or("release view")?..].to_owned())
@@ -122,7 +186,7 @@ case "$1 $2" in
     done
     printf ']}\n'
     ;;
-  'release create') printf '%s\n' draft > "$FAKE_RELEASE_STATE"; printf '%s\n' create >> "$log" ;;
+  'release create') printf '%s\n' "$@" > "$FAKE_RELEASE_CREATE_ARGS"; printf '%s\n' draft > "$FAKE_RELEASE_STATE"; printf '%s\n' create >> "$log" ;;
   'release upload') asset=$(basename "$4"); cp "$4" "$assets/$asset"; printf '%s\n' upload >> "$log" ;;
   'release download')
     while test "$#" -gt 0; do
