@@ -75,6 +75,7 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
+        metadata::synchronize_current_plugin_validation_inputs(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
         let workflow_target = repo.join(workflow);
         fs::create_dir_all(workflow_target.parent().ok_or("workflow parent")?)?;
