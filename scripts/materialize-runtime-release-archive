@@ -185,6 +185,11 @@ with (
     for path in paths:
         relative = path.relative_to(root)
         info = archive.gettarinfo(str(path), str(relative))
+        if str(relative) in {
+            "plugins/codexy/mcp/codexy-mcp-lsp",
+            "plugins/codexy/mcp/codexy-mcp-codegraph",
+        }:
+            info.mode = 0o755
         info.uid = info.gid = 0
         info.uname = info.gname = ""
         info.mtime = 0

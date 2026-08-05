@@ -169,6 +169,24 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
         b"current policy\n",
         "public projection must replace stale non-runtime source"
     );
+    let inventory = extraction.path().join("mcp-entrypoints");
+    fs::write(
+        &inventory,
+        "mcp/codexy-mcp-lsp\nmcp/codexy-mcp-codegraph\n",
+    )?;
+    let inspection = Command::new(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("scripts/check-release-archive-entries"),
+    )
+    .arg_path(&fixture.final_archive)
+    .args(["52428800", "10000", "268435456"])
+    .arg_path(&inventory)
+    .output()?;
+    assert!(
+        inspection.status.success(),
+        "public projection must preserve executable MCP wrapper archive modes: {}",
+        String::from_utf8_lossy(&inspection.stderr)
+    );
     Ok(())
 }
 
