@@ -108,7 +108,7 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 targets = sorted(module.declared_test_targets(repository))
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2018), ("windows", 1912)):
+    for platform, count in (("posix", 2019), ("windows", 1912)):
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
