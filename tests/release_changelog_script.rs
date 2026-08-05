@@ -26,6 +26,7 @@ fn infers_previous_tag_from_release_history() -> Result<(), Box<dyn std::error::
         &["commit", "-m", "backport fix"],
         "2026-02-01T00:00:00Z",
     )?;
+    let backport_short_sha = git_stdout(temp.path(), &["rev-parse", "--short", "HEAD"])?;
     run_git(temp.path(), &["tag", "v0.1.1"])?;
 
     run_git(temp.path(), &["switch", "-c", "mainline", "v0.1.0"])?;
@@ -50,16 +51,23 @@ fn infers_previous_tag_from_release_history() -> Result<(), Box<dyn std::error::
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("## Codexy v0.1.1"));
     assert!(
         stdout.contains("Changes since v0.1.0:"),
         "omitted previous tag must come from release history, not newest repository tag:\n{stdout}"
     );
-    assert!(stdout.contains("- backport fix ("));
+    assert!(stdout.contains(&format!("- backport fix ({backport_short_sha})")));
     assert!(
         !stdout.contains("newer mainline release"),
         "changelog must not include commits outside the release history:\n{stdout}"
     );
     Ok(())
+}
+
+fn git_stdout(cwd: &std::path::Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(cwd).args(args).output()?;
+    assert!(output.status.success(), "git {args:?} failed");
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }
 
 fn run_git(cwd: &std::path::Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {

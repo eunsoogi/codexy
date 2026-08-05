@@ -7,7 +7,8 @@ import re
 import sys
 from pathlib import Path
 
-from profile_rust_shell import invocation_count
+from profile_rust_workflow_shards import enforce_shard_workflow
+from profile_rust_workflow_context import job_context
 
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
@@ -61,7 +62,8 @@ def yaml_scalar_value(value: str) -> str:
     return decoded if isinstance(decoded, str) else value
 
 
-def workflow_jobs(source: str) -> dict[str, list[str]]:
+def workflow_document(source: str) -> tuple[dict[str, str], dict[str, list[str]]]:
+    root: dict[str, str] = {}
     jobs: dict[str, list[str]] = {}
     current_job: str | None = None
     in_jobs = False
@@ -75,6 +77,9 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
         indentation = len(line) - len(line.lstrip(" "))
         entry = yaml_mapping_entry(line)
         if indentation == 0:
+            if entry is None or entry[0] in root:
+                raise ValueError("Rust workflow has an invalid root mapping")
+            root[entry[0]] = entry[1]
             in_jobs = entry == ("jobs", "")
             current_job = None
         elif in_jobs and indentation == 2 and entry is not None and entry[1] == "":
@@ -85,7 +90,7 @@ def workflow_jobs(source: str) -> dict[str, list[str]]:
             current_job = name
         elif current_job is not None:
             jobs[current_job].append(line)
-    return jobs
+    return root, jobs
 
 
 def block_scalar_command(style: str, lines: list[str]) -> str:
@@ -178,17 +183,6 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
     return timeouts, steps
 
 
-def job_values(lines: list[str], key: str) -> list[str]:
-    values: list[str] = []
-    for line in lines:
-        if len(line) - len(line.lstrip(" ")) != 4:
-            continue
-        entry = yaml_mapping_entry(line)
-        if entry is not None and entry[0] == key:
-            values.append(yaml_scalar_value(entry[1]))
-    return values
-
-
 def enforce_workflow_contract(
     workflow: Path,
     required_timeout_minutes: int,
@@ -196,54 +190,10 @@ def enforce_workflow_contract(
 ) -> None:
     try:
         source = workflow.read_text()
-        jobs = workflow_jobs(source)
+        root, jobs = workflow_document(source)
     except (OSError, ValueError) as error:
         sys.stderr.write(f"Rust workflow is invalid: {workflow}: {error}\n")
         raise SystemExit(1) from None
-    if set(jobs) != {"rust-test", "windows-rust-test"}:
-        sys.stderr.write("Rust workflow must define only the Ubuntu and Windows Rust jobs\n")
-        raise SystemExit(1)
-    timeouts, rust_steps = job_contract(jobs["rust-test"])
-    rust_runs = [command for command, _ in rust_steps]
-    found = int(timeouts[0]) if len(timeouts) == 1 and timeouts[0].isdigit() else None
-    if found != required_timeout_minutes:
-        sys.stderr.write(
-            f"Rust job timeout must be {required_timeout_minutes} minutes; found {found}\n"
-        )
-        raise SystemExit(1)
-    if job_values(jobs["rust-test"], "runs-on") != ["ubuntu-latest"] or job_values(
-        jobs["rust-test"], "strategy"
-    ):
-        sys.stderr.write("Rust test job must run once on ubuntu-latest without a matrix\n")
-        raise SystemExit(1)
-    runs = [command for lines in jobs.values() for command, _ in job_contract(lines)[1]]
-    profiler = ("scripts/profile-rust-tests",)
-    profiler_count = sum(invocation_count(command, profiler) for command in runs)
-    rust_profiler_count = sum(invocation_count(command, profiler) for command in rust_runs)
-    workload_count = sum(invocation_count(command, workload) for command in runs)
-    if rust_profiler_count != 1 or profiler_count != 1:
-        sys.stderr.write("Rust workflow must invoke the exact workload gate once\n")
-        raise SystemExit(1)
-    windows_lines = jobs["windows-rust-test"]
-    windows_timeouts, windows_steps = job_contract(windows_lines)
-    windows_runs = [command for command, _ in windows_steps]
-    windows_workload_count = sum(
-        invocation_count(command, workload) for command in windows_runs
-    )
-    expected_windows_runs = [WINDOWS_PREREQUISITE, WINDOWS_PREPARATION, WINDOWS_GATE]
-    required_windows_step_keys = [keys for command, keys in windows_steps if command in {WINDOWS_PREPARATION, WINDOWS_GATE}]
-    if (
-        job_values(windows_lines, "runs-on") != ["windows-latest"]
-        or windows_timeouts != [str(WINDOWS_JOB_TIMEOUT_MINUTES)]
-        or job_values(windows_lines, "strategy")
-        or job_values(windows_lines, "if")
-        or job_values(windows_lines, "continue-on-error")
-        or windows_runs != expected_windows_runs
-        or any({"if", "continue-on-error"} & keys for keys in required_windows_step_keys)
-        or windows_workload_count != 0
-        or workload_count != 0
-    ):
-        sys.stderr.write(
-            "Windows Rust job must run the exact full workload once on windows-latest\n"
-        )
+    if root != {"name": "Rust tests", "on": "", "permissions": "", "jobs": ""} or not enforce_shard_workflow(jobs, lambda lines: job_context(lines, yaml_mapping_entry, yaml_scalar_value)):
+        sys.stderr.write("Rust shard workflow has an invalid platform matrix\n")
         raise SystemExit(1)

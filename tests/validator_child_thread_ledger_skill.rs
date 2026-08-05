@@ -1,8 +1,14 @@
 use crate::support;
 
-use support::{TestResult, stderr, validator};
+use support::{InstructionPolicyFixture, TestResult, stderr, validator};
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
+fn copy_plugin_fixture() -> TestResult<InstructionPolicyFixture> {
+    Ok(support::instruction_policy_fixture(std::path::Path::new(
+        "skills/codex-orchestration/SKILL.md",
+    ))?)
+}
+
+fn copy_plugin_and_dreaming_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
     support::copy_plugin_fixture_with_mutable_files(&[
         std::path::Path::new("skills/codex-orchestration/SKILL.md"),
         std::path::Path::new("skills/dreaming/SKILL.md"),
@@ -12,8 +18,8 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> 
 
 #[test]
 fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     assert!(skill.contains("Active child Codex app threads MUST be capped"));
     assert!(skill.contains("blocker, latest evidence, and next action"));
@@ -30,7 +36,7 @@ fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {
             ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy_file(skill_path)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("active child codex app threads must be capped at 5"));
@@ -40,8 +46,8 @@ fn validator_cli_rejects_missing_child_thread_ledger_contract() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     assert!(skill.contains("Packaged specialist subagents MUST NOT be counted"));
     std::fs::write(
@@ -52,7 +58,7 @@ fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy_file(skill_path)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     assert!(stderr.contains("packaged specialist subagents must not be counted unless"));
@@ -61,8 +67,8 @@ fn validator_cli_rejects_specialist_subagent_cap_exception() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_missing_material_child_event_consumption_contract() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let fixture = copy_plugin_fixture()?;
+    let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for required in [
         "Material child event",
@@ -86,7 +92,7 @@ fn validator_cli_rejects_missing_material_child_event_consumption_contract() -> 
         ),
     )?;
 
-    let output = validator(&plugin_root, "--check")?;
+    let output = support::validator_instruction_policy_file(skill_path)?;
     assert!(!output.status.success());
     let stderr = stderr(&output);
     for required in [
@@ -121,13 +127,13 @@ fn validator_cli_rejects_each_unconsumed_material_child_event() -> TestResult {
             "Duplicate stable event identities may be handled again",
         ),
     ] {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let fixture = copy_plugin_fixture()?;
+        let skill_path = fixture.path();
         let skill = std::fs::read_to_string(&skill_path)?;
         assert!(skill.contains(required), "missing {required:?}");
         std::fs::write(&skill_path, skill.replace(required, replacement))?;
 
-        let output = validator(&plugin_root, "--check")?;
+        let output = support::validator_instruction_policy_file(skill_path)?;
         assert!(!output.status.success(), "accepted {required:?}");
         assert!(
             stderr(&output).contains(&required.to_ascii_lowercase()),
@@ -140,7 +146,7 @@ fn validator_cli_rejects_each_unconsumed_material_child_event() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_missing_dreaming_worktree_reservation_fields() -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let (_temp, plugin_root) = copy_plugin_and_dreaming_fixture()?;
     let dreaming_path = plugin_root.join("skills/dreaming/SKILL.md");
     let dreaming = std::fs::read_to_string(&dreaming_path)?;
     std::fs::write(

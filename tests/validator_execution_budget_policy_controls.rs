@@ -4,16 +4,12 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn budget_path(plugin_root: &std::path::Path) -> std::path::PathBuf {
-    plugin_root.join("skills/codex-orchestration/references/execution-budget.md")
-}
-
 #[test]
 fn validator_allows_negated_countermand_examples() -> TestResult {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
-        std::path::Path::new("skills/codex-orchestration/references/execution-budget.md"),
-    ])?;
-    let path = budget_path(&plugin_root);
+    let fixture = support::instruction_policy_fixture(std::path::Path::new(
+        "skills/codex-orchestration/references/execution-budget.md",
+    ))?;
+    let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     fs::write(
         &path,
@@ -22,7 +18,7 @@ fn validator_allows_negated_countermand_examples() -> TestResult {
         ),
     )?;
 
-    let output = support::validator_instruction_policy(&plugin_root)?;
+    let output = support::validator_instruction_policy_file(path)?;
     assert!(
         output.status.success(),
         "validator rejected a negated countermand example: {}",

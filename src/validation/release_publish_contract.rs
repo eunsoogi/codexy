@@ -1,3 +1,5 @@
+mod runtime;
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -28,8 +30,9 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     )?;
     require_string(contract.get("name"), "name", &contract_path)?;
     check_current_marketplace_target(&contract, &contract_path)?;
-    check_package_contract(&contract, &contract_path, platforms)?;
-    check_source_marketplace_mode(&contract, &contract_path)?;
+    runtime::check(&contract, &contract_path)?;
+    check_package_contract(&contract, &contract_path)?;
+    check_source_marketplace_mode(&contract, &contract_path, platforms)?;
     check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))?;
     check_changelog_script(&repo_root.join(CHANGELOG_SCRIPT_PATH))
 }
@@ -70,7 +73,7 @@ fn check_current_marketplace_target(contract: &Value, path: &Path) -> Result<()>
     )
 }
 
-fn check_package_contract(contract: &Value, path: &Path, platforms: &[String]) -> Result<()> {
+fn check_package_contract(contract: &Value, path: &Path) -> Result<()> {
     let package = contract
         .get("package")
         .and_then(Value::as_object)
@@ -99,18 +102,23 @@ fn check_package_contract(contract: &Value, path: &Path, platforms: &[String]) -
             display_relative(path)
         )
     })?;
-    if package_platforms != platforms {
+    let archive_platforms = runtime::release_archive_platforms(contract, path)?;
+    if package_platforms != archive_platforms {
         bail!(
             "{} package.platforms must match supportedPlatforms: expected {:?}, got {:?}",
             display_relative(path),
-            platforms,
+            archive_platforms,
             package_platforms
         );
     }
     Ok(())
 }
 
-fn check_source_marketplace_mode(contract: &Value, path: &Path) -> Result<()> {
+fn check_source_marketplace_mode(
+    contract: &Value,
+    path: &Path,
+    platforms: &[String],
+) -> Result<()> {
     let source = contract
         .get("sourceMarketplace")
         .and_then(Value::as_object)
@@ -131,7 +139,14 @@ fn check_source_marketplace_mode(contract: &Value, path: &Path) -> Result<()> {
         "sourceMarketplace.mode",
         path,
         "source-checkout-dev",
-    )
+    )?;
+    if json_array_strings(source.get("platforms")).as_deref() != Some(platforms) {
+        bail!(
+            "{} sourceMarketplace.platforms must match supportedPlatforms",
+            display_relative(path)
+        );
+    }
+    Ok(())
 }
 
 fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
@@ -145,11 +160,10 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
         "shasum -a 256",
         "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
         "Assemble state-aware marketplace package without rebuilding",
-        "legacy-public)",
-        "candidate-proven)",
-        "runtime-candidate.json",
-        "payloadManifestSha256",
-        "for platform in darwin-arm64 linux-x86_64",
+        ".agents/plugins/runtime-activation.json",
+        "scripts/download-runtime-staging-artifact staging",
+        "scripts/materialize-runtime-release-archive",
+        "public-release",
         "dist/codexy-marketplace-plugin",
         "dist/codexy-marketplace-plugin.tar.gz",
         "scripts/inspect-release-archive",
@@ -164,8 +178,6 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     for forbidden in [
         "cargo build",
         "build-runtime",
-        "actions/download-artifact",
-        "gh release",
         "Publish generated marketplace snapshot",
         "MARKETPLACE_BRANCH",
         "dist/marketplace-root",

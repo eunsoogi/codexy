@@ -48,7 +48,7 @@ fn validator_rejects_role_without_nonrecursive_delegation_prohibition() -> TestR
         role.replace(NO_RECURSIVE_DELEGATION, "MUST NOT recurse through helpers."),
     )?;
 
-    let output = validator(fixture.root())?;
+    let output = validator_cli(fixture.root())?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("nonrecursive delegation contract is missing"));
@@ -162,6 +162,10 @@ fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> Test
         &structured_contract::Contract::markdown(&loop_reference),
         &structured_contract_rules::DELEGATION[2..],
     );
+
+    let fixture = plugin_fixture()?;
+    let output = validator_cli(fixture.root())?;
+    assert!(output.status.success(), "{}", stderr(&output));
     Ok(())
 }
 
@@ -187,6 +191,10 @@ fn reset_fixture_file(fixture: &PluginFixture, relative: &Path) -> TestResult<st
 }
 
 fn validator(plugin_root: &Path) -> TestResult<Output> {
+    support::validator(plugin_root, "--check-roles")
+}
+
+fn validator_cli(plugin_root: &Path) -> TestResult<Output> {
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",

@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_bulleted_preceding_metadata_for_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -32,7 +26,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_preceding_same_lane_metadata_without_prior_lane_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -55,7 +48,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_preceding_same_lane_metadata_before_list_capture_without_prior_lane_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -79,7 +71,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_same_lane_preface_metadata_before_list_capture_without_prior_lane_context()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -104,7 +95,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lane_scoped_defect_header_before_unprefixed_list_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -128,7 +118,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lane_type_classification_before_same_lane_handoff_block()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -151,5 +140,16 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_bulleted_preceding_metadata_for_later_lane()?;
+    validator_allows_preceding_same_lane_metadata_without_prior_lane_context()?;
+    validator_allows_preceding_same_lane_metadata_before_list_capture_without_prior_lane_context()?;
+    validator_allows_same_lane_preface_metadata_before_list_capture_without_prior_lane_context()?;
+    validator_allows_lane_scoped_defect_header_before_unprefixed_list_capture()?;
+    validator_allows_lane_type_classification_before_same_lane_handoff_block()?;
     Ok(())
 }

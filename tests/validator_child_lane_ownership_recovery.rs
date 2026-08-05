@@ -1,14 +1,9 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
 
-#[test]
 fn validator_rejects_negated_parent_setup_recovery() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
@@ -25,7 +20,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_pending_overlap_inspection_recovery() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -43,7 +37,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_bullet_metadata_after_absent_parent_setup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -65,7 +58,6 @@ Review response: child-authored commit def456 fixed feedback
     Ok(())
 }
 
-#[test]
 fn validator_allows_unlisted_metadata_after_empty_parent_setup()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -86,7 +78,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_recovery_checklist_for_parent_setup() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -110,7 +101,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_parent_read_in_setup_bullet() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
@@ -128,7 +118,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_parent_read_in_later_setup_bullet() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
@@ -147,7 +136,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_parent_read_line_number_in_setup_bullet()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -166,7 +154,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_parent_read_url_in_setup_bullet() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Lane ownership: child-owned
@@ -184,7 +171,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_parent_substring_in_child_read_path() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -204,7 +190,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_parent_substring_in_child_read_bullet_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -225,7 +210,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_parent_read_substring_inside_child_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -242,5 +226,22 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_ownership_recovery_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_negated_parent_setup_recovery()?;
+    validator_rejects_pending_overlap_inspection_recovery()?;
+    validator_allows_bullet_metadata_after_absent_parent_setup()?;
+    validator_allows_unlisted_metadata_after_empty_parent_setup()?;
+    validator_allows_recovery_checklist_for_parent_setup()?;
+    validator_rejects_parent_read_in_setup_bullet()?;
+    validator_rejects_parent_read_in_later_setup_bullet()?;
+    validator_rejects_parent_read_line_number_in_setup_bullet()?;
+    validator_rejects_parent_read_url_in_setup_bullet()?;
+    validator_allows_parent_substring_in_child_read_path()?;
+    validator_allows_parent_substring_in_child_read_bullet_path()?;
+    validator_allows_parent_read_substring_inside_child_path()?;
     Ok(())
 }

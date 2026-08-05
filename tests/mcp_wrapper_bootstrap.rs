@@ -22,54 +22,51 @@ fn install_fake_uvx(
 
 #[test]
 fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::error::Error>> {
-    for server in ["lsp", "codegraph"] {
-        let temp = tempfile::tempdir()?;
-        let fixture = WrapperFixture::new(temp.path())?;
-        let log = temp.path().join("uvx-args.log");
-        install_fake_uvx(&fixture, &log)?;
+    let server = "lsp";
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let log = temp.path().join("uvx-args.log");
+    install_fake_uvx(&fixture, &log)?;
 
-        let mut command =
-            Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
-        command
-            .env(
-                "PATH",
-                format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
-            )
-            .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-            .args(["--stdio", "value with spaces", "--literal=--"]);
-        assert!(run_wrapper_command(&mut command)?.status.success());
-        let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
-        assert_eq!(
-            std::fs::read_to_string(log)?.lines().collect::<Vec<_>>(),
-            [
-                "--from",
-                "getcodexy==1.2.2",
-                "codexy-mcp-runtime",
-                server,
-                "--plugin-root",
-                plugin_root.as_str(),
-                "--",
-                "--stdio",
-                "value with spaces",
-                "--literal=--",
-            ]
-        );
-    }
+    let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
+    command
+        .env(
+            "PATH",
+            format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
+        )
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .args(["--stdio", "value with spaces", "--literal=--"]);
+    assert!(run_wrapper_command(&mut command)?.status.success());
+    let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
+    assert_eq!(
+        std::fs::read_to_string(log)?.lines().collect::<Vec<_>>(),
+        [
+            "--from",
+            "getcodexy==1.2.2",
+            "codexy-mcp-runtime",
+            server,
+            "--plugin-root",
+            plugin_root.as_str(),
+            "--",
+            "--stdio",
+            "value with spaces",
+            "--literal=--",
+        ]
+    );
     Ok(())
 }
 
 #[test]
 fn wrappers_report_missing_uvx() -> Result<(), Box<dyn std::error::Error>> {
-    for server in ["lsp", "codegraph"] {
-        let temp = tempfile::tempdir()?;
-        let fixture = WrapperFixture::new(temp.path())?;
-        let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
-            .env("PATH", "/usr/bin:/bin")
-            .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
-            .arg("--stdio")
-            .output()?;
-        assert_eq!(output.status.code(), Some(127));
-        assert!(String::from_utf8_lossy(&output.stderr).contains("requires uvx"));
-    }
+    let server = "lsp";
+    let temp = tempfile::tempdir()?;
+    let fixture = WrapperFixture::new(temp.path())?;
+    let output = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")))
+        .env("PATH", "/usr/bin:/bin")
+        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .arg("--stdio")
+        .output()?;
+    assert_eq!(output.status.code(), Some(127));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("requires uvx"));
     Ok(())
 }

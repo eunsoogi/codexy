@@ -28,7 +28,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
 
 #[test]
 fn archive_gate_workflow_rejects_helper_missing_from_either_event_filter() {
-    let missing_push = "on:\n  pull_request:\n    paths: [scripts/check-release-archive-entries]\n  push:\n    paths: []\n";
+    let missing_push = "on:\n  pull_request:\n    paths: [scripts/**]\n  push:\n    paths: []\n";
     let workflow: Value = serde_yaml::from_str(missing_push).expect("workflow YAML");
     assert_trigger_path_result(
         &workflow,
@@ -42,7 +42,7 @@ fn archive_gate_workflow_rejects_helper_missing_from_either_event_filter() {
         "missing push helper trigger must fail"
     );
 
-    let missing_pull = "on:\n  pull_request:\n    paths: []\n  push:\n    paths: [scripts/check-release-archive-entries]\n";
+    let missing_pull = "on:\n  pull_request:\n    paths: []\n  push:\n    paths: [scripts/**]\n";
     let workflow: Value = serde_yaml::from_str(missing_pull).expect("workflow YAML");
     assert_trigger_path_result(&workflow, "push", "scripts/check-release-archive-entries")
         .expect("push retains helper trigger");
@@ -68,7 +68,14 @@ fn assert_trigger_path_result(workflow: &Value, event: &str, path: &str) -> Resu
         .ok_or_else(|| format!("{event}.paths"))?;
     let count = paths
         .iter()
-        .filter(|entry| entry.as_str() == Some(path))
+        .filter(|entry| {
+            entry.as_str()
+                == Some(if path.starts_with("scripts/") {
+                    "scripts/**"
+                } else {
+                    path
+                })
+        })
         .count();
     (count == 1)
         .then_some(())
@@ -76,7 +83,7 @@ fn assert_trigger_path_result(workflow: &Value, event: &str, path: &str) -> Resu
 }
 
 #[test]
-fn candidate_selected_package_copies_native_windows_entrypoints() {
+fn candidate_selected_package_materializes_and_inspects_the_public_projection() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workflow =
         std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml"))
@@ -100,11 +107,10 @@ fn candidate_selected_package_copies_native_windows_entrypoints() {
     let lines = candidate.lines().map(str::trim).collect::<Vec<_>>();
 
     for expected in [
-        "mkdir -p \"$staged/mcp\" \"$staged/runtime\"",
-        "entrypoint=\"mcp/codexy-mcp-${server}.exe\"",
-        "test \"$(digest_file \"$candidate/$entrypoint\")\" = \"$digest\"",
-        "cp \"$candidate/$entrypoint\" \"$staged/$entrypoint\"",
-        "cmp \"$candidate/$entrypoint\" \"$staged/$entrypoint\"",
+        "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
+        "mkdir -p final-inspect",
+        "tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect",
+        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
     ] {
         assert!(
             candidate
@@ -114,17 +120,21 @@ fn candidate_selected_package_copies_native_windows_entrypoints() {
             "candidate package branch must include {expected}"
         );
     }
-    let copied = lines
+    let materialized = lines
         .iter()
-        .position(|line| *line == "cp \"$candidate/$entrypoint\" \"$staged/$entrypoint\"")
-        .expect("candidate entrypoint copy");
+        .position(|line| *line == "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz")
+        .expect("candidate materialization");
+    let extracted = lines
+        .iter()
+        .position(|line| *line == "tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect")
+        .expect("public projection extraction");
     let inspected = lines
         .iter()
-        .position(|line| *line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\"")
-        .expect("candidate archive inspection");
+        .position(|line| *line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release")
+        .expect("public projection inspection");
 
     assert!(
-        copied < inspected,
-        "archive inspection must observe copied entrypoints"
+        materialized < extracted && extracted < inspected,
+        "public projection must be materialized before inspection"
     );
 }

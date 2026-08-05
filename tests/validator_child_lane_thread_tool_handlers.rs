@@ -3,14 +3,8 @@ use std::process::Output;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_handler_missing_for_discovered_thread_tool() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -33,7 +27,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_captured_handler_missing_dogfooding_defect() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -53,7 +46,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_genuinely_unavailable_thread_tool_fallback() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -73,7 +65,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_negated_handler_missing_evidence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -93,7 +84,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_repeated_handler_missing_after_negated_occurrence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -116,7 +106,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_repeated_qualified_handler_missing_after_negated_occurrence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -139,7 +128,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_absent_handler_defect_capture() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -162,7 +150,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_defect_scoped_not_captured_evidence() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -180,7 +167,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_distinguishes_negated_capture_wording() -> TestResult {
     for (defect_line, should_pass) in [
         (
@@ -222,7 +208,6 @@ fn validator_distinguishes_negated_capture_wording() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn validator_rejects_list_projects_handler_missing_for_thread_setup() -> TestResult {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -242,5 +227,20 @@ Maintainer reassignment: none
         "stderr should name the missing handler evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_handler_missing_for_discovered_thread_tool()?;
+    validator_allows_captured_handler_missing_dogfooding_defect()?;
+    validator_allows_genuinely_unavailable_thread_tool_fallback()?;
+    validator_allows_negated_handler_missing_evidence()?;
+    validator_rejects_repeated_handler_missing_after_negated_occurrence()?;
+    validator_rejects_repeated_qualified_handler_missing_after_negated_occurrence()?;
+    validator_rejects_absent_handler_defect_capture()?;
+    validator_rejects_defect_scoped_not_captured_evidence()?;
+    validator_distinguishes_negated_capture_wording()?;
+    validator_rejects_list_projects_handler_missing_for_thread_setup()?;
     Ok(())
 }

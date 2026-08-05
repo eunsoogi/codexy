@@ -1,8 +1,20 @@
+use std::collections::HashMap;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 
-pub(super) fn fixture_script_launcher(
+#[derive(Hash, PartialEq, Eq)]
+struct InterpreterCacheKey {
+    interpreter: String,
+    path: OsString,
+    pathext: OsString,
+}
+
+static INTERPRETER_CACHE: OnceLock<Mutex<HashMap<InterpreterCacheKey, PathBuf>>> = OnceLock::new();
+
+pub(crate) fn fixture_script_launcher(
     is_windows: bool,
     contents: &[u8],
 ) -> Result<Option<&'static str>, String> {
@@ -12,7 +24,7 @@ pub(super) fn fixture_script_launcher(
     fixture_script_interpreter(contents)
 }
 
-pub(super) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     (program
         .extension()
         .is_some_and(|extension| extension == "sh"))
@@ -23,7 +35,7 @@ pub(super) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
 /// The copied admission fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.
-pub(super) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
+pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
     let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();
@@ -72,6 +84,23 @@ pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf,
         format!("Windows fixture interpreter `{interpreter}` cannot discover PATH")
     })?;
     let extensions = std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
+    let cache_key = InterpreterCacheKey {
+        interpreter: interpreter.to_owned(),
+        path: path.clone(),
+        pathext: extensions.clone(),
+    };
+    if let Ok(mut cache) = INTERPRETER_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+    {
+        if let Some(candidate) = cache
+            .get(&cache_key)
+            .filter(|candidate| candidate.is_file())
+        {
+            return Ok(candidate.clone());
+        }
+        cache.remove(&cache_key);
+    }
     let extensions = extensions.to_string_lossy();
     let candidates = std::iter::once(interpreter.to_owned()).chain(
         extensions
@@ -83,6 +112,12 @@ pub(super) fn discover_windows_interpreter(interpreter: &str) -> Result<PathBuf,
         for candidate in candidates.clone() {
             let candidate = directory.join(candidate);
             if candidate.is_file() {
+                if let Ok(mut cache) = INTERPRETER_CACHE
+                    .get_or_init(|| Mutex::new(HashMap::new()))
+                    .lock()
+                {
+                    cache.insert(cache_key, candidate.clone());
+                }
                 return Ok(candidate);
             }
         }

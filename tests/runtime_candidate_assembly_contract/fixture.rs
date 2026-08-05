@@ -46,10 +46,9 @@ impl CandidateFixture {
         Command::new("sh")
             .arg("scripts/assemble-runtime-candidate")
             .current_dir(self.root())
-            .env("CANDIDATE_TAG", "runtime-candidate-test")
             .env("SOURCE_COMMIT", &self.source_commit)
-            .env("GITHUB_RUN_ID", "1")
-            .env("GITHUB_RUN_ATTEMPT", "1")
+            .env("STAGING_RUN_ID", "1")
+            .env("STAGING_RUN_ATTEMPT", "1")
             .env("GITHUB_SERVER_URL", "https://github.invalid")
             .env("GITHUB_REPOSITORY", "example/codexy")
             .env(
@@ -100,6 +99,14 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
         fs::copy(
             Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/assemble-runtime-candidate"),
             root.join("scripts/assemble-runtime-candidate"),
+        )?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/inspect-release-archive-contract.py"),
+            root.join("scripts/inspect-release-archive-contract.py"),
+        )?;
+        fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/release_archive_contract_shell.py"),
+            root.join("scripts/release_archive_contract_shell.py"),
         )?;
         let tar = root.join("test-bin/tar");
         fs::write(&tar, "#!/bin/sh\nexit 0\n")?;

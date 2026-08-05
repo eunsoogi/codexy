@@ -1,210 +1,68 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
-
-use crate::support::{FixtureCommand, make_executable};
-
 #[path = "runtime_activation_branch_recovery/real.rs"]
 mod real;
 
-const AUTHORIZED: [&str; 8] = [
-    ".agents/plugins/marketplace.json",
-    ".agents/plugins/release-publish-contract.json",
-    "plugins/codexy/.codex-plugin/plugin.json",
-    "plugins/codexy/mcp/codexy-mcp-codegraph",
-    "plugins/codexy/mcp/codexy-mcp-lsp",
-    "plugins/codexy/runtime-candidate.json",
-    "plugins/codexy/runtime-release.json",
-    "src/version/bootstrap.rs",
-];
+#[path = "runtime_activation_branch_recovery/fixture_matrix.rs"]
+mod fixture_matrix;
+#[path = "runtime_activation_branch_recovery/fixture_matrix_batch.rs"]
+mod fixture_matrix_batch;
+
+use fixture_matrix::{Change, FixtureMatrix};
 
 #[test]
 fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
 -> Result<(), Box<dyn std::error::Error>> {
-    assert!(Fixture::new(Change::Exact)?.run("OPEN")?.status.success());
-    for change in [
-        Change::WrapperDrift,
-        Change::BootstrapDrift,
-        Change::ReleaseContractDrift,
-        Change::Extra,
-        Change::Missing,
-    ] {
+    let matrix = FixtureMatrix::new()?;
+    let exact = matrix.case(Change::Exact)?.run("OPEN")?;
+    assert!(
+        exact.status.success(),
+        "exact activation failed: {}",
+        String::from_utf8_lossy(&exact.stderr)
+    );
+    let batch = [
+        matrix.batch_case("exact", Change::Exact, "OPEN", true)?,
+        matrix.batch_case("wrapper-drift", Change::WrapperDrift, "OPEN", true)?,
+        matrix.batch_case("bootstrap-drift", Change::BootstrapDrift, "OPEN", true)?,
+        matrix.batch_case("release-contract-drift", Change::ReleaseContractDrift, "OPEN", true)?,
+        matrix.batch_case("cargo-version-drift", Change::CargoVersionDrift, "OPEN", true)?,
+        matrix.batch_case("extra", Change::Extra, "OPEN", true)?,
+        matrix.batch_case("missing", Change::Missing, "OPEN", true)?,
+        matrix.batch_case("closed", Change::Exact, "CLOSED", true)?,
+        matrix.batch_case("ambiguous", Change::Exact, "OPEN\nOPEN", true)?,
+        matrix.batch_case("test-mode", Change::Exact, "OPEN", false)?,
+    ];
+    let results = matrix.run_batch(&batch)?;
+    assert_eq!(results.len(), batch.len(), "batch omitted a verifier state");
+    assert!(results[0].success(), "batched exact activation failed");
+    for (index, case) in batch.iter().enumerate().skip(1) {
         assert!(
-            !Fixture::new(change)?.run("OPEN")?.status.success(),
-            "{change:?} unexpectedly passed"
+            !results[index].success(),
+            "{} unexpectedly passed:\nstdout:\n{}\nstderr:\n{}",
+            case.name(),
+            String::from_utf8_lossy(&results[index].stdout),
+            String::from_utf8_lossy(&results[index].stderr),
         );
     }
-    assert!(!Fixture::new(Change::Exact)?.run("CLOSED")?.status.success());
-    assert!(!Fixture::new(Change::Exact)?.run("OPEN\nOPEN")?.status.success());
-    assert!(
-        !Fixture::new(Change::Exact)?
-            .run_without_test_mode("OPEN")?
-            .status
-            .success()
-    );
+    assert_diagnostic(&results[1], "activation branch differs from verified contract");
+    assert_output(&results[2], "src/version/bootstrap.rs");
+    assert_output(&results[3], ".agents/plugins/release-publish-contract.json");
+    assert_output(&results[4], "Cargo.toml");
+    assert_diagnostic(&results[5], "activation branch differs from verified contract");
+    assert_diagnostic(&results[6], ".agents/plugins/runtime-activation.json: No such file or directory");
+    assert_diagnostic(&results[7], "activation branch has a closed or ambiguous pull request");
+    assert_diagnostic(&results[8], "activation branch has a closed or ambiguous pull request");
+    assert_diagnostic(&results[9], "test activator override requires CODEXY_TEST_MODE=1");
+    assert_eq!(matrix.git_setup_starts(), 21, "seed plus mutation setup inventory");
+    assert_eq!(matrix.batched_case_count(), 10, "all verifier states must remain");
+    assert_eq!(matrix.verifier_starts(), 2, "single and batched verifier entrypoints");
     Ok(())
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Change {
-    Exact,
-    WrapperDrift,
-    BootstrapDrift,
-    ReleaseContractDrift,
-    Extra,
-    Missing,
+fn assert_diagnostic(result: &fixture_matrix_batch::BatchResult, expected: &str) {
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains(expected), "missing {expected:?} in batch stderr: {stderr}");
 }
 
-struct Fixture {
-    _temp: tempfile::TempDir,
-    repo: PathBuf,
-    bin: PathBuf,
-    receipt: PathBuf,
-}
-
-impl Fixture {
-    fn new(change: Change) -> Result<Self, Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let repo = temp.path().join("repo");
-        let expected = temp.path().join("expected");
-        let bin = temp.path().join("bin");
-        fs::create_dir_all(&repo)?;
-        fs::create_dir_all(&expected)?;
-        fs::create_dir_all(&bin)?;
-        git(&repo, &["init", "-b", "main"])?;
-        git(&repo, &["config", "user.name", "test"])?;
-        git(&repo, &["config", "user.email", "test@example.com"])?;
-        for path in AUTHORIZED {
-            write(&repo, path, format!("base:{path}\n").as_bytes())?;
-            write(&expected, path, format!("derived:{path}\n").as_bytes())?;
-        }
-        git(&repo, &["add", "."])?;
-        git(&repo, &["commit", "-m", "base"])?;
-        git(&repo, &["switch", "-c", "activation"])?;
-        copy_tree(&expected, &repo)?;
-        match change {
-            Change::Exact => {}
-            Change::WrapperDrift => write(&repo, AUTHORIZED[3], b"drift\n")?,
-            Change::BootstrapDrift => write(&repo, AUTHORIZED[7], b"drift\n")?,
-            Change::ReleaseContractDrift => write(&repo, AUTHORIZED[1], b"drift\n")?,
-            Change::Extra => write(&repo, "docs/extra.md", b"extra\n")?,
-            Change::Missing => fs::remove_file(repo.join(AUTHORIZED[5]))?,
-        }
-        git(&repo, &["add", "-A"])?;
-        git(&repo, &["commit", "-m", "activation"])?;
-        fake_gh(&bin.join("gh"))?;
-        fake_activator(&bin.join("activate"))?;
-        let receipt = temp.path().join("receipt.json");
-        fs::write(&receipt, "{}")?;
-        Ok(Self {
-            _temp: temp,
-            repo,
-            bin,
-            receipt,
-        })
-    }
-
-    fn run(&self, pr_state: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_test_mode(pr_state, true)
-    }
-
-    fn run_without_test_mode(
-        &self,
-        pr_state: &str,
-    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_test_mode(pr_state, false)
-    }
-
-    fn run_with_test_mode(
-        &self,
-        pr_state: &str,
-        test_mode: bool,
-    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let mut command = FixtureCommand::new(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("scripts/verify-runtime-activation-branch"),
-        );
-        command.args([
-            "activation",
-            "main",
-            "1.3.0",
-            self.receipt.to_str().ok_or("receipt")?,
-        ])
-        .current_dir(&self.repo)
-        .env(
-            "PATH",
-            format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
-        )
-        .env("CODEXY_TEST_ACTIVATE_RUNTIME", self.bin.join("activate"))
-        .env("EXPECTED_ROOT", self._temp.path().join("expected"))
-        .env("FAKE_PR_STATE", pr_state);
-        if test_mode {
-            command.env("CODEXY_TEST_MODE", "1");
-        }
-        Ok(command.output()?)
-    }
-}
-
-fn write(root: &Path, relative: &str, bytes: &[u8]) -> std::io::Result<()> {
-    let path = root.join(relative);
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(path, bytes)
-}
-
-fn copy_tree(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    for path in AUTHORIZED {
-        write(target, path, &fs::read(source.join(path))?)?;
-    }
-    Ok(())
-}
-
-fn git(root: &Path, arguments: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new("git").args(arguments).current_dir(root).output()?;
-    assert!(
-        output.status.success(),
-        "git {arguments:?}: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-fn fake_gh(path: &Path) -> std::io::Result<()> {
-    executable(path, "#!/bin/sh\nprintf '%s\n' \"$FAKE_PR_STATE\"\n")
-}
-
-fn fake_activator(path: &Path) -> std::io::Result<()> {
-    executable(
-        path,
-        r##"#!/bin/sh
-set -eu
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --repo-root) root="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-for path in \
-  .agents/plugins/marketplace.json \
-  .agents/plugins/release-publish-contract.json \
-  plugins/codexy/.codex-plugin/plugin.json \
-  plugins/codexy/mcp/codexy-mcp-codegraph \
-  plugins/codexy/mcp/codexy-mcp-lsp \
-  plugins/codexy/runtime-candidate.json \
-  plugins/codexy/runtime-release.json \
-  src/version/bootstrap.rs
-do
-  mkdir -p "$root/$(dirname "$path")"
-  cp "$EXPECTED_ROOT/$path" "$root/$path"
-done
-"##,
-    )
-}
-
-fn executable(path: &Path, source: &str) -> std::io::Result<()> {
-    fs::write(path, source)?;
-    make_executable(path)
+fn assert_output(result: &fixture_matrix_batch::BatchResult, expected: &str) {
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    assert!(stdout.contains(expected), "missing {expected:?} in batch stdout: {stdout}");
 }

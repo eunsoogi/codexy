@@ -110,7 +110,87 @@ fn is_scope(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::check_merge_subject;
+    use super::{check_issue_title, check_merge_subject};
+
+    #[test]
+    fn issue_title_diagnostics_preserve_cli_matrix() {
+        let rejected = [
+            (
+                "fix(agents): reject negated sentinel evidence",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents): reject negated sentinel evidence",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents) reject negated sentinel evidence",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents) please: reject evidence",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents):",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix!: ",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix:: break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents)::",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents):: break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix!::",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix!:: break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents)!:: break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix(agents):reject",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix!:break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                "Fix:break",
+                "issue title must not use Conventional Commit style",
+            ),
+            (
+                " Reject negated sentinel reasoning evidence",
+                "issue title must start with an uppercase descriptive title",
+            ),
+        ];
+
+        for (title, diagnostic) in rejected {
+            assert_eq!(
+                check_issue_title(title),
+                vec![diagnostic.to_owned()],
+                "unexpected issue-title result for {title:?}"
+            );
+        }
+
+        assert!(check_issue_title("Reject negated sentinel reasoning evidence").is_empty());
+    }
 
     #[test]
     fn merge_subject_rejects_unseparated_expected_pr_suffix() {

@@ -46,6 +46,7 @@ fn normalize_fixture_stderr_line(line: &str, suffix: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::normalize_fixture_stderr_text;
+    use crate::support;
     use std::path::Path;
 
     #[test]
@@ -77,5 +78,28 @@ mod tests {
             unrelated,
             "unrelated fixture paths must remain observable"
         );
+    }
+
+    #[test]
+    fn focused_instruction_policy_fixture_copies_only_the_declared_surface()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let relative = Path::new("skills/proof-driven-completion/SKILL.md");
+        let fixture = support::instruction_policy_fixture(relative)?;
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("plugins/codexy")
+            .join(relative);
+
+        assert_eq!(fixture.profile().files(), 1);
+        assert_eq!(fixture.profile().bytes(), std::fs::metadata(source)?.len());
+        assert!(fixture.path().is_file());
+        assert!(
+            !fixture
+                .path()
+                .parent()
+                .ok_or("fixture parent")?
+                .join("agents")
+                .exists()
+        );
+        Ok(())
     }
 }

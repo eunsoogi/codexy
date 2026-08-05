@@ -5,21 +5,25 @@ mod agent_model_assignments;
 mod cache_fixture;
 mod child_thread_ledger_skill;
 mod digest;
-mod executable_path;
+pub(crate) mod executable_path;
 mod fixture_command;
+mod fixture_command_bindings;
+mod fixture_command_mock;
 mod fixture_command_windows;
-mod fixture_hook_path;
-mod fixture_hook_path_windows;
-mod fixture_path;
-mod fixture_probe;
-mod fixture_text;
+pub(crate) mod fixture_hook_path;
+pub(crate) mod fixture_hook_path_windows;
+pub(crate) mod fixture_path;
+pub(crate) mod fixture_probe;
+pub(crate) mod fixture_text;
 mod instruction_policy_fixture;
 mod package;
 mod package_archive;
 mod package_fixture;
-mod plugin_fixture;
-mod plugin_fixture_copy;
-mod profile_metrics;
+pub(crate) mod plugin_fixture;
+pub(crate) mod plugin_fixture_copy;
+pub(crate) mod plugin_fixture_mutable;
+pub(crate) mod profile_interval_metrics;
+pub(crate) mod profile_metrics;
 pub(crate) mod release_archive;
 mod release_cache;
 mod release_cache_audit;
@@ -30,11 +34,12 @@ mod release_cache_resources;
 mod release_version;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
+pub(crate) mod windows_archive_prerequisite;
 pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
 mod wrapper;
-mod wrapper_copy;
-mod wrapper_platform;
+pub(crate) mod wrapper_copy;
+pub(crate) mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
@@ -43,20 +48,31 @@ pub(crate) use agent_model_assignments::{
     validate_catalog_replacement,
 };
 pub(crate) use child_thread_ledger_skill::{
-    stderr, validator, validator_child_lane_ownership_file, validator_completion_handoff_files,
-    validator_in_process, validator_instruction_policy, validator_instruction_policy_file,
-    validator_pr_labels, validator_routing,
+    stderr, validator, validator_child_lane_ownership, validator_child_lane_ownership_file,
+    validator_completion_handoff, validator_completion_handoff_files, validator_in_process,
+    validator_instruction_policy, validator_instruction_policy_file, validator_pr_labels,
+    validator_routing,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
-pub(crate) use fixture_command::FixtureCommand;
+pub(crate) use fixture_command::{
+    FixtureCommand, fixture_script_launcher, windows_fixture_companion,
+    windows_static_python_fixture,
+};
+pub(crate) use fixture_command_bindings::{
+    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
+    write_single_posix_fixture_shell_runner,
+};
+pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
 };
-pub(crate) use instruction_policy_fixture::{InstructionPolicyFixture, instruction_policy_fixture};
+pub(crate) use instruction_policy_fixture::{
+    FocusedFixtureProfile, InstructionPolicyFixture, instruction_policy_fixture,
+};
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,
@@ -74,7 +90,9 @@ pub(crate) use plugin_fixture::{
     materialize_admission_runtime_suite, plugin_fixture, plugin_fixture_with_mutable_files,
     roles_fixture,
 };
-pub(crate) use release_archive::assert_structured_literals;
+pub(crate) use profile_interval_metrics::mcp_interval;
+pub(crate) use profile_metrics::record_mcp_wait;
+pub(crate) use release_archive::{assert_structured_absent_literals, assert_structured_literals};
 pub(super) use release_cache::{
     assert_wrapper_ignores_unversioned_cache_before_default_package_refresh,
     assert_wrapper_refreshes_cached_runtime_when_plugin_release_changes,

@@ -11,7 +11,7 @@ fn default_fixture_uses_the_manifest_overlay_on_windows() -> Result<(), Box<dyn 
         "Windows default fixture overlay",
         &[
             "#[cfg(windows)]",
-            "materialize_fixture(&[])",
+            "materialize_fixture(&[], fixture_identity(\"full\", Location::caller()))",
             "#[cfg(not(windows))]",
             "super::copy_dir(source_root(), &root)?",
         ],

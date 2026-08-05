@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_allows_unprefixed_same_lane_handoff_fields_after_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -32,7 +26,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_blank_line_after_same_lane_header() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -56,7 +49,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_markdown_lane_headings_before_handoff_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     for heading in [
@@ -88,7 +80,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_markdown_lane_heading_cross_lane_metadata_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -113,7 +104,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_hyphenated_markdown_lane_heading_cross_lane_metadata_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -137,7 +127,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_block_lane_header_cross_lane_metadata_after_intervening_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -161,7 +150,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_current_lane_metadata_borrowing_before_adjacent_later_lane_header()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -184,5 +172,17 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_unprefixed_same_lane_handoff_fields_after_lane_header()?;
+    validator_allows_blank_line_after_same_lane_header()?;
+    validator_allows_markdown_lane_headings_before_handoff_metadata()?;
+    validator_rejects_markdown_lane_heading_cross_lane_metadata_borrowing()?;
+    validator_rejects_hyphenated_markdown_lane_heading_cross_lane_metadata_borrowing()?;
+    validator_rejects_block_lane_header_cross_lane_metadata_after_intervening_metadata()?;
+    validator_rejects_current_lane_metadata_borrowing_before_adjacent_later_lane_header()?;
     Ok(())
 }

@@ -4,60 +4,67 @@ use serde_yaml::Value;
 
 use crate::support;
 
+#[path = "runtime_workflow_recovery/release_lineage.rs"]
+mod release_lineage;
+#[path = "runtime_workflow_recovery/release_reconciliation.rs"]
+mod release_reconciliation;
+#[path = "runtime_workflow_recovery/release_tag_admission.rs"]
+mod release_tag_admission;
+#[path = "runtime_workflow_recovery/durable_selection.rs"]
+mod durable_selection;
+#[path = "runtime_workflow_recovery/durable_selection_behavior.rs"]
+mod durable_selection_behavior;
+
 #[test]
-fn activation_requires_clean_bootstrap_entrypoint_and_successful_candidate_run()
+fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;
     let proof = run(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap, release, run, and candidate bytes",
+        "Prove public bootstrap and authenticated staging identity",
     )?;
     support::assert_structured_literals(
         proof,
-        "activation bootstrap and candidate workflow proof",
+        "activation bootstrap and staging workflow proof",
         &[
             "python -m venv public-bootstrap",
             "getcodexy==${BOOTSTRAP_VERSION}",
             "public-bootstrap/bin/codexy-mcp-runtime --help",
-            "test \"$(jq -r .status run.json)\" = \"completed\"",
-            "test \"$(jq -r .conclusion run.json)\" = \"success\"",
+            "scripts/download-runtime-staging-artifact staging",
         ],
+    );
+    let download = script("download-runtime-staging-artifact")?;
+    support::assert_structured_literals(
+        &download,
+        "authenticated staging downloader",
+        &[".status \"$run\")\" = completed", ".conclusion \"$run\")\" = success"],
     );
     Ok(())
 }
 
 #[test]
-fn candidate_publication_recovers_without_overwriting_assets()
+fn staging_publication_uses_expiring_authenticated_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = workflow("runtime-candidate.yml")?;
-    let publish = run(
-        &candidate,
-        "publish-candidate",
-        "Create candidate tag and release once",
-    )?;
-    support::assert_structured_literals(
-        publish,
-        "recoverable immutable candidate publication",
-        &[
-            "refs/tags/$CANDIDATE_TAG^{}",
-            "test \"$remote_commit\" = \"$SOURCE_COMMIT\"",
-            "gh release view \"$CANDIDATE_TAG\"",
-            "scripts/reconcile-runtime-candidate-assets",
-        ],
-    );
-    assert_eq!(publish.matches("--clobber").count(), 0, "immutable assets must not be overwritten");
+    let steps = candidate["jobs"]["stage-runtime"]["steps"]
+        .as_sequence()
+        .ok_or("staging steps")?;
+    let (_, publish) = named_step(steps, "Upload authenticated staging bundle")?;
+    assert_eq!(publish["uses"], "actions/upload-artifact@v7");
+    assert_eq!(publish["with"]["name"], "runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}");
+    assert_eq!(publish["with"]["retention-days"], 14);
     Ok(())
 }
 
 #[test]
-fn candidate_publication_records_a_reproducible_success_binding()
+fn staging_publication_records_a_reproducible_success_binding()
 -> Result<(), Box<dyn std::error::Error>> {
     let candidate = workflow("runtime-candidate.yml")?;
     let assembly = run(
         &candidate,
-        "publish-candidate",
-        "Assemble canonical candidate archive and receipt",
+        "stage-runtime",
+        "Assemble canonical staged archive and receipt",
     )?;
     assert_eq!(assembly, "scripts/assemble-runtime-candidate");
     let assembly = script("assemble-runtime-candidate")?;
@@ -68,53 +75,51 @@ fn candidate_publication_records_a_reproducible_success_binding()
     );
     let publish = run(
         &candidate,
-        "publish-candidate",
-        "Create candidate tag and release once",
+        "stage-runtime",
+        "Verify staged archive and receipt digests",
     )?;
     support::assert_structured_literals(
         publish,
-        "candidate success binding",
-        &["scripts/reconcile-runtime-candidate-assets"],
+        "staging success binding",
+        &["sha256sum", "runtime-staging-receipt.json"],
     );
     Ok(())
 }
 
 #[test]
-fn activation_requires_a_successful_candidate_publication_binding()
+fn activation_requires_a_successful_authenticated_staging_binding()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;
     let proof = run(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap, release, run, and candidate bytes",
+        "Prove public bootstrap and authenticated staging identity",
     )?;
+    assert!(proof.lines().any(|line| line.trim() == "scripts/download-runtime-staging-artifact staging"));
+    let download = script("download-runtime-staging-artifact")?;
     support::assert_structured_literals(
-        proof,
-        "activation candidate success binding",
-        &["candidate-publication.json", "run.json", ".conclusion run.json)\" = \"success\""],
+        &download,
+        "activation staging success binding",
+        &["runtime-staging-artifacts.json", "actions/artifacts/$artifact_id/zip", ".expired == false"],
     );
     Ok(())
 }
 
 #[test]
-fn activation_pr_creation_reuses_an_existing_verified_branch()
+fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;
-    let branch = run(&activation, "open-activation-pr", "Prepare activation branch")?;
+    let branch = run(&activation, "open-activation-pr", "Prepare one version-selection branch")?;
     support::assert_structured_literals(
         branch,
         "resumable activation pull request",
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
-            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$GITHUB_WORKSPACE/candidate-receipt.json\"",
+            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json\"",
+            "codexy/runtime-activation-v${BOOTSTRAP_VERSION}",
         ],
     );
-    let steps = activation["jobs"]["open-activation-pr"]["steps"]
-        .as_sequence()
-        .ok_or("activation steps")?;
-    let (_, prepare) = named_step(steps, "Prepare activation branch")?;
-    assert_eq!(prepare["env"]["GH_TOKEN"], "${{ github.token }}");
-    let creation = run(&activation, "open-activation-pr", "Create activation pull request")?;
+    let creation = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
     support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
     Ok(())
 }
@@ -165,7 +170,7 @@ fn candidate_keeps_windows_native_until_verified_activation()
         "native Windows candidate proof",
         &["ProcessStartInfo", "codexy-mcp-lsp.exe", "codexy-mcp-codegraph.exe", "tools/call"],
     );
-    let assembly = run(&candidate, "publish-candidate", "Assemble canonical candidate archive and receipt")?;
+    let assembly = run(&candidate, "stage-runtime", "Assemble canonical staged archive and receipt")?;
     assert_eq!(assembly, "scripts/assemble-runtime-candidate");
     let assembly = script("assemble-runtime-candidate")?;
     support::assert_structured_literals(

@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_uncaptured_handler_missing_in_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -35,7 +29,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_uncaptured_same_tool_handler_missing_in_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -62,7 +55,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_non_thread_handler_error_in_later_sentence()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -82,7 +74,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_documented_missing_handler_defect_without_handoff_fields()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -101,7 +92,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_inline_defect_capture_before_handler_marker()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -121,7 +111,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_capture_that_negates_unavailable_fallback_reporting()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -142,7 +131,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_capture_that_negates_unavailable_fallback_recording()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -163,7 +151,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_fallback_recorded_without_tool_exposure_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -187,7 +174,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_multiline_handler_defect_capture() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -208,7 +194,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_prior_bullet_list_as_handler_defect_capture()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -231,5 +216,20 @@ Maintainer reassignment: none
         "stderr should name the missing handler evidence, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_uncaptured_handler_missing_in_later_lane()?;
+    validator_rejects_uncaptured_same_tool_handler_missing_in_later_lane()?;
+    validator_allows_non_thread_handler_error_in_later_sentence()?;
+    validator_rejects_documented_missing_handler_defect_without_handoff_fields()?;
+    validator_allows_inline_defect_capture_before_handler_marker()?;
+    validator_allows_capture_that_negates_unavailable_fallback_reporting()?;
+    validator_allows_capture_that_negates_unavailable_fallback_recording()?;
+    validator_rejects_fallback_recorded_without_tool_exposure_defect()?;
+    validator_allows_multiline_handler_defect_capture()?;
+    validator_rejects_prior_bullet_list_as_handler_defect_capture()?;
     Ok(())
 }

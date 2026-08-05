@@ -37,34 +37,3 @@ pub(crate) fn install_fixture_platform(
     )?;
     make_executable(&selector)
 }
-
-#[cfg(test)]
-mod controls {
-    use super::*;
-
-    #[test]
-    fn fixture_platform_selector_is_explicit_and_never_reads_host_environment()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let mcp = temp.path().join("mcp");
-        std::fs::create_dir(&mcp)?;
-        install_fixture_platform(temp.path(), FixturePlatform::WindowsX86_64)?;
-        assert_eq!(
-            std::fs::read_to_string(mcp.join("runtime-platform.sh"))?,
-            "#!/bin/sh\ncodexy_runtime_platform() {\n  printf '%s\\n' 'windows-x86_64'\n}\n"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn unsupported_fixture_platform_fails_closed() -> Result<(), Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        std::fs::create_dir(temp.path().join("mcp"))?;
-        install_fixture_platform(temp.path(), FixturePlatform::Unsupported)?;
-        assert_eq!(
-            std::fs::read_to_string(temp.path().join("mcp/runtime-platform.sh"))?,
-            "#!/bin/sh\ncodexy_runtime_platform() {\n  printf '%s\\n' 'unknown-unknown'\n}\n"
-        );
-        Ok(())
-    }
-}

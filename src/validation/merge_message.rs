@@ -116,3 +116,86 @@ fn is_owner_repo_reference(value: &str) -> bool {
             })
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::check;
+
+    #[test]
+    fn expected_issue_inline_matrix_preserves_exact_diagnostics_and_acceptance() {
+        const EXPECTED_DIAGNOSTIC: &str = "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #121";
+        let rejected = [
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nReviewed and verified.\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nRationale: see #121.\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n\nFollow-up.\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nFixes #120\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nCloses #120\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nResolves: #120\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nCLOSES #120\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nFIXES #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nThis also fixes #120.\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix: #120 accidental close\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nFixes owner/repo#120\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\nResolves #10, resolves #123\n\nFixes #121\n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+            (
+                "fix(workflow): tighten merge evidence (#122)\n\n  Fixes #121  \n",
+                EXPECTED_DIAGNOSTIC,
+            ),
+        ];
+
+        for (message, expected) in rejected {
+            assert_eq!(
+                check(Some(121), None, message),
+                vec![expected.to_owned()],
+                "unexpected merge-message result for {message:?}"
+            );
+        }
+
+        let accepted = [
+            "fix(workflow): tighten merge evidence (#122)\n\nFixes #121\n",
+            "fix(workflow): require issue references in merge messages (#123)\n\nFixes #121\n",
+        ];
+        for message in accepted {
+            assert!(
+                check(Some(121), None, message).is_empty(),
+                "expected merge message to pass: {message:?}"
+            );
+        }
+    }
+}

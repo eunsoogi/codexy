@@ -1,14 +1,9 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
 
-#[test]
 fn validator_allows_not_fallback_substitutes_evidence() -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
@@ -27,7 +22,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_satisfied_by_cli_even_with_not_fallback_substitute_wording()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -69,7 +63,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_real_thread_surface_satisfied_by_with_negated_cli_fallback()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -89,7 +82,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_absence_blocker_when_thread_events_are_negated()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -110,7 +102,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_false_blocker_when_thread_events_are_split_across_lines()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -135,7 +126,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_negated_forbidden_satisfied_by_claims() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -155,7 +145,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_forbidden_satisfied_by_with_unrelated_prefix_negation()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -178,7 +167,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_mixed_forbidden_fallback_claims_per_surface()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -216,5 +204,18 @@ Maintainer reassignment: none
         "stderr should name the forbidden fallback, got:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tools_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_allows_not_fallback_substitutes_evidence()?;
+    validator_rejects_satisfied_by_cli_even_with_not_fallback_substitute_wording()?;
+    validator_allows_real_thread_surface_satisfied_by_with_negated_cli_fallback()?;
+    validator_allows_absence_blocker_when_thread_events_are_negated()?;
+    validator_rejects_false_blocker_when_thread_events_are_split_across_lines()?;
+    validator_allows_negated_forbidden_satisfied_by_claims()?;
+    validator_rejects_forbidden_satisfied_by_with_unrelated_prefix_negation()?;
+    validator_rejects_mixed_forbidden_fallback_claims_per_surface()?;
     Ok(())
 }

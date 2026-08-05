@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use crate::support::release_archive as release_archive_support;
-use release_archive_support::complete_plugin_fixture;
+use crate::support::{FixtureCommand, release_archive as release_archive_support};
+use release_archive_support::{complete_plugin_fixture, create_archive, inspect_archive};
 
 #[test]
 fn archive_fixture_reuses_cargo_built_test_binaries() {
@@ -24,6 +24,56 @@ fn archive_fixture_reuses_cargo_built_test_binaries() {
     );
 }
 
+#[test]
+fn validator_wrapper_keeps_its_default_production_cargo_route() {
+    let wrapper = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/validate-plugin-config"),
+    )
+    .expect("validator wrapper");
+    assert_eq!(
+        wrapper.lines().collect::<Vec<_>>(),
+        [
+            "#!/bin/sh",
+            "set -eu",
+            "SCRIPT_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)",
+            "REPO_ROOT=$(CDPATH= cd -- \"$SCRIPT_DIR/..\" && pwd)",
+            "if [ \"${CODEXY_TEST_MODE:-}\" = 1 ] && [ -n \"${CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY:-}\" ]; then",
+            "    exec \"$CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY\" \"$@\"",
+            "fi",
+            "exec cargo run --quiet --manifest-path \"$REPO_ROOT/Cargo.toml\" --bin codexy-validate -- \"$@\"",
+        ]
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn validator_fixture_uses_cargo_built_binary_when_cargo_is_a_failing_shim()
+-> Result<(), Box<dyn std::error::Error>> {
+    const CHILD_ENV: &str = "CODEXY_VALIDATOR_FIXTURE_SHIM_CHILD";
+    if std::env::var_os(CHILD_ENV).is_some() {
+        let temp = tempfile::tempdir()?;
+        let wrapper = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/validate-plugin-config");
+        let output = FixtureCommand::new(&wrapper).arg("--check").output()?;
+        assert!(output.status.success(), "{output:?}");
+
+        let plugin_root = complete_plugin_fixture(temp.path())?;
+        std::fs::remove_file(plugin_root.join("hooks/hooks.json"))?;
+        let mut command = FixtureCommand::new(&wrapper);
+        command.arg("--plugin-root");
+        command.arg_path(&plugin_root);
+        command.arg("--check-hooks");
+        let output = command.output()?;
+        assert!(!output.status.success(), "{output:?}");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("hooks/hooks.json"));
+        return Ok(());
+    }
+
+    run_child_with_poisoned_cargo(
+        "archive_fixture_nested_cargo::validator_fixture_uses_cargo_built_binary_when_cargo_is_a_failing_shim",
+        CHILD_ENV,
+    )
+}
+
 #[cfg(unix)]
 #[test]
 fn archive_fixture_completes_when_nested_cargo_is_a_failing_shim()
@@ -31,11 +81,43 @@ fn archive_fixture_completes_when_nested_cargo_is_a_failing_shim()
     const CHILD_ENV: &str = "CODEXY_ARCHIVE_FIXTURE_SHIM_CHILD";
     if std::env::var_os(CHILD_ENV).is_some() {
         let temp = tempfile::tempdir()?;
-        complete_plugin_fixture(temp.path())?;
+        let plugin_root = complete_plugin_fixture(temp.path())?;
+        let archive = temp.path().join("complete-plugin.tar.gz");
+        create_archive(temp.path(), &archive)?;
+        let receipts = temp.path().join("receipts");
+        std::fs::create_dir(&receipts)?;
+        unsafe { std::env::set_var("CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR", &receipts) };
+        let output = inspect_archive(&archive, &plugin_root, None)?;
+        assert!(output.status.success(), "{output:?}");
+        assert!(String::from_utf8_lossy(&output.stdout).contains("archive_sha256"));
+        let receipt = std::fs::read_dir(receipts)?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "json")
+            })
+            .ok_or("archive inspector receipt missing")?;
+        let receipt: serde_json::Value = serde_json::from_slice(&std::fs::read(receipt.path())?)?;
+        assert_eq!(receipt["inspector_outcome"], "success");
+        assert!(receipt["backend"] == "rg" || receipt["backend"] == "grep");
         return Ok(());
     }
 
+    run_child_with_poisoned_cargo(
+        "archive_fixture_nested_cargo::archive_fixture_completes_when_nested_cargo_is_a_failing_shim",
+        CHILD_ENV,
+    )
+}
+
+#[cfg(unix)]
+fn run_child_with_poisoned_cargo(
+    test_name: &str,
+    child_env: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     use std::os::unix::fs::PermissionsExt;
+
     let temp = tempfile::tempdir()?;
     let marker = temp.path().join("nested-cargo-invoked");
     let shim = temp.path().join("cargo");
@@ -47,10 +129,10 @@ fn archive_fixture_completes_when_nested_cargo_is_a_failing_shim()
     permissions.set_mode(0o755);
     std::fs::set_permissions(&shim, permissions)?;
     let path = format!("{}:{}", temp.path().display(), std::env::var("PATH")?);
-    let test_name = "archive_fixture_nested_cargo::archive_fixture_completes_when_nested_cargo_is_a_failing_shim";
     let output = std::process::Command::new(std::env::current_exe()?)
         .args(["--exact", test_name])
-        .env(CHILD_ENV, "1")
+        .env(child_env, "1")
+        .env("CODEXY_TEST_MODE", "1")
         .env("CODEXY_NESTED_CARGO_MARKER", &marker)
         .env("PATH", path)
         .output()?;

@@ -1,5 +1,3 @@
-use std::{path::Path, process::Command};
-
 pub(super) type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
 pub(super) fn accept_open_pr_handoff(
@@ -36,24 +34,11 @@ pub(super) fn reject_open_pr_completion_handoff(
 }
 
 pub(super) fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
-    let temp = tempfile::tempdir()?;
-    let handoff_path = temp.path().join("handoff.md");
-    let pr_state_path = temp.path().join("pr-state.json");
-    std::fs::write(&handoff_path, handoff)?;
-    std::fs::write(&pr_state_path, pr_state)?;
-    validate_completion_handoff(&handoff_path, &pr_state_path)
+    validate_completion_handoff(handoff, pr_state)
 }
 
-fn validate_completion_handoff(handoff_path: &Path, pr_state_path: &Path) -> OutputResult {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--check-completion-handoff",
-            "--handoff-file",
-            handoff_path.to_str().ok_or("handoff path")?,
-            "--pr-state-file",
-            pr_state_path.to_str().ok_or("pr state path")?,
-        ])
-        .output()?)
+fn validate_completion_handoff(handoff: &str, pr_state: &str) -> OutputResult {
+    crate::support::validator_completion_handoff(handoff, pr_state)
 }
 
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {

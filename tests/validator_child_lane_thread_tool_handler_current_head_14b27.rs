@@ -1,13 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_pre_action_route_not_used_value() -> Result<(), Box<dyn std::error::Error>> {
     for route in [
         "Fallback route: was not used, parent sent the handoff to the child thread",
@@ -32,7 +27,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_preceding_no_route_handoff_metadata() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -55,7 +49,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_lane_prefixed_preceding_handoff_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -81,7 +74,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_current_tense_contracted_issue_negations()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -105,7 +97,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_post_reference_issue_lifecycle_connectors()
 -> Result<(), Box<dyn std::error::Error>> {
     for issue in [
@@ -129,7 +120,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_handoff_fields_from_comma_separated_unrelated_defect()
 -> Result<(), Box<dyn std::error::Error>> {
     for separator in [",", " -"] {
@@ -150,7 +140,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_allows_bulleted_fallback_route_used_handoff_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -174,7 +163,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_did_not_use_fallback_route_followups() -> Result<(), Box<dyn std::error::Error>>
 {
     for route in [
@@ -200,7 +188,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_did_not_create_tracking_issue_text() -> Result<(), Box<dyn std::error::Error>>
 {
     for issue in [
@@ -222,5 +209,19 @@ Maintainer reassignment: none
             "validator should reject did-not-create tracking issue text: {issue}"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_pre_action_route_not_used_value()?;
+    validator_allows_preceding_no_route_handoff_metadata()?;
+    validator_allows_lane_prefixed_preceding_handoff_metadata()?;
+    validator_rejects_current_tense_contracted_issue_negations()?;
+    validator_rejects_post_reference_issue_lifecycle_connectors()?;
+    validator_rejects_handoff_fields_from_comma_separated_unrelated_defect()?;
+    validator_allows_bulleted_fallback_route_used_handoff_metadata()?;
+    validator_rejects_did_not_use_fallback_route_followups()?;
+    validator_rejects_did_not_create_tracking_issue_text()?;
     Ok(())
 }

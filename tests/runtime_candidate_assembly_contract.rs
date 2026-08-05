@@ -163,63 +163,37 @@ fn candidate_assembly_rejects_readonly_shell_overrides()
 }
 
 #[test]
-fn candidate_assembly_rejects_declarations_inside_heredocs()
+fn candidate_assembly_rejects_compound_split_eval_overrides_and_ignores_inert_text()
 -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = CandidateFixture::new(&format!("cat <<'WRAPPER'\n{FIRST_DECLARATION}WRAPPER\n"))?;
-    let output = fixture.assemble();
-    assert!(!output.status.success(), "candidate assembly accepted heredoc declaration");
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("candidate wrapper platform declaration mismatch")
-    );
-    Ok(())
-}
-
-#[test]
-fn candidate_assembly_rejects_declarations_inside_word_adjacent_comment_heredocs()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = CandidateFixture::new(&format!(
-        ": foo#bar <<'WRAPPER'\n{FIRST_DECLARATION}WRAPPER\n"
-    ))?;
-    let output = fixture.assemble();
-    assert!(
-        !output.status.success(),
-        "candidate assembly accepted declaration inside word-adjacent-comment heredoc"
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("candidate wrapper platform declaration mismatch")
-    );
-    Ok(())
-}
-
-#[test]
-fn candidate_assembly_ignores_inert_heredoc_declaration_text()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = CandidateFixture::new(&format!(
-        "{FIRST_DECLARATION}cat <<'WRAPPER'\nbundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\nWRAPPER\n"
-    ))?;
-    let output = fixture.assemble();
-    assert!(
-        output.status.success(),
-        "candidate assembly rejected inert heredoc text: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-#[test]
-fn candidate_assembly_ignores_word_adjacent_comment_heredoc_text()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = CandidateFixture::new(&format!(
-        "{FIRST_DECLARATION}: foo#bar <<'WRAPPER'\nbundled_platforms=\"darwin-arm64 linux-x86_64 plan9-mips64\"\nWRAPPER\n"
-    ))?;
-    let output = fixture.assemble();
-    assert!(
-        output.status.success(),
-        "candidate assembly rejected inert word-adjacent-comment heredoc text: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    for (line, succeeds) in [
+        ("true && eval 'bundled_''platforms=darwin-arm64'", false),
+        ("eval 'bundled_''platforms=darwin-arm64' && true", false),
+        ("\"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
+        ("command \"ev\"\"al\" 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n$runner 'bundled_''platforms=darwin-arm64'", false),
+        ("true && runner=eval\n$runner 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n\"$runner\" 'bundled_''platforms=darwin-arm64'", false),
+        ("runner=eval\n${runner} 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=eval\ncommand \"$runner\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
+        ("runner=val\ne$runner 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=val\n\"e${runner}\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
+        ("`printf eval` 'bundled_''platforms=darwin-arm64'", false),
+        (
+            "runner=eval\nbuiltin \"$runner\" 'bundled_''platforms=darwin-arm64'",
+            false,
+        ),
+        ("printf '%s\\n' 'bundled_''platforms=darwin-arm64'", true),
+        ("runner=eval\nprintf '%s\\n' \"$runner\"", true),
+    ] {
+        let fixture = CandidateFixture::new(&format!("{FIRST_DECLARATION}{line}\n"))?;
+        assert_eq!(fixture.assemble().status.success(), succeeds, "{line}");
+    }
     Ok(())
 }
 

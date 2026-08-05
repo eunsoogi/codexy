@@ -8,12 +8,10 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const REFERENCE: &str = "skills/git-workflow/references/codex-connector-review.md";
 
 fn validate(change: impl FnOnce(String) -> String) -> TestResult<std::process::Output> {
-    let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[Path::new(
-        REFERENCE,
-    )])?;
-    let path = plugin_root.join(REFERENCE);
+    let fixture = support::instruction_policy_fixture(Path::new(REFERENCE))?;
+    let path = fixture.path();
     fs::write(&path, change(fs::read_to_string(&path)?))?;
-    support::validator_instruction_policy(&plugin_root)
+    support::validator_instruction_policy_file(path)
 }
 
 fn reorder_first_two_obligations(text: String) -> String {
@@ -121,9 +119,7 @@ fn validator_keeps_mismatched_fences_and_list_examples_inactive() -> TestResult 
 #[test]
 fn validator_respects_indented_fence_boundaries() -> TestResult {
     let valid_three_space_fence = validate(|text| {
-        format!(
-            "{text}\n   ```text\nMUST enable automatic Codex connector review.\n   ```\n"
-        )
+        format!("{text}\n   ```text\nMUST enable automatic Codex connector review.\n   ```\n")
     })?;
     assert!(
         valid_three_space_fence.status.success(),

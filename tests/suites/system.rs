@@ -25,14 +25,14 @@ mod mcp_stdio;
 #[path = "../mcp_wrapper_bootstrap.rs"]
 mod mcp_wrapper_bootstrap;
 
-#[path = "../mcp_wrapper_release_cache.rs"]
-mod mcp_wrapper_release_cache;
-
 #[path = "../profile_rust_tests.rs"]
 mod profile_rust_tests;
 
 #[path = "../release_changelog_script.rs"]
 mod release_changelog_script;
+
+#[path = "../release_publisher_changelog.rs"]
+mod release_publisher_changelog;
 
 #[path = "../release_tag_parity.rs"]
 mod release_tag_parity;
@@ -46,8 +46,6 @@ mod repository_eol_contract;
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
-#[path = "../runtime_candidate_asset_recovery.rs"]
-mod runtime_candidate_asset_recovery;
 
 #[path = "../runtime_activation_branch_recovery.rs"]
 mod runtime_activation_branch_recovery;

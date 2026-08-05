@@ -14,7 +14,7 @@ pub(crate) fn hook_fixture_model_input(
     })
 }
 
-fn hook_fixture_model_input_for_platform(
+pub(crate) fn hook_fixture_model_input_for_platform(
     command: &str,
     native_cwd: &str,
     is_windows: bool,
@@ -32,7 +32,7 @@ fn hook_fixture_model_input_for_platform(
     Ok((model, native_cwd.to_owned()))
 }
 
-fn project_modeled_paths(
+pub(crate) fn project_modeled_paths(
     command: &str,
     convert: impl Fn(&str) -> Result<String, String>,
 ) -> Result<String, String> {
@@ -115,7 +115,7 @@ fn modeled_path_operand_bounds(segment: &str, copy_source: bool) -> Option<(usiz
     None
 }
 
-fn modeled_path_token(
+pub(crate) fn modeled_path_token(
     value: &str,
     convert: &impl Fn(&str) -> Result<String, String>,
 ) -> Result<Option<String>, String> {
@@ -139,80 +139,4 @@ fn windows_shell_path_to_native(value: &str, native_cwd: &str) -> Result<String,
 #[cfg(not(windows))]
 fn windows_shell_path_to_native(value: &str, _native_cwd: &str) -> Result<String, String> {
     Ok(value.to_owned())
-}
-
-#[test]
-fn modeled_path_projection_touches_only_declared_operands() {
-    let command =
-        "sudo -D /c/work/foreign git status && ln -s /usr/bin/printf left && printf C:unrelated";
-    assert_eq!(
-        project_modeled_paths(command, |path| match path {
-            "/c/work/foreign" => Ok(r"C:\work\foreign".into()),
-            "/usr/bin/printf" => Ok(r"C:\Git\usr\bin\printf".into()),
-            other => Err(other.into()),
-        }),
-        Ok("sudo -D 'C:\\work\\foreign' git status && ln -s 'C:\\Git\\usr\\bin\\printf' left && printf C:unrelated".into()),
-    );
-}
-
-#[test]
-fn modeled_path_projection_converts_copy_sources_without_rewriting_destinations() {
-    let command = "cp -fP /usr/bin/printf left && printf /usr/bin/printf";
-    assert_eq!(
-        project_modeled_paths(command, |path| match path {
-            "/usr/bin/printf" => Ok(r"C:\Git\usr\bin\printf.exe".into()),
-            other => Err(other.into()),
-        }),
-        Ok("cp -fP 'C:\\Git\\usr\\bin\\printf.exe' left && printf /usr/bin/printf".into()),
-    );
-}
-
-#[test]
-fn modeled_path_projection_does_not_treat_scoped_commands_as_copy_operations() {
-    let command = "scp /usr/bin/printf remote:";
-    assert_eq!(
-        project_modeled_paths(command, |_| Err("copy source must stay unprojected".into())),
-        Ok(command.into()),
-    );
-}
-
-#[test]
-fn windows_hook_model_input_preserves_native_cwd_and_only_projects_shell_operands() {
-    let native_cwd = r"C:\work\owned";
-    let command =
-        "sudo -D /c/work/foreign git status && ln -s /usr/bin/printf left && printf C:unrelated";
-    assert_eq!(
-        hook_fixture_model_input_for_platform(command, native_cwd, true, |path| match path {
-            "/c/work/foreign" => Ok(r"C:\work\foreign".into()),
-            "/usr/bin/printf" => Ok(r"C:\Git\usr\bin\printf".into()),
-            other => Err(other.into()),
-        }),
-        Ok((
-            "sudo -D 'C:\\work\\foreign' git status && ln -s 'C:\\Git\\usr\\bin\\printf' left && printf C:unrelated".into(),
-            native_cwd.into(),
-        )),
-    );
-    assert!(
-        hook_fixture_model_input_for_platform("git status", r"\\server\share", true, |value| {
-            Ok(value.to_owned())
-        })
-        .is_err()
-    );
-}
-
-#[test]
-fn modeled_path_tokens_quote_raw_windows_values_without_touching_non_paths() {
-    assert_eq!(
-        modeled_path_token(r"C:\work\fixture path", &|_| unreachable!()),
-        Ok(Some(r"'C:\work\fixture path'".into())),
-    );
-    assert_eq!(
-        modeled_path_token(r"C:\work\O'Brien", &|_| unreachable!()),
-        Ok(Some("'C:\\work\\O'\"'\"'Brien'".into())),
-    );
-    assert_eq!(
-        modeled_path_token("C:relative", &|_| unreachable!()),
-        Ok(None)
-    );
-    assert!(modeled_path_token(r"\\server\share", &|_| unreachable!()).is_err());
 }

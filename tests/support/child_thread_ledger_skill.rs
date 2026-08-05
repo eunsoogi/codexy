@@ -115,10 +115,17 @@ pub(crate) fn validator_pr_labels(pr_state: &str) -> Result<Output, Box<dyn std:
 pub(crate) fn validator_child_lane_ownership_file(
     evidence_path: &Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    let evidence = std::fs::read_to_string(evidence_path)?;
+    validator_child_lane_ownership(&std::fs::read_to_string(evidence_path)?)
+}
+
+pub(crate) fn validator_child_lane_ownership(
+    evidence: &str,
+) -> Result<Output, Box<dyn std::error::Error>> {
     validator_in_process_mode(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        Mode::ChildLaneOwnership { evidence },
+        Mode::ChildLaneOwnership {
+            evidence: evidence.to_owned(),
+        },
     )
 }
 
@@ -126,11 +133,21 @@ pub(crate) fn validator_completion_handoff_files(
     handoff_path: &Path,
     pr_state_path: &Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    validator_completion_handoff(
+        &std::fs::read_to_string(handoff_path)?,
+        &std::fs::read_to_string(pr_state_path)?,
+    )
+}
+
+pub(crate) fn validator_completion_handoff(
+    handoff: &str,
+    pr_state: &str,
+) -> Result<Output, Box<dyn std::error::Error>> {
     validator_in_process_mode(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         Mode::CompletionHandoff {
-            handoff: std::fs::read_to_string(handoff_path)?,
-            pr_state: std::fs::read_to_string(pr_state_path)?,
+            handoff: handoff.to_owned(),
+            pr_state: pr_state.to_owned(),
         },
     )
 }

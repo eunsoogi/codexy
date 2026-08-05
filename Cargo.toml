@@ -1,6 +1,6 @@
 [package]
 name = "codexy-runtime"
-version = "1.2.2"
+version = "1.3.0"
 edition = "2024"
 autotests = false
 rust-version = "1.85"
@@ -66,8 +66,28 @@ strip = "symbols"
 incremental = false
 
 [[test]]
-name = "suite_all"
+name = "suite_support"
+path = "tests/suites/support_suite.rs"
+
+[[test]]
+name = "suite_agent"
+path = "tests/suites/agent_suite.rs"
+
+[[test]]
+name = "suite_child"
+path = "tests/suites/child_suite.rs"
+
+[[test]]
+name = "suite_orchestration"
 path = "tests/suites/all.rs"
+
+[[test]]
+name = "suite_governance"
+path = "tests/suites/governance_suite.rs"
+
+[[test]]
+name = "suite_system"
+path = "tests/suites/system_suite.rs"
 
 [[test]]
 name = "suite_archive"

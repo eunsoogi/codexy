@@ -1,14 +1,8 @@
 use std::process::Output;
 
 fn run_ownership_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let evidence_path = temp.path().join("handoff.md");
-    std::fs::write(&evidence_path, evidence)?;
-
-    crate::support::validator_child_lane_ownership_file(&evidence_path)
+    crate::support::validator_child_lane_ownership(evidence)
 }
-
-#[test]
 fn validator_rejects_list_defect_borrowing_preceding_later_lane_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -33,7 +27,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_list_defect_borrowing_trailing_later_lane_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -58,7 +51,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_list_defect_borrowing_bulleted_later_lane_metadata()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -83,7 +75,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_preceding_handoff_metadata_with_in_lane_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -107,7 +98,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_preceding_tracking_issue_metadata_with_later_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -131,7 +121,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_bulleted_preceding_metadata_for_another_lane()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -155,7 +144,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_multi_letter_lane_metadata_borrowing() -> Result<(), Box<dyn std::error::Error>>
 {
     let output = run_ownership_validator(
@@ -180,7 +168,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_capitalized_multi_letter_lane_header_metadata_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -205,7 +192,6 @@ Maintainer reassignment: none
     Ok(())
 }
 
-#[test]
 fn validator_rejects_inline_multi_letter_lane_metadata_borrowing()
 -> Result<(), Box<dyn std::error::Error>> {
     let output = run_ownership_validator(
@@ -226,5 +212,19 @@ Maintainer reassignment: none
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+    Ok(())
+}
+
+#[test]
+fn validator_child_lane_thread_tool_handler_matrix() -> Result<(), Box<dyn std::error::Error>> {
+    validator_rejects_list_defect_borrowing_preceding_later_lane_metadata()?;
+    validator_rejects_list_defect_borrowing_trailing_later_lane_metadata()?;
+    validator_rejects_list_defect_borrowing_bulleted_later_lane_metadata()?;
+    validator_rejects_preceding_handoff_metadata_with_in_lane_later_lane()?;
+    validator_rejects_preceding_tracking_issue_metadata_with_later_lane()?;
+    validator_rejects_bulleted_preceding_metadata_for_another_lane()?;
+    validator_rejects_multi_letter_lane_metadata_borrowing()?;
+    validator_rejects_capitalized_multi_letter_lane_header_metadata_borrowing()?;
+    validator_rejects_inline_multi_letter_lane_metadata_borrowing()?;
     Ok(())
 }

@@ -105,6 +105,7 @@ fn codegraph_stdio_accepts_newline_delimited_json_rpc() -> Result<(), Box<dyn st
             .any(|tool| tool["name"] == "codegraph_index"),
         "newline stdio tools/list must include codegraph_index, got {list:#}"
     );
+
     Ok(())
 }
 

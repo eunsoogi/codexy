@@ -2,7 +2,6 @@ use std::process::Output;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-#[test]
 fn completion_handoff_rejects_negated_no_remediation_claims() -> TestResult {
     for handoff in [
         "Not all touched files were already below 250 LOC and no LOC remediation was needed. --check-touched-loc passed.",
@@ -20,7 +19,6 @@ fn completion_handoff_rejects_negated_no_remediation_claims() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn completion_handoff_accepts_affirmative_no_remediation_claim() -> TestResult {
     let output = validate(
         "LOC remediation: not applicable because no touched file exceeded 250 LOC. --check-touched-loc passed.",
@@ -29,7 +27,6 @@ fn completion_handoff_accepts_affirmative_no_remediation_claim() -> TestResult {
     Ok(())
 }
 
-#[test]
 fn completion_handoff_accepts_current_na_with_unrelated_history() -> TestResult {
     for separator in ["\n", "; "] {
         let output = validate(&format!(
@@ -40,7 +37,6 @@ fn completion_handoff_accepts_current_na_with_unrelated_history() -> TestResult 
     Ok(())
 }
 
-#[test]
 fn completion_handoff_accepts_closed_s_ending_quote_before_marker() -> TestResult {
     let output = validate(
         "LOC remediation: 'approved policies' before helper extraction moved rules into src/parser_rules.rs. --check-touched-loc passed.",
@@ -49,7 +45,6 @@ fn completion_handoff_accepts_closed_s_ending_quote_before_marker() -> TestResul
     Ok(())
 }
 
-#[test]
 fn completion_handoff_accepts_negated_cosmetic_explanation_after_structure() -> TestResult {
     let output = validate(
         "LOC remediation: helper extraction moved code into src/helper.rs; this was not formatting-only. --check-touched-loc passed.",
@@ -58,7 +53,6 @@ fn completion_handoff_accepts_negated_cosmetic_explanation_after_structure() -> 
     Ok(())
 }
 
-#[test]
 fn completion_handoff_rejects_structural_evidence_with_cosmetic_reduction() -> TestResult {
     for handoff in [
         "LOC remediation: helper extraction moved code into src/helper.rs; formatting-only LOC remediation was also used. --check-touched-loc passed.",
@@ -71,7 +65,6 @@ fn completion_handoff_rejects_structural_evidence_with_cosmetic_reduction() -> T
     Ok(())
 }
 
-#[test]
 fn completion_handoff_rejects_unlabeled_or_contradictory_cosmetic_claims() -> TestResult {
     for handoff in [
         "LOC remediation: helper extraction moved code into src/helper.rs.\nFormatting-only LOC remediation supplied the remaining reduction. --check-touched-loc passed.",
@@ -84,7 +77,6 @@ fn completion_handoff_rejects_unlabeled_or_contradictory_cosmetic_claims() -> Te
     Ok(())
 }
 
-#[test]
 fn completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stale_history()
 -> TestResult {
     for handoff in [
@@ -100,7 +92,6 @@ fn completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stal
     Ok(())
 }
 
-#[test]
 fn completion_handoff_keeps_cosmetic_marker_context_local() -> TestResult {
     let accepted = validate(
         "LOC remediation: helper extraction moved code into src/helper.rs; this was not in any way formatting-only. --check-touched-loc passed.",
@@ -118,17 +109,26 @@ fn completion_handoff_keeps_cosmetic_marker_context_local() -> TestResult {
 }
 
 fn validate(handoff: &str) -> TestResult<Output> {
-    let temp = tempfile::tempdir()?;
-    let handoff_path = temp.path().join("handoff.md");
-    let state_path = temp.path().join("pr-state.json");
-    std::fs::write(&handoff_path, handoff)?;
-    std::fs::write(
-        &state_path,
+    crate::support::validator_completion_handoff(
+        handoff,
         r#"{"number":360,"state":"CLOSED","mergeStateStatus":"CLEAN","isDraft":false,"headRefOid":"0123456789012345678901234567890123456789"}"#,
-    )?;
-    crate::support::validator_completion_handoff_files(&handoff_path, &state_path)
+    )
 }
 
 fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+#[test]
+fn completion_handoff_loc_no_remediation_matrix() -> TestResult {
+    completion_handoff_rejects_negated_no_remediation_claims()?;
+    completion_handoff_accepts_affirmative_no_remediation_claim()?;
+    completion_handoff_accepts_current_na_with_unrelated_history()?;
+    completion_handoff_accepts_closed_s_ending_quote_before_marker()?;
+    completion_handoff_accepts_negated_cosmetic_explanation_after_structure()?;
+    completion_handoff_rejects_structural_evidence_with_cosmetic_reduction()?;
+    completion_handoff_rejects_unlabeled_or_contradictory_cosmetic_claims()?;
+    completion_handoff_rejects_cosmetic_claims_despite_unrelated_negation_or_stale_history()?;
+    completion_handoff_keeps_cosmetic_marker_context_local()?;
+    Ok(())
 }

@@ -1,9 +1,6 @@
 use codexy_runtime::validation::review_response_cluster_diagnostics;
 
-use crate::support::{self, stderr, TestResult};
-use serde_json::json;
-use std::{fs, process::Command};
-use tempfile::tempdir;
+use crate::support::{self, TestResult, stderr};
 
 const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
     (
@@ -24,23 +21,15 @@ const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
     ),
 ];
 
-fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
-    let mutable_files = REQUIRED_CONTRACTS
-        .iter()
-        .map(|(relative, _)| std::path::Path::new(*relative))
-        .collect::<Vec<_>>();
-    Ok(support::copy_plugin_fixture_with_mutable_files(&mutable_files)?)
-}
-
 #[test]
 fn instruction_policy_requires_review_cluster_contract_on_every_surface() -> TestResult {
     for (relative, clause) in REQUIRED_CONTRACTS {
-        let (_temp, plugin_root) = copy_plugin_fixture()?;
-        let path = plugin_root.join(relative);
+        let fixture = support::instruction_policy_fixture(std::path::Path::new(relative))?;
+        let path = fixture.path();
         let text = std::fs::read_to_string(&path)?;
         std::fs::write(&path, text.replace(clause, "removed root-cause contract."))?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(!output.status.success(), "{relative} was not enforced");
         assert!(stderr(&output).contains("root-cause review cluster"));
     }
@@ -72,13 +61,13 @@ fn instruction_policy_requires_must_grammar_for_every_review_procedure_step() ->
             "5. [final-receipt-validate] After addressing feedback and before push or handoff, set the receipt state to repaired or reopened and validate that exact final-state file with `scripts/validate-plugin-config --check-review-response-cluster --review-response-cluster-file receipt.json`.",
         ),
     ] {
-        let (_temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&[
-            std::path::Path::new("skills/git-workflow/references/review-response-clusters.md"),
-        ])?;
-        let path = plugin_root.join("skills/git-workflow/references/review-response-clusters.md");
+        let fixture = support::instruction_policy_fixture(std::path::Path::new(
+            "skills/git-workflow/references/review-response-clusters.md",
+        ))?;
+        let path = fixture.path();
         std::fs::write(&path, procedure.replacen(required_step, bare_step, 1))?;
 
-        let output = support::validator_instruction_policy(&plugin_root)?;
+        let output = support::validator_instruction_policy_file(path)?;
         assert!(
             !output.status.success(),
             "bare procedure step unexpectedly passed: {bare_step}"
@@ -109,7 +98,9 @@ fn pr481_replay_rejects_a_case_specific_repeated_table_reply() {
     );
 
     assert!(
-        errors.iter().any(|error| error.contains("structural repair")),
+        errors
+            .iter()
+            .any(|error| error.contains("structural repair")),
         "case-specific repair unexpectedly passed: {errors:?}"
     );
 }
@@ -165,76 +156,4 @@ fn review_cluster_harness_rejects_phrase_only_and_same_class_reopen() {
             "invalid receipt unexpectedly passed: {receipt}"
         );
     }
-}
-
-#[test]
-fn shipped_cli_validates_review_cluster_receipt_files() -> TestResult {
-    let valid = structural_receipt();
-    assert!(run_receipt_file(&valid).status.success());
-
-    let missing = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .arg("--check-review-response-cluster")
-        .output()?;
-    assert!(!missing.status.success());
-
-    for receipt in [
-        "not JSON".to_owned(),
-        "{}".to_owned(),
-        valid.replace("\"state\":\"repaired\"", "\"state\":\"repaired\",\"extra\":true"),
-    ] {
-        assert!(!run_receipt_file(&receipt).status.success(), "{receipt}");
-    }
-    for value in [
-        "classification-boundary",
-        "owners use authoritative metadata",
-        "metadata parser",
-        "PRRT_classification_one",
-        "canonical metadata",
-        "GFM owner table",
-        "authoritative metadata classifier",
-    ] {
-        assert!(
-            !run_receipt_file(&valid.replace(value, "   ")).status.success(),
-            "blank {value} unexpectedly passed"
-        );
-    }
-    let duplicate = with_second_cluster(&valid, " classification-boundary ");
-    assert!(!run_receipt_file(&duplicate).status.success(), "{duplicate}");
-
-    let distinct = with_second_cluster(&valid, "command-normalization");
-    assert!(run_receipt_file(&distinct).status.success(), "{distinct}");
-    Ok(())
-}
-
-fn structural_receipt() -> String {
-    r#"{"state":"repaired","clusters":[{"defect_class":"classification-boundary","violated_invariant":"owners use authoritative metadata","structural_boundary":"metadata parser","threads":["PRRT_classification_one"],"matrix":{"positive":["canonical metadata"],"negative":["GFM owner table"]},"repair":{"kind":"structural","boundary":"metadata parser","strategy":"authoritative metadata classifier","removed_case_specific_behavior":true}}]}"#.into()
-}
-
-fn with_second_cluster(receipt: &str, defect_class: &str) -> String {
-    let mut parsed: serde_json::Value = serde_json::from_str(receipt).expect("valid receipt");
-    parsed["clusters"].as_array_mut().expect("clusters").push(json!({
-        "defect_class": defect_class,
-        "violated_invariant": "second invariant",
-        "structural_boundary": "command normalizer",
-        "threads": ["PRRT_second"],
-        "matrix": {"positive": ["canonical command"], "negative": ["foreign repository"]},
-        "repair": {
-            "kind": "structural",
-            "boundary": "command normalizer",
-            "strategy": "canonical command resolver",
-            "removed_case_specific_behavior": true
-        }
-    }));
-    parsed.to_string()
-}
-
-fn run_receipt_file(receipt: &str) -> std::process::Output {
-    let directory = tempdir().expect("tempdir");
-    let path = directory.path().join("receipt.json");
-    fs::write(&path, receipt).expect("receipt");
-    Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-review-response-cluster", "--review-response-cluster-file"])
-        .arg(path)
-        .output()
-        .expect("validator")
 }

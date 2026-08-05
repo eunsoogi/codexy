@@ -124,32 +124,32 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     for (relative, fixture_api, mutable_file) in [
         (
             "tests/validator_connector_review_policy_markdown_boundaries.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/git-workflow/references/codex-connector-review.md",
         ),
         (
             "tests/validator_execution_budget_policy_controls.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/codex-orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_parent_execution_budget_countermands.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/codex-orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_parent_execution_budget_policy.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/codex-orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_token_polling_runtime_identity.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/token-efficient-orchestration/SKILL.md",
         ),
         (
             "tests/token_quota_containment.rs",
-            "support::copy_plugin_fixture_with_mutable_files",
+            "support::instruction_policy_fixture",
             "skills/codex-orchestration/SKILL.md",
         ),
         (
@@ -161,7 +161,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         let source = std::fs::read_to_string(root.join(relative))?;
         support::assert_structured_literals(
             &source,
-            "high-cost declared-mutable fixture",
+            "high-cost selective fixture",
             &[fixture_api, mutable_file],
         );
     }

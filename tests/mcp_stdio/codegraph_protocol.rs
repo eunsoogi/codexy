@@ -1,8 +1,34 @@
 use super::*;
 
 #[test]
-fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
+fn codegraph_stdio_preserves_protocol_and_search_boundaries()
 -> Result<(), Box<dyn std::error::Error>> {
+    let relative_root = tempfile::tempdir()?;
+    let dependency = relative_root.path().join("dep.rs");
+    let entry = relative_root.path().join("entry.rs");
+    std::fs::write(&dependency, "pub const VALUE: u8 = 1;\n")?;
+    std::fs::write(&entry, "mod dep;\npub const ENTRY: u8 = dep::VALUE;\n")?;
+
+    let mut client = McpClient::spawn_in(
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+        relative_root.path(),
+    )?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(&mut client)?;
+    codegraph_stdio_matches_absolute_paths_when_root_is_relative(
+        &mut client,
+        &dependency,
+        &entry,
+    )?;
+    codegraph_stdio_keeps_outside_absolute_paths_distinct(&mut client)?;
+    super::codegraph_search_bounds::search_bounds_cases(&mut client)?;
+    Ok(())
+}
+
+fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(
+    client: &mut McpClient,
+) -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     std::fs::write(root.path().join("dep.rs"), "pub const VALUE: u8 = 1;\n")?;
     std::fs::write(
@@ -18,9 +44,6 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors()
         "pub const ENTRY_TWO: u8 = 2;\n",
     )?;
 
-    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
-    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
-    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
     let list = client.send(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}))?;
     assert!(
         list["result"]["tools"]
@@ -105,17 +128,11 @@ fn codegraph_search_does_not_require_ambient_ripgrep() -> Result<(), Box<dyn std
     Ok(())
 }
 
-#[test]
-fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = tempfile::tempdir()?;
-    let dependency = root.path().join("dep.rs");
-    let entry = root.path().join("entry.rs");
-    std::fs::write(&dependency, "pub const VALUE: u8 = 1;\n")?;
-    std::fs::write(&entry, "mod dep;\npub const ENTRY: u8 = dep::VALUE;\n")?;
-
-    let mut client = McpClient::spawn_in(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"), root.path())?;
-    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+fn codegraph_stdio_matches_absolute_paths_when_root_is_relative(
+    client: &mut McpClient,
+    dependency: &Path,
+    entry: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let reverse_deps = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
         "params":{"name":"codegraph_reverse_deps","arguments":{"root":".","path":dependency,"limit":10}}
@@ -154,9 +171,9 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative()
     Ok(())
 }
 
-#[test]
-fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn std::error::Error>>
-{
+fn codegraph_stdio_keeps_outside_absolute_paths_distinct(
+    client: &mut McpClient,
+) -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     let outside = tempfile::tempdir()?;
     let outside_dep = outside.path().join("dep.rs");
@@ -182,8 +199,6 @@ fn codegraph_stdio_keeps_outside_absolute_paths_distinct() -> Result<(), Box<dyn
         "mod dep;\npub const ENTRY: u8 = dep::MIRRORED;\n",
     )?;
 
-    let mut client = McpClient::spawn(env!("CARGO_BIN_EXE_codexy-mcp-codegraph"))?;
-    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     let reverse_deps = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
         "params":{"name":"codegraph_reverse_deps","arguments":{"root":root.path(),"path":outside_dep,"limit":10}}

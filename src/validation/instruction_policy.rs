@@ -14,6 +14,9 @@ mod loc_policy;
 mod runtime_heartbeat;
 pub(crate) mod sentinel_scope_policy;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
     let Ok(surfaces) = instruction_surfaces(plugin_root) else {

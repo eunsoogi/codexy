@@ -1,20 +1,20 @@
-const BLOCK_SIZE: usize = 512;
-const MODE: std::ops::Range<usize> = 100..108;
-const SIZE: std::ops::Range<usize> = 124..136;
-const CHECKSUM: std::ops::Range<usize> = 148..156;
-const PREFIX: std::ops::Range<usize> = 345..500;
+pub(crate) const BLOCK_SIZE: usize = 512;
+pub(crate) const MODE: std::ops::Range<usize> = 100..108;
+pub(crate) const SIZE: std::ops::Range<usize> = 124..136;
+pub(crate) const CHECKSUM: std::ops::Range<usize> = 148..156;
+pub(crate) const PREFIX: std::ops::Range<usize> = 345..500;
 
 #[derive(serde::Serialize)]
-pub(super) struct GovernedWrapperHeaderEvidence {
-    pub(super) path: String,
-    pub(super) typeflag: u8,
-    pub(super) mode: String,
-    pub(super) checksum: String,
-    pub(super) calculated_checksum: usize,
-    pub(super) header_hex: String,
+pub(crate) struct GovernedWrapperHeaderEvidence {
+    pub(crate) path: String,
+    pub(crate) typeflag: u8,
+    pub(crate) mode: String,
+    pub(crate) checksum: String,
+    pub(crate) calculated_checksum: usize,
+    pub(crate) header_hex: String,
 }
 
-pub(super) fn governed_wrapper_header_evidence(
+pub(crate) fn governed_wrapper_header_evidence(
     bytes: &[u8],
     wrappers: &[String],
 ) -> std::io::Result<Vec<GovernedWrapperHeaderEvidence>> {
@@ -48,7 +48,7 @@ pub(super) fn governed_wrapper_header_evidence(
     Ok(evidence)
 }
 
-pub(super) fn force_governed_wrapper_modes(
+pub(crate) fn force_governed_wrapper_modes(
     archive: &std::path::Path,
     wrappers: &[String],
 ) -> std::io::Result<()> {
@@ -91,7 +91,7 @@ pub(super) fn force_governed_wrapper_modes(
     std::fs::write(archive, bytes)
 }
 
-fn entry_path(header: &[u8]) -> std::io::Result<String> {
+pub(crate) fn entry_path(header: &[u8]) -> std::io::Result<String> {
     let name = field(&header[..100])?;
     let prefix = field(&header[PREFIX])?;
     Ok(if prefix.is_empty() {
@@ -101,7 +101,7 @@ fn entry_path(header: &[u8]) -> std::io::Result<String> {
     })
 }
 
-fn field(value: &[u8]) -> std::io::Result<String> {
+pub(crate) fn field(value: &[u8]) -> std::io::Result<String> {
     let end = value
         .iter()
         .position(|byte| *byte == 0)
@@ -111,7 +111,7 @@ fn field(value: &[u8]) -> std::io::Result<String> {
         .map_err(|_| std::io::Error::other("tar header is not UTF-8"))
 }
 
-fn octal(value: &[u8]) -> std::io::Result<usize> {
+pub(crate) fn octal(value: &[u8]) -> std::io::Result<usize> {
     let text = std::str::from_utf8(value)
         .map_err(|_| std::io::Error::other("tar header number is not UTF-8"))?
         .trim_matches(['\0', ' ']);
@@ -122,7 +122,7 @@ fn octal(value: &[u8]) -> std::io::Result<usize> {
         .map_err(|_| std::io::Error::other("tar header number is invalid"))
 }
 
-fn write_octal(value: &mut [u8], number: usize) -> std::io::Result<()> {
+pub(crate) fn write_octal(value: &mut [u8], number: usize) -> std::io::Result<()> {
     let digits = value.len() - 1;
     let text = format!("{number:0digits$o}");
     if text.len() != digits {
@@ -133,13 +133,13 @@ fn write_octal(value: &mut [u8], number: usize) -> std::io::Result<()> {
     Ok(())
 }
 
-fn write_checksum(header: &mut [u8]) -> std::io::Result<()> {
+pub(crate) fn write_checksum(header: &mut [u8]) -> std::io::Result<()> {
     header[CHECKSUM.clone()].fill(b' ');
     let checksum = header_checksum(header);
     write_octal(&mut header[CHECKSUM], checksum)
 }
 
-fn header_checksum(header: &[u8]) -> usize {
+pub(crate) fn header_checksum(header: &[u8]) -> usize {
     header
         .iter()
         .enumerate()
@@ -153,10 +153,6 @@ fn header_checksum(header: &[u8]) -> usize {
         .sum()
 }
 
-fn hex(bytes: &[u8]) -> String {
+pub(crate) fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
-
-#[cfg(test)]
-#[path = "archive_entry_tests.rs"]
-mod tests;

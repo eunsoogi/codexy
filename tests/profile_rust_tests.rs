@@ -26,12 +26,44 @@ mod output_batching;
 mod windows_capture_lifecycle;
 
 #[cfg(any(unix, windows))]
+#[path = "profile_rust_tests/windows_deadline_report.rs"]
+mod windows_deadline_report;
+
+#[cfg(any(unix, windows))]
 #[path = "profile_rust_tests/windows_atomic_assignment.rs"]
 mod windows_atomic_assignment;
 
 #[cfg(unix)]
 #[path = "profile_rust_tests/windows_accounting.rs"]
 mod windows_accounting;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/windows_profile.rs"]
+mod windows_profile;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/interleaved_accounting.rs"]
+mod interleaved_accounting;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/telemetry_compatibility.rs"]
+mod telemetry_compatibility;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/command_intervals.rs"]
+mod command_intervals;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/windows_temp_root.rs"]
+mod windows_temp_root;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/windows_cleanup_receipts.rs"]
+mod windows_cleanup_receipts;
+
+#[cfg(unix)]
+#[path = "profile_rust_tests/windows_test_runner.rs"]
+mod windows_test_runner;
 
 #[cfg(unix)]
 #[test]
@@ -61,7 +93,7 @@ fn gate_bridges_windows_preparation_to_one_profiled_workload(
         "profile bridge Windows preparation",
         &[
             "timeout-minutes: 20",
-            "rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+            "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
         ],
     );
     assert_eq!(
@@ -80,7 +112,7 @@ fn gate_fails_an_exact_workload_over_the_budget_without_sleeping()
     std::fs::create_dir(&clock)?;
     std::fs::write(
         clock.join("sitecustomize.py"),
-        "import time\n_values = iter((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 196.0, 196.0, 196.0, 196.0))\ntime.perf_counter = lambda: next(_values)\n",
+        "import time\n_values = iter((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 316.0, 316.0, 316.0, 316.0))\ntime.perf_counter = lambda: next(_values)\n",
     )?;
     let output = fixture.run(&[("PYTHONPATH", clock.as_os_str())])?;
 
@@ -121,6 +153,20 @@ fn gate_has_no_relaxable_budget_option() -> Result<(), Box<dyn std::error::Error
 
 #[cfg(unix)]
 #[test]
+fn gate_rejects_ubuntu_timeout_without_setup_cleanup_headroom(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    std::fs::write(&fixture.workflow, std::fs::read_to_string(&fixture.workflow)?.replace("timeout-minutes: 6", "timeout-minutes: 4"))?;
+    let output = fixture.run(&[])?;
+
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(stderr.contains("invalid platform matrix"), "{stderr}");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn gate_rejects_timeout_or_profiler_in_an_unrelated_job() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
@@ -138,7 +184,7 @@ fn gate_rejects_a_second_profiler_invocation_in_another_job(
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: scripts/profile-rust-tests\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: scripts/profile-rust-tests\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -164,7 +210,7 @@ fn gate_rejects_a_block_scalar_that_only_mentions_the_profiler(
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    env: |\n      run: scripts/profile-rust-tests\n    steps:\n      - run: echo not-the-gate\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    env: |\n      run: scripts/profile-rust-tests\n    steps:\n      - run: echo not-the-gate\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -174,32 +220,11 @@ fn gate_rejects_a_block_scalar_that_only_mentions_the_profiler(
 #[test]
 fn gate_accepts_the_profiler_step_after_a_blank_line() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - name: setup\n        run: echo setup\n\n      - run: scripts/profile-rust-tests\n",
-    )?;
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    std::fs::write(&fixture.workflow, workflow.replacen("      - run: sudo", "\n      - run: sudo", 1))?;
     assert!(fixture.run(&[])?.status.success());
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: |\n          scripts/profile-rust-tests\n",
-    )?;
-    assert!(fixture.run(&[])?.status.success());
-    Ok(())
-}
-
-#[cfg(unix)]
-#[test]
-fn gate_handles_profiler_block_scalars_and_jobs_comments() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = GateFixture::new(0, 1802, 0)?;
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: |\n          scripts/profile-rust-tests\n",
-    )?;
-    assert!(!fixture.run(&[])?.status.success());
-    std::fs::write(
-        &fixture.workflow,
-        "jobs:\n# keep this ordinary comment inside the jobs mapping\n  rust-test:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
-    )?;
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    std::fs::write(&fixture.workflow, workflow.replacen("      - run: scripts/profile-rust-tests --shard", "\n      - run: scripts/profile-rust-tests --shard", 1))?;
     assert!(fixture.run(&[])?.status.success());
     Ok(())
 }
