@@ -9,6 +9,9 @@ mod codegraph_language_regressions;
 #[path = "../codegraph_web_language_regressions.rs"]
 mod codegraph_web_language_regressions;
 
+#[path = "../validator_getcodexy_component_contract.rs"]
+mod validator_getcodexy_component_contract;
+
 #[path = "../integration_target_budget.rs"]
 mod integration_target_budget;
 
