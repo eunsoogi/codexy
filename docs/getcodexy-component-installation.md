@@ -15,9 +15,10 @@ each depend on `core`.
 
 The successful installed component inventory is the source of truth. A command
 request expresses intent and a receipt records the result, but neither replaces
-the inventory. An installed inventory that does not satisfy the dependency graph
-is inconsistent and commands report `inconsistent-installed-state` before a
-mutation.
+the inventory. A present installed inventory that does not satisfy the dependency
+graph is inconsistent and commands report `inconsistent-installed-state` before a
+mutation. An absent inventory is distinct: `update` reports
+`no-recorded-selection` because there is no selection to preserve.
 
 This contract deliberately names only logical identities. It does not prescribe
 filesystem paths, package roots, manifests, resolver data, transaction storage,
@@ -34,8 +35,9 @@ or release layout.
 | `getcodexy doctor` | Reads inventory consistency, host readiness, and component health. | None. |
 | `getcodexy bootstrap` | Selects the complete supported installation. | Installs all components and performs the required host activation. |
 
-Unknown components fail with `unknown-component`. `update` without a consistent
-installed inventory fails with `no-recorded-selection`. A command that does not
+Unknown components fail with `unknown-component`. `update` without any recorded
+inventory fails with `no-recorded-selection`; a present but dependency-invalid
+inventory fails with `inconsistent-installed-state`. A command that does not
 accept component operands returns `components-not-accepted`.
 
 ## State transitions
@@ -67,7 +69,7 @@ replay, and recovery authorization belong to Issue #557's transaction engine.
 
 ## Machine-readable output
 
-All commands accept `--json`. In JSON mode, stdout contains exactly one JSON
+All public commands accept `--json`. In JSON mode, stdout contains exactly one JSON
 object and no human-oriented output. Mutation receipts use
 `getcodexy.operation-receipt.v1`; `status` uses the distinct
 `getcodexy.status.v1` schema. Stable `error.code` values are authoritative;

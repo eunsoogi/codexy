@@ -2,12 +2,14 @@ use std::path::Path;
 
 use serde_json::Value;
 
+#[path = "getcodexy_component_contract_cases.rs"]
+mod cases;
 #[path = "getcodexy_component_contract_schema.rs"]
 mod schema;
 
 use schema::{
-    COMPONENTS, array, check_dependencies, component_selection, exact_array, exact_array_value,
-    exact_map_string, exact_string, object, object_value,
+    COMPONENTS, array, exact_array, exact_array_value, exact_map_string, exact_string, object,
+    object_value,
 };
 
 pub(super) fn check(_: &Path) -> Vec<String> {
@@ -24,7 +26,7 @@ fn contract_and_fixtures() -> Result<(), String> {
     let fixtures =
         load(&root.join("packages/getcodexy/tests/fixtures/component-installation-cases.json"))?;
     check_contract(&contract)?;
-    check_fixtures(&fixtures)?;
+    cases::check(&fixtures)?;
     let documentation =
         std::fs::read_to_string(root.join("docs/getcodexy-component-installation.md"))
             .map_err(|error| format!("reading component-installation documentation: {error}"))?;
@@ -127,46 +129,6 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         .any(|field| field.as_str() == Some("operation_id"))
     {
         return Err("mutation receipts must require operation_id".to_owned());
-    }
-    Ok(())
-}
-
-fn check_fixtures(fixtures: &Value) -> Result<(), String> {
-    exact_string(
-        fixtures,
-        "schema",
-        "getcodexy.component-installation-cases.v1",
-    )?;
-    let transitions = array(fixtures.get("state_transitions"), "state_transitions")?;
-    for transition in transitions {
-        let before = component_selection(transition.get("selection_before"), "selection_before")?;
-        let after = component_selection(transition.get("selection_after"), "selection_after")?;
-        exact_string(
-            transition,
-            "source_of_truth",
-            "installed-component-inventory",
-        )?;
-        match transition.get("outcome").and_then(Value::as_str) {
-            Some("completed") => check_dependencies(&after)?,
-            Some("rejected") | Some("rolled-back") if before == after => {}
-            _ => return Err("every transition must complete with closure or preserve state when rejected/rolled-back".to_owned()),
-        }
-    }
-    for id in [
-        "install-all",
-        "install-is-additive",
-        "update-preserves",
-        "update-explicit-preserves",
-        "reject-remove-core",
-        "rollback-failed-install",
-        "bootstrap-default",
-    ] {
-        if !transitions
-            .iter()
-            .any(|transition| transition.get("id").and_then(Value::as_str) == Some(id))
-        {
-            return Err(format!("state transition {id} is required"));
-        }
     }
     Ok(())
 }
