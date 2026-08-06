@@ -8,7 +8,7 @@ mod cases;
 mod schema;
 
 use schema::{
-    COMPONENTS, array, exact_array, exact_array_value, exact_map_string, exact_string, object,
+    COMPONENTS, exact_array, exact_array_value, exact_map_string, exact_string, object,
     object_value,
 };
 
@@ -23,6 +23,10 @@ fn contract_and_fixtures(plugin_root: &Path) -> Result<(), String> {
     let Some(root) = source_contract_root(plugin_root)? else {
         return Ok(());
     };
+    validate_contract_root(root)
+}
+
+fn validate_contract_root(root: &Path) -> Result<(), String> {
     let contract =
         load(&root.join("packages/getcodexy/contracts/component-installation-contract.json"))?;
     let fixtures =
@@ -58,10 +62,7 @@ fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
             "repository component contract requires the canonical plugins/codexy root".to_owned(),
         );
     }
-    if !root
-        .join("docs/getcodexy-component-installation.md")
-        .is_file()
-    {
+    if root != Path::new(env!("CARGO_MANIFEST_DIR")) {
         return Ok(None);
     }
     Ok(Some(root))
@@ -159,16 +160,36 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         "getcodexy.operation-receipt.v1",
     )?;
     exact_map_string(output, "status_schema", "getcodexy.status.v1")?;
-    let fields = array(
+    exact_array_value(
         output.get("required_mutation_receipt_fields"),
+        &[
+            "schema",
+            "operation_id",
+            "command",
+            "outcome",
+            "requested_components",
+            "resolved_components",
+            "selection_before",
+            "selection_after",
+            "installed_components",
+            "source_of_truth",
+            "errors",
+        ],
         "required_mutation_receipt_fields",
     )?;
-    if !fields
-        .iter()
-        .any(|field| field.as_str() == Some("operation_id"))
-    {
-        return Err("mutation receipts must require operation_id".to_owned());
-    }
+    exact_array_value(
+        output.get("required_status_fields"),
+        &[
+            "schema",
+            "command",
+            "outcome",
+            "selected_components",
+            "installed_components",
+            "source_of_truth",
+            "errors",
+        ],
+        "required_status_fields",
+    )?;
     Ok(())
 }
 

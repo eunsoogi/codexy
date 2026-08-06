@@ -5,6 +5,8 @@ use super::schema::{
     object,
 };
 
+#[path = "getcodexy_component_contract_receipts.rs"]
+mod receipts;
 #[path = "getcodexy_component_contract_transitions.rs"]
 mod transitions;
 
@@ -91,8 +93,19 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
     exact_operands(rollback, &["devtools"])?;
     same_selection(rollback)?;
     exact_string(rollback, "outcome", "rolled-back")?;
+    let outer_error = object(rollback, "error")?;
+    if outer_error.len() != 3 {
+        return Err("rollback error must have the complete outer error shape".to_owned());
+    }
+    exact_map_string(outer_error, "code", "operation-failed")?;
+    exact_map_string(outer_error, "message", "install failed")?;
+    exact_array_value(
+        outer_error.get("components"),
+        &["core", "github", "devtools"],
+        "error.components",
+    )?;
     let receipt = object(rollback, "stdout")?;
-    check_rollback_receipt(receipt)?;
+    receipts::rollback(receipt)?;
     if receipt
         .get("operation_id")
         .and_then(Value::as_str)
@@ -106,96 +119,73 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
     let status = object(status_fixture, "stdout")?;
     exact_string(status_fixture, "command", "status")?;
     exact_operands(status_fixture, &[])?;
-    check_status_receipt(status)?;
+    receipts::status(status)?;
     Ok(())
 }
 
 fn check_update_inventory_states(cases: &[Value]) -> Result<(), String> {
     let absent = case(cases, "update-no-recorded-selection")?;
-    inventory(absent, "inventory_before", "absent", None)?;
-    inventory(absent, "inventory_after", "absent", None)?;
+    inventory(
+        absent,
+        "inventory_before",
+        "selection_before",
+        "absent",
+        None,
+    )?;
+    inventory(absent, "inventory_after", "selection_after", "absent", None)?;
     let empty = case(cases, "update-present-empty-inventory")?;
-    inventory(empty, "inventory_before", "present", Some(&[]))?;
-    inventory(empty, "inventory_after", "present", Some(&[]))?;
+    inventory(
+        empty,
+        "inventory_before",
+        "selection_before",
+        "present",
+        Some(&[]),
+    )?;
+    inventory(
+        empty,
+        "inventory_after",
+        "selection_after",
+        "present",
+        Some(&[]),
+    )?;
     same_selection(empty)?;
     exact_string(empty, "outcome", "completed")?;
     let invalid = case(cases, "update-inconsistent-installed-state")?;
-    inventory(invalid, "inventory_before", "present", Some(&["github"]))?;
-    inventory(invalid, "inventory_after", "present", Some(&["github"]))
+    inventory(
+        invalid,
+        "inventory_before",
+        "selection_before",
+        "present",
+        Some(&["github"]),
+    )?;
+    inventory(
+        invalid,
+        "inventory_after",
+        "selection_after",
+        "present",
+        Some(&["github"]),
+    )
 }
 
 fn inventory(
     value: &Value,
     field: &str,
+    selection: &str,
     state: &str,
     components: Option<&[&str]>,
 ) -> Result<(), String> {
     let inventory = object(value, field)?;
     exact_map_string(inventory, "state", state)?;
     match components {
-        Some(components) => exact_array_value(inventory.get("components"), components, field),
+        Some(components) => {
+            exact_array_value(inventory.get("components"), components, field)?;
+            exact_array_value(value.get(selection), components, selection)
+        }
         None if inventory.contains_key("components") => {
             Err(format!("{field} absent inventory must omit components"))
         }
-        None => Ok(()),
+        None => exact_array_value(value.get(selection), &[], selection),
     }
-}
-
-fn check_rollback_receipt(receipt: &serde_json::Map<String, Value>) -> Result<(), String> {
-    if receipt.len() != 11 {
-        return Err("rollback receipt must have the complete mutation receipt shape".to_owned());
-    }
-    exact_map_string(receipt, "schema", "getcodexy.operation-receipt.v1")?;
-    exact_map_string(receipt, "command", "install")?;
-    exact_map_string(receipt, "outcome", "rolled-back")?;
-    exact_array_value(
-        receipt.get("requested_components"),
-        &["devtools"],
-        "requested_components",
-    )?;
-    exact_array_value(
-        receipt.get("resolved_components"),
-        &["core", "devtools"],
-        "resolved_components",
-    )?;
-    for field in [
-        "selection_before",
-        "selection_after",
-        "installed_components",
-    ] {
-        exact_array_value(receipt.get(field), &["core", "github"], field)?;
-    }
-    exact_map_string(receipt, "source_of_truth", "installed-component-inventory")?;
-    receipt_errors(receipt, "operation-failed")
-}
-
-fn check_status_receipt(receipt: &serde_json::Map<String, Value>) -> Result<(), String> {
-    if receipt.len() != 7 {
-        return Err("status receipt must have the complete status shape".to_owned());
-    }
-    exact_map_string(receipt, "schema", "getcodexy.status.v1")?;
-    exact_map_string(receipt, "command", "status")?;
-    exact_map_string(receipt, "outcome", "completed")?;
-    for field in ["selected_components", "installed_components"] {
-        exact_array_value(receipt.get(field), &["core", "github"], field)?;
-    }
-    exact_map_string(receipt, "source_of_truth", "installed-component-inventory")?;
-    if array(receipt.get("errors"), "errors")?.is_empty() {
-        Ok(())
-    } else {
-        Err("status receipt errors must be empty".to_owned())
-    }
-}
-
-fn receipt_errors(receipt: &serde_json::Map<String, Value>, code: &str) -> Result<(), String> {
-    let errors = array(receipt.get("errors"), "errors")?;
-    if errors.len() != 1 {
-        return Err("mutation receipt must contain exactly one error".to_owned());
-    }
-    let error = errors[0]
-        .as_object()
-        .ok_or_else(|| "mutation receipt error must be an object".to_owned())?;
-    exact_map_string(error, "code", code)
 }
 
 fn rejected_case(

@@ -72,6 +72,25 @@ fn rejects_absent_inventory_became_present_empty() {
 }
 
 #[test]
+fn rejects_inventory_selection_cross_field_drifts() {
+    for id in [
+        "update-no-recorded-selection",
+        "update-inconsistent-installed-state",
+        "update-present-empty-inventory",
+    ] {
+        let mut fixtures = fixtures();
+        let fixture = fixtures["fixtures"]
+            .as_array_mut()
+            .expect("fixture cases")
+            .iter_mut()
+            .find(|fixture| fixture["id"] == id)
+            .expect("inventory fixture");
+        fixture["selection_before"] = json!(["core"]);
+        assert!(check(&fixtures).is_err(), "{id}");
+    }
+}
+
+#[test]
 fn rejects_present_invalid_inventory_became_present_empty() {
     let mut fixtures = fixtures();
     let invalid = fixtures["fixtures"]
@@ -97,6 +116,14 @@ fn rejects_rollback_receipt_inventory_drift() {
 fn rejects_rollback_receipt_error_drift() {
     let mut fixtures = fixtures();
     fixtures["fixtures"][4]["stdout"]["errors"][0]["code"] = json!("unknown-component");
+
+    assert!(check(&fixtures).is_err());
+}
+
+#[test]
+fn rejects_outer_rollback_error_drift() {
+    let mut fixtures = fixtures();
+    fixtures["fixtures"][4]["error"]["message"] = json!("other");
 
     assert!(check(&fixtures).is_err());
 }

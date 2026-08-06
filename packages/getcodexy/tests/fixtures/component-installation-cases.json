@@ -41,7 +41,7 @@
       "selection_before": ["core", "github"],
       "selection_after": ["core", "github"],
       "outcome": "rolled-back",
-      "error": {"code": "operation-failed", "components": ["core", "github", "devtools"]},
+      "error": {"code": "operation-failed", "message": "install failed", "components": ["core", "github", "devtools"]},
       "stdout": {
         "schema": "getcodexy.operation-receipt.v1",
         "operation_id": "op-rollback-fixture",
