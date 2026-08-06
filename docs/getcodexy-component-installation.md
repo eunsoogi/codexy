@@ -72,5 +72,17 @@ replay, and recovery authorization belong to Issue #557's transaction engine.
 All public commands accept `--json`. In JSON mode, stdout contains exactly one JSON
 object and no human-oriented output. Mutation receipts use
 `getcodexy.operation-receipt.v1`; `status` uses the distinct
-`getcodexy.status.v1` schema. Stable `error.code` values are authoritative;
-specific numeric exit-code assignments remain an implementation decision.
+`getcodexy.status.v1` schema; and `doctor` uses `getcodexy.doctor.v1`.
+
+Status includes `inventory` and `inventory_consistency`. An absent inventory is
+`{"state":"absent"}` with `not-recorded`; a present empty inventory is
+`{"state":"present","components":[]}` with `consistent`; and a present
+dependency-invalid inventory is `inconsistent` with an
+`inconsistent-installed-state` error. This lets a client predict whether bare
+`update --json` will reject for no recorded selection, complete without selected
+components, or reject for an inconsistent installed state. Doctor additionally
+includes `host_readiness` and canonical `component_health` entries, alongside
+the same inventory consistency report.
+
+Stable `error.code` values are authoritative; specific numeric exit-code
+assignments remain an implementation decision.

@@ -115,11 +115,8 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
         return Err("rollback receipt must contain operation_id".to_owned());
     }
 
-    let status_fixture = case(cases, "status-json")?;
-    let status = object(status_fixture, "stdout")?;
-    exact_string(status_fixture, "command", "status")?;
-    exact_operands(status_fixture, &[])?;
-    receipts::status(status)?;
+    receipts::statuses(cases)?;
+    receipts::doctor(cases)?;
     Ok(())
 }
 

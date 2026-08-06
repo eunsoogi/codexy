@@ -27,8 +27,46 @@ fn rejects_a_missing_json_flag_for_each_public_command() {
 }
 
 #[test]
+fn rejects_complete_usage_drift_for_each_public_command() {
+    for command in [
+        "install",
+        "update",
+        "remove",
+        "status",
+        "doctor",
+        "bootstrap",
+    ] {
+        let mut contract = contract();
+        contract["commands"][command]["usage"] = json!("getcodexy drift [--json]");
+
+        assert!(check_contract(&contract).is_err(), "{command}");
+    }
+}
+
+#[test]
+fn requires_doctor_and_distinct_status_inventory_fixtures() {
+    let mut fixtures: serde_json::Value = serde_json::from_str(include_str!(
+        "../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
+    ))
+    .expect("fixture JSON");
+    let cases = fixtures["fixtures"].as_array_mut().expect("fixture cases");
+    cases.retain(|case| {
+        !matches!(
+            case["id"].as_str(),
+            Some("doctor-json") | Some("status-absent-json")
+        )
+    });
+
+    assert!(super::cases::check(&fixtures).is_err());
+}
+
+#[test]
 fn rejects_receipt_field_declaration_drift() {
-    for field in ["required_mutation_receipt_fields", "required_status_fields"] {
+    for field in [
+        "required_mutation_receipt_fields",
+        "required_status_fields",
+        "required_doctor_fields",
+    ] {
         let mut contract = contract();
         contract["machine_readable_output"][field] = json!(["schema"]);
 

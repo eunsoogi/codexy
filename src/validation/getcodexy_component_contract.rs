@@ -119,21 +119,18 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         "installed-component-inventory",
     )?;
     let commands = object(contract, "commands")?;
-    for command in [
-        "install",
-        "update",
-        "remove",
-        "status",
-        "doctor",
-        "bootstrap",
+    for (command, usage) in [
+        ("install", "getcodexy install [COMPONENT ...] [--json]"),
+        ("update", "getcodexy update [COMPONENT ...] [--json]"),
+        (
+            "remove",
+            "getcodexy remove COMPONENT [COMPONENT ...] [--json]",
+        ),
+        ("status", "getcodexy status [--json]"),
+        ("doctor", "getcodexy doctor [--json]"),
+        ("bootstrap", "getcodexy bootstrap [--json]"),
     ] {
-        let usage = object_value(commands, command)?
-            .get("usage")
-            .and_then(Value::as_str)
-            .ok_or_else(|| format!("commands.{command}.usage must be a string"))?;
-        if !usage.ends_with("[--json]") {
-            return Err(format!("commands.{command}.usage must retain --json"));
-        }
+        exact_map_string(object_value(commands, command)?, "usage", usage)?;
     }
     exact_map_string(object_value(commands, "install")?, "no_arguments", "all")?;
     exact_map_string(
@@ -167,6 +164,7 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         "getcodexy.operation-receipt.v1",
     )?;
     exact_map_string(output, "status_schema", "getcodexy.status.v1")?;
+    exact_map_string(output, "doctor_schema", "getcodexy.doctor.v1")?;
     exact_array_value(
         output.get("required_mutation_receipt_fields"),
         &[
@@ -190,12 +188,29 @@ fn check_contract(contract: &Value) -> Result<(), String> {
             "schema",
             "command",
             "outcome",
+            "inventory",
+            "inventory_consistency",
             "selected_components",
             "installed_components",
             "source_of_truth",
             "errors",
         ],
         "required_status_fields",
+    )?;
+    exact_array_value(
+        output.get("required_doctor_fields"),
+        &[
+            "schema",
+            "command",
+            "outcome",
+            "inventory",
+            "inventory_consistency",
+            "host_readiness",
+            "component_health",
+            "source_of_truth",
+            "errors",
+        ],
+        "required_doctor_fields",
     )?;
     Ok(())
 }

@@ -67,8 +67,89 @@
         "schema": "getcodexy.status.v1",
         "command": "status",
         "outcome": "completed",
+        "inventory": {"state": "present", "components": ["core", "github"]},
+        "inventory_consistency": "consistent",
         "selected_components": ["core", "github"],
         "installed_components": ["core", "github"],
+        "source_of_truth": "installed-component-inventory",
+        "errors": []
+      }
+    },
+    {
+      "id": "status-absent-json",
+      "command": "status",
+      "requested_components": [],
+      "selection_before": [],
+      "selection_after": [],
+      "outcome": "completed",
+      "stdout": {
+        "schema": "getcodexy.status.v1",
+        "command": "status",
+        "outcome": "completed",
+        "inventory": {"state": "absent"},
+        "inventory_consistency": "not-recorded",
+        "selected_components": [],
+        "installed_components": [],
+        "source_of_truth": "installed-component-inventory",
+        "errors": []
+      }
+    },
+    {
+      "id": "status-present-empty-json",
+      "command": "status",
+      "requested_components": [],
+      "selection_before": [],
+      "selection_after": [],
+      "outcome": "completed",
+      "stdout": {
+        "schema": "getcodexy.status.v1",
+        "command": "status",
+        "outcome": "completed",
+        "inventory": {"state": "present", "components": []},
+        "inventory_consistency": "consistent",
+        "selected_components": [],
+        "installed_components": [],
+        "source_of_truth": "installed-component-inventory",
+        "errors": []
+      }
+    },
+    {
+      "id": "status-inconsistent-json",
+      "command": "status",
+      "requested_components": [],
+      "selection_before": ["github"],
+      "selection_after": ["github"],
+      "outcome": "completed",
+      "stdout": {
+        "schema": "getcodexy.status.v1",
+        "command": "status",
+        "outcome": "completed",
+        "inventory": {"state": "present", "components": ["github"]},
+        "inventory_consistency": "inconsistent",
+        "selected_components": ["github"],
+        "installed_components": ["github"],
+        "source_of_truth": "installed-component-inventory",
+        "errors": [{"code": "inconsistent-installed-state"}]
+      }
+    },
+    {
+      "id": "doctor-json",
+      "command": "doctor",
+      "requested_components": [],
+      "selection_before": ["core", "github"],
+      "selection_after": ["core", "github"],
+      "outcome": "completed",
+      "stdout": {
+        "schema": "getcodexy.doctor.v1",
+        "command": "doctor",
+        "outcome": "completed",
+        "inventory": {"state": "present", "components": ["core", "github"]},
+        "inventory_consistency": "consistent",
+        "host_readiness": {"state": "ready", "missing_requirements": []},
+        "component_health": [
+          {"component": "core", "state": "healthy"},
+          {"component": "github", "state": "healthy"}
+        ],
         "source_of_truth": "installed-component-inventory",
         "errors": []
       }

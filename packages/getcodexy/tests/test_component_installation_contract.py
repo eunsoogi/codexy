@@ -45,6 +45,10 @@ class ComponentInstallationContractTests(unittest.TestCase):
             contract["component_products"],
             {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"},
         )
+        self.assertEqual(
+            contract["machine_readable_output"]["doctor_schema"],
+            "getcodexy.doctor.v1",
+        )
 
     def test_contract_fixtures_cover_happy_risky_regression_and_external_paths(self) -> None:
         fixtures = {
@@ -67,6 +71,26 @@ class ComponentInstallationContractTests(unittest.TestCase):
             "op-rollback-fixture",
         )
         self.assertEqual(fixtures["status-json"]["stdout"]["schema"], "getcodexy.status.v1")
+        self.assertEqual(
+            fixtures["doctor-json"]["stdout"]["host_readiness"]["state"],
+            "ready",
+        )
+        self.assertEqual(
+            fixtures["doctor-json"]["stdout"]["component_health"],
+            [{"component": "core", "state": "healthy"}, {"component": "github", "state": "healthy"}],
+        )
+        self.assertEqual(
+            fixtures["status-absent-json"]["stdout"]["inventory_consistency"],
+            "not-recorded",
+        )
+        self.assertEqual(
+            fixtures["status-present-empty-json"]["stdout"]["inventory"]["components"],
+            [],
+        )
+        self.assertEqual(
+            fixtures["status-inconsistent-json"]["stdout"]["errors"][0]["code"],
+            "inconsistent-installed-state",
+        )
 
     def test_every_state_transition_has_deterministic_selection_and_receipt_contract(self) -> None:
         contract = json.loads(FIXTURES_PATH.read_text(encoding="utf-8"))

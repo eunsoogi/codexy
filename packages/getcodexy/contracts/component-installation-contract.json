@@ -62,6 +62,7 @@
     "human_output": "suppressed",
     "mutation_receipt_schema": "getcodexy.operation-receipt.v1",
     "status_schema": "getcodexy.status.v1",
+    "doctor_schema": "getcodexy.doctor.v1",
     "required_mutation_receipt_fields": [
       "schema",
       "operation_id",
@@ -79,8 +80,21 @@
       "schema",
       "command",
       "outcome",
+      "inventory",
+      "inventory_consistency",
       "selected_components",
       "installed_components",
+      "source_of_truth",
+      "errors"
+    ],
+    "required_doctor_fields": [
+      "schema",
+      "command",
+      "outcome",
+      "inventory",
+      "inventory_consistency",
+      "host_readiness",
+      "component_health",
       "source_of_truth",
       "errors"
     ]

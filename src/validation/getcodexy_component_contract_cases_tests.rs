@@ -153,3 +153,56 @@ fn rejects_status_schema_drift() {
 
     assert!(check(&fixtures).is_err());
 }
+
+#[test]
+fn rejects_status_inventory_state_collapse_and_invalid_semantic_drift() {
+    let mut collapsed = fixtures();
+    let statuses = collapsed["fixtures"].as_array_mut().expect("fixture cases");
+    let absent = statuses
+        .iter_mut()
+        .find(|fixture| fixture["id"] == "status-absent-json")
+        .expect("absent status fixture");
+    absent["stdout"]["inventory"] = json!({"state": "present", "components": []});
+    absent["stdout"]["inventory_consistency"] = json!("consistent");
+
+    assert!(check(&collapsed).is_err());
+
+    let mut inconsistent = fixtures();
+    let invalid = inconsistent["fixtures"]
+        .as_array_mut()
+        .expect("fixture cases")
+        .iter_mut()
+        .find(|fixture| fixture["id"] == "status-inconsistent-json")
+        .expect("inconsistent status fixture");
+    invalid["stdout"]["inventory_consistency"] = json!("consistent");
+
+    assert!(check(&inconsistent).is_err());
+}
+
+#[test]
+fn rejects_doctor_health_and_host_readiness_drift() {
+    let mut readiness = fixtures();
+    let doctor = readiness["fixtures"]
+        .as_array_mut()
+        .expect("fixture cases")
+        .iter_mut()
+        .find(|fixture| fixture["id"] == "doctor-json")
+        .expect("doctor fixture");
+    doctor["stdout"]["host_readiness"]["state"] = json!("blocked");
+
+    assert!(check(&readiness).is_err());
+
+    let mut health = fixtures();
+    let doctor = health["fixtures"]
+        .as_array_mut()
+        .expect("fixture cases")
+        .iter_mut()
+        .find(|fixture| fixture["id"] == "doctor-json")
+        .expect("doctor fixture");
+    doctor["stdout"]["component_health"]
+        .as_array_mut()
+        .expect("health")
+        .pop();
+
+    assert!(check(&health).is_err());
+}

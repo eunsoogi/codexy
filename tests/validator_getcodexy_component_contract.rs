@@ -39,6 +39,63 @@ fn public_validator_accepts_a_noncanonical_source_lookalike() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn public_validator_rejects_complete_usage_drift_for_each_command() -> TestResult {
+    for command in [
+        "install",
+        "update",
+        "remove",
+        "status",
+        "doctor",
+        "bootstrap",
+    ] {
+        let fixture = CanonicalSourceFixture::new()?;
+        let contract_path = fixture
+            .root()
+            .join("packages/getcodexy/contracts/component-installation-contract.json");
+        let mut contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
+        contract["commands"][command]["usage"] = serde_json::json!("getcodexy drift [--json]");
+        fs::write(&contract_path, serde_json::to_string(&contract)?)?;
+
+        let output = validate(&fixture.plugin_root())?;
+        assert!(!output.status.success(), "{command} usage drift unexpectedly passed");
+    }
+    Ok(())
+}
+
+#[test]
+fn public_validator_rejects_doctor_and_status_inventory_semantic_drift() -> TestResult {
+    let fixture = CanonicalSourceFixture::new()?;
+    let cases_path = fixture
+        .root()
+        .join("packages/getcodexy/tests/fixtures/component-installation-cases.json");
+    let mut cases: serde_json::Value = serde_json::from_str(&fs::read_to_string(&cases_path)?)?;
+    let fixtures = cases["fixtures"].as_array_mut().ok_or("fixtures")?;
+    let doctor = fixtures
+        .iter_mut()
+        .find(|case| case["id"] == "doctor-json")
+        .ok_or("doctor fixture")?;
+    doctor["stdout"]["host_readiness"]["state"] = serde_json::json!("blocked");
+    fs::write(&cases_path, serde_json::to_string(&cases)?)?;
+    assert!(!validate(&fixture.plugin_root())?.status.success());
+
+    let fixture = CanonicalSourceFixture::new()?;
+    let cases_path = fixture
+        .root()
+        .join("packages/getcodexy/tests/fixtures/component-installation-cases.json");
+    let mut cases: serde_json::Value = serde_json::from_str(&fs::read_to_string(&cases_path)?)?;
+    let fixtures = cases["fixtures"].as_array_mut().ok_or("fixtures")?;
+    let absent = fixtures
+        .iter_mut()
+        .find(|case| case["id"] == "status-absent-json")
+        .ok_or("absent status fixture")?;
+    absent["stdout"]["inventory"] = serde_json::json!({"state": "present", "components": []});
+    absent["stdout"]["inventory_consistency"] = serde_json::json!("consistent");
+    fs::write(&cases_path, serde_json::to_string(&cases)?)?;
+    assert!(!validate(&fixture.plugin_root())?.status.success());
+    Ok(())
+}
+
 struct CanonicalSourceFixture {
     temp: tempfile::TempDir,
 }
