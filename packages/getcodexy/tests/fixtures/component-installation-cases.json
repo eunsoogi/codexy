@@ -1,0 +1,93 @@
+{
+  "schema": "getcodexy.component-installation-cases.v1",
+  "fixtures": [
+    {
+      "id": "install-default",
+      "command": "install",
+      "requested_components": [],
+      "selection_before": [],
+      "selection_after": ["core", "github", "devtools"],
+      "outcome": "completed"
+    },
+    {
+      "id": "install-github",
+      "command": "install",
+      "requested_components": ["github"],
+      "selection_before": [],
+      "selection_after": ["core", "github"],
+      "outcome": "completed"
+    },
+    {
+      "id": "update-preserves-selection",
+      "command": "update",
+      "requested_components": [],
+      "selection_before": ["core", "devtools"],
+      "selection_after": ["core", "devtools"],
+      "outcome": "completed"
+    },
+    {
+      "id": "remove-core-with-dependent",
+      "command": "remove",
+      "requested_components": ["core"],
+      "selection_before": ["core", "github"],
+      "selection_after": ["core", "github"],
+      "outcome": "rejected",
+      "error": {"code": "dependency-protected-removal", "components": ["core", "github"]}
+    },
+    {
+      "id": "rollback-after-operation-failure",
+      "command": "install",
+      "requested_components": ["devtools"],
+      "selection_before": ["core", "github"],
+      "selection_after": ["core", "github"],
+      "outcome": "rolled-back",
+      "error": {"code": "operation-failed", "components": ["core", "github", "devtools"]},
+      "stdout": {
+        "schema": "getcodexy.operation-receipt.v1",
+        "operation_id": "op-rollback-fixture",
+        "command": "install",
+        "outcome": "rolled-back",
+        "requested_components": ["devtools"],
+        "resolved_components": ["core", "devtools"],
+        "selection_before": ["core", "github"],
+        "selection_after": ["core", "github"],
+        "installed_components": ["core", "github"],
+        "source_of_truth": "installed-component-inventory",
+        "errors": [{"code": "operation-failed"}]
+      }
+    },
+    {
+      "id": "status-json",
+      "command": "status",
+      "requested_components": [],
+      "selection_before": ["core", "github"],
+      "selection_after": ["core", "github"],
+      "outcome": "completed",
+      "stdout": {
+        "schema": "getcodexy.status.v1",
+        "command": "status",
+        "outcome": "completed",
+        "selected_components": ["core", "github"],
+        "installed_components": ["core", "github"],
+        "source_of_truth": "installed-component-inventory",
+        "errors": []
+      }
+    }
+  ],
+  "state_transitions": [
+    {"id": "install-all", "command": "install", "selection_before": [], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "install-core", "command": "install core", "selection_before": [], "selection_after": ["core"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "install-github", "command": "install github", "selection_before": [], "selection_after": ["core", "github"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "install-devtools", "command": "install devtools", "selection_before": [], "selection_after": ["core", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "install-github-devtools", "command": "install github devtools", "selection_before": [], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "install-is-additive", "command": "install github", "selection_before": ["core", "devtools"], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "update-preserves", "command": "update", "selection_before": ["core", "devtools"], "selection_after": ["core", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "update-explicit-preserves", "command": "update github", "selection_before": ["core", "github", "devtools"], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "remove-github", "command": "remove github", "selection_before": ["core", "github", "devtools"], "selection_after": ["core", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "reject-remove-core", "command": "remove core", "selection_before": ["core", "github"], "selection_after": ["core", "github"], "outcome": "rejected", "source_of_truth": "installed-component-inventory", "error": {"code": "dependency-protected-removal"}},
+    {"id": "remove-core-with-dependent", "command": "remove core github", "selection_before": ["core", "github"], "selection_after": [], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
+    {"id": "reject-unknown-component", "command": "install unknown", "selection_before": [], "selection_after": [], "outcome": "rejected", "source_of_truth": "installed-component-inventory", "error": {"code": "unknown-component"}},
+    {"id": "rollback-failed-install", "command": "install devtools", "selection_before": ["core", "github"], "selection_after": ["core", "github"], "outcome": "rolled-back", "source_of_truth": "installed-component-inventory"},
+    {"id": "bootstrap-default", "command": "bootstrap", "selection_before": [], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"}
+  ]
+}

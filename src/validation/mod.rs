@@ -67,6 +67,7 @@ mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
+mod getcodexy_component_contract;
 mod github_labels;
 mod handoff_claims;
 mod hooks;

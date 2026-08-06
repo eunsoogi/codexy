@@ -1,0 +1,97 @@
+{
+  "schema": "getcodexy.component-installation-contract.v1",
+  "contract_version": 1,
+  "components": ["core", "github", "devtools"],
+  "component_products": {
+    "core": "codexy",
+    "github": "codexy-github",
+    "devtools": "codexy-devtools"
+  },
+  "dependencies": {
+    "core": [],
+    "github": ["core"],
+    "devtools": ["core"]
+  },
+  "source_of_truth": {
+    "kind": "installed-component-inventory",
+    "semantics": "The successful installed inventory is authoritative. Requested selections are intent, receipts are evidence, and an inventory that cannot satisfy the dependency graph is inconsistent."
+  },
+  "commands": {
+    "install": {
+      "usage": "getcodexy install [COMPONENT ...] [--json]",
+      "no_arguments": "all",
+      "selection": "add-resolved-request-to-installed-selection",
+      "dependency_closure": "include-transitive-dependencies"
+    },
+    "update": {
+      "usage": "getcodexy update [COMPONENT ...] [--json]",
+      "selection": "preserve-installed",
+      "no_arguments_scope": "all-installed-components",
+      "explicit_components_scope": "resolved-subset-of-installed-selection"
+    },
+    "remove": {
+      "usage": "getcodexy remove COMPONENT [COMPONENT ...] [--json]",
+      "requires_components": true,
+      "guard": "reject-when-a-retained-component-depends-on-a-requested-removal"
+    },
+    "status": {
+      "usage": "getcodexy status [--json]",
+      "mutation": "none"
+    },
+    "doctor": {
+      "usage": "getcodexy doctor [--json]",
+      "mutation": "none",
+      "reports": ["inventory-consistency", "host-readiness", "component-health"]
+    },
+    "bootstrap": {
+      "usage": "getcodexy bootstrap [--json]",
+      "selection": "all",
+      "purpose": "install-the-complete-supported-selection-and-perform-required-host-activation"
+    },
+    "rollback": {
+      "kind": "automatic-mutation-failure-recovery",
+      "selection": "restore-the-receipt-selection-before",
+      "receipt": "emit-outcome-rolled-back",
+      "implementation_owner": "transaction-engine",
+      "manual_command": "deferred-to-issue-557"
+    }
+  },
+  "machine_readable_output": {
+    "flag": "--json",
+    "stdout": "exactly-one-json-object",
+    "human_output": "suppressed",
+    "mutation_receipt_schema": "getcodexy.operation-receipt.v1",
+    "status_schema": "getcodexy.status.v1",
+    "required_mutation_receipt_fields": [
+      "schema",
+      "operation_id",
+      "command",
+      "outcome",
+      "requested_components",
+      "resolved_components",
+      "selection_before",
+      "selection_after",
+      "installed_components",
+      "source_of_truth",
+      "errors"
+    ],
+    "required_status_fields": [
+      "schema",
+      "command",
+      "outcome",
+      "selected_components",
+      "installed_components",
+      "source_of_truth",
+      "errors"
+    ]
+  },
+  "domain_errors": {
+    "unknown-component": "A named component is not core, github, or devtools.",
+    "components-not-accepted": "The command does not accept component arguments.",
+    "missing-removal-target": "remove requires one or more component arguments.",
+    "dependency-protected-removal": "A requested removal is still required by a retained component.",
+    "no-recorded-selection": "update requires a consistent installed component inventory.",
+    "inconsistent-installed-state": "The installed inventory violates the dependency graph.",
+    "operation-failed": "A mutation did not complete and the pre-operation selection was restored."
+  }
+}
