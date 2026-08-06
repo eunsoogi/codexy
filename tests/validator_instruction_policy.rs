@@ -18,6 +18,9 @@ mod mandatory_syntax;
 mod passive_permission;
 #[path = "validator_instruction_policy/sculptor_loc_policy.rs"]
 mod sculptor_loc_policy;
+#[path = "validator_instruction_policy/repository_skills.rs"]
+mod repository_skills;
+pub(super) use repository_skills::copy_repo_fixture;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const MUTABLE_PLUGIN_FILES: &[&str] = &[
     ".codex-plugin/plugin.json",
@@ -89,7 +92,7 @@ fn validator_cli_allows_tilde_fenced_command_examples() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_root_agents_policy_false_negative() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
+    let (_temp, plugin_root, agents_path) = repository_skills::copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
     support::assert_structured_literals(
         &agents,
@@ -108,7 +111,7 @@ fn validator_cli_rejects_root_agents_policy_false_negative() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_root_agents_bare_use_instruction() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
+    let (_temp, plugin_root, agents_path) = repository_skills::copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
     for (required, bare) in ROOT_AGENTS_BARE_CASES {
         support::assert_structured_literals(&agents, "root AGENTS mandatory policy", &[required]);
@@ -212,23 +215,6 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     Ok(support::copy_plugin_fixture_with_mutable_files(
         &mutable_files,
     )?)
-}
-
-fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let repo_root = temp.path().join("repo");
-    let plugin_root = repo_root.join("plugins/codexy");
-    let agents_path = repo_root.join("AGENTS.md");
-    std::fs::create_dir_all(repo_root.join("plugins"))?;
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md"),
-        &agents_path,
-    )?;
-    support::copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    Ok((temp, plugin_root, agents_path))
 }
 
 fn validator(
