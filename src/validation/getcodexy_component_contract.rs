@@ -12,15 +12,17 @@ use schema::{
     object_value,
 };
 
-pub(super) fn check(_: &Path) -> Vec<String> {
-    match contract_and_fixtures() {
+pub(super) fn check(plugin_root: &Path) -> Vec<String> {
+    match contract_and_fixtures(plugin_root) {
         Ok(()) => Vec::new(),
         Err(error) => vec![error],
     }
 }
 
-fn contract_and_fixtures() -> Result<(), String> {
-    let root = crate::paths::repo_root().map_err(|error| error.to_string())?;
+fn contract_and_fixtures(plugin_root: &Path) -> Result<(), String> {
+    let Some(root) = source_contract_root(plugin_root)? else {
+        return Ok(());
+    };
     let contract =
         load(&root.join("packages/getcodexy/contracts/component-installation-contract.json"))?;
     let fixtures =
@@ -42,6 +44,27 @@ fn contract_and_fixtures() -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
+    let Some(root) = plugin_root.parent().and_then(Path::parent) else {
+        return Ok(None);
+    };
+    if !root.join("Cargo.toml").is_file() {
+        return Ok(None);
+    }
+    if root.join("plugins/codexy") != plugin_root {
+        return Err(
+            "repository component contract requires the canonical plugins/codexy root".to_owned(),
+        );
+    }
+    if !root
+        .join("docs/getcodexy-component-installation.md")
+        .is_file()
+    {
+        return Ok(None);
+    }
+    Ok(Some(root))
 }
 
 fn load(path: &Path) -> Result<Value, String> {
@@ -88,6 +111,22 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         "installed-component-inventory",
     )?;
     let commands = object(contract, "commands")?;
+    for command in [
+        "install",
+        "update",
+        "remove",
+        "status",
+        "doctor",
+        "bootstrap",
+    ] {
+        let usage = object_value(commands, command)?
+            .get("usage")
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("commands.{command}.usage must be a string"))?;
+        if !usage.ends_with("[--json]") {
+            return Err(format!("commands.{command}.usage must retain --json"));
+        }
+    }
     exact_map_string(object_value(commands, "install")?, "no_arguments", "all")?;
     exact_map_string(
         object_value(commands, "install")?,
@@ -132,3 +171,7 @@ fn check_contract(contract: &Value) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "getcodexy_component_contract_tests.rs"]
+mod tests;

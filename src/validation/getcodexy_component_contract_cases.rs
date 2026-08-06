@@ -1,8 +1,12 @@
 use serde_json::Value;
 
 use super::schema::{
-    array, check_dependencies, component_selection, exact_array, exact_map_string, exact_string,
+    array, component_selection, exact_array, exact_array_value, exact_map_string, exact_string,
+    object,
 };
+
+#[path = "getcodexy_component_contract_transitions.rs"]
+mod transitions;
 
 pub(super) fn check(fixtures: &Value) -> Result<(), String> {
     exact_string(
@@ -11,7 +15,7 @@ pub(super) fn check(fixtures: &Value) -> Result<(), String> {
         "getcodexy.component-installation-cases.v1",
     )?;
     check_fixture_examples(fixtures)?;
-    check_state_transitions(fixtures)
+    transitions::check(fixtures)
 }
 
 fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
@@ -80,6 +84,7 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
         &["unknown"],
         "unknown-component",
     )?;
+    check_update_inventory_states(cases)?;
 
     let rollback = case(cases, "rollback-after-operation-failure")?;
     exact_string(rollback, "command", "install")?;
@@ -87,7 +92,7 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
     same_selection(rollback)?;
     exact_string(rollback, "outcome", "rolled-back")?;
     let receipt = object(rollback, "stdout")?;
-    exact_map_string(receipt, "schema", "getcodexy.operation-receipt.v1")?;
+    check_rollback_receipt(receipt)?;
     if receipt
         .get("operation_id")
         .and_then(Value::as_str)
@@ -97,100 +102,100 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
         return Err("rollback receipt must contain operation_id".to_owned());
     }
 
-    let status = object(case(cases, "status-json")?, "stdout")?;
-    exact_string(case(cases, "status-json")?, "command", "status")?;
-    exact_operands(case(cases, "status-json")?, &[])?;
-    exact_map_string(status, "schema", "getcodexy.status.v1")?;
+    let status_fixture = case(cases, "status-json")?;
+    let status = object(status_fixture, "stdout")?;
+    exact_string(status_fixture, "command", "status")?;
+    exact_operands(status_fixture, &[])?;
+    check_status_receipt(status)?;
     Ok(())
 }
 
-fn check_state_transitions(fixtures: &Value) -> Result<(), String> {
-    let transitions = array(fixtures.get("state_transitions"), "state_transitions")?;
-    for transition in transitions {
-        let before = component_selection(transition.get("selection_before"), "selection_before")?;
-        let after = component_selection(transition.get("selection_after"), "selection_after")?;
-        exact_string(
-            transition,
-            "source_of_truth",
-            "installed-component-inventory",
-        )?;
-        match transition.get("outcome").and_then(Value::as_str) {
-            Some("completed") => check_dependencies(&after)?,
-            Some("rejected") | Some("rolled-back") if before == after => {}
-            _ => return Err("every transition must complete with closure or preserve state when rejected/rolled-back".to_owned()),
-        }
-    }
-    transition(
-        transitions,
-        "install-all",
-        "install",
-        &[],
-        &["core", "github", "devtools"],
-        "completed",
-    )?;
-    transition(
-        transitions,
-        "install-is-additive",
-        "install github",
-        &["core", "devtools"],
-        &["core", "github", "devtools"],
-        "completed",
-    )?;
-    transition(
-        transitions,
-        "update-preserves",
-        "update",
-        &["core", "devtools"],
-        &["core", "devtools"],
-        "completed",
-    )?;
-    transition(
-        transitions,
-        "update-explicit-preserves",
-        "update github",
-        &["core", "github", "devtools"],
-        &["core", "github", "devtools"],
-        "completed",
-    )?;
-    transition(
-        transitions,
-        "reject-remove-core",
-        "remove core",
-        &["core", "github"],
-        &["core", "github"],
-        "rejected",
-    )?;
-    transition(
-        transitions,
-        "rollback-failed-install",
-        "install devtools",
-        &["core", "github"],
-        &["core", "github"],
-        "rolled-back",
-    )?;
-    transition(
-        transitions,
-        "bootstrap-default",
-        "bootstrap",
-        &[],
-        &["core", "github", "devtools"],
-        "completed",
-    )
+fn check_update_inventory_states(cases: &[Value]) -> Result<(), String> {
+    let absent = case(cases, "update-no-recorded-selection")?;
+    inventory(absent, "inventory_before", "absent", None)?;
+    inventory(absent, "inventory_after", "absent", None)?;
+    let empty = case(cases, "update-present-empty-inventory")?;
+    inventory(empty, "inventory_before", "present", Some(&[]))?;
+    inventory(empty, "inventory_after", "present", Some(&[]))?;
+    same_selection(empty)?;
+    exact_string(empty, "outcome", "completed")?;
+    let invalid = case(cases, "update-inconsistent-installed-state")?;
+    inventory(invalid, "inventory_before", "present", Some(&["github"]))?;
+    inventory(invalid, "inventory_after", "present", Some(&["github"]))
 }
 
-fn transition<'a>(
-    transitions: &'a [Value],
-    id: &str,
-    command: &str,
-    before: &[&str],
-    after: &[&str],
-    outcome: &str,
+fn inventory(
+    value: &Value,
+    field: &str,
+    state: &str,
+    components: Option<&[&str]>,
 ) -> Result<(), String> {
-    let transition = case(transitions, id)?;
-    exact_string(transition, "command", command)?;
-    exact_selection(transition, "selection_before", before)?;
-    exact_selection(transition, "selection_after", after)?;
-    exact_string(transition, "outcome", outcome)
+    let inventory = object(value, field)?;
+    exact_map_string(inventory, "state", state)?;
+    match components {
+        Some(components) => exact_array_value(inventory.get("components"), components, field),
+        None if inventory.contains_key("components") => {
+            Err(format!("{field} absent inventory must omit components"))
+        }
+        None => Ok(()),
+    }
+}
+
+fn check_rollback_receipt(receipt: &serde_json::Map<String, Value>) -> Result<(), String> {
+    if receipt.len() != 11 {
+        return Err("rollback receipt must have the complete mutation receipt shape".to_owned());
+    }
+    exact_map_string(receipt, "schema", "getcodexy.operation-receipt.v1")?;
+    exact_map_string(receipt, "command", "install")?;
+    exact_map_string(receipt, "outcome", "rolled-back")?;
+    exact_array_value(
+        receipt.get("requested_components"),
+        &["devtools"],
+        "requested_components",
+    )?;
+    exact_array_value(
+        receipt.get("resolved_components"),
+        &["core", "devtools"],
+        "resolved_components",
+    )?;
+    for field in [
+        "selection_before",
+        "selection_after",
+        "installed_components",
+    ] {
+        exact_array_value(receipt.get(field), &["core", "github"], field)?;
+    }
+    exact_map_string(receipt, "source_of_truth", "installed-component-inventory")?;
+    receipt_errors(receipt, "operation-failed")
+}
+
+fn check_status_receipt(receipt: &serde_json::Map<String, Value>) -> Result<(), String> {
+    if receipt.len() != 7 {
+        return Err("status receipt must have the complete status shape".to_owned());
+    }
+    exact_map_string(receipt, "schema", "getcodexy.status.v1")?;
+    exact_map_string(receipt, "command", "status")?;
+    exact_map_string(receipt, "outcome", "completed")?;
+    for field in ["selected_components", "installed_components"] {
+        exact_array_value(receipt.get(field), &["core", "github"], field)?;
+    }
+    exact_map_string(receipt, "source_of_truth", "installed-component-inventory")?;
+    if array(receipt.get("errors"), "errors")?.is_empty() {
+        Ok(())
+    } else {
+        Err("status receipt errors must be empty".to_owned())
+    }
+}
+
+fn receipt_errors(receipt: &serde_json::Map<String, Value>, code: &str) -> Result<(), String> {
+    let errors = array(receipt.get("errors"), "errors")?;
+    if errors.len() != 1 {
+        return Err("mutation receipt must contain exactly one error".to_owned());
+    }
+    let error = errors[0]
+        .as_object()
+        .ok_or_else(|| "mutation receipt error must be an object".to_owned())?;
+    exact_map_string(error, "code", code)
 }
 
 fn rejected_case(
@@ -236,13 +241,6 @@ fn exact_selection(fixture: &Value, field: &str, expected: &[&str]) -> Result<()
     } else {
         Err(format!("{field} must be {expected:?}"))
     }
-}
-
-fn object<'a>(value: &'a Value, field: &str) -> Result<&'a serde_json::Map<String, Value>, String> {
-    value
-        .get(field)
-        .and_then(Value::as_object)
-        .ok_or_else(|| format!("{field} must be an object"))
 }
 
 #[cfg(test)]

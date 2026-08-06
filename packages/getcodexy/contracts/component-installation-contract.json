@@ -90,7 +90,7 @@
     "components-not-accepted": "The command does not accept component arguments.",
     "missing-removal-target": "remove requires one or more component arguments.",
     "dependency-protected-removal": "A requested removal is still required by a retained component.",
-    "no-recorded-selection": "update requires a consistent installed component inventory.",
+    "no-recorded-selection": "update requires a recorded installed component inventory.",
     "inconsistent-installed-state": "The installed inventory violates the dependency graph.",
     "operation-failed": "A mutation did not complete and the pre-operation selection was restored."
   }

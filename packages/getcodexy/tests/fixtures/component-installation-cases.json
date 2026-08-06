@@ -95,6 +95,8 @@
       "id": "update-no-recorded-selection",
       "command": "update",
       "requested_components": [],
+      "inventory_before": {"state": "absent"},
+      "inventory_after": {"state": "absent"},
       "selection_before": [],
       "selection_after": [],
       "outcome": "rejected",
@@ -104,10 +106,22 @@
       "id": "update-inconsistent-installed-state",
       "command": "update",
       "requested_components": [],
+      "inventory_before": {"state": "present", "components": ["github"]},
+      "inventory_after": {"state": "present", "components": ["github"]},
       "selection_before": ["github"],
       "selection_after": ["github"],
       "outcome": "rejected",
       "error": {"code": "inconsistent-installed-state"}
+    },
+    {
+      "id": "update-present-empty-inventory",
+      "command": "update",
+      "requested_components": [],
+      "inventory_before": {"state": "present", "components": []},
+      "inventory_after": {"state": "present", "components": []},
+      "selection_before": [],
+      "selection_after": [],
+      "outcome": "completed"
     },
     {
       "id": "install-unknown-component",
@@ -132,7 +146,7 @@
     {"id": "reject-remove-core", "command": "remove core", "selection_before": ["core", "github"], "selection_after": ["core", "github"], "outcome": "rejected", "source_of_truth": "installed-component-inventory", "error": {"code": "dependency-protected-removal"}},
     {"id": "remove-core-with-dependent", "command": "remove core github", "selection_before": ["core", "github"], "selection_after": [], "outcome": "completed", "source_of_truth": "installed-component-inventory"},
     {"id": "reject-unknown-component", "command": "install unknown", "selection_before": [], "selection_after": [], "outcome": "rejected", "source_of_truth": "installed-component-inventory", "error": {"code": "unknown-component"}},
-    {"id": "rollback-failed-install", "command": "install devtools", "selection_before": ["core", "github"], "selection_after": ["core", "github"], "outcome": "rolled-back", "source_of_truth": "installed-component-inventory"},
+    {"id": "rollback-failed-install", "command": "install devtools", "selection_before": ["core", "github"], "selection_after": ["core", "github"], "outcome": "rolled-back", "error": {"code": "operation-failed"}, "source_of_truth": "installed-component-inventory"},
     {"id": "bootstrap-default", "command": "bootstrap", "selection_before": [], "selection_after": ["core", "github", "devtools"], "outcome": "completed", "source_of_truth": "installed-component-inventory"}
   ]
 }
