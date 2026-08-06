@@ -62,10 +62,17 @@ fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
             "repository component contract requires the canonical plugins/codexy root".to_owned(),
         );
     }
-    if !root.join(".git").exists() || !root.join("packages/getcodexy/pyproject.toml").is_file() {
+    if !repository_markers(root) {
         return Ok(None);
     }
     Ok(Some(root))
+}
+
+fn repository_markers(root: &Path) -> bool {
+    root.join(".git").exists()
+        && root.join("AGENTS.md").is_file()
+        && root.join(".agents/plugins/marketplace.json").is_file()
+        && root.join("packages/getcodexy/pyproject.toml").is_file()
 }
 
 fn load(path: &Path) -> Result<Value, String> {
