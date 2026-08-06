@@ -76,21 +76,23 @@ products own no physical files yet.
 | --- | --- | --- |
 | Hooks | `plugins/codexy/hooks/**` | Core retains the complete current admission and instruction-enforcement import closure; generic GitHub workflow hooks extract, and the unused policy inventory is removed. GitHub-policy leaves may move only after a later extraction breaks that core closure. |
 | Skills | `plugins/codexy/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow extracts; release/marketplace become repository-only; frontend-design is removed. |
-| Agents | `plugins/codexy/agents/**` | `codexy` |
-| MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `src/codegraph/**`, `src/mcp.rs`, `src/bin/codexy-mcp-codegraph.rs`, `src/bin/codexy-mcp-lsp.rs` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; grep.app is removed. |
+| Agents | `plugins/codexy/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, moves to `codexy-github`. |
+| MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `src/codegraph/**`, `src/lsp/**`, `src/mcp.rs`, `src/bin/**`, `src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision; grep.app is removed. |
 | LSP | `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/**`, `src/lsp/**` | `codexy-devtools` |
 | Assets | `assets/**`, `plugins/codexy/assets/**` | Repository assets remain repository-only; plugin-local assets remain `codexy`. |
 | Validators and tests | `scripts/sync-plugin-version`, `scripts/validate-plugin-config`, `src/validation/**`, `tests/**` | Repository-owned validation; later product validators follow the target boundary. |
-| Public entrypoints and packaging metadata | `README.md`, `README.ko.md`, `packages/getcodexy/pyproject.toml`, `plugins/codexy/.codex-plugin/plugin.json`, `plugins/codexy/agents/openai.yaml`, `.agents/plugins/{marketplace,release-publish-contract,runtime-activation}.json` | Core identity and repository distribution surface; no layout migration here. |
+| Public entrypoints and packaging metadata | `README.md`, `README.ko.md`, `packages/getcodexy/{pyproject.toml,src/**,tests/**}`, `plugins/codexy/{bootstrap-codexy-agents,check-codexy-agents,.codex-plugin/plugin.json}`, `plugins/codexy/agents/openai.yaml`, `.agents/plugins/{marketplace,release-publish-contract,runtime-activation}.json` | Core identity and repository distribution surface; no layout migration here. |
 
 The inventory test loads the JSON contract as its only ownership authority. It
 discovers the governed current hook, skill, agent, MCP/runtime, LSP, asset,
 validator/test, workflow, packaging, and public-entrypoint surfaces; then it
 requires exact cover with non-empty stable-ID records. A typed, deny-unknown
-schema makes `surfaceRecords` the only top-level ownership authority, while
-the product matrix fixes each public name, package root, and allowed/forbidden
-dependency edge. The same validator reads concrete Python relative and wrapper
-imports, rejecting missing modules and forbidden core-to-extension edges. It
+schema makes `surfaceRecords` the only top-level ownership authority, while an
+exhaustive stable-ID matrix fixes every record's target and disposition. The
+product matrix fixes each public name, package root, and allowed/forbidden
+dependency edge. The same validator reads concrete Python relative, package,
+dotted, and wrapper imports, and typed agent metadata for required skills,
+rejecting missing modules and forbidden core-to-extension edges. It
 rejects omission,
 overlap or duplicate source, stale MCP selector, unknown target or disposition,
 illegal dependency, a parallel ownership projection, and an all-core

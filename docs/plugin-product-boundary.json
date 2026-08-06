@@ -15,7 +15,8 @@
     {"id":"skills.github","category":"skills","sources":["plugins/codexy/skills/git-workflow"],"target":"codexy-github","disposition":"move"},
     {"id":"skills.repository","category":"skills","sources":["plugins/codexy/skills/plugin-marketplace-prep","plugins/codexy/skills/release-engineering"],"target":"repository-only","disposition":"move"},
     {"id":"skills.frontend-design","category":"skills","sources":["plugins/codexy/skills/frontend-design"],"target":"remove","disposition":"remove"},
-    {"id":"agents.specialists","category":"agents","sources":["plugins/codexy/agents/catalog.toml","plugins/codexy/agents/codexy-architect.toml","plugins/codexy/agents/codexy-auditor.toml","plugins/codexy/agents/codexy-cartographer.toml","plugins/codexy/agents/codexy-forge.toml","plugins/codexy/agents/codexy-pathfinder.toml","plugins/codexy/agents/codexy-scribe.toml","plugins/codexy/agents/codexy-sculptor.toml","plugins/codexy/agents/codexy-sentinel.toml","plugins/codexy/agents/codexy-shipwright.toml","plugins/codexy/agents/codexy-tracer.toml","plugins/codexy/agents/codexy-warden.toml","plugins/codexy/agents/codexy-weaver.toml"],"target":"codexy","disposition":"retain"},
+    {"id":"agents.specialists","category":"agents","sources":["plugins/codexy/agents/catalog.toml","plugins/codexy/agents/codexy-architect.toml","plugins/codexy/agents/codexy-auditor.toml","plugins/codexy/agents/codexy-cartographer.toml","plugins/codexy/agents/codexy-forge.toml","plugins/codexy/agents/codexy-pathfinder.toml","plugins/codexy/agents/codexy-scribe.toml","plugins/codexy/agents/codexy-sculptor.toml","plugins/codexy/agents/codexy-sentinel.toml","plugins/codexy/agents/codexy-shipwright.toml","plugins/codexy/agents/codexy-tracer.toml","plugins/codexy/agents/codexy-warden.toml"],"target":"codexy","disposition":"retain"},
+    {"id":"agents.github","category":"agents","sources":["plugins/codexy/agents/codexy-weaver.toml"],"target":"codexy-github","disposition":"move"},
     {"id":"mcp.codegraph","category":"mcp","sources":["plugins/codexy/.mcp.json#codegraph"],"target":"codexy-devtools","disposition":"move"},
     {"id":"mcp.lsp","category":"mcp","sources":["plugins/codexy/.mcp.json#lsp"],"target":"codexy-devtools","disposition":"move"},
     {"id":"mcp.grep-app","category":"mcp","sources":["plugins/codexy/.mcp.json#grep_app"],"target":"remove","disposition":"remove"},
@@ -24,12 +25,13 @@
     {"id":"runtime.codegraph","category":"mcp","sources":["src/codegraph"],"target":"codexy-devtools","disposition":"move"},
     {"id":"runtime.lsp","category":"lsp","sources":["src/lsp"],"target":"codexy-devtools","disposition":"move"},
     {"id":"runtime.entrypoints","category":"mcp","sources":["src/mcp.rs","src/bin/codexy-mcp-codegraph.rs","src/bin/codexy-mcp-lsp.rs"],"target":"codexy-devtools","disposition":"move"},
+    {"id":"runtime.repository","category":"packaging","sources":["src/version","src/bin/codexy-activate-runtime.rs","src/bin/codexy-fake-lsp.rs","src/bin/codexy-fixture-probe.rs","src/bin/codexy-session-audit.rs","src/bin/codexy-session-audit","src/bin/codexy-sync-version.rs","src/bin/codexy-validate.rs"],"target":"repository-only","disposition":"split"},
     {"id":"assets.repository","category":"assets","sources":["assets"],"target":"repository-only","disposition":"retain"},
     {"id":"assets.plugin","category":"assets","sources":["plugins/codexy/assets"],"target":"codexy","disposition":"retain"},
     {"id":"repository.governance","category":"validators","sources":["scripts","src/validation","tests"],"target":"repository-only","disposition":"retain"},
     {"id":"repository.workflows","category":"workflows","sources":[".github/workflows"],"target":"repository-only","disposition":"retain"},
-    {"id":"repository.packaging","category":"packaging","sources":["Cargo.toml","Cargo.lock","rust-toolchain.toml","rustfmt.toml","clippy.toml","packages/getcodexy/pyproject.toml","plugins/codexy/runtime-release.json",".agents/plugins/marketplace.json",".agents/plugins/release-publish-contract.json",".agents/plugins/runtime-activation.json"],"target":"repository-only","disposition":"split"},
-    {"id":"public.core","category":"public-entrypoints","sources":["plugins/codexy/.codex-plugin/plugin.json","plugins/codexy/agents/openai.yaml"],"target":"codexy","disposition":"retain"},
+    {"id":"repository.packaging","category":"packaging","sources":["Cargo.toml","Cargo.lock","rust-toolchain.toml","rustfmt.toml","clippy.toml","packages/getcodexy","plugins/codexy/runtime-release.json",".agents/plugins/marketplace.json",".agents/plugins/release-publish-contract.json",".agents/plugins/runtime-activation.json"],"target":"repository-only","disposition":"split"},
+    {"id":"public.core","category":"public-entrypoints","sources":["plugins/codexy/.codex-plugin/plugin.json","plugins/codexy/agents/openai.yaml","plugins/codexy/bootstrap-codexy-agents","plugins/codexy/check-codexy-agents"],"target":"codexy","disposition":"retain"},
     {"id":"public.repository","category":"public-entrypoints","sources":["README.md","README.ko.md"],"target":"repository-only","disposition":"retain"}
   ]
 }
