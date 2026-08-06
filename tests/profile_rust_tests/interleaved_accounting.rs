@@ -70,7 +70,7 @@ assert_no_inference("target boundary", (
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 from profile_rust_receipts import SCHEMA, load, write
-from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets
+from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets, platform_counts
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -106,9 +106,19 @@ if "workload_receipt" not in profiler_source or "listed_digest" not in profiler_
 head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
 targets = sorted(module.declared_test_targets(repository))
+authoritative_counts = platform_counts(repository)
+if authoritative_counts != {"posix": 2065, "windows": 1948}:
+    raise SystemExit(f"unexpected authoritative platform counts: {authoritative_counts!r}")
+for invalid_inventory in ({}, {"schema": "codexy.rust-shard.inventory/v1", "platform_counts": {"posix": 2065}}):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory); (root / "scripts").mkdir()
+        (root / "scripts" / "profile_rust_shard_inventory.json").write_text(__import__("json").dumps(invalid_inventory))
+        try: platform_counts(root)
+        except ValueError: pass
+        else: raise SystemExit(f"invalid authoritative inventory accepted: {invalid_inventory!r}")
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2065), ("windows", 1948)):
+    for platform, count in authoritative_counts.items():
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
@@ -120,6 +130,16 @@ def check(label, mutate, expected):
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
         for index, value in enumerate(rows): write(root / f"{index}.json", value)
         if aggregate(root, repository) != expected: raise SystemExit(label)
+def rehash(value):
+    observed = Counter(value["tests"])
+    value["digest"] = __import__("profile_rust_receipts").digest(observed)
+    value["listed_digest"] = __import__("profile_rust_receipts").digest(observed)
+def one_short(rows):
+    rows[0]["tests"].pop()
+    rehash(rows[0])
+def one_extra(rows):
+    rows[-1]["tests"].append("suite_archive::authoritative_inventory_extra")
+    rehash(rows[-1])
 check("complete 14 receipt set", lambda rows: None, 0)
 with tempfile.TemporaryDirectory() as directory:
     root = pathlib.Path(directory); rows = receipt_set(root)[:7]
@@ -132,7 +152,7 @@ for label, mutate in (
     ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
-    ("pending", lambda rows: rows[0].update(state="PENDING")), ("wrong count", lambda rows: rows[0]["tests"].pop()),
+    ("pending", lambda rows: rows[0].update(state="PENDING")), ("one short", one_short), ("one extra", one_extra),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),

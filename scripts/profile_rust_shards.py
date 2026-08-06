@@ -32,7 +32,8 @@ SPECS = tuple(
 SHARDS = {spec.name: spec.argv for spec in SPECS}
 CANONICAL = {f"suite_{name}": "suite_all" for name in SHARDS if name != "archive"}
 CANONICAL["suite_archive"] = "suite_archive"
-PLATFORM_COUNTS = {"posix": 2065, "windows": 1948}
+INVENTORY_FILE = "profile_rust_shard_inventory.json"
+INVENTORY_SCHEMA = "codexy.rust-shard.inventory/v1"
 TOPOLOGY_AUTHORITY = "PR #516 maintainer authority supersedes only #526's monolithic-all-targets and no-shard topology clauses; every other #526 constraint remains binding."
 
 
@@ -42,14 +43,26 @@ def shard_spec(name: str | None) -> WorkloadSpec | None:
     return next((spec for spec in SPECS if spec.name == name), None)
 
 
+def platform_counts(root: Path) -> dict[str, int]:
+    try:
+        inventory = json.loads((root / "scripts" / INVENTORY_FILE).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid Rust shard inventory: {error}") from error
+    counts = inventory.get("platform_counts") if isinstance(inventory, dict) else None
+    if set(inventory) != {"schema", "platform_counts"} or inventory.get("schema") != INVENTORY_SCHEMA or not isinstance(counts, dict) or set(counts) != {"posix", "windows"} or any(not isinstance(count, int) or isinstance(count, bool) or count < 1 for count in counts.values()):
+        raise ValueError("invalid Rust shard inventory")
+    return counts
+
+
 def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> int:
     try:
         receipts = load(directory)
+        counts = platform_counts(root)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"aggregate-receipts\t0\tFAIL\t{error}")
         return 1
     platforms = {item.get("platform") for item in receipts}
-    selected = {"posix"} if platform_only == "posix" else set(PLATFORM_COUNTS)
+    selected = {"posix"} if platform_only == "posix" else set(counts)
     if platform_only not in {None, "posix"}:
         print(f"aggregate-receipts\t0\tFAIL\tlocal platform aggregate must be posix")
         return 1
@@ -73,7 +86,7 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
         targets[platform].update(item.get("physical_targets", []))
     duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
     windows = {platform: max((float(item.get("finished", 0)) for item in receipts if item.get("platform") == platform and valid_timing(item)), default=0) - min((float(item.get("started", 0)) for item in receipts if item.get("platform") == platform and valid_timing(item)), default=0) for platform in selected}
-    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and all(targets[platform] == expected_targets and sum(values.values()) == PLATFORM_COUNTS[platform] and windows[platform] < 300 for platform, values in tests.items()) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and all(targets[platform] == expected_targets and sum(values.values()) == counts[platform] and windows[platform] < 300 for platform, values in tests.items()) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
     for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
