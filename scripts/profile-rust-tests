@@ -42,6 +42,19 @@ def receipt_index_tree(root: Path) -> str:
     return subprocess.check_output(("git", "write-tree"), cwd=root, text=True).strip()
 
 
+def runtime_package_root(root: Path) -> Path:
+    root = root.resolve()
+    nested_runtime = root / "packages" / "codexy-runtime"
+    if nested_runtime.joinpath("Cargo.toml").is_file():
+        return nested_runtime
+    if root.joinpath("Cargo.toml").is_file():
+        return root
+    raise ValueError(
+        "--root must name a Rust package root or a repository containing "
+        "packages/codexy-runtime"
+    )
+
+
 def print_phases(arguments: argparse.Namespace, root: Path, output: str, status: int, phases: dict[str, float | str | Path], total_elapsed: float) -> None:
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")
@@ -69,7 +82,10 @@ def main() -> int:
     parser.add_argument("--aggregate-receipts", type=Path)
     parser.add_argument("--aggregate-platform", choices=("posix", "windows"))
     arguments = parser.parse_args()
-    root = arguments.root.resolve()
+    try:
+        root = runtime_package_root(arguments.root)
+    except ValueError as error:
+        parser.error(str(error))
     if arguments.aggregate_receipts:
         return aggregate(arguments.aggregate_receipts, root, arguments.aggregate_platform)
     spec = shard_spec(arguments.shard) if arguments.shard else None

@@ -14,6 +14,10 @@ pub(super) use gate_fixture::GateFixture;
 mod gate_output;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/root_resolution.rs"]
+mod root_resolution;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/live_output.rs"]
 mod live_output;
 

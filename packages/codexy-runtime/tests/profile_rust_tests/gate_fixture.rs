@@ -4,6 +4,7 @@ use std::process::Command;
 pub(crate) struct GateFixture {
     pub(crate) temp: tempfile::TempDir,
     pub(crate) marker: PathBuf,
+    pub(crate) cwd_marker: PathBuf,
     bin_dir: PathBuf,
     pub(crate) workflow: PathBuf,
 }
@@ -23,11 +24,12 @@ impl GateFixture {
         let bin_dir = temp.path().join("bin");
         std::fs::create_dir(&bin_dir)?;
         let marker = temp.path().join("workloads");
+        let cwd_marker = temp.path().join("workload-cwds");
         let cargo = bin_dir.join("cargo");
         write_executable(
             &cargo,
             &format!(
-                "#!/bin/sh\nif [ \"$1\" = metadata ]; then\n  printf '%s\\n' '{{\"packages\":[{{\"targets\":[{{\"kind\":[\"test\"]}},{{\"kind\":[\"test\"]}}]}}]}}'\n  exit 0\nfi\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\nprintf '%s\\n' 'Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 2.00s'\nprintf '%s\\n' 'test result: ok. {passed} passed; 0 failed; {ignored} ignored; 0 measured; 0 filtered out; finished in 1.00s'\nexit {exit}\n"
+                "#!/bin/sh\nif [ \"$1\" = metadata ]; then\n  printf '%s\\n' '{{\"packages\":[{{\"targets\":[{{\"kind\":[\"test\"]}},{{\"kind\":[\"test\"]}}]}}]}}'\n  exit 0\nfi\nprintf '%s\\n' \"$*\" >> \"$PROFILE_MARKER\"\nprintf '%s\\n' \"$(pwd)\" >> \"$PROFILE_CWD_MARKER\"\nprintf '%s\\n' 'Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 2.00s'\nprintf '%s\\n' 'test result: ok. {passed} passed; 0 failed; {ignored} ignored; 0 measured; 0 filtered out; finished in 1.00s'\nexit {exit}\n"
             ),
         )?;
         let workflow = temp.path().join("rust-test.yml");
@@ -48,6 +50,7 @@ impl GateFixture {
         Ok(Self {
             temp,
             marker,
+            cwd_marker,
             bin_dir,
             workflow,
         })
@@ -57,18 +60,31 @@ impl GateFixture {
         &self,
         environment: &[(&str, &std::ffi::OsStr)],
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_required_windows_job(environment, true)
+        self.run_from_root(codexy_runtime::paths::repository_root(), environment)
+    }
+
+    pub(crate) fn run_from_root(
+        &self,
+        root: &Path,
+        environment: &[(&str, &std::ffi::OsStr)],
+    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        self.run_from_root_with_required_windows_job(root, environment, true)
     }
 
     pub(crate) fn run_without_required_windows_job(
         &self,
         environment: &[(&str, &std::ffi::OsStr)],
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_required_windows_job(environment, false)
+        self.run_from_root_with_required_windows_job(
+            codexy_runtime::paths::repository_root(),
+            environment,
+            false,
+        )
     }
 
-    fn run_with_required_windows_job(
+    fn run_from_root_with_required_windows_job(
         &self,
+        root: &Path,
         environment: &[(&str, &std::ffi::OsStr)],
         include_windows_job: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
@@ -88,10 +104,11 @@ impl GateFixture {
         let mut command = Command::new("python3");
         command
             .arg(codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests"))
-            .args(["--root", codexy_runtime::paths::repository_root().to_str().expect("repository root"), "--workflow-file"])
+            .args(["--root", root.to_str().ok_or("profile root")?, "--workflow-file"])
             .arg(&self.workflow)
             .env("PATH", path)
-            .env("PROFILE_MARKER", &self.marker);
+            .env("PROFILE_MARKER", &self.marker)
+            .env("PROFILE_CWD_MARKER", &self.cwd_marker);
         for (key, value) in environment {
             if *key == "EXTRA_ARGUMENT" {
                 command.arg(value);

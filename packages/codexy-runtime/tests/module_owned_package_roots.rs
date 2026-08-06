@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn repository_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -37,4 +38,26 @@ fn rust_runtime_is_a_module_owned_package_root() {
             .join("packages/getcodexy/pyproject.toml")
             .is_file()
     );
+}
+
+#[test]
+fn runtime_package_has_a_local_readme_and_can_be_packaged() -> Result<(), Box<dyn std::error::Error>> {
+    let repository = repository_root();
+    let manifest = repository.join("packages/codexy-runtime/Cargo.toml");
+    let readme = repository.join("packages/codexy-runtime/README.md");
+
+    assert!(readme.is_file(), "runtime package must own its Cargo README");
+    let output = Command::new("cargo")
+        .args([
+            "package",
+            "--manifest-path",
+            manifest.to_str().ok_or("runtime manifest path")?,
+            "--locked",
+            "--allow-dirty",
+            "--no-verify",
+        ])
+        .current_dir(&repository)
+        .output()?;
+    assert!(output.status.success(), "{output:?}");
+    Ok(())
 }
