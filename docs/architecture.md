@@ -7,6 +7,9 @@ of truth remains the packaged files linked below; being packaged or configured
 does not by itself guarantee that a particular Codex host exposes the surface in
 an already-running session.
 
+The frozen target ownership for the future core, GitHub, and developer-tools
+products is defined in the [three-plugin product boundary](plugin-product-boundary.md).
+
 ## Specialist agents
 
 The packaged catalog lists one TOML file per specialist. The plugin interface in
