@@ -26,10 +26,55 @@ fn touched_loc_rejects_oversized_skill_instruction_files() -> Result<(), Box<dyn
     Ok(())
 }
 
+#[test]
+fn touched_loc_rejects_oversized_repository_skill_instruction_files(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo_root = temp.path().join("repo");
+    copy_fixture(&repo_root)?;
+    init_repo(&repo_root)?;
+
+    let skill_path = repo_root.join(".agents/skills/release-engineering/SKILL.md");
+    let oversized = (0..=250)
+        .map(|index| format!("line {index}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&skill_path, oversized)?;
+
+    let output = validator(&repo_root, "--check-touched-loc", "HEAD")?;
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains(".agents/skills/release-engineering/SKILL.md has 251 lines"));
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_repository_skill_without_prompt_metadata() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo_root = temp.path().join("repo");
+    copy_fixture(&repo_root)?;
+    std::fs::remove_file(repo_root.join(".agents/skills/release-engineering/agents/openai.yaml"))?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .arg("--check")
+        .current_dir(&repo_root)
+        .env("CODEXY_PLUGIN_ROOT", "plugins/codexy")
+        .output()?;
+
+    assert!(!output.status.success());
+    let error = stderr(&output);
+    assert!(error.contains("skill bundle is missing agents/openai.yaml"), "{error}");
+    Ok(())
+}
+
 fn copy_fixture(repo_root: &std::path::Path) -> std::io::Result<()> {
     copy_dir(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
         &repo_root.join("plugins/codexy"),
+    )?;
+    copy_dir(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".agents/skills"),
+        &repo_root.join(".agents/skills"),
     )
 }
 

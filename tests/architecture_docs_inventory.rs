@@ -5,6 +5,8 @@ use crate::support::TestResult;
 
 #[path = "architecture_docs_inventory/mcp_inventory.rs"]
 mod mcp_inventory;
+#[path = "architecture_docs_inventory/repository_skills.rs"]
+mod repository_skills;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Agent {
