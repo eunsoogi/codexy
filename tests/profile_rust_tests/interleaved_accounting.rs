@@ -108,13 +108,20 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 targets = sorted(module.declared_test_targets(repository))
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2060), ("windows", 1943)):
+    for platform, count in (("posix", 2063), ("windows", 1946)):
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
             value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
     return rows
+def refresh_digest(row):
+    value = __import__("profile_rust_receipts").digest(Counter(row["tests"]))
+    row.update(digest=value, listed_digest=value)
+def one_short(rows):
+    rows[0]["tests"].pop(); refresh_digest(rows[0])
+def one_extra(rows):
+    rows[0]["tests"].append(rows[0]["tests"][0]); refresh_digest(rows[0])
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
@@ -132,7 +139,7 @@ for label, mutate in (
     ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
-    ("pending", lambda rows: rows[0].update(state="PENDING")), ("wrong count", lambda rows: rows[0]["tests"].pop()),
+    ("pending", lambda rows: rows[0].update(state="PENDING")), ("one short", one_short), ("one extra", one_extra),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
