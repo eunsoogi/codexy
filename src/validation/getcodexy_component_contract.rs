@@ -62,7 +62,7 @@ fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
             "repository component contract requires the canonical plugins/codexy root".to_owned(),
         );
     }
-    if root != Path::new(env!("CARGO_MANIFEST_DIR")) {
+    if !root.join(".git").exists() || !root.join("packages/getcodexy/pyproject.toml").is_file() {
         return Ok(None);
     }
     Ok(Some(root))

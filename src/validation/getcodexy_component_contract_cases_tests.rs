@@ -86,7 +86,9 @@ fn rejects_inventory_selection_cross_field_drifts() {
             .find(|fixture| fixture["id"] == id)
             .expect("inventory fixture");
         fixture["selection_before"] = json!(["core"]);
-        assert!(check(&fixtures).is_err(), "{id}");
+        fixture["selection_after"] = json!(["core"]);
+        let error = check(&fixtures).expect_err("inventory binding must reject {id}");
+        assert!(error.contains("selection_before"), "{id}: {error}");
     }
 }
 
