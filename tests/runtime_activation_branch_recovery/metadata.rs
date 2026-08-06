@@ -11,14 +11,21 @@ use crate::support::copy_dir;
 pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let plugin = repo.join("plugins/codexy");
     let manifest = fs::read(plugin.join(".codex-plugin/plugin.json"))?;
     fs::remove_dir_all(&plugin)?;
-    copy_dir(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/codexy"),
-        &plugin,
-    )?;
+    copy_dir(root.join("plugins/codexy"), &plugin)?;
     fs::write(plugin.join(".codex-plugin/plugin.json"), manifest)?;
+    for relative in [
+        "docs/getcodexy-component-installation.md",
+        "packages/getcodexy/contracts/component-installation-contract.json",
+        "packages/getcodexy/tests/fixtures/component-installation-cases.json",
+    ] {
+        let target = repo.join(relative);
+        fs::create_dir_all(target.parent().ok_or("component contract parent")?)?;
+        fs::copy(root.join(relative), target)?;
+    }
     Ok(())
 }
 

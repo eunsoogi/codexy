@@ -7,7 +7,7 @@ fn target_summary_recovers_one_interleaved_completed_result()
     let accounting = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("scripts/profile_rust_accounting.py");
     let probe = r#"
-import importlib.util, pathlib, sys, tempfile
+import copy, importlib.util, pathlib, sys, tempfile
 from collections import Counter
 
 path = pathlib.Path(sys.argv[1])
@@ -71,7 +71,7 @@ assert_no_inference("target boundary", (
 ))
 from profile_rust_receipts import SCHEMA, load, write
 from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets, platform_counts
-import contextlib, io
+import contextlib, copy, io
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -132,6 +132,40 @@ def receipt_set(directory):
         if sum(len(value["tests"]) for value in rows if value["platform"] == platform) != count:
             raise SystemExit(f"fixture distribution lost authoritative inventory for {platform}")
     return rows
+def mutate_one_identity(rows, platform, delta):
+    value = next(value for value in rows if value["platform"] == platform)
+    if delta < 0:
+        value["tests"].pop()
+    else:
+        value["tests"].append(f"suite_all::{platform}_identity_extra")
+    tests = Counter(value["tests"])
+    value["digest"] = __import__("profile_rust_receipts").digest(tests)
+    value["listed_digest"] = __import__("profile_rust_receipts").digest(tests)
+def assert_cardinality_only(before, rows, platform, delta):
+    expected = {(platform, shard) for platform in authoritative_counts for shard in SHARDS}
+    found = {(value["platform"], value["shard"]) for value in rows}
+    if len(rows) != len(expected) or found != expected:
+        raise SystemExit(f"receipt topology changed: rows={len(rows)} found={found!r}")
+    changed = []
+    for original, value in zip(before, rows):
+        if original["tests"] != value["tests"]:
+            changed.append((original, value))
+        elif original != value:
+            raise SystemExit(f"non-inventory receipt field changed: {original!r} -> {value!r}")
+    if len(changed) != 1 or changed[0][0]["platform"] != platform:
+        raise SystemExit(f"expected one {platform} canonical-identity mutation: {changed!r}")
+    original, value = changed[0]
+    stable = ("schema", "state", "platform", "shard", "argv", "head", "index_tree", "physical_targets", "elapsed", "started", "finished")
+    if any(original[key] != value[key] for key in stable) or len(value["tests"]) != len(original["tests"]) + delta:
+        raise SystemExit(f"mutation exceeded one canonical identity: {original!r} -> {value!r}")
+    for value in rows:
+        tests = Counter(value["tests"])
+        if value["state"] != "PASS" or value["digest"] != __import__("profile_rust_receipts").digest(tests) or value["listed_digest"] != __import__("profile_rust_receipts").digest(tests):
+            raise SystemExit(f"receipt validity changed: {value!r}")
+    counts = {name: sum(len(value["tests"]) for value in rows if value["platform"] == name) for name in authoritative_counts}
+    expected_counts = dict(authoritative_counts); expected_counts[platform] += delta
+    if counts != expected_counts:
+        raise SystemExit(f"expected only cardinality delta: counts={counts!r} expected={expected_counts!r}")
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
@@ -155,8 +189,17 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
+def check_cardinality_delta(label, platform, delta):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory); rows = receipt_set(root); before = copy.deepcopy(rows); mutate_one_identity(rows, platform, delta)
+        assert_cardinality_only(before, rows, platform, delta)
+        for index, value in enumerate(rows): write(root / f"{index}.json", value)
+        if aggregate(root, repository) != 1: raise SystemExit(label)
+check_cardinality_delta("posix one canonical identity missing", "posix", -1)
+check_cardinality_delta("windows one canonical identity extra", "windows", 1)
 for label, mutate in (
-    ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
+    ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
+    ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
     ("pending", lambda rows: rows[0].update(state="PENDING")), ("one short", one_short), ("one extra", one_extra),
