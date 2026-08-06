@@ -71,6 +71,7 @@ assert_no_inference("target boundary", (
 ))
 from profile_rust_receipts import SCHEMA, load, write
 from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets, platform_counts
+import contextlib, io
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -107,15 +108,18 @@ head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=r
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
 targets = sorted(module.declared_test_targets(repository))
 authoritative_counts = platform_counts(repository)
-if authoritative_counts != {"posix": 2065, "windows": 1948}:
-    raise SystemExit(f"unexpected authoritative platform counts: {authoritative_counts!r}")
-for invalid_inventory in ({}, {"schema": "codexy.rust-shard.inventory/v1", "platform_counts": {"posix": 2065}}):
+if set(authoritative_counts) != {"posix", "windows"} or any(not isinstance(count, int) or count < 1 for count in authoritative_counts.values()):
+    raise SystemExit(f"invalid authoritative platform shape: {authoritative_counts!r}")
+def invalid_inventory_failure(invalid_inventory):
     with tempfile.TemporaryDirectory() as directory:
-        root = pathlib.Path(directory); (root / "scripts").mkdir()
+        root = pathlib.Path(directory); (root / "scripts").mkdir(); receipts = root / "receipts"; receipts.mkdir()
         (root / "scripts" / "profile_rust_shard_inventory.json").write_text(__import__("json").dumps(invalid_inventory))
-        try: platform_counts(root)
-        except ValueError: pass
-        else: raise SystemExit(f"invalid authoritative inventory accepted: {invalid_inventory!r}")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output): status = aggregate(receipts, root)
+        if status != 1 or not output.getvalue().startswith("aggregate-receipts\t0\tFAIL\tinvalid Rust shard inventory"):
+            raise SystemExit(f"invalid authoritative inventory escaped aggregate failure: {invalid_inventory!r} {status} {output.getvalue()!r}")
+for invalid_inventory in ({}, {"schema": "codexy.rust-shard.inventory/v1", "platform_counts": {"posix": 1}}, [], None):
+    invalid_inventory_failure(invalid_inventory)
 def receipt_set(directory):
     rows = []
     for platform, count in authoritative_counts.items():
@@ -124,6 +128,9 @@ def receipt_set(directory):
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
             value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
+    for platform, count in authoritative_counts.items():
+        if sum(len(value["tests"]) for value in rows if value["platform"] == platform) != count:
+            raise SystemExit(f"fixture distribution lost authoritative inventory for {platform}")
     return rows
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:

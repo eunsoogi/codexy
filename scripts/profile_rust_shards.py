@@ -48,7 +48,9 @@ def platform_counts(root: Path) -> dict[str, int]:
         inventory = json.loads((root / "scripts" / INVENTORY_FILE).read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"invalid Rust shard inventory: {error}") from error
-    counts = inventory.get("platform_counts") if isinstance(inventory, dict) else None
+    if not isinstance(inventory, dict):
+        raise ValueError("invalid Rust shard inventory")
+    counts = inventory.get("platform_counts")
     if set(inventory) != {"schema", "platform_counts"} or inventory.get("schema") != INVENTORY_SCHEMA or not isinstance(counts, dict) or set(counts) != {"posix", "windows"} or any(not isinstance(count, int) or isinstance(count, bool) or count < 1 for count in counts.values()):
         raise ValueError("invalid Rust shard inventory")
     return counts
