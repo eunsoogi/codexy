@@ -200,7 +200,7 @@ the three tables above. It rejects omitted or duplicate entries and stale agent
 model or reasoning values. Run it with:
 
 ```sh
-cargo test --test suite_all architecture_docs_inventory
+cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
 The repository's broader plugin validator remains responsible for manifest,

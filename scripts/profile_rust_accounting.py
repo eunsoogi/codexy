@@ -26,7 +26,14 @@ RESULT_COUNTS_PATTERN = re.compile(
 )
 
 
+def runtime_package_root(root: Path) -> Path:
+    """Accept either a runtime package root or its owning repository root."""
+    candidate = root / "packages/codexy-runtime"
+    return candidate if not (root / "Cargo.toml").is_file() and (candidate / "Cargo.toml").is_file() else root
+
+
 def archive_fixture_nested_cargo_build_count(root: Path) -> int:
+    root = runtime_package_root(root)
     helper = root / "tests/support/release_archive.rs"
     try:
         return helper.read_text().count('Command::new("cargo")')
@@ -38,6 +45,7 @@ def archive_fixture_nested_cargo_build_count(root: Path) -> int:
 def listed_test_inventory_from_completed_binaries(
     root: Path, output: str, required_targets: set[str] | None = None
 ) -> tuple[tuple[Counter[str], set[str]], int]:
+    root = runtime_package_root(root)
     tests: Counter[str] = Counter()
     binaries = dict(completed_test_binaries(root, output))
     targets = (required_targets if required_targets is not None else declared_test_targets(root)) | set(binaries)
@@ -64,6 +72,7 @@ def listed_test_inventory_from_completed_binaries(
 
 
 def declared_test_targets(root: Path) -> set[str]:
+    root = runtime_package_root(root)
     manifest = tomllib.loads((root / "Cargo.toml").read_text())
     targets = {"lib"}
     targets.update(path.stem for path in (root / "src/bin").glob("*.rs"))
@@ -76,6 +85,7 @@ def declared_test_target_order(manifest: dict[str, object]) -> tuple[str, ...]:
 
 
 def compiled_test_binary(root: Path, target: str) -> Path | None:
+    root = runtime_package_root(root)
     package = tomllib.loads((root / "Cargo.toml").read_text())["package"]["name"]
     stem = (package if target == "lib" else target).replace("-", "_")
     candidates = [
@@ -87,6 +97,7 @@ def compiled_test_binary(root: Path, target: str) -> Path | None:
 
 
 def completed_test_binaries(root: Path, output: str) -> list[tuple[str, Path]]:
+    root = runtime_package_root(root)
     binaries: list[tuple[str, Path]] = []
     current_target = None
     for line in output.splitlines():

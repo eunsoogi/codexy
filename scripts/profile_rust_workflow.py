@@ -13,7 +13,7 @@ from profile_rust_workflow_context import job_context
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 WINDOWS_PREPARATION = "\n".join(
-    ("rustup toolchain install", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", "cargo fetch --locked", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }")
+    ("rustup toolchain install", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", "cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }")
 )
 WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20

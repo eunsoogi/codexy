@@ -55,7 +55,11 @@ def print_phases(arguments: argparse.Namespace, root: Path, output: str, status:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent / "packages/codexy-runtime",
+    )
     parser.add_argument("--workflow-file", type=Path)
     parser.add_argument("--budget-seconds", type=float, default=BUDGET_SECONDS)
     parser.add_argument("--verify-coverage", action="store_true")
@@ -76,7 +80,12 @@ def main() -> int:
     arguments.verify_coverage = arguments.verify_coverage or arguments.windows or spec is not None
     workload = spec.argv if spec else WORKLOAD
     expected_owned_targets = owned_targets(declared_test_targets(root), spec.name) if spec else None
-    workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
+    repository_root = (
+        root.parent.parent
+        if root.name == "codexy-runtime" and root.parent.name == "packages"
+        else root
+    )
+    workflow = arguments.workflow_file or repository_root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     receipt_path, started_epoch, head, index_tree = (arguments.receipt, time.time(), receipt_head(root), receipt_index_tree(root)) if spec else (None, 0.0, "", "")
     if receipt_path is not None:

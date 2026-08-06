@@ -13,7 +13,7 @@ CHECKOUT = {
         "persist-credentials": "false",
     },
 }
-WINDOWS_SETUP = ({"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"}, {"shell": "pwsh", "run": "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"})
+WINDOWS_SETUP = ({"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"}, {"shell": "pwsh", "run": "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"})
 
 
 def producer(job: dict[str, object], runner: str, timeout: str, command: str, receipt: str) -> bool:
