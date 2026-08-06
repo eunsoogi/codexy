@@ -12,6 +12,8 @@ mod codegraph_protocol;
 mod codegraph_search_bounds;
 #[path = "mcp_stdio/fixtures.rs"]
 mod fixtures;
+#[path = "mcp_stdio/file_uri.rs"]
+mod file_uri;
 #[path = "mcp_stdio/lsp_protocol.rs"]
 mod lsp_protocol;
 #[path = "mcp_stdio/wrapper_runtime.rs"]

@@ -1,4 +1,5 @@
 use super::*;
+use super::file_uri::decode_local_file_uri;
 
 #[test]
 fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
@@ -149,11 +150,21 @@ fn lsp_stdio_separates_repository_path_resolution_from_workspace_root_and_reject
         Path::new(r"D:\codexy\packages\codexy-runtime"),
         Path::new(r"\\?\D:\codexy"),
     ));
-    assert_eq!(
-        captured["rootUri"],
-        format!("file://{}", workspace.display()),
-        "workspaceRoot, not root, must initialize the Rust language server"
-    );
+    let root_uri = captured["rootUri"].as_str().ok_or("captured root URI")?;
+    assert!(same_path_identity(
+        &decode_local_file_uri(root_uri)?,
+        &canonical_workspace,
+    ));
+    assert!(same_path_identity(
+        &decode_local_file_uri("file:///D:/codexy/runtime%20root")?,
+        Path::new(r"D:\codexy\runtime root"),
+    ));
+    assert!(!same_path_identity(
+        &decode_local_file_uri("file:///D:/codexy/runtime%20root")?,
+        Path::new(r"D:\codexy"),
+    ));
+    assert!(decode_local_file_uri("file://D%3A%5Ccodexy").is_err());
+    assert!(decode_local_file_uri("file:///D:/codexy%2").is_err());
 
     let poisoned_capture = repository.path().join("poisoned-capture.json");
     let mut poisoned = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))

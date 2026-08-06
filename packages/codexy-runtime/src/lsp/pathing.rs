@@ -129,7 +129,7 @@ pub(super) fn to_file_uri(file_path: &str) -> Result<String> {
     };
     Ok(format!(
         "file://{}",
-        percent_encode_path(&absolute.display().to_string())
+        percent_encode_path(&file_uri_path(&absolute))
     ))
 }
 
@@ -175,11 +175,21 @@ fn language_for_label(label: &str) -> String {
     .to_owned()
 }
 
+fn file_uri_path(path: &Path) -> String {
+    let path = path.to_string_lossy().replace('\\', "/");
+    let path = path.strip_prefix("//?/").unwrap_or(&path);
+    if path.as_bytes().get(1) == Some(&b':') {
+        format!("/{path}")
+    } else {
+        path.to_owned()
+    }
+}
+
 fn percent_encode_path(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     for byte in input.bytes() {
         match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'_' | b'.' | b'~' => {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b':' | b'/' | b'-' | b'_' | b'.' | b'~' => {
                 output.push(char::from(byte));
             }
             _ => {
