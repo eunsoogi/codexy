@@ -108,7 +108,7 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 targets = sorted(module.declared_test_targets(repository))
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2060), ("windows", 1943)):
+    for platform, count in (("posix", 2082), ("windows", 1965)):
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
@@ -129,7 +129,8 @@ with tempfile.TemporaryDirectory() as directory:
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
 for label, mutate in (
-    ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
+    ("one short", lambda rows: rows.pop()), ("one extra", lambda rows: rows.append(rows[0].copy())),
+    ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
     ("pending", lambda rows: rows[0].update(state="PENDING")), ("wrong count", lambda rows: rows[0]["tests"].pop()),
