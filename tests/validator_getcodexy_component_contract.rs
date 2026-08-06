@@ -54,7 +54,11 @@ fn public_validator_rejects_complete_usage_drift_for_each_command() -> TestResul
             .root()
             .join("packages/getcodexy/contracts/component-installation-contract.json");
         let mut contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
-        contract["commands"][command]["usage"] = serde_json::json!("getcodexy drift [--json]");
+        contract["commands"][command]["usage"] = serde_json::json!(if command == "status" {
+            "getcodexy install COMPONENT [--json]"
+        } else {
+            "getcodexy drift [--json]"
+        });
         fs::write(&contract_path, serde_json::to_string(&contract)?)?;
 
         let output = validate(&fixture.plugin_root())?;

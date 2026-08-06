@@ -37,7 +37,11 @@ fn rejects_complete_usage_drift_for_each_public_command() {
         "bootstrap",
     ] {
         let mut contract = contract();
-        contract["commands"][command]["usage"] = json!("getcodexy drift [--json]");
+        contract["commands"][command]["usage"] = json!(if command == "status" {
+            "getcodexy install COMPONENT [--json]"
+        } else {
+            "getcodexy drift [--json]"
+        });
 
         assert!(check_contract(&contract).is_err(), "{command}");
     }

@@ -231,5 +231,8 @@ fn exact_selection(fixture: &Value, field: &str, expected: &[&str]) -> Result<()
 }
 
 #[cfg(test)]
+#[path = "getcodexy_component_contract_read_fixture_tests.rs"]
+mod read_fixture_tests;
+#[cfg(test)]
 #[path = "getcodexy_component_contract_cases_tests.rs"]
 mod tests;

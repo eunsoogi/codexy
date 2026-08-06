@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use super::super::schema::{array, exact_array_value, exact_map_string, object};
+use super::super::schema::{array, exact_array_value, exact_map_string, object_value};
+
+#[path = "getcodexy_component_contract_read_fixture.rs"]
+mod read_fixture;
 
 pub(super) fn rollback(receipt: &serde_json::Map<String, Value>) -> Result<(), String> {
     if receipt.len() != 11 {
@@ -71,46 +74,27 @@ pub(super) fn statuses(cases: &[Value]) -> Result<(), String> {
             Some("inconsistent-installed-state"),
         ),
     ] {
-        let fixture = case(cases, id)?;
-        exact_map_string(object(fixture, "stdout")?, "command", "status")?;
-        exact_array_value(
-            fixture.get("requested_components"),
-            &[],
-            "requested_components",
-        )?;
-        for field in ["selection_before", "selection_after"] {
-            exact_array_value(fixture.get(field), components, field)?;
-        }
-        status(
-            object(fixture, "stdout")?,
-            state,
-            components,
-            consistency,
-            error,
-        )?;
+        let fixture = read_fixture::read(cases, id, "status", state, components)?;
+        status(fixture.receipt, components, consistency, error)?;
     }
     Ok(())
 }
 
 pub(super) fn doctor(cases: &[Value]) -> Result<(), String> {
-    let fixture = case(cases, "doctor-json")?;
-    exact_map_string(object(fixture, "stdout")?, "command", "doctor")?;
-    exact_array_value(
-        fixture.get("requested_components"),
-        &[],
-        "requested_components",
+    let fixture = read_fixture::read(
+        cases,
+        "doctor-json",
+        "doctor",
+        "present",
+        &["core", "github"],
     )?;
-    for field in ["selection_before", "selection_after"] {
-        exact_array_value(fixture.get(field), &["core", "github"], field)?;
-    }
-    let receipt = object(fixture, "stdout")?;
+    let receipt = fixture.receipt;
     if receipt.len() != 9 {
         return Err("doctor receipt must have the complete doctor shape".to_owned());
     }
     exact_map_string(receipt, "schema", "getcodexy.doctor.v1")?;
     exact_map_string(receipt, "command", "doctor")?;
     exact_map_string(receipt, "outcome", "completed")?;
-    inventory(receipt, "present", &["core", "github"])?;
     exact_map_string(receipt, "inventory_consistency", "consistent")?;
     let readiness = object_value(receipt, "host_readiness")?;
     if readiness.len() != 2 {
@@ -142,7 +126,6 @@ pub(super) fn doctor(cases: &[Value]) -> Result<(), String> {
 
 fn status(
     receipt: &serde_json::Map<String, Value>,
-    state: &str,
     components: &[&str],
     consistency: &str,
     error: Option<&str>,
@@ -153,7 +136,6 @@ fn status(
     exact_map_string(receipt, "schema", "getcodexy.status.v1")?;
     exact_map_string(receipt, "command", "status")?;
     exact_map_string(receipt, "outcome", "completed")?;
-    inventory(receipt, state, components)?;
     exact_map_string(receipt, "inventory_consistency", consistency)?;
     for field in ["selected_components", "installed_components"] {
         exact_array_value(receipt.get(field), components, field)?;
@@ -162,30 +144,6 @@ fn status(
     match error {
         Some(code) => one_error(receipt, code),
         None => empty_errors(receipt),
-    }
-}
-
-fn inventory(
-    receipt: &serde_json::Map<String, Value>,
-    state: &str,
-    components: &[&str],
-) -> Result<(), String> {
-    let inventory = object_value(receipt, "inventory")?;
-    exact_map_string(inventory, "state", state)?;
-    if state == "absent" {
-        if inventory.len() == 1 {
-            Ok(())
-        } else {
-            Err("absent receipt inventory must omit components".to_owned())
-        }
-    } else if inventory.len() == 2 {
-        exact_array_value(
-            inventory.get("components"),
-            components,
-            "inventory.components",
-        )
-    } else {
-        Err("present receipt inventory must have state and components".to_owned())
     }
 }
 
@@ -209,21 +167,4 @@ fn one_error(receipt: &serde_json::Map<String, Value>, code: &str) -> Result<(),
         return Err("read receipt error must have the complete shape".to_owned());
     }
     exact_map_string(error, "code", code)
-}
-
-fn case<'a>(cases: &'a [Value], id: &str) -> Result<&'a Value, String> {
-    cases
-        .iter()
-        .find(|case| case.get("id").and_then(Value::as_str) == Some(id))
-        .ok_or_else(|| format!("fixture {id} is required"))
-}
-
-fn object_value<'a>(
-    value: &'a serde_json::Map<String, Value>,
-    field: &str,
-) -> Result<&'a serde_json::Map<String, Value>, String> {
-    value
-        .get(field)
-        .and_then(Value::as_object)
-        .ok_or_else(|| format!("{field} must be an object"))
 }
