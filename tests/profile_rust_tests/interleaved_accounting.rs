@@ -7,7 +7,7 @@ fn target_summary_recovers_one_interleaved_completed_result()
     let accounting = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("scripts/profile_rust_accounting.py");
     let probe = r#"
-import importlib.util, pathlib, sys, tempfile
+import copy, importlib.util, pathlib, sys, tempfile
 from collections import Counter
 
 path = pathlib.Path(sys.argv[1])
@@ -70,7 +70,7 @@ assert_no_inference("target boundary", (
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 from profile_rust_receipts import SCHEMA, load, write
-from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets
+from profile_rust_shards import PLATFORM_COUNTS, SHARDS, aggregate, canonical_tests, owned_targets
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -108,13 +108,47 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 targets = sorted(module.declared_test_targets(repository))
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2060), ("windows", 1943)):
+    for platform, count in PLATFORM_COUNTS.items():
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
             value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
     return rows
+def mutate_one_identity(rows, platform, delta):
+    value = next(value for value in rows if value["platform"] == platform)
+    if delta < 0:
+        value["tests"].pop()
+    else:
+        value["tests"].append(f"suite_all::{platform}_identity_extra")
+    tests = Counter(value["tests"])
+    value["digest"] = __import__("profile_rust_receipts").digest(tests)
+    value["listed_digest"] = __import__("profile_rust_receipts").digest(tests)
+def assert_cardinality_only(before, rows, platform, delta):
+    expected = {(platform, shard) for platform in PLATFORM_COUNTS for shard in SHARDS}
+    found = {(value["platform"], value["shard"]) for value in rows}
+    if len(rows) != len(expected) or found != expected:
+        raise SystemExit(f"receipt topology changed: rows={len(rows)} found={found!r}")
+    changed = []
+    for original, value in zip(before, rows):
+        if original["tests"] != value["tests"]:
+            changed.append((original, value))
+        elif original != value:
+            raise SystemExit(f"non-inventory receipt field changed: {original!r} -> {value!r}")
+    if len(changed) != 1 or changed[0][0]["platform"] != platform:
+        raise SystemExit(f"expected one {platform} canonical-identity mutation: {changed!r}")
+    original, value = changed[0]
+    stable = ("schema", "state", "platform", "shard", "argv", "head", "index_tree", "physical_targets", "elapsed", "started", "finished")
+    if any(original[key] != value[key] for key in stable) or len(value["tests"]) != len(original["tests"]) + delta:
+        raise SystemExit(f"mutation exceeded one canonical identity: {original!r} -> {value!r}")
+    for value in rows:
+        tests = Counter(value["tests"])
+        if value["state"] != "PASS" or value["digest"] != __import__("profile_rust_receipts").digest(tests) or value["listed_digest"] != __import__("profile_rust_receipts").digest(tests):
+            raise SystemExit(f"receipt validity changed: {value!r}")
+    counts = {name: sum(len(value["tests"]) for value in rows if value["platform"] == name) for name in PLATFORM_COUNTS}
+    expected_counts = dict(PLATFORM_COUNTS); expected_counts[platform] += delta
+    if counts != expected_counts:
+        raise SystemExit(f"expected only cardinality delta: counts={counts!r} expected={expected_counts!r}")
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
@@ -128,8 +162,24 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
+def check_cardinality_delta(label, platform, delta):
+    with tempfile.TemporaryDirectory() as directory:
+        root = pathlib.Path(directory); rows = receipt_set(root); before = copy.deepcopy(rows); mutate_one_identity(rows, platform, delta)
+        assert_cardinality_only(before, rows, platform, delta)
+        for index, value in enumerate(rows): write(root / f"{index}.json", value)
+        if aggregate(root, repository) != 1: raise SystemExit(label)
+        authority = __import__("profile_rust_shards").PLATFORM_COUNTS
+        original_count = authority[platform]
+        try:
+            authority[platform] = original_count + delta
+            if aggregate(root, repository) != 0: raise SystemExit(f"{label} did not fail solely at PLATFORM_COUNTS")
+        finally:
+            authority[platform] = original_count
+check_cardinality_delta("posix one canonical identity missing", "posix", -1)
+check_cardinality_delta("windows one canonical identity extra", "windows", 1)
 for label, mutate in (
-    ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
+    ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
+    ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
     ("pending", lambda rows: rows[0].update(state="PENDING")), ("wrong count", lambda rows: rows[0]["tests"].pop()),
