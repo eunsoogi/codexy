@@ -137,7 +137,18 @@ fn lsp_stdio_separates_repository_path_resolution_from_workspace_root_and_reject
     assert_eq!(payload["status"], "ok");
     let captured: Value = serde_json::from_str(&std::fs::read_to_string(&capture)?)?;
     let canonical_workspace = workspace.canonicalize()?;
-    assert_eq!(captured["cwd"], canonical_workspace.display().to_string());
+    assert!(same_path_identity(
+        Path::new(captured["cwd"].as_str().ok_or("captured cwd")?),
+        &canonical_workspace,
+    ));
+    assert!(same_path_identity(
+        Path::new(r"D:\codexy\packages\codexy-runtime"),
+        Path::new(r"\\?\D:\codexy\packages\codexy-runtime"),
+    ));
+    assert!(!same_path_identity(
+        Path::new(r"D:\codexy\packages\codexy-runtime"),
+        Path::new(r"\\?\D:\codexy"),
+    ));
     assert_eq!(
         captured["rootUri"],
         format!("file://{}", workspace.display()),
@@ -171,4 +182,20 @@ fn lsp_stdio_separates_repository_path_resolution_from_workspace_root_and_reject
     assert_eq!(payload["status"], "error");
     assert!(payload["reason"].as_str().ok_or("error reason")?.contains("FetchWorkspaceError"));
     Ok(())
+}
+
+fn same_path_identity(left: &Path, right: &Path) -> bool {
+    canonical_path_text(left) == canonical_path_text(right)
+}
+
+fn canonical_path_text(path: &Path) -> String {
+    let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let normalized = path.to_string_lossy().replace('\\', "/");
+    let normalized = normalized.strip_prefix("//?/").unwrap_or(&normalized);
+    let is_windows_path = normalized.as_bytes().get(1) == Some(&b':');
+    if is_windows_path {
+        normalized.to_ascii_lowercase()
+    } else {
+        normalized.to_owned()
+    }
 }

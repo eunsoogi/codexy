@@ -43,26 +43,6 @@ fn architecture_inventory_rejects_omissions_duplicates_and_stale_fields() -> Tes
 }
 
 #[test]
-fn documented_cargo_test_command_selects_the_inventory_tests() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
-    if cargo_targets::selection_probe() {
-        return Ok(());
-    }
-    let command = cargo_targets::validate(root, &guide)
-        .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
-    cargo_targets::assert_executes_inventory_tests(root, &command)
-        .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
-    let stale = guide.replacen("--test suite_system", "--test suite_all", 1);
-    assert!(cargo_targets::validate(root, &stale).is_err());
-    let wrong_owner = guide.replacen("--test suite_system", "--test suite_orchestration", 1);
-    let wrong_command = cargo_targets::validate(root, &wrong_owner)
-        .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
-    assert!(cargo_targets::assert_executes_inventory_tests(root, &wrong_command).is_err());
-    Ok(())
-}
-
-#[test]
 fn readmes_link_to_the_public_guide_and_mermaid_workflows_are_present() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;

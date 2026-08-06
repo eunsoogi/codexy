@@ -1,5 +1,7 @@
 use std::{collections::BTreeSet, env, path::Path, process::Command};
 
+use crate::support::TestResult;
+
 const INVENTORY_TESTS: usize = 6;
 const RUNTIME_MANIFEST: &str = "packages/codexy-runtime/Cargo.toml";
 const SELECTION_PROBE: &str = "CODEXY_ARCHITECTURE_INVENTORY_SELECTION_PROBE";
@@ -12,6 +14,27 @@ pub(super) struct DocumentedCommand {
 
 pub(super) fn selection_probe() -> bool {
     env::var_os(SELECTION_PROBE).is_some()
+}
+
+#[test]
+fn documented_cargo_test_command_selects_the_inventory_tests() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
+    if selection_probe() {
+        return Ok(());
+    }
+    let command = validate(root, &guide).map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+    assert_executes_inventory_tests(root, &command)
+        .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+    let stale = guide.replacen("--test suite_system", "--test suite_all", 1);
+    assert!(validate(root, &stale).is_err());
+    let wrong_owner = guide.replacen("--test suite_system", "--test suite_orchestration", 1);
+    let wrong_command = validate(root, &wrong_owner)
+        .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+    assert!(assert_executes_inventory_tests(root, &wrong_command).is_err());
+    assert!(runtime_manifest_path_matches(r"\\?\D:\a\codexy\packages\codexy-runtime\Cargo.toml"));
+    assert!(!runtime_manifest_path_matches(r"D:\a\codexy\packages\getcodexy\pyproject.toml"));
+    Ok(())
 }
 
 pub(super) fn validate(root: &Path, guide: &str) -> Result<DocumentedCommand, String> {
@@ -116,7 +139,9 @@ fn metadata_targets(root: &Path) -> Result<BTreeSet<String>, String> {
         .as_array()
         .and_then(|packages| {
             packages.iter().find(|package| {
-                package["manifest_path"].as_str().is_some_and(|path| path.ends_with(RUNTIME_MANIFEST))
+                package["manifest_path"]
+                    .as_str()
+                    .is_some_and(runtime_manifest_path_matches)
             })
         })
         .ok_or("runtime package metadata is missing")?;
@@ -132,4 +157,12 @@ fn metadata_targets(root: &Path) -> Result<BTreeSet<String>, String> {
         .filter_map(|target| target["name"].as_str().map(str::to_owned))
         .collect::<BTreeSet<_>>();
     Ok(targets)
+}
+
+fn runtime_manifest_path_matches(path: &str) -> bool {
+    let normalized = path.replace('\\', "/");
+    let normalized = normalized.strip_prefix("//?/").unwrap_or(&normalized);
+    normalized
+        .to_ascii_lowercase()
+        .ends_with(&RUNTIME_MANIFEST.to_ascii_lowercase())
 }
