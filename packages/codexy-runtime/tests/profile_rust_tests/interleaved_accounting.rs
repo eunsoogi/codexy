@@ -69,7 +69,7 @@ assert_no_inference("target boundary", (
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 from profile_rust_receipts import SCHEMA, load, write
-from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets
+from profile_rust_shards import PLATFORM_COUNTS, SHARDS, aggregate, canonical_tests, owned_targets
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -105,15 +105,27 @@ if "workload_receipt" not in profiler_source or "listed_digest" not in profiler_
 head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
 targets = sorted(module.declared_test_targets(repository))
+EXPECTED_PLATFORM_COUNTS = {"posix": 2063, "windows": 1946}
+if PLATFORM_COUNTS != EXPECTED_PLATFORM_COUNTS:
+    raise SystemExit(f"platform counts are stale: {PLATFORM_COUNTS!r}")
 def receipt_set(directory):
     rows = []
-    for platform, count in (("posix", 2060), ("windows", 1943)):
+    for platform, count in EXPECTED_PLATFORM_COUNTS.items():
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
             value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
     return rows
+def refresh_digest(row):
+    row["digest"] = __import__("profile_rust_receipts").digest(Counter(row["tests"]))
+    row["listed_digest"] = row["digest"]
+def drop_one_canonical_identity(rows):
+    rows[0]["tests"].pop()
+    refresh_digest(rows[0])
+def add_one_canonical_identity(rows):
+    rows[0]["tests"].append("suite_all::system::cardinality_extra")
+    refresh_digest(rows[0])
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
@@ -127,11 +139,13 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
+check("count minus one", drop_one_canonical_identity, 1)
+check("count plus one", add_one_canonical_identity, 1)
 for label, mutate in (
     ("missing", lambda rows: rows.pop()), ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
-    ("pending", lambda rows: rows[0].update(state="PENDING")), ("wrong count", lambda rows: rows[0]["tests"].pop()),
+    ("pending", lambda rows: rows[0].update(state="PENDING")),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
