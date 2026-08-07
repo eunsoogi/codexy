@@ -7,6 +7,7 @@ import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from profile_rust_accounting import declared_test_targets
 from profile_rust_receipts import digest, load
@@ -87,11 +88,29 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
         tests[platform].update(item_tests)
         targets[platform].update(item.get("physical_targets", []))
     duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
-    windows = {platform: max((float(item.get("finished", 0)) for item in receipts if item.get("platform") == platform and valid_timing(item)), default=0) - min((float(item.get("started", 0)) for item in receipts if item.get("platform") == platform and valid_timing(item)), default=0) for platform in selected}
-    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and all(targets[platform] == expected_targets and sum(values.values()) == counts[platform] and windows[platform] < 300 for platform, values in tests.items()) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and all(targets[platform] == expected_targets and sum(values.values()) == counts[platform] and provenance_windows_within_budget(receipts, platform, valid_timing) for platform, values in tests.items()) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
     for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
+
+
+def provenance_windows_within_budget(receipts: list[dict[str, object]], platform: str, valid_timing: Callable[[dict[str, object]], bool]) -> bool:
+    spans = sorted(
+        (float(item["started"]), float(item["finished"]))
+        for item in receipts
+        if item.get("platform") == platform and valid_timing(item)
+    )
+    if not spans:
+        return False
+    started, finished = spans[0]
+    for next_started, next_finished in spans[1:]:
+        if next_started - finished >= 300:
+            if finished - started >= 300:
+                return False
+            started, finished = next_started, next_finished
+        else:
+            finished = max(finished, next_finished)
+    return finished - started < 300
 
 
 def owned_targets(targets: set[str], shard: str) -> set[str]:

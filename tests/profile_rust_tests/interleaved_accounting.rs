@@ -189,6 +189,16 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
+def mixed_attempts(rows):
+    for index, value in enumerate(rows):
+        if index not in {0, 2, 4, 9, 10}:
+            value["started"] += 3600
+            value["finished"] += 3600
+def mixed_attempt_boundary(rows):
+    mixed_attempts(rows)
+    rows[10]["finished"] = 309
+check("mixed GitHub retry receipt provenance", mixed_attempts, 0)
+check("mixed GitHub retry window 300.000", mixed_attempt_boundary, 1)
 def check_cardinality_delta(label, platform, delta):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); before = copy.deepcopy(rows); mutate_one_identity(rows, platform, delta)
