@@ -93,8 +93,17 @@ def main() -> int:
         root = runtime_package_root(arguments.root)
     except ValueError as error:
         parser.error(str(error))
+    repository_root = (
+        root.parent.parent
+        if root.name == "codexy-runtime" and root.parent.name == "packages"
+        else root
+    )
     if arguments.aggregate_receipts:
-        return aggregate(arguments.aggregate_receipts, root, arguments.aggregate_platform)
+        return aggregate(
+            arguments.aggregate_receipts,
+            repository_root,
+            arguments.aggregate_platform,
+        )
     spec = shard_spec(arguments.shard) if arguments.shard else None
     if arguments.shard and spec is None:
         parser.error("--shard must name a registered workload")
@@ -103,11 +112,6 @@ def main() -> int:
     arguments.verify_coverage = arguments.verify_coverage or arguments.windows or spec is not None
     workload = spec.argv if spec else WORKLOAD
     expected_owned_targets = owned_targets(declared_test_targets(root), spec.name) if spec else None
-    repository_root = (
-        root.parent.parent
-        if root.name == "codexy-runtime" and root.parent.name == "packages"
-        else root
-    )
     workflow = arguments.workflow_file or repository_root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     receipt_path, started_epoch, head, index_tree = (arguments.receipt, time.time(), receipt_head(root), receipt_index_tree(root)) if spec else (None, 0.0, "", "")

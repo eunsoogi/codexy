@@ -1,4 +1,5 @@
 use super::GateFixture;
+use std::process::Command;
 
 #[test]
 fn gate_normalizes_explicit_repository_root_to_the_runtime_package_root(
@@ -25,5 +26,91 @@ fn gate_normalizes_explicit_repository_root_to_the_runtime_package_root(
         String::from_utf8_lossy(&output.stderr).contains("--root must name"),
         "{output:?}"
     );
+    Ok(())
+}
+
+#[test]
+fn aggregate_resolves_the_repository_inventory_from_every_valid_root(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let repository = codexy_runtime::paths::repository_root();
+    let runtime = codexy_runtime::paths::runtime_package_root();
+    let profiler = repository.join("scripts/profile-rust-tests");
+    let probe = r#"
+import contextlib, importlib.util, io, pathlib, subprocess, sys, tempfile
+from collections import Counter
+from importlib.machinery import SourceFileLoader
+
+profiler_path, repository, runtime = map(pathlib.Path, sys.argv[1:])
+sys.path.insert(0, str(profiler_path.parent))
+spec = importlib.util.spec_from_loader("profile_rust_tests", SourceFileLoader("profile_rust_tests", str(profiler_path)))
+profiler = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(profiler)
+from profile_rust_receipts import SCHEMA, digest, write
+from profile_rust_shards import SHARDS, aggregate, owned_targets, platform_counts
+
+head = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
+index_tree = subprocess.check_output(("git", "write-tree"), cwd=repository, text=True).strip()
+targets = profiler.declared_test_targets(runtime)
+counts = platform_counts(repository)
+
+def write_receipts(directory):
+    for platform, count in counts.items():
+        for index, shard in enumerate(SHARDS):
+            size = count // len(SHARDS) + (index < count % len(SHARDS))
+            tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
+            observed = Counter(tests)
+            write(directory / f"{platform}-{shard}.json", {
+                "schema": SCHEMA, "state": "PASS", "platform": platform,
+                "shard": shard, "argv": SHARDS[shard], "head": head,
+                "index_tree": index_tree, "run_id": 1, "run_attempt": 1,
+                "status": 0, "failed": 0, "ignored": 0, "elapsed": 1,
+                "tests": tests, "digest": digest(observed),
+                "listed_digest": digest(observed),
+                "physical_targets": sorted(owned_targets(targets, shard)),
+                "started": index, "finished": index + 1,
+            })
+
+with tempfile.TemporaryDirectory() as temporary:
+    receipts = pathlib.Path(temporary)
+    write_receipts(receipts)
+    for label, root_arguments in (
+        ("default", ()),
+        ("repository", ("--root", str(repository))),
+        ("runtime", ("--root", str(runtime))),
+    ):
+        saved_argv = sys.argv
+        try:
+            sys.argv = [str(profiler_path), "--aggregate-receipts", str(receipts), *root_arguments]
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                status = profiler.main()
+        finally:
+            sys.argv = saved_argv
+        if status != 0 or "aggregate-receipts\t14\tPASS" not in output.getvalue():
+            raise SystemExit(f"{label} aggregate failed: {status} {output.getvalue()!r}")
+    if (runtime / "scripts/profile_rust_shard_inventory.json").exists():
+        raise SystemExit("package-local shard inventory fallback exists")
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        status = aggregate(receipts, runtime)
+    if status != 1 or "invalid Rust shard inventory" not in output.getvalue():
+        raise SystemExit(f"package-local fallback was accepted: {status} {output.getvalue()!r}")
+    unrelated = receipts / "unrelated"
+    unrelated.mkdir()
+    try:
+        profiler.runtime_package_root(unrelated)
+    except ValueError:
+        pass
+    else:
+        raise SystemExit("unrelated root was accepted")
+"#;
+    let output = Command::new("python3")
+        .args(["-c", probe])
+        .arg(profiler)
+        .arg(repository)
+        .arg(runtime)
+        .output()?;
+
+    assert!(output.status.success(), "{output:?}");
     Ok(())
 }
