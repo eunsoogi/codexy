@@ -102,7 +102,7 @@ if "def run_shard" in registry_source or "subprocess.run(" in registry_source:
     raise SystemExit("the shard registry retained a parallel runner")
 if '#526' not in registry_source or "monolithic-all-targets" not in registry_source:
     raise SystemExit("the approved topology supersession is not recorded")
-if "workload_receipt" not in profiler_source or "listed_digest" not in profiler_source:
+if "workload_receipt" not in profiler_source or "listed_digest" not in profiler_source or "GITHUB_RUN_ID" not in profiler_source or "GITHUB_RUN_ATTEMPT" not in profiler_source:
     raise SystemExit("shard receipts are not derived from lifecycle accounting")
 head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
@@ -126,7 +126,7 @@ def receipt_set(directory):
         for index, shard in enumerate(SHARDS):
             size = count // len(SHARDS) + (index < count % len(SHARDS))
             tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
-            value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
+            value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "run_id": 1, "run_attempt": 1, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
     for platform, count in authoritative_counts.items():
         if sum(len(value["tests"]) for value in rows if value["platform"] == platform) != count:
@@ -155,7 +155,7 @@ def assert_cardinality_only(before, rows, platform, delta):
     if len(changed) != 1 or changed[0][0]["platform"] != platform:
         raise SystemExit(f"expected one {platform} canonical-identity mutation: {changed!r}")
     original, value = changed[0]
-    stable = ("schema", "state", "platform", "shard", "argv", "head", "index_tree", "physical_targets", "elapsed", "started", "finished")
+    stable = ("schema", "state", "platform", "shard", "argv", "head", "index_tree", "run_id", "run_attempt", "physical_targets", "elapsed", "started", "finished")
     if any(original[key] != value[key] for key in stable) or len(value["tests"]) != len(original["tests"]) + delta:
         raise SystemExit(f"mutation exceeded one canonical identity: {original!r} -> {value!r}")
     for value in rows:
@@ -189,21 +189,21 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
-def mixed_attempts(rows):
+def same_attempt_gap(rows):
+    for value in rows:
+        if value["platform"] == "posix":
+            value.update(started=0, finished=1, run_attempt=1)
+    last = next(value for value in rows if (value["platform"], value["shard"]) == ("posix", "agent"))
+    last.update(started=301, finished=302, run_attempt=1)
+def real_retries(rows):
     old = {("posix", "support"), ("posix", "child"), ("posix", "governance"), ("windows", "child"), ("windows", "orchestration")}
     for value in rows:
         if (value["platform"], value["shard"]) not in old:
+            value["run_attempt"] = 2
             value["started"] += 3600
             value["finished"] += 3600
-def mixed_attempt_gap(rows, gap):
-    mixed_attempts(rows)
-    old = next(value for value in rows if (value["platform"], value["shard"]) == ("posix", "governance"))
-    replay = next(value for value in rows if (value["platform"], value["shard"]) == ("posix", "agent"))
-    replay["started"] = old["finished"] + gap
-    replay["finished"] = replay["started"] + 1
-check("mixed GitHub retry receipt provenance", mixed_attempts, 0)
-check("mixed GitHub retry gap 300.000 splits provenance", lambda rows: mixed_attempt_gap(rows, 300), 0)
-check("mixed GitHub retry gap 299.999 retains active window", lambda rows: mixed_attempt_gap(rows, 299.999), 1)
+check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
+check("authenticated GitHub retry receipt provenance", real_retries, 0)
 def check_cardinality_delta(label, platform, delta):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); before = copy.deepcopy(rows); mutate_one_identity(rows, platform, delta)
@@ -222,6 +222,10 @@ for label, mutate in (
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
     ("boolean timing", lambda rows: rows[0].update(elapsed=True)),
+    ("missing run ID", lambda rows: rows[0].pop("run_id")), ("mixed run ID", lambda rows: rows[0].update(run_id=2)),
+    ("missing run attempt", lambda rows: rows[0].pop("run_attempt")), ("zero run attempt", lambda rows: rows[0].update(run_attempt=0)),
+    ("boolean run attempt", lambda rows: rows[0].update(run_attempt=True)), ("string run attempt", lambda rows: rows[0].update(run_attempt="2")),
+    ("float run attempt", lambda rows: rows[0].update(run_attempt=1.0)), ("non-finite run attempt", lambda rows: rows[0].update(run_attempt=float("inf"))),
 ): check(label, mutate, 1)
 "#;
     let output = Command::new("python3")
