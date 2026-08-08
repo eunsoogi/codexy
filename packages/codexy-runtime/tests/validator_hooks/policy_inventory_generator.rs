@@ -66,6 +66,38 @@ fn generator_rejects_untrusted_or_incomplete_review_decisions() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn fixture_sources_checked_in_assets_from_repository_root() -> TestResult {
+    let repository = codexy_runtime::paths::repository_root();
+    let runtime = codexy_runtime::paths::runtime_package_root();
+    assert_ne!(repository, runtime.as_path());
+    assert!(repository.join("plugins/codexy/hooks/capability-contract.json").is_file());
+    assert!(repository.join("scripts/generate-hook-policy-inventory").is_file());
+    assert!(!runtime.join("plugins/codexy/hooks/capability-contract.json").exists());
+    assert!(!runtime.join("scripts/generate-hook-policy-inventory").exists());
+
+    let temp = tempfile::tempdir()?;
+    let root = fixture(temp.path())?;
+    assert_eq!(
+        fs::read(root.join("plugins/codexy/hooks/capability-contract.json"))?,
+        fs::read(repository.join("plugins/codexy/hooks/capability-contract.json"))?
+    );
+    assert_eq!(
+        fs::read(root.join("scripts/generate-hook-policy-inventory"))?,
+        fs::read(repository.join("scripts/generate-hook-policy-inventory"))?
+    );
+    Ok(())
+}
+
+#[test]
+fn fixture_missing_generator_does_not_resolve_an_unrelated_executable() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let root = fixture(temp.path())?;
+    fs::remove_file(root.join("scripts/generate-hook-policy-inventory"))?;
+    assert!(!generate(&root, None)?.status.success());
+    Ok(())
+}
+
 fn fixture(base: &Path) -> TestResult<PathBuf> {
     let root = base.join("repository");
     let plugin = root.join("plugins/codexy");
@@ -76,7 +108,7 @@ fn fixture(base: &Path) -> TestResult<PathBuf> {
         plugin.join("skills/fixture/SKILL.md"),
         "# Fixture\n\nThe fixture owner MUST retain the reviewed decision.\n",
     )?;
-    let repository = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let repository = codexy_runtime::paths::repository_root();
     fs::copy(
         repository.join("plugins/codexy/hooks/capability-contract.json"),
         plugin.join("hooks/capability-contract.json"),
