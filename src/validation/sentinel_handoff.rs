@@ -1,6 +1,9 @@
 pub(super) const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 #[path = "sentinel_handoff_result.rs"]
 mod result;
+#[cfg(test)]
+#[path = "sentinel_handoff_result_tests.rs"]
+mod result_tests;
 
 pub(super) fn active_terminal_result_lines(text: &str) -> std::collections::BTreeSet<usize> {
     result::active_terminal_result_lines(text)
@@ -33,9 +36,6 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
                 "Sentinel reviewer changed or duplicated during a non-terminal wait; retain the same reviewer for its natural terminal result".into(),
             ];
         }
-        result::Selection::Unmodeled => super::sentinel_handoff_status::marker_starts(&text)
-            .into_iter()
-            .max_by_key(|(start, _)| *start),
     };
     match status {
         Some((
