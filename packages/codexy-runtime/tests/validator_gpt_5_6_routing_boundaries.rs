@@ -1,0 +1,222 @@
+#[path = "structured_contract.rs"]
+mod structured_contract;
+use crate::support;
+
+use structured_contract::{Contract, Modality, Rule};
+use support::routing_validator::validate;
+
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn validator_rejects_conflicts_appended_to_delivery_policy() -> TestResult {
+    assert_rejected(
+        routing_skill()?.replacen(
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"medium\"`.",
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`\n  and `thinking: \"medium\"`. Root/orchestrator MUST use `gpt-5.6-luna`.",
+            1,
+        ),
+    )
+}
+
+#[test]
+fn validator_rejects_duplicate_recipient_heading_that_masks_conflict() -> TestResult {
+    let skill = routing_skill()?;
+    let start = skill
+        .find("## Recipient Model Routing")
+        .ok_or("recipient heading")?;
+    let end = skill.find("## Read Next").ok_or("read-next heading")?;
+    let duplicate = &skill[start..end];
+    let mutated = skill
+        .replacen(
+            "## Recipient Model Routing",
+            "## Recipient Model Routing\n\n- Root/orchestrator: MUST use `gpt-5.6-luna`.",
+            1,
+        )
+        .replacen("## Read Next", &format!("{duplicate}## Read Next"), 1);
+    assert_rejected(mutated)
+}
+
+#[test]
+fn validator_rejects_duplicate_recipient_heading_after_valid_section() -> TestResult {
+    let skill = routing_skill()?;
+    let start = skill
+        .find("## Recipient Model Routing")
+        .ok_or("recipient routing heading")?;
+    let end = skill.find("## Read Next").ok_or("read next heading")?;
+    let duplicate = skill[start..end].replacen(
+        "## Recipient Model Routing",
+        "## Recipient Model Routing\n\n- Root/orchestrator: MUST use `gpt-5.6-luna`.",
+        1,
+    );
+    let mutated = skill.replacen("## Read Next", &format!("{duplicate}## Read Next"), 1);
+
+    assert_rejected(mutated)
+}
+
+#[test]
+fn validator_rejects_later_child_to_root_wrong_recipient_model() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"`\n  and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/medium",
+    )
+}
+
+#[test]
+fn validator_rejects_later_child_to_root_without_thinking() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"`.",
+        )?,
+        "gpt-5.6-sol/medium",
+    )
+}
+
+#[test]
+fn validator_rejects_later_parent_to_child_without_model() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "- Parent-to-generic-child delivery MUST pass `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-terra/high",
+    )
+}
+
+#[test]
+fn validator_rejects_later_parent_to_child_without_thinking() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "- Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"`.",
+        )?,
+        "gpt-5.6-terra/high",
+    )
+}
+
+#[test]
+fn validator_rejects_numbered_child_to_root_wrong_recipient_model() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "1. child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/medium",
+    )
+}
+
+#[test]
+fn validator_rejects_plain_child_to_root_wrong_recipient_model() -> TestResult {
+    assert_recipient_assignment_rejected(
+        duplicate_recipient_section_with_active_policy(
+            routing_skill()?,
+            "child-to-root delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`.",
+        )?,
+        "gpt-5.6-sol/medium",
+    )
+}
+
+#[test]
+fn validator_rejects_active_policy_after_closed_html_comment() -> TestResult {
+    assert_rejected(routing_skill()?.replacen(
+        "## Read Next",
+        "<!-- historical note --> - Root/orchestrator: MUST use `gpt-5.6-luna`.\n\n## Read Next",
+        1,
+    ))
+}
+
+#[test]
+fn validator_accepts_heading_and_paragraph_after_exact_evidence() -> TestResult {
+    assert_accepted(routing_skill()?.replacen(
+        "## Read Next",
+        "### Context\nThis explanatory paragraph is not routing evidence.\n\n## Read Next",
+        1,
+    ))
+}
+
+#[test]
+fn validator_matches_recipient_heading_with_trailing_spaces() -> TestResult {
+    let section = |model| {
+        format!(
+            "## Recipient Model Routing   \n\n- child-to-root delivery MUST pass `model: \"{model}\"` and `thinking: \"medium\"`.\n\n## Read Next"
+        )
+    };
+    assert_recipient_assignment_rejected(
+        routing_skill()?.replacen("## Read Next", &section("gpt-5.6-terra"), 1),
+        "gpt-5.6-sol/medium",
+    )?;
+    assert_accepted(routing_skill()?.replacen("## Read Next", &section("gpt-5.6-sol"), 1))
+}
+
+fn routing_skill() -> TestResult<String> {
+    Ok(std::fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+    )?)
+}
+
+fn assert_rejected(skill: String) -> TestResult {
+    Contract::markdown(&skill)
+        .assert_rule(
+            Rule::new(
+                "routing.fixture.forbidden-luna-recipient",
+                "root/orchestrator",
+                Modality::Required,
+                &["use"],
+                &[],
+            )
+            .under_heading("recipient model routing"),
+        )
+        .expect("routing fixture must contain the forbidden recipient policy");
+    let errors = validate(skill)?;
+    assert!(
+        !errors.is_empty(),
+        "routing bypass unexpectedly passed"
+    );
+    Ok(())
+}
+
+fn assert_recipient_assignment_rejected(skill: String, expected: &str) -> TestResult {
+    let errors = validate(skill)?;
+    assert!(
+        !errors.is_empty(),
+        "routing bypass unexpectedly passed"
+    );
+    assert!(
+        errors.iter().any(|error| error.contains(expected)),
+        "routing rejection must name {expected}: {errors:#?}"
+    );
+    Ok(())
+}
+
+fn duplicate_recipient_section(skill: String, child_to_root: &str) -> TestResult<String> {
+    duplicate_recipient_section_with_active_policy(skill, &format!("- {child_to_root}"))
+}
+
+fn duplicate_recipient_section_with_active_policy(
+    skill: String,
+    policy: &str,
+) -> TestResult<String> {
+    assert!(
+        skill.find("## Recipient Model Routing").is_some(),
+        "recipient routing heading missing"
+    );
+    assert!(
+        skill.find("## Read Next").is_some(),
+        "read next heading missing"
+    );
+    let duplicate = format!("## Recipient Model Routing\n\n{policy}\n\n");
+    Ok(skill.replacen("## Read Next", &format!("{duplicate}## Read Next"), 1))
+}
+
+fn assert_accepted(skill: String) -> TestResult {
+    let errors = validate(skill)?;
+    assert!(
+        errors.is_empty(),
+        "valid routing policy rejected: {errors:#?}"
+    );
+    Ok(())
+}

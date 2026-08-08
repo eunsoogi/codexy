@@ -193,7 +193,7 @@ def main() -> int:
         rules.append(item)
     enforced = sum(item["decision"] == "enforced" for item in rules)
     reviewed = sum(item["decision"] == "reviewed-exception" for item in rules)
-    test_suites = {key: "tests/suites/all.rs" for key in
+    test_suites = {key: "packages/codexy-runtime/tests/suites/all.rs" for key in
                    ("admission", "inventory", "postcompact", "thread-routing", "topology")}
     payload = {"schema": "codexy.hooks.policy-inventory", "generatedFrom": "skills/**/*.md",
                "capabilityContract": {"schema": contract["schema"], "contentDigest": contract["contentDigest"]},

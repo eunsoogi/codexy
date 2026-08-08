@@ -135,7 +135,7 @@ def render(
 
 - `scripts/sync-plugin-version --check`
 - `scripts/validate-plugin-config --check`
-- `cargo test --locked`
+- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`
 - `git diff --check`
 {readiness_checks}
 

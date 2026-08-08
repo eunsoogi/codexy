@@ -94,12 +94,12 @@ user-facing prompts.
 | Consumer class | Paths | Contract |
 | --- | --- | --- |
 | Host discovery | `.codex-plugin/plugin.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | Discovers packaged and repository-only skill folders and reads frontmatter trigger metadata. |
-| Skill prompt metadata | `skills/*/agents/openai.yaml`, `.agents/skills/*/agents/openai.yaml`, `src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
-| Plugin entry prompt | `agents/openai.yaml`, `tests/validator_prompt_metadata.rs` | Routes users through `$task-classification`, `$codex-orchestration`, and named skill invocations. |
-| Recursive instruction validation | `src/validation/instruction_policy.rs`, `tests/validator_instruction_policy.rs` | Scans skill bodies, prompt metadata, references, and mandatory policy wording. |
-| Path-specific policy validation | `src/validation/instruction_policy/runtime_heartbeat.rs`, `src/validation/instruction_policy/sentinel_scope_policy.rs`, `src/validation/instruction_policy/child_thread_ledger.rs`, `src/validation/instruction_policy/loc_policy/surfaces.rs`, `src/validation/orchestration_routing.rs` | Consumes named orchestration, QA, proof, refactoring, and Git workflow paths. |
-| Inventory and taxonomy tests | `tests/architecture_docs_inventory.rs`, `tests/skill_boundary_taxonomy.rs` | Enforces folder/frontmatter identity, one decision per skill, path stability, and documented boundaries. |
-| Structured contracts | `tests/structured_contract*.rs`, `tests/task_classification_presentation.rs` | Guards prompt fields, skill invocations, and the GFM presentation contract. |
+| Skill prompt metadata | `skills/*/agents/openai.yaml`, `.agents/skills/*/agents/openai.yaml`, `packages/codexy-runtime/src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
+| Plugin entry prompt | `agents/openai.yaml`, `packages/codexy-runtime/tests/validator_prompt_metadata.rs` | Routes users through `$task-classification`, `$codex-orchestration`, and named skill invocations. |
+| Recursive instruction validation | `packages/codexy-runtime/src/validation/instruction_policy.rs`, `packages/codexy-runtime/tests/validator_instruction_policy.rs` | Scans skill bodies, prompt metadata, references, and mandatory policy wording. |
+| Path-specific policy validation | `packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs`, `packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs`, `packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs`, `packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs`, `packages/codexy-runtime/src/validation/orchestration_routing.rs` | Consumes named orchestration, QA, proof, refactoring, and Git workflow paths. |
+| Inventory and taxonomy tests | `packages/codexy-runtime/tests/architecture_docs_inventory.rs`, `packages/codexy-runtime/tests/skill_boundary_taxonomy.rs` | Enforces folder/frontmatter identity, one decision per skill, path stability, and documented boundaries. |
+| Structured contracts | `packages/codexy-runtime/tests/structured_contract*.rs`, `packages/codexy-runtime/tests/task_classification_presentation.rs` | Guards prompt fields, skill invocations, and the GFM presentation contract. |
 | Skill resources | `skills/*/references/**`, `skills/*/templates/**`, cross-skill `$name` links | Supplies detailed workflows and preserves referenced paths without duplicating core skill bodies. |
 
 ## MCP servers
@@ -219,7 +219,7 @@ the three tables above. It rejects omitted or duplicate entries and stale agent
 model or reasoning values. Run it with:
 
 ```sh
-cargo test --test suite_all architecture_docs_inventory
+cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
 The repository's broader plugin validator remains responsible for manifest,

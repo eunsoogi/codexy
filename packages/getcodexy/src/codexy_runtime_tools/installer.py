@@ -127,6 +127,7 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
             str(staged_root),
             "--bin",
             f"codexy-mcp-{config.server}",
+            "codexy-runtime",
         ]
         environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
         completed = subprocess.run(command, check=False, env=environment)

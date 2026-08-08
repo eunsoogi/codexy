@@ -60,6 +60,7 @@ jobs:
             throw "checked out source commit does not match workflow input"
           }
       - name: Build candidate MCP runtimes
+        working-directory: packages/codexy-runtime
         run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
       - name: Smoke platform-local MCP protocols
         if: matrix.platform != 'windows-x86_64'
@@ -90,8 +91,8 @@ jobs:
                   raise SystemExit(f"{binary} tool smoke failed: {responses[2]}")
 
           cases = [
-              {"binary": "target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "Cargo.toml"}},
-              {"binary": "target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}},
+              {"binary": "packages/codexy-runtime/target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "packages/codexy-runtime/Cargo.toml"}},
+              {"binary": "packages/codexy-runtime/target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}},
           ]
           for case in cases:
               smoke(case["binary"], case["name"], case["arguments"])
@@ -101,8 +102,8 @@ jobs:
         shell: pwsh
         run: |
           $cases = @(
-            @{ Binary = "target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "Cargo.toml" } },
-            @{ Binary = "target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
+            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" } },
+            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
           )
           foreach ($case in $cases) {
             $binary = (Resolve-Path -LiteralPath $case.Binary).Path
@@ -146,7 +147,7 @@ jobs:
           for server in lsp codegraph; do
             path="runtime/codexy-mcp-${server}-${PLATFORM}.bin"
             mkdir -p "$(dirname "$path")"
-            cp "target/release/codexy-mcp-${server}" "$path"
+            cp "packages/codexy-runtime/target/release/codexy-mcp-${server}" "$path"
             chmod 755 "$path"
           done
       - name: Package native Windows PE binaries
@@ -157,7 +158,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path runtime | Out-Null
           foreach ($server in @("lsp", "codegraph")) {
-            $source = "target/release/codexy-mcp-$server.exe"
+            $source = "packages/codexy-runtime/target/release/codexy-mcp-$server.exe"
             $destination = "runtime/codexy-mcp-$server-$env:PLATFORM.exe"
             Copy-Item -LiteralPath $source -Destination $destination
             $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]

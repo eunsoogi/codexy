@@ -2,6 +2,7 @@ import hashlib
 import io
 import os
 import json
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -91,7 +92,17 @@ class RuntimeCliTests(unittest.TestCase):
                 mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}, clear=True),
             ):
                 install_git(config, install_root, installed)
-            self.assertIn("--force", cargo.call_args.args[0])
+            command = cargo.call_args.args[0]
+            staged_root = Path(command[command.index("--root") + 1])
+            self.assertEqual(
+                command,
+                [
+                    "/cargo", "install", "--force", "--locked", "--git",
+                    "https://github.com/eunsoogi/codexy", "--rev", "a" * 40,
+                    "--root", str(staged_root), "--bin", "codexy-mcp-lsp",
+                    "codexy-runtime",
+                ],
+            )
             completed = subprocess.run(
                 [str(installed)], check=False, text=True, capture_output=True
             )
