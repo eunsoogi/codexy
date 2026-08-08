@@ -105,6 +105,20 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
 }
 
 #[test]
+fn installed_content_proof_keeps_package_fixtures_and_repository_sources_distinct() -> TestResult {
+    let repository = codexy_runtime::paths::repository_root();
+    let runtime = codexy_runtime::paths::runtime_package_root();
+    assert!(repository.join("plugins/codexy/.codex-plugin/plugin.json").is_file());
+    assert!(runtime.join("tests/fixtures/session-audit/controlled-receipt.json").is_file());
+    assert!(!runtime.join("plugins/codexy/.codex-plugin/plugin.json").exists());
+    assert!(!repository.join("tests/fixtures/session-audit/controlled-receipt.json").exists());
+
+    let receipt = session_fixture("controlled-receipt.json")?;
+    let proof = session_fixture("sanitized-installed-content-equivalence.json")?;
+    digests::assert_current(&receipt, &proof["contentProof"])
+}
+
+#[test]
 fn shared_sha256_digest_matches_the_known_plugin_manifest_digest() -> TestResult {
     let path = codexy_runtime::paths::repository_root()
         .join("plugins/codexy/.codex-plugin/plugin.json");

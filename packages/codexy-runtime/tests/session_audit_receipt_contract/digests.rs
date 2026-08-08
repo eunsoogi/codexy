@@ -3,7 +3,7 @@ use serde_json::Value;
 use super::{PACKAGED_PROOF_PATHS, TestResult, proof_digest, proof_paths, sha256, support};
 
 pub(super) fn assert_current(receipt: &Value, proof: &Value) -> TestResult {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let root = codexy_runtime::paths::repository_root();
     let canonical_text = tempfile::tempdir()?;
     let manifest = canonical_text.path().join("plugin.json");
     support::materialize_lf_text_fixture(

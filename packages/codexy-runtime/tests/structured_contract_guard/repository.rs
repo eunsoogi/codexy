@@ -99,7 +99,7 @@ fn source_at(
     relative: &str,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let output = Command::new("git")
-        .args(["show", &format!("{revision}:{}", baseline_relative(root, relative))])
+        .args(["show", &format!("{revision}:{}", repository_relative(root, relative))])
         .current_dir(root)
         .output()?;
     output
@@ -121,14 +121,6 @@ fn repository_relative(root: &Path, relative: &str) -> String {
                 prefix.join(relative).to_string_lossy().into_owned()
             }
         })
-        .unwrap_or_else(|| relative.to_owned())
-}
-
-fn baseline_relative(root: &Path, relative: &str) -> String {
-    root.strip_prefix(codexy_runtime::paths::repository_root())
-        .ok()
-        .and_then(|prefix| Path::new(relative).strip_prefix(prefix).ok())
-        .map(|path| path.to_string_lossy().into_owned())
         .unwrap_or_else(|| relative.to_owned())
 }
 
