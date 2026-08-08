@@ -8,9 +8,13 @@ mod structured_contract;
 mod structured_contract_artifacts;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
+#[path = "token_quota_containment/goal_guard.rs"]
+mod goal_guard;
 use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+const EXTERNAL_GATE_GOAL_GUARD: &str = "A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains.";
 
 fn orchestration_fixture() -> TestResult<support::InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
@@ -171,14 +175,15 @@ fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
     let original = fs::read_to_string(&path)?;
     fs::write(
         &path,
-        original.replace(
-            "The root/orchestrator MUST NOT retain a persistent long-running goal",
-            "The root/orchestrator MUST retain a persistent long-running goal",
-        ),
+        replace_once(
+            &original,
+            EXTERNAL_GATE_GOAL_GUARD,
+            "A parent or child MAY retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains.",
+        )?,
     )?;
     let missing_guard = support::validator_instruction_policy_file(path)?;
     assert!(!missing_guard.status.success());
-    assert!(support::stderr(&missing_guard).contains("persistent long-running goal"));
+    assert!(support::stderr(&missing_guard).contains("parent or child must retain its active goal and plan"));
 
     fs::write(
         &path,
@@ -188,6 +193,11 @@ fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
     assert!(!legacy_mandate.status.success());
     assert!(support::stderr(&legacy_mandate).contains("autonomous polling"));
     Ok(())
+}
+
+#[test]
+fn token_goal_guard_requires_a_bound_subject_and_lifecycle() -> TestResult {
+    goal_guard::assert_boundaries()
 }
 
 #[test]
@@ -218,4 +228,14 @@ fn audit(input: &std::path::Path) -> TestResult<std::process::Output> {
 
 fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn replace_once(text: &str, from: &str, to: &str) -> TestResult<String> {
+    let (before, after) = text
+        .split_once(from)
+        .ok_or("current external-gate guard must exist exactly once")?;
+    if after.contains(from) {
+        return Err("current external-gate guard must exist exactly once".into());
+    }
+    Ok(format!("{before}{to}{after}"))
 }

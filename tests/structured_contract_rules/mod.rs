@@ -18,7 +18,8 @@ pub(crate) const ORCHESTRATION: &[Rule] = &[
         &["retain"],
         &["active goal", "plan"],
     )
-    .in_lifecycle(&["nonterminal external-gate wait"]),
+    .in_lifecycle(&["nonterminal external-gate wait", "implementation obligation"])
+    .under_heading("event-driven token and quota containment"),
 ];
 
 pub(crate) const HEARTBEAT: &[Rule] = &[
