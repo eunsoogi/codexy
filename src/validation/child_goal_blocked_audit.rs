@@ -1,8 +1,11 @@
 mod parser;
 
+use std::collections::BTreeSet;
+
 use parser::{
-    OrderedEvent, field, has_distinct_values, has_elapsed_minimum, is_blocked_pre_delivery,
-    is_terminal_goal_call, is_terminal_reviewer_result, normalized_lines, ordered_event,
+    OrderedEvent, active_terminal_reviewer_result_lines, field, has_distinct_values,
+    has_elapsed_minimum, is_blocked_pre_delivery, is_terminal_goal_call, normalized_lines,
+    ordered_event,
 };
 
 const NONTERMINAL_PRODUCERS: &[&str] = &[
@@ -14,20 +17,29 @@ const NONTERMINAL_PRODUCERS: &[&str] = &[
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = normalized_lines(evidence);
+    let terminal_result_lines = active_terminal_reviewer_result_lines(evidence);
     let mut errors = Vec::new();
     let mut child_owned = false;
     let mut lane_start = 0;
     for (index, line) in lines.iter().enumerate() {
         if is_lane_boundary(line) {
             if child_owned {
-                errors.extend(check_lane(&lines[lane_start..index]));
+                errors.extend(check_lane(
+                    &lines[lane_start..index],
+                    &terminal_result_lines,
+                    lane_start,
+                ));
             }
             child_owned = is_child_boundary(line);
             lane_start = index;
         }
     }
     if child_owned {
-        errors.extend(check_lane(&lines[lane_start..]));
+        errors.extend(check_lane(
+            &lines[lane_start..],
+            &terminal_result_lines,
+            lane_start,
+        ));
     }
     errors
 }
@@ -41,8 +53,12 @@ fn is_child_boundary(line: &str) -> bool {
         || line.starts_with("owner decision: affirmative child-owned")
 }
 
-fn check_lane(lines: &[String]) -> Vec<String> {
-    let mut errors = check_wait_handoffs(lines);
+fn check_lane(
+    lines: &[String],
+    terminal_result_lines: &BTreeSet<usize>,
+    offset: usize,
+) -> Vec<String> {
+    let mut errors = check_wait_handoffs(lines, terminal_result_lines, offset);
     for (call_index, line) in lines.iter().enumerate() {
         if ordered_event(line) == OrderedEvent::BlockedCall {
             errors.extend(check_blocked_call(lines, call_index));
@@ -142,7 +158,11 @@ fn valid_pre_mutation(
         && field(line, "cancellation") == Some("absent")
 }
 
-fn check_wait_handoffs(lines: &[String]) -> Vec<String> {
+fn check_wait_handoffs(
+    lines: &[String],
+    terminal_result_lines: &BTreeSet<usize>,
+    offset: usize,
+) -> Vec<String> {
     lines
         .iter()
         .enumerate()
@@ -157,17 +177,26 @@ fn check_wait_handoffs(lines: &[String]) -> Vec<String> {
                 || field(line, "plan state") != Some("active")
                 || field(line, "goal transition") != Some("none")
                 || field(line, "return control") != Some("confirmed")
-                || terminal_goal_precedes_reviewer_result(&lines[index + 1..]))
+                || terminal_goal_precedes_reviewer_result(
+                    &lines[index + 1..],
+                    terminal_result_lines,
+                    offset + index + 1,
+                ))
             .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before a terminal reviewer result, and confirmed return control".into())
         })
         .collect()
 }
 
-fn terminal_goal_precedes_reviewer_result(lines: &[String]) -> bool {
+fn terminal_goal_precedes_reviewer_result(
+    lines: &[String],
+    terminal_result_lines: &BTreeSet<usize>,
+    offset: usize,
+) -> bool {
     lines
         .iter()
-        .take_while(|line| !is_terminal_reviewer_result(line))
-        .any(|line| is_terminal_goal_call(line))
+        .enumerate()
+        .take_while(|(index, _)| !terminal_result_lines.contains(&(offset + index)))
+        .any(|(_, line)| is_terminal_goal_call(line))
 }
 
 fn invalid_field(value: Option<&str>) -> bool {

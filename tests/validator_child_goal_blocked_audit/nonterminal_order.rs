@@ -14,6 +14,21 @@ pub(super) fn assert_boundaries() -> TestResult {
             assert!(output.status.success(), "terminal {result} recovery rejected: {}", String::from_utf8_lossy(&output.stderr));
         }
     }
+    for inactive in [
+        "```text\nSentinel result: {result}\n```\n",
+        "> Sentinel result: {result}\n",
+        "## Historical example\nSentinel result: {result}\n",
+    ] {
+        for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
+            for call in ["update_goal(complete)", "update_goal(blocked)"] {
+                let result = inactive.replace("{result}", result);
+                assert_rejected(&format!(
+                    "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{result}{}",
+                    transition(call)
+                ))?;
+            }
+        }
+    }
     for evidence in [
         format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}"),
         format!("{CLASSIFICATION}{GOAL_CONTEXT}{}{}", transition("update_goal(complete)"), WAIT),

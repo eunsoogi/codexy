@@ -42,15 +42,8 @@ pub(super) fn is_terminal_goal_call(line: &str) -> bool {
         .is_some_and(super::super::child_terminal_handoff::is_terminal_goal_call)
 }
 
-pub(super) fn is_terminal_reviewer_result(line: &str) -> bool {
-    super::super::sentinel_handoff_status::marker_starts(line)
-        .iter()
-        .any(|(_, state)| {
-            matches!(
-                state,
-                super::super::sentinel_handoff_status::SentinelState::Terminal(_)
-            )
-        })
+pub(super) fn active_terminal_reviewer_result_lines(evidence: &str) -> BTreeSet<usize> {
+    super::super::sentinel_handoff::active_terminal_result_lines(&evidence.to_ascii_lowercase())
 }
 
 pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {

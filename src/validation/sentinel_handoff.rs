@@ -2,6 +2,10 @@ pub(super) const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 #[path = "sentinel_handoff_result.rs"]
 mod result;
 
+pub(super) fn active_terminal_result_lines(text: &str) -> std::collections::BTreeSet<usize> {
+    result::active_terminal_result_lines(text)
+}
+
 const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate|reviewer-gate";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|parent-handoff-ready|parent handoff ready|pr-ready|pr ready|pr is ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|pull request is ready|parent can merge|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
 const LOCAL_NEGATION_WORDS: &str = "no|not|without|never|isn't|aren't|wasn't|hasn't|haven't|didn't|doesn't|don't|can't|cannot|won't";

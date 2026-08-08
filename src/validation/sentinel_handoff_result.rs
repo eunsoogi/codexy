@@ -1,4 +1,5 @@
 use super::super::sentinel_handoff_status::{SentinelState, TerminalStatus};
+use std::collections::BTreeSet;
 
 pub(super) enum Selection {
     Modeled(Option<(usize, SentinelState)>),
@@ -38,6 +39,29 @@ pub(super) fn select(text: &str) -> Selection {
             .last()
             .map(|unit| (unit.start + unit.status_offset, unit.status)),
     )
+}
+
+pub(super) fn active_terminal_result_lines(text: &str) -> BTreeSet<usize> {
+    let mut end = 0;
+    text.split_inclusive('\n')
+        .enumerate()
+        .filter_map(|(line, fragment)| {
+            end += fragment.len();
+            terminal_result_on_last_active_line(&text[..end]).then_some(line)
+        })
+        .collect()
+}
+
+fn terminal_result_on_last_active_line(text: &str) -> bool {
+    let current = super::super::readiness_context::current_text(text);
+    let current = current.trim_end_matches('\n');
+    let last_line = current.rfind('\n').map_or(0, |index| index + 1);
+    segments(&current).into_iter().any(|(start, segment)| {
+        start >= last_line
+            && active(&current, start, segment)
+            && status(segment)
+                .is_some_and(|(status, _)| matches!(status, SentinelState::Terminal(_)))
+    })
 }
 
 fn units(text: &str) -> Vec<Unit> {
