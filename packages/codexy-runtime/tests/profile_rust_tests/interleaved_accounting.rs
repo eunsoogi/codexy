@@ -109,6 +109,12 @@ targets = sorted(module.declared_test_targets(repository))
 authoritative_counts = platform_counts(repository)
 if set(authoritative_counts) != {"posix", "windows"} or any(not isinstance(count, int) or count < 1 for count in authoritative_counts.values()):
     raise SystemExit(f"invalid authoritative platform shape: {authoritative_counts!r}")
+expected_integrated_counts = {"posix": 2115, "windows": 1996}
+if authoritative_counts != expected_integrated_counts:
+    raise SystemExit(
+        f"integrated cardinality authority drift: "
+        f"{authoritative_counts!r} != {expected_integrated_counts!r}"
+    )
 def invalid_inventory_failure(invalid_inventory):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); (root / "scripts").mkdir(); receipts = root / "receipts"; receipts.mkdir()
