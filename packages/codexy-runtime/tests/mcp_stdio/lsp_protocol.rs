@@ -1,5 +1,6 @@
 use super::*;
 use super::file_uri::decode_local_file_uri;
+use super::fixture_gate::StderrPublicationGate;
 
 #[test]
 fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
@@ -12,6 +13,7 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
     let mut client = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
         .env("CODEXY_LSP_ALLOW_COMMAND_OVERRIDE", "1")
         .env("CODEXY_FAKE_LSP_PULL_DIAGNOSTICS", "1")
+        .env("CODEXY_FAKE_LSP_STDERR", "ordinary fixture diagnostic")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -43,6 +45,10 @@ fn lsp_stdio_reports_status_diagnostics_and_unmatched_extensions()
             .ok_or("text")?,
     )?;
     assert_eq!(diagnostics_payload["status"], "ok");
+    assert!(diagnostics_payload["stderr"]
+        .as_str()
+        .ok_or("diagnostics stderr")?
+        .contains("ordinary fixture diagnostic"));
     let unmatched = client.send(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
         "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":"sample.unknown"}}
@@ -167,10 +173,18 @@ fn lsp_stdio_separates_repository_path_resolution_from_workspace_root_and_reject
     assert!(decode_local_file_uri("file:///D:/codexy%2").is_err());
 
     let poisoned_capture = repository.path().join("poisoned-capture.json");
+    let fixture_sync = tempfile::tempdir()?;
+    let mut stderr_gate = StderrPublicationGate::new()?;
     let mut poisoned = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
         .env("CODEXY_LSP_ALLOW_COMMAND_OVERRIDE", "1")
         .env("CODEXY_FAKE_LSP_CAPTURE", poisoned_capture)
         .env("CODEXY_FAKE_LSP_STDERR", "FetchWorkspaceError: failed to find any projects")
+        .env("CODEXY_FAKE_LSP_SYNC_DIR", fixture_sync.path())
+        .env("CODEXY_TEST_STDERR_GATE_ADDR", stderr_gate.reader_address()?)
+        .env(
+            "CODEXY_TEST_STDERR_SHUTDOWN_GATE_ADDR",
+            stderr_gate.shutdown_address()?,
+        )
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -187,6 +201,15 @@ fn lsp_stdio_separates_repository_path_resolution_from_workspace_root_and_reject
             "timeoutMs":5000
         }}
     }))?;
+    stderr_gate.complete()?;
+    assert_eq!(
+        std::fs::read(fixture_sync.path().join("stderr-flushed"))?,
+        b"ready"
+    );
+    assert_eq!(
+        std::fs::read(fixture_sync.path().join("shutdown-observed"))?,
+        b"ready"
+    );
     let payload: Value = serde_json::from_str(
         response["result"]["content"][0]["text"].as_str().ok_or("poisoned diagnostics text")?,
     )?;

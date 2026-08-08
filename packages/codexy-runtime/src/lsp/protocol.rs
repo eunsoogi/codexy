@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use crate::lsp::config::Server;
 use crate::lsp::pathing::WorkspaceRoot;
 use crate::lsp::session::LspSession;
+use crate::lsp::session_io::{ensure_workspace_ready, stderr_text};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum LspMethod {
@@ -33,7 +34,14 @@ impl LspRequest {
         let output = session.run(self);
         let shutdown = session.shutdown();
         match (output, shutdown) {
-            (Ok(value), _) => Ok(value),
+            (Ok(mut value), Ok(())) => {
+                if value.get("status").and_then(Value::as_str) == Some("ok") {
+                    ensure_workspace_ready(&session.stderr)?;
+                    value["stderr"] = Value::String(stderr_text(&session.stderr));
+                }
+                Ok(value)
+            }
+            (Ok(value), Err(_)) => Ok(value),
             (Err(error), Ok(())) => Err(error),
             (Err(error), Err(shutdown_error)) => Err(error.context(shutdown_error.to_string())),
         }

@@ -2,6 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{self, Receiver};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context as _, Result, bail};
@@ -12,7 +13,6 @@ use crate::lsp::protocol::{LspMethod, LspRequest, error_result, supports_pull_di
 use crate::lsp::server_requests::server_request_response;
 use crate::lsp::session_diagnostics::{has_publish_diagnostics, target_diagnostics};
 use crate::lsp::session_io::{SharedStderr, spawn_stderr_reader, spawn_stdout_reader, stderr_text};
-
 const POLL_MS: u64 = 10;
 
 #[derive(Debug)]
@@ -20,7 +20,8 @@ pub(super) struct LspSession {
     child: Child,
     stdin: ChildStdin,
     rx: Receiver<Value>,
-    stderr: SharedStderr,
+    pub(super) stderr: SharedStderr,
+    stderr_reader: Option<JoinHandle<()>>,
     next_id: i64,
     notifications: Vec<Value>,
 }
@@ -56,12 +57,13 @@ impl LspSession {
         let (tx, rx) = mpsc::channel();
         let stderr_buffer = SharedStderr::default();
         spawn_stdout_reader(stdout, tx, &stderr_buffer);
-        spawn_stderr_reader(stderr, &stderr_buffer);
+        let stderr_reader = spawn_stderr_reader(stderr, &stderr_buffer);
         Ok(Self {
             child,
             stdin,
             rx,
             stderr: stderr_buffer,
+            stderr_reader: Some(stderr_reader),
             next_id: 1,
             notifications: Vec::new(),
         })
@@ -92,7 +94,7 @@ impl LspSession {
             request.timeout_ms,
         )?;
         if let Some(error) = initialize.get("error") {
-            return Ok(error_result(request, error, &self.stderr_text()));
+            return Ok(error_result(request, error, &stderr_text(&self.stderr)));
         }
         self.notification("initialized", &json!({}))?;
         self.notification(
@@ -118,14 +120,11 @@ impl LspSession {
                 request.timeout_ms,
             )?;
             if let Some(error) = response.get("error") {
-                return Ok(error_result(request, error, &self.stderr_text()));
+                return Ok(error_result(request, error, &stderr_text(&self.stderr)));
             }
             result = response.get("result").cloned().unwrap_or(Value::Null);
         }
-        let stderr = self.stderr_text();
-        if stderr.contains("FetchWorkspaceError") {
-            bail!("LSP workspace initialization failed: {stderr}");
-        }
+        let stderr = stderr_text(&self.stderr);
         Ok(json!({
             "status": "ok",
             "path": request.file_path,
@@ -139,11 +138,30 @@ impl LspSession {
     pub(super) fn shutdown(&mut self) -> Result<()> {
         let _ = self.request("shutdown", &Value::Null, 300);
         let _ = self.notification("exit", &Value::Null);
+        let child_result = self.terminate_child();
+        let stderr_result = self.join_stderr_reader();
+        match (child_result, stderr_result) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
+            (Err(error), Err(stderr_error)) => Err(error.context(stderr_error.to_string())),
+        }
+    }
+
+    fn terminate_child(&mut self) -> Result<()> {
         if self.child.try_wait()?.is_none() {
             let _ = self.child.kill();
-            let _ = self.child.wait();
+            self.child.wait().context("wait for LSP server")?;
         }
         Ok(())
+    }
+
+    fn join_stderr_reader(&mut self) -> Result<()> {
+        let Some(reader) = self.stderr_reader.take() else {
+            return Ok(());
+        };
+        reader
+            .join()
+            .map_err(|_| anyhow::anyhow!("LSP stderr reader panicked"))
     }
 
     fn request(&mut self, method: &str, params: &Value, timeout_ms: u64) -> Result<Value> {
@@ -228,9 +246,5 @@ impl LspSession {
             bail!("LSP server exited before response: {status}");
         }
         Ok(())
-    }
-
-    fn stderr_text(&self) -> String {
-        stderr_text(&self.stderr)
     }
 }
