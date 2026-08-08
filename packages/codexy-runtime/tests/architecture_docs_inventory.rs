@@ -9,6 +9,8 @@ mod mcp_inventory;
 mod cargo_targets;
 #[path = "architecture_docs_inventory/repository_skills.rs"]
 mod repository_skills;
+#[path = "architecture_docs_inventory/module_roots.rs"]
+mod module_roots;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Agent {
