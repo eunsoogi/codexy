@@ -18,7 +18,7 @@
     "changedFiles": [
       {
         "path": "skills/codex-orchestration/references/execution-budget.md",
-        "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+        "sha256": "898abda05c0dfb9faa946095baff925c3108549a7fcff6ae0dc4926d48906888"
       },
       {
         "path": "skills/token-efficient-orchestration/SKILL.md",
@@ -36,7 +36,7 @@
       "sourceChangedFiles": [
         {
           "path": "skills/codex-orchestration/references/execution-budget.md",
-          "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+          "sha256": "898abda05c0dfb9faa946095baff925c3108549a7fcff6ae0dc4926d48906888"
         },
         {
           "path": "skills/token-efficient-orchestration/SKILL.md",
@@ -50,7 +50,7 @@
       "installedChangedFiles": [
         {
           "path": "skills/codex-orchestration/references/execution-budget.md",
-          "sha256": "812aec9faa24b02186e9e4156b926ecdb5abea54c105a4442b7a9e1980d75d0d"
+          "sha256": "898abda05c0dfb9faa946095baff925c3108549a7fcff6ae0dc4926d48906888"
         },
         {
           "path": "skills/token-efficient-orchestration/SKILL.md",
