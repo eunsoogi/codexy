@@ -159,18 +159,19 @@ fn contains(text: &str, needle: &str) -> bool {
     text.to_ascii_lowercase().contains(needle)
 }
 fn reviewer_or_run_history(text: &str) -> bool {
-    let words: Vec<_> = words(text).collect();
-    words.iter().enumerate().any(|(index, word)| {
-        ["prior", "previous", "earlier", "old", "initial"].contains(word)
-            && words[index + 1..]
+    let tokens: Vec<_> = identifier_tokens(text).collect();
+    tokens.iter().enumerate().any(|(index, token)| {
+        ["prior", "previous", "earlier", "old", "initial"].contains(token)
+            && tokens[index + 1..]
                 .iter()
                 .take(2)
-                .any(|candidate| ["sentinel", "reviewer", "run"].contains(candidate))
+                .any(|candidate| reviewer_or_run_qualifier(candidate))
     })
 }
-fn words(text: &str) -> impl Iterator<Item = &str> {
-    text.split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|word| !word.is_empty())
+fn reviewer_or_run_qualifier(token: &str) -> bool {
+    ["sentinel", "reviewer", "run"].contains(&token)
+        || token.ends_with("-sentinel")
+        || token.starts_with("reviewer-")
 }
 fn identifier_tokens(text: &str) -> impl Iterator<Item = &str> {
     text.split(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')

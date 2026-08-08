@@ -179,6 +179,49 @@ fn validator_preserves_complete_reviewer_identifier_tokens() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_keeps_history_keyword_identifiers_in_live_continuity() -> TestResult {
+    for prior in [
+        "",
+        "Previous Packaged Sentinel Ada: UNOBSERVABLE on a prior run",
+        "Packaged Sentinel Ada: UNOBSERVABLE after a prior run",
+    ] {
+        let replacement = format!(
+            "{prior}, then Sentinel Old-Reviewer-1 timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+        );
+        let output = handoff(&replacement, false)?;
+        assert!(
+            !output.status.success(),
+            "history-like identifier content must not hide live Old-Reviewer-1: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("changed or duplicated")
+        );
+
+        let distinct = format!(
+            "{prior}, then Sentinel Old-Reviewer-1 timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Old-Reviewer-2: PASS on current head {HEAD}"
+        );
+        let output = handoff(&distinct, false)?;
+        assert!(
+            !output.status.success(),
+            "complete Old reviewer identifiers must remain distinct: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let same = format!(
+            "{prior}, then Sentinel Old-Reviewer-1 timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Old-Reviewer-1: PASS on current head {HEAD}"
+        );
+        let output = handoff(&same, false)?;
+        assert!(
+            output.status.success(),
+            "identical Old reviewer identifiers must remain continuous: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn handoff(status: &str, fallback: bool) -> TestResult<std::process::Output> {
     let approval = fallback
         .then_some(" Maintainer explicitly approved fallback for this Sentinel run.")
