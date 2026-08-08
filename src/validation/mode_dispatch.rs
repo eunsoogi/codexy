@@ -3,9 +3,9 @@ use std::path::Path;
 use anyhow::{Result, bail};
 
 use super::{
-    Mode, child_goal_reporting, child_lane_ownership, completion_handoff, conventional_commit,
-    getcodexy_component_contract, github_labels, hooks, instruction_policy, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, orchestration_routing,
+    Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
+    conventional_commit, getcodexy_component_contract, github_labels, hooks, instruction_policy,
+    issue_intake, lsp, manifest, mcp, merge_authorization, merge_message, orchestration_routing,
     review_response_cluster, roles, runtime, touched_loc, workflow_profiles,
 };
 
@@ -66,6 +66,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             let mut errors = child_lane_ownership::check(&evidence);
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(child_goal_reporting::check(&evidence));
+            errors.extend(child_goal_blocked_audit::check(&evidence));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

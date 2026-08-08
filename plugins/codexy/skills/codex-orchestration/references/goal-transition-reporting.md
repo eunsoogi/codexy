@@ -75,6 +75,29 @@ It MUST preserve the lane instead of transitioning.
 It MUST NOT perform the stop/archive/blocked transition when delivery is
 unavailable.
 
+## Blocked Goal Audit
+
+`update_goal(blocked)` is reserved for a genuine execution impasse. Before its
+pre-delivery receipt, the child MUST record one typed `Blocked goal audit:` with
+an audit id; at least three distinct material observation ids and distinct state
+fingerprints; first and observed monotonic milliseconds; a positive minimum
+interval satisfied by the elapsed time; `producer state=none` or
+`producer state=terminal-failure`; `safe action=unavailable`; and
+`wake route=unavailable`. A live `sentinel-running`, `child-pending`,
+`ci-queued`, or `connector-review-pending` producer is nonterminal and MUST NOT
+lead to a blocked call.
+
+Immediately before the blocked call, the child MUST record a final `Blocked goal
+pre-mutation check:` with the audit id, the pre-delivery and current parent
+direction versions, and `cancellation=absent`. A changed direction version or
+received cancellation MUST prevent the mutation. The static validator MUST
+reject a blocked call without this audit or check.
+
+A child that is only waiting MUST use `Nonterminal wait handoff:` with a stable
+state fingerprint, nonterminal producer, wake route, `ownership=retained`,
+`goal transition=none`, and `return control=confirmed`; it MUST NOT call
+`update_goal(complete)` or `update_goal(blocked)` for that wait.
+
 ## Static Recovery Shapes
 
 Static validator fixtures MUST cover representative handoff shapes: #360 and

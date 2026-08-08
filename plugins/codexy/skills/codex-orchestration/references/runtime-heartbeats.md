@@ -32,6 +32,11 @@ terminal child result, a Sentinel verdict, a new HEAD, a GitHub check-state chan
 actionable review feedback, review-thread resolution, or an explicit user/parent
 message. The prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message.
 
+A live Sentinel, pending child, queued CI, or pending connector review is a
+nonterminal producer. The owner MUST preserve ownership through a nonterminal
+wait handoff and MUST use its event route rather than declaring an execution
+impasse. Only an unavailable wake route may contribute to a blocked-goal audit.
+
 ## Goal And Terminal Lifecycle
 
 A successfully registered heartbeat is runtime-owned waiting. The owner MUST end its active goal and plan before waiting. The owner MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat; it MAY keep a goal only while an implementation obligation remains. A qualifying event MUST start a fresh short-lived execution goal and plan, and the awakened owner MUST consume the event in the same turn and MUST delete or disable the heartbeat when no further observation is required. It MUST record the resulting lifecycle state in the compact lane delta.

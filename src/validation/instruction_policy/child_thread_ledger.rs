@@ -60,6 +60,9 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "no full agent-tree listing",
                 "parent or child must not retain an active goal or plan during an external-gate wait",
                 "child external-gate wait must end its active goal and plan before waiting",
+                "child must use one nonterminal wait handoff",
+                "goal transition=none",
+                "must not call update_goal(complete) or update_goal(blocked) merely for that wait",
                 "inspect archive candidates and the active reservation ledger",
                 "may archive only terminal, unreferenced, clean and unreserved worktree lanes with no open pr or pending gate",
                 "must not archive pr owners or dirty/reserved candidates",
@@ -95,6 +98,16 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             &[
                 "must keep polling and keep the goal active",
                 "child external-gate wait must retain active goal and plan",
+            ],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must not complete a goal for an external-gate wait",
+            &[
+                "only an external gate remains, the child must send exactly one terminal parent handoff, call `update_goal(complete)`",
+                "child with only an external gate remaining must call update_goal(complete) before waiting",
             ],
         );
         reject_all(

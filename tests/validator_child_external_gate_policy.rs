@@ -100,6 +100,24 @@ fn validator_rejects_stale_external_gate_goal_retention() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_external_gate_completion_policy() -> TestResult {
+    let fixture = plugin_fixture()?;
+    let (path, original) = reset_orchestration_file(&fixture)?;
+    fs::write(
+        &path,
+        format!(
+            "{}\nA child with only an external gate remaining MUST call update_goal(complete) before waiting.\n",
+            original
+        ),
+    )?;
+
+    let output = support::validator_instruction_policy_file(fixture.path())?;
+    assert!(!output.status.success());
+    assert!(support::stderr(&output).contains("must not complete a goal for an external-gate wait"));
+    Ok(())
+}
+
+#[test]
 fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> TestResult {
     let fixture = plugin_fixture()?;
     let (path, original) = reset_orchestration_file(&fixture)?;

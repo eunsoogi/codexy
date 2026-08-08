@@ -1,6 +1,7 @@
 mod agent_model_contract;
 mod agent_registration;
 mod agent_registration_catalog;
+mod child_goal_blocked_audit;
 mod child_goal_reporting;
 mod child_handoff_readiness;
 mod child_handoff_readiness_claims;
