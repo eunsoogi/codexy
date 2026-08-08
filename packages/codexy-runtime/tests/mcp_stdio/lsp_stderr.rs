@@ -30,10 +30,10 @@ fn lsp_stdio_rejects_a_workspace_error_inside_the_display_tail()
 -> Result<(), Box<dyn std::error::Error>> {
     let payload = diagnostics_payload(Some("FetchWorkspaceError: fixture workspace failure"), 0)?;
     assert_eq!(payload["status"], "error");
-    assert!(payload["reason"]
-        .as_str()
-        .ok_or("workspace error reason")?
-        .contains("FetchWorkspaceError"));
+    assert_eq!(
+        payload["reason"].as_str().ok_or("workspace error reason")?,
+        "LSP workspace initialization failed: FetchWorkspaceError: fixture workspace failure\n"
+    );
     Ok(())
 }
 

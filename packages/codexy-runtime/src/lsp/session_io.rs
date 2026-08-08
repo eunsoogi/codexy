@@ -53,6 +53,9 @@ pub(super) fn ensure_workspace_ready(buffer: &SharedStderr) -> Result<()> {
         return Ok(());
     };
     if state.workspace_error_seen {
+        if state.display.contains(WORKSPACE_ERROR) {
+            bail!("LSP workspace initialization failed: {}", state.display);
+        }
         bail!(
             "LSP workspace initialization failed: {WORKSPACE_ERROR}: {}",
             state.display
@@ -153,5 +156,21 @@ fn observe_workspace_error(state: &mut StderrState, text: &str) {
     if state.workspace_error_probe.len() > retained {
         let start = state.workspace_error_probe.len() - retained;
         state.workspace_error_probe.drain(..start);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_a_workspace_error_split_across_stderr_chunks() {
+        let stderr = SharedStderr::default();
+        append_stderr(&stderr, "FetchWork");
+        append_stderr(&stderr, "spaceError: split fixture");
+        assert_eq!(
+            ensure_workspace_ready(&stderr).unwrap_err().to_string(),
+            "LSP workspace initialization failed: FetchWorkspaceError: split fixture"
+        );
     }
 }
