@@ -8,6 +8,7 @@ test "$(git rev-parse HEAD)" = "${SOURCE_COMMIT:?}"
 root=dist/candidate/plugins/codexy
 mkdir -p dist/candidate/plugins
 rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ "$root/"
+rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
 for platform in darwin-arm64 linux-x86_64; do
   for server in lsp codegraph; do

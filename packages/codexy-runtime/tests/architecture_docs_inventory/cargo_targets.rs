@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, env, path::Path, process::Command};
 
 use crate::support::TestResult;
 
-const INVENTORY_TESTS: usize = 6;
+const INVENTORY_TESTS: usize = 7;
 const RUNTIME_MANIFEST: &str = "packages/codexy-runtime/Cargo.toml";
 const SELECTION_PROBE: &str = "CODEXY_ARCHITECTURE_INVENTORY_SELECTION_PROBE";
 

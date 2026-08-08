@@ -7,6 +7,8 @@ use crate::support::TestResult;
 mod mcp_inventory;
 #[path = "architecture_docs_inventory/cargo_targets.rs"]
 mod cargo_targets;
+#[path = "architecture_docs_inventory/repository_skills.rs"]
+mod repository_skills;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Agent {

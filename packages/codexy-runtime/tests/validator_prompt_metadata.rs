@@ -155,9 +155,8 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
     let qa_prompt =
         std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
-    let release_prompt = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/release-engineering/agents/openai.yaml"),
-    )?;
+    let release_prompt =
+        std::fs::read_to_string(root.join(".agents/skills/release-engineering/agents/openai.yaml"))?;
 
     assert!(classification.contains("name: task-classification"));
     assert!(classification.contains("MUST run this skill first for any Codexy work"));

@@ -1,11 +1,16 @@
 #[path = "../architecture_docs_inventory.rs"]
 mod architecture_docs_inventory;
+#[path = "../plugin_product_boundary_contract.rs"]
+mod plugin_product_boundary_contract;
 
 #[path = "../codegraph_language_regressions.rs"]
 mod codegraph_language_regressions;
 
 #[path = "../codegraph_web_language_regressions.rs"]
 mod codegraph_web_language_regressions;
+
+#[path = "../validator_getcodexy_component_contract.rs"]
+mod validator_getcodexy_component_contract;
 
 #[path = "../integration_target_budget.rs"]
 mod integration_target_budget;

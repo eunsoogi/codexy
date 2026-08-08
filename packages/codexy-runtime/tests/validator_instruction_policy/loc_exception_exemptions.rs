@@ -5,7 +5,6 @@ use crate::support::{instruction_policy_fixture, validator_instruction_policy_fi
 
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
-    "skills/plugin-marketplace-prep/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
 ];

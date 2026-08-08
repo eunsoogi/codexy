@@ -18,6 +18,9 @@ mod mandatory_syntax;
 mod passive_permission;
 #[path = "validator_instruction_policy/sculptor_loc_policy.rs"]
 mod sculptor_loc_policy;
+#[path = "validator_instruction_policy/repository_skills.rs"]
+mod repository_skills;
+pub(super) use repository_skills::copy_repo_fixture;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const MUTABLE_PLUGIN_FILES: &[&str] = &[
     ".codex-plugin/plugin.json",
@@ -27,7 +30,6 @@ const MUTABLE_PLUGIN_FILES: &[&str] = &[
     "agents/openai.yaml",
     "skills/codex-orchestration/agents/openai.yaml",
     "skills/git-workflow/SKILL.md",
-    "skills/plugin-marketplace-prep/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
 ];
@@ -90,7 +92,7 @@ fn validator_cli_allows_tilde_fenced_command_examples() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_root_agents_policy_false_negative() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
+    let (_temp, plugin_root, agents_path) = repository_skills::copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
     support::assert_structured_literals(
         &agents,
@@ -109,7 +111,7 @@ fn validator_cli_rejects_root_agents_policy_false_negative() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_root_agents_bare_use_instruction() -> TestResult {
-    let (_temp, plugin_root, agents_path) = copy_repo_fixture()?;
+    let (_temp, plugin_root, agents_path) = repository_skills::copy_repo_fixture()?;
     let agents = std::fs::read_to_string(&agents_path)?;
     for (required, bare) in ROOT_AGENTS_BARE_CASES {
         support::assert_structured_literals(&agents, "root AGENTS mandatory policy", &[required]);
@@ -229,9 +231,12 @@ fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
         codexy_runtime::paths::repository_root().join("plugins/codexy"),
         &plugin_root,
     )?;
+    support::copy_dir(
+        codexy_runtime::paths::repository_root().join(".agents/skills"),
+        &repo_root.join(".agents/skills"),
+    )?;
     Ok((temp, plugin_root, agents_path))
 }
-
 fn validator(
     plugin_root: &Path,
     mode: &str,

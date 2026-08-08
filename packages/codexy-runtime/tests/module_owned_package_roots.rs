@@ -1,13 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
-fn repository_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .find(|candidate| candidate.join("AGENTS.md").is_file())
-        .map(Path::to_path_buf)
-        .expect("locate repository root")
-}
+fn repository_root() -> &'static Path { codexy_runtime::paths::repository_root() }
 
 #[test]
 fn rust_runtime_is_a_module_owned_package_root() {
