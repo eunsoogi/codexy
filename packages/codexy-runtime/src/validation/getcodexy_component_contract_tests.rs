@@ -4,7 +4,7 @@ use super::{check_contract, validate_contract_root};
 
 fn contract() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../packages/getcodexy/contracts/component-installation-contract.json"
+        "../../../../packages/getcodexy/contracts/component-installation-contract.json"
     ))
     .expect("contract JSON")
 }
@@ -50,7 +50,7 @@ fn rejects_complete_usage_drift_for_each_public_command() {
 #[test]
 fn requires_doctor_and_distinct_status_inventory_fixtures() {
     let mut fixtures: serde_json::Value = serde_json::from_str(include_str!(
-        "../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
+        "../../../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
     ))
     .expect("fixture JSON");
     let cases = fixtures["fixtures"].as_array_mut().expect("fixture cases");
@@ -94,7 +94,7 @@ fn source_contract_root_fails_closed_for_each_missing_artifact() {
             std::fs::write(
                 package.join("contracts/component-installation-contract.json"),
                 include_str!(
-                    "../../packages/getcodexy/contracts/component-installation-contract.json"
+                    "../../../../packages/getcodexy/contracts/component-installation-contract.json"
                 ),
             )
             .expect("contract");
@@ -103,7 +103,7 @@ fn source_contract_root_fails_closed_for_each_missing_artifact() {
             std::fs::write(
                 package.join("tests/fixtures/component-installation-cases.json"),
                 include_str!(
-                    "../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
+                    "../../../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
                 ),
             )
             .expect("fixtures");

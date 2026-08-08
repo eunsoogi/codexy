@@ -217,26 +217,6 @@ fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     )?)
 }
 
-fn copy_repo_fixture() -> TestResult<(tempfile::TempDir, PathBuf, PathBuf)> {
-    let temp = tempfile::tempdir()?;
-    let repo_root = temp.path().join("repo");
-    let plugin_root = repo_root.join("plugins/codexy");
-    let agents_path = repo_root.join("AGENTS.md");
-    std::fs::create_dir_all(repo_root.join("plugins"))?;
-    std::fs::copy(
-        codexy_runtime::paths::repository_root().join("AGENTS.md"),
-        &agents_path,
-    )?;
-    support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
-        &plugin_root,
-    )?;
-    support::copy_dir(
-        codexy_runtime::paths::repository_root().join(".agents/skills"),
-        &repo_root.join(".agents/skills"),
-    )?;
-    Ok((temp, plugin_root, agents_path))
-}
 fn validator(
     plugin_root: &Path,
     mode: &str,

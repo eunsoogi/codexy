@@ -4,7 +4,7 @@ use super::check;
 
 fn fixtures() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
+        "../../../../packages/getcodexy/tests/fixtures/component-installation-cases.json"
     ))
     .expect("fixture JSON")
 }
