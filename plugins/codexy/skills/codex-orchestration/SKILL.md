@@ -98,7 +98,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST use
   `$token-efficient-orchestration` for preserving all proof gates while
   carrying only current deltas.
@@ -199,11 +199,10 @@ completion, or parent acceptance. The parent may verify the evidence, but it
 MUST NOT replace the owning lane's reviewer pass with parent-only readthrough,
 an arbitrary reviewer, generic review role, or stale reviewer output.
 
-Packaged Sentinel waits MUST end in one explicit lane status: `PASS`, `BLOCK`,
-or `UNOBSERVABLE`. The owning lane MUST bound its wait, MUST report the
-reviewer name and exact head, and MUST keep push/readiness blocked for `BLOCK` or
-`UNOBSERVABLE` unless a maintainer explicitly approves a fallback. A delayed,
-pending, stuck, or unobservable Sentinel MUST NOT be treated as approval.
+Packaged Sentinel terminal results MUST be `PASS`, `BLOCK`, or `UNOBSERVABLE`.
+Non-terminal `PENDING`/`RUNNING` observation and same-reviewer retention MUST
+follow `references/classification-and-control.md`. The owning lane MUST keep
+push/readiness blocked until `PASS` or an explicitly approved terminal fallback.
 The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
 Every BLOCK finding MUST map to an in-scope acceptance criterion.
 Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.

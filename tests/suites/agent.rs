@@ -88,6 +88,9 @@ mod validator_roles;
 #[path = "../validator_sentinel_handoff_current_evidence.rs"]
 mod validator_sentinel_handoff_current_evidence;
 
+#[path = "../validator_sentinel_handoff_result_units.rs"]
+mod validator_sentinel_handoff_result_units;
+
 #[path = "../validator_sentinel_handoff_review_regressions.rs"]
 mod validator_sentinel_handoff_review_regressions;
 
@@ -120,6 +123,9 @@ mod validator_sentinel_reviewer_gate;
 
 #[path = "../validator_sentinel_scope_policy.rs"]
 mod validator_sentinel_scope_policy;
+
+#[path = "../validator_sentinel_scope_policy_nonterminal.rs"]
+mod validator_sentinel_scope_policy_nonterminal;
 #[path = "../validator_sentinel_scope_policy_fixture.rs"]
 mod validator_sentinel_scope_policy_fixture;
 

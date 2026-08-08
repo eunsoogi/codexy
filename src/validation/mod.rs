@@ -116,6 +116,7 @@ mod runtime_release_schema;
 mod sentinel_handoff;
 mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
+mod sentinel_handoff_status;
 mod sentinel_handoff_status_evidence;
 mod touched_loc;
 mod touched_loc_remediation;
