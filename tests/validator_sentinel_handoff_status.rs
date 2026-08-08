@@ -20,6 +20,11 @@ fn validator_rejects_unobservable_sentinel_as_pr_readiness() -> TestResult {
             "unexpected stderr: {}",
             String::from_utf8_lossy(&output.stderr)
         );
+        if handoff.contains("UNOBSERVABLE") {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains("UNOBSERVABLE verdict"), "{stderr}");
+            assert!(!stderr.contains("pending verdict"), "{stderr}");
+        }
     }
     Ok(())
 }
@@ -117,6 +122,7 @@ fn validator_rejects_unobservable_sentinel_as_push_readiness() -> TestResult {
     }
     Ok(())
 }
+
 #[test]
 fn validator_accepts_explicit_sentinel_pass_for_pr_readiness() -> TestResult {
     accept_open_pr_handoff(
@@ -163,10 +169,10 @@ fn validator_accepts_unobservable_sentinel_when_handoff_stops_before_readiness()
     Ok(())
 }
 #[test]
-fn validator_accepts_approved_fallback_for_timed_out_sentinel_readiness() -> TestResult {
+fn validator_accepts_approved_fallback_for_terminal_sentinel_readiness() -> TestResult {
     for handoff in [
-        "PR ready for parent handoff. Sentinel timed out after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
-        "PR ready for parent handoff. Sentinel timed out after bounded wait on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this timed-out Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel: UNOBSERVABLE after terminal tool failure on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this unobservable Sentinel run. Pushed: yes.\n",
+        "PR ready for parent handoff. Sentinel verdict: UNOBSERVABLE after terminal reviewer failure on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for this Sentinel run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for current reviewer gate run. Pushed: yes.\n",
         "PR ready for parent handoff. Sentinel: BLOCK on current head 32b03a210b3defb2d29dd352283ea2488e60d893. Maintainer explicitly approved fallback for the current Sentinel run. Pushed: yes.\n",

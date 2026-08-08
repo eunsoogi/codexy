@@ -133,7 +133,7 @@ fn is_governed_path(path: &Path) -> bool {
     if path.file_name().and_then(|name| name.to_str()) == Some("AGENTS.md") {
         return true;
     }
-    if path_text.starts_with("plugins/codexy/skills/")
+    if (path_text.starts_with("plugins/codexy/skills/") || path_text.starts_with(".agents/skills/"))
         && path.extension().and_then(|extension| extension.to_str()) == Some("md")
     {
         return true;

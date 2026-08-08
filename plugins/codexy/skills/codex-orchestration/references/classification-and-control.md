@@ -92,10 +92,13 @@ edits.
   MUST run `plugins/codexy/agents/codexy-sentinel.toml` against the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and available evidence.
-- Packaged Sentinel waits MUST end in `PASS`, `BLOCK`, or `UNOBSERVABLE`
-  status. The child MUST keep push/readiness blocked for `BLOCK` or
-  `UNOBSERVABLE`, and MUST NOT treat delayed, pending, stuck, or unobservable
-  Sentinel output as approval without explicit maintainer fallback approval.
+- Packaged Sentinel terminal results MUST be `PASS`, `BLOCK`, or
+  `UNOBSERVABLE`. A bounded wait with no event is a non-terminal `PENDING`
+  observation, and an independently observed live reviewer is `RUNNING`;
+  neither observation is a reviewer verdict or fallback-eligible. The owning
+  lane MUST retain the same reviewer and wait for its natural terminal result.
+  The child MUST NOT interrupt, replace, or duplicate it and MUST keep
+  push/readiness blocked until that result arrives.
 
 ## Completion-Handoff Validation
 

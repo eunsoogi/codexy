@@ -42,6 +42,13 @@ def receipt_index_tree(root: Path) -> str:
     return subprocess.check_output(("git", "write-tree"), cwd=root, text=True).strip()
 
 
+def github_receipt_provenance() -> tuple[int, int]:
+    values = tuple(os.environ.get(name) for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"))
+    if any(value is None or not value.isascii() or not value.isdecimal() or int(value) < 1 for value in values):
+        raise ValueError("GITHUB_RUN_ID and GITHUB_RUN_ATTEMPT must be positive integers")
+    return int(values[0]), int(values[1])
+
+
 def print_phases(arguments: argparse.Namespace, root: Path, output: str, status: int, phases: dict[str, float | str | Path], total_elapsed: float) -> None:
     for name, value in (("child-status", status), ("windows-job-active-zero", phases["windows-job-active-zero"]), ("cargo-root-status", phases["cargo-root-status"]), ("windows-job-pids-json", phases["windows-job-pids-json"]), ("windows-job-images-json", phases["windows-job-images-json"])):
         print(f"{name}\t{value}")
@@ -79,9 +86,13 @@ def main() -> int:
     workflow = arguments.workflow_file or root / ".github/workflows/rust-test.yml"
     enforce_workflow_contract(workflow, REQUIRED_JOB_TIMEOUT_MINUTES, WORKLOAD)
     receipt_path, started_epoch, head, index_tree = (arguments.receipt, time.time(), receipt_head(root), receipt_index_tree(root)) if spec else (None, 0.0, "", "")
+    try:
+        run_id, run_attempt = github_receipt_provenance() if receipt_path is not None else (0, 0)
+    except ValueError as error:
+        parser.error(str(error))
     if receipt_path is not None:
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        write(receipt_path, {"schema": SCHEMA, "state": "PENDING", "shard": spec.name, "platform": "windows" if arguments.windows else "posix", "argv": workload, "head": head, "index_tree": index_tree, "physical_targets": sorted(expected_owned_targets), "started": started_epoch})
+        write(receipt_path, {"schema": SCHEMA, "state": "PENDING", "shard": spec.name, "platform": "windows" if arguments.windows else "posix", "argv": workload, "head": head, "index_tree": index_tree, "run_id": run_id, "run_attempt": run_attempt, "physical_targets": sorted(expected_owned_targets), "started": started_epoch})
     archive_fixture_nested_cargo_builds = archive_fixture_nested_cargo_build_count(root)
     started = time.perf_counter()
     workload_arguments = (root, arguments.budget_seconds, arguments.windows, workload, expected_owned_targets) if spec else ((root, arguments.budget_seconds, True) if arguments.windows else (root, arguments.budget_seconds))
@@ -132,7 +143,7 @@ def main() -> int:
         print("coverage-report-json\t" + json.dumps({"expected_targets": sorted(listed_targets), "observed_targets": sorted(observed_targets), "missing": missing, "duplicates": duplicate, "extra": extra, "inventory_status": inventory_status}, sort_keys=True))
     print(f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
     if receipt_path is not None:
-        receipt = {"schema": SCHEMA, "state": "PASS" if success and elapsed <= 270 else "FAIL", "shard": spec.name, "platform": "windows" if arguments.windows else "posix", "argv": workload, "head": head, "index_tree": index_tree, "status": status, "failed": failed, "ignored": ignored, "elapsed": elapsed, "tests": sorted(observed_tests.elements()), "digest": digest(observed_tests), "listed_digest": digest(expected_tests), "physical_targets": sorted(listed_targets), "started": phases.get("profiler-started-epoch", started_epoch), "finished": time.time(), "workload_receipt": phases.get("workload-receipt-json")}
+        receipt = {"schema": SCHEMA, "state": "PASS" if success and elapsed <= 270 else "FAIL", "shard": spec.name, "platform": "windows" if arguments.windows else "posix", "argv": workload, "head": head, "index_tree": index_tree, "run_id": run_id, "run_attempt": run_attempt, "status": status, "failed": failed, "ignored": ignored, "elapsed": elapsed, "tests": sorted(observed_tests.elements()), "digest": digest(observed_tests), "listed_digest": digest(expected_tests), "physical_targets": sorted(listed_targets), "started": phases.get("profiler-started-epoch", started_epoch), "finished": time.time(), "workload_receipt": phases.get("workload-receipt-json")}
         write(receipt_path, receipt); print(f"shard\t{spec.name}\t{receipt['state']}\t{sum(expected_tests.values())}\t{receipt['digest']}")
         success = success and receipt["state"] == "PASS"
     print(f"result\t{'PASS' if success else 'FAIL'}")
