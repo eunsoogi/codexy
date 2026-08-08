@@ -65,7 +65,7 @@ fn validator_accepts_typed_genuine_impasse_and_nonterminal_wait_handoff() -> Tes
     );
 
     let waiting = run_validator(&format!(
-        "{CLASSIFICATION}Nonterminal wait handoff: state fingerprint=sentinel-417-running; producer state=sentinel-running; wake route=sentinel-event; ownership=retained; goal transition=none; return control=confirmed\n"
+        "{CLASSIFICATION}Nonterminal wait handoff: state fingerprint=sentinel-417-running; producer state=sentinel-running; wake route=sentinel-event; ownership=retained; goal state=active; goal transition=none; return control=confirmed\n"
     ))?;
     assert!(
         waiting.status.success(),
@@ -113,6 +113,7 @@ fn validator_binds_pre_mutation_check_to_delivered_parent_version() -> TestResul
 #[test]
 fn validator_requires_a_complete_nonterminal_wait_handoff() -> TestResult {
     for handoff in [
+        "Nonterminal wait handoff: state fingerprint=sentinel-running; producer state=sentinel-running; wake route=sentinel-event; ownership=retained; goal transition=none; return control=confirmed",
         "Nonterminal wait handoff: producer state=sentinel-running; wake route=sentinel-event; ownership=retained; goal transition=none; return control=confirmed",
         "Nonterminal wait handoff: state fingerprint=sentinel-running; producer state=none; wake route=sentinel-event; ownership=retained; goal transition=none; return control=confirmed",
         "Nonterminal wait handoff: state fingerprint=sentinel-running; producer state=sentinel-running; wake route=unavailable; ownership=retained; goal transition=none; return control=confirmed",
@@ -121,6 +122,52 @@ fn validator_requires_a_complete_nonterminal_wait_handoff() -> TestResult {
         assert!(!output.status.success(), "incomplete wait handoff passed: {handoff}");
         assert!(String::from_utf8_lossy(&output.stderr).contains("nonterminal wait handoff"));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_normalizes_every_blocked_call_and_distinct_identifier() -> TestResult {
+    let status_form = blocked_evidence(valid_audit("none"), valid_pre_mutation())
+        .replace("update_goal(blocked)", "update_goal(status=\"blocked\")");
+    let output = run_validator(&status_form)?;
+    assert!(
+        output.status.success(),
+        "valid status-form blocked event failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    for evidence in [
+        blocked_evidence("", "").replace(
+            "Goal tool call: update_goal(blocked)",
+            "1. - Goal tool call: update_goal(status=\"blocked\")",
+        ),
+        blocked_evidence(
+            "Blocked goal audit: audit id=audit-417; first monotonic ms=1000; observed monotonic ms=61000; minimum interval ms=60000; observation ids=observation-a| observation-a |observation-b; state fingerprints=state-a| state-a |state-b; producer state=none; safe action=unavailable; wake route=unavailable\n",
+            valid_pre_mutation(),
+        ),
+        blocked_evidence(
+            "Blocked goal audit: audit id=audit-417; audit id=audit-duplicate; first monotonic ms=1000; observed monotonic ms=61000; minimum interval ms=60000; observation ids=observation-a|observation-b|observation-c; state fingerprints=state-a|state-b|state-c; producer state=none; producer state=terminal-failure; safe action=unavailable; wake route=unavailable\n",
+            valid_pre_mutation(),
+        ),
+    ] {
+        let output = run_validator(&evidence)?;
+        assert!(!output.status.success(), "malformed blocked event passed");
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_invalidates_a_check_followed_by_parent_direction() -> TestResult {
+    let pre_mutation = format!(
+        "{}Parent direction event: version=direction-2; cancellation=received\n",
+        valid_pre_mutation()
+    );
+    let output = run_validator(&blocked_evidence(valid_audit("none"), &pre_mutation))?;
+    assert!(!output.status.success(), "post-check parent correction passed");
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("cancelled by newer parent direction")
+    );
     Ok(())
 }
 

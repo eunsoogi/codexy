@@ -164,10 +164,10 @@ MUST include:
 - MUST NOT call `update_goal(status="blocked")` merely because child-thread work,
   queued worktree/thread setup, or asynchronous tool
   completion is pending. Once code/proof/push/review-response work is finished and
-  only that external gate remains, the child MUST send exactly one terminal parent
-  handoff, end its active goal and plan, and return control; it MUST NOT poll or
-  retain an active goal during the wait. A qualifying event starts a fresh
-  short-lived execution goal.
+  an external gate remains while implementation obligations are unfinished, the
+  child MUST send one nonterminal wait handoff, retain its active goal, plan, and
+  ownership, and return control; it MUST NOT poll, complete, or block the goal for
+  that wait. A qualifying event resumes the retained goal and plan.
 - MUST NOT accept a non-trivial child implementation handoff as complete when it
   omits actual goal-tool usage, actual todo/plan tool usage, required
   situational multi-agent usage, a concrete not-useful rationale tied to

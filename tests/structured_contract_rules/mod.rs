@@ -12,13 +12,13 @@ pub(crate) const ORCHESTRATION: &[Rule] = &[
     )
     .under_heading("event-driven token and quota containment"),
     Rule::new(
-        "orchestration.external-wait.no-active-goal",
+        "orchestration.external-wait.retain-active-goal",
         "parent or child",
-        Modality::Prohibited,
+        Modality::Required,
         &["retain"],
         &["active goal", "plan"],
     )
-    .in_lifecycle(&["external-gate wait"]),
+    .in_lifecycle(&["nonterminal external-gate wait"]),
 ];
 
 pub(crate) const HEARTBEAT: &[Rule] = &[
@@ -30,13 +30,13 @@ pub(crate) const HEARTBEAT: &[Rule] = &[
         &["thread"],
     ),
     Rule::new(
-        "heartbeat.waiting.no-persistent-goal",
+        "heartbeat.waiting.retain-active-goal",
         "owner",
-        Modality::Prohibited,
-        &["retain", "recreate", "execution goal"],
-        &[],
+        Modality::Required,
+        &["retain"],
+        &["active goal", "plan"],
     )
-    .in_lifecycle(&["registered heartbeat"]),
+    .in_lifecycle(&["implementation obligation"]),
     Rule::new(
         "heartbeat.sentinel.read-only",
         "owner",

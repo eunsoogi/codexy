@@ -93,9 +93,14 @@ direction versions, and `cancellation=absent`. A changed direction version or
 received cancellation MUST prevent the mutation. The static validator MUST
 reject a blocked call without this audit or check.
 
+Every parent correction or cancellation received after a pre-mutation check
+MUST be recorded as `Parent direction event:` with its version and cancellation
+state. That ordered event invalidates the earlier check; the child MUST perform
+a new matching pre-mutation check after the event before any blocked call.
+
 A child that is only waiting MUST use `Nonterminal wait handoff:` with a stable
 state fingerprint, nonterminal producer, wake route, `ownership=retained`,
-`goal transition=none`, and `return control=confirmed`; it MUST NOT call
+`goal state=active`, `goal transition=none`, and `return control=confirmed`; it MUST NOT call
 `update_goal(complete)` or `update_goal(blocked)` for that wait.
 
 ## Static Recovery Shapes

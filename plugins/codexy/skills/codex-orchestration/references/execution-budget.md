@@ -29,5 +29,5 @@ distinct material observations and fingerprints, elapsed monotonic time meeting
 a positive declared minimum, no live producer, no safe action, and no wake
 route. Before mutation, the child MUST compare the latest parent-direction
 version with the pre-delivery version; a newer direction or cancellation MUST
-stop the blocked call. A nonterminal wait handoff MUST retain ownership and
-MUST NOT have a complete or blocked goal transition.
+stop the blocked call. A nonterminal wait handoff MUST retain ownership and an
+active goal state and MUST NOT have a complete or blocked goal transition.
