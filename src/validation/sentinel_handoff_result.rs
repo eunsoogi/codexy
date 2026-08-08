@@ -18,7 +18,7 @@ struct Unit {
 pub(super) fn select(text: &str) -> Selection {
     let units = units(text);
     let current = units.iter().filter(|unit| !unit.prior).collect::<Vec<_>>();
-    if current.len() < 2 && !units.iter().any(|unit| unit.prior) {
+    if current.is_empty() && !units.iter().any(|unit| unit.prior) {
         return Selection::Unmodeled;
     }
     let Some(_) = current.first() else {
@@ -124,14 +124,14 @@ fn push<'a>(text: &'a str, start: usize, end: usize, result: &mut Vec<(usize, &'
 }
 
 fn active(text: &str, start: usize, segment: &str) -> bool {
-    let trimmed = segment.trim_start();
+    let trimmed = super::super::readiness_context::without_container_prefix(segment);
     !trimmed.starts_with(['>', '"', '`', '~'])
         && !trimmed.starts_with("historical")
         && !trimmed.starts_with("example")
         && text[..start]
             .lines()
             .filter(|line| {
-                let line = line.trim_start();
+                let line = super::super::readiness_context::without_container_prefix(line);
                 line.starts_with("```") || line.starts_with("~~~")
             })
             .count()

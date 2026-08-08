@@ -18,6 +18,8 @@ pub(super) fn assert_boundaries() -> TestResult {
         "```text\nSentinel result: {result}\n```\n",
         "> Sentinel result: {result}\n",
         "## Historical example\nSentinel result: {result}\n",
+        "- > Sentinel result: {result}\n",
+        "- ```text\n- Sentinel result: {result}\n- ```\n",
     ] {
         for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
             for call in ["update_goal(complete)", "update_goal(blocked)"] {
