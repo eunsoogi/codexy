@@ -21,6 +21,8 @@ mod graphql_admission;
 mod policy_inventory;
 #[path = "validator_hooks/policy_inventory_contract.rs"]
 mod policy_inventory_contract;
+#[path = "validator_hooks/policy_inventory_generator.rs"]
+mod policy_inventory_generator;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 

@@ -136,6 +136,32 @@ fn structured_rules_reject_conditional_examples_and_contextual_subject_confusion
 }
 
 #[test]
+fn structured_rules_require_an_explicit_owner_for_retained_waiting_goals() {
+    let rule = Rule::new(
+        "token.external-wait.retain-active-goal",
+        "owner",
+        Modality::Required,
+        &["retain"],
+        &["active goal", "plan"],
+    )
+    .in_lifecycle(&["implementation obligation"]);
+    assert!(Contract::markdown(
+        "The owner MUST retain its active goal and plan while an implementation obligation remains."
+    )
+    .assert_rule(rule)
+    .is_ok());
+    assert_eq!(
+        Contract::markdown(
+            "MUST retain its active goal and plan while an implementation obligation remains."
+        )
+        .assert_rule(rule)
+        .unwrap_err()
+        .missing,
+        "subject"
+    );
+}
+
+#[test]
 fn structured_rules_ignore_fenced_examples_and_accept_not_created_lifecycle() {
     let example_rule = Rule::new(
         "delegation.current.helper-prohibition",

@@ -124,6 +124,13 @@ pub(super) fn is_terminal_goal_call(operation: &str) -> bool {
     )
 }
 
+pub(super) fn is_blocked_goal_call(operation: &str) -> bool {
+    matches!(
+        operation,
+        "update_goal(blocked)" | "update_goal(status=\"blocked\")"
+    )
+}
+
 fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
     line.strip_prefix("terminal parent handoff:")
         .is_some_and(|_| {

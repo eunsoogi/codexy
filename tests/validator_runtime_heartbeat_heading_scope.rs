@@ -1,10 +1,10 @@
 use std::{fs, path::Path};
 
 use crate::support;
+#[path = "validator_runtime_heartbeat/lifecycle.rs"]
+mod lifecycle;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
-const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_section(section: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
@@ -12,21 +12,16 @@ fn validate_section(section: &str) -> TestResult<std::process::Output> {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
-    let sentence = format!(
-        "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
-    );
     fs::write(
         &path,
-        original.replace(&sentence, &format!("\n\n{section}")),
+        lifecycle::replace_sentence(&original, &format!("\n\n{section}")),
     )?;
     support::validator_instruction_policy_file(path)
 }
 
 #[test]
 fn conditional_parent_heading_does_not_supply_nested_policy() -> TestResult {
-    let sentence = format!(
-        "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
-    );
+    let sentence = lifecycle::SENTENCE;
     for headings in [
         "## If available\n### Goal lifecycle",
         "If available\n------------\n### Goal lifecycle",
@@ -40,9 +35,7 @@ fn conditional_parent_heading_does_not_supply_nested_policy() -> TestResult {
 
 #[test]
 fn nonconditional_heading_state_and_sibling_reset_remain_valid() -> TestResult {
-    let sentence = format!(
-        "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
-    );
+    let sentence = lifecycle::SENTENCE;
     for section in [
         format!("## Current policy\n### Goal lifecycle\n{sentence}"),
         format!(

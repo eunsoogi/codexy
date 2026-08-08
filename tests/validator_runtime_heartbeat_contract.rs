@@ -20,9 +20,10 @@ const ORCHESTRATION_CLAUSES: &[&str] = &[
     "creation MUST use `destination=\"thread\"`",
     "automation id, target thread, bounded schedule, stable observed-state identity, eligible material events, and terminal delete/disable action",
     "prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message",
-    "MUST end its active goal and plan before waiting",
-    "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
-    "qualifying event MUST start a fresh short-lived execution goal and plan",
+    "The owner MUST retain its active goal and plan while an implementation obligation remains",
+    "goal state=active",
+    "goal transition=none",
+    "A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion",
     "MUST consume the event in the same turn",
     "MUST delete or disable the heartbeat when no further observation is required",
     "MUST record the exact discovery/exposure evidence and use a bounded fallback",
@@ -44,8 +45,8 @@ const TOKEN_CLAUSES: &[&str] = &[
     "bounded schedule, state fingerprint, material-event set, and delete/disable state",
     "MUST suppress unchanged observations",
     "material gate change or an explicit user/parent message",
-    "active goal and plan MUST end before runtime-owned waiting",
-    "qualifying event MUST start a fresh short-lived execution goal and plan",
+    "The owner MUST retain its active goal and plan while an implementation obligation remains",
+    "A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion",
 ];
 
 const EXTERNAL_GATE_CLAUSES: &[&str] = &[
@@ -143,31 +144,24 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
+    let sentence = "The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal.";
     for replacement in [
-        "\n## MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
-        "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat is not required.",
+        "\n## The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal.",
+        "The owner MAY retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal.",
     ] {
-        fs::write(
-            &path,
-            original.replace(
-                "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat",
-                replacement,
-            ),
-        )?;
+        fs::write(&path, original.replace(sentence, replacement))?;
         assert!(
             !support::validator_instruction_policy_file(path)?
                 .status
                 .success()
         );
     }
-
-    let clause = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
     fs::write(
         &path,
         original.replace(
-            clause,
+            sentence,
             &format!(
-                "removed heartbeat policy\n\n## Historical Example\nThis policy was retired. {clause}."
+                    "removed heartbeat policy\n\n## Historical Example\nThis policy was retired. {sentence}"
             ),
         ),
     )?;
@@ -182,9 +176,9 @@ fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
         fs::write(
             &path,
             original.replace(
-                clause,
+                sentence,
                 &format!(
-                    "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## {heading}\n{clause}."
+                    "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## {heading}\n{sentence}"
                 ),
             ),
         )?;
