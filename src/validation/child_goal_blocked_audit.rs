@@ -2,7 +2,7 @@ mod parser;
 
 use parser::{
     OrderedEvent, field, has_distinct_values, has_elapsed_minimum, is_blocked_pre_delivery,
-    normalized_lines, ordered_event,
+    is_terminal_goal_call, is_terminal_reviewer_result, normalized_lines, ordered_event,
 };
 
 const NONTERMINAL_PRODUCERS: &[&str] = &[
@@ -145,19 +145,29 @@ fn valid_pre_mutation(
 fn check_wait_handoffs(lines: &[String]) -> Vec<String> {
     lines
         .iter()
-        .filter(|line| line.starts_with("nonterminal wait handoff:"))
-        .filter_map(|line| {
+        .enumerate()
+        .filter(|(_, line)| line.starts_with("nonterminal wait handoff:"))
+        .filter_map(|(index, line)| {
             (invalid_field(field(line, "state fingerprint"))
                 || !field(line, "producer state")
                     .is_some_and(|value| NONTERMINAL_PRODUCERS.contains(&value))
                 || invalid_wake_route(field(line, "wake route"))
                 || field(line, "ownership") != Some("retained")
                 || field(line, "goal state") != Some("active")
+                || field(line, "plan state") != Some("active")
                 || field(line, "goal transition") != Some("none")
-                || field(line, "return control") != Some("confirmed"))
-            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal state, and no complete/blocked goal mutation".into())
+                || field(line, "return control") != Some("confirmed")
+                || terminal_goal_precedes_reviewer_result(&lines[index + 1..]))
+            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before a terminal reviewer result, and confirmed return control".into())
         })
         .collect()
+}
+
+fn terminal_goal_precedes_reviewer_result(lines: &[String]) -> bool {
+    lines
+        .iter()
+        .take_while(|line| !is_terminal_reviewer_result(line))
+        .any(|line| is_terminal_goal_call(line))
 }
 
 fn invalid_field(value: Option<&str>) -> bool {

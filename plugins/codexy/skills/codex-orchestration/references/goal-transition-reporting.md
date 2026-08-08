@@ -102,8 +102,8 @@ pre-delivery receipt after that event, followed by a matching pre-mutation check
 
 A child that is only waiting MUST use `Nonterminal wait handoff:` with a stable
 state fingerprint, nonterminal producer, wake route, `ownership=retained`,
-`goal state=active`, `goal transition=none`, and `return control=confirmed`; it MUST NOT call
-`update_goal(complete)` or `update_goal(blocked)` for that wait.
+`goal state=active`, `plan state=active`, `goal transition=none`, and `return control=confirmed`; it MUST NOT call
+`update_goal(complete)` or `update_goal(blocked)` for that wait before a same-lane terminal Sentinel PASS, BLOCK, or UNOBSERVABLE result.
 
 ## Static Recovery Shapes
 
