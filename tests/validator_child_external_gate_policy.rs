@@ -23,9 +23,9 @@ fn validator_requires_child_external_gate_and_archive_preflight_policy() -> Test
     let fixture = plugin_fixture()?;
     for (required, replacement, error_fragment) in [
         (
-            "parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
+            "parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
             "A child\n  external-gate wait may discard its active goal",
-            "unfinished implementation obligation must retain its active goal and plan",
+            "parent or child must retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
         ),
         (
             "inspect archive candidates and the active reservation ledger",
@@ -106,8 +106,8 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "A parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
-            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Historical Example\nThis is retained only for historical context.\nA parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
+            "A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
+            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## Historical Example\nThis is retained only for historical context.\nA parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
         ),
     )?;
 
@@ -115,7 +115,7 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     assert!(!required_only_historically.status.success());
     assert!(
         support::stderr(&required_only_historically)
-            .contains("unfinished implementation obligation must retain its active goal and plan")
+            .contains("parent or child must retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains")
     );
 
     fs::write(
@@ -144,25 +144,25 @@ fn validator_ignores_historical_sections_for_required_and_forbidden_policy() -> 
     fs::write(
         &path,
         original.replace(
-            "A parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
-            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## A parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
+            "A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
+            "The root/orchestrator MAY end its goal and plan after dispatch.\n\n## A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
         ),
     )?;
     let heading_only = support::validator_instruction_policy_file(fixture.path())?;
     assert!(!heading_only.status.success());
     assert!(
         support::stderr(&heading_only)
-            .contains("unfinished implementation obligation must retain its active goal and plan")
+            .contains("parent or child must retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains")
     );
 
     for negated_clause in [
-        "A parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait is not required.",
-        "It is not required that a parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait.",
+        "A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains is not required.",
+        "It is not required that a parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains.",
     ] {
         fs::write(
             &path,
             original.replace(
-                "parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
+                "parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
                 negated_clause,
             ),
         )?;

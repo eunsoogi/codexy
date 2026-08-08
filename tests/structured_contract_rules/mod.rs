@@ -48,6 +48,14 @@ pub(crate) const HEARTBEAT: &[Rule] = &[
 
 pub(crate) const TOKEN_CONTAINMENT: &[Rule] = &[
     Rule::new(
+        "token.external-wait.retain-active-goal",
+        "owner",
+        Modality::Required,
+        &["retain"],
+        &["active goal", "plan"],
+    )
+    .in_lifecycle(&["implementation obligation"]),
+    Rule::new(
         "token.runtime-identity.heartbeat-bound",
         "heartbeat route",
         Modality::Required,

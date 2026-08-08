@@ -45,8 +45,8 @@ const TOKEN_CLAUSES: &[&str] = &[
     "bounded schedule, state fingerprint, material-event set, and delete/disable state",
     "MUST suppress unchanged observations",
     "material gate change or an explicit user/parent message",
-    "active goal and plan MUST end before runtime-owned waiting",
-    "qualifying event MUST start a fresh short-lived execution goal and plan",
+    "The owner MUST retain its active goal and plan while an implementation obligation remains",
+    "A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion",
 ];
 
 const EXTERNAL_GATE_CLAUSES: &[&str] = &[

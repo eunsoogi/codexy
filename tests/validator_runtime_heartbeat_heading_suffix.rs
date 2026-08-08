@@ -1,10 +1,11 @@
 use std::{fs, path::Path};
 
 use crate::support;
+#[path = "validator_runtime_heartbeat/lifecycle.rs"]
+mod lifecycle;
+use lifecycle::CLAUSE;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
-const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
@@ -12,7 +13,13 @@ fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
-    fs::write(&path, original.replace(CLAUSE, replacement))?;
+    fs::write(
+        &path,
+        lifecycle::replace_sentence(
+            &original,
+            &replacement.replacen(CLAUSE, lifecycle::SENTENCE, 1),
+        ),
+    )?;
     support::validator_instruction_policy_file(path)
 }
 

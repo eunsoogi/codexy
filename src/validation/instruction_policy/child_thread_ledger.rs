@@ -57,7 +57,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "must not retry the parent message",
                 "no full conversation transfer",
                 "no full agent-tree listing",
-                "parent or child with an unfinished implementation obligation must retain its active goal and plan during a nonterminal external-gate wait",
+                "parent or child must retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
                 "child must use one nonterminal wait handoff",
                 "goal state=active",
                 "goal transition=none",

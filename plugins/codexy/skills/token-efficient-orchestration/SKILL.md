@@ -116,11 +116,7 @@ for a material gate change or an explicit user/parent message. A stable event
 identity MUST deduplicate repeated wakeups before the owner changes its plan.
 The awakened owner MUST consume a material event in the same turn and MUST delete
 or disable its heartbeat when no further observation is required. A successfully
-registered heartbeat is runtime-owned waiting; an execution goal MUST NOT remain
-active solely to preserve it. The active goal and plan MUST end before runtime-owned waiting,
-and a qualifying event MUST start a fresh short-lived execution goal and plan. A live
-packaged Sentinel remains outside heartbeat
-observation and retains its no-poll/no-message boundary.
+registered heartbeat is runtime-owned waiting. The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. A live packaged Sentinel remains outside heartbeat observation and retains its no-poll/no-message boundary.
 
 For repeat handoffs, copy `templates/delta-poll.md` and fill only the current
 slots. MUST keep the template output in the thread or handoff; MUST NOT attach old

@@ -135,8 +135,8 @@ pub(super) const TOKEN: &[&str] = &[
     "bounded schedule, state fingerprint, material-event set, and delete/disable state",
     "MUST suppress unchanged observations",
     "material gate change or an explicit user/parent message",
-    "active goal and plan MUST end before runtime-owned waiting",
-    "qualifying event MUST start a fresh short-lived execution goal and plan",
+    "the owner MUST retain its active goal and plan while an implementation obligation remains",
+    "qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion",
 ];
 
 pub(super) const EXTERNAL_GATE: &[&str] = &[
@@ -144,7 +144,7 @@ pub(super) const EXTERNAL_GATE: &[&str] = &[
     "MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable",
     "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata",
     "MUST follow `references/runtime-heartbeats.md`",
-    "parent or child with an unfinished implementation obligation MUST retain its active goal and plan during a nonterminal external-gate wait",
+    "parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
     "goal state=active",
     "goal transition=none",
     "qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion",
