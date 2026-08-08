@@ -100,6 +100,7 @@ mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
 mod release_publish_contract;
+mod repository_skill_root;
 mod review_response_cluster;
 mod review_thread_evidence;
 mod review_thread_readiness;

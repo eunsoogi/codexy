@@ -148,11 +148,12 @@ fn is_plugin_agent_openai_yaml(path: &Path) -> bool {
 
 fn instruction_surfaces(plugin_root: &Path) -> std::io::Result<Vec<PathBuf>> {
     let mut paths = BTreeSet::new();
-    if let Some(repo_root) = plugin_root.parent().and_then(Path::parent) {
+    if let Some(repo_root) = super::repository_skill_root::from_plugin_root(plugin_root) {
         let path = repo_root.join("AGENTS.md");
         if path.exists() {
             paths.insert(path);
         }
+        collect_skill_surfaces(&repo_root.join(".agents/skills"), &mut paths)?;
     }
     paths.insert(plugin_root.join(".codex-plugin/plugin.json"));
     paths.insert(plugin_root.join("agents/openai.yaml"));
@@ -195,7 +196,11 @@ fn collect_agent_prompt_surfaces(
     plugin_root: &Path,
     paths: &mut BTreeSet<PathBuf>,
 ) -> std::io::Result<()> {
-    collect_agent_prompt_surfaces_from(&plugin_root.join("skills"), paths)
+    collect_agent_prompt_surfaces_from(&plugin_root.join("skills"), paths)?;
+    if let Some(repo_root) = super::repository_skill_root::from_plugin_root(plugin_root) {
+        collect_agent_prompt_surfaces_from(&repo_root.join(".agents/skills"), paths)?;
+    }
+    Ok(())
 }
 
 fn collect_agent_prompt_surfaces_from(

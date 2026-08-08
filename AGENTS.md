@@ -23,7 +23,9 @@ codexy/
 |-- README.md / README.ko.md      # first-user project introductions
 |-- LICENSE                       # standard MIT license
 |-- assets/                       # repository-level public visuals
-|-- .agents/plugins/              # marketplace metadata
+|-- .agents/                      # repository-only skills and marketplace metadata
+|   |-- skills/                   # Codex skills discovered only in this repository
+|   `-- plugins/                  # marketplace metadata
 |-- .github/workflows/            # repository automation
 |-- plugins/codexy/               # packaged Codexy plugin
 |   |-- .codex-plugin/plugin.json # plugin manifest and marketplace surface
@@ -51,6 +53,7 @@ codexy/
 | Review gate contract | `plugins/codexy/agents/codexy-sentinel.toml` | Required reviewer gate for non-trivial atomic lanes. |
 | MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
 | User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
+| Repository-only skills | `.agents/skills/**/SKILL.md` | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy. |
 | Visual assets | `assets/`, `plugins/codexy/assets/` | MUST keep plugin-local assets available from the manifest. |
 
 ## Documentation
@@ -84,7 +87,8 @@ codexy/
 - This repository is plugin-first: user-visible behavior usually lands under
   `plugins/codexy/**`, with validators in `scripts/**`.
 - MUST keep specialist agents as separate `plugins/codexy/agents/*.toml` files.
-- MUST keep skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
+- MUST keep distributable skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
+- MUST keep repository-only skill instructions under `.agents/skills/<skill>/SKILL.md` and MUST NOT package them in `plugins/codexy`.
 - MUST keep MCP and LSP changes aligned with `scripts/validate-plugin-config`.
 - MUST use Codexy codegraph MCP for repository exploration when available, then
   MUST confirm exact files with direct reads before editing.

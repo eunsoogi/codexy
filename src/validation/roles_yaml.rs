@@ -10,7 +10,11 @@ use crate::validation::prompt_yaml;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let mut errors = Vec::new();
-    for skill_file in skill_files(&plugin_root.join("skills")) {
+    let mut roots = vec![plugin_root.join("skills")];
+    if let Some(repo_root) = super::repository_skill_root::from_plugin_root(plugin_root) {
+        roots.push(repo_root.join(".agents/skills"));
+    }
+    for skill_file in roots.iter().flat_map(|root| skill_files(root)) {
         let prompt = skill_file
             .parent()
             .unwrap_or(plugin_root)
@@ -29,7 +33,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&top_level_prompt)
         ));
     }
-    for path in openai_yaml_files(plugin_root) {
+    for path in openai_yaml_files(plugin_root, &roots) {
         errors.extend(
             check_yaml_file(plugin_root, &path).unwrap_or_else(|error| vec![error.to_string()]),
         );
@@ -48,9 +52,14 @@ fn skill_files(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-fn openai_yaml_files(plugin_root: &Path) -> Vec<PathBuf> {
+fn openai_yaml_files(plugin_root: &Path, skill_roots: &[PathBuf]) -> Vec<PathBuf> {
     let mut files = Vec::new();
     collect_openai_yaml(plugin_root, &mut files);
+    for root in skill_roots {
+        collect_openai_yaml(root, &mut files);
+    }
+    files.sort();
+    files.dedup();
     files
 }
 
