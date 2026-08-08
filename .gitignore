@@ -5,4 +5,5 @@ __pycache__/
 
 # Rust build artifacts
 /target/
+/packages/codexy-runtime/target/
 **/*.rs.bk

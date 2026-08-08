@@ -7,13 +7,13 @@ verify_case() {
   bootstrap_version="${3:?bootstrap version is required}"
   receipt="${4:?candidate receipt is required}"
   expected="$(printf '%s\n' \
-    Cargo.lock \
-    Cargo.toml \
+    packages/codexy-runtime/Cargo.lock \
+    packages/codexy-runtime/Cargo.toml \
     .agents/plugins/marketplace.json \
     .agents/plugins/release-publish-contract.json \
     .agents/plugins/runtime-activation.json \
     plugins/codexy/.codex-plugin/plugin.json \
-    src/version/bootstrap.rs | LC_ALL=C sort)"
+    packages/codexy-runtime/src/version/bootstrap.rs | LC_ALL=C sort)"
   preserved="$(printf '%s\n' \
     plugins/codexy/mcp/codexy-mcp-codegraph \
     plugins/codexy/mcp/codexy-mcp-lsp \

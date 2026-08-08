@@ -10,8 +10,8 @@ max_total_bytes=${MAX_ARCHIVE_TOTAL_BYTES:-268435456}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 checkout_root=$(dirname "$script_dir")
 evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
-canonical_admission_suite="$checkout_root/tests/suites/all.rs"
-admission_suite="$evidence_root/tests/suites/all.rs"
+canonical_admission_suite="$checkout_root/packages/codexy-runtime/tests/suites/all.rs"
+admission_suite="$evidence_root/packages/codexy-runtime/tests/suites/all.rs"
 
 if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -r "$script_dir/archive-inspection-receipt.sh" ]; then . "$script_dir/archive-inspection-receipt.sh"; fi
 
@@ -80,8 +80,8 @@ cmp -s "$canonical_admission_suite" "$admission_suite" || {
   echo "checkout admission suite differs from canonical evidence" >&2
   exit 1
 }
-mkdir -p "$extract_root/tests/suites"
-cp "$admission_suite" "$extract_root/tests/suites/all.rs"
+mkdir -p "$extract_root/packages/codexy-runtime/tests/suites"
+cp "$admission_suite" "$extract_root/packages/codexy-runtime/tests/suites/all.rs"
 "$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
 (cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 if [ "$archive_mode" != public-release ]; then
@@ -98,8 +98,8 @@ done <"$tmp_dir/actual"
 source_check_root="$tmp_dir/source-check/plugins/codexy"
 if [ "$archive_mode" != public-release ]; then
 mkdir -p "$source_check_root"
-mkdir -p "$tmp_dir/source-check/tests/suites"
-cp "$admission_suite" "$tmp_dir/source-check/tests/suites/all.rs"
+mkdir -p "$tmp_dir/source-check/packages/codexy-runtime/tests/suites"
+cp "$admission_suite" "$tmp_dir/source-check/packages/codexy-runtime/tests/suites/all.rs"
 tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 if [ "$release_state" = candidate-proven ]; then
   python3 "$contract_checker" source-projection "$source_check_root"

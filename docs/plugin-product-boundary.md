@@ -24,16 +24,14 @@ part of this boundary freeze. The extension names and roots are reserved
 packaging targets only; their manifests, releases, operations, and extraction
 are outside this issue.
 
-Codexy is a monorepo. The repository root is not a product package root: the
-current root `Cargo.toml` is an implementation detail, not a cross-product
-contract. A later migration MAY give the Rust runtime module-owned build
-metadata at `packages/codexy-runtime/{Cargo.toml,Cargo.lock,rust-toolchain.toml,
-rustfmt.toml,clippy.toml,src,tests}` beside the Python distribution at
+Codexy is a monorepo. The repository root is not a product package root. The
+Rust runtime owns its build metadata at
+`packages/codexy-runtime/{Cargo.toml,Cargo.lock,rust-toolchain.toml,rustfmt.toml,
+clippy.toml,src,tests}` beside the Python distribution at
 `packages/getcodexy/{pyproject.toml,src,tests}`, while plugins remain under
 `plugins/`. A root Cargo workspace is not required and MUST NOT be assumed by
-this contract. Root developer commands may later use repository scripts or an
-explicit manifest path/working directory. This issue records topology only; it
-MUST NOT relocate either package.
+this contract. Root developer commands use repository scripts or an explicit
+runtime manifest path/working directory.
 
 ## Public dependencies
 
@@ -77,10 +75,10 @@ products own no physical files yet.
 | Hooks | `plugins/codexy/hooks/**` | Core retains the complete current admission and instruction-enforcement import closure; generic GitHub workflow hooks extract, and the unused policy inventory is removed. GitHub-policy leaves may move only after a later extraction breaks that core closure. |
 | Skills | `plugins/codexy/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow extracts; release/marketplace become repository-only; frontend-design is removed. |
 | Agents | `plugins/codexy/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, moves to `codexy-github`. |
-| MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `src/codegraph/**`, `src/lsp/**`, `src/mcp.rs`, `src/bin/**`, `src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision; grep.app is removed. |
-| LSP | `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/**`, `src/lsp/**` | `codexy-devtools` |
+| MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `packages/codexy-runtime/src/codegraph/**`, `packages/codexy-runtime/src/lsp/**`, `packages/codexy-runtime/src/mcp.rs`, `packages/codexy-runtime/src/bin/**`, `packages/codexy-runtime/src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision; grep.app is removed. |
+| LSP | `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/**`, `packages/codexy-runtime/src/lsp/**` | `codexy-devtools` |
 | Assets | `assets/**`, `plugins/codexy/assets/**` | Repository assets remain repository-only; plugin-local assets remain `codexy`. |
-| Validators and tests | `scripts/sync-plugin-version`, `scripts/validate-plugin-config`, `src/validation/**`, `tests/**` | Repository-owned validation; later product validators follow the target boundary. |
+| Validators and tests | `scripts/sync-plugin-version`, `scripts/validate-plugin-config`, `packages/codexy-runtime/src/validation/**`, `packages/codexy-runtime/tests/**` | Repository-owned validation; later product validators follow the target boundary. |
 | Public entrypoints and packaging metadata | `README.md`, `README.ko.md`, `packages/getcodexy/{pyproject.toml,src/**,tests/**}`, `plugins/codexy/{bootstrap-codexy-agents,check-codexy-agents,.codex-plugin/plugin.json}`, `plugins/codexy/agents/openai.yaml`, `.agents/plugins/{marketplace,release-publish-contract,runtime-activation}.json` | Core identity and repository distribution surface; no layout migration here. |
 
 The inventory test loads the JSON contract as its only ownership authority. It
