@@ -102,11 +102,13 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../code
   generic role names, parent-only
   readthroughs, stale reviewer output, or external review passes are not
   substitutes for this gate.
-- Packaged Sentinel evidence MUST state `PASS`, `BLOCK`, or `UNOBSERVABLE`
-  with the reviewer name and exact head. `BLOCK` and `UNOBSERVABLE` MUST NOT
+- Packaged Sentinel terminal evidence MUST state `PASS`, `BLOCK`, or
+  `UNOBSERVABLE` with the reviewer name and exact head. Non-terminal `PENDING`
+  or `RUNNING` observations MUST NOT be treated as reviewer verdicts or
+  fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT
   satisfy PR readiness, push readiness, parent acceptance, or completion unless
   a maintainer explicitly approves a fallback.
-- Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
 - Review-response proof MUST exercise a bounded positive and negative matrix for every repaired root-cause cluster.
 - A repeated same-class variant MUST NOT consume a new repair cycle unless its receipt names a distinct invariant or proves the prior structural repair incomplete.

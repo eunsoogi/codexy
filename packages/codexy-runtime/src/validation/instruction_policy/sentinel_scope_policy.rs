@@ -11,11 +11,18 @@ const SCOPE_POLICY_CLAUSES: &[&str] = &[
 const LIVE_OBSERVATION_CLAUSES: &[&str] = &[
     "Live Sentinel observation MUST be read-only and event-driven.",
     "Generic child and ledger polling remains permitted.",
-    "Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, follow up with, or poll a live Sentinel.",
+    "Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel.",
     "A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.",
 ];
+const NONTERMINAL_OBSERVATION_CLAUSE: &str = "A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result.";
 const LIVE_OBSERVATION_SKILLS: &[&str] = &[
     "skills/codex-orchestration/SKILL.md",
+    "skills/proof-driven-completion/SKILL.md",
+    "skills/token-efficient-orchestration/SKILL.md",
+];
+const NONTERMINAL_OBSERVATION_SURFACES: &[&str] = &[
+    "skills/codex-orchestration/SKILL.md",
+    "skills/codex-orchestration/references/classification-and-control.md",
     "skills/proof-driven-completion/SKILL.md",
     "skills/token-efficient-orchestration/SKILL.md",
 ];
@@ -24,22 +31,32 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
     if path.ends_with("skills/codex-orchestration/SKILL.md") {
         report(path, text, errors);
     }
-    if !LIVE_OBSERVATION_SKILLS
+    let requires_live_policy = LIVE_OBSERVATION_SKILLS
         .iter()
-        .any(|skill| path.ends_with(skill))
-    {
+        .any(|skill| path.ends_with(skill));
+    let requires_nonterminal_policy = NONTERMINAL_OBSERVATION_SURFACES
+        .iter()
+        .any(|surface| path.ends_with(surface));
+    if !requires_live_policy && !requires_nonterminal_policy {
         return;
     }
-    if LIVE_OBSERVATION_CLAUSES
-        .iter()
-        .any(|clause| !contains_clause(text, clause))
+    if requires_live_policy
+        && LIVE_OBSERVATION_CLAUSES
+            .iter()
+            .any(|clause| !contains_clause(text, clause))
     {
         errors.push(format!(
             "{} Sentinel scope policy contract failed: missing live-observation clause",
             display_relative(path)
         ));
     }
-    if live_sentinel_control(text) {
+    if requires_nonterminal_policy && !contains_clause(text, NONTERMINAL_OBSERVATION_CLAUSE) {
+        errors.push(format!(
+            "{} Sentinel scope policy contract failed: missing non-terminal observation clause",
+            display_relative(path)
+        ));
+    }
+    if super::sentinel_live_control::detects(text) {
         errors.push(format!(
             "{} Sentinel scope policy contract failed: must not control a live Sentinel",
             display_relative(path)
@@ -89,75 +106,6 @@ fn violations(text: &str) -> Vec<&'static str> {
     violations
 }
 
-fn live_sentinel_control(text: &str) -> bool {
-    visible_live_text(text)
-        .to_ascii_lowercase()
-        .split(['.', '!', '?'])
-        .flat_map(|sentence| sentence.split(" but "))
-        .flat_map(split_modal_and_clause)
-        .any(|clause| {
-            let words = words(clause);
-            clause.contains("live sentinel")
-                && !historical_or_terminal(clause)
-                && words.iter().enumerate().any(|(index, word)| {
-                    matches_live_control(&words, word)
-                        && has_positive_permission(&words, index)
-                        && !has_live_control_prohibition(&words, index)
-                })
-        })
-}
-
-fn visible_live_text(text: &str) -> String {
-    let mut fenced = false;
-    text.lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if line.starts_with("```") {
-                fenced = !fenced;
-                return None;
-            }
-            if fenced || line.starts_with("sentinel_") {
-                return None;
-            }
-            (!line.is_empty()).then_some(line)
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn historical_or_terminal(sentence: &str) -> bool {
-    "historic|former|previous"
-        .split('|')
-        .any(|marker| sentence.contains(marker))
-        || completed_terminal_archive(sentence)
-}
-
-fn completed_terminal_archive(sentence: &str) -> bool {
-    sentence.contains("archived result")
-        && "after terminal pass|after terminal block|after terminal unobservable"
-            .split('|')
-            .any(|marker| sentence.contains(marker))
-}
-
-fn matches_live_control(words: &[&str], word: &str) -> bool {
-    ["message", "interrupt", "replace", "follow", "follow-up"].contains(&word)
-        || word.starts_with("poll")
-        || word == "send" && words.contains(&"terminal-status")
-}
-
-fn has_live_control_prohibition(words: &[&str], action_index: usize) -> bool {
-    let context = words[..action_index]
-        .rsplit(|word| *word == "but")
-        .next()
-        .unwrap();
-    context
-        .windows(2)
-        .any(|pair| matches!(pair[0], "must" | "may" | "should") && pair[1] == "not")
-        || context
-            .iter()
-            .any(|word| matches!(*word, "never" | "refrain" | "neither"))
-}
-
 fn permits(text: &str, subject: &str, permissions: &[&str]) -> bool {
     text.to_ascii_lowercase()
         .split(['.', '!', '?'])
@@ -175,7 +123,7 @@ fn permits(text: &str, subject: &str, permissions: &[&str]) -> bool {
         })
 }
 
-fn split_modal_and_clause(segment: &str) -> Vec<&str> {
+pub(super) fn split_modal_and_clause(segment: &str) -> Vec<&str> {
     let mut clauses = Vec::new();
     let mut start = 0;
     for (index, _) in segment.match_indices(" and ") {
@@ -198,7 +146,7 @@ fn starts_modal_clause(clause: &str) -> bool {
     })
 }
 
-fn words(sentence: &str) -> Vec<&str> {
+pub(super) fn words(sentence: &str) -> Vec<&str> {
     sentence
         .split(|character: char| !character.is_ascii_alphabetic() && character != '-')
         .filter(|word| !word.is_empty())
@@ -218,7 +166,7 @@ fn matches_action(word: &str, actions: &[&str]) -> bool {
     })
 }
 
-fn has_positive_permission(words: &[&str], action_index: usize) -> bool {
+pub(super) fn has_positive_permission(words: &[&str], action_index: usize) -> bool {
     words[..action_index].iter().rev().take(8).any(|word| {
         [
             "may",

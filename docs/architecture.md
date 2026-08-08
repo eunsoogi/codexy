@@ -160,7 +160,10 @@ flowchart TD
         verify --> proof{"Current proof green?"}
         proof -->|No| implement
         proof -->|Yes| sentinel["Run packaged codexy-sentinel on the exact state"]
-        sentinel --> verdict{"Sentinel verdict"}
+        sentinel --> observation{"Sentinel observation"}
+        observation -->|PENDING or RUNNING| wait_review["Retain the same reviewer and wait for an event"]
+        wait_review --> observation
+        observation -->|Terminal result| verdict{"Sentinel verdict"}
         verdict -->|BLOCK| implement
         verdict -->|UNOBSERVABLE| blocked["Readiness remains blocked"]
         verdict -->|PASS| readiness["Check PR title, labels, review state, and completion handoff"]
@@ -169,10 +172,12 @@ flowchart TD
     end
 ```
 
-The owning lane keeps review-response fixes on the same branch. A `BLOCK`
-starts a fresh repair proof and a fresh Sentinel review; an `UNOBSERVABLE`
-result is not approval. Opening a PR is only a terminal state when the request
-explicitly says to stop, wait, or leave it open.
+The owning lane keeps review-response fixes on the same branch. `PENDING` and
+`RUNNING` are non-terminal observations, so the same reviewer stays active and
+no replacement cycle starts. A `BLOCK` starts a fresh repair proof and a fresh
+Sentinel review; an `UNOBSERVABLE` result is not approval. Opening a PR is only
+a terminal state when the request explicitly says to stop, wait, or leave it
+open.
 
 ## Plugin and runtime discovery
 

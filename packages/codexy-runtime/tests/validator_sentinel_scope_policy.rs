@@ -1,9 +1,9 @@
 use crate::support;
 
-use support::{TestResult, stderr};
 use super::validator_sentinel_scope_policy_fixture::{
     LIVE_OBSERVATION_CLAUSE, LIVE_OBSERVATION_SKILLS, fixture,
 };
+use support::{TestResult, stderr};
 
 const SENTINEL_SCOPE_CLAUSES: &[&str] = &[
     "MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.",
@@ -39,6 +39,7 @@ const LIVE_SENTINEL_CONTROLS: &[&str] = &[
     "Root MAY poll a live Sentinel.",
     "A child owner MAY message a live Sentinel.",
     "Root MAY interrupt or replace a live Sentinel.",
+    "Root MAY duplicate a live Sentinel.",
     "A child owner MAY follow up with a live Sentinel.",
     "Root MUST NOT ignore safety, but MAY poll a live Sentinel.",
     "Root MUST NOT ignore safety and MAY poll a live Sentinel.",
@@ -241,6 +242,9 @@ fn validator(
     plugin_root: &std::path::Path,
     mode: &str,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    if mode == "--check" { support::validator_instruction_policy(plugin_root) }
-    else { support::validator(plugin_root, mode) }
+    if mode == "--check" {
+        support::validator_instruction_policy(plugin_root)
+    } else {
+        support::validator(plugin_root, mode)
+    }
 }

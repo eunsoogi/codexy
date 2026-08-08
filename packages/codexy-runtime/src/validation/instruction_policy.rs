@@ -12,6 +12,7 @@ mod clauses;
 mod execution_budget;
 mod loc_policy;
 mod runtime_heartbeat;
+mod sentinel_live_control;
 pub(crate) mod sentinel_scope_policy;
 
 #[cfg(test)]
