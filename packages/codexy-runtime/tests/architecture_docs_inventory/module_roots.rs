@@ -1,30 +1,73 @@
 use crate::support::TestResult;
 
-const ARCHITECTURE_PATHS: &[&str] = &[
-    "packages/codexy-runtime/src/validation/roles_yaml.rs",
-    "packages/codexy-runtime/tests/validator_prompt_metadata.rs",
-    "packages/codexy-runtime/src/validation/instruction_policy.rs",
-    "packages/codexy-runtime/tests/architecture_docs_inventory.rs",
+const ARCHITECTURE_PATHS: &[(&str, &str)] = &[
+    (
+        "packages/codexy-runtime/src/validation/roles_yaml.rs",
+        "src/validation/roles_yaml.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/validator_prompt_metadata.rs",
+        "tests/validator_prompt_metadata.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/instruction_policy.rs",
+        "src/validation/instruction_policy.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/validator_instruction_policy.rs",
+        "tests/validator_instruction_policy.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs",
+        "src/validation/instruction_policy/runtime_heartbeat.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs",
+        "src/validation/instruction_policy/sentinel_scope_policy.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs",
+        "src/validation/instruction_policy/child_thread_ledger.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs",
+        "src/validation/instruction_policy/loc_policy/surfaces.rs",
+    ),
+    (
+        "packages/codexy-runtime/src/validation/orchestration_routing.rs",
+        "src/validation/orchestration_routing.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/architecture_docs_inventory.rs",
+        "tests/architecture_docs_inventory.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/skill_boundary_taxonomy.rs",
+        "tests/skill_boundary_taxonomy.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/structured_contract*.rs",
+        "tests/structured_contract*.rs",
+    ),
+    (
+        "packages/codexy-runtime/tests/task_classification_presentation.rs",
+        "tests/task_classification_presentation.rs",
+    ),
 ];
-const BOUNDARY_PATHS: &[&str] = &[
-    "packages/codexy-runtime/src/codegraph/**",
-    "packages/codexy-runtime/src/lsp/**",
-    "packages/codexy-runtime/src/mcp.rs",
-    "packages/codexy-runtime/src/bin/**",
-    "packages/codexy-runtime/src/version/**",
-    "packages/codexy-runtime/src/validation/**",
-    "packages/codexy-runtime/tests/**",
-];
-const STALE_ROOT_PATHS: &[&str] = &[
-    "`src/codegraph/**`",
-    "`src/lsp/**`",
-    "`src/mcp.rs`",
-    "`src/bin/**`",
-    "`src/version/**`",
-    "`src/validation/**`",
-    "`tests/**`",
-    "`tests/validator_prompt_metadata.rs`",
-    "`tests/validator_instruction_policy.rs`",
+const BOUNDARY_PATHS: &[(&str, &str)] = &[
+    (
+        "packages/codexy-runtime/src/codegraph/**",
+        "src/codegraph/**",
+    ),
+    ("packages/codexy-runtime/src/lsp/**", "src/lsp/**"),
+    ("packages/codexy-runtime/src/mcp.rs", "src/mcp.rs"),
+    ("packages/codexy-runtime/src/bin/**", "src/bin/**"),
+    ("packages/codexy-runtime/src/version/**", "src/version/**"),
+    (
+        "packages/codexy-runtime/src/validation/**",
+        "src/validation/**",
+    ),
+    ("packages/codexy-runtime/tests/**", "tests/**"),
 ];
 
 #[test]
@@ -33,36 +76,38 @@ fn documentation_uses_only_module_owned_rust_paths() -> TestResult {
     let architecture = std::fs::read_to_string(root.join("docs/architecture.md"))?;
     let boundary = std::fs::read_to_string(root.join("docs/plugin-product-boundary.md"))?;
 
-    validate(&architecture, &boundary)?;
-    let stale_architecture = architecture.replacen(
-        "packages/codexy-runtime/src/validation/roles_yaml.rs",
-        "src/validation/roles_yaml.rs",
-        1,
-    );
-    assert!(validate(&stale_architecture, &boundary).is_err());
-    let stale_boundary = boundary.replacen(
-        "packages/codexy-runtime/src/codegraph/**",
-        "src/codegraph/**",
-        1,
-    );
-    assert!(validate(&architecture, &stale_boundary).is_err());
+    validate(&architecture, ARCHITECTURE_PATHS)?;
+    validate(&boundary, BOUNDARY_PATHS)?;
+    assert_rejects_each_stale_path(&architecture, ARCHITECTURE_PATHS)?;
+    assert_rejects_each_stale_path(&boundary, BOUNDARY_PATHS)?;
     Ok(())
 }
 
-fn validate(architecture: &str, boundary: &str) -> Result<(), Box<dyn std::error::Error>> {
-    for path in ARCHITECTURE_PATHS {
-        if !architecture.contains(path) {
-            return Err(format!("architecture documentation misses {path}").into());
+fn validate(
+    documentation: &str,
+    paths: &[(&str, &str)],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (module_path, root_path) in paths {
+        let documented_module_path = format!("`{module_path}`");
+        let documented_root_path = format!("`{root_path}`");
+        if !documentation.contains(&documented_module_path) {
+            return Err(format!("documentation misses {module_path}").into());
+        }
+        if documentation.contains(&documented_root_path) {
+            return Err(format!("documentation retains stale root path {root_path}").into());
         }
     }
-    for path in BOUNDARY_PATHS {
-        if !boundary.contains(path) {
-            return Err(format!("product boundary documentation misses {path}").into());
-        }
-    }
-    for path in STALE_ROOT_PATHS {
-        if architecture.contains(path) || boundary.contains(path) {
-            return Err(format!("documentation retains stale root path {path}").into());
+    Ok(())
+}
+
+fn assert_rejects_each_stale_path(
+    documentation: &str,
+    paths: &[(&str, &str)],
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (module_path, root_path) in paths {
+        let stale = documentation.replacen(module_path, root_path, 1);
+        if validate(&stale, paths).is_ok() {
+            return Err(format!("stale root path was accepted: {root_path}").into());
         }
     }
     Ok(())
