@@ -62,12 +62,13 @@ fn check_blocked_call(lines: &[String], call_index: usize) -> Vec<String> {
                 .into(),
         ];
     };
-    let audit = lines[..pre_delivery_index]
+    let audit_index = lines[..pre_delivery_index]
         .iter()
-        .rfind(|line| line.starts_with("blocked goal audit:"));
-    let Some(audit) = audit else {
+        .rposition(|line| line.starts_with("blocked goal audit:"));
+    let Some(audit_index) = audit_index else {
         return vec!["blocked goal call requires a typed blocked goal audit".into()];
     };
+    let audit = &lines[audit_index];
     let audit_id = field(audit, "audit id");
     if audit_id.is_none_or(str::is_empty) {
         errors.push("blocked goal audit requires an audit id".into());
@@ -102,13 +103,12 @@ fn check_blocked_call(lines: &[String], call_index: usize) -> Vec<String> {
         .rposition(|line| line.starts_with("blocked goal pre-mutation check:"))
         .map(|index| pre_delivery_index + 1 + index);
     let pre_mutation = pre_mutation_index.map(|index| &lines[index]);
-    let later_parent_direction = pre_mutation_index.is_some_and(|index| {
-        lines[index + 1..call_index]
-            .iter()
-            .any(|line| ordered_event(line) == OrderedEvent::ParentDirection)
-    });
+    let parent_direction_in_window = lines[audit_index + 1..call_index]
+        .iter()
+        .any(|line| ordered_event(line) == OrderedEvent::ParentDirection);
     let delivered_version = field(&lines[pre_delivery_index], "parent direction version");
-    if later_parent_direction || !valid_pre_mutation(pre_mutation, audit_id, delivered_version) {
+    if parent_direction_in_window || !valid_pre_mutation(pre_mutation, audit_id, delivered_version)
+    {
         errors.push("blocked goal call is cancelled by newer parent direction or lacks a final matching pre-mutation check".into());
         if delivered_version.is_none() {
             errors.push(
