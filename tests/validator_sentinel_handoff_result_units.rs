@@ -98,6 +98,87 @@ fn validator_accepts_alternate_nonterminal_forms_only_for_same_reviewer_terminal
     Ok(())
 }
 
+#[test]
+fn validator_resets_continuity_after_terminal_verdicts() -> TestResult {
+    let history = "Previous Packaged Sentinel Ada: UNOBSERVABLE on a prior run";
+    for prior in ["", history] {
+        for terminal in ["BLOCK", "UNOBSERVABLE"] {
+            let lifecycle = format!(
+                "{prior}, then Sentinel Turing timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Turing: {terminal} on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+            );
+            let output = handoff(&lifecycle, false)?;
+            assert!(
+                output.status.success(),
+                "terminal {terminal} must end Turing continuity before Euler PASS: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_scopes_historical_markers_to_reviewer_or_run_evidence() -> TestResult {
+    let history = "Previous Packaged Sentinel Ada: UNOBSERVABLE on a prior run";
+    for prior in ["", history] {
+        for incidental in ["initial", "earlier", "old"] {
+            let live = format!(
+                "{prior}, then Sentinel Turing timed out after bounded wait during the {incidental} observation on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+            );
+            let output = handoff(&live, false)?;
+            assert!(
+                !output.status.success(),
+                "incidental {incidental} wait text must not hide live Turing: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains("changed or duplicated")
+            );
+        }
+
+        let historical = format!(
+            "{prior}, then Initial Packaged Sentinel Turing: BLOCK on an earlier run, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+        );
+        let output = handoff(&historical, false)?;
+        assert!(
+            output.status.success(),
+            "reviewer-qualified history must be excluded: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_preserves_complete_reviewer_identifier_tokens() -> TestResult {
+    let history = "Previous Packaged Sentinel Ada: UNOBSERVABLE on a prior run";
+    for prior in ["", history] {
+        let replacement = format!(
+            "{prior}, then Sentinel Review-1 timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Review-2: PASS on current head {HEAD}"
+        );
+        let output = handoff(&replacement, false)?;
+        assert!(
+            !output.status.success(),
+            "distinct suffixed reviewer identifiers must remain distinct: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("changed or duplicated")
+        );
+
+        let same = format!(
+            "{prior}, then Sentinel Review_1 timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Review_1: PASS on current head {HEAD}"
+        );
+        let output = handoff(&same, false)?;
+        assert!(
+            output.status.success(),
+            "identical complete reviewer identifiers must stay continuous: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn handoff(status: &str, fallback: bool) -> TestResult<std::process::Output> {
     let approval = fallback
         .then_some(" Maintainer explicitly approved fallback for this Sentinel run.")

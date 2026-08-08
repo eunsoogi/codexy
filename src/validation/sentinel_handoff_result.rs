@@ -20,11 +20,18 @@ pub(super) fn select(text: &str) -> Selection {
     if current.len() < 2 && !units.iter().any(|unit| unit.prior) {
         return Selection::Unmodeled;
     }
-    let Some(first) = current.first() else {
+    let Some(_) = current.first() else {
         return Selection::Modeled(None);
     };
-    if current.iter().any(|unit| unit.reviewer != first.reviewer) {
-        return Selection::ReviewerChanged;
+    let mut reviewer = None;
+    for unit in &current {
+        if reviewer.is_some_and(|active| active != unit.reviewer) {
+            return Selection::ReviewerChanged;
+        }
+        reviewer = match unit.status {
+            SentinelState::Pending | SentinelState::Running => Some(unit.reviewer.as_str()),
+            SentinelState::Terminal(_) => None,
+        };
     }
     Selection::Modeled(
         current
@@ -53,11 +60,7 @@ fn units(text: &str) -> Vec<Unit> {
             start,
             status_offset,
             status,
-            prior: contains_word(segment, "prior")
-                || contains_word(segment, "previous")
-                || contains_word(segment, "earlier")
-                || contains_word(segment, "old")
-                || contains_word(segment, "initial"),
+            prior: reviewer_or_run_history(segment),
             reviewer: named,
         });
     }
@@ -120,9 +123,9 @@ fn status(segment: &str) -> Option<(SentinelState, usize)> {
 }
 
 fn named_reviewer(segment: &str) -> Option<String> {
-    let words: Vec<_> = words(segment).collect();
-    let marker = words.iter().position(|word| *word == "sentinel")?;
-    words
+    let identifiers: Vec<_> = identifier_tokens(segment).collect();
+    let marker = identifiers.iter().position(|word| *word == "sentinel")?;
+    identifiers
         .get(marker + 1)
         .filter(|word| identity(word))
         .map(|word| (*word).to_owned())
@@ -145,7 +148,7 @@ fn lifecycle_reviewer(segment: &str, status: SentinelState, prior: Option<&str>)
     if matches!(status, SentinelState::Running) && prefix.is_empty() && lifecycle {
         return prior.map(str::to_owned);
     }
-    let reviewer = words(prefix).last()?;
+    let reviewer = identifier_tokens(prefix).last()?;
     (identity(reviewer)
         && (!matches!(status, SentinelState::Pending | SentinelState::Running)
             || prior.is_some() && lifecycle))
@@ -155,11 +158,22 @@ fn lifecycle_reviewer(segment: &str, status: SentinelState, prior: Option<&str>)
 fn contains(text: &str, needle: &str) -> bool {
     text.to_ascii_lowercase().contains(needle)
 }
-fn contains_word(text: &str, word: &str) -> bool {
-    words(text).any(|candidate| candidate == word)
+fn reviewer_or_run_history(text: &str) -> bool {
+    let words: Vec<_> = words(text).collect();
+    words.iter().enumerate().any(|(index, word)| {
+        ["prior", "previous", "earlier", "old", "initial"].contains(word)
+            && words[index + 1..]
+                .iter()
+                .take(2)
+                .any(|candidate| ["sentinel", "reviewer", "run"].contains(candidate))
+    })
 }
 fn words(text: &str) -> impl Iterator<Item = &str> {
     text.split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+}
+fn identifier_tokens(text: &str) -> impl Iterator<Item = &str> {
+    text.split(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_')
         .filter(|word| !word.is_empty())
 }
 fn identity(word: &str) -> bool {
