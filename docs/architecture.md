@@ -53,16 +53,25 @@ rules.
 | `dreaming` | Keep | A lane resumes after compaction or inherited context may be stale. | Separates durable facts and active fixes from resolved or superseded history. |
 | `frontend-design` | Keep | Building, redesigning, auditing, or visually verifying a user-facing product surface. | Grounds UI work in evidence and verifies interaction, layout, accessibility, and responsiveness. |
 | `git-workflow` | Keep | Any Codexy Git, issue, branch, worktree, PR, review, merge, or main-sync work. | Enforces issue-backed branches, isolated worktrees, verification, review handling, and GitHub gates. |
-| `plugin-marketplace-prep` | Keep | Preparing manifests, marketplace entries, install candidates, assets, or plugin metadata. | Verifies packaged paths, schema, installability, metadata parity, and distribution readiness. |
 | `proof-driven-completion` | Keep | Before claiming success, handing off, opening or merging a PR, or completing a goal. | Maps every requirement to current authoritative evidence and blocks unsupported completion claims. |
 | `qa` | Keep | Verifying completed work, acceptance criteria, a release candidate, or PR readiness. | Drives the real CLI, GitHub, app, plugin, config, docs, or browser surface behind each claim. |
 | `refactoring` | Keep | Restructuring existing code without changing behavior or reducing oversized modules. | Preserves contracts while reducing coupling, extracting responsibilities, and enforcing LOC limits. |
-| `release-engineering` | Keep | Preparing versions, changelogs, release workflows, tags, publishing, or rollback. | Synchronizes version sources and proves package, artifact, distribution, and rollback gates. |
 | `spec-driven-development` | Keep | Starting from an issue, PRD, user story, design brief, or acceptance criteria. | Converts the spec into one atomic outcome, explicit non-goals, success criteria, and proof plan. |
 | `task-classification` | Keep | Every incoming Codexy task, before setup, edits, validation, or PR handling. | Selects the lane type, owner, atomic scope, required skills/tools, evidence, and first allowed action. |
 | `test-driven-development` | Keep | Implementing a feature, fix, refactor, validator, docs rule, or workflow behavior. | Requires a faithful RED proof, the smallest GREEN change, and proportional broader verification. |
 | `token-efficient-orchestration` | Keep | Long multi-PR, review-response, or compaction-recovery loops. | Keeps current event deltas and ledgers without dropping proof gates or creating autonomous polling. |
 | `wiki` | Keep | Building or operating a topic-scoped compiled knowledge base. | Handles source collection, inventory, ingestion, compilation, query, audit, archive, and session context. |
+
+## Repository-only skills
+
+Codex discovers these maintenance workflows from
+[`.agents/skills`](../.agents/skills) while working in this repository. They
+remain deliberately outside the Codexy plugin payload.
+
+| Skill | Decision | Trigger / use | Responsibility |
+| --- | --- | --- | --- |
+| `plugin-marketplace-prep` | Repository-only | Preparing manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation, or distribution readiness. | Proves the Codexy install and marketplace surface without making this workflow part of that installed surface. |
+| `release-engineering` | Repository-only | Preparing versions, changelogs, release notes, tags, packaging, release flows, distribution checks, rollback plans, or publishing. | Owns version, artifact, publication, and rollback gates for this repository. |
 
 ### Overlap boundaries
 
@@ -72,18 +81,20 @@ rules.
 | Planning and domain ownership | Classification, specification, and domain modeling can all precede edits. | `task-classification` selects the workflow; `spec-driven-development` defines the atomic outcome and proofs; `domain-driven-development` owns domain language and invariants. |
 | Change method and diagnosis | TDD, debugging, and refactoring can all touch the same implementation. | `test-driven-development` owns RED/GREEN behavior changes; `debugging` starts from unexpected behavior or unknown cause; `refactoring` changes structure while preserving behavior. |
 | Verification and completion | Tests, QA, and handoff can all report readiness. | `test-driven-development` proves change behavior, `qa` observes the surface, and `proof-driven-completion` audits the final claim. |
-| Packaging and release | Package metadata validation can be confused with a release. | `plugin-marketplace-prep` proves install surface; `release-engineering` owns version, artifact, publication, and rollback gates. |
+| Packaging and release | Package metadata validation can be confused with a release. | Repository-only `plugin-marketplace-prep` proves the install surface; repository-only `release-engineering` owns version, artifact, publication, and rollback gates. |
 
 ## Skill path-consumer map
 
-All 17 stable `skills/<name>/SKILL.md` paths in the inventory above have a
-matching `skills/<name>/agents/openai.yaml`. These consumer classes cover their
-selection, registration, references, validation, tests, and user-facing prompts.
+All 15 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
+have a matching `skills/<name>/agents/openai.yaml`. The two repository-only
+skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
+cover their selection, registration, references, validation, tests, and
+user-facing prompts.
 
 | Consumer class | Paths | Contract |
 | --- | --- | --- |
-| Host discovery | `.codex-plugin/plugin.json`, `skills/*/SKILL.md` | Discovers skill folders and reads frontmatter trigger metadata. |
-| Skill prompt metadata | `skills/*/agents/openai.yaml`, `src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
+| Host discovery | `.codex-plugin/plugin.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | Discovers packaged and repository-only skill folders and reads frontmatter trigger metadata. |
+| Skill prompt metadata | `skills/*/agents/openai.yaml`, `.agents/skills/*/agents/openai.yaml`, `src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
 | Plugin entry prompt | `agents/openai.yaml`, `tests/validator_prompt_metadata.rs` | Routes users through `$task-classification`, `$codex-orchestration`, and named skill invocations. |
 | Recursive instruction validation | `src/validation/instruction_policy.rs`, `tests/validator_instruction_policy.rs` | Scans skill bodies, prompt metadata, references, and mandatory policy wording. |
 | Path-specific policy validation | `src/validation/instruction_policy/runtime_heartbeat.rs`, `src/validation/instruction_policy/sentinel_scope_policy.rs`, `src/validation/instruction_policy/child_thread_ledger.rs`, `src/validation/instruction_policy/loc_policy/surfaces.rs`, `src/validation/orchestration_routing.rs` | Consumes named orchestration, QA, proof, refactoring, and Git workflow paths. |
