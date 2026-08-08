@@ -51,6 +51,12 @@ fn validator_rejects_replacement_or_duplication_during_same_reviewer_wait() -> T
                 "Sentinel Turing timed out after bounded wait on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
             ),
             format!(
+                "Sentinel Turing has not returned on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+            ),
+            format!(
+                "Sentinel Turing is running on current head {HEAD}, and Packaged Sentinel Euler: PASS on current head {HEAD}"
+            ),
+            format!(
                 "Sentinel Turing timed out after bounded wait on current head {HEAD}, and Sentinel Euler is still running on current head {HEAD}, and Packaged Sentinel Turing: PASS on current head {HEAD}"
             ),
         ] {
@@ -65,6 +71,28 @@ fn validator_rejects_replacement_or_duplication_during_same_reviewer_wait() -> T
                 "unexpected reviewer-continuity result: {}",
                 String::from_utf8_lossy(&output.stderr)
             );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_accepts_alternate_nonterminal_forms_only_for_same_reviewer_terminal_result(
+) -> TestResult {
+    let prior = "Previous Packaged Sentinel Turing: UNOBSERVABLE after terminal tool failure on a prior run";
+    for history in ["", prior] {
+        for observation in ["has not returned", "is running"] {
+            for terminal in ["PASS", "BLOCK"] {
+                let lifecycle = format!(
+                    "{history}, but Sentinel Turing {observation} on current head {HEAD}, and Packaged Sentinel Turing: {terminal} on current head {HEAD}"
+                );
+                let output = handoff(&lifecycle, terminal == "BLOCK")?;
+                assert!(
+                    output.status.success(),
+                    "same-reviewer {observation} -> {terminal}: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
         }
     }
     Ok(())

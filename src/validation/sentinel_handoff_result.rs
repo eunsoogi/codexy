@@ -113,38 +113,10 @@ fn active(text: &str, start: usize, segment: &str) -> bool {
 }
 
 fn status(segment: &str) -> Option<(SentinelState, usize)> {
-    if contains(segment, "unobservable")
-        || contains(segment, "terminal tool failure")
-        || contains(segment, "terminal reviewer failure")
-    {
-        Some((
-            SentinelState::Terminal(TerminalStatus::Unobservable),
-            status_offset(segment, "unobservable"),
-        ))
-    } else if contains(segment, "block") {
-        Some((
-            SentinelState::Terminal(TerminalStatus::Block),
-            status_offset(segment, "block"),
-        ))
-    } else if contains(segment, "pass") {
-        Some((
-            SentinelState::Terminal(TerminalStatus::Pass),
-            status_offset(segment, "pass"),
-        ))
-    } else if contains(segment, "still running") {
-        Some((
-            SentinelState::Running,
-            status_offset(segment, "still running"),
-        ))
-    } else if contains(segment, "timed out") || contains(segment, "no verdict") {
-        Some((SentinelState::Pending, status_offset(segment, "timed out")))
-    } else {
-        None
-    }
-}
-
-fn status_offset(segment: &str, marker: &str) -> usize {
-    segment.to_ascii_lowercase().find(marker).unwrap_or(0)
+    super::super::sentinel_handoff_status::marker_starts(segment)
+        .into_iter()
+        .max_by_key(|(start, _)| *start)
+        .map(|(start, status)| (status, start))
 }
 
 fn named_reviewer(segment: &str) -> Option<String> {
