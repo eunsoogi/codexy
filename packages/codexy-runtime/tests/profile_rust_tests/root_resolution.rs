@@ -35,8 +35,26 @@ fn aggregate_resolves_the_repository_inventory_from_every_valid_root(
     let repository = codexy_runtime::paths::repository_root();
     let runtime = codexy_runtime::paths::runtime_package_root();
     let profiler = repository.join("scripts/profile-rust-tests");
+    let index_path = String::from_utf8(
+        Command::new("git")
+            .args(["rev-parse", "--git-path", "index"])
+            .current_dir(&repository)
+            .output()?
+            .stdout,
+    )?;
+    let index_path = repository.join(index_path.trim());
+    let original_index = std::fs::read(&index_path)?;
+    let original_status = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(&repository)
+        .output()?
+        .stdout;
+    let isolated = tempfile::tempdir()?;
+    let shared_index = isolated.path().join("shared-index");
+    std::fs::copy(&index_path, &shared_index)?;
+    std::fs::write(shared_index.with_extension("lock"), b"held")?;
     let probe = r#"
-import contextlib, importlib.util, io, pathlib, subprocess, sys, tempfile
+import contextlib, importlib.util, io, os, pathlib, shutil, subprocess, sys, tempfile
 from collections import Counter
 from importlib.machinery import SourceFileLoader
 
@@ -49,7 +67,6 @@ from profile_rust_receipts import SCHEMA, digest, write
 from profile_rust_shards import SHARDS, aggregate, owned_targets, platform_counts
 
 head = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
-index_tree = subprocess.check_output(("git", "write-tree"), cwd=repository, text=True).strip()
 targets = profiler.declared_test_targets(runtime)
 counts = platform_counts(repository)
 
@@ -72,6 +89,10 @@ def write_receipts(directory):
 
 with tempfile.TemporaryDirectory() as temporary:
     receipts = pathlib.Path(temporary)
+    private_index = receipts / "private-index"
+    shutil.copyfile(pathlib.Path(os.environ["GIT_INDEX_FILE"]), private_index)
+    os.environ["GIT_INDEX_FILE"] = str(private_index)
+    index_tree = subprocess.check_output(("git", "write-tree"), cwd=repository, text=True).strip()
     write_receipts(receipts)
     for label, root_arguments in (
         ("default", ()),
@@ -109,8 +130,18 @@ with tempfile.TemporaryDirectory() as temporary:
         .arg(profiler)
         .arg(repository)
         .arg(runtime)
+        .env("GIT_INDEX_FILE", &shared_index)
         .output()?;
 
     assert!(output.status.success(), "{output:?}");
+    assert_eq!(std::fs::read(&index_path)?, original_index);
+    assert_eq!(
+        Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&repository)
+            .output()?
+            .stdout,
+        original_status
+    );
     Ok(())
 }
