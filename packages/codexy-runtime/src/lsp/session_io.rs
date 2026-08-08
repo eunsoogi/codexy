@@ -11,9 +11,17 @@ use serde_json::Value;
 use crate::mcp::FrameParser;
 
 const STDERR_LIMIT: usize = 4000;
+const WORKSPACE_ERROR: &str = "FetchWorkspaceError";
+
+#[derive(Debug, Default)]
+struct StderrState {
+    display: String,
+    workspace_error_seen: bool,
+    workspace_error_probe: Vec<u8>,
+}
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct SharedStderr(Arc<Mutex<String>>);
+pub(super) struct SharedStderr(Arc<Mutex<StderrState>>);
 
 pub(super) fn spawn_stdout_reader(
     stdout: ChildStdout,
@@ -33,13 +41,22 @@ pub(super) fn spawn_stderr_reader(
 }
 
 pub(super) fn stderr_text(buffer: &SharedStderr) -> String {
-    buffer.0.lock().map(|text| text.clone()).unwrap_or_default()
+    buffer
+        .0
+        .lock()
+        .map(|state| state.display.clone())
+        .unwrap_or_default()
 }
 
 pub(super) fn ensure_workspace_ready(buffer: &SharedStderr) -> Result<()> {
-    let stderr = stderr_text(buffer);
-    if stderr.contains("FetchWorkspaceError") {
-        bail!("LSP workspace initialization failed: {stderr}");
+    let Ok(state) = buffer.0.lock() else {
+        return Ok(());
+    };
+    if state.workspace_error_seen {
+        bail!(
+            "LSP workspace initialization failed: {WORKSPACE_ERROR}: {}",
+            state.display
+        );
     }
     Ok(())
 }
@@ -52,7 +69,7 @@ fn read_stdout(mut stdout: ChildStdout, tx: &mpsc::Sender<Value>, stderr: &Share
             Ok(0) => return,
             Ok(read) => read,
             Err(error) => {
-                cap_stderr(stderr, &error.to_string());
+                append_stderr(stderr, &error.to_string());
                 return;
             }
         };
@@ -66,7 +83,7 @@ fn read_stdout(mut stdout: ChildStdout, tx: &mpsc::Sender<Value>, stderr: &Share
                 }
                 Ok(None) => break,
                 Err(error) => {
-                    cap_stderr(stderr, &error.to_string());
+                    append_stderr(stderr, &error.to_string());
                     return;
                 }
             }
@@ -81,12 +98,12 @@ fn read_stderr(mut stderr: ChildStderr, buffer: &SharedStderr) {
             Ok(0) => return,
             Ok(read) => read,
             Err(error) => {
-                cap_stderr(buffer, &error.to_string());
+                append_stderr(buffer, &error.to_string());
                 return;
             }
         };
         wait_for_fixture_stderr_gate();
-        cap_stderr(buffer, &String::from_utf8_lossy(&chunk[..read]));
+        append_stderr(buffer, &String::from_utf8_lossy(&chunk[..read]));
     }
 }
 
@@ -104,13 +121,37 @@ fn wait_for_fixture_stderr_gate() {
     let _ = gate.read_exact(&mut release);
 }
 
-fn cap_stderr(buffer: &SharedStderr, text: &str) {
-    let Ok(mut current) = buffer.0.lock() else {
+fn append_stderr(buffer: &SharedStderr, text: &str) {
+    let Ok(mut state) = buffer.0.lock() else {
         return;
     };
-    current.push_str(text);
-    if current.len() > STDERR_LIMIT {
-        let start = current.len().saturating_sub(STDERR_LIMIT);
-        current.drain(..start);
+    observe_workspace_error(&mut state, text);
+    state.display.push_str(text);
+    if state.display.len() > STDERR_LIMIT {
+        let start = state.display.len().saturating_sub(STDERR_LIMIT);
+        state.display.drain(..start);
+    }
+}
+
+fn observe_workspace_error(state: &mut StderrState, text: &str) {
+    if state.workspace_error_seen {
+        return;
+    }
+    state
+        .workspace_error_probe
+        .extend_from_slice(text.as_bytes());
+    if state
+        .workspace_error_probe
+        .windows(WORKSPACE_ERROR.len())
+        .any(|window| window == WORKSPACE_ERROR.as_bytes())
+    {
+        state.workspace_error_seen = true;
+        state.workspace_error_probe.clear();
+        return;
+    }
+    let retained = WORKSPACE_ERROR.len().saturating_sub(1);
+    if state.workspace_error_probe.len() > retained {
+        let start = state.workspace_error_probe.len() - retained;
+        state.workspace_error_probe.drain(..start);
     }
 }

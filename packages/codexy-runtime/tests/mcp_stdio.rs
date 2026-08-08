@@ -20,6 +20,8 @@ mod fixture_gate;
 mod lsp_protocol;
 #[path = "mcp_stdio/lsp_server_error.rs"]
 mod lsp_server_error;
+#[path = "mcp_stdio/lsp_stderr.rs"]
+mod lsp_stderr;
 #[path = "mcp_stdio/wrapper_runtime.rs"]
 mod wrapper_runtime;
 

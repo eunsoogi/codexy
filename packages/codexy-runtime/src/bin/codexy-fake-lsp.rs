@@ -100,10 +100,9 @@ impl FakeLsp {
     }
 
     fn capture_initialize(&mut self, message: &Value) -> Result<()> {
-        if let Some(stderr) = std::env::var_os("CODEXY_FAKE_LSP_STDERR") {
+        if let Some(stderr) = Self::fixture_stderr()? {
             let mut output = io::stderr().lock();
-            output.write_all(stderr.to_string_lossy().as_bytes())?;
-            output.write_all(b"\n")?;
+            output.write_all(stderr.as_bytes())?;
             output.flush()?;
             Self::fixture_sync_point("stderr-flushed")?;
         }
@@ -124,6 +123,28 @@ impl FakeLsp {
     fn fixture_response_error() -> Option<String> {
         std::env::var_os("CODEXY_FAKE_LSP_RESPONSE_ERROR")
             .map(|error| error.to_string_lossy().into_owned())
+    }
+
+    fn fixture_stderr() -> Result<Option<String>> {
+        let marker = std::env::var_os("CODEXY_FAKE_LSP_STDERR")
+            .map(|stderr| stderr.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let tail = match std::env::var_os("CODEXY_FAKE_LSP_STDERR_TAIL_BYTES") {
+            Some(tail) => tail
+                .to_string_lossy()
+                .parse::<usize>()
+                .context("parse fake LSP stderr tail length")?,
+            None => 0,
+        };
+        if marker.is_empty() && tail == 0 {
+            return Ok(None);
+        }
+        let mut stderr = marker;
+        if !stderr.is_empty() {
+            stderr.push('\n');
+        }
+        stderr.extend(std::iter::repeat_n('x', tail));
+        Ok(Some(stderr))
     }
 
     fn release_fixture_stderr_gate() {
