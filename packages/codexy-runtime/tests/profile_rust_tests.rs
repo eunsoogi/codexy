@@ -50,6 +50,10 @@ mod windows_profile;
 mod interleaved_accounting;
 
 #[cfg(unix)]
+#[path = "profile_rust_tests/interleaved_index.rs"]
+mod interleaved_index;
+
+#[cfg(unix)]
 #[path = "profile_rust_tests/telemetry_compatibility.rs"]
 mod telemetry_compatibility;
 

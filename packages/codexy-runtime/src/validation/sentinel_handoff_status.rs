@@ -1,7 +1,8 @@
 use super::sentinel_handoff::{SENTINEL_MARKERS, affirmed_phrase_starts, clause_bounds, has_any};
 
 const PASS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass";
-const BLOCK: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block|reviewer gate: block|reviewer gate returned block|reviewer gate block|reviewer gate verdict: block|reviewer gate result: block|reviewer-gate: block|reviewer-gate returned block|reviewer-gate block|reviewer-gate verdict: block|reviewer-gate result: block";
+const BLOCK: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block";
+const REVIEWER_GATE_BLOCK: &str = "reviewer gate: block|reviewer gate returned block|reviewer gate block|reviewer gate verdict: block|reviewer gate result: block|reviewer-gate: block|reviewer-gate returned block|reviewer-gate block|reviewer-gate verdict: block|reviewer-gate result: block";
 const UNOBSERVABLE: &str = "sentinel: unobservable|sentinel unobservable|sentinel status: unobservable|sentinel verdict: unobservable|sentinel result: unobservable|sentinel gate returned unobservable";
 const PENDING: &str = "sentinel pending|has not returned|hasn't returned|not returned|did not return pass or block|no pass or block|no pass/block|no verdict|stuck waiting|waiting for verdict|pending verdict|pending after bounded wait|delayed after bounded wait|timed out after bounded wait|produced no verdict";
 const RUNNING: &str = "still running|is running";
@@ -24,21 +25,65 @@ pub(super) enum TerminalStatus {
     Unobservable,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum StatusProvenance {
+    PackagedSentinel,
+    ReviewerGate,
+    Contextual,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct StatusEvent {
+    pub(super) start: usize,
+    pub(super) state: SentinelState,
+    pub(super) provenance: StatusProvenance,
+}
+
 pub(super) fn marker_starts(text: &str) -> Vec<(usize, SentinelState)> {
+    marker_events(text)
+        .into_iter()
+        .map(|event| (event.start, event.state))
+        .collect()
+}
+
+pub(super) fn marker_events(text: &str) -> Vec<StatusEvent> {
     let statuses = [
-        (SentinelState::Terminal(TerminalStatus::Pass), PASS),
-        (SentinelState::Terminal(TerminalStatus::Block), BLOCK),
-        (SentinelState::Pending, PENDING),
-        (SentinelState::Running, RUNNING),
+        (
+            SentinelState::Terminal(TerminalStatus::Pass),
+            PASS,
+            StatusProvenance::PackagedSentinel,
+        ),
+        (
+            SentinelState::Terminal(TerminalStatus::Block),
+            BLOCK,
+            StatusProvenance::PackagedSentinel,
+        ),
+        (
+            SentinelState::Terminal(TerminalStatus::Block),
+            REVIEWER_GATE_BLOCK,
+            StatusProvenance::ReviewerGate,
+        ),
+        (
+            SentinelState::Pending,
+            PENDING,
+            StatusProvenance::Contextual,
+        ),
+        (
+            SentinelState::Running,
+            RUNNING,
+            StatusProvenance::Contextual,
+        ),
         (
             SentinelState::Terminal(TerminalStatus::Unobservable),
             UNOBSERVABLE,
+            StatusProvenance::PackagedSentinel,
         ),
     ]
     .into_iter()
-    .flat_map(|(status, phrases)| {
+    .flat_map(|(status, phrases, provenance)| {
         phrases.split('|').flat_map(move |phrase| {
-            affirmed_phrase_starts(text, phrase).map(move |start| (start, status, phrase))
+            affirmed_phrase_starts(text, phrase)
+                .map(move |start| (start, status, phrase, provenance))
         })
     });
     let named = [
@@ -51,13 +96,18 @@ pub(super) fn marker_starts(text: &str) -> Vec<(usize, SentinelState)> {
     ]
     .into_iter()
     .flat_map(|(status, phrase)| {
-        affirmed_phrase_starts(text, phrase).map(move |start| (start, status, phrase))
+        affirmed_phrase_starts(text, phrase)
+            .map(move |start| (start, status, phrase, StatusProvenance::Contextual))
     });
     statuses
         .chain(named)
-        .filter(|(start, _, phrase)| sentinel_context(text, *start, phrase))
-        .filter(|(start, _, phrase)| !future_context(text, *start, phrase))
-        .map(|(start, status, _)| (start, status))
+        .filter(|(start, _, phrase, _)| sentinel_context(text, *start, phrase))
+        .filter(|(start, _, phrase, _)| !future_context(text, *start, phrase))
+        .map(|(start, state, _, provenance)| StatusEvent {
+            start,
+            state,
+            provenance,
+        })
         .collect()
 }
 

@@ -1,10 +1,11 @@
 use std::{fs, path::Path};
 
 use crate::support;
+#[path = "validator_runtime_heartbeat/lifecycle.rs"]
+mod lifecycle;
+use lifecycle::CLAUSE;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
-const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
@@ -12,14 +13,22 @@ fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
-    fs::write(&path, original.replace(CLAUSE, replacement))?;
+    let updated = if replacement.contains(CLAUSE) {
+        lifecycle::replace_sentence(
+            &original,
+            &replacement.replacen(CLAUSE, lifecycle::SENTENCE, 1),
+        )
+    } else {
+        lifecycle::replace_clause(&original, replacement)
+    };
+    fs::write(&path, updated)?;
     support::validator_instruction_policy_file(path)
 }
 
 #[test]
 fn numbered_historical_heading_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## 1. Historical Example\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## 1. Historical Example\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -29,7 +38,7 @@ fn numbered_historical_heading_does_not_supply_policy() -> TestResult {
 #[test]
 fn formatted_historical_heading_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## **Historical Example**\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## **Historical Example**\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -39,7 +48,7 @@ fn formatted_historical_heading_does_not_supply_policy() -> TestResult {
 #[test]
 fn numbered_formatted_historical_heading_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## 1. **Historical Example**\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## 1. **Historical Example**\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -49,7 +58,7 @@ fn numbered_formatted_historical_heading_does_not_supply_policy() -> TestResult 
 #[test]
 fn formatted_current_heading_resets_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## **Current Policy**\n{CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\n## **Current Policy**\n{CLAUSE}"
     ))?;
     assert!(
         output.status.success(),
@@ -62,7 +71,7 @@ fn formatted_current_heading_resets_historical_policy() -> TestResult {
 #[test]
 fn fenced_pseudo_heading_does_not_reset_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\n```markdown\n## Current Policy\n```\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\n```markdown\n## Current Policy\n```\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -72,7 +81,7 @@ fn fenced_pseudo_heading_does_not_reset_historical_policy() -> TestResult {
 #[test]
 fn fenced_current_clause_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Current Policy\n```text\n{CLAUSE}.\n```"
+        "removed heartbeat policy\n\n## Current Policy\n```text\n{CLAUSE}\n```"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -82,7 +91,7 @@ fn fenced_current_clause_does_not_supply_policy() -> TestResult {
 #[test]
 fn setext_current_heading_resets_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\nCurrent Policy\n--------------\n{CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\nThis policy was retired.\n\nCurrent Policy\n--------------\n{CLAUSE}"
     ))?;
     assert!(
         output.status.success(),
@@ -95,7 +104,7 @@ fn setext_current_heading_resets_historical_policy() -> TestResult {
 #[test]
 fn indented_atx_heading_does_not_reset_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\n    ## Current Policy\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\n    ## Current Policy\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -105,7 +114,7 @@ fn indented_atx_heading_does_not_reset_historical_policy() -> TestResult {
 #[test]
 fn three_column_atx_heading_resets_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\n   ## Current Policy\n{CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\n   ## Current Policy\n{CLAUSE}"
     ))?;
     assert!(
         output.status.success(),
@@ -118,7 +127,7 @@ fn three_column_atx_heading_resets_historical_policy() -> TestResult {
 #[test]
 fn indented_setext_underline_does_not_reset_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\nCurrent Policy\n    --------------\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\nCurrent Policy\n    --------------\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -128,7 +137,7 @@ fn indented_setext_underline_does_not_reset_historical_policy() -> TestResult {
 #[test]
 fn indented_fence_markers_do_not_hide_live_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Current Policy\n    ```text\n{CLAUSE}.\n    ```\n"
+        "removed heartbeat policy\n\n## Current Policy\n    ```text\n{CLAUSE}\n    ```\n"
     ))?;
     assert!(
         output.status.success(),
@@ -141,7 +150,7 @@ fn indented_fence_markers_do_not_hide_live_policy() -> TestResult {
 #[test]
 fn tab_indented_heading_does_not_reset_historical_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\n\t## Current Policy\nThis policy was retired. {CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\n\t## Current Policy\nThis policy was retired. {CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -151,7 +160,7 @@ fn tab_indented_heading_does_not_reset_historical_policy() -> TestResult {
 #[test]
 fn nested_heading_inherits_historical_scope() -> TestResult {
     let output = validate_replacement(&format!(
-        "removed heartbeat policy\n\n## Historical Example\n### Retired route\n{CLAUSE}."
+        "removed heartbeat policy\n\n## Historical Example\n### Retired route\n{CLAUSE}"
     ))?;
     assert!(!output.status.success());
     assert!(support::stderr(&output).contains("runtime heartbeat contract"));
@@ -162,7 +171,7 @@ fn nested_heading_inherits_historical_scope() -> TestResult {
 fn sibling_or_parent_heading_resets_historical_scope() -> TestResult {
     for heading in ["## Current Policy", "# Current Policy"] {
         let output = validate_replacement(&format!(
-            "removed heartbeat policy\n\n## Historical Example\n### Retired route\nOld policy.\n\n{heading}\n{CLAUSE}."
+            "removed heartbeat policy\n\n## Historical Example\n### Retired route\nOld policy.\n\n{heading}\n{CLAUSE}"
         ))?;
         assert!(
             output.status.success(),
@@ -175,9 +184,9 @@ fn sibling_or_parent_heading_resets_historical_scope() -> TestResult {
 
 #[test]
 fn excluded_markdown_blocks_do_not_stitch_clause_fragments() -> TestResult {
-    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
+    let (prefix, suffix) = CLAUSE.split_once(" while ").ok_or("clause split")?;
     for block in ["```text\nignored\n```", "    ignored"] {
-        let output = validate_replacement(&format!("{prefix}\n{block}\nsolely{suffix}."))?;
+        let output = validate_replacement(&format!("{prefix}\n{block}\nwhile {suffix}"))?;
         assert!(
             !output.status.success(),
             "validator stitched a clause across {block:?}"
@@ -189,9 +198,9 @@ fn excluded_markdown_blocks_do_not_stitch_clause_fragments() -> TestResult {
 
 #[test]
 fn blank_markdown_paragraphs_do_not_stitch_clause_fragments() -> TestResult {
-    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
+    let (prefix, suffix) = CLAUSE.split_once(" while ").ok_or("clause split")?;
     for boundary in ["\n\n", "\n   \n"] {
-        let output = validate_replacement(&format!("{prefix}{boundary}solely{suffix}."))?;
+        let output = validate_replacement(&format!("{prefix}{boundary}while {suffix}"))?;
         assert!(
             !output.status.success(),
             "validator stitched a clause across paragraph boundary {boundary:?}"
@@ -203,8 +212,8 @@ fn blank_markdown_paragraphs_do_not_stitch_clause_fragments() -> TestResult {
 
 #[test]
 fn soft_line_wrap_may_complete_required_clause() -> TestResult {
-    let (prefix, suffix) = CLAUSE.split_once(" solely").ok_or("clause split")?;
-    let output = validate_replacement(&format!("{prefix}\nsolely{suffix}."))?;
+    let (prefix, suffix) = CLAUSE.split_once(" while ").ok_or("clause split")?;
+    let output = validate_replacement(&format!("{prefix}\nwhile {suffix}"))?;
     assert!(
         output.status.success(),
         "validator rejected a soft-wrapped clause: {}",

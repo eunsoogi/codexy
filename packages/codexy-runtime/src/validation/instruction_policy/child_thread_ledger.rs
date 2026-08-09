@@ -52,14 +52,16 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "must keep its reservation active",
                 "must not silently recycle that worktree",
                 "short-lived child implementation goal",
-                "must not retain a persistent long-running goal",
                 "must not autonomously poll",
                 "exactly one terminal unavailable report",
                 "must not retry the parent message",
                 "no full conversation transfer",
                 "no full agent-tree listing",
-                "parent or child must not retain an active goal or plan during an external-gate wait",
-                "child external-gate wait must end its active goal and plan before waiting",
+                "parent or child must retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains",
+                "child must use one nonterminal wait handoff",
+                "goal state=active",
+                "goal transition=none",
+                "must not call update_goal(complete) or update_goal(blocked) merely for that wait",
                 "inspect archive candidates and the active reservation ledger",
                 "may archive only terminal, unreferenced, clean and unreserved worktree lanes with no open pr or pending gate",
                 "must not archive pr owners or dirty/reserved candidates",
@@ -92,10 +94,33 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             text,
             errors,
             "orchestration skill must reject legacy external-gate goal retention and autonomous polling",
+            &["must keep polling and keep the goal active"],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must reject runtime-only goal retention after completion",
             &[
-                "must keep polling and keep the goal active",
-                "child external-gate wait must retain active goal and plan",
+                "child external-gate wait must retain active goal and plan solely after every implementation obligation is complete",
             ],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must not complete a goal for an external-gate wait",
+            &[
+                "only an external gate remains, the child must send exactly one terminal parent handoff, call `update_goal(complete)`",
+                "child with only an external gate remaining must call update_goal(complete) before waiting",
+            ],
+        );
+        reject_all(
+            path,
+            text,
+            errors,
+            "orchestration skill must retain an active goal during a nonterminal wait",
+            &["child external-gate wait must end its active goal and plan before waiting"],
         );
         reject_all(
             path,

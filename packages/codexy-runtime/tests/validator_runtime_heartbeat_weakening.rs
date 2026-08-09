@@ -1,10 +1,11 @@
 use std::{fs, path::Path};
 
 use crate::support;
+#[path = "validator_runtime_heartbeat/lifecycle.rs"]
+mod lifecycle;
+use lifecycle::CLAUSE;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
-const CLAUSE: &str = "MUST NOT retain or recreate an execution goal solely to preserve a successfully registered heartbeat";
 
 fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
@@ -12,7 +13,8 @@ fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
-    fs::write(&path, original.replace(CLAUSE, replacement))?;
+    let replacement = lifecycle::sentence_with_clause(replacement);
+    fs::write(&path, lifecycle::replace_sentence(&original, &replacement))?;
     support::validator_instruction_policy_file(path)
 }
 
@@ -23,7 +25,7 @@ fn punctuation_before_weakening_suffix_does_not_supply_policy() -> TestResult {
         "; unless explicitly approved",
         ". Unless explicitly approved, the heartbeat may be skipped",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             !output.status.success(),
             "validator accepted weakened clause ending in {suffix:?}"
@@ -44,7 +46,7 @@ fn punctuation_wrapped_weakening_suffixes_do_not_supply_policy() -> TestResult {
     ];
     let mut accepted = Vec::new();
     for suffix in suffixes {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         if output.status.success() {
             accepted.push(suffix);
         } else {
@@ -66,7 +68,7 @@ fn safe_punctuation_wrapped_suffixes_remain_valid() -> TestResult {
         " {and record the result in the handoff}",
         " [({and record the result in the handoff})]",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             output.status.success(),
             "validator rejected safe punctuation-wrapped suffix {suffix:?}: {}",
@@ -79,7 +81,7 @@ fn safe_punctuation_wrapped_suffixes_remain_valid() -> TestResult {
 #[test]
 fn emphasized_weakening_suffix_does_not_supply_policy() -> TestResult {
     let output = validate_replacement(&format!(
-        "{CLAUSE}. **Unless** explicitly approved, the heartbeat may be skipped."
+        "{CLAUSE}, **unless** explicitly approved, the heartbeat may be skipped"
     ))?;
     assert!(
         !output.status.success(),
@@ -92,7 +94,7 @@ fn emphasized_weakening_suffix_does_not_supply_policy() -> TestResult {
 #[test]
 fn conditional_prefix_does_not_supply_policy() -> TestResult {
     for prefix in ["When possible", "If available", "As needed"] {
-        let output = validate_replacement(&format!("{prefix}, the owner {CLAUSE}."))?;
+        let output = validate_replacement(&format!("{prefix}, the owner {CLAUSE}"))?;
         assert!(
             !output.status.success(),
             "validator accepted conditional prefix {prefix:?}"
@@ -105,7 +107,7 @@ fn conditional_prefix_does_not_supply_policy() -> TestResult {
 #[test]
 fn safe_prefix_remains_valid() -> TestResult {
     let output = validate_replacement(&format!(
-        "After successful registration, the owner {CLAUSE}."
+        "After successful registration, the owner {CLAUSE}"
     ))?;
     assert!(
         output.status.success(),
@@ -122,7 +124,7 @@ fn safe_punctuation_after_required_clause_remains_valid() -> TestResult {
         "; the result remains auditable",
         ". The result remains auditable in the handoff",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             output.status.success(),
             "validator rejected safe punctuation ending in {suffix:?}: {}",
@@ -135,7 +137,7 @@ fn safe_punctuation_after_required_clause_remains_valid() -> TestResult {
 #[test]
 fn conditional_weakening_suffix_does_not_supply_policy() -> TestResult {
     for suffix in [" when possible", ", if available", "; as needed"] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             !output.status.success(),
             "validator accepted conditional suffix {suffix:?}"
@@ -178,12 +180,10 @@ fn conditional_markdown_heading_does_not_supply_policy() -> TestResult {
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
-    let sentence = format!(
-        "The owner {CLAUSE}; it MAY keep a goal only while an implementation obligation remains."
-    );
+    let sentence = lifecycle::SENTENCE;
     fs::write(
         &path,
-        original.replace(&sentence, &format!("\n\n## If available\n{sentence}")),
+        lifecycle::replace_sentence(&original, &format!("\n\n## If available\n{sentence}")),
     )?;
     let output = support::validator_instruction_policy_file(path)?;
     assert!(
@@ -202,7 +202,7 @@ fn adversative_weakening_suffix_does_not_supply_policy() -> TestResult {
         "; however, MAY skip the heartbeat",
         ", but the owner MAY skip the heartbeat",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         if output.status.success() {
             accepted.push(suffix);
         } else {
@@ -220,7 +220,7 @@ fn safe_adversative_suffixes_remain_valid() -> TestResult {
         "; however, MUST preserve the evidence",
         ", but the owner MUST record the result",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             output.status.success(),
             "validator rejected safe adversative suffix {suffix:?}: {}",
@@ -237,7 +237,7 @@ fn safe_conditional_words_after_clause_remain_valid() -> TestResult {
         ", if the first attempt fails, MUST retry",
         "; as documented in the receipt",
     ] {
-        let output = validate_replacement(&format!("{CLAUSE}{suffix}."))?;
+        let output = validate_replacement(&format!("{CLAUSE}{suffix}"))?;
         assert!(
             output.status.success(),
             "validator rejected safe suffix {suffix:?}: {}",

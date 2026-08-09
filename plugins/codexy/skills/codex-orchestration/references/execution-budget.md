@@ -22,3 +22,12 @@ Budget exhaustion MUST NOT call `update_goal(blocked)` and MUST NOT weaken exter
 An external parent heartbeat MUST observe waiting state without messaging the child and MUST send one continuation only on a material transition.
 Repeated child waiting turns, goal refreshes, polling, duplicate narrative, unbounded reasoning, or status-only parent receipts MUST consume budget and MUST NOT qualify as acceptance progress.
 The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.
+
+Exhaustion, unchanged observations, and an external gate are not blocked-goal
+evidence. A blocked mutation needs the separate typed impasse audit: three
+distinct material observations and fingerprints, elapsed monotonic time meeting
+a positive declared minimum, no live producer, no safe action, and no wake
+route. Before mutation, the child MUST compare the latest parent-direction
+version with the pre-delivery version; a newer direction or cancellation MUST
+stop the blocked call. A nonterminal wait handoff MUST retain ownership and an
+active goal state and MUST NOT have a complete or blocked goal transition.

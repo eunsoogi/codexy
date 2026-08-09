@@ -1,5 +1,10 @@
 use std::process::Output;
 
+#[path = "validator_child_terminal_handoff/blocked_goal.rs"]
+mod blocked_goal;
+#[path = "validator_child_terminal_handoff/records.rs"]
+mod records;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResult {
@@ -175,6 +180,20 @@ fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> Tes
     Ok(())
 }
 
+fn validator_requires_typed_audit_for_blocked_terminal_goal_transition() -> TestResult {
+    let evidence = format!(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}",
+        terminal_goal_transition("blocked", "without-audit", true).replace(&blocked_goal::audit(), ""),
+    );
+    let output = run_validator(&evidence)?;
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("blocked goal call requires a typed blocked goal audit")
+    );
+    Ok(())
+}
+
 fn terminal_only_evidence(parent_task: &str) -> String {
     terminal_only_evidence_for_tasks(parent_task, "child-375")
 }
@@ -182,31 +201,28 @@ fn terminal_only_evidence(parent_task: &str) -> String {
 fn terminal_only_evidence_for_tasks(parent_task: &str, child_task: &str) -> String {
     format!(
         "Lane ownership: child-owned\n{}Terminal child transition: action=archive\n",
-        terminal_handoff_for_tasks("archive", parent_task, child_task)
+        records::handoff_for_tasks("archive", parent_task, child_task)
     )
 }
 
 fn terminal_handoff(event: &str) -> String {
-    terminal_handoff_for_parent(event, "parent-375")
-}
-
-fn terminal_handoff_for_parent(event: &str, parent_task: &str) -> String {
-    terminal_handoff_for_tasks(event, parent_task, "child-375")
-}
-
-fn terminal_handoff_for_tasks(event: &str, parent_task: &str, child_task: &str) -> String {
-    format!(
-        "Terminal parent handoff: event id=terminal-child|375|{event}; issue/pr=#375 / PR #376; child task={child_task}; parent task={parent_task}; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\n"
-    )
+    records::handoff_for_parent(event, "parent-375")
 }
 
 fn terminal_goal_transition(status: &str, key: &str, include_handoff: bool) -> String {
     let operation = format!("update_goal(status=\"{status}\")");
     let transition_key = format!("375:{status}:{key}");
     let handoff = include_handoff.then(|| terminal_handoff(&format!("{status}|{key}")));
+    let audit = (status == "blocked").then(blocked_goal::audit).unwrap_or_default();
+    let parent_direction = (status == "blocked")
+        .then_some("; parent direction version=direction-375")
+        .unwrap_or_default();
+    let pre_mutation = (status == "blocked")
+        .then_some(blocked_goal::pre_mutation_check())
+        .unwrap_or_default();
     format!(
-        "Goal transition key: {transition_key}\nParent goal pre-delivery: operation={operation}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete; transition key={transition_key}\n{}Goal tool call: {operation}\nParent goal post-result: operation={operation}; exact tool result={status}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key={transition_key}\n",
-        handoff.unwrap_or_default()
+        "Goal transition key: {transition_key}\n{audit}Parent goal pre-delivery: operation={operation}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete{parent_direction}; transition key={transition_key}\n{pre_mutation}{}Goal tool call: {operation}\nParent goal post-result: operation={operation}; exact tool result={status}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key={transition_key}\n",
+        handoff.unwrap_or_default(),
     )
 }
 
@@ -224,6 +240,7 @@ fn validator_child_terminal_handoff_matrix() -> TestResult {
     validator_keeps_one_handoff_for_related_terminal_transitions()?;
     validator_rejects_handoff_after_stop_before_ownership_release()?;
     validator_requires_handoff_for_status_form_goal_transitions()?;
+    validator_requires_typed_audit_for_blocked_terminal_goal_transition()?;
     validator_requires_a_fresh_handoff_for_each_terminal_goal_transition()?;
     Ok(())
 }

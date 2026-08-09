@@ -1,6 +1,12 @@
 #[path = "../validator_child_external_gate_policy.rs"]
 mod validator_child_external_gate_policy;
 
+#[path = "../validator_child_external_gate_goal_lifecycle.rs"]
+mod validator_child_external_gate_goal_lifecycle;
+
+#[path = "../validator_child_goal_blocked_audit.rs"]
+mod validator_child_goal_blocked_audit;
+
 #[path = "../validator_child_goal_reporting.rs"]
 mod validator_child_goal_reporting;
 

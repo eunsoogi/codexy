@@ -1,6 +1,19 @@
 pub(super) const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 #[path = "sentinel_handoff_result.rs"]
 mod result;
+#[path = "sentinel_handoff_result_context.rs"]
+mod result_context;
+#[cfg(test)]
+#[path = "sentinel_handoff_result_tests.rs"]
+mod result_tests;
+
+pub(super) fn packaged_terminal_result(text: &str) -> bool {
+    result_context::packaged_terminal_result(text)
+}
+
+pub(super) fn active_result_line(text: &str, start: usize) -> bool {
+    result::active(text, start)
+}
 
 const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate|reviewer-gate";
 const READINESS_MARKERS: &str = "merge-ready|merge ready|merge-readiness|merge readiness|merge readiness: yes|merge readiness yes|merge readiness: true|merge readiness true|ready to merge|ready for merge|ready for merge gates|ready for parent handoff|ready for handoff|parent-handoff-ready|parent handoff ready|pr-ready|pr ready|pr is ready|pr-readiness|pr readiness|pr readiness: yes|pr readiness yes|pr readiness: true|pr readiness true|pull-request-ready|pull request ready|pull request is ready|parent can merge|parent can open pr next|parent can create pr next|parent can open the pr next|push-ready|push ready|push-readiness|ready to push|ready for push|push readiness|push readiness: yes|push readiness yes|push readiness: true|push readiness true|pushed: yes|pushed yes|pushed: true|pushed true|remote/pr head match: yes|remote/pr head match yes|remote and pr head match";
@@ -29,9 +42,6 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
                 "Sentinel reviewer changed or duplicated during a non-terminal wait; retain the same reviewer for its natural terminal result".into(),
             ];
         }
-        result::Selection::Unmodeled => super::sentinel_handoff_status::marker_starts(&text)
-            .into_iter()
-            .max_by_key(|(start, _)| *start),
     };
     match status {
         Some((

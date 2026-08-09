@@ -2,8 +2,17 @@
 mod structured_contract_guard;
 #[path = "structured_contract_guard/repository_tests.rs"]
 mod repository_tests;
+#[path = "structured_contract_guard/repository_path_tests.rs"]
+mod repository_path_tests;
 
 use structured_contract_guard::{comparison_counts, repository_violations, scan_source};
+
+const GOVERNED_RUNTIME_TESTS: &[&str] = &[
+    "tests/token_quota_containment.rs",
+    "tests/validator_runtime_heartbeat_contract.rs",
+    "tests/validator_subagent_delegation.rs",
+    "tests/validator_token_efficient_orchestration_skill.rs",
+];
 
 fn migration_counts_preserve_guard(before: usize, after: usize) -> bool {
     if before == 0 {
@@ -24,18 +33,25 @@ fn new_contract_tests_cannot_add_unstructured_substring_assertions() {
 
 #[test]
 fn governed_migration_reduces_direct_substring_assertions() {
-    let paths = [
-        "tests/token_quota_containment.rs",
-        "tests/validator_runtime_heartbeat_contract.rs",
-        "tests/validator_subagent_delegation.rs",
-        "tests/validator_token_efficient_orchestration_skill.rs",
-    ];
-    let (before, after) = comparison_counts(&paths).expect("comparison must inspect origin/main");
+    let (before, after) =
+        comparison_counts(GOVERNED_RUNTIME_TESTS).expect("comparison must inspect origin/main");
     eprintln!("governed direct substring assertions: {before} -> {after}");
     assert!(
         migration_counts_preserve_guard(before, after),
         "migration must reduce a positive baseline and preserve a zero baseline: {before} -> {after}"
     );
+}
+
+#[test]
+fn migration_paths_use_runtime_local_reads_and_repository_baselines() {
+    let repository = codexy_runtime::paths::repository_root();
+    let runtime = codexy_runtime::paths::runtime_package_root();
+    for path in GOVERNED_RUNTIME_TESTS {
+        assert!(runtime.join(path).is_file(), "missing current runtime path {path}");
+        assert!(!repository.join(path).is_file(), "stale root path exists {path}");
+    }
+    assert!(comparison_counts(GOVERNED_RUNTIME_TESTS).is_ok());
+    assert!(comparison_counts(&["tests/missing-governed-path.rs"]).is_err());
 }
 
 #[test]

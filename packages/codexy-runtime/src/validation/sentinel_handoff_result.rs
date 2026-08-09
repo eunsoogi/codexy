@@ -3,123 +3,80 @@ use super::super::sentinel_handoff_status::{SentinelState, TerminalStatus};
 pub(super) enum Selection {
     Modeled(Option<(usize, SentinelState)>),
     ReviewerChanged,
-    Unmodeled,
 }
 
-struct Unit {
+struct Event {
     start: usize,
-    status_offset: usize,
     status: SentinelState,
     prior: bool,
-    reviewer: String,
+    reviewer: Option<String>,
 }
 
 pub(super) fn select(text: &str) -> Selection {
-    let units = units(text);
-    let current = units.iter().filter(|unit| !unit.prior).collect::<Vec<_>>();
-    if current.len() < 2 && !units.iter().any(|unit| unit.prior) {
-        return Selection::Unmodeled;
-    }
-    let Some(_) = current.first() else {
-        return Selection::Modeled(None);
-    };
+    let events = events(text);
     let mut reviewer = None;
-    for unit in &current {
-        if reviewer.is_some_and(|active| active != unit.reviewer) {
-            return Selection::ReviewerChanged;
+    let mut selected = None;
+    for event in events.iter().filter(|event| !event.prior) {
+        if let Some(named) = event.reviewer.as_deref() {
+            if reviewer.is_some_and(|active| active != named) {
+                return Selection::ReviewerChanged;
+            }
+            reviewer = match event.status {
+                SentinelState::Pending | SentinelState::Running => Some(named),
+                SentinelState::Terminal(_) => None,
+            };
+            selected = Some((event.start, event.status));
+        } else if vetoes(event.status) || selected.is_none() && is_pass(event.status) {
+            selected = Some((event.start, event.status));
         }
-        reviewer = match unit.status {
-            SentinelState::Pending | SentinelState::Running => Some(unit.reviewer.as_str()),
-            SentinelState::Terminal(_) => None,
-        };
     }
-    Selection::Modeled(
-        current
-            .last()
-            .map(|unit| (unit.start + unit.status_offset, unit.status)),
+    Selection::Modeled(selected)
+}
+
+fn events(text: &str) -> Vec<Event> {
+    let mut events = Vec::new();
+    let mut reviewer = None;
+    for (start, segment) in super::result_context::segments(text) {
+        for (offset, status) in statuses(segment) {
+            if !active(text, start + offset) {
+                continue;
+            }
+            let named = named_reviewer(segment)
+                .or_else(|| lifecycle_reviewer(segment, status, reviewer.as_deref()));
+            if let Some(named) = &named {
+                reviewer = Some(named.clone());
+            }
+            events.push(Event {
+                start: start + offset,
+                status,
+                prior: reviewer_or_run_history(segment),
+                reviewer: named,
+            });
+        }
+    }
+    events
+}
+
+pub(super) fn active(text: &str, start: usize) -> bool {
+    super::result_context::active(text, start)
+}
+
+fn statuses(segment: &str) -> Vec<(usize, SentinelState)> {
+    let mut events = super::super::sentinel_handoff_status::marker_starts(segment);
+    events.sort_by_key(|(start, _)| *start);
+    events.dedup();
+    events
+}
+
+fn vetoes(status: SentinelState) -> bool {
+    matches!(
+        status,
+        SentinelState::Terminal(TerminalStatus::Block | TerminalStatus::Unobservable)
     )
 }
 
-fn units(text: &str) -> Vec<Unit> {
-    let mut units = Vec::new();
-    let mut reviewer = None;
-    for (start, segment) in segments(text) {
-        if !active(text, start, segment) {
-            continue;
-        }
-        let Some((status, status_offset)) = status(segment) else {
-            continue;
-        };
-        let named = named_reviewer(segment)
-            .or_else(|| lifecycle_reviewer(segment, status, reviewer.as_deref()));
-        let Some(named) = named else {
-            continue;
-        };
-        reviewer = Some(named.clone());
-        units.push(Unit {
-            start,
-            status_offset,
-            status,
-            prior: reviewer_or_run_history(segment),
-            reviewer: named,
-        });
-    }
-    units
-}
-
-fn segments(text: &str) -> Vec<(usize, &str)> {
-    let mut result = Vec::new();
-    let mut start = 0;
-    for (end, _) in text.match_indices(['.', '!', '?', ';', '\n']) {
-        push(text, start, end, &mut result);
-        start = end + 1;
-    }
-    push(text, start, text.len(), &mut result);
-    result
-}
-
-fn push<'a>(text: &'a str, start: usize, end: usize, result: &mut Vec<(usize, &'a str)>) {
-    let sentence = &text[start..end];
-    let mut offset = 0;
-    loop {
-        let next = [" but ", " while ", " and ", ","]
-            .iter()
-            .filter_map(|delimiter| {
-                sentence[offset..]
-                    .find(delimiter)
-                    .map(|index| (index, *delimiter))
-            })
-            .min_by_key(|(index, _)| *index);
-        let Some((index, delimiter)) = next else {
-            result.push((start + offset, &sentence[offset..]));
-            return;
-        };
-        result.push((start + offset, &sentence[offset..offset + index]));
-        offset += index + delimiter.len();
-    }
-}
-
-fn active(text: &str, start: usize, segment: &str) -> bool {
-    let trimmed = segment.trim_start();
-    !trimmed.starts_with(['>', '"', '`', '~'])
-        && !trimmed.starts_with("historical")
-        && !trimmed.starts_with("example")
-        && text[..start]
-            .lines()
-            .filter(|line| {
-                let line = line.trim_start();
-                line.starts_with("```") || line.starts_with("~~~")
-            })
-            .count()
-            % 2
-            == 0
-}
-
-fn status(segment: &str) -> Option<(SentinelState, usize)> {
-    super::super::sentinel_handoff_status::marker_starts(segment)
-        .into_iter()
-        .max_by_key(|(start, _)| *start)
-        .map(|(start, status)| (status, start))
+fn is_pass(status: SentinelState) -> bool {
+    matches!(status, SentinelState::Terminal(TerminalStatus::Pass))
 }
 
 fn named_reviewer(segment: &str) -> Option<String> {

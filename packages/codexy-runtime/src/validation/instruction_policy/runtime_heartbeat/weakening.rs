@@ -10,12 +10,10 @@ pub(super) fn has_weakening_suffix(after: &str, conditional_markers: &[&str]) ->
         };
         after = after_boundary;
     }
-    if leading_heading(after).is_some_and(|(heading, body)| {
-        conditional_markers
-            .iter()
-            .any(|marker| heading.contains(marker.trim()))
-            && (contains_word(body, "may") || body.contains("is not required"))
-    }) {
+    if after
+        .match_indices("<markdown-heading>")
+        .any(|(index, _)| conditional_heading_weakens(&after[index..], conditional_markers))
+    {
         return true;
     }
     let after = after.trim_start_matches(|character: char| !character.is_alphanumeric());
@@ -52,6 +50,15 @@ pub(super) fn has_weakening_suffix(after: &str, conditional_markers: &[&str]) ->
                 .split(['.', ';'])
                 .next()
                 .is_some_and(|clause| contains_word(clause, "may"))
+}
+
+fn conditional_heading_weakens(text: &str, conditional_markers: &[&str]) -> bool {
+    leading_heading(text).is_some_and(|(heading, body)| {
+        conditional_markers
+            .iter()
+            .any(|marker| heading.contains(marker.trim()))
+            && (contains_word(body, "may") || body.contains("is not required"))
+    })
 }
 
 fn leading_heading(text: &str) -> Option<(&str, &str)> {

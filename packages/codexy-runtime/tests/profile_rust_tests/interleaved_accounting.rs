@@ -1,10 +1,11 @@
+use super::interleaved_index::LockedProbeIndex;
 use std::process::Command;
-
 #[test]
 fn target_summary_recovers_one_interleaved_completed_result()
 -> Result<(), Box<dyn std::error::Error>> {
-    let accounting = codexy_runtime::paths::repository_root()
-        .join("scripts/profile_rust_accounting.py");
+    let accounting = codexy_runtime::paths::repository_root().join("scripts/profile_rust_accounting.py");
+    let repository = codexy_runtime::paths::repository_root();
+    let index = LockedProbeIndex::new(&repository)?;
     let probe = r#"
 import copy, importlib.util, pathlib, sys, tempfile
 from collections import Counter
@@ -105,11 +106,13 @@ if "workload_receipt" not in profiler_source or "listed_digest" not in profiler_
     raise SystemExit("shard receipts are not derived from lifecycle accounting")
 head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
+if index_tree != sys.argv[2]:
+    raise SystemExit(f"private index tree drift: {index_tree!r} != {sys.argv[2]!r}")
 targets = sorted(module.declared_test_targets(repository))
 authoritative_counts = platform_counts(repository)
 if set(authoritative_counts) != {"posix", "windows"} or any(not isinstance(count, int) or count < 1 for count in authoritative_counts.values()):
     raise SystemExit(f"invalid authoritative platform shape: {authoritative_counts!r}")
-expected_integrated_counts = {"posix": 2119, "windows": 2000}
+expected_integrated_counts = {"posix": 2147, "windows": 2026}
 if authoritative_counts != expected_integrated_counts:
     raise SystemExit(
         f"integrated cardinality authority drift: "
@@ -216,6 +219,8 @@ def check_cardinality_delta(label, platform, delta):
         for index, value in enumerate(rows): write(root / f"{index}.json", value)
         if aggregate(root, repository) != 1: raise SystemExit(label)
 check_cardinality_delta("posix one canonical identity missing", "posix", -1)
+check_cardinality_delta("posix one canonical identity extra", "posix", 1)
+check_cardinality_delta("windows one canonical identity missing", "windows", -1)
 check_cardinality_delta("windows one canonical identity extra", "windows", 1)
 for label, mutate in (
     ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
@@ -236,8 +241,10 @@ for label, mutate in (
     let output = Command::new("python3")
         .args(["-c", probe])
         .arg(accounting)
+        .arg(index.tree())
+        .env("GIT_INDEX_FILE", index.path())
         .output()?;
-
     assert!(output.status.success(), "{output:?}");
+    index.assert_unchanged(&repository)?;
     Ok(())
 }

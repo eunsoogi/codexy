@@ -91,6 +91,9 @@ mod validator_sentinel_handoff_current_evidence;
 #[path = "../validator_sentinel_handoff_result_units.rs"]
 mod validator_sentinel_handoff_result_units;
 
+#[path = "../validator_sentinel_handoff_nested_context.rs"]
+mod validator_sentinel_handoff_nested_context;
+
 #[path = "../validator_sentinel_handoff_review_regressions.rs"]
 mod validator_sentinel_handoff_review_regressions;
 

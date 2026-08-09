@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Regenerate inventory while preserving explicit digest-keyed review decisions."""
 
+import argparse
 import json
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+from policy_inventory_review_decisions import load, with_capability_evidence
 
 ROOT = Path(__file__).resolve().parents[1] / "plugins" / "codexy"
 OUTPUT = ROOT / "hooks" / "policy-inventory.json"
@@ -161,21 +164,32 @@ def capability_contract() -> dict[str, object]:
     return contract
 
 
+def arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--review-decisions-file", type=Path)
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = arguments()
     contract = capability_contract()
     old = json.loads(OUTPUT.read_text()) if OUTPUT.exists() else {"rules": []}
     by_digest = {item.get("digest"): item for item in old["rules"] if item.get("digest")}
+    found = discovered()
+    imported = load(args.review_decisions_file, found)
     rules, uncovered = [], 0
-    for found in discovered():
-        prior = by_digest.get(found["digest"])
-        if prior is None or prior.get("text") != found["text"]:
+    for item_found in found:
+        prior = imported.get(item_found["digest"]) or by_digest.get(item_found["digest"])
+        if prior is None or prior.get("text") != item_found["text"]:
             prior = {"event": "unavailable", "input": "unavailable", "decision": "uncovered",
                      "tests": [], "evidence": [], "positiveTests": [], "negativeTests": []}
             uncovered += 1
-        item = {key: found[key] for key in ("id", "digest", "source", "text")}
+        item = {key: item_found[key] for key in ("id", "digest", "source", "text")}
         item.update({key: value for key, value in prior.items()
                      if key not in {"id", "digest", "source", "text"}})
-        item["evidence"] = [f"{contract['schema']} content digest {contract['contentDigest']}"]
+        item = with_capability_evidence(
+            item, f"{contract['schema']} content digest {contract['contentDigest']}"
+        )
         rules.append(item)
     enforced = sum(item["decision"] == "enforced" for item in rules)
     reviewed = sum(item["decision"] == "reviewed-exception" for item in rules)

@@ -1,26 +1,13 @@
 pub(super) fn active_line(line: &str) -> Option<&str> {
-    let line = line.trim();
+    let line = without_container_prefix(line);
     if line.starts_with('#') {
         return None;
     }
-    let content = line
-        .strip_prefix(['-', '*', '+'])
-        .map(str::trim_start)
-        .or_else(|| {
-            super::child_handoff_readiness_claims::strip_ordered_list_marker(line)
-                .map(str::trim_start)
-        })
-        .unwrap_or(line);
-    (!content.starts_with("[ ]")).then_some(line)
+    (!line.starts_with("[ ]")).then_some(line)
 }
 
 pub(super) fn is_stale(segment: &str) -> bool {
-    let segment = segment.trim_start_matches(|character: char| {
-        character.is_whitespace() || matches!(character, '-' | '*' | '+')
-    });
-    let segment = super::child_handoff_readiness_claims::strip_ordered_list_marker(segment)
-        .map(str::trim_start)
-        .unwrap_or(segment);
+    let segment = without_container_prefix(segment);
     [
         "historical example",
         "previous example",
@@ -45,7 +32,7 @@ pub(super) fn current_text(text: &str) -> String {
     let mut stale_heading = false;
     let mut stale_label = false;
     for (index, raw_line) in lines.iter().enumerate() {
-        let trimmed = raw_line.trim();
+        let trimmed = without_container_prefix(raw_line);
         if trimmed.starts_with('#') {
             stale_heading = is_stale(trimmed.trim_start_matches('#').trim_start());
             stale_label = false;
@@ -111,14 +98,7 @@ fn current_lane_suffix(line: &str) -> Option<&str> {
 }
 
 fn blocked_standalone_line(line: &str, following: &[&str]) -> bool {
-    let content = line
-        .strip_prefix(['-', '*', '+'])
-        .map(str::trim_start)
-        .or_else(|| {
-            super::child_handoff_readiness_claims::strip_ordered_list_marker(line)
-                .map(str::trim_start)
-        })
-        .unwrap_or(line);
+    let content = without_container_prefix(line);
     let content = content
         .strip_prefix("[x]")
         .or_else(|| content.strip_prefix("[X]"))
@@ -127,4 +107,27 @@ fn blocked_standalone_line(line: &str, following: &[&str]) -> bool {
         .trim_end_matches('.');
     super::child_handoff_readiness_claims::ready_label_phrases().contains(&content)
         && super::child_handoff_readiness_claims::has_next_non_claim_bullet(following)
+}
+
+pub(super) fn without_container_prefix(line: &str) -> &str {
+    let mut content = line.trim();
+    loop {
+        let next = content
+            .strip_prefix(['-', '*', '+'])
+            .map(str::trim_start)
+            .or_else(|| {
+                super::child_handoff_readiness_claims::strip_ordered_list_marker(content)
+                    .map(str::trim_start)
+            })
+            .or_else(|| {
+                content
+                    .strip_prefix("[x]")
+                    .or_else(|| content.strip_prefix("[X]"))
+                    .map(str::trim_start)
+            });
+        let Some(next) = next else {
+            return content;
+        };
+        content = next;
+    }
 }
