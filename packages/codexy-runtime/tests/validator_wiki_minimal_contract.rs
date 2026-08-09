@@ -40,6 +40,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("tilde longer-run trailing content", original.replacen("| `retract` | Merge |", "~~~text\n~~~~not-a-close\n| `retract` | Merge |", 1)),
         ("backtick unclosed workflow fence", original.replacen("\nCross-cutting", "\n```text\nCross-cutting", 1)),
         ("tilde unclosed workflow fence", original.replacen("\nCross-cutting", "\n~~~text\nCross-cutting", 1)),
+        ("backtick four-space pseudo delimiters", original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "```text\n    ```\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n    ```\n```", 1)),
+        ("tilde four-space pseudo delimiters", original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "~~~text\n    ~~~\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n    ~~~\n~~~", 1)),
         ("tilde wrapped assignments", original.replacen("```text\nquery.max_index_files", "~~~text\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n~~~\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
@@ -58,6 +60,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
     for control in [
         original.replacen("| `retract` | Merge |", "```text\nhidden\n```   \n| `retract` | Merge |", 1),
         original.replacen("| `retract` | Merge |", "~~~text\nhidden\n~~~   \n| `retract` | Merge |", 1),
+        original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "```text\n   ```\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n   ```\n```", 1),
+        original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "~~~text\n   ~~~\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n   ~~~\n~~~", 1),
     ] {
         validate_contract(&control)?;
     }

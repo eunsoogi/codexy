@@ -164,7 +164,14 @@ fn closing_marker(line: &str) -> Option<Fence> {
 }
 
 fn marker(line: &str) -> Option<(Fence, &str)> {
-    let trimmed = line.trim_start();
+    let indentation = line
+        .chars()
+        .take_while(|character| *character == ' ')
+        .count();
+    if indentation > 3 {
+        return None;
+    }
+    let trimmed = &line[indentation..];
     let marker = trimmed.chars().next()?;
     let length = trimmed
         .chars()
