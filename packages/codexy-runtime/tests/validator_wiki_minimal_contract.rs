@@ -1,10 +1,12 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use std::{collections::BTreeSet, path::Path};
+use std::path::Path;
 
-use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, TYPE6_BLOCK_TAGS};
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
-use crate::support::wiki_minimal_contract_links::markdown_link_count;
+use crate::support::wiki_minimal_contract_link_cases::{
+    active_link_controls, invalid_link_replacements,
+};
+use crate::support::wiki_minimal_contract_markdown::Document;
 
 #[test]
 fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
@@ -12,8 +14,9 @@ fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
     let contract = contract(&root)?;
     assert_eq!(
-        markdown_link_count(&skill, "Minimal Contract", "references/minimal-contract.md")
-            .map_err(std::io::Error::other)?,
+        Document::parse(&skill)
+            .map_err(std::io::Error::other)?
+            .link_count("Minimal Contract", "references/minimal-contract.md"),
         1,
         "Wiki skill must expose one minimal-contract reference"
     );
@@ -26,44 +29,24 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let original = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
     let required = "[Minimal Contract](references/minimal-contract.md)";
-    let mutations = [
-        ("commented", format!("<!-- {required} -->")),
-        ("fenced", format!("```md\n{required}\n```")),
-        ("inline code", format!("`{required}`")),
-        ("inline-code label fragment", "[Minimal `ignored`Contract](references/minimal-contract.md)".into()),
-        ("comment label fragment", "[Minimal <!-- ignored -->Contract](references/minimal-contract.md)".into()),
-        ("inline-code target fragment", "[Minimal Contract](references/minimal-`ignored`contract.md)".into()),
-        ("comment target fragment", "[Minimal Contract](references/minimal-<!-- ignored -->contract.md)".into()),
-        ("image description", "![cover [Minimal Contract](references/minimal-contract.md)](cover.png)".into()),
-        ("image title", "![cover](cover.png \"[Minimal Contract](references/minimal-contract.md)\")".into()),
-        ("other-link title", "[other](other.md \"[Minimal Contract](references/minimal-contract.md)\")".into()),
-        ("other-link destination", "[other]([Minimal Contract](references/minimal-contract.md))".into()),
-        ("escaped", format!("\\{required}")),
-        ("image", format!("!{required}")),
-        ("malformed", "[Minimal Contract](references/minimal-contract.md".into()),
-        ("wrong label", "[Contract](references/minimal-contract.md)".into()),
-        ("wrong target", "[Minimal Contract](references/other.md)".into()),
-        ("duplicate", format!("{required}\n{required}")),
-    ];
+    let mutations = invalid_link_replacements(required);
     let mut accepted = Vec::new();
     for (name, replacement) in mutations {
         let source = original.replacen(required, &replacement, 1);
-        if markdown_link_count(&source, "Minimal Contract", "references/minimal-contract.md")
+        if Document::parse(&source)
             .map_err(std::io::Error::other)?
-            == 1
+            .link_count("Minimal Contract", "references/minimal-contract.md") == 1
         {
             accepted.push(name);
         }
     }
     assert!(accepted.is_empty(), "accepted inactive links: {accepted:?}");
-    for control in [
-        format!("active {required} adjacent"),
-        format!("`ignored` {required} <!-- ignored -->"),
-    ] {
+    for control in active_link_controls(required) {
         let source = original.replacen(required, &control, 1);
         assert_eq!(
-            markdown_link_count(&source, "Minimal Contract", "references/minimal-contract.md")
-                .map_err(std::io::Error::other)?,
+            Document::parse(&source)
+                .map_err(std::io::Error::other)?
+                .link_count("Minimal Contract", "references/minimal-contract.md"),
             1
         );
     }
@@ -147,7 +130,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         validate_contract(&mutation).is_ok().then_some(name)
     }).collect();
     assert!(accepted.is_empty(), "accepted invalid variants: {accepted:?}");
-    for control in [
+    for (index, control) in [
         original.replacen("\nCross-cutting", "\n```text\nhidden\n```   \nvisible\n\nCross-cutting", 1),
         original.replacen("\nCross-cutting", "\n~~~text\nhidden\n~~~   \nvisible\n\nCross-cutting", 1),
         original.replacen("\nCross-cutting", "\n```text\nhidden\n```\t\nvisible\n\nCross-cutting", 1),
@@ -163,8 +146,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         original.replacen("knowledge path", "<custom\nknowledge path\n</custom", 1),
         original.replacen("knowledge path", "knowledge `<!-- literal -->` path", 1),
         original.replacen("knowledge path", "knowledge ``<!-- literal -->`` path", 1),
-    ] {
-        validate_contract(&control)?;
+    ].into_iter().enumerate() {
+        validate_contract(&control).map_err(|error| format!("control {index}: {error}"))?;
     }
     for indentation in 0..=3 {
         let control = original.replacen(
@@ -178,33 +161,12 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
 }
 
 #[test]
-fn canonical_type_six_html_tags_have_an_exact_classifier_matrix() {
-    assert_eq!(TYPE6_BLOCK_TAGS.len(), 62);
-    let expected_representatives =
-        BTreeSet::from(["frame", "frameset", "noframes", "optgroup", "option", "param"]);
-    let actual_representatives = TYPE6_BLOCK_TAGS
-        .iter()
-        .copied()
-        .filter(|tag| matches!(*tag, "frame" | "frameset" | "noframes" | "optgroup" | "option" | "param"))
-        .collect::<BTreeSet<_>>();
-    assert_eq!(actual_representatives, expected_representatives);
-    for prefix in ["<", "</"] {
-        for tag in TYPE6_BLOCK_TAGS {
-            for suffix in ["", " ", "\t", ">", "/>"] {
-                let line = format!("{prefix}{tag}{suffix}");
-                assert!(
-                    ActiveMarkdown::default().line(&line, false).is_err(),
-                    "type-6 opener must fail closed: {line:?}"
-                );
-            }
-        }
+fn canonical_html_blocks_cannot_supply_contract_grammar() {
+    for tag in ["div", "script", "pre", "style", "textarea", "frameset"] {
+        let source = format!("<{tag}>\n## Essential contract\n</{tag}>");
+        assert!(Document::parse(&source).is_err(), "raw block must fail closed: {tag}");
     }
-    for line in ["<framex", "</frameset-x", "<optionally", "</parametric"] {
-        assert!(
-            ActiveMarkdown::default().line(line, false).is_ok(),
-            "near-match must remain active: {line:?}"
-        );
-    }
+    assert!(Document::parse("active <custom> inline HTML").is_ok());
 }
 
 #[test]

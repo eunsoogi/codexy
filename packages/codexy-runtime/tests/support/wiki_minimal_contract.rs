@@ -1,4 +1,4 @@
-use crate::support::wiki_minimal_contract_parser::{assignments, section, workflow_rows};
+use crate::support::wiki_minimal_contract_markdown::Document;
 
 pub(crate) const WORKFLOWS: &[(&str, &str)] = &[
     ("init", "Keep"),
@@ -63,10 +63,13 @@ pub(crate) const ASSIGNMENTS: &[(&str, &str)] = &[
 ];
 
 pub(crate) fn validate_contract(text: &str) -> Result<(), String> {
-    let essential = section(text, "## Essential contract")?;
-    let measurable = section(text, "## Measurable criteria")?;
-    let workflows = workflow_rows(&section(text, "## Current workflow disposition")?)?;
-    let measures = assignments(&section(&measurable, "### Machine-checkable limits")?)?;
+    let document = Document::parse(text)?;
+    let essential = document.section("## Essential contract")?;
+    let measurable = document.section("## Measurable criteria")?;
+    let workflows =
+        document.workflow_rows(&document.section("## Current workflow disposition")?)?;
+    let measures =
+        document.assignments(&document.child(&measurable, "### Machine-checkable limits")?)?;
     for title in [
         "### Ingest",
         "### Compile",
@@ -74,14 +77,14 @@ pub(crate) fn validate_contract(text: &str) -> Result<(), String> {
         "### Refresh and provenance",
         "### Bounded context",
     ] {
-        section(&essential, title)?;
+        document.child(&essential, title)?;
     }
     for title in [
         "### Context efficiency",
         "### Traceability",
         "### Freshness",
     ] {
-        section(&measurable, title)?;
+        document.child(&measurable, title)?;
     }
     exact_workflows(&workflows)?;
     exact_assignments(&measures)

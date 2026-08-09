@@ -1,0 +1,143 @@
+mod events;
+mod table;
+
+use std::{collections::BTreeMap, ops::Range};
+
+use table::Table;
+
+pub(crate) struct Document {
+    pub(super) source: String,
+    pub(super) length: usize,
+    pub(super) headings: Vec<Heading>,
+    pub(super) tables: Vec<Table>,
+    pub(super) blocks: Vec<CodeBlock>,
+    pub(super) links: Vec<Link>,
+    pub(super) text: Vec<Text>,
+}
+
+pub(super) struct Heading {
+    pub(super) range: Range<usize>,
+    pub(super) level: usize,
+    pub(super) text: String,
+    pub(super) literal: bool,
+}
+
+pub(super) struct CodeBlock {
+    pub(super) range: Range<usize>,
+    pub(super) info: String,
+    pub(super) fenced: bool,
+    pub(super) text: String,
+}
+
+pub(super) struct Link {
+    pub(super) label: String,
+    pub(super) destination: String,
+    pub(super) literal: bool,
+}
+
+pub(super) struct Text {
+    pub(super) range: Range<usize>,
+    pub(super) value: String,
+}
+
+#[derive(Clone)]
+pub(crate) struct Scope(Range<usize>);
+
+impl Scope {
+    pub(super) fn contains(&self, offset: usize) -> bool {
+        self.0.contains(&offset)
+    }
+}
+
+impl Document {
+    pub(crate) fn parse(source: &str) -> Result<Self, String> {
+        events::parse(source)
+    }
+
+    pub(crate) fn section(&self, title: &str) -> Result<Scope, String> {
+        let level = title
+            .chars()
+            .take_while(|character| *character == '#')
+            .count();
+        let name = title[level..].trim_start();
+        let matches: Vec<_> = self
+            .headings
+            .iter()
+            .enumerate()
+            .filter(|(_, heading)| {
+                heading.level == level && heading.literal && heading.text == name
+            })
+            .collect();
+        if matches.len() != 1 {
+            return Err(format!("missing or duplicate section {title}"));
+        }
+        let (index, heading) = matches[0];
+        let end = self
+            .headings
+            .iter()
+            .skip(index + 1)
+            .find(|next| next.level <= level)
+            .map_or(self.length, |next| next.range.start);
+        Ok(Scope(heading.range.end..end))
+    }
+
+    pub(crate) fn child(&self, parent: &Scope, title: &str) -> Result<Scope, String> {
+        let section = self.section(title)?;
+        parent
+            .contains(section.0.start)
+            .then_some(section)
+            .ok_or_else(|| format!("section {title} is outside its parent"))
+    }
+
+    pub(crate) fn workflow_rows(&self, scope: &Scope) -> Result<BTreeMap<String, String>, String> {
+        let tables: Vec<_> = self
+            .tables
+            .iter()
+            .filter(|table| scope.contains(table.start))
+            .collect();
+        match tables.as_slice() {
+            [table] => table.workflow_rows(&self.source),
+            _ => Err("missing or duplicate workflow table".into()),
+        }
+    }
+
+    pub(crate) fn assignments(&self, scope: &Scope) -> Result<BTreeMap<String, String>, String> {
+        let blocks: Vec<_> = self
+            .blocks
+            .iter()
+            .filter(|block| scope.contains(block.range.start))
+            .collect();
+        let block = match blocks.as_slice() {
+            [block] => *block,
+            _ => return Err("missing or malformed assignment block".into()),
+        };
+        if block.info != "text" {
+            return Err("missing or malformed assignment block".into());
+        }
+        if self
+            .text
+            .iter()
+            .any(|text| scope.contains(text.range.start) && text.value.contains(" = "))
+        {
+            return Err("assignment outside canonical block".into());
+        }
+        let mut values = BTreeMap::new();
+        for line in block.text.lines().filter(|line| !line.trim().is_empty()) {
+            let (key, value) = line.split_once(" = ").ok_or("malformed assignment")?;
+            if key.is_empty()
+                || value.is_empty()
+                || values.insert(key.into(), value.into()).is_some()
+            {
+                return Err("duplicate or malformed assignment".into());
+            }
+        }
+        Ok(values)
+    }
+
+    pub(crate) fn link_count(&self, label: &str, target: &str) -> usize {
+        self.links
+            .iter()
+            .filter(|link| link.literal && link.label == label && link.destination == target)
+            .count()
+    }
+}
