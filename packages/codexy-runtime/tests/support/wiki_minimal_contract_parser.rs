@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
-    let mut fence = None;
+    let (mut fence, mut comment) = (None, false);
     let mut count = 0;
-    for line in text.lines() {
-        transition(&mut fence, line);
+    for raw in text.lines() {
+        let line = active_line(&mut comment, raw, fence.is_some());
+        transition(&mut fence, &line);
         if fence.is_none() && line == title {
             count += 1;
         }
@@ -18,9 +19,10 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
         .take_while(|character| *character == '#')
         .count();
     let mut body = None;
-    fence = None;
-    for line in text.lines() {
-        transition(&mut fence, line);
+    (fence, comment) = (None, false);
+    for raw in text.lines() {
+        let line = active_line(&mut comment, raw, fence.is_some());
+        transition(&mut fence, &line);
         if fence.is_none() && line == title {
             body = Some(String::new());
             continue;
@@ -38,7 +40,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
             break;
         }
         if let Some(body) = &mut body {
-            body.push_str(line);
+            body.push_str(&line);
             body.push('\n');
         }
     }
@@ -47,28 +49,29 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
 }
 
 pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, String> {
-    let mut rows = Vec::new();
-    let mut fence = None;
+    let mut rows: Vec<String> = Vec::new();
+    let (mut fence, mut comment) = (None, false);
     let mut table_ended = false;
-    for line in table.lines() {
-        transition(&mut fence, line);
-        if let Some(row) = workflow_row(line) {
+    for raw in table.lines() {
+        let line = active_line(&mut comment, raw, fence.is_some());
+        transition(&mut fence, &line);
+        if let Some(row) = workflow_row(&line) {
             if fence.is_some() {
                 return Err("workflow table rows cannot be fenced".into());
             }
             if table_ended {
                 return Err("workflow table must be contiguous".into());
             }
-            rows.push(row);
+            rows.push(row.into());
         } else if !rows.is_empty() {
             table_ended = true;
         }
     }
     balanced(fence)?;
-    if rows.len() < 3 || cells(rows[0])? != ["Current workflow", "Disposition", "Contract role"] {
+    if rows.len() < 3 || cells(&rows[0])? != ["Current workflow", "Disposition", "Contract role"] {
         return Err("invalid workflow table header".into());
     }
-    if !separator(rows[1])? {
+    if !separator(&rows[1])? {
         return Err("invalid workflow table separator".into());
     }
     let mut workflows = BTreeMap::new();
@@ -91,13 +94,14 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
 }
 
 pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, String> {
-    let mut fence = None;
+    let (mut fence, mut comment) = (None, false);
     let mut canonical = false;
     let mut blocks = 0;
     let mut values = BTreeMap::new();
-    for line in section.lines() {
+    for raw in section.lines() {
+        let line = active_line(&mut comment, raw, fence.is_some());
         let prior = fence;
-        if transition(&mut fence, line) {
+        if transition(&mut fence, &line) {
             if prior.is_none() && marker_char(fence) == Some('`') && line.trim() == "```text" {
                 canonical = true;
                 blocks += 1;
@@ -204,13 +208,34 @@ fn separator(row: &str) -> Result<bool, String> {
 }
 
 fn workflow_row(line: &str) -> Option<&str> {
-    let indentation = line
-        .chars()
-        .take_while(|character| *character == ' ')
-        .count();
+    let indentation = line.len() - line.trim_start_matches(' ').len();
     (indentation <= 3)
         .then_some(&line[indentation..])
         .filter(|row| row.starts_with('|'))
+}
+
+fn active_line(comment: &mut bool, line: &str, fenced: bool) -> String {
+    if fenced {
+        return line.into();
+    }
+    let mut active = String::new();
+    let mut rest = line;
+    loop {
+        if *comment {
+            let Some(end) = rest.find("-->") else {
+                return active;
+            };
+            rest = &rest[end + 3..];
+            *comment = false;
+        } else if let Some(start) = rest.find("<!--") {
+            active.push_str(&rest[..start]);
+            rest = &rest[start + 4..];
+            *comment = true;
+        } else {
+            active.push_str(rest);
+            return active;
+        }
+    }
 }
 
 fn cells(row: &str) -> Result<Vec<&str>, String> {
