@@ -1,6 +1,6 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, TYPE6_BLOCK_TAGS};
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
@@ -10,7 +10,11 @@ fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
     let contract = contract(&root)?;
-    assert!(skill.contains("[Minimal Contract](references/minimal-contract.md)"));
+    assert_eq!(
+        markdown_link_count(&skill, "Minimal Contract", "references/minimal-contract.md"),
+        1,
+        "Wiki skill must expose one minimal-contract reference"
+    );
     validate_contract(&contract)?;
     Ok(())
 }
@@ -125,9 +129,14 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
 #[test]
 fn canonical_type_six_html_tags_have_an_exact_classifier_matrix() {
     assert_eq!(TYPE6_BLOCK_TAGS.len(), 62);
-    for tag in ["frame", "frameset", "noframes", "optgroup", "option", "param"] {
-        assert!(TYPE6_BLOCK_TAGS.contains(&tag), "missing canonical tag: {tag}");
-    }
+    let expected_representatives =
+        BTreeSet::from(["frame", "frameset", "noframes", "optgroup", "option", "param"]);
+    let actual_representatives = TYPE6_BLOCK_TAGS
+        .iter()
+        .copied()
+        .filter(|tag| matches!(*tag, "frame" | "frameset" | "noframes" | "optgroup" | "option" | "param"))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual_representatives, expected_representatives);
     for prefix in ["<", "</"] {
         for tag in TYPE6_BLOCK_TAGS {
             for suffix in ["", " ", "\t", ">", "/>"] {
@@ -180,6 +189,19 @@ fn minimal_contract_uses_canonical_instruction_policy_forms() -> TestResult {
 
 fn contract(root: &Path) -> Result<String, std::io::Error> {
     std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/minimal-contract.md"))
+}
+
+fn markdown_link_count(source: &str, label: &str, target: &str) -> usize {
+    source
+        .split('[')
+        .filter_map(|entry| entry.split_once("]("))
+        .filter_map(|(candidate, remainder)| {
+            remainder
+                .split_once(')')
+                .map(|(destination, _)| (candidate, destination))
+        })
+        .filter(|(candidate, destination)| *candidate == label && *destination == target)
+        .count()
 }
 
 fn stderr(output: &std::process::Output) -> String {
