@@ -51,7 +51,6 @@ rules.
 | `debugging` | Keep | Behavior is wrong, tests fail, automation hangs, or the root cause is unknown. | Reproduces the failure, isolates cause, makes a narrow repair, and proves the regression. |
 | `domain-driven-development` | Keep | Work changes business concepts, workflows, invariants, permissions, or module ownership. | Protects domain language, bounded contexts, state transitions, and ownership rules. |
 | `dreaming` | Keep | A lane resumes after compaction or inherited context may be stale. | Separates durable facts and active fixes from resolved or superseded history. |
-| `frontend-design` | Keep | Building, redesigning, auditing, or visually verifying a user-facing product surface. | Grounds UI work in evidence and verifies interaction, layout, accessibility, and responsiveness. |
 | `git-workflow` | Keep | Any Codexy Git, issue, branch, worktree, PR, review, merge, or main-sync work. | Enforces issue-backed branches, isolated worktrees, verification, review handling, and GitHub gates. |
 | `proof-driven-completion` | Keep | Before claiming success, handing off, opening or merging a PR, or completing a goal. | Maps every requirement to current authoritative evidence and blocks unsupported completion claims. |
 | `qa` | Keep | Verifying completed work, acceptance criteria, a release candidate, or PR readiness. | Drives the real CLI, GitHub, app, plugin, config, docs, or browser surface behind each claim. |
