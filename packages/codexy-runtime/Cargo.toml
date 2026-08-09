@@ -31,6 +31,9 @@ unicase = "2"
 unicode-normalization = "0.1"
 unicode_categories = "0.1"
 
+[dev-dependencies]
+pulldown-cmark = { version = "=0.13.4", default-features = false }
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"
