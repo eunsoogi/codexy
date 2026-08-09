@@ -3,11 +3,9 @@
 ## Purpose and boundary
 
 This is the smallest durable contract for an LLM-compiled wiki. It defines the
-knowledge path and its measurable guarantees; it does **not** remove existing
-workflows or prescribe their implementation. A `Remove` disposition below means
-"not part of this minimal contract," never "delete the current workflow." This
-keeps inventory policy out of this contract (#543) and does not alter MCP or LSP
-surfaces (#544).
+knowledge path and its measurable guarantees while preserving current workflow
+implementation. A `Remove` disposition labels a workflow outside this minimal
+contract. Inventory policy is owned by #543; MCP and LSP surfaces are owned by #544.
 
 The normative path is `init → ingest → compile → query → refresh`. `lint`,
 `librarian`, and `audit` verify the path; other workflows remain compatible
@@ -27,14 +25,14 @@ extensions only when they preserve these rules.
 
 ### Compile
 
-- Compile MUST synthesize articles from `raw/` sources, not copy them. A
+- Compile MUST synthesize articles from `raw/` sources and MUST NOT copy them. A
   source-backed article MUST contain non-empty, wiki-root-relative `sources:`;
   a conversation-only article MUST declare `compiled-from: conversation`.
 - Incremental compile MUST select sources newer than `Last compiled`; full
-  recompilation is explicit. It MUST update derived indexes best-effort after
+  recompilation MUST be explicit. It MUST update derived indexes best-effort after
   writing source-of-truth Markdown and frontmatter.
 - Compilation MUST record `updated`, `verified`, `volatility`, and confidence,
-  and MUST not use inventory records or archived content as article facts.
+  and MUST NOT use inventory records or archived content as article facts.
 
 ### Query
 
@@ -50,10 +48,10 @@ extensions only when they preserve these rules.
 - Refresh MUST compare each fetchable source with its recorded provenance. A
   changed source becomes a new immutable raw revision; unchanged sources remain
   unchanged. Refresh MUST mark affected derived knowledge for recompilation or
-  report why it remains current.
+  MUST report why it remains current.
 - Every source-backed article and generated output MUST resolve its `sources:`
-  chain exactly. Resolution preserves complete YAML scalar paths and never splits
-  filenames on whitespace. Missing, broken, weak, drifted, or contradictory
+  chain exactly. Resolution MUST preserve complete YAML scalar paths and MUST NOT
+  split filenames on whitespace. Missing, broken, weak, drifted, or contradictory
   chains MUST be reported rather than hidden.
 
 ### Bounded context
@@ -82,9 +80,9 @@ extensions only when they preserve these rules.
   entry. 100% of conversation-only articles MUST state `compiled-from:
   conversation`.
 - 100% of generated outputs with factual dependencies MUST have resolvable
-  `sources:`. Audits classify a broken or missing chain as `provenance-gap`, not
-  as clean.
-- Every write appends one operation entry to `log.md`; raw revisions preserve the
+  `sources:`. Audits MUST classify a broken or missing chain as `provenance-gap`,
+  rather than clean.
+- Every write MUST append one operation entry to `log.md`; raw revisions preserve the
   source identity and immutable historical record needed to replay provenance.
 
 ### Freshness
@@ -93,8 +91,8 @@ extensions only when they preserve these rules.
   `updated`. Its freshness score is 0–100 from source freshness, verification
   recency, compilation recency, and source-chain integrity; each dimension is
   worth 0–25 and is scaled by volatility.
-- The wiki's `freshness_threshold` (default 70) flags articles for refresh.
-  Refresh reports either an unchanged comparison or a new raw revision and the
+- Articles below the wiki's `freshness_threshold` (default 70) MUST be flagged
+  for refresh. Refresh MUST report either an unchanged comparison or a new raw revision and the
   resulting recompile requirement; it MUST NOT overwrite raw history.
 
 ## Current workflow disposition
