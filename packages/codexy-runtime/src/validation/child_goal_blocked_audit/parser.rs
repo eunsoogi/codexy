@@ -14,13 +14,11 @@ pub(super) struct ActiveEvent {
 
 pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
     let evidence = evidence.to_ascii_lowercase();
-    let terminal_lines =
-        super::super::sentinel_handoff::active_packaged_terminal_result_lines(&evidence);
     super::super::child_lifecycle_events::active_lines(&evidence)
         .into_iter()
         .map(|line| {
-            let kind = terminal_lines
-                .contains(&line.source_line)
+            let kind = line
+                .packaged_terminal
                 .then_some(OrderedEvent::PackagedTerminalResult)
                 .unwrap_or_else(|| ordered_event(&line.text));
             ActiveEvent {

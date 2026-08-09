@@ -111,15 +111,23 @@ fn blocked_standalone_line(line: &str, following: &[&str]) -> bool {
 
 pub(super) fn without_container_prefix(line: &str) -> &str {
     let mut content = line.trim();
-    while let Some(next) = content
-        .strip_prefix(['-', '*', '+'])
-        .map(str::trim_start)
-        .or_else(|| {
-            super::child_handoff_readiness_claims::strip_ordered_list_marker(content)
-                .map(str::trim_start)
-        })
-    {
+    loop {
+        let next = content
+            .strip_prefix(['-', '*', '+'])
+            .map(str::trim_start)
+            .or_else(|| {
+                super::child_handoff_readiness_claims::strip_ordered_list_marker(content)
+                    .map(str::trim_start)
+            })
+            .or_else(|| {
+                content
+                    .strip_prefix("[x]")
+                    .or_else(|| content.strip_prefix("[X]"))
+                    .map(str::trim_start)
+            });
+        let Some(next) = next else {
+            return content;
+        };
         content = next;
     }
-    content
 }

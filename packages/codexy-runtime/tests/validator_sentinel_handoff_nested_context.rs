@@ -11,6 +11,10 @@ fn validator_keeps_nested_inactive_terminal_results_out_of_live_continuity() -> 
         "- ```text\n- Packaged Sentinel Turing: {status} on current head {HEAD}\n- ```",
         "1. ```text\n1. Packaged Sentinel Turing: {status} on current head {HEAD}\n1. ```",
         "- - ```text\n- - Packaged Sentinel Turing: {status} on current head {HEAD}\n- - ```",
+        "- [x] > Packaged Sentinel Turing: {status} on current head {HEAD}",
+        "- [x] ```text\n- [x] Packaged Sentinel Turing: {status} on current head {HEAD}\n- [x] ```",
+        "- [x] ## Historical example\n- [x] Packaged Sentinel Turing: {status} on current head {HEAD}",
+        "- [x] - [x] > Packaged Sentinel Turing: {status} on current head {HEAD}",
     ] {
         for status in ["PASS", "BLOCK", "UNOBSERVABLE"] {
             let inactive = inactive.replace("{status}", status).replace("{HEAD}", HEAD);
@@ -19,7 +23,7 @@ fn validator_keeps_nested_inactive_terminal_results_out_of_live_continuity() -> 
             )?;
             assert!(
                 !output.status.success(),
-                "nested inactive {status} result must not end live continuity"
+                "nested inactive {status} result must not end live continuity: {inactive}"
             );
             assert!(
                 String::from_utf8_lossy(&output.stderr).contains("still running"),
@@ -55,6 +59,10 @@ fn validator_orders_active_generic_terminal_vetoes_after_named_evidence() -> Tes
         "- [ ] Reviewer gate returned BLOCK\nPackaged Sentinel Turing: PASS on current head {HEAD}",
         "Packaged Sentinel Turing: PASS on current head {HEAD}\n- > Reviewer gate: BLOCK",
         "Packaged Sentinel Turing: PASS on current head {HEAD}\n- ```text\n- Reviewer gate: BLOCK\n- ```",
+        "Packaged Sentinel Turing: PASS on current head {HEAD}\n- [x] > Reviewer gate: BLOCK",
+        "Packaged Sentinel Turing: PASS on current head {HEAD}\n- [x] ```text\n- [x] Reviewer gate: BLOCK\n- [x] ```",
+        "Packaged Sentinel Turing: PASS on current head {HEAD}\n- [x] ## Historical example\n- [x] Reviewer gate: BLOCK",
+        "Packaged Sentinel Turing: PASS on current head {HEAD}\n- [x] - [x] > Reviewer gate: BLOCK",
         "Packaged Sentinel Turing: PASS on current head {HEAD}. Reviewer-gate result: documentation note only",
     ] {
         assert_accepted(ignored)?;

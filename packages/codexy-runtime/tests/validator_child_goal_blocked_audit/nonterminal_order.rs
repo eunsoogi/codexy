@@ -65,6 +65,23 @@ pub(super) fn assert_boundaries() -> TestResult {
             }
         }
     }
+    for inactive in checked_task_inactive_contexts() {
+        for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
+            for call in ["update_goal(complete)", "update_goal(blocked)"] {
+                let result = inactive.replace("{event}", &format!("Sentinel result: {result}"));
+                assert_rejected(&format!(
+                    "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{result}## Current evidence\n{}",
+                    transition(call)
+                ))?;
+            }
+        }
+        let ignored_gate = inactive.replace("{event}", "Reviewer gate: BLOCK");
+        let output = run_validator(&format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_gate}## Current evidence\nSentinel result: PASS\n{}",
+            transition("update_goal(complete)")
+        ))?;
+        assert!(output.status.success(), "inactive reviewer gate vetoed recovery: {}", String::from_utf8_lossy(&output.stderr));
+    }
     for inactive in inactive_contexts() {
         let ignored_call = inactive.replace("{event}", "Goal tool call: update_goal(complete)");
         let output = run_validator(&format!(
@@ -107,6 +124,15 @@ fn inactive_contexts() -> [&'static str; 5] {
         "## Historical example\n{event}\n",
         "- > {event}\n",
         "- ```text\n- {event}\n- ```\n",
+    ]
+}
+
+fn checked_task_inactive_contexts() -> [&'static str; 4] {
+    [
+        "- [x] > {event}\n",
+        "- [x] ```text\n- [x] {event}\n- [x] ```\n",
+        "- [x] ## Historical example\n- [x] {event}\n",
+        "- [x] - [x] > {event}\n",
     ]
 }
 

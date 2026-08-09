@@ -1,30 +1,9 @@
-use std::collections::BTreeSet;
-
 use super::super::sentinel_handoff_status::{SentinelState, StatusProvenance};
 
-pub(super) fn active_packaged_terminal_result_lines(text: &str) -> BTreeSet<usize> {
-    let mut end = 0;
-    text.split_inclusive('\n')
-        .enumerate()
-        .filter_map(|(line, fragment)| {
-            end += fragment.len();
-            terminal_result_on_last_active_line(&text[..end]).then_some(line)
-        })
-        .collect()
-}
-
-fn terminal_result_on_last_active_line(text: &str) -> bool {
-    let current = super::super::readiness_context::current_text(text);
-    let current = current.trim_end_matches('\n');
-    let last_line = current.rfind('\n').map_or(0, |index| index + 1);
-    segments(&current).into_iter().any(|(start, segment)| {
-        start >= last_line
-            && packaged_status_events(segment)
-                .into_iter()
-                .any(|(offset, status)| {
-                    active(&current, start + offset) && matches!(status, SentinelState::Terminal(_))
-                })
-    })
+pub(super) fn packaged_terminal_result(text: &str) -> bool {
+    packaged_status_events(text)
+        .into_iter()
+        .any(|(_, status)| matches!(status, SentinelState::Terminal(_)))
 }
 
 pub(super) fn segments(text: &str) -> Vec<(usize, &str)> {
@@ -67,10 +46,12 @@ pub(super) fn active(text: &str, start: usize) -> bool {
     let line =
         super::super::readiness_context::without_container_prefix(&text[line_start..line_end]);
     !line.starts_with(['>', '"', '`', '~', '#'])
-        && (!inline_stale_heading(&text[..start]) || names_current_head(text, start))
+        && (!inline_stale_heading(&text[..start])
+            || names_current_head(text, start) && !inline_historical_heading(&text[..start]))
         && !line.starts_with("historical")
         && !line.starts_with("example")
-        && (!under_stale_heading(text, start) || names_current_head(text, start))
+        && (!under_stale_heading(text, start)
+            || names_current_head(text, start) && !under_historical_heading(text, start))
         && text[..start]
             .lines()
             .filter(|line| {
@@ -89,6 +70,13 @@ fn inline_stale_heading(prefix: &str) -> bool {
         .is_some_and(|heading| super::super::readiness_context::is_stale(heading.trim_start()))
 }
 
+fn inline_historical_heading(prefix: &str) -> bool {
+    prefix
+        .rsplit('#')
+        .next()
+        .is_some_and(|heading| historical(heading.trim_start()))
+}
+
 fn under_stale_heading(text: &str, start: usize) -> bool {
     text[..start]
         .lines()
@@ -100,6 +88,31 @@ fn under_stale_heading(text: &str, start: usize) -> bool {
                 .map(|heading| heading.trim_start_matches('#').trim_start())
         })
         .is_some_and(super::super::readiness_context::is_stale)
+}
+
+fn under_historical_heading(text: &str, start: usize) -> bool {
+    text[..start]
+        .lines()
+        .rev()
+        .find_map(|line| {
+            let heading = super::super::readiness_context::without_container_prefix(line);
+            heading
+                .strip_prefix('#')
+                .map(|heading| heading.trim_start_matches('#').trim_start())
+        })
+        .is_some_and(historical)
+}
+
+fn historical(text: &str) -> bool {
+    ["historical", "previous", "prior", "fallback"]
+        .iter()
+        .any(|prefix| {
+            text.strip_prefix(prefix).is_some_and(|rest| {
+                rest.chars()
+                    .next()
+                    .is_none_or(|character| !character.is_ascii_alphanumeric())
+            })
+        })
 }
 
 pub(super) fn names_current_head(text: &str, start: usize) -> bool {

@@ -7,10 +7,8 @@ mod result_context;
 #[path = "sentinel_handoff_result_tests.rs"]
 mod result_tests;
 
-pub(super) fn active_packaged_terminal_result_lines(
-    text: &str,
-) -> std::collections::BTreeSet<usize> {
-    result_context::active_packaged_terminal_result_lines(text)
+pub(super) fn packaged_terminal_result(text: &str) -> bool {
+    result_context::packaged_terminal_result(text)
 }
 
 pub(super) fn active_result_line(text: &str, start: usize) -> bool {
