@@ -76,6 +76,10 @@ fn validator_cli_rejects_removed_custom_agent_mcp_references()
             "\n[mcp_servers.public_search]\nurl = 'https://grep.app\\mcp'\n",
             "references removed MCP endpoint or command",
         ),
+        (
+            "\n[mcp_servers.public_search]\nurl = 'https://grep.app\\@safe.example/mcp'\n",
+            "references removed MCP endpoint or command",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
@@ -102,7 +106,7 @@ fn validator_cli_preserves_unrelated_mcp_command_and_url_identities()
     std::fs::write(
         &agent_path,
         format!(
-            "{}\n[mcp_servers.unrelated_command]\ncommand = \"/usr/local/bin/grep\"\n\n[mcp_servers.unrelated_windows]\ncommand = 'C:\\tools\\grep.exe'\n\n[mcp_servers.unrelated_url]\nurl = \"https://grep.app.example/mcp\"\n\n[mcp_servers.safe_query]\nurl = \"https://example.com/path?next=@grep.app\"\n\n[mcp_servers.safe_userinfo]\nurl = \"https://grep.app@safe.example/mcp\"\n",
+            "{}\n[mcp_servers.unrelated_command]\ncommand = \"/usr/local/bin/grep\"\n\n[mcp_servers.unrelated_windows]\ncommand = 'C:\\tools\\grep.exe'\n\n[mcp_servers.unrelated_url]\nurl = \"https://grep.app.example/mcp\"\n\n[mcp_servers.safe_query]\nurl = \"https://example.com/path?next=@grep.app\"\n\n[mcp_servers.safe_userinfo]\nurl = \"https://grep.app@safe.example/mcp\"\n\n[mcp_servers.safe_malformed_boundary]\nurl = 'https://safe.example\\@grep.app/mcp'\n",
             std::fs::read_to_string(&agent_path)?
         ),
     )?;

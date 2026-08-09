@@ -59,23 +59,20 @@ fn is_removed_url(text: &str) -> bool {
         return false;
     }
     let authority = remainder
-        .split(['/', '?', '#'])
+        .split(['/', '\\', '?', '#'])
         .next()
         .unwrap_or_default()
         .rsplit('@')
         .next()
         .unwrap_or_default();
-    authority
-        .split(':')
-        .next()
-        .unwrap_or_default()
-        .split('\\')
-        .next()
-        .map(|host| host.trim_end_matches('.'))
-        .is_some_and(|host| {
-            matches!(
-                host.to_ascii_lowercase().as_str(),
-                "grep.app" | "mcp.grep.app"
-            )
-        })
+    matches!(
+        authority
+            .split(':')
+            .next()
+            .unwrap_or_default()
+            .trim_end_matches('.')
+            .to_ascii_lowercase()
+            .as_str(),
+        "grep.app" | "mcp.grep.app"
+    )
 }
