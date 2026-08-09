@@ -52,6 +52,7 @@ mod child_lane_thread_tool_handler_scope;
 mod child_lane_thread_tool_handler_scope_labels;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
+mod child_lifecycle_events;
 mod child_terminal_handoff;
 mod completion_handoff;
 mod completion_handoff_compaction;

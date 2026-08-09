@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OrderedEvent {
     BlockedCall,
@@ -18,20 +16,19 @@ pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
     let evidence = evidence.to_ascii_lowercase();
     let terminal_lines =
         super::super::sentinel_handoff::active_packaged_terminal_result_lines(&evidence);
-    let mut events = Vec::new();
-    let mut start = 0;
-    for (source_line, fragment) in evidence.split_inclusive('\n').enumerate() {
-        if super::super::sentinel_handoff::active_result_line(&evidence, start) {
-            let line = without_list_prefix(fragment.trim()).to_owned();
+    super::super::child_lifecycle_events::active_lines(&evidence)
+        .into_iter()
+        .map(|line| {
             let kind = terminal_lines
-                .contains(&source_line)
+                .contains(&line.source_line)
                 .then_some(OrderedEvent::PackagedTerminalResult)
-                .unwrap_or_else(|| ordered_event(&line));
-            events.push(ActiveEvent { line, kind });
-        }
-        start += fragment.len();
-    }
-    events
+                .unwrap_or_else(|| ordered_event(&line.text));
+            ActiveEvent {
+                line: line.text,
+                kind,
+            }
+        })
+        .collect()
 }
 
 pub(super) fn ordered_event(line: &str) -> OrderedEvent {
@@ -81,7 +78,7 @@ pub(super) fn has_distinct_values(line: &str, name: &str, minimum: usize) -> boo
                 .split('|')
                 .map(str::trim)
                 .filter(|value| !value.is_empty())
-                .collect::<BTreeSet<_>>()
+                .collect::<std::collections::BTreeSet<_>>()
                 .len()
                 >= minimum
         })
@@ -96,29 +93,4 @@ pub(super) fn has_elapsed_minimum(line: &str) -> bool {
         .is_some_and(|((first, observed), minimum)| {
             minimum > 0 && observed.saturating_sub(first) >= minimum
         })
-}
-
-fn without_list_prefix(mut line: &str) -> &str {
-    loop {
-        line = line.trim_start();
-        if let Some(rest) = line
-            .strip_prefix("- ")
-            .or_else(|| line.strip_prefix("* "))
-            .or_else(|| line.strip_prefix("+ "))
-        {
-            line = rest;
-            continue;
-        }
-        let numbered = line.trim_start_matches(|character: char| character.is_ascii_digit());
-        if numbered.len() != line.len() {
-            if let Some(rest) = numbered
-                .strip_prefix(". ")
-                .or_else(|| numbered.strip_prefix(") "))
-            {
-                line = rest;
-                continue;
-            }
-        }
-        return line;
-    }
 }

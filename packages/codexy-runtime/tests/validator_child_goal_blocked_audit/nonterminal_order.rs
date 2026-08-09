@@ -26,6 +26,34 @@ pub(super) fn assert_boundaries() -> TestResult {
             ))?;
         }
     }
+    for prefix in ["- [x] ", "+ [X] ", "1. [x] ", "- + [X] "] {
+        for call in ["update_goal(complete)", "update_goal(blocked)"] {
+            let transition = transition(call).replace(
+                "Goal tool call:",
+                &format!("{prefix}Goal tool call:"),
+            );
+            assert_rejected(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{transition}"))?;
+        }
+        let output = run_validator(&format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}Sentinel result: PASS\n{}",
+            transition("update_goal(complete)")
+        ))?;
+        assert!(output.status.success(), "checked terminal result rejected: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    for prefix in ["- [ ] ", "+ [ ] ", "1. [ ] ", "- + [ ] "] {
+        let output = run_validator(&format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}Goal tool call: update_goal(complete)\nSentinel result: PASS\n{}",
+            transition("update_goal(complete)")
+        ))?;
+        assert!(output.status.success(), "unchecked task item entered lifecycle: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    let checked_direction = transition("update_goal(blocked)").replace(
+        "Blocked goal pre-mutation check:",
+        "- [X] Parent direction event: version=direction-2; cancellation=received\nBlocked goal pre-mutation check:",
+    );
+    assert_invalid(&format!(
+        "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Sentinel result: BLOCK\n{checked_direction}"
+    ), "cancelled by newer parent direction")?;
     for inactive in inactive_contexts() {
         for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
             for call in ["update_goal(complete)", "update_goal(blocked)"] {
@@ -91,11 +119,15 @@ fn transition(call: &str) -> String {
 }
 
 fn assert_rejected(evidence: &str) -> TestResult {
+    assert_invalid(evidence, "nonterminal wait handoff")
+}
+
+fn assert_invalid(evidence: &str, expected: &str) -> TestResult {
     let output = run_validator(evidence)?;
     assert!(
         !output.status.success(),
         "terminal goal call before result passed: {evidence}"
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("nonterminal wait handoff"), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(String::from_utf8_lossy(&output.stderr).contains(expected), "{}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }

@@ -4,19 +4,14 @@ use super::child_lane_owner_decision::is_child_delegation_owner_decision;
 use super::child_lane_ownership_phrases::{field_value, metadata_key};
 use super::child_terminal_handoff::{
     check as check_terminal_handoffs, is_local_task_target, is_terminal_goal_call,
-    without_metadata_prefix,
 };
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
-    let text = evidence.to_ascii_lowercase();
-    let mut lines = Vec::new();
-    let mut start = 0;
-    for fragment in text.split_inclusive('\n') {
-        if super::sentinel_handoff::active_result_line(&text, start) {
-            lines.push(without_metadata_prefix(fragment.trim()));
-        }
-        start += fragment.len();
-    }
+    let lifecycle_lines = super::child_lifecycle_events::active_lines(evidence);
+    let lines = lifecycle_lines
+        .iter()
+        .map(|line| line.text.as_str())
+        .collect::<Vec<_>>();
     let mut errors = Vec::new();
     let mut start = 0;
     for end in 1..=lines.len() {
