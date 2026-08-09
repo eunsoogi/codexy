@@ -29,6 +29,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("commented required heading", original.replacen("### Ingest", "<!--\n### Ingest\n-->", 1)),
         ("block-comment heading suffix", original.replacen("### Ingest", "<!-- hidden -->### Ingest", 1)),
         ("div required heading", original.replacen("### Ingest", "<div>\n### Ingest\n</div>", 1)),
+        ("processing required heading", original.replacen("### Ingest", "<?\n### Ingest\n?>", 1)),
         ("wrong measurable parent", original.replacen("### Machine-checkable limits", "## Detached\n\n### Machine-checkable limits", 1)),
         ("malformed separator", original.replacen("| --- | --- | --- |", "| -- | --- | --- |", 1)),
         ("two-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- |", 1)),
@@ -42,6 +43,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("pre workflow table", original.replacen("| Current workflow |", "<pre>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</pre>\n\nCross-cutting", 1)),
         ("style workflow table", original.replacen("| Current workflow |", "<style>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</style>\n\nCross-cutting", 1)),
         ("textarea workflow table", original.replacen("| Current workflow |", "<textarea>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</textarea>\n\nCross-cutting", 1)),
+        ("doctype workflow table", original.replacen("| Current workflow |", "<!DOCTYPE\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n>\n\nCross-cutting", 1)),
         ("backtick fenced row", original.replacen("| `retract` | Merge |", "```text\n| `retract` | Merge |", 1)),
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
         ("four-backtick fence", original.replacen("| `retract` | Merge |", "````text\n```\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "```\n````\n| `thesis` | Merge |", 1)),
@@ -58,6 +60,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("commented assignments", original.replacen("```text\nquery.max_index_files", "<!--\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n-->\n\nFor valid", 1)),
         ("block-comment assignment suffix", original.replacen("```text\nquery.max_index_files", "<!-- hidden -->```text\nquery.max_index_files", 1)),
         ("raw-html assignment block", original.replacen("```text\nquery.max_index_files", "<script>\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</script>\n\nFor valid", 1)),
+        ("cdata assignment block", original.replacen("```text\nquery.max_index_files", "<![CDATA[\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n]]>\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
         ("duplicate numeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = 3\nquery.max_index_files = 3", 1)),
@@ -80,6 +83,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         original.replacen("knowledge path", "knowledge <!-- harmless --> path", 1),
         original.replacen("knowledge path", "knowledge\n<!--\nharmless\n-->\npath", 1),
         original.replacen("knowledge path", "knowledge <span>inline</span> path", 1),
+        original.replacen("knowledge path", "knowledge <!DOCTYPE-like> path", 1),
     ] {
         validate_contract(&control)?;
     }

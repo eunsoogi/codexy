@@ -58,7 +58,7 @@ fn raw_html_block(line: &str) -> bool {
 }
 
 fn raw_declaration(rest: &str) -> bool {
-    rest.starts_with('?') || rest.starts_with("![CDATA[") || rest.starts_with("<!")
+    matches!(rest.as_bytes().first(), Some(b'!' | b'?'))
 }
 
 fn raw_tag(rest: &str) -> bool {
