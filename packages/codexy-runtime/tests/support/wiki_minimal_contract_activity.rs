@@ -70,6 +70,7 @@ pub(crate) const TYPE6_BLOCK_TAGS: &[&str] = &[
 ];
 
 const TYPE1_BLOCK_TAGS: &[&str] = &["pre", "script", "style", "textarea"];
+const INACTIVE_BOUNDARY: char = '\0';
 
 impl ActiveMarkdown {
     pub(crate) fn line(&mut self, line: &str, fenced: bool) -> Result<String, String> {
@@ -119,6 +120,9 @@ impl ActiveMarkdown {
                 if block {
                     return Ok(String::new());
                 }
+                if !retain_code {
+                    active.push(INACTIVE_BOUNDARY);
+                }
             } else if self.code.is_some() {
                 let Some((start, length)) = backtick_run(rest, true) else {
                     if retain_code {
@@ -138,6 +142,9 @@ impl ActiveMarkdown {
                 let comment = rest.find("<!--");
                 if comment.is_some_and(|comment| comment < start) {
                     active.push_str(&rest[..comment.unwrap()]);
+                    if !retain_code {
+                        active.push(INACTIVE_BOUNDARY);
+                    }
                     rest = &rest[comment.unwrap() + 4..];
                     self.comment = (true, block);
                     continue;
@@ -147,11 +154,15 @@ impl ActiveMarkdown {
                     active.push_str(&rest[..end]);
                 } else {
                     active.push_str(&rest[..start]);
+                    active.push(INACTIVE_BOUNDARY);
                 }
                 rest = &rest[end..];
                 self.code = Some(length);
             } else if let Some(start) = rest.find("<!--") {
                 active.push_str(&rest[..start]);
+                if !retain_code {
+                    active.push(INACTIVE_BOUNDARY);
+                }
                 rest = &rest[start + 4..];
                 self.comment = (true, block);
             } else {

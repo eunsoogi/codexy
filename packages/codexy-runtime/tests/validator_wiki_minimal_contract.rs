@@ -30,6 +30,10 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
         ("commented", format!("<!-- {required} -->")),
         ("fenced", format!("```md\n{required}\n```")),
         ("inline code", format!("`{required}`")),
+        ("inline-code label fragment", "[Minimal `ignored`Contract](references/minimal-contract.md)".into()),
+        ("comment label fragment", "[Minimal <!-- ignored -->Contract](references/minimal-contract.md)".into()),
+        ("inline-code target fragment", "[Minimal Contract](references/minimal-`ignored`contract.md)".into()),
+        ("comment target fragment", "[Minimal Contract](references/minimal-<!-- ignored -->contract.md)".into()),
         ("escaped", format!("\\{required}")),
         ("image", format!("!{required}")),
         ("malformed", "[Minimal Contract](references/minimal-contract.md".into()),
@@ -48,6 +52,17 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
         }
     }
     assert!(accepted.is_empty(), "accepted inactive links: {accepted:?}");
+    for control in [
+        format!("active {required} adjacent"),
+        format!("`ignored` {required} <!-- ignored -->"),
+    ] {
+        let source = original.replacen(required, &control, 1);
+        assert_eq!(
+            markdown_link_count(&source, "Minimal Contract", "references/minimal-contract.md")
+                .map_err(std::io::Error::other)?,
+            1
+        );
+    }
     Ok(())
 }
 
