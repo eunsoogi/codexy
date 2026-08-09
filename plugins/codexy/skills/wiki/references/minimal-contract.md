@@ -96,9 +96,12 @@ extensions only when they preserve these rules.
   recency, compilation recency, and source-chain integrity; each dimension is
   worth 0–25.
 - Dates use their UTC calendar day. Missing, malformed, or future `verified`,
-  `updated`, or raw `ingested` dates MUST contribute zero to that component.
-  Unknown volatility defaults to `warm`. For source-backed articles, unresolved
-  sources count in the source-chain denominator but not its numerator.
+  `updated`, or raw `ingested` dates MUST contribute zero to that component and
+  MUST NOT be converted to an age of zero. For a multi-source article,
+  `source_age` is the maximum age among its resolvable sources with valid,
+  non-future `ingested` dates; if none exist, source freshness is zero. Unknown
+  volatility defaults to `warm`. For source-backed articles, unresolved sources
+  count in the source-chain denominator but not its numerator.
 - A `compiled-from: conversation` article MUST omit raw-source and source-chain
   components, score verification and compilation as below, then double their
   subtotal. A `compiled-from: mixed` article MUST use the source-backed formula.
@@ -115,19 +118,21 @@ query.max_index_file_bytes = 4000
 query.max_article_file_bytes = 4000
 query.max_total_bytes = 48000
 freshness.threshold = 70
-freshness.hot_half_life_days = 7
-freshness.warm_half_life_days = 30
-freshness.cold_half_life_days = 180
+freshness.hot_half_life_days = 30
+freshness.warm_half_life_days = 90
+freshness.cold_half_life_days = 365
 freshness.decay = 25 * 0.5^(age_days / half_life_days)
+freshness.source_age = max(age_days across resolvable sources)
 freshness.source_chain = 25 * resolvable_sources / total_sources
 freshness.score = round_half_up(decay(source_age) + decay(verification_age) + decay(compilation_age) + source_chain)
+freshness.future_date = 0
 freshness.conversation = min(100, 2 * (verification + compilation))
 ```
 
-`age_days` is `max(0, today_utc - recorded_utc_day)`. `round_half_up` rounds
-to the nearest integer with .5 rounded upward, then clamps the final score to
-0–100. A source-backed article with no valid source entries is a traceability
-failure and MUST NOT receive a clean freshness result.
+For valid non-future values, `age_days` is `today_utc - recorded_utc_day`.
+`round_half_up` rounds to the nearest integer with .5 rounded upward, then
+clamps the final score to 0–100. A source-backed article with no valid source
+entries is a traceability failure and MUST NOT receive a clean freshness result.
 
 ## Current workflow disposition
 
