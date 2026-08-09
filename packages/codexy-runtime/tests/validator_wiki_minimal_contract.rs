@@ -1,8 +1,11 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
+use crate::support::wiki_minimal_contract_html_cases::{
+    TYPE6_BLOCK_TAGS, TYPE6_NEAR_MATCHES, type6_block_forms,
+};
 use crate::support::wiki_minimal_contract_link_cases::{
     active_link_controls, invalid_link_replacements,
 };
@@ -161,10 +164,22 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
 }
 
 #[test]
-fn canonical_html_blocks_cannot_supply_contract_grammar() {
-    for tag in ["div", "script", "pre", "style", "textarea", "frameset"] {
-        let source = format!("<{tag}>\n## Essential contract\n</{tag}>");
-        assert!(Document::parse(&source).is_err(), "raw block must fail closed: {tag}");
+fn canonical_type_six_html_tags_are_inactive_through_the_event_adapter() {
+    assert_eq!(TYPE6_BLOCK_TAGS.len(), 62);
+    assert_eq!(
+        TYPE6_BLOCK_TAGS
+            .iter()
+            .copied()
+            .filter(|tag| matches!(*tag, "frame" | "frameset" | "noframes" | "optgroup" | "option" | "param"))
+            .collect::<BTreeSet<_>>(),
+        BTreeSet::from(["frame", "frameset", "noframes", "optgroup", "option", "param"])
+    );
+    for form in type6_block_forms() {
+        let source = format!("{form}\n## Essential contract");
+        assert!(Document::parse(&source).is_err(), "type-6 block must fail closed: {form:?}");
+    }
+    for source in TYPE6_NEAR_MATCHES {
+        assert!(Document::parse(source).is_ok(), "near-match must remain active: {source:?}");
     }
     assert!(Document::parse("active <custom> inline HTML").is_ok());
 }
