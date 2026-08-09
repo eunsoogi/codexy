@@ -73,10 +73,23 @@ const TYPE1_BLOCK_TAGS: &[&str] = &["pre", "script", "style", "textarea"];
 
 impl ActiveMarkdown {
     pub(crate) fn line(&mut self, line: &str, fenced: bool) -> Result<String, String> {
+        self.active_line(line, fenced, true)
+    }
+
+    pub(crate) fn link_line(&mut self, line: &str, fenced: bool) -> Result<String, String> {
+        self.active_line(line, fenced, false)
+    }
+
+    fn active_line(
+        &mut self,
+        line: &str,
+        fenced: bool,
+        retain_code: bool,
+    ) -> Result<String, String> {
         if fenced {
             return Ok(line.into());
         }
-        let active = self.without_comment(line)?;
+        let active = self.without_comment(line, retain_code)?;
         if raw_html_block(&active) {
             return Err("raw HTML blocks cannot supply contract content".into());
         }
@@ -90,7 +103,7 @@ impl ActiveMarkdown {
             .ok_or_else(|| "unbalanced inline code span".into())
     }
 
-    fn without_comment(&mut self, line: &str) -> Result<String, String> {
+    fn without_comment(&mut self, line: &str, retain_code: bool) -> Result<String, String> {
         let indentation = line.len() - line.trim_start_matches(' ').len();
         let block = indentation <= 3 && line[indentation..].starts_with("<!--");
         let mut active = String::new();
@@ -108,11 +121,15 @@ impl ActiveMarkdown {
                 }
             } else if self.code.is_some() {
                 let Some((start, length)) = backtick_run(rest, true) else {
-                    active.push_str(rest);
+                    if retain_code {
+                        active.push_str(rest);
+                    }
                     return Ok(active);
                 };
                 let end = start + length;
-                active.push_str(&rest[..end]);
+                if retain_code {
+                    active.push_str(&rest[..end]);
+                }
                 rest = &rest[end..];
                 if self.code == Some(length) {
                     self.code = None;
@@ -126,7 +143,11 @@ impl ActiveMarkdown {
                     continue;
                 }
                 let end = start + length;
-                active.push_str(&rest[..end]);
+                if retain_code {
+                    active.push_str(&rest[..end]);
+                } else {
+                    active.push_str(&rest[..start]);
+                }
                 rest = &rest[end..];
                 self.code = Some(length);
             } else if let Some(start) = rest.find("<!--") {

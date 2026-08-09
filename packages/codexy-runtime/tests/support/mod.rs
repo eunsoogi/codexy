@@ -36,6 +36,7 @@ pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
 pub(crate) mod wiki_minimal_contract;
 pub(crate) mod wiki_minimal_contract_activity;
+pub(crate) mod wiki_minimal_contract_fence;
 pub(crate) mod wiki_minimal_contract_parser;
 pub(crate) mod windows_archive_prerequisite;
 pub(crate) mod workflow_contract;

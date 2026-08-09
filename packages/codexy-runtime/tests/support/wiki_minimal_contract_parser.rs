@@ -1,19 +1,21 @@
 use std::collections::BTreeMap;
 
-use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, opening_fence};
+use crate::support::{
+    wiki_minimal_contract_activity::ActiveMarkdown, wiki_minimal_contract_fence::FenceState,
+};
 
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
-    let (mut fence, mut active) = (None, ActiveMarkdown::default());
+    let (mut fence, mut active) = (FenceState::default(), ActiveMarkdown::default());
     let mut count = 0;
     for raw in text.lines() {
-        let line = active.line(raw, fence.is_some())?;
-        transition(&mut fence, &line);
-        if fence.is_none() && line == title {
+        let line = active.line(raw, fence.is_fenced())?;
+        fence.transition(&line);
+        if !fence.is_fenced() && line == title {
             count += 1;
         }
     }
     active.finish()?;
-    balanced(fence)?;
+    fence.finish()?;
     if count != 1 {
         return Err(format!("missing or duplicate section {title}"));
     }
@@ -22,11 +24,11 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
         .take_while(|character| *character == '#')
         .count();
     let mut body = None;
-    (fence, active) = (None, ActiveMarkdown::default());
+    (fence, active) = (FenceState::default(), ActiveMarkdown::default());
     for raw in text.lines() {
-        let line = active.line(raw, fence.is_some())?;
-        transition(&mut fence, &line);
-        if fence.is_none() && line == title {
+        let line = active.line(raw, fence.is_fenced())?;
+        fence.transition(&line);
+        if !fence.is_fenced() && line == title {
             body = Some(String::new());
             continue;
         }
@@ -35,7 +37,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
             .take_while(|character| *character == '#')
             .count();
         if body.is_some()
-            && fence.is_none()
+            && !fence.is_fenced()
             && next_level > 0
             && next_level <= level
             && line.as_bytes().get(next_level) == Some(&b' ')
@@ -48,19 +50,19 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
         }
     }
     active.finish()?;
-    balanced(fence)?;
+    fence.finish()?;
     body.ok_or_else(|| format!("missing section {title}"))
 }
 
 pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, String> {
     let mut rows: Vec<String> = Vec::new();
-    let (mut fence, mut active) = (None, ActiveMarkdown::default());
+    let (mut fence, mut active) = (FenceState::default(), ActiveMarkdown::default());
     let mut table_ended = false;
     for raw in table.lines() {
-        let line = active.line(raw, fence.is_some())?;
-        transition(&mut fence, &line);
+        let line = active.line(raw, fence.is_fenced())?;
+        fence.transition(&line);
         if let Some(row) = workflow_row(&line) {
-            if fence.is_some() {
+            if fence.is_fenced() {
                 return Err("workflow table rows cannot be fenced".into());
             }
             if table_ended {
@@ -72,7 +74,7 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
         }
     }
     active.finish()?;
-    balanced(fence)?;
+    fence.finish()?;
     if rows.len() < 3 || cells(&rows[0])? != ["Current workflow", "Disposition", "Contract role"] {
         return Err("invalid workflow table header".into());
     }
@@ -99,18 +101,18 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
 }
 
 pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, String> {
-    let (mut fence, mut active) = (None, ActiveMarkdown::default());
+    let (mut fence, mut active) = (FenceState::default(), ActiveMarkdown::default());
     let mut canonical = false;
     let mut blocks = 0;
     let mut values = BTreeMap::new();
     for raw in section.lines() {
-        let line = active.line(raw, fence.is_some())?;
-        let prior = fence;
-        if transition(&mut fence, &line) {
-            if prior.is_none() && marker_char(fence) == Some('`') && line.trim() == "```text" {
+        let line = active.line(raw, fence.is_fenced())?;
+        let prior_marker = fence.marker();
+        if fence.transition(&line) {
+            if prior_marker.is_none() && fence.marker() == Some('`') && line.trim() == "```text" {
                 canonical = true;
                 blocks += 1;
-            } else if marker_char(prior) == Some('`') && fence.is_none() && canonical {
+            } else if prior_marker == Some('`') && !fence.is_fenced() && canonical {
                 canonical = false;
             }
             continue;
@@ -126,82 +128,83 @@ pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, Str
             {
                 return Err("duplicate or malformed assignment".into());
             }
-        } else if fence.is_none() && line.contains(" = ") {
+        } else if !fence.is_fenced() && line.contains(" = ") {
             return Err("assignment outside canonical block".into());
         }
     }
     active.finish()?;
-    if fence.is_some() || canonical || blocks != 1 {
+    if fence.is_fenced() || canonical || blocks != 1 {
         return Err("missing or malformed assignment block".into());
     }
     Ok(values)
 }
 
-#[derive(Clone, Copy, PartialEq)]
-struct Fence {
-    marker: char,
-    length: usize,
+pub(crate) fn markdown_link_count(text: &str, label: &str, target: &str) -> Result<usize, String> {
+    Ok(active_link_lines(text)?
+        .iter()
+        .map(|line| links_in_line(line, label, target))
+        .sum())
 }
 
-fn transition(fence: &mut Option<Fence>, line: &str) -> bool {
-    match *fence {
-        None => {
-            let Some(open) = opening_marker(line) else {
-                return false;
-            };
-            *fence = Some(open);
-            true
-        }
-        Some(open) => {
-            let Some(close) = closing_marker(line) else {
-                return false;
-            };
-            if open.marker == close.marker && close.length >= open.length {
-                *fence = None;
-                true
-            } else {
-                false
-            }
+fn active_link_lines(text: &str) -> Result<Vec<String>, String> {
+    let (mut fence, mut active) = (FenceState::default(), ActiveMarkdown::default());
+    let mut lines = Vec::new();
+    for raw in text.lines() {
+        let fenced = fence.is_fenced();
+        let line = active.link_line(raw, fenced)?;
+        let delimiter = fence.transition(&line);
+        if !fenced && !delimiter {
+            lines.push(line);
         }
     }
+    active.finish()?;
+    fence.finish()?;
+    Ok(lines)
 }
 
-fn marker_char(fence: Option<Fence>) -> Option<char> {
-    fence.map(|fence| fence.marker)
-}
-
-fn opening_marker(line: &str) -> Option<Fence> {
-    opening_fence(line).map(|(marker, length)| Fence { marker, length })
-}
-
-fn closing_marker(line: &str) -> Option<Fence> {
-    let (fence, suffix) = fence_marker(line)?;
-    suffix
-        .bytes()
-        .all(|byte| matches!(byte, b' ' | b'\t'))
-        .then_some(fence)
-}
-
-fn fence_marker(line: &str) -> Option<(Fence, &str)> {
-    let indentation = line.len() - line.trim_start_matches(' ').len();
-    if indentation > 3 {
-        return None;
+fn links_in_line(line: &str, label: &str, target: &str) -> usize {
+    let bytes = line.as_bytes();
+    let mut count = 0;
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'\\' {
+            index += 2;
+            continue;
+        }
+        if bytes[index] != b'['
+            || (index > 0 && bytes[index - 1] == b'!' && !escaped(bytes, index - 1))
+        {
+            index += 1;
+            continue;
+        }
+        let label_start = index + 1;
+        let Some(label_end) = line[label_start..].find(']').map(|end| label_start + end) else {
+            break;
+        };
+        let target_start = label_end + 2;
+        if bytes.get(label_end + 1) != Some(&b'(') {
+            index = label_end + 1;
+            continue;
+        }
+        let Some(target_end) = line[target_start..].find(')').map(|end| target_start + end) else {
+            break;
+        };
+        if &line[label_start..label_end] == label && &line[target_start..target_end] == target {
+            count += 1;
+        }
+        index = target_end + 1;
     }
-    let trimmed = &line[indentation..];
-    let marker = trimmed.chars().next()?;
-    let length = trimmed
-        .chars()
-        .take_while(|character| *character == marker)
-        .count();
-    (matches!(marker, '`' | '~') && length >= 3)
-        .then_some((Fence { marker, length }, &trimmed[length..]))
+    count
 }
 
-fn balanced(fence: Option<Fence>) -> Result<(), String> {
-    fence
-        .is_none()
-        .then_some(())
-        .ok_or_else(|| "unbalanced fence".into())
+fn escaped(bytes: &[u8], index: usize) -> bool {
+    bytes[..index]
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'\\')
+        .count()
+        % 2
+        == 1
 }
 
 fn separator(row: &str) -> Result<bool, String> {

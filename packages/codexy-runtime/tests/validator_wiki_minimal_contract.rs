@@ -4,6 +4,7 @@ use std::{collections::BTreeSet, path::Path};
 
 use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, TYPE6_BLOCK_TAGS};
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
+use crate::support::wiki_minimal_contract_parser::markdown_link_count;
 
 #[test]
 fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
@@ -11,11 +12,42 @@ fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
     let contract = contract(&root)?;
     assert_eq!(
-        markdown_link_count(&skill, "Minimal Contract", "references/minimal-contract.md"),
+        markdown_link_count(&skill, "Minimal Contract", "references/minimal-contract.md")
+            .map_err(std::io::Error::other)?,
         1,
         "Wiki skill must expose one minimal-contract reference"
     );
     validate_contract(&contract)?;
+    Ok(())
+}
+
+#[test]
+fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let original = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
+    let required = "[Minimal Contract](references/minimal-contract.md)";
+    let mutations = [
+        ("commented", format!("<!-- {required} -->")),
+        ("fenced", format!("```md\n{required}\n```")),
+        ("inline code", format!("`{required}`")),
+        ("escaped", format!("\\{required}")),
+        ("image", format!("!{required}")),
+        ("malformed", "[Minimal Contract](references/minimal-contract.md".into()),
+        ("wrong label", "[Contract](references/minimal-contract.md)".into()),
+        ("wrong target", "[Minimal Contract](references/other.md)".into()),
+        ("duplicate", format!("{required}\n{required}")),
+    ];
+    let mut accepted = Vec::new();
+    for (name, replacement) in mutations {
+        let source = original.replacen(required, &replacement, 1);
+        if markdown_link_count(&source, "Minimal Contract", "references/minimal-contract.md")
+            .map_err(std::io::Error::other)?
+            == 1
+        {
+            accepted.push(name);
+        }
+    }
+    assert!(accepted.is_empty(), "accepted inactive links: {accepted:?}");
     Ok(())
 }
 
@@ -189,19 +221,6 @@ fn minimal_contract_uses_canonical_instruction_policy_forms() -> TestResult {
 
 fn contract(root: &Path) -> Result<String, std::io::Error> {
     std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/minimal-contract.md"))
-}
-
-fn markdown_link_count(source: &str, label: &str, target: &str) -> usize {
-    source
-        .split('[')
-        .filter_map(|entry| entry.split_once("]("))
-        .filter_map(|(candidate, remainder)| {
-            remainder
-                .split_once(')')
-                .map(|(destination, _)| (candidate, destination))
-        })
-        .filter(|(candidate, destination)| *candidate == label && *destination == target)
-        .count()
 }
 
 fn stderr(output: &std::process::Output) -> String {
