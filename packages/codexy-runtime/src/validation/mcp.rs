@@ -4,11 +4,11 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 use crate::paths::display_relative;
-use crate::validation::{json_array_strings, load_json};
+use crate::validation::{json_array_strings, load_json, removed_mcp};
 
 const REQUIRED_MCP_NAMES: &[&str] = &["lsp", "codegraph"];
 const DISALLOWED_NAMES: &[&str] = &["context7"];
-const DISALLOWED_FRAGMENTS: &[&str] = &["openai", "context7"];
+const DISALLOWED_FRAGMENTS: &[&str] = &["openai", "context7", "grep_app", "grep.app"];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     match check_inner(plugin_root) {
@@ -69,7 +69,8 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
         );
     }
     let lowered_name = name.to_ascii_lowercase();
-    if DISALLOWED_NAMES.contains(&name)
+    if removed_mcp::is_removed_name(name)
+        || DISALLOWED_NAMES.contains(&name)
         || DISALLOWED_FRAGMENTS
             .iter()
             .any(|fragment| lowered_name.contains(fragment))

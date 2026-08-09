@@ -3,7 +3,7 @@ use std::path::Path;
 use toml::Value;
 
 use crate::paths::display_relative;
-use crate::validation::custom_agent_mcp_tools;
+use crate::validation::{custom_agent_mcp_tools, removed_mcp};
 
 const ALLOWED_FIELDS: &[&str] = &[
     "args",
@@ -53,6 +53,7 @@ fn check_server(path: &Path, name: &str, value: &Value, errors: &mut Vec<String>
         ));
         return;
     };
+    removed_mcp::check_custom_agent(path, name, fields, errors);
     for key in fields.keys() {
         if !ALLOWED_FIELDS.contains(&key.as_str()) {
             errors.push(format!(
