@@ -34,6 +34,12 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
         ("four-backtick fence", original.replacen("| `retract` | Merge |", "````text\n```\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "```\n````\n| `thesis` | Merge |", 1)),
         ("four-tilde fence", original.replacen("| `retract` | Merge |", "~~~~text\n~~~\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "~~~\n~~~~\n| `thesis` | Merge |", 1)),
+        ("backtick equal-run trailing content", original.replacen("| `retract` | Merge |", "```text\n```not-a-close\n| `retract` | Merge |", 1)),
+        ("backtick longer-run trailing content", original.replacen("| `retract` | Merge |", "```text\n````not-a-close\n| `retract` | Merge |", 1)),
+        ("tilde equal-run trailing content", original.replacen("| `retract` | Merge |", "~~~text\n~~~not-a-close\n| `retract` | Merge |", 1)),
+        ("tilde longer-run trailing content", original.replacen("| `retract` | Merge |", "~~~text\n~~~~not-a-close\n| `retract` | Merge |", 1)),
+        ("backtick unclosed workflow fence", original.replacen("\nCross-cutting", "\n```text\nCross-cutting", 1)),
+        ("tilde unclosed workflow fence", original.replacen("\nCross-cutting", "\n~~~text\nCross-cutting", 1)),
         ("tilde wrapped assignments", original.replacen("```text\nquery.max_index_files", "~~~text\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n~~~\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
@@ -49,6 +55,12 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         validate_contract(&mutation).is_ok().then_some(name)
     }).collect();
     assert!(accepted.is_empty(), "accepted invalid variants: {accepted:?}");
+    for control in [
+        original.replacen("| `retract` | Merge |", "```text\nhidden\n```   \n| `retract` | Merge |", 1),
+        original.replacen("| `retract` | Merge |", "~~~text\nhidden\n~~~   \n| `retract` | Merge |", 1),
+    ] {
+        validate_contract(&control)?;
+    }
     Ok(())
 }
 

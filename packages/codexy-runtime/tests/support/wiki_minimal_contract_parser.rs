@@ -2,13 +2,14 @@ use std::collections::BTreeMap;
 
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
     let mut fence = None;
-    let count = text
-        .lines()
-        .filter(|line| {
-            transition(&mut fence, line);
-            fence.is_none() && *line == title
-        })
-        .count();
+    let mut count = 0;
+    for line in text.lines() {
+        transition(&mut fence, line);
+        if fence.is_none() && line == title {
+            count += 1;
+        }
+    }
+    balanced(fence)?;
     if count != 1 {
         return Err(format!("missing or duplicate section {title}"));
     }
@@ -41,6 +42,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
             body.push('\n');
         }
     }
+    balanced(fence)?;
     body.ok_or_else(|| format!("missing section {title}"))
 }
 
@@ -56,6 +58,7 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
             rows.push(line);
         }
     }
+    balanced(fence)?;
     if rows.len() < 3 || cells(rows[0])? != ["Current workflow", "Disposition", "Contract role"] {
         return Err("invalid workflow table header".into());
     }
@@ -125,19 +128,25 @@ struct Fence {
 }
 
 fn transition(fence: &mut Option<Fence>, line: &str) -> bool {
-    let Some(candidate) = marker(line) else {
-        return false;
-    };
     match *fence {
         None => {
-            *fence = Some(candidate);
+            let Some(open) = opening_marker(line) else {
+                return false;
+            };
+            *fence = Some(open);
             true
         }
-        Some(open) if open.marker == candidate.marker && candidate.length >= open.length => {
-            *fence = None;
-            true
+        Some(open) => {
+            let Some(close) = closing_marker(line) else {
+                return false;
+            };
+            if open.marker == close.marker && close.length >= open.length {
+                *fence = None;
+                true
+            } else {
+                false
+            }
         }
-        Some(_) => false,
     }
 }
 
@@ -145,14 +154,31 @@ fn marker_char(fence: Option<Fence>) -> Option<char> {
     fence.map(|fence| fence.marker)
 }
 
-fn marker(line: &str) -> Option<Fence> {
+fn opening_marker(line: &str) -> Option<Fence> {
+    marker(line).map(|(fence, _)| fence)
+}
+
+fn closing_marker(line: &str) -> Option<Fence> {
+    let (fence, suffix) = marker(line)?;
+    suffix.trim().is_empty().then_some(fence)
+}
+
+fn marker(line: &str) -> Option<(Fence, &str)> {
     let trimmed = line.trim_start();
     let marker = trimmed.chars().next()?;
     let length = trimmed
         .chars()
         .take_while(|character| *character == marker)
         .count();
-    (matches!(marker, '`' | '~') && length >= 3).then_some(Fence { marker, length })
+    (matches!(marker, '`' | '~') && length >= 3)
+        .then_some((Fence { marker, length }, &trimmed[length..]))
+}
+
+fn balanced(fence: Option<Fence>) -> Result<(), String> {
+    fence
+        .is_none()
+        .then_some(())
+        .ok_or_else(|| "unbalanced fence".into())
 }
 
 fn separator(row: &str) -> Result<bool, String> {
