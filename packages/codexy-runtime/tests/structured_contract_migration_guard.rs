@@ -2,6 +2,8 @@
 mod structured_contract_guard;
 #[path = "structured_contract_guard/repository_tests.rs"]
 mod repository_tests;
+#[path = "structured_contract_guard/repository_path_tests.rs"]
+mod repository_path_tests;
 
 use structured_contract_guard::{comparison_counts, repository_violations, scan_source};
 

@@ -9,21 +9,21 @@ use super::structured_contract_guard::{comparison_counts_at, repository_violatio
 
 static FIXTURE_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
 
-struct GitFixture(PathBuf);
+pub(super) struct GitFixture(PathBuf);
 
 impl GitFixture {
-    fn root(&self) -> &Path {
+    pub(super) fn root(&self) -> &Path {
         &self.0
     }
 
-    fn write(&self, path: &str, contents: &str) {
+    pub(super) fn write(&self, path: &str, contents: &str) {
         let path = self.root().join(path);
         fs::create_dir_all(path.parent().expect("fixture path has a parent"))
             .expect("fixture directory must be created");
         fs::write(path, contents).expect("fixture source must be written");
     }
 
-    fn git(&self, arguments: &[&str]) {
+    pub(super) fn git(&self, arguments: &[&str]) {
         let output = Command::new("git")
             .args(arguments)
             .current_dir(self.root())
@@ -36,7 +36,7 @@ impl GitFixture {
         );
     }
 
-    fn commit_all(&self, message: &str) {
+    pub(super) fn commit_all(&self, message: &str) {
         self.git(&["add", "."]);
         self.git(&["commit", "-m", message]);
     }
@@ -48,7 +48,7 @@ impl Drop for GitFixture {
     }
 }
 
-fn git_fixture() -> GitFixture {
+pub(super) fn git_fixture() -> GitFixture {
     let suffix = FIXTURE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
         "codexy-structured-contract-{}-{suffix}",
