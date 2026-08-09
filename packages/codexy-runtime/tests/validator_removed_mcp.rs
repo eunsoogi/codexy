@@ -48,6 +48,18 @@ fn validator_cli_rejects_removed_custom_agent_mcp_references()
             "\n[mcp_servers.public_search]\nurl = \"https://mcp.grep.app\"\n",
             "references removed MCP endpoint or command",
         ),
+        (
+            "\n[mcp_servers.public_search]\ncommand = \"/usr/local/bin/grep_app\"\n",
+            "references removed MCP endpoint or command",
+        ),
+        (
+            "\n[mcp_servers.public_search]\nurl = \"https://grep.app/mcp\"\n",
+            "references removed MCP endpoint or command",
+        ),
+        (
+            "\n[mcp_servers.public_search]\nurl = \"https://grep.app:invalid/mcp\"\n",
+            "references removed MCP endpoint or command",
+        ),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
@@ -61,6 +73,26 @@ fn validator_cli_rejects_removed_custom_agent_mcp_references()
         assert!(!output.status.success(), "removed agent MCP was accepted");
         assert!(stderr(&output).contains(expected), "stderr: {}", stderr(&output));
     }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_preserves_unrelated_mcp_command_and_url_identities()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root, &[".mcp.json", "agents/codexy-pathfinder.toml"])?;
+    let agent_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    std::fs::write(
+        &agent_path,
+        format!(
+            "{}\n[mcp_servers.unrelated_command]\ncommand = \"/usr/local/bin/grep\"\n\n[mcp_servers.unrelated_url]\nurl = \"https://grep.app.example/mcp\"\n",
+            std::fs::read_to_string(&agent_path)?
+        ),
+    )?;
+
+    assert!(validate(&plugin_root, "--check-mcp")?.status.success());
+    assert!(validate(&plugin_root, "--check-roles")?.status.success());
     Ok(())
 }
 
