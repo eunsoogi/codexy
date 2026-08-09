@@ -8,10 +8,10 @@ pub(super) fn active_lines(evidence: &str) -> Vec<ActiveLine> {
     let mut lines = Vec::new();
     let mut start = 0;
     for (source_line, fragment) in text.split_inclusive('\n').enumerate() {
-        if super::sentinel_handoff::active_result_line(&text, start)
-            && let Some(text) = normalize(fragment.trim())
-        {
-            lines.push(ActiveLine { source_line, text });
+        if super::sentinel_handoff::active_result_line(&text, start) {
+            if let Some(text) = normalize(fragment.trim()) {
+                lines.push(ActiveLine { source_line, text });
+            }
         }
         start += fragment.len();
     }
