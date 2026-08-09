@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
+use crate::support::wiki_minimal_contract_activity::ActiveMarkdown;
+
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
-    let (mut fence, mut comment) = (None, (false, false));
+    let (mut fence, mut active) = (None, ActiveMarkdown::default());
     let mut count = 0;
     for raw in text.lines() {
-        let line = active_line(&mut comment, raw, fence.is_some());
+        let line = active.line(raw, fence.is_some())?;
         transition(&mut fence, &line);
         if fence.is_none() && line == title {
             count += 1;
@@ -19,9 +21,9 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
         .take_while(|character| *character == '#')
         .count();
     let mut body = None;
-    (fence, comment) = (None, (false, false));
+    (fence, active) = (None, ActiveMarkdown::default());
     for raw in text.lines() {
-        let line = active_line(&mut comment, raw, fence.is_some());
+        let line = active.line(raw, fence.is_some())?;
         transition(&mut fence, &line);
         if fence.is_none() && line == title {
             body = Some(String::new());
@@ -50,10 +52,10 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
 
 pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, String> {
     let mut rows: Vec<String> = Vec::new();
-    let (mut fence, mut comment) = (None, (false, false));
+    let (mut fence, mut active) = (None, ActiveMarkdown::default());
     let mut table_ended = false;
     for raw in table.lines() {
-        let line = active_line(&mut comment, raw, fence.is_some());
+        let line = active.line(raw, fence.is_some())?;
         transition(&mut fence, &line);
         if let Some(row) = workflow_row(&line) {
             if fence.is_some() {
@@ -94,12 +96,12 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
 }
 
 pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, String> {
-    let (mut fence, mut comment) = (None, (false, false));
+    let (mut fence, mut active) = (None, ActiveMarkdown::default());
     let mut canonical = false;
     let mut blocks = 0;
     let mut values = BTreeMap::new();
     for raw in section.lines() {
-        let line = active_line(&mut comment, raw, fence.is_some());
+        let line = active.line(raw, fence.is_some())?;
         let prior = fence;
         if transition(&mut fence, &line) {
             if prior.is_none() && marker_char(fence) == Some('`') && line.trim() == "```text" {
@@ -209,36 +211,6 @@ fn workflow_row(line: &str) -> Option<&str> {
     (indentation <= 3)
         .then_some(&line[indentation..])
         .filter(|row| row.starts_with('|'))
-}
-
-fn active_line(comment: &mut (bool, bool), line: &str, fenced: bool) -> String {
-    if fenced {
-        return line.into();
-    }
-    let indentation = line.len() - line.trim_start_matches(' ').len();
-    let block = indentation <= 3 && line[indentation..].starts_with("<!--");
-    let mut active = String::new();
-    let mut rest = line;
-    loop {
-        if comment.0 {
-            let Some(end) = rest.find("-->") else {
-                return active;
-            };
-            rest = &rest[end + 3..];
-            let block = comment.1;
-            *comment = (false, false);
-            if block {
-                return String::new();
-            }
-        } else if let Some(start) = rest.find("<!--") {
-            active.push_str(&rest[..start]);
-            rest = &rest[start + 4..];
-            *comment = (true, block);
-        } else {
-            active.push_str(rest);
-            return active;
-        }
-    }
 }
 
 fn cells(row: &str) -> Result<Vec<&str>, String> {
