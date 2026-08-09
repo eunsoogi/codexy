@@ -4,7 +4,7 @@ use std::{collections::BTreeSet, path::Path};
 
 use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, TYPE6_BLOCK_TAGS};
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
-use crate::support::wiki_minimal_contract_parser::markdown_link_count;
+use crate::support::wiki_minimal_contract_links::markdown_link_count;
 
 #[test]
 fn wiki_skill_exposes_a_complete_measurable_minimal_contract() -> TestResult {
@@ -34,6 +34,10 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
         ("comment label fragment", "[Minimal <!-- ignored -->Contract](references/minimal-contract.md)".into()),
         ("inline-code target fragment", "[Minimal Contract](references/minimal-`ignored`contract.md)".into()),
         ("comment target fragment", "[Minimal Contract](references/minimal-<!-- ignored -->contract.md)".into()),
+        ("image description", "![cover [Minimal Contract](references/minimal-contract.md)](cover.png)".into()),
+        ("image title", "![cover](cover.png \"[Minimal Contract](references/minimal-contract.md)\")".into()),
+        ("other-link title", "[other](other.md \"[Minimal Contract](references/minimal-contract.md)\")".into()),
+        ("other-link destination", "[other]([Minimal Contract](references/minimal-contract.md))".into()),
         ("escaped", format!("\\{required}")),
         ("image", format!("!{required}")),
         ("malformed", "[Minimal Contract](references/minimal-contract.md".into()),

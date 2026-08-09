@@ -139,14 +139,7 @@ pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, Str
     Ok(values)
 }
 
-pub(crate) fn markdown_link_count(text: &str, label: &str, target: &str) -> Result<usize, String> {
-    Ok(active_link_lines(text)?
-        .iter()
-        .map(|line| links_in_line(line, label, target))
-        .sum())
-}
-
-fn active_link_lines(text: &str) -> Result<Vec<String>, String> {
+pub(crate) fn active_link_lines(text: &str) -> Result<Vec<String>, String> {
     let (mut fence, mut active) = (FenceState::default(), ActiveMarkdown::default());
     let mut lines = Vec::new();
     for raw in text.lines() {
@@ -160,51 +153,6 @@ fn active_link_lines(text: &str) -> Result<Vec<String>, String> {
     active.finish()?;
     fence.finish()?;
     Ok(lines)
-}
-
-fn links_in_line(line: &str, label: &str, target: &str) -> usize {
-    let bytes = line.as_bytes();
-    let mut count = 0;
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'\\' {
-            index += 2;
-            continue;
-        }
-        if bytes[index] != b'['
-            || (index > 0 && bytes[index - 1] == b'!' && !escaped(bytes, index - 1))
-        {
-            index += 1;
-            continue;
-        }
-        let label_start = index + 1;
-        let Some(label_end) = line[label_start..].find(']').map(|end| label_start + end) else {
-            break;
-        };
-        let target_start = label_end + 2;
-        if bytes.get(label_end + 1) != Some(&b'(') {
-            index = label_end + 1;
-            continue;
-        }
-        let Some(target_end) = line[target_start..].find(')').map(|end| target_start + end) else {
-            break;
-        };
-        if &line[label_start..label_end] == label && &line[target_start..target_end] == target {
-            count += 1;
-        }
-        index = target_end + 1;
-    }
-    count
-}
-
-fn escaped(bytes: &[u8], index: usize) -> bool {
-    bytes[..index]
-        .iter()
-        .rev()
-        .take_while(|byte| **byte == b'\\')
-        .count()
-        % 2
-        == 1
 }
 
 fn separator(row: &str) -> Result<bool, String> {
