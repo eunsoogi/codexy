@@ -62,6 +62,9 @@ fn missing_paths_and_unrelated_git_roots_fail_closed() {
     fixture.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
 
     assert!(comparison_counts_at(fixture.root(), &["tests/missing.rs"]).is_err());
+    assert!(comparison_counts_at(fixture.root(), &["../tests/control.rs"]).is_err());
+    let absolute = fixture.root().join("tests/control.rs");
+    assert!(comparison_counts_at(fixture.root(), &[absolute.to_str().expect("path is UTF-8")]).is_err());
     assert!(
         comparison_counts_at(&fixture.root().join("unrelated"), &["tests/control.rs"]).is_err()
     );
