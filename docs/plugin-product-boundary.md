@@ -55,7 +55,7 @@ than importing a private path across product roots.
 | Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow | `codexy-github` | Extract in the downstream GitHub-plugin issue. |
 | Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extract in the downstream devtools issue. |
 | `release-engineering` and `plugin-marketplace-prep` skills | Repository-only Codex skills | Move out of the installed plugin. |
-| The runtime-unused hook policy inventory and grep.app MCP registration | Remove | Remove in their respective downstream issues. |
+| grep.app MCP registration | Remove | Remove in its downstream issue. |
 
 Each row is one destination decision for its current logical surface. A later
 implementation issue MAY refine a root into individual files only within its
@@ -72,7 +72,7 @@ products own no physical files yet.
 
 | Surface | Current paths | Destination |
 | --- | --- | --- |
-| Hooks | `plugins/codexy/hooks/**` | Core retains the complete current admission and instruction-enforcement import closure; generic GitHub workflow hooks extract, and the unused policy inventory is removed. GitHub-policy leaves may move only after a later extraction breaks that core closure. |
+| Hooks | `plugins/codexy/hooks/**` | Core retains the complete current admission and instruction-enforcement import closure; generic GitHub workflow hooks extract. GitHub-policy leaves may move only after a later extraction breaks that core closure. |
 | Skills | `plugins/codexy/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow extracts; release/marketplace become repository-only. |
 | Agents | `plugins/codexy/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, moves to `codexy-github`. |
 | MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `packages/codexy-runtime/src/codegraph/**`, `packages/codexy-runtime/src/lsp/**`, `packages/codexy-runtime/src/mcp.rs`, `packages/codexy-runtime/src/bin/**`, `packages/codexy-runtime/src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision; grep.app is removed. |

@@ -7,24 +7,39 @@ use crate::support;
 mod admission_artifact;
 #[path = "validator_hooks/admission_runtime.rs"]
 mod admission_runtime;
+#[path = "validator_hooks/capability_contract.rs"]
+mod capability_contract;
 #[path = "validator_hooks/merge_admission.rs"]
 mod merge_admission;
 #[path = "validator_hooks/github_authorization_pagination.rs"]
 mod github_authorization_pagination;
 #[path = "validator_hooks/filesystem_aliases.rs"]
 mod filesystem_aliases;
-#[path = "validator_hooks/archive_inventory.rs"]
-mod archive_inventory;
 #[path = "validator_hooks/graphql_admission.rs"]
 mod graphql_admission;
-#[path = "validator_hooks/policy_inventory.rs"]
-mod policy_inventory;
-#[path = "validator_hooks/policy_inventory_contract.rs"]
-mod policy_inventory_contract;
-#[path = "validator_hooks/policy_inventory_generator.rs"]
-mod policy_inventory_generator;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
+
+#[test]
+fn policy_inventory_boundary_is_removed() -> Result<(), Box<dyn std::error::Error>> {
+    let repository = codexy_runtime::paths::repository_root();
+    for path in [
+        "plugins/codexy/hooks/policy-inventory.json",
+        "scripts/generate-hook-policy-inventory",
+        "scripts/policy_inventory_review_decisions.py",
+        "packages/codexy-runtime/src/validation/hooks/policy_inventory.rs",
+        "packages/codexy-runtime/src/validation/hooks/policy_inventory_contract.rs",
+        "packages/codexy-runtime/src/validation/hooks/policy_inventory_discovery.rs",
+        "packages/codexy-runtime/src/validation/hooks/policy_inventory_frontmatter.rs",
+        "packages/codexy-runtime/src/validation/hooks/policy_inventory_suite.rs",
+    ] {
+        assert!(
+            !repository.join(path).exists(),
+            "removed policy inventory boundary remains at {path}"
+        );
+    }
+    Ok(())
+}
 
 #[test]
 fn validator_rejects_missing_hooks_configuration() -> Result<(), Box<dyn std::error::Error>> {
@@ -100,17 +115,6 @@ pub(super) fn validate(root: &std::path::Path) -> Result<std::process::Output, B
             "--plugin-root",
             root.to_str().ok_or("root")?,
             "--check-hooks",
-        ])
-        .output()?)
-}
-pub(super) fn validate_all(
-    root: &std::path::Path,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            root.to_str().ok_or("root")?,
-            "--check",
         ])
         .output()?)
 }
