@@ -43,23 +43,33 @@ fn contains_removed_reference(value: &Value) -> bool {
 }
 
 fn is_removed_command(text: &str) -> bool {
-    text.trim()
-        .rsplit(['/', '\\'])
-        .next()
-        .is_some_and(is_removed_name)
+    let basename = text.trim().rsplit(['/', '\\']).next().unwrap_or_default();
+    let basename = basename
+        .to_ascii_lowercase()
+        .strip_suffix(".exe")
+        .map_or(basename, |_| &basename[..basename.len() - 4]);
+    is_removed_name(basename)
 }
 
 fn is_removed_url(text: &str) -> bool {
-    let authority = text
-        .trim()
-        .split_once("://")
-        .map_or(text.trim(), |(_, value)| value)
-        .trim_start_matches("//")
+    let Some((scheme, remainder)) = text.trim().split_once("://") else {
+        return false;
+    };
+    if !matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https") {
+        return false;
+    }
+    let authority = remainder
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
         .rsplit('@')
         .next()
         .unwrap_or_default();
     authority
-        .split(['/', '?', '#', ':'])
+        .split(':')
+        .next()
+        .unwrap_or_default()
+        .split('\\')
         .next()
         .map(|host| host.trim_end_matches('.'))
         .is_some_and(|host| {
