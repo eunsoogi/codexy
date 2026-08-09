@@ -15,7 +15,7 @@ fn archive_gate_rejects_symlink_entries() {
 }
 
 #[test]
-fn archive_gate_rejects_local_paths_in_json_outside_the_validated_policy_inventory() {
+fn archive_gate_rejects_local_paths_in_json() {
     let (root, plugin_root, archive) = super::complete_archive_fixture("json-local-path");
     std::fs::write(
         plugin_root.join("assets/local-state.json"),

@@ -30,7 +30,7 @@ const CAPABILITIES: &[(&str, &str, bool, &[&str])] = &[
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct CapabilityContract {
+struct CapabilityContract {
     schema: String,
     content_digest: String,
     capabilities: Vec<Capability>,
@@ -46,7 +46,7 @@ struct Capability {
     content_digest: String,
 }
 
-pub(super) fn check(plugin_root: &Path) -> Result<CapabilityContract> {
+pub(super) fn check(plugin_root: &Path) -> Result<()> {
     let path = plugin_root.join(PATH);
     let contract: CapabilityContract =
         serde_json::from_value(load_json(&path)?).map_err(|error| {
@@ -80,42 +80,13 @@ pub(super) fn check(plugin_root: &Path) -> Result<CapabilityContract> {
             );
         }
     }
-    let expected_digest = contract_digest();
-    if contract.content_digest != expected_digest {
+    if contract.content_digest != contract_digest() {
         bail!(
             "{} content digest does not bind its exact capabilities",
             display_relative(&path)
         );
     }
-    Ok(contract)
-}
-
-pub(super) fn check_binding(
-    schema: &str,
-    digest: &str,
-    contract: &CapabilityContract,
-) -> Result<()> {
-    if schema != contract.schema || digest != contract.content_digest {
-        bail!("policy inventory must bind the checked-in capability contract content digest");
-    }
     Ok(())
-}
-
-impl CapabilityContract {
-    pub(super) fn prevents(&self, event: &str, input: &str) -> bool {
-        self.capabilities.iter().any(|capability| {
-            capability.event == event
-                && capability.preventive
-                && capability
-                    .authoritative_inputs
-                    .iter()
-                    .any(|item| item == input)
-        })
-    }
-
-    pub(super) fn evidence(&self) -> String {
-        format!("{} content digest {}", self.schema, self.content_digest)
-    }
 }
 
 fn capability_digest(event: &str, schema: &str, preventive: bool, inputs: &[&str]) -> String {

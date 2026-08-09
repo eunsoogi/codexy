@@ -183,7 +183,6 @@ pub(super) fn archive_repository(
         "packages/codexy-runtime/src/version/wrappers.rs",
         "packages/codexy-runtime/tests/suites/all.rs",
         "plugins/codexy/hooks/capability-contract.json",
-        "plugins/codexy/hooks/policy-inventory.json",
         "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
         "plugins/codexy/skills/codex-orchestration/references/workflow-profiles.json",
         "plugins/codexy/skills/task-classification/SKILL.md",
