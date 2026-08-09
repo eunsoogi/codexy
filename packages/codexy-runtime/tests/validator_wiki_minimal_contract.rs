@@ -2,6 +2,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 use std::path::Path;
 
+use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, TYPE6_BLOCK_TAGS};
 use crate::support::wiki_minimal_contract::{ASSIGNMENTS, validate_contract};
 
 #[test]
@@ -30,6 +31,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("block-comment heading suffix", original.replacen("### Ingest", "<!-- hidden -->### Ingest", 1)),
         ("div required heading", original.replacen("### Ingest", "<div>\n### Ingest\n</div>", 1)),
         ("bare div required heading", original.replacen("### Ingest", "<div\n### Ingest\n</div", 1)),
+        ("bare frameset required heading", original.replacen("### Ingest", "<frameset\n### Ingest\n</frameset", 1)),
         ("processing required heading", original.replacen("### Ingest", "<?\n### Ingest\n?>", 1)),
         ("wrong measurable parent", original.replacen("### Machine-checkable limits", "## Detached\n\n### Machine-checkable limits", 1)),
         ("malformed separator", original.replacen("| --- | --- | --- |", "| -- | --- | --- |", 1)),
@@ -41,6 +43,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("block-comment table suffix", original.replacen("| Current workflow |", "<!-- hidden -->| Current workflow |", 1)),
         ("div workflow table", original.replacen("| Current workflow |", "<div>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div>\n\nCross-cutting", 1)),
         ("bare div workflow table", original.replacen("| Current workflow |", "<div\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div\n\nCross-cutting", 1)),
+        ("bare frameset workflow table", original.replacen("| Current workflow |", "<frameset\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</frameset\n\nCross-cutting", 1)),
         ("script workflow table", original.replacen("| Current workflow |", "<script>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</script>\n\nCross-cutting", 1)),
         ("pre workflow table", original.replacen("| Current workflow |", "<pre>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</pre>\n\nCross-cutting", 1)),
         ("style workflow table", original.replacen("| Current workflow |", "<style>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</style>\n\nCross-cutting", 1)),
@@ -63,6 +66,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("block-comment assignment suffix", original.replacen("```text\nquery.max_index_files", "<!-- hidden -->```text\nquery.max_index_files", 1)),
         ("raw-html assignment block", original.replacen("```text\nquery.max_index_files", "<script>\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</script>\n\nFor valid", 1)),
         ("bare div assignment block", original.replacen("```text\nquery.max_index_files", "<div\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</div\n\nFor valid", 1)),
+        ("bare frameset assignment block", original.replacen("```text\nquery.max_index_files", "<frameset\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</frameset\n\nFor valid", 1)),
         ("cdata assignment block", original.replacen("```text\nquery.max_index_files", "<![CDATA[\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n]]>\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
@@ -100,6 +104,31 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         validate_contract(&control)?;
     }
     Ok(())
+}
+
+#[test]
+fn canonical_type_six_html_tags_have_an_exact_classifier_matrix() {
+    assert_eq!(TYPE6_BLOCK_TAGS.len(), 62);
+    for tag in ["frame", "frameset", "noframes", "optgroup", "option", "param"] {
+        assert!(TYPE6_BLOCK_TAGS.contains(&tag), "missing canonical tag: {tag}");
+    }
+    for prefix in ["<", "</"] {
+        for tag in TYPE6_BLOCK_TAGS {
+            for suffix in ["", " ", "\t", ">", "/>"] {
+                let line = format!("{prefix}{tag}{suffix}");
+                assert!(
+                    ActiveMarkdown::default().line(&line, false).is_err(),
+                    "type-6 opener must fail closed: {line:?}"
+                );
+            }
+        }
+    }
+    for line in ["<framex", "</frameset-x", "<optionally", "</parametric"] {
+        assert!(
+            ActiveMarkdown::default().line(line, false).is_ok(),
+            "near-match must remain active: {line:?}"
+        );
+    }
 }
 
 #[test]

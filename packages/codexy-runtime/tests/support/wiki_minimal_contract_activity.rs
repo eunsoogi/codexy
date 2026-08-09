@@ -3,6 +3,73 @@ pub(crate) struct ActiveMarkdown {
     comment: (bool, bool),
 }
 
+pub(crate) const TYPE6_BLOCK_TAGS: &[&str] = &[
+    "address",
+    "article",
+    "aside",
+    "base",
+    "basefont",
+    "blockquote",
+    "body",
+    "caption",
+    "center",
+    "col",
+    "colgroup",
+    "dd",
+    "details",
+    "dialog",
+    "dir",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "frame",
+    "frameset",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "head",
+    "header",
+    "hr",
+    "html",
+    "iframe",
+    "legend",
+    "li",
+    "link",
+    "main",
+    "menu",
+    "menuitem",
+    "nav",
+    "noframes",
+    "ol",
+    "optgroup",
+    "option",
+    "p",
+    "param",
+    "search",
+    "section",
+    "summary",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "title",
+    "tr",
+    "track",
+    "ul",
+];
+
+const TYPE1_BLOCK_TAGS: &[&str] = &["pre", "script", "style", "textarea"];
+
 impl ActiveMarkdown {
     pub(crate) fn line(&mut self, line: &str, fenced: bool) -> Result<String, String> {
         if fenced {
@@ -68,7 +135,7 @@ fn raw_tag(rest: &str) -> bool {
         .take_while(|character| character.is_ascii_alphanumeric() || *character == '-')
         .count();
     let (name, suffix) = tag.split_at(length);
-    let block = block_tag(name);
+    let block = in_tags(name, TYPE1_BLOCK_TAGS) || in_tags(name, TYPE6_BLOCK_TAGS);
     let continuation = suffix
         .chars()
         .next()
@@ -79,70 +146,6 @@ fn raw_tag(rest: &str) -> bool {
         && (block || suffix.trim_end().ends_with('>'))
 }
 
-fn block_tag(name: &str) -> bool {
-    [
-        "address",
-        "article",
-        "aside",
-        "base",
-        "basefont",
-        "blockquote",
-        "body",
-        "caption",
-        "center",
-        "col",
-        "colgroup",
-        "dd",
-        "details",
-        "dialog",
-        "dir",
-        "div",
-        "dl",
-        "dt",
-        "fieldset",
-        "figcaption",
-        "figure",
-        "footer",
-        "form",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "head",
-        "header",
-        "hr",
-        "html",
-        "iframe",
-        "legend",
-        "li",
-        "link",
-        "main",
-        "menu",
-        "menuitem",
-        "nav",
-        "ol",
-        "p",
-        "plaintext",
-        "pre",
-        "script",
-        "search",
-        "section",
-        "style",
-        "summary",
-        "table",
-        "tbody",
-        "td",
-        "tfoot",
-        "th",
-        "thead",
-        "title",
-        "tr",
-        "track",
-        "textarea",
-        "ul",
-    ]
-    .iter()
-    .any(|tag| name.eq_ignore_ascii_case(tag))
+fn in_tags(name: &str, tags: &[&str]) -> bool {
+    tags.iter().any(|tag| name.eq_ignore_ascii_case(tag))
 }
