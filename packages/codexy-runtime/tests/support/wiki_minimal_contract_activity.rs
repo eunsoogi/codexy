@@ -1,6 +1,7 @@
 #[derive(Default)]
 pub(crate) struct ActiveMarkdown {
     comment: (bool, bool),
+    code: Option<usize>,
 }
 
 pub(crate) const TYPE6_BLOCK_TAGS: &[&str] = &[
@@ -75,14 +76,21 @@ impl ActiveMarkdown {
         if fenced {
             return Ok(line.into());
         }
-        let active = self.without_comment(line);
+        let active = self.without_comment(line)?;
         if raw_html_block(&active) {
             return Err("raw HTML blocks cannot supply contract content".into());
         }
         Ok(active)
     }
 
-    fn without_comment(&mut self, line: &str) -> String {
+    pub(crate) fn finish(&self) -> Result<(), String> {
+        self.code
+            .is_none()
+            .then_some(())
+            .ok_or_else(|| "unbalanced inline code span".into())
+    }
+
+    fn without_comment(&mut self, line: &str) -> Result<String, String> {
         let indentation = line.len() - line.trim_start_matches(' ').len();
         let block = indentation <= 3 && line[indentation..].starts_with("<!--");
         let mut active = String::new();
@@ -90,24 +98,60 @@ impl ActiveMarkdown {
         loop {
             if self.comment.0 {
                 let Some(end) = rest.find("-->") else {
-                    return active;
+                    return Ok(active);
                 };
                 rest = &rest[end + 3..];
                 let block = self.comment.1;
                 self.comment = (false, false);
                 if block {
-                    return String::new();
+                    return Ok(String::new());
                 }
+            } else if self.code.is_some() {
+                let Some((start, length)) = backtick_run(rest, true) else {
+                    active.push_str(rest);
+                    return Ok(active);
+                };
+                let end = start + length;
+                active.push_str(&rest[..end]);
+                rest = &rest[end..];
+                if self.code == Some(length) {
+                    self.code = None;
+                }
+            } else if let Some((start, length)) = backtick_run(rest, false) {
+                let comment = rest.find("<!--");
+                if comment.is_some_and(|comment| comment < start) {
+                    active.push_str(&rest[..comment.unwrap()]);
+                    rest = &rest[comment.unwrap() + 4..];
+                    self.comment = (true, block);
+                    continue;
+                }
+                let end = start + length;
+                active.push_str(&rest[..end]);
+                rest = &rest[end..];
+                self.code = Some(length);
             } else if let Some(start) = rest.find("<!--") {
                 active.push_str(&rest[..start]);
                 rest = &rest[start + 4..];
                 self.comment = (true, block);
             } else {
                 active.push_str(rest);
-                return active;
+                return Ok(active);
             }
         }
     }
+}
+
+fn backtick_run(text: &str, inside_code: bool) -> Option<(usize, usize)> {
+    let start = text.find('`')?;
+    let length = text[start..]
+        .chars()
+        .take_while(|character| *character == '`')
+        .count();
+    let indentation = text.len() - text.trim_start_matches(' ').len();
+    if !inside_code && start == indentation && indentation <= 3 && length >= 3 {
+        return None;
+    }
+    Some((start, length))
 }
 
 fn raw_html_block(line: &str) -> bool {

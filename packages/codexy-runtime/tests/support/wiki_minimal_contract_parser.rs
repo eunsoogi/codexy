@@ -12,6 +12,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
             count += 1;
         }
     }
+    active.finish()?;
     balanced(fence)?;
     if count != 1 {
         return Err(format!("missing or duplicate section {title}"));
@@ -46,6 +47,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
             body.push('\n');
         }
     }
+    active.finish()?;
     balanced(fence)?;
     body.ok_or_else(|| format!("missing section {title}"))
 }
@@ -69,6 +71,7 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
             table_ended = true;
         }
     }
+    active.finish()?;
     balanced(fence)?;
     if rows.len() < 3 || cells(&rows[0])? != ["Current workflow", "Disposition", "Contract role"] {
         return Err("invalid workflow table header".into());
@@ -127,6 +130,7 @@ pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, Str
             return Err("assignment outside canonical block".into());
         }
     }
+    active.finish()?;
     if fence.is_some() || canonical || blocks != 1 {
         return Err("missing or malformed assignment block".into());
     }

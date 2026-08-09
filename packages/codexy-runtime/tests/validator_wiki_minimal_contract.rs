@@ -44,6 +44,9 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("div workflow table", original.replacen("| Current workflow |", "<div>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div>\n\nCross-cutting", 1)),
         ("bare div workflow table", original.replacen("| Current workflow |", "<div\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div\n\nCross-cutting", 1)),
         ("bare frameset workflow table", original.replacen("| Current workflow |", "<frameset\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</frameset\n\nCross-cutting", 1)),
+        ("code-span comment workflow", original.replacen("`compile`", "`com<!-- hidden -->pile`", 1)),
+        ("multi-code-span comment workflow", original.replacen("`compile`", "``com<!-- hidden -->pile``", 1)),
+        ("unclosed code-span workflow", original.replacen("`compile`", "`com<!-- hidden -->pile", 1)),
         ("script workflow table", original.replacen("| Current workflow |", "<script>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</script>\n\nCross-cutting", 1)),
         ("pre workflow table", original.replacen("| Current workflow |", "<pre>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</pre>\n\nCross-cutting", 1)),
         ("style workflow table", original.replacen("| Current workflow |", "<style>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</style>\n\nCross-cutting", 1)),
@@ -92,6 +95,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         original.replacen("knowledge path", "knowledge <span>inline</span> path", 1),
         original.replacen("knowledge path", "knowledge <!DOCTYPE-like> path", 1),
         original.replacen("knowledge path", "<custom\nknowledge path\n</custom", 1),
+        original.replacen("knowledge path", "knowledge `<!-- literal -->` path", 1),
+        original.replacen("knowledge path", "knowledge ``<!-- literal -->`` path", 1),
     ] {
         validate_contract(&control)?;
     }
