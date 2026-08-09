@@ -89,10 +89,10 @@ pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, Str
     for line in section.lines() {
         let prior = fence;
         if transition(&mut fence, line) {
-            if prior.is_none() && fence == Some('`') && line.trim() == "```text" {
+            if prior.is_none() && marker_char(fence) == Some('`') && line.trim() == "```text" {
                 canonical = true;
                 blocks += 1;
-            } else if prior == Some('`') && fence.is_none() && canonical {
+            } else if marker_char(prior) == Some('`') && fence.is_none() && canonical {
                 canonical = false;
             }
             continue;
@@ -118,28 +118,41 @@ pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, Str
     Ok(values)
 }
 
-fn transition(fence: &mut Option<char>, line: &str) -> bool {
-    let Some(marker) = marker(line) else {
+#[derive(Clone, Copy, PartialEq)]
+struct Fence {
+    marker: char,
+    length: usize,
+}
+
+fn transition(fence: &mut Option<Fence>, line: &str) -> bool {
+    let Some(candidate) = marker(line) else {
         return false;
     };
-    if fence.is_none() || *fence == Some(marker) {
-        *fence = fence.map_or(Some(marker), |_| None);
-        true
-    } else {
-        false
+    match *fence {
+        None => {
+            *fence = Some(candidate);
+            true
+        }
+        Some(open) if open.marker == candidate.marker && candidate.length >= open.length => {
+            *fence = None;
+            true
+        }
+        Some(_) => false,
     }
 }
 
-fn marker(line: &str) -> Option<char> {
+fn marker_char(fence: Option<Fence>) -> Option<char> {
+    fence.map(|fence| fence.marker)
+}
+
+fn marker(line: &str) -> Option<Fence> {
     let trimmed = line.trim_start();
     let marker = trimmed.chars().next()?;
-    (matches!(marker, '`' | '~')
-        && trimmed
-            .chars()
-            .take_while(|character| *character == marker)
-            .count()
-            >= 3)
-        .then_some(marker)
+    let length = trimmed
+        .chars()
+        .take_while(|character| *character == marker)
+        .count();
+    (matches!(marker, '`' | '~') && length >= 3).then_some(Fence { marker, length })
 }
 
 fn separator(row: &str) -> Result<bool, String> {

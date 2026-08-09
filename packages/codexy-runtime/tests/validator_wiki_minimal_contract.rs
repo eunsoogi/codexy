@@ -32,6 +32,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("four-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- | --- | --- |", 1)),
         ("backtick fenced row", original.replacen("| `retract` | Merge |", "```text\n| `retract` | Merge |", 1)),
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
+        ("four-backtick fence", original.replacen("| `retract` | Merge |", "````text\n```\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "```\n````\n| `thesis` | Merge |", 1)),
+        ("four-tilde fence", original.replacen("| `retract` | Merge |", "~~~~text\n~~~\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "~~~\n~~~~\n| `thesis` | Merge |", 1)),
         ("tilde wrapped assignments", original.replacen("```text\nquery.max_index_files", "~~~text\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n~~~\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
