@@ -22,8 +22,7 @@ fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
     };
     let mut servers = json!({
         "lsp": {"command": lsp_command, "cwd": "."},
-        "codegraph": {"command": "./mcp/codexy-mcp-codegraph", "args": ["--stdio"], "cwd": "."},
-        "grep_app": {"url": "https://mcp.grep.app"}
+        "codegraph": {"command": "./mcp/codexy-mcp-codegraph", "args": ["--stdio"], "cwd": "."}
     });
     let config: Value = if nested {
         json!({"mcp_servers": servers})

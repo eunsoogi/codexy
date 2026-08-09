@@ -163,6 +163,9 @@ mod validator_marketplace_publish_permissions;
 #[path = "../validator_mcp.rs"]
 mod validator_mcp;
 
+#[path = "../validator_removed_mcp.rs"]
+mod validator_removed_mcp;
+
 #[path = "../validator_runtime_contract.rs"]
 mod validator_runtime_contract;
 

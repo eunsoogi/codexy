@@ -105,14 +105,13 @@ user-facing prompts.
 
 The plugin manifest points `mcpServers` at
 [`plugins/codexy/.mcp.json`](../plugins/codexy/.mcp.json). That file registers
-two plugin-local stdio servers and one remote HTTP server. Registration tells a
+two plugin-local stdio servers. Registration tells a
 host how to resolve a server; runtime startup and tool exposure still belong to
 the host and the current session.
 
 | Server | Registration | Runtime boundary | Capabilities and tools |
 | --- | --- | --- | --- |
 | `codegraph` | `{"command":"./mcp/codexy-mcp-codegraph","args":["--stdio"],"cwd":"."}` | A bootstrapped Codexy runtime binary runs as a plugin-relative local stdio child process. | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery. |
-| `grep_app` | `{"url":"https://mcp.grep.app"}` | The remote service owns transport, availability, and its tool schema; the plugin does not ship its implementation. | Searches public GitHub code. A host may expose a tool such as `searchGitHub`, but the remote service's current schema is not a static repository guarantee. |
 | `lsp` | `{"command":"./mcp/codexy-mcp-lsp","args":["--stdio"],"cwd":"."}` | A plugin-relative local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, and `lsp_diagnostics` cover discovery, readiness, and language-aware requests. |
 
 Registration cells reproduce the complete JSON object so argument boundaries and
