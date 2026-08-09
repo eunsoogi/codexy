@@ -1,0 +1,93 @@
+use std::process::Command;
+
+use crate::support;
+
+#[test]
+fn validator_cli_rejects_removed_packaged_mcp_names_and_endpoints()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (name, entry, expected) in [
+        (
+            "grep_app",
+            serde_json::json!({"command": "grep_app"}),
+            "disallowed MCP server",
+        ),
+        (
+            "public-search",
+            serde_json::json!({"url": "https://mcp.grep.app"}),
+            "disallowed MCP value fragment",
+        ),
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_fixture(&plugin_root, &[".mcp.json"])?;
+        let path = plugin_root.join(".mcp.json");
+        let mut config: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+        config[name] = entry;
+        std::fs::write(&path, serde_json::to_string_pretty(&config)?)?;
+
+        let output = validate(&plugin_root, "--check-mcp")?;
+        assert!(!output.status.success(), "removed MCP {name} was accepted");
+        assert!(stderr(&output).contains(expected), "stderr: {}", stderr(&output));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_removed_custom_agent_mcp_references()
+-> Result<(), Box<dyn std::error::Error>> {
+    for (fragment, expected) in [
+        (
+            "\n[mcp_servers.grep_app]\ncommand = \"example\"\n",
+            "removed MCP server",
+        ),
+        (
+            "\n[mcp_servers.public_search]\ncommand = \"grep_app\"\n",
+            "references removed MCP endpoint or command",
+        ),
+        (
+            "\n[mcp_servers.public_search]\nurl = \"https://mcp.grep.app\"\n",
+            "references removed MCP endpoint or command",
+        ),
+    ] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_fixture(&plugin_root, &["agents/codexy-pathfinder.toml"])?;
+        let path = plugin_root.join("agents/codexy-pathfinder.toml");
+        let mut agent = std::fs::read_to_string(&path)?;
+        agent.push_str(fragment);
+        std::fs::write(&path, agent)?;
+
+        let output = validate(&plugin_root, "--check-roles")?;
+        assert!(!output.status.success(), "removed agent MCP was accepted");
+        assert!(stderr(&output).contains(expected), "stderr: {}", stderr(&output));
+    }
+    Ok(())
+}
+
+fn copy_fixture(
+    plugin_root: &std::path::Path,
+    mutable_files: &[&str],
+) -> std::io::Result<()> {
+    let files = mutable_files
+        .iter()
+        .map(std::path::Path::new)
+        .collect::<Vec<_>>();
+    support::copy_plugin_fixture_into_with_mutable_files(plugin_root, &files)
+}
+
+fn validate(
+    plugin_root: &std::path::Path,
+    mode: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            mode,
+        ])
+        .output()?)
+}
+
+fn stderr(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
