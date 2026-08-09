@@ -14,32 +14,72 @@ pub(super) fn assert_boundaries() -> TestResult {
             assert!(output.status.success(), "terminal {result} recovery rejected: {}", String::from_utf8_lossy(&output.stderr));
         }
     }
-    for inactive in [
-        "```text\nSentinel result: {result}\n```\n",
-        "> Sentinel result: {result}\n",
-        "## Historical example\nSentinel result: {result}\n",
-        "- > Sentinel result: {result}\n",
-        "- ```text\n- Sentinel result: {result}\n- ```\n",
+    for result in [
+        "Reviewer gate: BLOCK",
+        "Reviewer gate returned BLOCK",
+        "Reviewer-gate verdict: BLOCK",
     ] {
+        for call in ["update_goal(complete)", "update_goal(blocked)"] {
+            assert_rejected(&format!(
+                "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{result}\n{}",
+                transition(call)
+            ))?;
+        }
+    }
+    for inactive in inactive_contexts() {
         for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
             for call in ["update_goal(complete)", "update_goal(blocked)"] {
-                let result = inactive.replace("{result}", result);
+                let result = inactive.replace("{event}", &format!("Sentinel result: {result}"));
                 assert_rejected(&format!(
-                    "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{result}{}",
+                    "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{result}## Current evidence\n{}",
                     transition(call)
                 ))?;
             }
         }
     }
+    for inactive in inactive_contexts() {
+        let ignored_call = inactive.replace("{event}", "Goal tool call: update_goal(complete)");
+        let output = run_validator(&format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_call}## Current evidence\nSentinel result: PASS\n{}",
+            transition("update_goal(complete)")
+        ))?;
+        assert!(output.status.success(), "inactive goal call rejected recovery: {}", String::from_utf8_lossy(&output.stderr));
+
+        let ignored_direction = inactive.replace(
+            "{event}",
+            "Parent direction event: version=direction-2; cancellation=received",
+        );
+        let transition = transition("update_goal(blocked)").replace(
+            "Blocked goal pre-mutation check:",
+            &format!("{ignored_direction}## Current evidence\nBlocked goal pre-mutation check:"),
+        );
+        let output = run_validator(&format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Sentinel result: BLOCK\n{transition}"
+        ))?;
+        assert!(output.status.success(), "inactive parent direction rejected recovery: {}", String::from_utf8_lossy(&output.stderr));
+    }
     for evidence in [
         format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}"),
         format!("{CLASSIFICATION}{GOAL_CONTEXT}{}{}", transition("update_goal(complete)"), WAIT),
-        format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Lane ownership: parent-owned\n{}", transition("update_goal(complete)")),
+        format!(
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Lane ownership: parent-owned\nReviewer gate: BLOCK\nParent direction event: version=parent-2; cancellation=received\n{}",
+            transition("update_goal(complete)")
+        ),
     ] {
         let output = run_validator(&evidence)?;
         assert!(output.status.success(), "history or unrelated lane rejected: {}", String::from_utf8_lossy(&output.stderr));
     }
     Ok(())
+}
+
+fn inactive_contexts() -> [&'static str; 5] {
+    [
+        "```text\n{event}\n```\n",
+        "> {event}\n",
+        "## Historical example\n{event}\n",
+        "- > {event}\n",
+        "- ```text\n- {event}\n- ```\n",
+    ]
 }
 
 fn transition(call: &str) -> String {
@@ -52,7 +92,10 @@ fn transition(call: &str) -> String {
 
 fn assert_rejected(evidence: &str) -> TestResult {
     let output = run_validator(evidence)?;
-    assert!(!output.status.success(), "terminal goal call before result passed");
+    assert!(
+        !output.status.success(),
+        "terminal goal call before result passed: {evidence}"
+    );
     assert!(String::from_utf8_lossy(&output.stderr).contains("nonterminal wait handoff"), "{}", String::from_utf8_lossy(&output.stderr));
     Ok(())
 }

@@ -9,11 +9,14 @@ use super::child_terminal_handoff::{
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let text = evidence.to_ascii_lowercase();
-    let lines = text
-        .lines()
-        .map(str::trim)
-        .map(without_metadata_prefix)
-        .collect::<Vec<_>>();
+    let mut lines = Vec::new();
+    let mut start = 0;
+    for fragment in text.split_inclusive('\n') {
+        if super::sentinel_handoff::active_result_line(&text, start) {
+            lines.push(without_metadata_prefix(fragment.trim()));
+        }
+        start += fragment.len();
+    }
     let mut errors = Vec::new();
     let mut start = 0;
     for end in 1..=lines.len() {

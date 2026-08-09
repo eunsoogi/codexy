@@ -1,11 +1,8 @@
 mod parser;
 
-use std::collections::BTreeSet;
-
 use parser::{
-    OrderedEvent, active_terminal_reviewer_result_lines, field, has_distinct_values,
-    has_elapsed_minimum, is_blocked_pre_delivery, is_terminal_goal_call, normalized_lines,
-    ordered_event,
+    ActiveEvent, OrderedEvent, active_events, field, has_distinct_values, has_elapsed_minimum,
+    is_blocked_pre_delivery,
 };
 
 const NONTERMINAL_PRODUCERS: &[&str] = &[
@@ -16,30 +13,21 @@ const NONTERMINAL_PRODUCERS: &[&str] = &[
 ];
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
-    let lines = normalized_lines(evidence);
-    let terminal_result_lines = active_terminal_reviewer_result_lines(evidence);
+    let events = active_events(evidence);
     let mut errors = Vec::new();
     let mut child_owned = false;
     let mut lane_start = 0;
-    for (index, line) in lines.iter().enumerate() {
-        if is_lane_boundary(line) {
+    for (index, event) in events.iter().enumerate() {
+        if is_lane_boundary(&event.line) {
             if child_owned {
-                errors.extend(check_lane(
-                    &lines[lane_start..index],
-                    &terminal_result_lines,
-                    lane_start,
-                ));
+                errors.extend(check_lane(&events[lane_start..index]));
             }
-            child_owned = is_child_boundary(line);
+            child_owned = is_child_boundary(&event.line);
             lane_start = index;
         }
     }
     if child_owned {
-        errors.extend(check_lane(
-            &lines[lane_start..],
-            &terminal_result_lines,
-            lane_start,
-        ));
+        errors.extend(check_lane(&events[lane_start..]));
     }
     errors
 }
@@ -53,38 +41,34 @@ fn is_child_boundary(line: &str) -> bool {
         || line.starts_with("owner decision: affirmative child-owned")
 }
 
-fn check_lane(
-    lines: &[String],
-    terminal_result_lines: &BTreeSet<usize>,
-    offset: usize,
-) -> Vec<String> {
-    let mut errors = check_wait_handoffs(lines, terminal_result_lines, offset);
-    for (call_index, line) in lines.iter().enumerate() {
-        if ordered_event(line) == OrderedEvent::BlockedCall {
-            errors.extend(check_blocked_call(lines, call_index));
+fn check_lane(events: &[ActiveEvent]) -> Vec<String> {
+    let mut errors = check_wait_handoffs(events);
+    for (call_index, event) in events.iter().enumerate() {
+        if event.kind == OrderedEvent::BlockedCall {
+            errors.extend(check_blocked_call(events, call_index));
         }
     }
     errors
 }
 
-fn check_blocked_call(lines: &[String], call_index: usize) -> Vec<String> {
+fn check_blocked_call(events: &[ActiveEvent], call_index: usize) -> Vec<String> {
     let mut errors = Vec::new();
-    let pre_delivery_index = lines[..call_index]
+    let pre_delivery_index = events[..call_index]
         .iter()
-        .rposition(|line| is_blocked_pre_delivery(line));
+        .rposition(|event| is_blocked_pre_delivery(&event.line));
     let Some(pre_delivery_index) = pre_delivery_index else {
         return vec![
             "blocked goal call requires a typed blocked goal audit before its pre-delivery receipt"
                 .into(),
         ];
     };
-    let audit_index = lines[..pre_delivery_index]
+    let audit_index = events[..pre_delivery_index]
         .iter()
-        .rposition(|line| line.starts_with("blocked goal audit:"));
+        .rposition(|event| event.line.starts_with("blocked goal audit:"));
     let Some(audit_index) = audit_index else {
         return vec!["blocked goal call requires a typed blocked goal audit".into()];
     };
-    let audit = &lines[audit_index];
+    let audit = &events[audit_index].line;
     let audit_id = field(audit, "audit id");
     if audit_id.is_none_or(str::is_empty) {
         errors.push("blocked goal audit requires an audit id".into());
@@ -114,15 +98,15 @@ fn check_blocked_call(lines: &[String], call_index: usize) -> Vec<String> {
     if field(audit, "wake route") != Some("unavailable") {
         errors.push("blocked goal audit requires wake route=unavailable".into());
     }
-    let pre_mutation_index = lines[pre_delivery_index + 1..call_index]
+    let pre_mutation_index = events[pre_delivery_index + 1..call_index]
         .iter()
-        .rposition(|line| line.starts_with("blocked goal pre-mutation check:"))
+        .rposition(|event| event.line.starts_with("blocked goal pre-mutation check:"))
         .map(|index| pre_delivery_index + 1 + index);
-    let pre_mutation = pre_mutation_index.map(|index| &lines[index]);
-    let parent_direction_in_window = lines[audit_index + 1..call_index]
+    let pre_mutation = pre_mutation_index.map(|index| &events[index].line);
+    let parent_direction_in_window = events[audit_index + 1..call_index]
         .iter()
-        .any(|line| ordered_event(line) == OrderedEvent::ParentDirection);
-    let delivered_version = field(&lines[pre_delivery_index], "parent direction version");
+        .any(|event| event.kind == OrderedEvent::ParentDirection);
+    let delivered_version = field(&events[pre_delivery_index].line, "parent direction version");
     if parent_direction_in_window || !valid_pre_mutation(pre_mutation, audit_id, delivered_version)
     {
         errors.push("blocked goal call is cancelled by newer parent direction or lacks a final matching pre-mutation check".into());
@@ -158,45 +142,37 @@ fn valid_pre_mutation(
         && field(line, "cancellation") == Some("absent")
 }
 
-fn check_wait_handoffs(
-    lines: &[String],
-    terminal_result_lines: &BTreeSet<usize>,
-    offset: usize,
-) -> Vec<String> {
-    lines
+fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
+    events
         .iter()
         .enumerate()
-        .filter(|(_, line)| line.starts_with("nonterminal wait handoff:"))
-        .filter_map(|(index, line)| {
-            (invalid_field(field(line, "state fingerprint"))
-                || !field(line, "producer state")
+        .filter(|(_, event)| event.line.starts_with("nonterminal wait handoff:"))
+        .filter_map(|(index, event)| {
+            (invalid_field(field(&event.line, "state fingerprint"))
+                || !field(&event.line, "producer state")
                     .is_some_and(|value| NONTERMINAL_PRODUCERS.contains(&value))
-                || invalid_wake_route(field(line, "wake route"))
-                || field(line, "ownership") != Some("retained")
-                || field(line, "goal state") != Some("active")
-                || field(line, "plan state") != Some("active")
-                || field(line, "goal transition") != Some("none")
-                || field(line, "return control") != Some("confirmed")
-                || terminal_goal_precedes_reviewer_result(
-                    &lines[index + 1..],
-                    terminal_result_lines,
-                    offset + index + 1,
-                ))
+                || invalid_wake_route(field(&event.line, "wake route"))
+                || field(&event.line, "ownership") != Some("retained")
+                || field(&event.line, "goal state") != Some("active")
+                || field(&event.line, "plan state") != Some("active")
+                || field(&event.line, "goal transition") != Some("none")
+                || field(&event.line, "return control") != Some("confirmed")
+                || terminal_goal_precedes_reviewer_result(&events[index + 1..]))
             .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before a terminal reviewer result, and confirmed return control".into())
         })
         .collect()
 }
 
-fn terminal_goal_precedes_reviewer_result(
-    lines: &[String],
-    terminal_result_lines: &BTreeSet<usize>,
-    offset: usize,
-) -> bool {
-    lines
+fn terminal_goal_precedes_reviewer_result(events: &[ActiveEvent]) -> bool {
+    events
         .iter()
-        .enumerate()
-        .take_while(|(index, _)| !terminal_result_lines.contains(&(offset + index)))
-        .any(|(_, line)| is_terminal_goal_call(line))
+        .take_while(|event| event.kind != OrderedEvent::PackagedTerminalResult)
+        .any(|event| {
+            matches!(
+                event.kind,
+                OrderedEvent::BlockedCall | OrderedEvent::TerminalGoalCall
+            )
+        })
 }
 
 fn invalid_field(value: Option<&str>) -> bool {

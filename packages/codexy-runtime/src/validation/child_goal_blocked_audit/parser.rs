@@ -4,16 +4,34 @@ use std::collections::BTreeSet;
 pub(super) enum OrderedEvent {
     BlockedCall,
     ParentDirection,
+    TerminalGoalCall,
+    PackagedTerminalResult,
     Other,
 }
 
-pub(super) fn normalized_lines(evidence: &str) -> Vec<String> {
-    evidence
-        .lines()
-        .map(str::trim)
-        .map(str::to_ascii_lowercase)
-        .map(|line| without_list_prefix(&line).to_owned())
-        .collect()
+pub(super) struct ActiveEvent {
+    pub(super) line: String,
+    pub(super) kind: OrderedEvent,
+}
+
+pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
+    let evidence = evidence.to_ascii_lowercase();
+    let terminal_lines =
+        super::super::sentinel_handoff::active_packaged_terminal_result_lines(&evidence);
+    let mut events = Vec::new();
+    let mut start = 0;
+    for (source_line, fragment) in evidence.split_inclusive('\n').enumerate() {
+        if super::super::sentinel_handoff::active_result_line(&evidence, start) {
+            let line = without_list_prefix(fragment.trim()).to_owned();
+            let kind = terminal_lines
+                .contains(&source_line)
+                .then_some(OrderedEvent::PackagedTerminalResult)
+                .unwrap_or_else(|| ordered_event(&line));
+            events.push(ActiveEvent { line, kind });
+        }
+        start += fragment.len();
+    }
+    events
 }
 
 pub(super) fn ordered_event(line: &str) -> OrderedEvent {
@@ -25,6 +43,8 @@ pub(super) fn ordered_event(line: &str) -> OrderedEvent {
         OrderedEvent::BlockedCall
     } else if line.starts_with("parent direction event:") {
         OrderedEvent::ParentDirection
+    } else if is_terminal_goal_call(line) {
+        OrderedEvent::TerminalGoalCall
     } else {
         OrderedEvent::Other
     }
@@ -40,10 +60,6 @@ pub(super) fn is_terminal_goal_call(line: &str) -> bool {
     line.strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
         .is_some_and(super::super::child_terminal_handoff::is_terminal_goal_call)
-}
-
-pub(super) fn active_terminal_reviewer_result_lines(evidence: &str) -> BTreeSet<usize> {
-    super::super::sentinel_handoff::active_terminal_result_lines(&evidence.to_ascii_lowercase())
 }
 
 pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {

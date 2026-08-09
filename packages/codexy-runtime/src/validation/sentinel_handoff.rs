@@ -1,12 +1,20 @@
 pub(super) const SENTINEL_MARKERS: &str = "sentinel|codexy-sentinel";
 #[path = "sentinel_handoff_result.rs"]
 mod result;
+#[path = "sentinel_handoff_result_context.rs"]
+mod result_context;
 #[cfg(test)]
 #[path = "sentinel_handoff_result_tests.rs"]
 mod result_tests;
 
-pub(super) fn active_terminal_result_lines(text: &str) -> std::collections::BTreeSet<usize> {
-    result::active_terminal_result_lines(text)
+pub(super) fn active_packaged_terminal_result_lines(
+    text: &str,
+) -> std::collections::BTreeSet<usize> {
+    result_context::active_packaged_terminal_result_lines(text)
+}
+
+pub(super) fn active_result_line(text: &str, start: usize) -> bool {
+    result::active(text, start)
 }
 
 const GENERIC_REVIEWER_GATE_MARKERS: &str = "reviewer gate|reviewer-gate";
