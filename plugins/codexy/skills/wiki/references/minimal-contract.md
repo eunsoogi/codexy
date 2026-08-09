@@ -67,9 +67,13 @@ extensions only when they preserve these rules.
 
 ### Context efficiency
 
-- A normal query reads no more than three index files and no more than eight
+- A normal query MUST read no more than three index files and no more than eight
   matched article files. If it needs more, it MUST state the reason and obtain
   explicit broader-scope intent.
+- Context size is the UTF-8 byte length of every loaded index and article,
+  including frontmatter. The total excludes the user prompt and tool metadata.
+  A normal query MUST satisfy every machine-checkable limit below; broader scope
+  MUST record the requested limit and the user's explicit approval.
 - Compile uses the `Last compiled` boundary by default; a full pass MUST be
   explicit. Index staleness is measured by Markdown-file count versus index-row
   count before an index guides a read.
@@ -90,12 +94,46 @@ extensions only when they preserve these rules.
 - Every source-backed article MUST provide `volatility`, `verified`, and
   `updated`. Its freshness score is 0–100 from source freshness, verification
   recency, compilation recency, and source-chain integrity; each dimension is
-  worth 0–25 and is scaled by volatility.
-- Articles below the wiki's `freshness_threshold` (default 70) MUST be flagged
-  for refresh. Refresh MUST report either an unchanged comparison or a new raw revision and the
-  resulting recompile requirement; it MUST NOT overwrite raw history.
+  worth 0–25.
+- Dates use their UTC calendar day. Missing, malformed, or future `verified`,
+  `updated`, or raw `ingested` dates MUST contribute zero to that component.
+  Unknown volatility defaults to `warm`. For source-backed articles, unresolved
+  sources count in the source-chain denominator but not its numerator.
+- A `compiled-from: conversation` article MUST omit raw-source and source-chain
+  components, score verification and compilation as below, then double their
+  subtotal. A `compiled-from: mixed` article MUST use the source-backed formula.
+- Articles below `freshness.threshold` MUST be flagged for refresh. Refresh MUST
+  report either an unchanged comparison or a new raw revision and the resulting
+  recompile requirement; it MUST NOT overwrite raw history.
+
+### Machine-checkable limits
+
+```text
+query.max_index_files = 3
+query.max_article_files = 8
+query.max_index_file_bytes = 4000
+query.max_article_file_bytes = 4000
+query.max_total_bytes = 48000
+freshness.threshold = 70
+freshness.hot_half_life_days = 7
+freshness.warm_half_life_days = 30
+freshness.cold_half_life_days = 180
+freshness.decay = 25 * 0.5^(age_days / half_life_days)
+freshness.source_chain = 25 * resolvable_sources / total_sources
+freshness.score = round_half_up(decay(source_age) + decay(verification_age) + decay(compilation_age) + source_chain)
+freshness.conversation = min(100, 2 * (verification + compilation))
+```
+
+`age_days` is `max(0, today_utc - recorded_utc_day)`. `round_half_up` rounds
+to the nearest integer with .5 rounded upward, then clamps the final score to
+0–100. A source-backed article with no valid source entries is a traceability
+failure and MUST NOT receive a clean freshness result.
 
 ## Current workflow disposition
+
+This table is the closed current workflow inventory for this skill. Every row
+MUST occur exactly once with one `Keep`, `Merge`, or `Remove` disposition.
+Before a new current workflow can claim contract coverage, it MUST add one row.
 
 | Current workflow | Disposition | Contract role |
 | --- | --- | --- |
@@ -118,6 +156,16 @@ extensions only when they preserve these rules.
 | `archive` | Remove | Lifecycle preservation is not part of the active knowledge path. |
 | `ll` | Remove | Compatibility/status shorthand is not a contract capability. |
 | `assess` | Merge | Assessment consumes the same bounded, traceable, fresh evidence as query and audit. |
+| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |
+| `thesis` | Merge | Research variant that MUST ingest evidence before compiled use. |
+| `status` | Remove | Status inspection is not a minimal knowledge-path operation. |
+| `session` | Remove | Operational session routing is not compiled topic knowledge. |
+| `session-capture` | Remove | Redacted operational memory stays outside topic facts by default. |
+| `rehydrate` | Remove | Session-context recovery is operational memory, not compiled knowledge. |
+| `session-promote` | Merge | Explicit promotion admits a session learning through the raw-note boundary. |
+| `feedback` | Remove | Feedback routing is candidate-memory operation, not a factual source. |
+| `feedback-capture` | Remove | Candidate feedback remains reviewable operational memory. |
+| `feedback-promote` | Merge | Explicit promotion writes a bounded raw note with provenance. |
 
 Cross-cutting index maintenance and append-only `log.md` entries are kept as
 required behavior inside every applicable core write or read, rather than as
