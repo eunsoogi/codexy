@@ -49,13 +49,19 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
 pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, String> {
     let mut rows = Vec::new();
     let mut fence = None;
+    let mut table_ended = false;
     for line in table.lines() {
         transition(&mut fence, line);
-        if line.trim_start().starts_with('|') {
+        if let Some(row) = workflow_row(line) {
             if fence.is_some() {
                 return Err("workflow table rows cannot be fenced".into());
             }
-            rows.push(line);
+            if table_ended {
+                return Err("workflow table must be contiguous".into());
+            }
+            rows.push(row);
+        } else if !rows.is_empty() {
+            table_ended = true;
         }
     }
     balanced(fence)?;
@@ -195,6 +201,16 @@ fn separator(row: &str) -> Result<bool, String> {
             let marker = cell.trim_matches(':');
             marker.len() >= 3 && marker.chars().all(|character| character == '-')
         }))
+}
+
+fn workflow_row(line: &str) -> Option<&str> {
+    let indentation = line
+        .chars()
+        .take_while(|character| *character == ' ')
+        .count();
+    (indentation <= 3)
+        .then_some(&line[indentation..])
+        .filter(|row| row.starts_with('|'))
 }
 
 fn cells(row: &str) -> Result<Vec<&str>, String> {

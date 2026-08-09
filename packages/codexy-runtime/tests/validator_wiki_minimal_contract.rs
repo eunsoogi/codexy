@@ -30,6 +30,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("malformed separator", original.replacen("| --- | --- | --- |", "| -- | --- | --- |", 1)),
         ("two-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- |", 1)),
         ("four-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- | --- | --- |", 1)),
+        ("four-space workflow row", original.replacen("| `retract` | Merge |", "    | `retract` | Merge |", 1)),
+        ("separated workflow row", original.replacen("| `retract` | Merge |", "\n\n| `retract` | Merge |", 1)),
         ("backtick fenced row", original.replacen("| `retract` | Merge |", "```text\n| `retract` | Merge |", 1)),
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
         ("four-backtick fence", original.replacen("| `retract` | Merge |", "````text\n```\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "```\n````\n| `thesis` | Merge |", 1)),
@@ -58,11 +60,19 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
     }).collect();
     assert!(accepted.is_empty(), "accepted invalid variants: {accepted:?}");
     for control in [
-        original.replacen("| `retract` | Merge |", "```text\nhidden\n```   \n| `retract` | Merge |", 1),
-        original.replacen("| `retract` | Merge |", "~~~text\nhidden\n~~~   \n| `retract` | Merge |", 1),
-        original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "```text\n   ```\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n   ```\n```", 1),
-        original.replacen("| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |", "~~~text\n   ~~~\n| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |\n   ~~~\n~~~", 1),
+        original.replacen("\nCross-cutting", "\n```text\nhidden\n```   \nvisible\n\nCross-cutting", 1),
+        original.replacen("\nCross-cutting", "\n~~~text\nhidden\n~~~   \nvisible\n\nCross-cutting", 1),
+        original.replacen("\nCross-cutting", "\n```text\nhidden\n   ```\nvisible\n   ```\n```\n\nCross-cutting", 1),
+        original.replacen("\nCross-cutting", "\n~~~text\nhidden\n   ~~~\nvisible\n   ~~~\n~~~\n\nCross-cutting", 1),
     ] {
+        validate_contract(&control)?;
+    }
+    for indentation in 0..=3 {
+        let control = original.replacen(
+            "| `retract` | Merge |",
+            &format!("{}| `retract` | Merge |", " ".repeat(indentation)),
+            1,
+        );
         validate_contract(&control)?;
     }
     Ok(())
