@@ -54,6 +54,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("doctype workflow table", original.replacen("| Current workflow |", "<!DOCTYPE\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n>\n\nCross-cutting", 1)),
         ("backtick fenced row", original.replacen("| `retract` | Merge |", "```text\n| `retract` | Merge |", 1)),
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
+        ("backtick fence info contains backtick", original.replacen("| Current workflow |", "```bad ` info\n````\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n````\n```\n````\n\nCross-cutting", 1)),
         ("four-backtick fence", original.replacen("| `retract` | Merge |", "````text\n```\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "```\n````\n| `thesis` | Merge |", 1)),
         ("four-tilde fence", original.replacen("| `retract` | Merge |", "~~~~text\n~~~\n| `retract` | Merge |", 1).replacen("| `thesis` | Merge |", "~~~\n~~~~\n| `thesis` | Merge |", 1)),
         ("backtick equal-run trailing content", original.replacen("| `retract` | Merge |", "```text\n```not-a-close\n| `retract` | Merge |", 1)),
@@ -88,6 +89,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
     for control in [
         original.replacen("\nCross-cutting", "\n```text\nhidden\n```   \nvisible\n\nCross-cutting", 1),
         original.replacen("\nCross-cutting", "\n~~~text\nhidden\n~~~   \nvisible\n\nCross-cutting", 1),
+        original.replacen("\nCross-cutting", "\n```rust\nhidden\n```\nvisible\n\nCross-cutting", 1),
+        original.replacen("\nCross-cutting", "\n~~~language `info`\nhidden\n~~~\nvisible\n\nCross-cutting", 1),
         original.replacen("\nCross-cutting", "\n```text\nhidden\n   ```\nvisible\n   ```\n```\n\nCross-cutting", 1),
         original.replacen("\nCross-cutting", "\n~~~text\nhidden\n   ~~~\nvisible\n   ~~~\n~~~\n\nCross-cutting", 1),
         original.replacen("knowledge path", "knowledge <!-- harmless --> path", 1),

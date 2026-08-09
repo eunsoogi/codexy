@@ -148,10 +148,26 @@ fn backtick_run(text: &str, inside_code: bool) -> Option<(usize, usize)> {
         .take_while(|character| *character == '`')
         .count();
     let indentation = text.len() - text.trim_start_matches(' ').len();
-    if !inside_code && start == indentation && indentation <= 3 && length >= 3 {
+    if !inside_code && start == indentation && opening_fence(text).is_some() {
         return None;
     }
     Some((start, length))
+}
+
+pub(crate) fn opening_fence(line: &str) -> Option<(char, usize)> {
+    let indentation = line.len() - line.trim_start_matches(' ').len();
+    if indentation > 3 {
+        return None;
+    }
+    let trimmed = &line[indentation..];
+    let marker = trimmed.chars().next()?;
+    let length = trimmed
+        .chars()
+        .take_while(|character| *character == marker)
+        .count();
+    let info = &trimmed[length..];
+    (matches!(marker, '`' | '~') && length >= 3 && (marker == '~' || !info.contains('`')))
+        .then_some((marker, length))
 }
 
 fn raw_html_block(line: &str) -> bool {

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::support::wiki_minimal_contract_activity::ActiveMarkdown;
+use crate::support::wiki_minimal_contract_activity::{ActiveMarkdown, opening_fence};
 
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
     let (mut fence, mut active) = (None, ActiveMarkdown::default());
@@ -171,15 +171,15 @@ fn marker_char(fence: Option<Fence>) -> Option<char> {
 }
 
 fn opening_marker(line: &str) -> Option<Fence> {
-    marker(line).map(|(fence, _)| fence)
+    opening_fence(line).map(|(marker, length)| Fence { marker, length })
 }
 
 fn closing_marker(line: &str) -> Option<Fence> {
-    let (fence, suffix) = marker(line)?;
+    let (fence, suffix) = fence_marker(line)?;
     suffix.trim().is_empty().then_some(fence)
 }
 
-fn marker(line: &str) -> Option<(Fence, &str)> {
+fn fence_marker(line: &str) -> Option<(Fence, &str)> {
     let indentation = line.len() - line.trim_start_matches(' ').len();
     if indentation > 3 {
         return None;
