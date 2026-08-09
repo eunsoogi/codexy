@@ -98,7 +98,7 @@ extensions only when they preserve these rules.
 - Dates use their UTC calendar day. Missing, malformed, or future `verified`,
   `updated`, or raw `ingested` dates MUST contribute zero to that component and
   MUST NOT be converted to an age of zero. For a multi-source article,
-  `source_age` is the maximum age among its resolvable sources with valid,
+  `source_age` is the average age among its resolvable sources with valid,
   non-future `ingested` dates; if none exist, source freshness is zero. Unknown
   volatility defaults to `warm`. For source-backed articles, unresolved sources
   count in the source-chain denominator but not its numerator.
@@ -122,7 +122,7 @@ freshness.hot_half_life_days = 30
 freshness.warm_half_life_days = 90
 freshness.cold_half_life_days = 365
 freshness.decay = 25 * 0.5^(age_days / half_life_days)
-freshness.source_age = max(age_days across resolvable sources)
+freshness.source_age = average(age_days across resolvable sources)
 freshness.source_chain = 25 * resolvable_sources / total_sources
 freshness.score = round_half_up(decay(source_age) + decay(verification_age) + decay(compilation_age) + source_chain)
 freshness.future_date = 0
