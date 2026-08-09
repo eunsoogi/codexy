@@ -176,7 +176,10 @@ fn opening_marker(line: &str) -> Option<Fence> {
 
 fn closing_marker(line: &str) -> Option<Fence> {
     let (fence, suffix) = fence_marker(line)?;
-    suffix.trim().is_empty().then_some(fence)
+    suffix
+        .bytes()
+        .all(|byte| matches!(byte, b' ' | b'\t'))
+        .then_some(fence)
 }
 
 fn fence_marker(line: &str) -> Option<(Fence, &str)> {
