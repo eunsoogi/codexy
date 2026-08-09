@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
-    let (mut fence, mut comment) = (None, false);
+    let (mut fence, mut comment) = (None, (false, false));
     let mut count = 0;
     for raw in text.lines() {
         let line = active_line(&mut comment, raw, fence.is_some());
@@ -19,7 +19,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
         .take_while(|character| *character == '#')
         .count();
     let mut body = None;
-    (fence, comment) = (None, false);
+    (fence, comment) = (None, (false, false));
     for raw in text.lines() {
         let line = active_line(&mut comment, raw, fence.is_some());
         transition(&mut fence, &line);
@@ -50,7 +50,7 @@ pub(crate) fn section(text: &str, title: &str) -> Result<String, String> {
 
 pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, String> {
     let mut rows: Vec<String> = Vec::new();
-    let (mut fence, mut comment) = (None, false);
+    let (mut fence, mut comment) = (None, (false, false));
     let mut table_ended = false;
     for raw in table.lines() {
         let line = active_line(&mut comment, raw, fence.is_some());
@@ -94,7 +94,7 @@ pub(crate) fn workflow_rows(table: &str) -> Result<BTreeMap<String, String>, Str
 }
 
 pub(crate) fn assignments(section: &str) -> Result<BTreeMap<String, String>, String> {
-    let (mut fence, mut comment) = (None, false);
+    let (mut fence, mut comment) = (None, (false, false));
     let mut canonical = false;
     let mut blocks = 0;
     let mut values = BTreeMap::new();
@@ -174,10 +174,7 @@ fn closing_marker(line: &str) -> Option<Fence> {
 }
 
 fn marker(line: &str) -> Option<(Fence, &str)> {
-    let indentation = line
-        .chars()
-        .take_while(|character| *character == ' ')
-        .count();
+    let indentation = line.len() - line.trim_start_matches(' ').len();
     if indentation > 3 {
         return None;
     }
@@ -214,23 +211,29 @@ fn workflow_row(line: &str) -> Option<&str> {
         .filter(|row| row.starts_with('|'))
 }
 
-fn active_line(comment: &mut bool, line: &str, fenced: bool) -> String {
+fn active_line(comment: &mut (bool, bool), line: &str, fenced: bool) -> String {
     if fenced {
         return line.into();
     }
+    let indentation = line.len() - line.trim_start_matches(' ').len();
+    let block = indentation <= 3 && line[indentation..].starts_with("<!--");
     let mut active = String::new();
     let mut rest = line;
     loop {
-        if *comment {
+        if comment.0 {
             let Some(end) = rest.find("-->") else {
                 return active;
             };
             rest = &rest[end + 3..];
-            *comment = false;
+            let block = comment.1;
+            *comment = (false, false);
+            if block {
+                return String::new();
+            }
         } else if let Some(start) = rest.find("<!--") {
             active.push_str(&rest[..start]);
             rest = &rest[start + 4..];
-            *comment = true;
+            *comment = (true, block);
         } else {
             active.push_str(rest);
             return active;
