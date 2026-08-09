@@ -91,13 +91,16 @@ extensions only when they preserve these rules.
 
 ### Freshness
 
-- Every source-backed article MUST provide `volatility`, `verified`, and
-  `updated`. Its freshness score is 0–100 from source freshness, verification
-  recency, compilation recency, and source-chain integrity; each dimension is
-  worth 0–25.
-- Dates use their UTC calendar day. Missing, malformed, or future `verified`,
-  `updated`, or raw `ingested` dates MUST contribute zero to that component and
-  MUST NOT be converted to an age of zero. For a multi-source article,
+- Every source-backed article MUST provide `volatility`, `verified`, and a
+  compilation date. Its freshness score is 0–100 from source freshness,
+  verification recency, compilation recency, and source-chain integrity; each
+  dimension is worth 0–25.
+- Dates use their UTC calendar day. Compilation recency MUST use a valid,
+  non-future `updated` date when present; otherwise it MUST use a valid,
+  non-future `created` date; otherwise it MUST contribute zero. Missing,
+  malformed, or future `verified` or raw `ingested` dates MUST contribute zero
+  to that component and MUST NOT be converted to an age of zero. For a
+  multi-source article,
   `source_age` is the average age among its resolvable sources with valid,
   non-future `ingested` dates; if none exist, source freshness is zero. Unknown
   volatility defaults to `warm`. For source-backed articles, unresolved sources
@@ -105,7 +108,8 @@ extensions only when they preserve these rules.
 - A `compiled-from: conversation` article MUST omit raw-source and source-chain
   components, score verification and compilation as below, then double their
   subtotal. A `compiled-from: mixed` article MUST use the source-backed formula.
-- Articles below `freshness.threshold` MUST be flagged for refresh. Refresh MUST
+- Articles below the per-wiki `freshness_threshold` configured in `config.md`
+  MUST be flagged for refresh; its default is 70 when absent. Refresh MUST
   report either an unchanged comparison or a new raw revision and the resulting
   recompile requirement; it MUST NOT overwrite raw history.
 
@@ -117,11 +121,12 @@ query.max_article_files = 8
 query.max_index_file_bytes = 4000
 query.max_article_file_bytes = 4000
 query.max_total_bytes = 48000
-freshness.threshold = 70
+freshness.threshold = config.md freshness_threshold (default 70)
 freshness.hot_half_life_days = 30
 freshness.warm_half_life_days = 90
 freshness.cold_half_life_days = 365
 freshness.decay = 25 * 0.5^(age_days / half_life_days)
+freshness.compilation_date = updated when valid; otherwise created when valid; otherwise 0
 freshness.source_age = average(age_days across resolvable sources)
 freshness.source_chain = 25 * resolvable_sources / total_sources
 freshness.score = round_half_up(decay(source_age) + decay(verification_age) + decay(compilation_age) + source_chain)

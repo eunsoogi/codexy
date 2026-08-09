@@ -127,6 +127,11 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("missing decay", original.replacen(ASSIGNMENTS[9].1, "freshness.decay = unspecified", 1)),
         ("duplicate decay", original.replacen(ASSIGNMENTS[9].1, &format!("{}\n{}", ASSIGNMENTS[9].1, ASSIGNMENTS[9].1), 1)),
         ("future date rule", original.replacen("freshness.future_date = 0", "freshness.future_date = clamp(age_days, 0, infinity)", 1)),
+        ("fixed freshness threshold", original.replacen("freshness.threshold = config.md freshness_threshold (default 70)", "freshness.threshold = 70", 1)),
+        ("missing freshness threshold default", original.replacen("freshness.threshold = config.md freshness_threshold (default 70)", "freshness.threshold = config.md freshness_threshold", 1)),
+        ("created before updated", original.replacen("freshness.compilation_date = updated when valid; otherwise created when valid; otherwise 0", "freshness.compilation_date = created when valid; otherwise updated when valid; otherwise 0", 1)),
+        ("missing created fallback", original.replacen("freshness.compilation_date = updated when valid; otherwise created when valid; otherwise 0", "freshness.compilation_date = updated when valid; otherwise 0", 1)),
+        ("missing-date behavior unspecified", original.replacen("freshness.compilation_date = updated when valid; otherwise created when valid; otherwise 0", "freshness.compilation_date = updated when valid; otherwise created when valid; otherwise missing", 1)),
         ("source age aggregate", original.replacen("freshness.source_age = average(age_days across resolvable sources)", "freshness.source_age = min(age_days across resolvable sources)", 1)),
     ];
     let accepted: Vec<_> = mutations.into_iter().filter_map(|(name, mutation)| {

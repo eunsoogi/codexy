@@ -38,11 +38,18 @@ pub(crate) const ASSIGNMENTS: &[(&str, &str)] = &[
     ("query.max_index_file_bytes", "4000"),
     ("query.max_article_file_bytes", "4000"),
     ("query.max_total_bytes", "48000"),
-    ("freshness.threshold", "70"),
+    (
+        "freshness.threshold",
+        "config.md freshness_threshold (default 70)",
+    ),
     ("freshness.hot_half_life_days", "30"),
     ("freshness.warm_half_life_days", "90"),
     ("freshness.cold_half_life_days", "365"),
     ("freshness.decay", "25 * 0.5^(age_days / half_life_days)"),
+    (
+        "freshness.compilation_date",
+        "updated when valid; otherwise created when valid; otherwise 0",
+    ),
     (
         "freshness.source_age",
         "average(age_days across resolvable sources)",
