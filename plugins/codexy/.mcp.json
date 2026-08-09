@@ -12,8 +12,5 @@
       "--stdio"
     ],
     "cwd": "."
-  },
-  "grep_app": {
-    "url": "https://mcp.grep.app"
   }
 }

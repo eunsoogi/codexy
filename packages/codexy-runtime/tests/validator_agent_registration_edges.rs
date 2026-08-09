@@ -143,7 +143,7 @@ fn register_codexy_agents_allows_supported_agent_config_tables()
     let agent_path = plugin_root.join("agents/codexy-sentinel.toml");
     let mut agent = std::fs::read_to_string(&agent_path)?;
     agent.push_str(
-        "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\n\n[[skills.config]]\nname = \"codexy:qa\"\n",
+        "\n[mcp_servers.example_mcp]\ncommand = \"example_mcp\"\n\n[[skills.config]]\nname = \"codexy:qa\"\n",
     );
     std::fs::write(agent_path, agent)?;
     let config_path = temp.path().join("home/.codex/config.toml");

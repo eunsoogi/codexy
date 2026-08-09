@@ -17,7 +17,6 @@
     {"id":"agents.github","category":"agents","sources":["plugins/codexy/agents/codexy-weaver.toml"],"target":"codexy-github","disposition":"move"},
     {"id":"mcp.codegraph","category":"mcp","sources":["plugins/codexy/.mcp.json#codegraph"],"target":"codexy-devtools","disposition":"move"},
     {"id":"mcp.lsp","category":"mcp","sources":["plugins/codexy/.mcp.json#lsp"],"target":"codexy-devtools","disposition":"move"},
-    {"id":"mcp.grep-app","category":"mcp","sources":["plugins/codexy/.mcp.json#grep_app"],"target":"remove","disposition":"remove"},
     {"id":"mcp.runtimes","category":"mcp","sources":["plugins/codexy/mcp"],"target":"codexy-devtools","disposition":"move"},
     {"id":"lsp.integration","category":"lsp","sources":["plugins/codexy/.codex/lsp-client.json","plugins/codexy/lsp"],"target":"codexy-devtools","disposition":"move"},
     {"id":"runtime.codegraph","category":"mcp","sources":["packages/codexy-runtime/src/codegraph"],"target":"codexy-devtools","disposition":"move"},

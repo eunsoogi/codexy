@@ -64,8 +64,8 @@ mod tests {
         let path = Path::new("agents/codexy-pathfinder.toml");
         for (fragment, expected) in [
             (
-                "\n[mcp_servers.grep_app]\ncommand = \"grep_app\"\ntools = \"bad\"\n",
-                "agents/codexy-pathfinder.toml mcp_servers.grep_app.tools must be a table",
+                "\n[mcp_servers.example_mcp]\ncommand = \"example_mcp\"\ntools = \"bad\"\n",
+                "agents/codexy-pathfinder.toml mcp_servers.example_mcp.tools must be a table",
             ),
             (
                 "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\napproval_mode = \"always\"\n",
