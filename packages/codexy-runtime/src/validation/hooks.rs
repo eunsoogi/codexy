@@ -1,4 +1,5 @@
 mod admission_artifact;
+mod capability_contract;
 mod command;
 mod safety;
 
@@ -63,6 +64,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
+    capability_contract::check(plugin_root)?;
     admission_artifact::check(plugin_root)?;
     Ok(())
 }
