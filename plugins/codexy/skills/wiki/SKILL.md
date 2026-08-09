@@ -39,6 +39,12 @@ Thread and agent rules:
 
 You manage an LLM-compiled knowledge base. Source documents are ingested into `raw/`, then incrementally compiled into a wiki of interconnected markdown articles. Codex is both the compiler and the query engine.
 
+## Minimal Contract
+
+[Minimal Contract](references/minimal-contract.md) defines the essential
+ingest, compile, query, refresh, provenance, bounded-context, and measurable
+freshness requirements. Every workflow in this skill MUST preserve that contract.
+
 ## Codex Plugin Notes
 
 Codex plugins package skills, MCP servers, apps, and metadata. They MUST NOT register Claude-style custom `/wiki:*` commands. MUST treat any `/wiki`, `/wiki:*`, or command-flag examples in this skill and its references as shorthand for the same workflow expressed in natural language, or via explicit `@wiki` invocation.
