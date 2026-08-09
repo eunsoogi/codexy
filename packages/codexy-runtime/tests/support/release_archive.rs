@@ -52,7 +52,6 @@ pub(crate) fn assert_archive_scanner_contract(script: &str, entries: &str, check
             "rg -a -n",
             "grep -a -Hn",
             "runtime/*.bin",
-            "MSYS2_ENV_CONV_EXCL=LOCAL_PATH_PATTERN",
             "! -name '*.md'",
             "! -name '*.txt'",
             "command -v python3",
