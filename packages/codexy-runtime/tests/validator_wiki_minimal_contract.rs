@@ -28,6 +28,8 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("wrong essential parent", original.replacen("### Ingest", "## Detached\n\n### Ingest", 1)),
         ("wrong measurable parent", original.replacen("### Machine-checkable limits", "## Detached\n\n### Machine-checkable limits", 1)),
         ("malformed separator", original.replacen("| --- | --- | --- |", "| -- | --- | --- |", 1)),
+        ("two-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- |", 1)),
+        ("four-cell separator", original.replacen("| --- | --- | --- |", "| --- | --- | --- | --- |", 1)),
         ("backtick fenced row", original.replacen("| `retract` | Merge |", "```text\n| `retract` | Merge |", 1)),
         ("tilde fenced row", original.replacen("| `retract` | Merge |", "~~~text\n| `retract` | Merge |", 1)),
         ("tilde wrapped assignments", original.replacen("```text\nquery.max_index_files", "~~~text\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n~~~\n\nFor valid", 1)),

@@ -143,10 +143,12 @@ fn marker(line: &str) -> Option<char> {
 }
 
 fn separator(row: &str) -> Result<bool, String> {
-    Ok(cells(row)?.iter().all(|cell| {
-        let marker = cell.trim_matches(':');
-        marker.len() >= 3 && marker.chars().all(|character| character == '-')
-    }))
+    let cells = cells(row)?;
+    Ok(cells.len() == 3
+        && cells.iter().all(|cell| {
+            let marker = cell.trim_matches(':');
+            marker.len() >= 3 && marker.chars().all(|character| character == '-')
+        }))
 }
 
 fn cells(row: &str) -> Result<Vec<&str>, String> {
