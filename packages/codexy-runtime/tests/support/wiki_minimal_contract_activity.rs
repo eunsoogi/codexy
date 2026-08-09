@@ -68,11 +68,15 @@ fn raw_tag(rest: &str) -> bool {
         .take_while(|character| character.is_ascii_alphanumeric() || *character == '-')
         .count();
     let (name, suffix) = tag.split_at(length);
+    let block = block_tag(name);
+    let continuation = suffix
+        .chars()
+        .next()
+        .is_some_and(|character| character.is_ascii_whitespace() || character == '>')
+        || suffix.starts_with("/>");
     !name.is_empty()
-        && suffix.chars().next().is_some_and(|character| {
-            character.is_ascii_whitespace() || matches!(character, '>' | '/')
-        })
-        && (block_tag(name) || suffix.trim_end().ends_with('>'))
+        && ((block && suffix.is_empty()) || continuation)
+        && (block || suffix.trim_end().ends_with('>'))
 }
 
 fn block_tag(name: &str) -> bool {

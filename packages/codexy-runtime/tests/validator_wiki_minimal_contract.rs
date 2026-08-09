@@ -29,6 +29,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("commented required heading", original.replacen("### Ingest", "<!--\n### Ingest\n-->", 1)),
         ("block-comment heading suffix", original.replacen("### Ingest", "<!-- hidden -->### Ingest", 1)),
         ("div required heading", original.replacen("### Ingest", "<div>\n### Ingest\n</div>", 1)),
+        ("bare div required heading", original.replacen("### Ingest", "<div\n### Ingest\n</div", 1)),
         ("processing required heading", original.replacen("### Ingest", "<?\n### Ingest\n?>", 1)),
         ("wrong measurable parent", original.replacen("### Machine-checkable limits", "## Detached\n\n### Machine-checkable limits", 1)),
         ("malformed separator", original.replacen("| --- | --- | --- |", "| -- | --- | --- |", 1)),
@@ -39,6 +40,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("commented workflow table", original.replacen("| Current workflow |", "<!--\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n-->\n\nCross-cutting", 1)),
         ("block-comment table suffix", original.replacen("| Current workflow |", "<!-- hidden -->| Current workflow |", 1)),
         ("div workflow table", original.replacen("| Current workflow |", "<div>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div>\n\nCross-cutting", 1)),
+        ("bare div workflow table", original.replacen("| Current workflow |", "<div\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</div\n\nCross-cutting", 1)),
         ("script workflow table", original.replacen("| Current workflow |", "<script>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</script>\n\nCross-cutting", 1)),
         ("pre workflow table", original.replacen("| Current workflow |", "<pre>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</pre>\n\nCross-cutting", 1)),
         ("style workflow table", original.replacen("| Current workflow |", "<style>\n| Current workflow |", 1).replacen("\n\nCross-cutting", "\n</style>\n\nCross-cutting", 1)),
@@ -60,6 +62,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         ("commented assignments", original.replacen("```text\nquery.max_index_files", "<!--\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n-->\n\nFor valid", 1)),
         ("block-comment assignment suffix", original.replacen("```text\nquery.max_index_files", "<!-- hidden -->```text\nquery.max_index_files", 1)),
         ("raw-html assignment block", original.replacen("```text\nquery.max_index_files", "<script>\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</script>\n\nFor valid", 1)),
+        ("bare div assignment block", original.replacen("```text\nquery.max_index_files", "<div\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n</div\n\nFor valid", 1)),
         ("cdata assignment block", original.replacen("```text\nquery.max_index_files", "<![CDATA[\n```text\nquery.max_index_files", 1).replacen("```\n\nFor valid", "```\n]]>\n\nFor valid", 1)),
         ("missing aggregate", original.replacen("freshness.score =", "freshness.aggregate =", 1)),
         ("nonnumeric assignment", original.replacen("query.max_index_files = 3", "query.max_index_files = three", 1)),
@@ -84,6 +87,7 @@ fn contract_parser_rejects_each_structural_contract_violation() -> TestResult {
         original.replacen("knowledge path", "knowledge\n<!--\nharmless\n-->\npath", 1),
         original.replacen("knowledge path", "knowledge <span>inline</span> path", 1),
         original.replacen("knowledge path", "knowledge <!DOCTYPE-like> path", 1),
+        original.replacen("knowledge path", "<custom\nknowledge path\n</custom", 1),
     ] {
         validate_contract(&control)?;
     }
