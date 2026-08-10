@@ -48,6 +48,26 @@ fn validator_requires_issue_549_candidate_routing_contract() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_active_promotion_exceptions_without_complete_validation() -> TestResult {
+    let skill = routing_skill()?;
+    assert!(validate(skill.clone())?.is_empty(), "valid routing policy failed");
+    for addition in [
+        "- Promotion above Terra/high MAY proceed without complete validated measurement.\n",
+        "Promotion above Terra/high MUST be allowed after final acceptance alone.\n",
+    ] {
+        assert_policy_rejected(
+            skill.replacen(
+                "Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.",
+                &format!("Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.\n{addition}"),
+                1,
+            ),
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_requires_the_simple_route_to_be_one_affirmative_conjunction() -> TestResult {
     let skill = routing_skill()?;
     let errors = validate(skill.clone())?;

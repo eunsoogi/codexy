@@ -7,6 +7,7 @@ pub(super) const ACTIVE_TIER_STARTS: &[&str] = &[
     "A matching named specialist",
     "Candidate simple work",
     "Candidate general work",
+    "Promotion above Terra/high",
     "Ambiguous, high-risk, or incomplete",
     "A named custom specialist",
     "`codexy-sentinel`",

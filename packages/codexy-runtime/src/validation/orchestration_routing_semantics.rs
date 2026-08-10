@@ -87,6 +87,37 @@ pub(super) fn has_conflicting_luna_default(bullet: &str) -> bool {
         })
 }
 
+pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
+    let normalized = bullet.to_ascii_lowercase();
+    normalized
+        .split([';', '.'])
+        .map(str::trim)
+        .filter(|clause| clause.contains("promotion") && clause.contains("terra/high"))
+        .any(|clause| {
+            let permits_promotion = [
+                "allow",
+                "allowed",
+                "may",
+                "can",
+                "permit",
+                "permitted",
+                "proceed",
+                "select",
+            ]
+            .iter()
+            .any(|word| contains_word(clause, word));
+            permits_promotion
+                && !(clause.contains("only")
+                    && clause.contains("explicit exception")
+                    && clause.contains("complete validated measurement")
+                    && !clause.contains("without complete validated measurement"))
+        })
+}
+
+fn contains_word(text: &str, expected: &str) -> bool {
+    text.split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|word| word == expected)
+}
 pub(super) fn has_conflicting_sentinel_tier(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     normalized.contains("codexy-sentinel")
