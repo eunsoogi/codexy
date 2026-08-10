@@ -126,9 +126,7 @@ pub(crate) fn materialize_seed(
             )?;
         } else {
             if mutable_files.iter().any(|path| *path == entry_relative) {
-                clear_readonly(&target_path)?;
-                std::fs::copy(&source_path, &target_path)?;
-                clear_readonly(&target_path)?;
+                materialize_declared_mutable_file(&source_path, &target_path)?;
             } else {
                 std::fs::copy(&source_path, &target_path)?;
                 super::profile_metrics::record("fixture_private_seed_copy");
@@ -140,6 +138,33 @@ pub(crate) fn materialize_seed(
         }
     }
     Ok(())
+}
+
+#[cfg(any(test, windows))]
+fn materialize_declared_mutable_file(source: &Path, target: &Path) -> std::io::Result<()> {
+    materialize_declared_mutable_file_with(source, target, |source, target| {
+        std::fs::copy(source, target)
+    })
+}
+
+#[cfg(any(test, windows))]
+fn materialize_declared_mutable_file_with(
+    source: &Path,
+    target: &Path,
+    authoritative_copy: impl FnOnce(&Path, &Path) -> std::io::Result<u64>,
+) -> std::io::Result<()> {
+    clear_readonly(target)?;
+    authoritative_copy(source, target)?;
+    clear_readonly(target)
+}
+
+#[cfg(test)]
+pub(crate) fn materialize_declared_mutable_file_for_test(
+    source: &Path,
+    target: &Path,
+    authoritative_copy: impl FnOnce(&Path, &Path) -> std::io::Result<u64>,
+) -> std::io::Result<()> {
+    materialize_declared_mutable_file_with(source, target, authoritative_copy)
 }
 
 #[cfg(any(test, windows))]
