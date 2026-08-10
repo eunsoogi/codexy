@@ -20,6 +20,7 @@ fn production_validator_rejects_entrypoint_heading_mutations() -> TestResult {
         HeadingMutation::OrderedList,
         HeadingMutation::UnorderedList,
         HeadingMutation::NestedContainers,
+        HeadingMutation::H1TerminatesSection,
     ] {
         let (_temporary, plugin_root) = copy_plugin_fixture()?;
         mutate_heading(&plugin_root, mutation)?;
@@ -38,6 +39,7 @@ fn production_validator_rejects_inactive_destination_link_mutations() -> TestRes
         LinkMutation::Escaped,
         LinkMutation::Image,
         LinkMutation::BlockQuote,
+        LinkMutation::DuplicateElsewhere,
     ] {
         let (_temporary, plugin_root) = copy_plugin_fixture()?;
         mutate_link(&plugin_root, mutation)?;
@@ -76,6 +78,7 @@ enum HeadingMutation {
     OrderedList,
     UnorderedList,
     NestedContainers,
+    H1TerminatesSection,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -87,6 +90,7 @@ enum LinkMutation {
     Escaped,
     Image,
     BlockQuote,
+    DuplicateElsewhere,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -131,6 +135,11 @@ fn mutate_heading(plugin_root: &Path, mutation: HeadingMutation) -> TestResult {
         HeadingMutation::NestedContainers => {
             replace(&skill_path, "## Diagnosis", "> - ## Diagnosis")?
         }
+        HeadingMutation::H1TerminatesSection => replace(
+            &skill_path,
+            "MUST use [Diagnosis](references/diagnosis.md)",
+            "# Intervening\n\nMUST use [Diagnosis](references/diagnosis.md)",
+        )?,
     }
     Ok(())
 }
@@ -164,8 +173,17 @@ fn mutate_link(plugin_root: &Path, mutation: LinkMutation) -> TestResult {
         LinkMutation::Escaped => "\\[Diagnosis\\](references/diagnosis.md)",
         LinkMutation::Image => "![Diagnosis](references/diagnosis.md)",
         LinkMutation::BlockQuote => link,
+        LinkMutation::DuplicateElsewhere => {
+            return append(&skill_path, "\n## Elsewhere\n\n[Diagnosis](references/diagnosis.md)\n");
+        }
     };
     replace(&skill_path, link, replacement)
+}
+
+fn append(path: &Path, suffix: &str) -> TestResult {
+    let skill = std::fs::read_to_string(path)?;
+    std::fs::write(path, format!("{skill}{suffix}"))?;
+    Ok(())
 }
 
 fn replace(path: &Path, needle: &str, replacement: &str) -> TestResult {

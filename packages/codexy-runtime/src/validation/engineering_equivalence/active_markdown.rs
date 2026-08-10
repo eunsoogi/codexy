@@ -11,6 +11,7 @@ pub(super) struct Heading {
     pub(super) start: usize,
     pub(super) end: usize,
     anchor: String,
+    level: HeadingLevel,
 }
 
 struct Link {
@@ -22,6 +23,7 @@ struct Link {
 struct OpenHeading {
     start: usize,
     text: String,
+    level: HeadingLevel,
 }
 
 impl Document {
@@ -32,14 +34,14 @@ impl Document {
         let mut heading = None;
         for (event, range) in Parser::new(source).into_offset_iter() {
             match event {
-                Event::Start(Tag::Heading {
-                    level: HeadingLevel::H2,
-                    ..
-                }) => {
+                Event::Start(Tag::Heading { level, .. })
+                    if matches!(level, HeadingLevel::H1 | HeadingLevel::H2) =>
+                {
                     stack.push(false);
                     heading = Some(OpenHeading {
                         start: range.start,
                         text: String::new(),
+                        level,
                     });
                 }
                 Event::Start(Tag::Link { dest_url, .. }) => {
@@ -51,7 +53,9 @@ impl Document {
                     stack.push(false);
                 }
                 Event::Start(tag) => stack.push(inactive_or_container(&tag)),
-                Event::End(TagEnd::Heading(HeadingLevel::H2)) => {
+                Event::End(TagEnd::Heading(level))
+                    if matches!(level, HeadingLevel::H1 | HeadingLevel::H2) =>
+                {
                     let Some(_) = stack.pop() else {
                         continue;
                     };
@@ -62,6 +66,7 @@ impl Document {
                                 start: open.start,
                                 end: source.len(),
                                 anchor: fragment(&open.text),
+                                level: open.level,
                             });
                         }
                     }
@@ -84,21 +89,22 @@ impl Document {
     }
 
     pub(super) fn unique_heading(&self, anchor: &str) -> Option<&Heading> {
-        let mut headings = self.headings.iter().filter(|item| item.anchor == anchor);
+        let mut headings = self
+            .headings
+            .iter()
+            .filter(|item| item.level == HeadingLevel::H2 && item.anchor == anchor);
         let heading = headings.next()?;
         headings.next().is_none().then_some(heading)
     }
 
     pub(super) fn exact_top_level_link(&self, heading: &Heading, target: &str) -> bool {
-        self.links
-            .iter()
-            .filter(|link| {
-                link.top_level
-                    && (heading.start..heading.end).contains(&link.start)
-                    && normalized_local_target(&link.target).as_deref() == Some(target)
-            })
-            .count()
-            == 1
+        let mut links = self.links.iter().filter(|link| {
+            link.top_level && normalized_local_target(&link.target).as_deref() == Some(target)
+        });
+        let Some(link) = links.next() else {
+            return false;
+        };
+        links.next().is_none() && (heading.start..heading.end).contains(&link.start)
     }
 }
 

@@ -1,7 +1,7 @@
 use sha2::{Digest, Sha256};
 
 pub(super) const AGGREGATE_SHA256: &str =
-    "9916875818dc0a9e6e748d539acebb787e335988eec53b1a8760d23f3f76ae0f";
+    "bfb88a44306da803fc51804541e2bde331f82716e5c39b1f9785ee8fc4e03150";
 
 const BASELINE: [(&str, &str); 6] = [
     ("debugging", include_str!("baseline_v1/debugging.md")),

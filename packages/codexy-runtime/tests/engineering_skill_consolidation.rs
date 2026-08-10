@@ -38,6 +38,23 @@ fn production_validator_rejects_baseline_and_source_inventory_mutations() -> Tes
 }
 
 #[test]
+fn production_validator_preserves_legacy_relative_source_targets() {
+    let mut sources = codexy_runtime::validation::engineering_equivalence_baseline_sources();
+    for name in ["debugging", "qa"] {
+        let (_, source) = sources
+            .iter()
+            .find(|(candidate, _)| candidate == name)
+            .expect("legacy source");
+        assert!(source.contains("../orchestration/references/plain-language-user-replies.md"));
+        assert!(!source.contains("../codex-orchestration/"));
+    }
+    sources[0].1 = sources[0].1.replacen("../orchestration/", "../codex-orchestration/", 1);
+    let diagnostics = codexy_runtime::validation::engineering_equivalence_baseline_diagnostics(&sources);
+    assert!(diagnostics.iter().any(|error| error.contains("bytes differ")));
+    assert!(diagnostics.iter().any(|error| error.contains("aggregate SHA-256")));
+}
+
+#[test]
 fn production_validator_rejects_manifest_projection_mutations() -> TestResult {
     for mutation in [
         ManifestMutation::MissingRule,
