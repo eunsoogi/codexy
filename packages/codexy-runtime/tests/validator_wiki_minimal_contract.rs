@@ -34,12 +34,12 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
     let required = "[Minimal Contract](references/minimal-contract.md)";
     let mutations = invalid_link_replacements(required);
     let mut accepted = Vec::new();
-    assert!(
-        original
-            .lines()
-            .any(|line| line.contains(required) && line.trim() != required),
-        "fixture must cover a required link embedded in a sentence"
-    );
+    let embedded = original.lines().any(|line| {
+        Document::parse(line)
+            .is_ok_and(|document| document.link_count("Minimal Contract", "references/minimal-contract.md") == 1)
+            && line.trim() != required
+    });
+    assert!(embedded, "fixture must cover a required link embedded in a sentence");
     let fenced = fenced_link_source(&original, required)
         .ok_or("missing line containing the required link")?;
     if Document::parse(&fenced)

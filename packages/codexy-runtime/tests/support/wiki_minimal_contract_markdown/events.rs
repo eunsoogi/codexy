@@ -1,6 +1,6 @@
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 
-use super::{CodeBlock, Document, Heading, Link, Text, table::TableBuilder};
+use super::{CodeBlock, Document, Heading, InlineCode, Link, Text, table::TableBuilder};
 
 struct HeadingBuilder {
     range: std::ops::Range<usize>,
@@ -22,6 +22,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
         tables: Vec::new(),
         blocks: Vec::new(),
         links: Vec::new(),
+        inline_code: Vec::new(),
         text: Vec::new(),
     };
     let mut heading = None;
@@ -138,6 +139,10 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                 if let Some(table) = &mut table {
                     table.code(&value);
                 }
+                document.inline_code.push(InlineCode {
+                    range,
+                    value: value.into_string(),
+                });
             }
             Event::Html(value) => {
                 if let Some(html) = &mut html {

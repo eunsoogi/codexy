@@ -12,6 +12,7 @@ pub(crate) struct Document {
     pub(super) tables: Vec<Table>,
     pub(super) blocks: Vec<CodeBlock>,
     pub(super) links: Vec<Link>,
+    pub(super) inline_code: Vec<InlineCode>,
     pub(super) text: Vec<Text>,
 }
 
@@ -33,6 +34,11 @@ pub(super) struct Link {
     pub(super) label: String,
     pub(super) destination: String,
     pub(super) literal: bool,
+}
+
+pub(super) struct InlineCode {
+    pub(super) range: Range<usize>,
+    pub(super) value: String,
 }
 
 pub(super) struct Text {
@@ -138,6 +144,15 @@ impl Document {
         self.links
             .iter()
             .filter(|link| link.literal && link.label == label && link.destination == target)
+            .count()
+    }
+
+    pub(crate) fn inline_code_count(&self, scope: Option<&Scope>, value: &str) -> usize {
+        self.inline_code
+            .iter()
+            .filter(|code| {
+                scope.is_none_or(|scope| scope.contains(code.range.start)) && code.value == value
+            })
             .count()
     }
 }

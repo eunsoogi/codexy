@@ -142,6 +142,9 @@ mod validator_touched_skill_loc;
 #[path = "../validator_wiki_ingestion_reference.rs"]
 mod validator_wiki_ingestion_reference;
 
+#[path = "../validator_wiki_contract_mutations.rs"]
+mod validator_wiki_contract_mutations;
+
 #[path = "../validator_wiki_minimal_contract.rs"]
 mod validator_wiki_minimal_contract;
 

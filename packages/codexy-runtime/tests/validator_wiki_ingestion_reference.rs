@@ -5,6 +5,9 @@ use std::{collections::BTreeMap, fs, path::{Path, PathBuf}};
 use crate::support::wiki_core_article::{
     ArticleFinding, CanonicalDate, FreshnessState, ProvenanceState, assess_article,
 };
+use crate::support::wiki_core_contract::{
+    frontmatter_string, markdown_link_count, validate_core_skill, validate_migration_rules,
+};
 
 const REMOVED_WORKFLOWS: &[&str] = &[
     "collect", "plan", "project", "inventory", "dataset", "archive", "ll", "status", "session",
@@ -16,15 +19,7 @@ fn wiki_skill_exposes_the_core_workflow_and_no_removed_command() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
 
-    assert!(skill.contains("## Core workflow"));
-    assert!(skill.contains("`init → ingest → compile → query → refresh`"));
-    assert!(skill.contains("[Migration](references/migration.md)"));
-    for workflow in REMOVED_WORKFLOWS {
-        assert!(
-            !skill.contains(&format!("`{workflow}`")),
-            "removed workflow remains in the installed skill: {workflow}"
-        );
-    }
+    validate_core_skill(&skill, REMOVED_WORKFLOWS).map_err(std::io::Error::other)?;
     Ok(())
 }
 
@@ -36,12 +31,11 @@ fn supported_topic_fixture_proves_ingest_to_bounded_query() -> TestResult {
     let article = read(&root.join("supported-topic/wiki/retrieval.md"))?;
     let raw = read(&root.join("supported-topic/raw/retrieval-source.md"))?;
 
-    assert!(index.contains("wiki/_index.md"));
-    assert!(category.contains("retrieval.md"));
-    assert!(article.contains("sources:\n  - raw/retrieval-source.md"));
-    assert!(article.contains("volatility: warm"));
-    assert!(article.contains("verified: 2026-08-09"));
-    assert!(raw.contains("source: https://example.test/retrieval"));
+    assert_eq!(markdown_link_count(&index, "Wiki articles", "wiki/_index.md")?, 1);
+    assert_eq!(markdown_link_count(&category, "Retrieval", "retrieval.md")?, 1);
+    assert_eq!(frontmatter_string(&article, "volatility")?, "warm");
+    assert_eq!(frontmatter_string(&article, "verified")?, "2026-08-09");
+    assert_eq!(frontmatter_string(&raw, "source")?, "https://example.test/retrieval");
     let assessment = assess_article(&article, &root.join("supported-topic"), evaluation_day()?);
     assert_eq!(assessment.freshness_credit, 25);
     assert!(matches!(assessment.freshness, FreshnessState::Valid(_)));
@@ -59,14 +53,7 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
     let guide = read(&codexy_runtime::paths::repository_root().join(
         "plugins/codexy/skills/wiki/references/migration.md",
     ))?;
-    let normalized = guide.split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(normalized.contains("MUST preserve existing `raw/`, `wiki/`, `_index.md`, and `log.md`"));
-    assert!(normalized.contains("MUST NOT delete, overwrite, or rename existing topic data"));
-    assert!(normalized.contains("MUST preserve every complete relative `sources:` scalar exactly"));
-    assert!(normalized.contains("MUST stop, MUST report the provenance gap, and MUST leave the entire topic tree unchanged"));
-    let preflight = guide.find("MUST validate every referenced provenance");
-    let first_write = guide.find("MUST append one migration entry");
-    assert!(preflight.is_some_and(|preflight| first_write.is_some_and(|write| preflight < write)));
+    validate_migration_rules(&guide).map_err(std::io::Error::other)?;
     assert_eq!(
         snapshot(&root.join("failure/before"))?,
         snapshot(&root.join("failure/after"))?,
@@ -107,10 +94,9 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
     let master = read(&root.join("success/after/_index.md"))?;
     let category = read(&root.join("success/after/wiki/_index.md"))?;
     let article = read(&root.join("success/after/wiki/topic.md"))?;
-    assert!(master.contains("wiki/_index.md"));
-    assert!(category.contains("topic.md"));
-    assert!(article.contains("sources:\n  - raw/source.md"));
-    assert!(article.contains("updated: 2026-08-09"));
+    assert_eq!(markdown_link_count(&master, "Articles", "wiki/_index.md")?, 1);
+    assert_eq!(markdown_link_count(&category, "Legacy topic", "topic.md")?, 1);
+    assert_eq!(frontmatter_string(&article, "updated")?, "2026-08-09");
     let success = assess_article(&article, &root.join("success/after"), evaluation_day()?);
     assert!(!success.blocks_migration());
     assert!(master.len() + category.len() + article.len() <= 48_000);
@@ -120,21 +106,25 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
 #[test]
 fn negative_fixtures_expose_broken_provenance_and_future_freshness() -> TestResult {
     let root = fixture_root().join("negative");
-    let broken = read(&root.join("broken-provenance.md"))?;
+    let broken = assess_article(
+        &read(&root.join("broken-provenance.md"))?,
+        &root,
+        evaluation_day()?,
+    );
     let future = read(&root.join("future-freshness.md"))?;
     let valid = read(&root.join("valid-freshness.md"))?;
     let malformed = read(&root.join("malformed-freshness.md"))?;
     let missing = "---\ntitle: Missing freshness\nsources:\n  - raw/available.md\n---\n\nverified: 2026-08-09";
 
-    assert!(broken.contains("sources:\n  - raw/missing.md"));
     assert!(!root.join("raw/missing.md").exists());
-    assert!(future.contains("verified: 2100-01-01"));
     assert!(root.join("raw/available.md").exists());
     let evaluation = evaluation_day()?;
     let valid = assess_article(&valid, &root, evaluation);
     let future = assess_article(&future, &root, evaluation);
     let malformed = assess_article(&malformed, &root, evaluation);
     let missing = assess_article(missing, &root, evaluation);
+    assert_eq!(broken.provenance, ProvenanceState::Broken);
+    assert!(broken.blocks_migration());
     assert_eq!(valid.freshness_credit, 25);
     assert!(matches!(valid.freshness, FreshnessState::Valid(_)));
     assert_eq!(future.freshness_credit, 0);
