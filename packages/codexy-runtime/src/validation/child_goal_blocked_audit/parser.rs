@@ -79,15 +79,21 @@ pub(super) fn has_distinct_substantive_values(
 ) -> bool {
     field(line, name)
         .map(|value| {
-            value
+            let identities = value
                 .split('|')
                 .map(str::trim)
-                .filter_map(|value| {
+                .map(|value| {
                     substantive_identity(value, minimum_words, minimum_characters, minimum_concepts)
                 })
-                .collect::<std::collections::BTreeSet<_>>()
-                .len()
-                >= minimum_values
+                .collect::<Option<Vec<_>>>();
+            identities.is_some_and(|identities| {
+                identities.len() >= minimum_values
+                    && identities
+                        .iter()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len()
+                        == identities.len()
+            })
         })
         .unwrap_or(false)
 }

@@ -80,6 +80,7 @@ fn validator_prioritizes_actionable_review_over_operational_context() -> TestRes
     for handoff in [
         "Blocked: requested changes remain unresolved while work is incomplete.",
         "Blocked: review feedback is not resolved while work is incomplete.",
+        "Blocked: review feedback is not yet considered fully resolved.",
     ] {
         let output = validate(handoff)?;
         assert!(
@@ -94,6 +95,7 @@ fn validator_prioritizes_actionable_review_over_operational_context() -> TestRes
         "Blocked: review feedback is resolved while work is incomplete.",
         "Blocked: no review feedback remains unresolved while work is incomplete.",
         "Blocked: no requested changes remain unresolved while work is incomplete.",
+        "Blocked: neither security review nor code review remains unresolved.",
     ] {
         let output = validate(handoff)?;
         assert!(

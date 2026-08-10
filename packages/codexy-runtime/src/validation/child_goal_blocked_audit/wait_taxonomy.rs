@@ -78,7 +78,7 @@ pub(in crate::validation) fn classify_producer(value: &str) -> Option<WaitDispos
 
 pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDisposition> {
     let words = words(text);
-    let reviewer = classify_reviewer_words(&words);
+    let reviewer = classify_reviewer_text(text);
     if reviewer == Some(WaitDisposition::Actionable) {
         return reviewer;
     }
@@ -89,7 +89,17 @@ pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDispos
 }
 
 pub(in crate::validation) fn classify_reviewer_text(text: &str) -> Option<WaitDisposition> {
-    classify_reviewer_words(&words(text))
+    let dispositions = review_clauses(text)
+        .filter_map(|clause| classify_reviewer_words(&words(clause)))
+        .collect::<Vec<_>>();
+    dispositions
+        .contains(&WaitDisposition::Actionable)
+        .then_some(WaitDisposition::Actionable)
+        .or_else(|| {
+            dispositions
+                .contains(&WaitDisposition::Nonterminal)
+                .then_some(WaitDisposition::Nonterminal)
+        })
 }
 
 fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
@@ -131,7 +141,9 @@ fn classify_resolution(
     if subject.negated {
         return Some(WaitDisposition::Nonterminal);
     }
-    let state_negated = is_negated_at(words, index);
+    let state_negated = words[subject.end..index]
+        .iter()
+        .any(|word| NEGATIONS.contains(word));
     match (state, state_negated) {
         ("unresolved", false) | ("resolved", true) => Some(WaitDisposition::Actionable),
         ("resolved", false) | ("unresolved", true) => Some(WaitDisposition::Nonterminal),
@@ -157,7 +169,7 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             phrase_positions(words, phrase).map(move |start| ReviewSubject {
                 start,
                 end: start + length,
-                negated: is_negated_at(words, start),
+                negated: subject_is_negated(words, start),
             })
         })
         .collect::<Vec<_>>();
@@ -168,7 +180,7 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             subjects.push(ReviewSubject {
                 start: index,
                 end: index + 1,
-                negated: is_negated_at(words, index),
+                negated: subject_is_negated(words, index),
             });
         }
     }
@@ -183,6 +195,15 @@ fn is_negated_at(words: &[&str], index: usize) -> bool {
     words[index.saturating_sub(3)..index]
         .iter()
         .any(|word| NEGATIONS.contains(word))
+}
+
+fn subject_is_negated(words: &[&str], index: usize) -> bool {
+    is_negated_at(words, index) || words[..index].iter().any(|word| *word == "neither")
+}
+
+fn review_clauses(text: &str) -> impl Iterator<Item = &str> {
+    text.split(['.', ';', ':', '\n'])
+        .filter(|clause| !clause.is_empty())
 }
 
 fn contains_any_phrase(words: &[&str], phrases: &[&str]) -> bool {
