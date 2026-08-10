@@ -79,12 +79,12 @@ fn tokenize(events: &[ActiveEvent<'_>]) -> Vec<Token> {
 
 fn prose_tokens(source: &str, tokens: &mut Vec<Token>, gap: &mut Gap) {
     let mut word = String::new();
-    for character in source.chars() {
+    for (index, character) in source.char_indices() {
         if character.is_ascii_alphanumeric() {
             word.push(character);
         } else {
             flush(&mut word, tokens, gap);
-            if character == '.' {
+            if character == '.' && !embedded_dot(source, index) {
                 tokens.push(Token::Sentence);
                 *gap = Gap::default();
             } else if character.is_whitespace() {
@@ -95,6 +95,17 @@ fn prose_tokens(source: &str, tokens: &mut Vec<Token>, gap: &mut Gap) {
         }
     }
     flush(&mut word, tokens, gap);
+}
+
+fn embedded_dot(source: &str, index: usize) -> bool {
+    source[..index]
+        .bytes()
+        .last()
+        .is_some_and(|byte| byte.is_ascii_alphanumeric())
+        && source[index + 1..]
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphanumeric())
 }
 
 fn flush(word: &mut String, tokens: &mut Vec<Token>, gap: &mut Gap) {

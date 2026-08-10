@@ -122,7 +122,8 @@ impl Rules {
             .iter()
             .filter(|clause| {
                 phrase(&clause.prose, "append")
-                    && clause.inline.iter().any(|identity| identity == "log.md")
+                    && (clause.inline.iter().any(|identity| identity == "log.md")
+                        || phrase(&clause.prose, "log md"))
             })
             .count();
         (appends == 1)

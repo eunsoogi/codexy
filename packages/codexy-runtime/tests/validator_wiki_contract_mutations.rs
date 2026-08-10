@@ -52,6 +52,21 @@ fn parsed_skill_shape_rejects_each_core_identity_mutation() -> TestResult {
 }
 
 #[test]
+fn core_skill_rejects_additive_implicit_search() -> TestResult {
+    assert_implicit_root_action_rejected("search")
+}
+
+#[test]
+fn core_skill_rejects_additive_implicit_selection() -> TestResult {
+    assert_implicit_root_action_rejected("select")
+}
+
+#[test]
+fn core_skill_rejects_additive_implicit_initialization() -> TestResult {
+    assert_implicit_root_action_rejected("initialize")
+}
+
+#[test]
 fn core_workflow_scopes_the_minimal_contract_link_and_operations() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
@@ -133,10 +148,30 @@ fn normalized_migration_rules_reject_each_required_rule_mutation() -> TestResult
         1,
     );
     assert!(validate_migration_rules(&early_log).is_err(), "early log append");
+    let plain_early_log = guide.replacen(
+        "3. MUST stage all derived changes",
+        "3. MUST append one migration entry to log.md before staging. MUST stage all derived changes",
+        1,
+    );
+    assert!(validate_migration_rules(&plain_early_log).is_err(), "plain early log append");
     let article = "---\ntitle: Test\n---\nbody";
     assert!(crate::support::wiki_core_contract::frontmatter_string(article, "title").is_ok());
     let bad_closing = article.replacen("\n---\nbody", "\n---garbage\nbody", 1);
     assert!(crate::support::wiki_core_contract::frontmatter_string(&bad_closing, "title").is_err());
+    Ok(())
+}
+
+fn assert_implicit_root_action_rejected(action: &str) -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
+    let mutation = skill.replacen(
+        "The caller MUST NOT search, select, or\ninitialize a topic root implicitly.",
+        &format!(
+            "The caller MUST NOT search, select, or\ninitialize a topic root implicitly. The caller MUST {action} a topic root implicitly."
+        ),
+        1,
+    );
+    assert!(validate_core_skill(&mutation, REMOVED_WORKFLOWS).is_err(), "{action}");
     Ok(())
 }
 

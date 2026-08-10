@@ -37,19 +37,14 @@ pub(crate) fn validate_core_skill(source: &str, removed: &[&str]) -> Result<(), 
         ],
     )?;
     require_clause(&document, &root, Mode::Must, &["root", "absent", "request"])?;
-    require_clause(
-        &document,
-        &root,
-        Mode::MustNot,
-        &[
-            "search",
-            "select",
-            "initialize",
-            "topic",
-            "root",
-            "implicitly",
-        ],
-    )?;
+    for action in ["search", "select", "initialize"] {
+        require_clause(
+            &document,
+            &root,
+            Mode::MustNot,
+            &[action, "topic", "root", "implicitly"],
+        )?;
+    }
     require_ordered_clause(
         &document,
         &workflow,
