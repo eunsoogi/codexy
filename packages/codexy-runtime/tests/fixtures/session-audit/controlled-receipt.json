@@ -14,7 +14,7 @@
     "pluginId": "codexy@codexy",
     "version": "1.2.2",
     "cacheRootRelative": "codexy/1.2.2",
-    "manifestSha256": "483b7e0ddf8a85ee4ec9feb87cd1e904d79eb1f3ea2691fe034b28c9ee8894e8",
+    "manifestSha256": "59737655a1f963e0ca24d3bf60501fe3ae21e9411fd43b99e0c48386dc13dd13",
     "changedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
@@ -22,7 +22,7 @@
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "27e30b8c2529158a7d3b37ea4711ad8aa10d6479e405cb031d5f5dfe4e66c5a3"
+        "sha256": "82bf59f05c56e88301624d1076af6fae51c0dad84e3c216f5069f608fb84e9ec"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -31,8 +31,8 @@
     ],
     "contentEquivalent": true,
     "contentProof": {
-      "sourceManifestSha256": "483b7e0ddf8a85ee4ec9feb87cd1e904d79eb1f3ea2691fe034b28c9ee8894e8",
-      "installedManifestSha256": "483b7e0ddf8a85ee4ec9feb87cd1e904d79eb1f3ea2691fe034b28c9ee8894e8",
+      "sourceManifestSha256": "59737655a1f963e0ca24d3bf60501fe3ae21e9411fd43b99e0c48386dc13dd13",
+      "installedManifestSha256": "59737655a1f963e0ca24d3bf60501fe3ae21e9411fd43b99e0c48386dc13dd13",
       "sourceChangedFiles": [
         {
           "path": "skills/orchestration/references/execution-budget.md",
@@ -40,7 +40,7 @@
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "27e30b8c2529158a7d3b37ea4711ad8aa10d6479e405cb031d5f5dfe4e66c5a3"
+          "sha256": "82bf59f05c56e88301624d1076af6fae51c0dad84e3c216f5069f608fb84e9ec"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -54,7 +54,7 @@
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "27e30b8c2529158a7d3b37ea4711ad8aa10d6479e405cb031d5f5dfe4e66c5a3"
+          "sha256": "82bf59f05c56e88301624d1076af6fae51c0dad84e3c216f5069f608fb84e9ec"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
