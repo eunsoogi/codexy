@@ -75,6 +75,8 @@ first allowed action, and any stop blocker. Missing classification before
 setup, validation, release, or other workflow actions is a workflow defect:
 MUST stop, classify, and only then MUST continue through the matching Codexy workflow.
 
+## Authority Boundary
+`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action.
 ## Packaged Agents
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent

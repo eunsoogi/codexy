@@ -90,9 +90,14 @@ fn overlap_boundaries_and_non_markdown_authority_are_explicit() -> TestResult {
     let classification = std::fs::read_to_string(
         root.join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
-    assert!(section(&classification, "Authority Boundary")?
+    let authority = section(&classification, "Authority Boundary")?;
+    assert!(authority
         .lines()
         .any(|line| !line.trim().is_empty()));
+    assert_eq!(classification.matches("## Authority Boundary").count(), 1);
+    assert!(authority.lines().any(|line| {
+        line == "`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action."
+    }));
     Ok(())
 }
 
