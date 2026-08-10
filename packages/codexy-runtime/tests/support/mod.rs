@@ -36,6 +36,7 @@ pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
 pub(crate) mod wiki_core_article;
 pub(crate) mod wiki_core_contract;
+pub(crate) mod wiki_migration_fixture;
 pub(crate) mod wiki_minimal_contract;
 pub(crate) mod wiki_minimal_contract_html_cases;
 pub(crate) mod wiki_minimal_contract_link_cases;

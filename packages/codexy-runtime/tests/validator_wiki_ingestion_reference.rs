@@ -1,6 +1,6 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use std::{collections::BTreeMap, fs, path::{Path, PathBuf}};
+use std::path::{Path, PathBuf};
 
 use crate::support::wiki_core_article::{
     ArticleFinding, CanonicalDate, FreshnessState, ProvenanceState, assess_article,
@@ -8,6 +8,7 @@ use crate::support::wiki_core_article::{
 use crate::support::wiki_core_contract::{
     frontmatter_string, markdown_link_count, validate_core_skill, validate_migration_rules,
 };
+use crate::support::wiki_migration_fixture::{assert_successful_additive_migration, snapshot};
 
 const REMOVED_WORKFLOWS: &[&str] = &[
     "collect", "plan", "project", "inventory", "dataset", "archive", "ll", "status", "session",
@@ -90,7 +91,7 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
     );
     assert_eq!(missing.freshness, FreshnessState::Missing);
     assert!(missing.blocks_migration());
-    assert_eq!(read(&root.join("success/before/raw/source.md"))?, read(&root.join("success/after/raw/source.md"))?);
+    assert_successful_additive_migration(&root.join("success"))?;
     let master = read(&root.join("success/after/_index.md"))?;
     let category = read(&root.join("success/after/wiki/_index.md"))?;
     let article = read(&root.join("success/after/wiki/topic.md"))?;
@@ -198,28 +199,6 @@ fn fixture_root() -> PathBuf {
 
 fn read(path: &Path) -> Result<String, std::io::Error> {
     std::fs::read_to_string(path)
-}
-
-fn snapshot(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>, std::io::Error> {
-    let mut files = BTreeMap::new();
-    collect_snapshot(root, root, &mut files)?;
-    Ok(files)
-}
-
-fn collect_snapshot(
-    root: &Path,
-    path: &Path,
-    files: &mut BTreeMap<PathBuf, Vec<u8>>,
-) -> Result<(), std::io::Error> {
-    for entry in fs::read_dir(path)? {
-        let path = entry?.path();
-        if path.is_dir() {
-            collect_snapshot(root, &path, files)?;
-        } else {
-            files.insert(path.strip_prefix(root).map_err(std::io::Error::other)?.into(), fs::read(&path)?);
-        }
-    }
-    Ok(())
 }
 
 fn evaluation_day() -> Result<CanonicalDate, Box<dyn std::error::Error>> {

@@ -59,9 +59,17 @@ pub(crate) fn frontmatter_string(source: &str, key: &str) -> Result<String, Stri
 
 pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
     let document = Document::parse(source)?;
-    let scope = RuleRecords::parse(&document.active_text(&document.section("## Scope")?));
-    let procedure = RuleRecords::parse(&document.active_text(&document.section("## Procedure")?));
+    let scope_section = document.section("## Scope")?;
+    let procedure_section = document.section("## Procedure")?;
+    let scope = RuleRecords::parse(&document.active_prose(&scope_section));
+    let procedure = RuleRecords::parse(&document.active_prose(&procedure_section));
     scope.require(Mode::Must, &["preserve", "existing"])?;
+    RuleRecords::parse(&document.active_text(&scope_section))
+        .require_active(&["raw", "wiki", "index", "log"])?;
+    required_count(
+        document.inline_code_count(Some(&procedure_section), "sources:"),
+        "source scalar identity",
+    )?;
     scope.require(
         Mode::MustNot,
         &["delete", "overwrite", "rename", "existing topic data"],
@@ -96,33 +104,29 @@ fn required_count(count: usize, identity: &str) -> Result<(), String> {
         .ok_or_else(|| format!("missing or duplicate {identity}"))
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Mode {
     Must,
     MustNot,
 }
 
-struct RuleRecords(Vec<(Mode, String)>);
+struct RuleRecords {
+    source: String,
+    records: Vec<(Mode, String)>,
+}
 
 impl RuleRecords {
     fn new(source: &str) -> Self {
+        let source = normalize(source);
         let mut records = Vec::new();
         for sentence in source.split('.') {
-            let normalized = normalize(sentence);
-            let mut clauses = normalized.split(" must ");
-            let first = clauses.next().unwrap_or_default();
-            let leading = first.strip_prefix("must ").into_iter();
-            for clause in leading.chain(clauses) {
-                let clause = clause.trim_start_matches("must ");
-                let (mode, tail) = clause
-                    .strip_prefix("not ")
-                    .map_or((Mode::Must, clause), |tail| (Mode::MustNot, tail));
-                if !tail.is_empty() {
-                    records.push((mode, tail.into()));
-                }
+            let mut remainder = sentence.trim();
+            while let Some(index) = remainder.find("must ") {
+                Self::push(&mut records, &remainder[index + "must ".len()..]);
+                remainder = &remainder[index + "must ".len()..];
             }
         }
-        Self(records)
+        Self { source, records }
     }
 
     fn parse(source: &str) -> Self {
@@ -130,19 +134,14 @@ impl RuleRecords {
     }
 
     fn require(&self, mode: Mode, terms: &[&str]) -> Result<(), String> {
-        self.0
-            .iter()
-            .any(|(found, tail)| {
-                *found == mode && terms.iter().all(|term| phrase(tail, &normalize(term)))
-            })
-            .then_some(())
-            .ok_or("missing normative record".into())
+        self.unique(mode, terms)
     }
 
     fn require_ordered(&self, expected: &[(Mode, &[&str])]) -> Result<(), String> {
         let mut from = 0;
         for (mode, terms) in expected {
-            let Some(index) = self.0[from..].iter().position(|(found, tail)| {
+            self.unique(*mode, terms)?;
+            let Some(index) = self.records[from..].iter().position(|(found, tail)| {
                 *found == *mode && terms.iter().all(|term| phrase(tail, &normalize(term)))
             }) else {
                 return Err("missing or reordered normative record".into());
@@ -163,19 +162,64 @@ impl RuleRecords {
             "external",
             "restore",
         ];
-        self.0
+        forbidden
             .iter()
-            .all(|(_, tail)| forbidden.iter().all(|term| !phrase(tail, term)))
+            .all(|term| !phrase(&self.source, term))
             .then_some(())
             .ok_or("qualified normative route".into())
+    }
+
+    fn push(records: &mut Vec<(Mode, String)>, tail: &str) {
+        let (mode, tail) = tail
+            .strip_prefix("not ")
+            .map_or((Mode::Must, tail), |tail| (Mode::MustNot, tail));
+        let identity = tail.split("must ").next().unwrap_or_default().trim();
+        if !identity.is_empty() {
+            records.push((mode, identity.into()));
+        }
+    }
+
+    fn unique(&self, mode: Mode, terms: &[&str]) -> Result<(), String> {
+        let matches = self
+            .records
+            .iter()
+            .filter(|(_, clause)| terms.iter().all(|term| phrase(clause, &normalize(term))))
+            .collect::<Vec<_>>();
+        (matches.len() == 1 && matches[0].0 == mode)
+            .then_some(())
+            .ok_or_else(|| {
+                format!(
+                    "missing, duplicate, or contradictory normative record: {}; records={:?}",
+                    terms.join(", "),
+                    self.records
+                )
+            })
+    }
+
+    fn require_active(&self, terms: &[&str]) -> Result<(), String> {
+        terms
+            .iter()
+            .all(|term| phrase(&self.source, &normalize(term)))
+            .then_some(())
+            .ok_or_else(|| format!("missing active identity: {}", terms.join(", ")))
     }
 }
 
 fn normalize(source: &str) -> String {
     source
         .to_ascii_lowercase()
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .filter(|token| !token.is_empty())
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() {
+                character
+            } else if character == '.' {
+                '.'
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -188,5 +232,9 @@ fn phrase(text: &str, concept: &str) -> bool {
 fn phrase_at(text: &str, index: usize, concept: &str) -> bool {
     let before = text[..index].chars().next_back();
     let after = text[index + concept.len()..].chars().next();
-    before.is_none_or(char::is_whitespace) && after.is_none_or(char::is_whitespace)
+    before.is_none_or(is_separator) && after.is_none_or(is_separator)
+}
+
+fn is_separator(character: char) -> bool {
+    character.is_whitespace() || character == '.'
 }

@@ -157,10 +157,35 @@ impl Document {
     }
 
     pub(crate) fn active_text(&self, scope: &Scope) -> String {
-        self.text
+        self.active_values(scope, true)
+    }
+
+    pub(crate) fn active_prose(&self, scope: &Scope) -> String {
+        self.active_values(scope, false)
+    }
+
+    fn active_values(&self, scope: &Scope, include_inline: bool) -> String {
+        let mut parts = self
+            .text
             .iter()
             .filter(|text| scope.contains(text.range.start))
-            .map(|text| text.value.as_str())
+            .map(|text| (text.range.start, text.value.as_str()))
+            .chain(
+                include_inline
+                    .then(|| {
+                        self.inline_code
+                            .iter()
+                            .filter(|code| scope.contains(code.range.start))
+                            .map(|code| (code.range.start, code.value.as_str()))
+                    })
+                    .into_iter()
+                    .flatten(),
+            )
+            .collect::<Vec<_>>();
+        parts.sort_unstable_by_key(|(offset, _)| *offset);
+        parts
+            .into_iter()
+            .map(|(_, value)| value)
             .collect::<Vec<_>>()
             .join(" ")
     }
