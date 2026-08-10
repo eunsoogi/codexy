@@ -48,15 +48,10 @@ rules.
 | --- | --- | --- | --- |
 | `agents-md-authoring` | Keep | Creating, moving, reviewing, or changing an `AGENTS.md`. | Keeps instruction scope, precedence, mandatory wording, and readback verification correct. |
 | `orchestration` | Keep | Classifying work and coordinating goals, plans, issue-sized lanes, agents, threads, worktrees, compaction, or token discipline. | Owns classification, the execution loop, routing boundaries, tool evidence, budgets, compact event deltas, and the final reviewer gate. |
-| `debugging` | Keep | Behavior is wrong, tests fail, automation hangs, or the root cause is unknown. | Reproduces the failure, isolates cause, makes a narrow repair, and proves the regression. |
-| `domain-driven-development` | Keep | Work changes business concepts, workflows, invariants, permissions, or module ownership. | Protects domain language, bounded contexts, state transitions, and ownership rules. |
+| `engineering` | Keep | One atomic outcome requires diagnosis, specification, domain modeling, TDD, refactoring, or QA. | Selects the needed sections as one workflow while preserving their separate diagnosis, outcome/proof, domain-invariant, RED/GREEN, behavior-preserving, and observable-surface responsibilities. |
 | `dreaming` | Keep | A lane resumes after compaction or inherited context may be stale. | Separates durable facts and active fixes from resolved or superseded history. |
 | `git-workflow` | Keep | Any Codexy Git, issue, branch, worktree, PR, review, merge, or main-sync work. | Enforces issue-backed branches, isolated worktrees, verification, review handling, and GitHub gates. |
 | `proof-driven-completion` | Keep | Before claiming success, handing off, opening or merging a PR, or completing a goal. | Maps every requirement to current authoritative evidence and blocks unsupported completion claims. |
-| `qa` | Keep | Verifying completed work, acceptance criteria, a release candidate, or PR readiness. | Drives the real CLI, GitHub, app, plugin, config, docs, or browser surface behind each claim. |
-| `refactoring` | Keep | Restructuring existing code without changing behavior or reducing oversized modules. | Preserves contracts while reducing coupling, extracting responsibilities, and enforcing LOC limits. |
-| `spec-driven-development` | Keep | Starting from an issue, PRD, user story, design brief, or acceptance criteria. | Converts the spec into one atomic outcome, explicit non-goals, success criteria, and proof plan. |
-| `test-driven-development` | Keep | Implementing a feature, fix, refactor, validator, docs rule, or workflow behavior. | Requires a faithful RED proof, the smallest GREEN change, and proportional broader verification. |
 | `wiki` | Keep | Building or operating a topic-scoped compiled knowledge base. | Handles source collection, inventory, ingestion, compilation, query, audit, archive, and session context. |
 
 ## Repository-only skills
@@ -75,14 +70,13 @@ remain deliberately outside the Codexy plugin payload.
 | Boundary | Before | After |
 | --- | --- | --- |
 | Routing, execution, and context | Classification, execution, recovery, and compact coordination can all mention lane state. | `orchestration` selects the lane and owner, runs it, and preserves current event deltas; `dreaming` independently restores durable context. |
-| Planning and domain ownership | Classification, specification, and domain modeling can all precede edits. | `orchestration` selects the workflow; `spec-driven-development` defines the atomic outcome and proofs; `domain-driven-development` owns domain language and invariants. |
-| Change method and diagnosis | TDD, debugging, and refactoring can all touch the same implementation. | `test-driven-development` owns RED/GREEN behavior changes; `debugging` starts from unexpected behavior or unknown cause; `refactoring` changes structure while preserving behavior. |
-| Verification and completion | Tests, QA, and handoff can all report readiness. | `test-driven-development` proves change behavior, `qa` observes the surface, and `proof-driven-completion` audits the final claim. |
+| Engineering workflow selection | Diagnosis, specification, domain modeling, TDD, refactoring, and QA can all apply to one outcome. | `engineering` selects only the needed sections: specification defines the atomic outcome and proofs; domain modeling owns language and invariants; TDD owns RED/GREEN; diagnosis starts from unexpected behavior or an unknown cause; refactoring preserves behavior; QA observes the real surface. |
+| Verification and completion | Engineering proof and the final claim can both report readiness. | `engineering` supplies regression and observable-surface evidence; `proof-driven-completion` audits the final claim separately. |
 | Packaging and release | Package metadata validation can be confused with a release. | Repository-only `plugin-marketplace-prep` proves the install surface; repository-only `release-engineering` owns version, artifact, publication, and rollback gates. |
 
 ## Skill path-consumer map
 
-All 12 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
+All 7 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
 have a matching `skills/<name>/agents/openai.yaml`. The two repository-only
 skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
 cover their selection, registration, references, validation, tests, and
@@ -94,7 +88,7 @@ user-facing prompts.
 | Skill prompt metadata | `skills/*/agents/openai.yaml`, `.agents/skills/*/agents/openai.yaml`, `packages/codexy-runtime/src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
 | Plugin entry prompt | `agents/openai.yaml`, `packages/codexy-runtime/tests/validator_prompt_metadata.rs` | Routes users through `$orchestration` and named skill invocations. |
 | Recursive instruction validation | `packages/codexy-runtime/src/validation/instruction_policy.rs`, `packages/codexy-runtime/tests/validator_instruction_policy.rs` | Scans skill bodies, prompt metadata, references, and mandatory policy wording. |
-| Path-specific policy validation | `packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs`, `packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs`, `packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs`, `packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs`, `packages/codexy-runtime/src/validation/orchestration_routing.rs` | Consumes the orchestration, QA, proof, refactoring, and Git workflow paths. |
+| Path-specific policy validation | `packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs`, `packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs`, `packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs`, `packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs`, `packages/codexy-runtime/src/validation/orchestration_routing.rs` | Consumes the orchestration, engineering, proof, and Git workflow paths. |
 | Inventory and taxonomy tests | `packages/codexy-runtime/tests/architecture_docs_inventory.rs`, `packages/codexy-runtime/tests/skill_boundary_taxonomy.rs` | Enforces folder/frontmatter identity, one decision per skill, path stability, and documented boundaries. |
 | Structured contracts | `packages/codexy-runtime/tests/structured_contract*.rs`, `packages/codexy-runtime/tests/task_classification_presentation.rs` | Guards prompt fields, skill invocations, and the GFM presentation contract. |
 | Skill resources | `skills/*/references/**`, `skills/*/templates/**`, cross-skill `$name` links | Supplies detailed workflows and preserves referenced paths without duplicating core skill bodies. |
@@ -135,7 +129,7 @@ as permission to claim the server worked.
 ## Implemented orchestration
 
 The main flow comes from `orchestration`,
-`git-workflow`, `qa`, and `proof-driven-completion`. Routing context selects the
+`git-workflow`, `engineering`, and `proof-driven-completion`. Routing context selects the
 owner and execution lane; verification and readiness checks are separate hard
 gates and cannot be replaced by contextual hook messages.
 

@@ -13,8 +13,9 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
     )?;
     let git_workflow =
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
-    let qa_prompt =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
+    let engineering_prompt = std::fs::read_to_string(
+        root.join("plugins/codexy/skills/engineering/agents/openai.yaml"),
+    )?;
     let release_prompt = std::fs::read_to_string(
         root.join(".agents/skills/release-engineering/agents/openai.yaml"),
     )?;
@@ -55,7 +56,11 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
             &git_workflow,
             &["$orchestration", "classification evidence"][..],
         ),
-        ("prompt-metadata.qa-route", &qa_prompt, &["$orchestration"][..]),
+        (
+            "prompt-metadata.engineering-route",
+            &engineering_prompt,
+            &["$orchestration"][..],
+        ),
         (
             "prompt-metadata.release-route",
             &release_prompt,
@@ -77,7 +82,7 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
         &orchestration,
         &classification,
         &git_workflow,
-        &qa_prompt,
+        &engineering_prompt,
         &release_prompt,
         &plugin_prompt,
     ] {

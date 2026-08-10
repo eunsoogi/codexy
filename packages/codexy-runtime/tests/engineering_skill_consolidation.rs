@@ -144,7 +144,7 @@ fn apply_text_mutation(plugin_root: &Path, mutation: TextMutation) -> TestResult
         TextMutation::TriggerSubstitution => mutate_first_trigger(&original, "behavior", "ceremony"),
         TextMutation::BrokenLink => original.replacen(".md)", "-missing.md)", 1),
         TextMutation::OutsideLink => original.replacen(
-            "](../../codex-orchestration/references/plain-language-user-replies.md)",
+            "](../../orchestration/references/plain-language-user-replies.md)",
             "](../../../../AGENTS.md)",
             1,
         ),

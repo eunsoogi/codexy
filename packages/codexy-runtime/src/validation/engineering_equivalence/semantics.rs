@@ -174,7 +174,10 @@ fn canonical_target(path: &Path, target: &str) -> String {
     if relative.as_os_str().is_empty() {
         resolved.display().to_string()
     } else {
-        relative.display().to_string()
+        relative
+            .display()
+            .to_string()
+            .replace("skills/codex-orchestration/", "skills/orchestration/")
     }
 }
 
