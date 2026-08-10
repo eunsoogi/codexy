@@ -11,7 +11,7 @@ MUST run the current plugin-invoking Codex thread as the root/orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
 invoking Codex thread owns intent, decomposition, routing, evidence integration,
 and final completion claims. Specialists and separate Codex thread/worktree lanes
-own bounded atomic units only.
+own bounded atomic units only; Root `AGENTS.md` owns repo-wide dogfooding policy.
 
 ## GPT-5.6 Routing Matrix
 
