@@ -13,28 +13,48 @@ const REQUIRED_EXCEPTION: &str =
 
 pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
-    let words = words(&normalized);
-    words.iter().enumerate().any(|(index, word)| {
-        (*word == "allowed" || PERMISSION_WORDS.contains(word))
-            && permission_binds_to_promotion(&words, index)
-            && !permission_is_negated(&words, index)
-            && (!normalized.contains(REQUIRED_EXCEPTION) || validation_is_compromised(&words))
+    clauses(&normalized).into_iter().any(|clause| {
+        let words = words(clause);
+        words.iter().enumerate().any(|(index, word)| {
+            (*word == "allowed" || PERMISSION_WORDS.contains(word))
+                && permission_binds_to_promotion(&words, index)
+                && !permission_is_negated(&words, index)
+                && (!clause.contains(REQUIRED_EXCEPTION) || validation_is_compromised(&words))
+        })
     })
 }
 
 pub(super) fn has_temporally_narrowed_generic_default(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
-    let words = words(&normalized);
-    words.iter().enumerate().any(|(index, word)| {
-        *word == "apply"
-            && positive_operand(&words, index)
-            && operand_subject(&words, index).contains(&"generic")
-            && operand_subject(&words, index).contains(&"child")
-            && operand_subject(&words, index).contains(&"default")
-            && (operand_subject(&words, index).contains(&"terra")
-                || operand_subject(&words, index).contains(&"gpt"))
-            && temporal_qualifier(&words, index)
+    clauses(&normalized).into_iter().any(|clause| {
+        let words = words(clause);
+        words.iter().enumerate().any(|(index, word)| {
+            let subject = operand_subject(&words, index);
+            *word == "apply"
+                && positive_operand(&words, index)
+                && subject.contains(&"generic")
+                && subject.contains(&"child")
+                && subject.contains(&"default")
+                && (subject.contains(&"terra") || subject.contains(&"gpt"))
+                && temporal_qualifier(&words, index)
+        })
     })
+}
+
+fn clauses(text: &str) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut clauses = Vec::new();
+    let mut start = 0;
+    for (index, byte) in bytes.iter().enumerate() {
+        if *byte == b';'
+            || *byte == b'.' && bytes.get(index + 1).is_none_or(u8::is_ascii_whitespace)
+        {
+            clauses.push(&text[start..index]);
+            start = index + 1;
+        }
+    }
+    clauses.push(&text[start..]);
+    clauses
 }
 
 fn permission_binds_to_promotion(words: &[&str], operand: usize) -> bool {

@@ -69,6 +69,10 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
         ),
         (
+            "; Promotion above Terra/high MAY proceed after final acceptance alone.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
             "1. Promotion above Terra/high MAY proceed only as an explicit exception before complete validated measurement.\n",
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
         ),
@@ -139,8 +143,9 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
         "Promotion above Terra/high MAY NEVER proceed before complete validated measurement.\n",
         "Promotion above Terra/high cannot proceed before complete validated measurement.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY comment.\n",
-        "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY proceed.\n",
+        "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY proceed; a separate reviewer MAY proceed.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while #549 reviewers MAY proceed.\n",
+        "Generic implementation child Terra/high default MUST apply generally; a separate reviewer MAY apply only when #549 remains open.\n",
         "Generic implementation child Terra/high default MAY apply generally but cannot apply while #549 remains open.\n",
     ] {
         let errors = validate(skill.replacen(
