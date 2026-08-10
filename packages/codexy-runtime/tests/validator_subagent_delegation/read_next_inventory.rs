@@ -20,6 +20,10 @@ pub(super) fn registered_orchestration_references() -> super::TestResult<Vec<Str
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root().join("plugins/codexy").join(SKILL),
     )?;
+    parse_read_next_inventory(&skill)
+}
+
+fn parse_read_next_inventory(skill: &str) -> super::TestResult<Vec<String>> {
     let section = skill
         .split_once("## Read Next")
         .and_then(|(_, remainder)| remainder.split_once("## Classification Gate"))
@@ -29,13 +33,20 @@ pub(super) fn registered_orchestration_references() -> super::TestResult<Vec<Str
     if parts.len() % 2 == 0 {
         return Err("Read Next contains an unmatched backtick".into());
     }
-    let references = parts
+    let raw_references = parts
         .iter()
         .skip(1)
         .step_by(2)
         .copied()
+        .collect::<Vec<_>>();
+    if raw_references.len() != REFERENCES.len() {
+        return Err("Read Next inventory is incomplete, duplicate, unknown, or retired".into());
+    }
+    let references = raw_references
+        .iter()
+        .copied()
         .collect::<std::collections::BTreeSet<_>>();
-    if references.len() != REFERENCES.len()
+    if references.len() != raw_references.len()
         || references.iter().any(|reference| !REFERENCES.contains(reference))
     {
         return Err("Read Next inventory is incomplete, duplicate, unknown, or retired".into());
@@ -92,5 +103,21 @@ fn read_next_inventory_rejects_malformed_omitted_duplicate_unknown_and_retired_r
         let output = support::validator(fixture.root(), "--check-roles")?;
         assert!(!output.status.success());
     }
+    Ok(())
+}
+
+#[test]
+fn helper_rejects_duplicate_raw_occurrence_before_fixture_admission() -> super::TestResult {
+    let source = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("plugins/codexy").join(SKILL),
+    )?;
+    let duplicate = source.replacen(
+        "`references/classification-and-control.md`",
+        "`references/classification-and-control.md` and `references/classification-and-control.md`",
+        1,
+    );
+    assert_ne!(duplicate, source, "fixture mutation must create a raw duplicate");
+
+    assert!(parse_read_next_inventory(&duplicate).is_err());
     Ok(())
 }
