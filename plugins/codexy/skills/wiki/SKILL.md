@@ -1,14 +1,14 @@
 ---
 name: wiki
-description: Use for a bounded, source-backed topic wiki: initialize it, ingest material, compile articles, query cited knowledge, refresh sources, or verify provenance and freshness.
+description: A bounded, source-backed topic-wiki workflow for initialization, ingestion, compilation, cited queries, source refresh, and provenance or freshness verification.
 ---
 
 # LLM Wiki
 
-Use this repository-owned skill only for a compact, topic-scoped LLM memory loop.
-The active topic is the bounded context; do not inspect other topics unless the
-user explicitly expands scope. Keep user prompts and tool metadata outside the
-context budget.
+This repository-owned skill provides a compact, topic-scoped LLM memory loop.
+The active topic is the bounded context; MUST NOT inspect other topics unless
+the user explicitly expands scope. MUST keep user prompts and tool metadata
+outside the context budget.
 
 [Minimal Contract](references/minimal-contract.md) is the normative source for
 workflow dispositions, provenance, freshness, and measurable limits.
@@ -19,7 +19,7 @@ MUST use the core path `init → ingest → compile → query → refresh`.
 
 ### Init
 
-Create or confirm one topic root with `raw/`, `wiki/`, `_index.md`, `log.md`,
+MUST create or confirm one topic root with `raw/`, `wiki/`, `_index.md`, `log.md`,
 and `config.md`. `config.md` MAY set `freshness_threshold`; its default is 70.
 Markdown frontmatter is the source of truth and indexes are derived caches.
 
@@ -35,42 +35,43 @@ this same rule; it MUST NOT overwrite an earlier raw revision.
 
 MUST synthesize articles from raw sources rather than copy them. Source-backed
 articles require non-empty wiki-root-relative `sources:`; conversation-only
-articles require `compiled-from: conversation`. Record `updated`, `verified`,
-`volatility`, and confidence. Compile incrementally after `Last compiled`;
-make a full pass explicit, then rebuild stale indexes best-effort.
+articles require `compiled-from: conversation`. MUST record `updated`,
+`verified`, `volatility`, and confidence. MUST compile incrementally after
+`Last compiled`; MUST make a full pass explicit, then rebuild stale indexes
+best-effort.
 
 ### Query
 
 MUST read the active topic master index, a relevant category index, and only
-matched articles. Stale-check an index before trusting it. Cite local articles,
-report a knowledge gap instead of inferring one, and report sibling overlap
-without merging sibling content. A normal query reads at most three indexes and
-eight articles, with at most 4,000 UTF-8 bytes per loaded file and 48,000 total
-UTF-8 bytes including frontmatter. If more is needed, state why and obtain the
-user's explicit broader-scope intent.
+matched articles. MUST stale-check an index before trusting it. MUST cite local
+articles, report a knowledge gap instead of inferring one, and report sibling
+overlap without merging sibling content. A normal query reads at most three
+indexes and eight articles, with at most 4,000 UTF-8 bytes per loaded file and
+48,000 total UTF-8 bytes including frontmatter. If more is needed, MUST state
+why and obtain the user's explicit broader-scope intent.
 
 ### Refresh and verification
 
 MUST compare fetchable sources against recorded provenance. A change creates a
 new raw revision and marks affected knowledge for recompilation; an unchanged
-source stays unchanged. Inspect source chains, freshness, and index staleness.
-Report broken, weak, drifted, contradictory, missing, malformed, or future
-metadata rather than hiding it. `lint` is the verification step for this core
-workflow.
+source stays unchanged. MUST inspect source chains, freshness, and index
+staleness. MUST report broken, weak, drifted, contradictory, missing,
+malformed, or future metadata rather than hiding it. `lint` is the verification
+step for this core workflow.
 
 ## Merged work
 
-Use the core steps above for bounded batch ingestion, trust inspection,
+MUST use the core steps above for bounded batch ingestion, trust inspection,
 evidence acquisition, derivative writing, assessment, correction, and explicit
-promotion of a supported learning through the raw boundary. These are not
-separate commands or contexts. They MUST preserve the same provenance, log,
-freshness, and bounded-context rules.
+promotion of a supported learning through the raw boundary. These activities
+are not separate commands or contexts. They MUST preserve the same provenance,
+log, freshness, and bounded-context rules.
 
 ## Migration
 
-For existing supported topic data, read [Migration](references/migration.md)
+For existing supported topic data, MUST read [Migration](references/migration.md)
 before changing derived files. Migration is additive and fail-closed: it
-preserves source history and never turns missing provenance into a fact.
+preserves source history and MUST NOT turn missing provenance into a fact.
 
 ## Safety
 
