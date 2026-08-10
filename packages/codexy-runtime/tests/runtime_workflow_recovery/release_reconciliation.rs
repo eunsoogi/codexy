@@ -43,7 +43,6 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
 }
 
 #[test]
-#[cfg(unix)]
 fn counterexample_never_replaces_the_canonical_runner() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new("draft", &ASSETS)?;
     let runner = fixture.root.join("run-release-reconciliation");
