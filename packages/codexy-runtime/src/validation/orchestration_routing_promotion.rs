@@ -8,18 +8,17 @@ const PERMISSION_WORDS: &[&str] = &[
     "proceed",
     "select",
 ];
-const REQUIRED_EXCEPTION: &str =
-    "only as an explicit exception selected by complete validated measurement";
-
 pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
     let normalized = bullet.to_ascii_lowercase();
     clauses(&normalized).into_iter().any(|clause| {
         let words = words(clause);
         words.iter().enumerate().any(|(index, word)| {
+            let end = action_end(&words, index);
             (*word == "allowed" || PERMISSION_WORDS.contains(word))
                 && permission_binds_to_promotion(&words, index)
                 && !permission_is_negated(&words, index)
-                && (!clause.contains(REQUIRED_EXCEPTION) || validation_is_compromised(&words))
+                && (!has_required_exception(&words[..end])
+                    || validation_is_compromised(&words[..end]))
         })
     })
 }
@@ -46,7 +45,7 @@ fn clauses(text: &str) -> Vec<&str> {
     let mut clauses = Vec::new();
     let mut start = 0;
     for (index, byte) in bytes.iter().enumerate() {
-        if *byte == b';'
+        if matches!(*byte, b';' | b'!' | b'?')
             || *byte == b'.' && bytes.get(index + 1).is_none_or(u8::is_ascii_whitespace)
         {
             clauses.push(&text[start..index]);
@@ -71,13 +70,30 @@ fn operand_subject<'a>(words: &'a [&'a str], operand: usize) -> &'a [&'a str] {
 }
 
 fn temporal_qualifier(words: &[&str], operand: usize) -> bool {
-    let suffix = words[operand + 1..]
+    let suffix = words[operand + 1..action_end(words, operand)]
         .iter()
         .take_while(|word| !matches!(**word, "must" | "may" | "can" | "cannot" | "apply"))
         .copied()
         .collect::<Vec<_>>();
     suffix.iter().any(|word| matches!(*word, "while" | "until"))
         || suffix.windows(2).any(|window| window == ["only", "when"])
+}
+
+fn action_end(words: &[&str], operand: usize) -> usize {
+    words[operand + 1..]
+        .iter()
+        .enumerate()
+        .find_map(|(offset, word)| {
+            (*word == "while" && introduces_action(&words[operand + offset + 2..]))
+                .then_some(operand + offset + 1)
+        })
+        .unwrap_or(words.len())
+}
+
+fn introduces_action(words: &[&str]) -> bool {
+    words
+        .iter()
+        .any(|word| *word == "apply" || *word == "allowed" || PERMISSION_WORDS.contains(word))
 }
 
 fn positive_operand(words: &[&str], operand: usize) -> bool {
@@ -115,4 +131,22 @@ fn validation_is_compromised(words: &[&str]) -> bool {
         || words.windows(3).any(|window| {
             window == ["before", "complete", "validated"] || window == ["prior", "to", "complete"]
         })
+}
+
+fn has_required_exception(words: &[&str]) -> bool {
+    words.windows(10).any(|window| {
+        window
+            == [
+                "only",
+                "as",
+                "an",
+                "explicit",
+                "exception",
+                "selected",
+                "by",
+                "complete",
+                "validated",
+                "measurement",
+            ]
+    })
 }
