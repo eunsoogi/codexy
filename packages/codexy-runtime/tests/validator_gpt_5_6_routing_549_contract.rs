@@ -97,6 +97,7 @@ fn validator_rejects_every_additional_active_luna_max_simple_assignment() -> Tes
         "- Simple task MAY use Luna/max even when high-risk BUT\t sImPlE tasks MUST NOT use Luna/max for release work.\n",
         "- Simple tasks MUST NOT use Luna/max for release work but Simple task MAY use Luna/max even when high-risk.\n",
         "- Simple task MAY use Luna/max even when high-risk simple tasks MUST NOT use Luna/max for release work.\n",
+        "- Simple task MAY use Luna/max even when high-risk but SIMPLE TASKS MUST NOT use Luna/max for release work.\n",
     ] {
         assert_policy_rejected(
             skill.replacen(simple_rule, &format!("{simple_rule}\n{addition}"), 1),
@@ -117,6 +118,24 @@ fn validator_rejects_every_additional_active_luna_max_simple_assignment() -> Tes
         1,
     ))?;
     assert!(errors.is_empty(), "Luna/max prohibition was an assignment: {errors:#?}");
+    for subject in ["simple task", "SIMPLE TASK", "sImPlE TaSkS", "SIMPLE TASKS"] {
+        assert_policy_rejected(
+            skill.replacen(
+                simple_rule,
+                &format!(
+                    "{simple_rule}\n- {subject} MAY use Luna/max even when high-risk but Simple tasks MUST NOT use Luna/max.\n"
+                ),
+                1,
+            ),
+            "simple-work Luna/max candidates must require every bounded-work predicate",
+        )?;
+        let errors = validate(skill.replacen(
+            simple_rule,
+            &format!("{simple_rule}\n- {subject} MUST NOT use Luna/max.\n"),
+            1,
+        ))?;
+        assert!(errors.is_empty(), "standalone prohibition failed for {subject:?}: {errors:#?}");
+    }
     for inactive in [
         "```md\n- Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n```\n",
         "<!-- - Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk. -->\n",

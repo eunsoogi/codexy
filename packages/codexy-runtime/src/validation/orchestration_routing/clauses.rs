@@ -24,14 +24,13 @@ fn simple_task_modal_at(bytes: &[u8], start: usize) -> bool {
         return false;
     };
     cursor = whitespace_after(bytes, cursor);
-    if !bytes
-        .get(cursor..cursor + 4)
-        .is_some_and(|task| task.eq_ignore_ascii_case(b"task"))
-    {
+    let Some(subject_end) = [b"task".as_slice(), b"tasks"]
+        .iter()
+        .find_map(|subject| word_end(bytes, cursor, subject))
+    else {
         return false;
-    }
-    cursor += 4 + usize::from(bytes.get(cursor + 4) == Some(&b's'));
-    cursor = whitespace_after(bytes, cursor);
+    };
+    cursor = whitespace_after(bytes, subject_end);
     [b"must".as_slice(), b"may", b"should", b"can", b"cannot"]
         .iter()
         .any(|modal| word_end(bytes, cursor, modal).is_some())
