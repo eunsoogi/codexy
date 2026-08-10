@@ -171,14 +171,22 @@ fn canonical_target(path: &Path, target: &str) -> String {
         .components()
         .skip_while(|component| component.as_os_str() != "skills");
     let relative = components.by_ref().collect::<PathBuf>();
-    if relative.as_os_str().is_empty() {
-        resolved.display().to_string()
+    let canonical = component_target(if relative.as_os_str().is_empty() {
+        &resolved
     } else {
-        relative
-            .display()
-            .to_string()
-            .replace("skills/codex-orchestration/", "skills/orchestration/")
-    }
+        &relative
+    });
+    canonical.replace("skills/codex-orchestration/", "skills/orchestration/")
+}
+
+fn component_target(path: &Path) -> String {
+    path.components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => Some(value.to_string_lossy()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn resolve(path: &Path, target: &str, plugin_root: &Path) -> Result<PathBuf, String> {

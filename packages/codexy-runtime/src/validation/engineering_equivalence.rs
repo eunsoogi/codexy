@@ -5,6 +5,9 @@ mod mapping;
 mod routes;
 mod semantics;
 
+#[cfg(test)]
+mod semantics_tests;
+
 use std::path::Path;
 
 /// Returns diagnostics for the write-once baseline-v1 engineering equivalence contract.
