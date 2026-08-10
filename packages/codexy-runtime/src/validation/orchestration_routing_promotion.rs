@@ -41,7 +41,10 @@ fn clauses(text: &str) -> impl Iterator<Item = String> + '_ {
 
 fn positive_permission(clause: &str) -> bool {
     let words = words(clause);
-    affirmative_modal(&words) && words.iter().any(|word| PERMISSION_WORDS.contains(word))
+    words
+        .iter()
+        .enumerate()
+        .any(|(index, word)| PERMISSION_WORDS.contains(word) && positive_operand(&words, index))
 }
 
 fn words(clause: &str) -> Vec<&str> {
@@ -52,13 +55,24 @@ fn words(clause: &str) -> Vec<&str> {
 }
 
 fn affirmative_modal(words: &[&str]) -> bool {
-    words.iter().enumerate().any(|(index, word)| {
-        matches!(*word, "must" | "may" | "can")
-            && !words[index + 1..]
-                .iter()
-                .take(1)
-                .any(|prior| matches!(*prior, "not" | "never"))
-    }) && !words.iter().any(|word| *word == "cannot")
+    words
+        .iter()
+        .position(|word| *word == "apply")
+        .is_some_and(|index| positive_operand(words, index))
+}
+
+fn positive_operand(words: &[&str], operand: usize) -> bool {
+    let start = operand.saturating_sub(3);
+    let Some(modal) = (start..operand)
+        .rev()
+        .find(|index| matches!(words[*index], "must" | "may" | "can" | "cannot"))
+    else {
+        return false;
+    };
+    words[modal] != "cannot"
+        && !words[modal + 1..=operand]
+            .iter()
+            .any(|word| matches!(*word, "not" | "never"))
 }
 
 fn validation_is_preceded(words: &[&str]) -> bool {

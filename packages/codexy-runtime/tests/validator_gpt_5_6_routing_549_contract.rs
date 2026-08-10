@@ -73,6 +73,10 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
         ),
         (
+            "Promotion above Terra/high MAY proceed without complete validated measurement, but operators cannot bypass audit controls.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
             "Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
@@ -95,6 +99,7 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
         "1. Promotion above Terra/high MAY NOT proceed before complete validated measurement.\n",
         "Promotion above Terra/high MAY NEVER proceed before complete validated measurement.\n",
         "Promotion above Terra/high cannot proceed before complete validated measurement.\n",
+        "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY comment.\n",
     ] {
         let errors = validate(skill.replacen(
             "## Recipient Model Routing",
