@@ -1,10 +1,12 @@
 use std::{fs, path::Path};
 
 use crate::paths::display_relative;
+use crate::validation::orchestration_routing_promotion::{
+    has_conflicting_promotion_exception, has_temporally_narrowed_generic_default,
+};
 use crate::validation::orchestration_routing_semantics::{
-    has_conflicting_luna_default, has_conflicting_promotion_exception,
-    has_conflicting_sentinel_tier, has_conflicting_specialist_override,
-    has_conflicting_tier_assignment,
+    has_conflicting_luna_default, has_conflicting_sentinel_tier,
+    has_conflicting_specialist_override, has_conflicting_tier_assignment,
 };
 
 mod assignments;
@@ -145,6 +147,10 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
         (
             has_conflicting_promotion_exception,
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
+            has_temporally_narrowed_generic_default,
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
         (
             has_conflicting_sentinel_tier,

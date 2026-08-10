@@ -51,9 +51,23 @@ fn validator_requires_issue_549_candidate_routing_contract() -> TestResult {
 fn validator_rejects_active_promotion_exceptions_without_complete_validation() -> TestResult {
     let skill = routing_skill()?;
     assert!(validate(skill.clone())?.is_empty(), "valid routing policy failed");
-    for addition in [
-        "- Promotion above Terra/high MAY proceed without complete validated measurement.\n",
-        "Promotion above Terra/high MUST be allowed after final acceptance alone.\n",
+    for (addition, expected) in [
+        (
+            "- Promotion above Terra/high MAY proceed without complete validated measurement.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
+            "Promotion above Terra/high MUST be allowed after final acceptance alone.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
+            "1. Promotion above Terra/high MAY proceed only as an explicit exception before complete validated measurement.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
+            "Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
     ] {
         assert_policy_rejected(
             skill.replacen(
@@ -61,8 +75,19 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
                 &format!("Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.\n{addition}"),
                 1,
             ),
-            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+            expected,
         )?;
+    }
+    for prohibition in [
+        "Promotion above Terra/high MUST NOT be allowed without complete validated measurement.\n",
+        "1. Promotion above Terra/high MAY NOT proceed before complete validated measurement.\n",
+    ] {
+        let errors = validate(skill.replacen(
+            "## Recipient Model Routing",
+            &format!("{prohibition}\n## Recipient Model Routing"),
+            1,
+        ))?;
+        assert!(errors.is_empty(), "valid prohibition failed: {errors:#?}");
     }
     Ok(())
 }

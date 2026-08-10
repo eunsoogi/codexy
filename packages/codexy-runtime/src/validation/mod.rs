@@ -98,6 +98,7 @@ mod orchestration_routing_assignment;
 mod orchestration_routing_effort;
 mod orchestration_routing_luna_policy;
 mod orchestration_routing_override;
+mod orchestration_routing_promotion;
 mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
