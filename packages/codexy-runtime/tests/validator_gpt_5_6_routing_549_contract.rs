@@ -89,6 +89,10 @@ fn validator_rejects_every_additional_active_luna_max_simple_assignment() -> Tes
         "- Simple task MAY use Luna/max even when high-risk.\n",
         "- Simple task MUST use Luna/max even when high-risk. Simple tasks MUST NOT use Luna/max for release work.\n",
         "- Simple task MUST use Luna/max even when high-risk and Simple tasks MUST NOT use Luna/max for release work.\n",
+        "- Simple task MUST use Luna/max even when high-risk. simple tasks MUST NOT use Luna/max for release work.\n",
+        "- sImPlE task MUST use Luna/max even when high-risk.\t  SIMPLE tasks MUST NOT use Luna/max for release work.\n",
+        "- Simple task MUST use Luna/max even when high-risk and  simple tasks MUST NOT use Luna/max for release work.\n",
+        "- Simple task MAY use Luna/max even when high-risk and\n  simple tasks MUST NOT use Luna/max for release work.\n",
     ] {
         assert_policy_rejected(
             skill.replacen(simple_rule, &format!("{simple_rule}\n{addition}"), 1),

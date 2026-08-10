@@ -7,6 +7,7 @@ use crate::validation::orchestration_routing_semantics::{
 };
 
 mod assignments;
+mod clauses;
 mod evidence;
 mod policy;
 mod required_bullets;
