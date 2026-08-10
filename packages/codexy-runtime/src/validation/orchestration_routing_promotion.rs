@@ -13,12 +13,13 @@ pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
     clauses(&normalized).into_iter().any(|clause| {
         let words = words(clause);
         words.iter().enumerate().any(|(index, word)| {
+            let start = action_start(&words, index);
             let end = action_end(&words, index);
             (*word == "allowed" || PERMISSION_WORDS.contains(word))
                 && permission_binds_to_promotion(&words, index)
                 && !permission_is_negated(&words, index)
-                && (!has_required_exception(&words[..end])
-                    || validation_is_compromised(&words[..end]))
+                && (!has_required_exception(&words[start..end])
+                    || validation_is_compromised(&words[start..end]))
         })
     })
 }
@@ -62,11 +63,7 @@ fn permission_binds_to_promotion(words: &[&str], operand: usize) -> bool {
 }
 
 fn operand_subject<'a>(words: &'a [&'a str], operand: usize) -> &'a [&'a str] {
-    let start = words[..operand]
-        .iter()
-        .rposition(|word| *word == "while")
-        .map_or(0, |index| index + 1);
-    &words[start..operand]
+    &words[action_start(words, operand)..operand]
 }
 
 fn temporal_qualifier(words: &[&str], operand: usize) -> bool {
@@ -84,10 +81,24 @@ fn action_end(words: &[&str], operand: usize) -> usize {
         .iter()
         .enumerate()
         .find_map(|(offset, word)| {
-            (*word == "while" && introduces_action(&words[operand + offset + 2..]))
+            (*word == "while" && starts_new_action(&words[operand + offset + 2..]))
                 .then_some(operand + offset + 1)
         })
         .unwrap_or(words.len())
+}
+
+fn action_start(words: &[&str], operand: usize) -> usize {
+    words[..operand]
+        .iter()
+        .rposition(|word| *word == "while")
+        .map_or(0, |index| index + 1)
+}
+
+fn starts_new_action(words: &[&str]) -> bool {
+    !words
+        .first()
+        .is_some_and(|word| word.chars().all(|character| character.is_ascii_digit()))
+        && introduces_action(words)
 }
 
 fn introduces_action(words: &[&str]) -> bool {

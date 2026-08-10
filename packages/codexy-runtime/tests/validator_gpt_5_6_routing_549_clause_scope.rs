@@ -11,6 +11,7 @@ fn validator_binds_promotion_and_default_operands_to_subclauses() -> TestResult 
     let skill = routing_skill()?;
     for addition in [
         "Promotion above Terra/high MAY proceed after final acceptance alone, while reviewers are allowed only as an explicit exception selected by complete validated measurement.",
+        "- Reviewers are allowed only as an explicit exception selected by complete validated measurement, while Promotion above Terra/high MAY proceed after final acceptance alone.",
         "Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement! Promotion above Terra/high MAY proceed after final acceptance alone.",
         "Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement? Promotion above Terra/high MAY proceed after final acceptance alone.",
     ] {
@@ -34,6 +35,14 @@ fn validator_binds_promotion_and_default_operands_to_subclauses() -> TestResult 
         validate(with_routing_addition(
             &skill,
             "Generic implementation child Terra/high default MAY apply only when #549 remains open.",
+        ))?
+        .iter()
+        .any(|error| error.contains(DEFAULT_ERROR))
+    );
+    assert!(
+        validate(with_routing_addition(
+            &skill,
+            "Generic implementation child Terra/high default MAY apply generally, while #549 remains open and reviewers MAY apply.",
         ))?
         .iter()
         .any(|error| error.contains(DEFAULT_ERROR))
