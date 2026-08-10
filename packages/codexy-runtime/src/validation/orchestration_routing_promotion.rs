@@ -13,6 +13,7 @@ const REQUIRED_EXCEPTION: &str =
 
 pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
     clauses(bullet)
+        .into_iter()
         .filter(|clause| clause.contains("promotion") && clause.contains("terra/high"))
         .any(|clause| {
             positive_permission(&clause)
@@ -21,22 +22,27 @@ pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
 }
 
 pub(super) fn has_temporally_narrowed_generic_default(bullet: &str) -> bool {
-    let normalized = bullet.to_ascii_lowercase();
-    normalized.contains("generic")
-        && normalized.contains("child")
-        && normalized.contains("terra/high")
-        && normalized.contains("default")
-        && normalized.contains("#549")
-        && ["while", "until", "only when"]
-            .iter()
-            .any(|word| normalized.contains(word))
-        && affirmative_modal(&words(&normalized))
+    clauses(bullet).into_iter().any(|clause| {
+        clause.contains("generic")
+            && clause.contains("child")
+            && clause.contains("terra/high")
+            && clause.contains("default")
+            && clause.contains("#549")
+            && ["while", "until", "only when"]
+                .iter()
+                .any(|word| clause.contains(word))
+            && affirmative_modal(&words(&clause))
+    })
 }
 
-fn clauses(text: &str) -> impl Iterator<Item = String> + '_ {
-    text.split([';', '.'])
+fn clauses(text: &str) -> Vec<String> {
+    text.to_ascii_lowercase()
+        .replace(", but ", ";")
+        .replace(", while ", ";")
+        .split([';', '.'])
         .map(|clause| clause.trim().to_ascii_lowercase())
         .filter(|clause| !clause.is_empty())
+        .collect()
 }
 
 fn positive_permission(clause: &str) -> bool {
