@@ -7,7 +7,7 @@ use crate::support::wiki_minimal_contract_html_cases::{
     TYPE6_BLOCK_TAGS, TYPE6_NEAR_MATCHES, type6_block_forms,
 };
 use crate::support::wiki_minimal_contract_link_cases::{
-    active_link_controls, invalid_link_replacements,
+    active_link_controls, fenced_link_source, invalid_link_replacements,
 };
 use crate::support::wiki_minimal_contract_markdown::Document;
 
@@ -34,6 +34,21 @@ fn minimal_contract_link_requires_one_active_markdown_identity() -> TestResult {
     let required = "[Minimal Contract](references/minimal-contract.md)";
     let mutations = invalid_link_replacements(required);
     let mut accepted = Vec::new();
+    assert!(
+        original
+            .lines()
+            .any(|line| line.contains(required) && line.trim() != required),
+        "fixture must cover a required link embedded in a sentence"
+    );
+    let fenced = fenced_link_source(&original, required)
+        .ok_or("missing line containing the required link")?;
+    if Document::parse(&fenced)
+        .map_err(std::io::Error::other)?
+        .link_count("Minimal Contract", "references/minimal-contract.md")
+        == 1
+    {
+        accepted.push("fenced");
+    }
     for (name, replacement) in mutations {
         let source = original.replacen(required, &replacement, 1);
         if Document::parse(&source)

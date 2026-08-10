@@ -1,7 +1,6 @@
 pub(crate) fn invalid_link_replacements(required: &str) -> Vec<(&'static str, String)> {
     vec![
         ("commented", format!("<!-- {required} -->")),
-        ("fenced", format!("```md\n{required}\n```")),
         ("inline code", format!("`{required}`")),
         (
             "inline-code label fragment",
@@ -67,6 +66,13 @@ pub(crate) fn invalid_link_replacements(required: &str) -> Vec<(&'static str, St
         ),
         ("duplicate", format!("{required}\n{required}")),
     ]
+}
+
+pub(crate) fn fenced_link_source(source: &str, required: &str) -> Option<String> {
+    source
+        .lines()
+        .find(|line| line.contains(required))
+        .map(|line| source.replacen(line, &format!("```md\n{required}\n```"), 1))
 }
 
 pub(crate) fn active_link_controls(required: &str) -> [String; 4] {
