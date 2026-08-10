@@ -113,7 +113,7 @@ The awakened owner MUST consume a material event in the same turn and MUST delet
 or disable its heartbeat when no further observation is required. A successfully
 registered heartbeat is runtime-owned waiting. The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. A live packaged Sentinel remains outside heartbeat observation and retains its no-poll/no-message boundary.
 
-For repeat handoffs, copy `templates/delta-poll.md` and fill only the current
+For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md) and fill only the current
 slots. MUST keep the template output in the thread or handoff; MUST NOT attach old
 logs or unchanged review bodies unless a current gate points to them.
 
@@ -134,8 +134,8 @@ call-id)`, count the first matching output once, reject conflicting bindings,
 and ignore orphan outputs.
 
 MUST capture before/after aggregate output for one real lane using a comparable
-window and owner boundary. MUST use
-`templates/session-audit-proof-receipt.json` as the metadata-only receipt: it
+window and owner boundary. MUST use [the session-audit proof receipt](../templates/session-audit-proof-receipt.json)
+as the metadata-only receipt: it
 MUST include review feedback, child age, retries per PR, stable
 event ids, goal/plan receipts, helper ownership, sanitized audit input digest,
 and command exits. The comparison MUST report observations only; it MUST NOT

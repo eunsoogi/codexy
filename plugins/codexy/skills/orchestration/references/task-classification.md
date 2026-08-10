@@ -4,7 +4,7 @@
 
 MUST classify first for any Codexy work to select a workflow profile
 before acting. The versioned canonical contract
-is [Workflow Profiles](../orchestration/references/workflow-profiles.json):
+is [Workflow Profiles](workflow-profiles.json):
 `light` is the default, `standard` scales proof for non-trivial single-owner
 work, and `strict` applies to high-risk work. The contract's invariant floor
 applies to every profile and profiles MUST NOT weaken merge gates.
