@@ -10,6 +10,8 @@ mod default_fixture;
 mod readonly_escape;
 #[path = "validator_fixture_parallel_isolation/reset_writability.rs"]
 mod reset_writability;
+#[path = "validator_fixture_parallel_isolation/mutable_materialization.rs"]
+mod mutable_materialization;
 
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()

@@ -3,11 +3,12 @@ use std::path::Path;
 use pulldown_cmark::{Event, Parser, Tag};
 use serde_json::Value;
 
-use crate::support::{TestResult, copy_plugin_fixture};
+use crate::support::TestResult;
+use super::engineering_skill_fixture::copy_engineering_skill_fixture;
 
 #[test]
 fn production_validator_accepts_the_real_engineering_route_and_mode_all() -> TestResult {
-    let (_temporary, plugin_root) = copy_plugin_fixture()?;
+    let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
 
     let diagnostics = codexy_runtime::validation::engineering_equivalence_diagnostics(&plugin_root);
     assert!(diagnostics.is_empty(), "{diagnostics:#?}");
@@ -94,7 +95,7 @@ fn production_validator_rejects_manifest_projection_mutations() -> TestResult {
         ManifestMutation::MissingDestination,
         ManifestMutation::UnlinkedDestination,
     ] {
-        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
         apply_manifest_mutation(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("manifest {mutation:?}"));
     }
@@ -112,7 +113,7 @@ fn production_validator_rejects_destination_and_trigger_mutations() -> TestResul
         TextMutation::BrokenLink,
         TextMutation::OutsideLink,
     ] {
-        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
         apply_text_mutation(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("text {mutation:?}"));
     }

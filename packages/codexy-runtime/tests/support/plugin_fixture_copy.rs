@@ -126,10 +126,9 @@ pub(crate) fn materialize_seed(
             )?;
         } else {
             if mutable_files.iter().any(|path| *path == entry_relative) {
+                clear_readonly(&target_path)?;
                 std::fs::copy(&source_path, &target_path)?;
-                let mut permissions = std::fs::metadata(&target_path)?.permissions();
-                permissions.set_readonly(false);
-                std::fs::set_permissions(&target_path, permissions)?;
+                clear_readonly(&target_path)?;
             } else {
                 std::fs::copy(&source_path, &target_path)?;
                 super::profile_metrics::record("fixture_private_seed_copy");
@@ -141,6 +140,16 @@ pub(crate) fn materialize_seed(
         }
     }
     Ok(())
+}
+
+#[cfg(any(test, windows))]
+fn clear_readonly(path: &Path) -> std::io::Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut permissions = std::fs::metadata(path)?.permissions();
+    permissions.set_readonly(false);
+    std::fs::set_permissions(path, permissions)
 }
 
 #[cfg(any(test, windows))]

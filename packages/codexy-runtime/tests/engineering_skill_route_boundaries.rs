@@ -2,7 +2,8 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::support::{TestResult, copy_plugin_fixture};
+use crate::support::TestResult;
+use super::engineering_skill_fixture::copy_engineering_skill_fixture;
 
 #[test]
 fn production_validator_rejects_entrypoint_heading_mutations() -> TestResult {
@@ -22,7 +23,7 @@ fn production_validator_rejects_entrypoint_heading_mutations() -> TestResult {
         HeadingMutation::NestedContainers,
         HeadingMutation::H1TerminatesSection,
     ] {
-        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
         mutate_heading(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("heading {mutation:?}"));
     }
@@ -41,7 +42,7 @@ fn production_validator_rejects_inactive_destination_link_mutations() -> TestRes
         LinkMutation::BlockQuote,
         LinkMutation::DuplicateElsewhere,
     ] {
-        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
         mutate_link(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("link {mutation:?}"));
     }
@@ -56,7 +57,7 @@ fn production_validator_rejects_noncanonical_identity_file_mutations() -> TestRe
         IdentityMutation::SiblingPath,
         IdentityMutation::SourceFileSubstitution,
     ] {
-        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        let (_temporary, plugin_root) = copy_engineering_skill_fixture()?;
         mutate_identity_file(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("identity path {mutation:?}"));
     }
