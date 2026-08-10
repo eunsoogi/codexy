@@ -151,6 +151,17 @@ mod validator_touched_skill_loc;
 #[path = "../validator_wiki_ingestion_reference.rs"]
 mod validator_wiki_ingestion_reference;
 
+#[path = "../validator_wiki_contract_mutations.rs"]
+mod validator_wiki_contract_mutations;
+#[path = "../validator_wiki_token_identity.rs"]
+mod validator_wiki_token_identity;
+
+#[path = "../validator_wiki_connector_review.rs"]
+mod validator_wiki_connector_review;
+
+#[path = "../validator_wiki_migration_delta_mutations.rs"]
+mod validator_wiki_migration_delta_mutations;
+
 #[path = "../validator_wiki_minimal_contract.rs"]
 mod validator_wiki_minimal_contract;
 

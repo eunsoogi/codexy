@@ -1,6 +1,6 @@
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 
-use super::{CodeBlock, Document, Heading, Link, Text, table::TableBuilder};
+use super::{CodeBlock, Document, Heading, InlineCode, Link, Text, table::TableBuilder};
 
 struct HeadingBuilder {
     range: std::ops::Range<usize>,
@@ -9,6 +9,7 @@ struct HeadingBuilder {
     literal: bool,
 }
 struct LinkBuilder {
+    start: usize,
     destination: String,
     label: String,
     literal: bool,
@@ -22,6 +23,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
         tables: Vec::new(),
         blocks: Vec::new(),
         links: Vec::new(),
+        inline_code: Vec::new(),
         text: Vec::new(),
     };
     let mut heading = None;
@@ -97,6 +99,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                 mark(&mut heading, &mut link, &mut table);
                 if image_depth == 0 {
                     link = Some(LinkBuilder {
+                        start: range.start,
                         destination: dest_url.into_string(),
                         label: String::new(),
                         literal: !source[..range.start].ends_with("]("),
@@ -106,6 +109,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
             Event::End(TagEnd::Link) => {
                 if let Some(link) = link.take() {
                     document.links.push(Link {
+                        range: link.start..range.end,
                         label: link.label,
                         destination: link.destination,
                         literal: link.literal,
@@ -117,7 +121,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                     block.text.push_str(&value);
                 } else if let Some(html) = &mut html {
                     html.push_str(&value);
-                } else {
+                } else if image_depth == 0 {
                     if let Some(heading) = &mut heading {
                         heading.text.push_str(&value);
                     }
@@ -134,9 +138,15 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                 }
             }
             Event::Code(value) => {
-                mark_inline(&mut heading, &mut link);
-                if let Some(table) = &mut table {
-                    table.code(&value);
+                if image_depth == 0 {
+                    mark_inline(&mut heading, &mut link);
+                    if let Some(table) = &mut table {
+                        table.code(&value);
+                    }
+                    document.inline_code.push(InlineCode {
+                        range,
+                        value: value.into_string(),
+                    });
                 }
             }
             Event::Html(value) => {
@@ -144,9 +154,14 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                     html.push_str(&value);
                 }
             }
+            Event::SoftBreak | Event::HardBreak => {
+                document.text.push(Text {
+                    range,
+                    value: "\n".into(),
+                });
+                mark(&mut heading, &mut link, &mut table);
+            }
             Event::InlineHtml(_)
-            | Event::SoftBreak
-            | Event::HardBreak
             | Event::Rule
             | Event::TaskListMarker(_)
             | Event::FootnoteReference(_)
