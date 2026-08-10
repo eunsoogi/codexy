@@ -90,6 +90,10 @@ mod validator_roles;
 
 #[path = "../validator_routing_measurement.rs"]
 mod validator_routing_measurement;
+#[path = "../validator_routing_measurement_schema.rs"]
+mod validator_routing_measurement_schema;
+#[path = "../validator_routing_measurement_promotions.rs"]
+mod validator_routing_measurement_promotions;
 
 #[path = "../validator_sentinel_handoff_current_evidence.rs"]
 mod validator_sentinel_handoff_current_evidence;

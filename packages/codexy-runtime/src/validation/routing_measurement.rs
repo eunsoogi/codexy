@@ -2,6 +2,8 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::routing_measurement_schema::is_closed;
+
 const CORPUS_SCHEMA: &str = "codexy.routing-evaluation-corpus.v1";
 const RESULTS_SCHEMA: &str = "codexy.routing-evaluation-results.v1";
 const EFFORTS: [&str; 3] = ["high", "xhigh", "max"];
@@ -54,44 +56,13 @@ pub(super) fn check_canonical(plugin_root: &std::path::Path) -> Vec<String> {
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
     {
-        Some(schema) if closed_schema(&schema) => {}
+        Some(schema) if is_closed(&schema) => {}
         _ => errors.push(format!(
             "{} must be a closed routing-measurement JSON schema",
             crate::paths::display_relative(&schema)
         )),
     }
     errors
-}
-fn closed_schema(schema: &Value) -> bool {
-    let Some(items) = schema
-        .get("properties")
-        .and_then(|value| value.get("results"))
-        .and_then(|value| value.get("items"))
-    else {
-        return false;
-    };
-    let required = items
-        .get("required")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .collect::<BTreeSet<_>>();
-    items.get("additionalProperties") == Some(&Value::Bool(false))
-        && required
-            == BTreeSet::from([
-                "task_id",
-                "prompt",
-                "model",
-                "thinking",
-                "acceptance",
-                "p0_p1_misses",
-                "proof_complete",
-                "repairs_retries",
-                "tokens",
-                "wall_time_ms",
-                "observed_cost_usd",
-            ])
 }
 pub(super) fn diagnostics(corpus: &str, results: &str) -> Vec<String> {
     let Ok(corpus) = serde_json::from_str::<Corpus>(corpus) else {

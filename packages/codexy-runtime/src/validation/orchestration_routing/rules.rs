@@ -13,6 +13,14 @@ pub(super) const ACTIVE_TIER_STARTS: &[&str] = &[
 
 pub(super) const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.";
 
+const SIMPLE_ROUTE_PREFIX: &str =
+    "Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` ";
+const SIMPLE_ROUTE_CONJUNCTION: &str = "only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.";
+
+pub(super) fn simple_route_is_affirmative(bullet: &str) -> bool {
+    bullet.strip_prefix(SIMPLE_ROUTE_PREFIX) == Some(SIMPLE_ROUTE_CONJUNCTION)
+}
+
 pub(super) const ROUTING_REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
     (
         "Root/orchestrator: MUST use `gpt-5.6-sol`",
