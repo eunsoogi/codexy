@@ -147,12 +147,7 @@ fn marker(line: &str) -> bool {
 }
 
 fn normalize(value: &str, path: &Path) -> String {
-    let soft = value
-        .replace("\r\n", "\n")
-        .split('\n')
-        .map(str::trim)
-        .collect::<Vec<_>>()
-        .join(" ");
+    let soft = soft_wrap(value);
     link_regex()
         .replace_all(&soft, |captures: &regex::Captures<'_>| {
             let label = captures.get(1).map_or("", |item| item.as_str());
@@ -166,7 +161,11 @@ fn canonical_target(path: &Path, target: &str) -> String {
     if target.starts_with('#') || target.contains("://") || target.starts_with("mailto:") {
         return target.to_owned();
     }
-    let resolved = normalize_path(path.parent().unwrap_or(path).join(target));
+    let resolved = normalize_path(
+        path.parent()
+            .unwrap_or(path)
+            .join(target.replace('\\', "/")),
+    );
     let mut components = resolved
         .components()
         .skip_while(|component| component.as_os_str() != "skills");
@@ -177,6 +176,20 @@ fn canonical_target(path: &Path, target: &str) -> String {
         &relative
     });
     canonical.replace("skills/codex-orchestration/", "skills/orchestration/")
+}
+
+fn soft_wrap(value: &str) -> String {
+    value
+        .replace("\r\n", "\n")
+        .split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[cfg(test)]
+pub(super) fn soft_wrap_mutant(value: &str) -> String {
+    value.replace("\r\n", "\n")
 }
 
 fn component_target(path: &Path) -> String {
