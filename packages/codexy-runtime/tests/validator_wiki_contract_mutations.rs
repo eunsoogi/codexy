@@ -114,3 +114,15 @@ fn migration_rules_reject_active_token_stream_polarity_and_prefix_mutations() ->
     assert!(validate_migration_rules(&guide.replacen(rule, &prefix, 1)).is_err(), "split prefix");
     Ok(())
 }
+
+#[test]
+fn migration_rules_ignore_image_alt_contract_content() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let guide = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/migration.md"))?;
+    let preservation = "MUST preserve existing `raw/`, `wiki/`, `_index.md`, and `log.md`";
+    let image = "![MUST preserve existing `raw/`, `wiki/`, `_index.md`, and `log.md`](migration.png)";
+    let image_only = guide.replacen(preservation, image, 1);
+    assert!(validate_migration_rules(&image_only).is_err(), "image alt clause");
+    assert!(validate_migration_rules(&guide).is_ok(), "ordinary active clause");
+    Ok(())
+}

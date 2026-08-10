@@ -118,7 +118,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                     block.text.push_str(&value);
                 } else if let Some(html) = &mut html {
                     html.push_str(&value);
-                } else {
+                } else if image_depth == 0 {
                     if let Some(heading) = &mut heading {
                         heading.text.push_str(&value);
                     }
@@ -135,14 +135,16 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                 }
             }
             Event::Code(value) => {
-                mark_inline(&mut heading, &mut link);
-                if let Some(table) = &mut table {
-                    table.code(&value);
+                if image_depth == 0 {
+                    mark_inline(&mut heading, &mut link);
+                    if let Some(table) = &mut table {
+                        table.code(&value);
+                    }
+                    document.inline_code.push(InlineCode {
+                        range,
+                        value: value.into_string(),
+                    });
                 }
-                document.inline_code.push(InlineCode {
-                    range,
-                    value: value.into_string(),
-                });
             }
             Event::Html(value) => {
                 if let Some(html) = &mut html {
