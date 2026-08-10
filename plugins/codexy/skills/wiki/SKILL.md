@@ -19,8 +19,8 @@ initialize a topic root implicitly.
 
 ## Core workflow
 
-Before freshness verification, compilation, or query, MUST read [Minimal Contract](references/minimal-contract.md)
-before operating. It is the normative source for workflow dispositions, provenance,
+MUST read [Minimal Contract](references/minimal-contract.md) before freshness verification,
+compilation, or query. It is the normative source for workflow dispositions, provenance,
 freshness, and measurable limits.
 
 MUST use the core path `init → ingest → compile → query → refresh`.

@@ -38,6 +38,7 @@ pub(crate) mod wiki_active_token_stream;
 pub(crate) mod wiki_core_article;
 pub(crate) mod wiki_core_contract;
 pub(crate) mod wiki_core_raw_ingestion;
+pub(crate) mod wiki_frontmatter;
 pub(crate) mod wiki_migration_fixture;
 pub(crate) mod wiki_migration_rules;
 pub(crate) mod wiki_minimal_contract;

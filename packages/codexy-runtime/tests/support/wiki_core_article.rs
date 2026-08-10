@@ -3,6 +3,7 @@ use std::path::{Component, Path, PathBuf};
 use serde_yaml::{Mapping, Value};
 
 use super::wiki_core_raw_ingestion::{RawIngestionState, raw_ingestion};
+use super::wiki_frontmatter::{has_opening, mapping};
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) struct CanonicalDate {
@@ -79,20 +80,15 @@ pub(crate) fn assess_article(
     topic_root: &Path,
     evaluation_day: CanonicalDate,
 ) -> ArticleAssessment {
-    let mapping = frontmatter(article)
-        .and_then(|frontmatter| serde_yaml::from_str::<Value>(frontmatter).ok())
-        .and_then(|value| match value {
-            Value::Mapping(mapping) => Some(mapping),
-            _ => None,
-        });
+    let mapping = mapping(article);
     let Some(mapping) = mapping else {
         return ArticleAssessment {
-            freshness: if has_frontmatter(article) {
+            freshness: if has_opening(article) {
                 FreshnessState::Malformed
             } else {
                 FreshnessState::Missing
             },
-            provenance: if has_frontmatter(article) {
+            provenance: if has_opening(article) {
                 ProvenanceState::Malformed
             } else {
                 ProvenanceState::Missing
@@ -122,31 +118,6 @@ pub(crate) fn assess_article(
         resolved_sources,
         raw_ingestion,
     }
-}
-
-fn has_frontmatter(article: &str) -> bool {
-    article
-        .strip_prefix('\u{feff}')
-        .unwrap_or(article)
-        .split_once('\n')
-        .is_some_and(|(opening, _)| opening.trim_end_matches('\r') == "---")
-}
-
-fn frontmatter(article: &str) -> Option<&str> {
-    let article = article.strip_prefix('\u{feff}').unwrap_or(article);
-    let (opening, remainder) = article.split_once('\n')?;
-    if opening.trim_end_matches('\r') != "---" {
-        return None;
-    }
-    let mut end = 0;
-    for line in remainder.split_inclusive('\n') {
-        let marker = line.trim_end_matches(['\r', '\n']);
-        if matches!(marker, "---" | "...") {
-            return Some(&remainder[..end]);
-        }
-        end += line.len();
-    }
-    None
 }
 
 fn freshness(mapping: &Mapping, evaluation_day: CanonicalDate) -> FreshnessState {

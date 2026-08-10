@@ -74,7 +74,8 @@ pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
             ],
             &[],
         ),
-    ])
+    ])?;
+    procedure.require_only_final_log_append()
 }
 
 struct Rules {
@@ -113,6 +114,20 @@ impl Rules {
             previous = found + 1;
         }
         Ok(())
+    }
+
+    fn require_only_final_log_append(&self) -> Result<(), String> {
+        let appends = self
+            .clauses
+            .iter()
+            .filter(|clause| {
+                phrase(&clause.prose, "append")
+                    && clause.inline.iter().any(|identity| identity == "log.md")
+            })
+            .count();
+        (appends == 1)
+            .then_some(())
+            .ok_or("missing, duplicate, or early log.md append clause".into())
     }
 }
 

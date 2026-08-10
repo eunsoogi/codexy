@@ -50,23 +50,23 @@ pub(crate) fn validate_core_skill(source: &str, removed: &[&str]) -> Result<(), 
             "implicitly",
         ],
     )?;
-    require_clause(
+    require_ordered_clause(
         &document,
         &workflow,
         Mode::Must,
         &[
-            "before",
-            "freshness",
-            "verification",
+            "read minimal contract",
+            "before freshness verification",
             "compilation",
             "query",
-            "read",
-            "minimal",
-            "contract",
         ],
     )?;
     required_count(
-        document.link_count("Minimal Contract", "references/minimal-contract.md"),
+        document.link_count_in_scope(
+            &workflow,
+            "Minimal Contract",
+            "references/minimal-contract.md",
+        ),
         "Minimal Contract link",
     )?;
     for command in removed {
@@ -86,26 +86,7 @@ pub(crate) fn markdown_link_count(
 }
 
 pub(crate) fn frontmatter_string(source: &str, key: &str) -> Result<String, String> {
-    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
-    let (opening, remainder) = source.split_once('\n').ok_or("frontmatter opening")?;
-    if opening.trim_end_matches('\r') != "---" {
-        return Err("frontmatter opening".into());
-    }
-    let mut end = 0;
-    for line in remainder.split_inclusive('\n') {
-        if line.trim_end_matches(['\r', '\n']) == "---" {
-            break;
-        }
-        end += line.len();
-    }
-    let yaml = (end < remainder.len())
-        .then_some(&remainder[..end])
-        .ok_or("frontmatter closing")?;
-    let Value::Mapping(mapping) =
-        serde_yaml::from_str::<Value>(yaml).map_err(|error| error.to_string())?
-    else {
-        return Err("frontmatter mapping".into());
-    };
+    let mapping = super::wiki_frontmatter::mapping(source).ok_or("frontmatter mapping")?;
     mapping
         .get(Value::String(key.into()))
         .and_then(Value::as_str)
@@ -127,9 +108,42 @@ fn require_clause(
 ) -> Result<(), String> {
     let matches = clauses(document, scope)
         .iter()
-        .filter(|clause| clause.mode == mode && terms.iter().all(|term| phrase(clause, term)))
+        .filter(|clause| terms.iter().all(|term| phrase(clause, term)))
         .count();
-    required_count(matches, &format!("typed clause: {}", terms.join(", ")))
+    (matches == 1).then_some(()).ok_or_else(|| {
+        format!(
+            "missing, duplicate, or contradictory typed clause: {}",
+            terms.join(", ")
+        )
+    })?;
+    let clause = clauses(document, scope)
+        .into_iter()
+        .find(|clause| terms.iter().all(|term| phrase(clause, term)))
+        .ok_or("typed clause missing after count")?;
+    (clause.mode == mode)
+        .then_some(())
+        .ok_or_else(|| format!("contradictory typed clause: {}", terms.join(", ")))
+}
+
+fn require_ordered_clause(
+    document: &Document,
+    scope: &Scope,
+    mode: Mode,
+    terms: &[&str],
+) -> Result<(), String> {
+    let clauses = clauses(document, scope);
+    let matches = clauses
+        .iter()
+        .filter(|clause| ordered_phrase(clause, terms))
+        .collect::<Vec<_>>();
+    (matches.len() == 1 && matches[0].mode == mode)
+        .then_some(())
+        .ok_or_else(|| {
+            format!(
+                "missing, duplicate, or contradictory ordered clause: {}",
+                terms.join(", ")
+            )
+        })
 }
 
 fn phrase(clause: &Clause, term: &str) -> bool {
@@ -142,4 +156,23 @@ fn phrase(clause: &Clause, term: &str) -> bool {
         .prose
         .windows(terms.len())
         .any(|window| window == terms)
+}
+
+fn ordered_phrase(clause: &Clause, terms: &[&str]) -> bool {
+    let mut cursor = 0;
+    for term in terms {
+        let words = term
+            .split(|value: char| !value.is_ascii_alphanumeric())
+            .filter(|value| !value.is_empty())
+            .map(str::to_ascii_lowercase)
+            .collect::<Vec<_>>();
+        let Some(index) = clause.prose[cursor..]
+            .windows(words.len())
+            .position(|window| window == words)
+        else {
+            return false;
+        };
+        cursor += index + words.len();
+    }
+    true
 }

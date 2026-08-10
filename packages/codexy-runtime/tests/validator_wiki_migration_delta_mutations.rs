@@ -1,6 +1,6 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use std::{fs, path::Path};
+use std::{fs, ops::Deref, path::{Path, PathBuf}};
 
 use crate::support::wiki_migration_fixture::assert_successful_additive_migration;
 
@@ -76,13 +76,39 @@ fn successful_migration_rejects_path_and_log_shape_mutations() -> TestResult {
     Ok(())
 }
 
-fn copied_success() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+#[test]
+fn copied_success_fixture_is_removed_after_scope() -> TestResult {
+    let retained = {
+        let success = copied_success()?;
+        success.to_path_buf()
+    };
+    assert!(!retained.exists(), "temporary success fixture leaked: {}", retained.display());
+    Ok(())
+}
+
+struct CopiedSuccess {
+    _temporary_root: tempfile::TempDir,
+    root: PathBuf,
+}
+
+impl Deref for CopiedSuccess {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        &self.root
+    }
+}
+
+fn copied_success() -> Result<CopiedSuccess, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let destination = temp.keep().join("success");
+    let destination = temp.path().join("success");
     let source = codexy_runtime::paths::repository_root()
         .join("packages/codexy-runtime/tests/fixtures/wiki-core/migration/success");
     copy_dir(&source, &destination)?;
-    Ok(destination)
+    Ok(CopiedSuccess {
+        _temporary_root: temp,
+        root: destination,
+    })
 }
 
 fn replace(path: &Path, from: &str, to: &str) -> Result<(), Box<dyn std::error::Error>> {

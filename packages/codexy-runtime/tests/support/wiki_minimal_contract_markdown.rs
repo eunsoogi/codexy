@@ -31,6 +31,7 @@ pub(super) struct CodeBlock {
 }
 
 pub(super) struct Link {
+    pub(super) range: Range<usize>,
     pub(super) label: String,
     pub(super) destination: String,
     pub(super) literal: bool,
@@ -157,6 +158,18 @@ impl Document {
         self.links
             .iter()
             .filter(|link| link.literal && link.label == label && link.destination == target)
+            .count()
+    }
+
+    pub(crate) fn link_count_in_scope(&self, scope: &Scope, label: &str, target: &str) -> usize {
+        self.links
+            .iter()
+            .filter(|link| {
+                scope.contains(link.range.start)
+                    && link.literal
+                    && link.label == label
+                    && link.destination == target
+            })
             .count()
     }
 

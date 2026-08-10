@@ -9,6 +9,7 @@ struct HeadingBuilder {
     literal: bool,
 }
 struct LinkBuilder {
+    start: usize,
     destination: String,
     label: String,
     literal: bool,
@@ -98,6 +99,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                 mark(&mut heading, &mut link, &mut table);
                 if image_depth == 0 {
                     link = Some(LinkBuilder {
+                        start: range.start,
                         destination: dest_url.into_string(),
                         label: String::new(),
                         literal: !source[..range.start].ends_with("]("),
@@ -107,6 +109,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
             Event::End(TagEnd::Link) => {
                 if let Some(link) = link.take() {
                     document.links.push(Link {
+                        range: link.start..range.end,
                         label: link.label,
                         destination: link.destination,
                         literal: link.literal,

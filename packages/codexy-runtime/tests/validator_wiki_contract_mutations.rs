@@ -22,11 +22,61 @@ fn parsed_skill_shape_rejects_each_core_identity_mutation() -> TestResult {
             skill.replacen("MUST NOT search, select, or", "MUST search, select, or", 1),
         ),
         (
+            "contradictory implicit topic root",
+            skill.replacen(
+                "The caller MUST NOT search, select, or\ninitialize a topic root implicitly.",
+                "The caller MUST NOT search, select, or\ninitialize a topic root implicitly. The caller MUST search, select, or initialize a topic root implicitly.",
+                1,
+            ),
+        ),
+        (
             "contract loading",
             skill.replacen("MUST read [Minimal Contract]", "MAY read [Minimal Contract]", 1),
         ),
+        (
+            "moved Minimal Contract link",
+            format!(
+                "{}\n[Minimal Contract](references/minimal-contract.md)",
+                skill.replacen(
+                    "[Minimal Contract](references/minimal-contract.md)",
+                    "Minimal Contract",
+                    1,
+                )
+            ),
+        ),
         ("removed", format!("{skill}\n`collect`")),
     ] {
+        assert!(validate_core_skill(&mutation, REMOVED_WORKFLOWS).is_err(), "{name}");
+    }
+    Ok(())
+}
+
+#[test]
+fn core_workflow_scopes_the_minimal_contract_link_and_operations() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/SKILL.md"))?;
+    let moved = format!(
+        "{}\n[Minimal Contract](references/minimal-contract.md)",
+        skill.replacen(
+            "[Minimal Contract](references/minimal-contract.md)",
+            "Minimal Contract",
+            1,
+        )
+    );
+    assert!(validate_core_skill(&moved, REMOVED_WORKFLOWS).is_err(), "moved link");
+    for (name, from, replacement) in [
+        (
+            "missing compile",
+            "freshness verification,\ncompilation, or query",
+            "freshness verification or query",
+        ),
+        (
+            "after work",
+            "MUST read [Minimal Contract](references/minimal-contract.md) before freshness verification,\ncompilation, or query",
+            "After freshness verification, compilation, or query, MUST read [Minimal Contract](references/minimal-contract.md)",
+        ),
+    ] {
+        let mutation = skill.replacen(from, replacement, 1);
         assert!(validate_core_skill(&mutation, REMOVED_WORKFLOWS).is_err(), "{name}");
     }
     Ok(())
@@ -77,6 +127,12 @@ fn normalized_migration_rules_reject_each_required_rule_mutation() -> TestResult
         let mutated = guide.replacen(rule, &format!("{qualifier} route: {rule}"), 1);
         assert!(validate_migration_rules(&mutated).is_err(), "{qualifier}");
     }
+    let early_log = guide.replacen(
+        "3. MUST stage all derived changes",
+        "3. MUST append one migration entry to `log.md` before staging. MUST stage all derived changes",
+        1,
+    );
+    assert!(validate_migration_rules(&early_log).is_err(), "early log append");
     let article = "---\ntitle: Test\n---\nbody";
     assert!(crate::support::wiki_core_contract::frontmatter_string(article, "title").is_ok());
     let bad_closing = article.replacen("\n---\nbody", "\n---garbage\nbody", 1);

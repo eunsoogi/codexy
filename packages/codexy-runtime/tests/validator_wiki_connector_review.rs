@@ -103,6 +103,31 @@ fn malformed_raw_ingested_date_blocks_migration() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn raw_ingested_frontmatter_accepts_exact_yaml_document_end() -> TestResult {
+    let assessment = assessment_for_raws(&[("raw/source.md", "---\ntitle: raw\ningested: 2026-08-09\n...\nsource")])?;
+    assert_eq!(assessment.provenance, ProvenanceState::Complete);
+    assert_eq!(assessment.raw_ingestion, crate::support::wiki_core_raw_ingestion::RawIngestionState::Complete);
+    assert!(!assessment.blocks_migration());
+    Ok(())
+}
+
+#[test]
+fn each_raw_ingested_date_blocks_migration_independently() -> TestResult {
+    for (name, raw) in [
+        ("missing", "---\ntitle: raw\n---\nsource"),
+        ("malformed", "---\ntitle: raw\ningested: yesterday\n---\nsource"),
+    ] {
+        let assessment = assessment_for_raws(&[
+            ("raw/valid.md", "---\ntitle: raw\ningested: 2026-08-09\n---\nsource"),
+            ("raw/invalid.md", raw),
+        ])?;
+        assert_eq!(assessment.provenance, ProvenanceState::Complete, "{name}");
+        assert!(assessment.blocks_migration(), "{name}");
+    }
+    Ok(())
+}
+
 fn wiki_skill() -> Result<Document, Box<dyn std::error::Error>> {
     let source = fs::read_to_string(
         codexy_runtime::paths::repository_root().join("plugins/codexy/skills/wiki/SKILL.md"),
@@ -138,10 +163,22 @@ fn phrase(clause: &Clause, term: &str) -> bool {
 }
 
 fn assessment_for_raw(raw: &str) -> Result<crate::support::wiki_core_article::ArticleAssessment, Box<dyn std::error::Error>> {
+    assessment_for_raws(&[("raw/source.md", raw)])
+}
+
+fn assessment_for_raws(raws: &[(&str, &str)]) -> Result<crate::support::wiki_core_article::ArticleAssessment, Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
-    fs::create_dir(root.path().join("raw"))?;
-    fs::write(root.path().join("raw/source.md"), raw)?;
-    let article = "---\nverified: 2026-08-09\nsources:\n  - raw/source.md\n---\narticle";
+    for (path, raw) in raws {
+        let path = root.path().join(path);
+        fs::create_dir_all(path.parent().ok_or("raw parent")?)?;
+        fs::write(path, raw)?;
+    }
+    let sources = raws
+        .iter()
+        .map(|(path, _)| format!("  - {path}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let article = format!("---\nverified: 2026-08-09\nsources:\n{sources}\n---\narticle");
     let evaluation = CanonicalDate::parse("2026-08-10").ok_or("evaluation date")?;
-    Ok(assess_article(article, root.path(), evaluation))
+    Ok(assess_article(&article, root.path(), evaluation))
 }
