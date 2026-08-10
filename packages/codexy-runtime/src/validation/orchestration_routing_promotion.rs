@@ -14,7 +14,11 @@ const REQUIRED_EXCEPTION: &str =
 pub(super) fn has_conflicting_promotion_exception(bullet: &str) -> bool {
     clauses(bullet)
         .filter(|clause| clause.contains("promotion") && clause.contains("terra/high"))
-        .any(|clause| positive_permission(&clause) && !clause.contains(REQUIRED_EXCEPTION))
+        .any(|clause| {
+            positive_permission(&clause)
+                && (!clause.contains(REQUIRED_EXCEPTION)
+                    || clause.contains("before complete validated measurement"))
+        })
 }
 
 pub(super) fn has_temporally_narrowed_generic_default(bullet: &str) -> bool {
@@ -43,7 +47,9 @@ fn positive_permission(clause: &str) -> bool {
         .collect::<Vec<_>>();
     words.iter().enumerate().any(|(index, word)| {
         PERMISSION_WORDS.contains(word)
-            && words.get(index + 1).is_none_or(|next| *next != "not")
+            && words
+                .get(index + 1)
+                .is_none_or(|next| !matches!(*next, "not" | "never"))
             && !words[..index]
                 .iter()
                 .rev()
