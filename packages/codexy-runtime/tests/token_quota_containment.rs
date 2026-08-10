@@ -146,7 +146,7 @@ fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestRe
     let orchestration =
         fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let token_skill = fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
     )?;
     let token_prompt = fs::read_to_string(
         root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
