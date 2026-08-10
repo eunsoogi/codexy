@@ -82,7 +82,7 @@ remain deliberately outside the Codexy plugin payload.
 
 ## Skill path-consumer map
 
-All 13 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
+All 12 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
 have a matching `skills/<name>/agents/openai.yaml`. The two repository-only
 skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
 cover their selection, registration, references, validation, tests, and
