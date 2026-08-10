@@ -3,6 +3,7 @@ mod baseline;
 mod data;
 mod mapping;
 mod routes;
+mod semantic_target;
 mod semantics;
 
 #[cfg(test)]

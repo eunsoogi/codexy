@@ -1,7 +1,8 @@
 use std::path::Path;
 
-use super::semantics::{
-    destination_values, rendered_target_for_test, rendered_target_mutant, soft_wrap_mutant,
+use super::{
+    semantic_target::{rendered_target_for_test, rendered_target_mutant},
+    semantics::{destination_values, soft_wrap_mutant},
 };
 
 const REPLY: &str =

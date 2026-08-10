@@ -1,4 +1,6 @@
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
+
+use super::semantic_target::{canonical_target, normalize_path};
 
 use regex::Regex;
 use sha2::{Digest, Sha256};
@@ -157,27 +159,6 @@ fn normalize(value: &str, path: &Path) -> String {
         .into_owned()
 }
 
-fn canonical_target(path: &Path, target: &str) -> String {
-    if target.starts_with('#') || target.contains("://") || target.starts_with("mailto:") {
-        return target.to_owned();
-    }
-    let resolved = normalize_path(
-        path.parent()
-            .unwrap_or(path)
-            .join(target.replace('\\', "/")),
-    );
-    let mut components = resolved
-        .components()
-        .skip_while(|component| component.as_os_str() != "skills");
-    let relative = components.by_ref().collect::<PathBuf>();
-    let canonical = component_target(if relative.as_os_str().is_empty() {
-        &resolved
-    } else {
-        &relative
-    });
-    rendered_target(&canonical)
-}
-
 fn soft_wrap(value: &str) -> String {
     value
         .replace("\r\n", "\n")
@@ -192,32 +173,6 @@ pub(super) fn soft_wrap_mutant(value: &str) -> String {
     value.replace("\r\n", "\n")
 }
 
-fn component_target(path: &Path) -> String {
-    path.components()
-        .filter_map(|component| match component {
-            Component::Normal(value) => Some(value.to_string_lossy()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("/")
-}
-
-fn rendered_target(value: &str) -> String {
-    value
-        .replace('\\', "/")
-        .replace("skills/codex-orchestration/", "skills/orchestration/")
-}
-
-#[cfg(test)]
-pub(super) fn rendered_target_mutant(value: &str) -> String {
-    value.replace("skills/codex-orchestration/", "skills/orchestration/")
-}
-
-#[cfg(test)]
-pub(super) fn rendered_target_for_test(value: &str) -> String {
-    rendered_target(value)
-}
-
 fn resolve(path: &Path, target: &str, plugin_root: &Path) -> Result<PathBuf, String> {
     let resolved = normalize_path(
         path.parent()
@@ -228,20 +183,6 @@ fn resolve(path: &Path, target: &str, plugin_root: &Path) -> Result<PathBuf, Str
         return Err(format!("local link escapes plugin root: {target}"));
     }
     Ok(resolved)
-}
-
-fn normalize_path(path: PathBuf) -> PathBuf {
-    path.components()
-        .fold(PathBuf::new(), |mut normalized, component| {
-            match component {
-                Component::ParentDir => {
-                    normalized.pop();
-                }
-                Component::CurDir => {}
-                other => normalized.push(other.as_os_str()),
-            }
-            normalized
-        })
 }
 
 fn hash(value: &str) -> String {
