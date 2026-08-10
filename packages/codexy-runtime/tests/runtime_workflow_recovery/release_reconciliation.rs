@@ -1,12 +1,11 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, path::Path};
 
 use serde_yaml::Value;
 
-use crate::support;
+#[path = "release_reconciliation_fixture.rs"]
+mod fixture;
+
+use fixture::Fixture;
 
 const ASSETS: [&str; 3] = [
     "codexy-marketplace-plugin.tar.gz",
@@ -30,8 +29,8 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
     let stale_notes = Fixture::new("draft", &ASSETS)?;
     stale_notes.assert_generated_notes(&["notes", "publish"])?;
     let counterexample = Fixture::new("draft", &ASSETS)?;
-    counterexample.reverse_finalization_order()?;
-    let (_, log) = counterexample.run(false)?;
+    let runner = counterexample.reverse_finalization_order()?;
+    let (_, log) = counterexample.run_path(&runner, false)?;
     assert_ne!(log, "notes\npublish\n", "publish-before-notes must fail the exact sequence");
 
     let published = Fixture::new("published", &ASSETS)?;
@@ -40,6 +39,19 @@ fn release_reconciliation_recovers_only_exact_draft_assets()
     let mismatch = Fixture::new("draft", &[ASSETS[0]])?;
     fs::write(mismatch.assets.join(ASSETS[0]), b"mismatch\n")?;
     mismatch.assert_result(false, &[], false)?;
+    Ok(())
+}
+
+#[test]
+#[cfg(unix)]
+fn counterexample_never_replaces_the_canonical_runner() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new("draft", &ASSETS)?;
+    let runner = fixture.root.join("run-release-reconciliation");
+    let canonical = fs::read_to_string(&runner)?;
+    let counterexample = fixture.reverse_finalization_order()?;
+    assert_ne!(counterexample, runner, "counterexample must use a distinct runner path");
+    assert_eq!(fs::read_to_string(runner)?, canonical, "counterexample must not replace canonical runner");
+    assert_ne!(fs::read_to_string(counterexample)?, canonical, "counterexample mutation must be applied");
     Ok(())
 }
 
@@ -67,129 +79,6 @@ fn failed_changelog_generation_never_publishes_stale_draft() -> Result<(), Box<d
     Ok(())
 }
 
-struct Fixture {
-    _temporary: tempfile::TempDir,
-    root: PathBuf,
-    assets: PathBuf,
-}
-
-impl Fixture {
-    fn new(state: &str, existing: &[&str]) -> Result<Self, Box<dyn std::error::Error>> {
-        let temporary = tempfile::tempdir()?;
-        let root = temporary.path().join("release reconciliation fixture");
-        let bin = root.join("bin");
-        let assets = root.join("release-assets");
-        fs::create_dir_all(&bin)?;
-        fs::create_dir_all(&assets)?;
-        fs::create_dir_all(root.join("dist"))?;
-        let scripts = root.join("scripts");
-        fs::create_dir_all(&scripts)?;
-        let changelog = scripts.join("generate-release-changelog");
-        fs::write(
-            &changelog,
-            "#!/bin/sh\nprintf '%s\\n' \"$CODEXY_GENERATED_RELEASE_NOTES\"\ntest \"${CODEXY_GENERATED_RELEASE_NOTES_FAIL:-false}\" != true\n",
-        )?;
-        make_executable(&changelog)?;
-        fs::write(root.join("release-state"), state)?;
-        for asset in ASSETS {
-            fs::write(root.join("dist").join(asset), format!("verified {asset}\n"))?;
-            if existing.contains(&asset) {
-                fs::copy(root.join("dist").join(asset), assets.join(asset))?;
-            }
-        }
-        let gh = bin.join("gh");
-        fs::write(&gh, fake_gh())?;
-        make_executable(&gh)?;
-        let runner = root.join("run-release-reconciliation");
-        fs::write(
-            &runner,
-            format!("#!/bin/sh\nset -eu\n{}", reconciliation()?),
-        )?;
-        make_executable(&runner)?;
-        Ok(Self {
-            _temporary: temporary,
-            root,
-            assets,
-        })
-    }
-
-    fn assert_generated_notes(&self, operations: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-        self.assert_result(true, operations, false)?;
-        let args = fs::read_to_string(self.root.join("release-notes-args"))?;
-        let generated_notes_argument = format!("--notes\n{GENERATED_NOTES}\n");
-        support::assert_structured_literals(
-            &args,
-            "generated release notes",
-            &[&generated_notes_argument],
-        );
-        support::assert_structured_absent_literals(
-            &args,
-            "generated release notes",
-            &["Verified version release."],
-        );
-        let log = fs::read_to_string(self.root.join("release-log"))?;
-        support::assert_structured_literals(&log, "draft note update order", &["notes\npublish"]);
-        Ok(())
-    }
-
-    fn run(&self, generator_fails: bool) -> Result<(bool, String), Box<dyn std::error::Error>> {
-        let host_path = std::env::var_os("PATH").ok_or("PATH")?;
-        let mut paths = vec![self.root.join("bin")];
-        paths.extend(std::env::split_paths(&host_path));
-        let output = Command::new(self.root.join("run-release-reconciliation"))
-            .current_dir(&self.root)
-            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-            .env("FAKE_RELEASE_STATE", self.root.join("release-state"))
-            .env("FAKE_RELEASE_ASSETS", &self.assets)
-            .env("FAKE_RELEASE_LOG", self.root.join("release-log"))
-            .env(
-                "FAKE_RELEASE_NOTES_ARGS",
-                self.root.join("release-notes-args"),
-            )
-            .env(
-                "CODEXY_GENERATED_RELEASE_NOTES",
-                if generator_fails {
-                    PARTIAL_NOTES
-                } else {
-                    GENERATED_NOTES
-                },
-            )
-            .env(
-                "CODEXY_GENERATED_RELEASE_NOTES_FAIL",
-                generator_fails.to_string(),
-            )
-            .env("PATH", std::env::join_paths(paths)?)
-            .output()?;
-        Ok((
-            output.status.success(),
-            fs::read_to_string(self.root.join("release-log")).unwrap_or_default(),
-        ))
-    }
-
-    fn assert_result(
-        &self,
-        success: bool,
-        expected_operations: &[&str],
-        generator_fails: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let (actual_success, log) = self.run(generator_fails)?;
-        assert_eq!(actual_success, success, "release reconciliation failed");
-        assert_eq!(log.lines().collect::<Vec<_>>(), expected_operations);
-        Ok(())
-    }
-
-    fn reverse_finalization_order(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let runner = self.root.join("run-release-reconciliation");
-        let source = fs::read_to_string(&runner)?;
-        let notes = "gh release edit v1.3.0 --notes \"$changelog_notes\"";
-        let publish = "gh release edit v1.3.0 --draft=false";
-        let counterexample = source.replace(&format!("{notes}\n  {publish}"), &format!("{publish}\n  {notes}"));
-        assert_ne!(counterexample, source, "finalization counterexample must be applied");
-        fs::write(runner, counterexample)?;
-        Ok(())
-    }
-}
-
 fn reconciliation() -> Result<String, Box<dyn std::error::Error>> {
     let workflow =
         codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");
@@ -206,7 +95,7 @@ fn reconciliation() -> Result<String, Box<dyn std::error::Error>> {
     Ok(run[run.find("if ! gh release view").ok_or("release view")?..].to_owned())
 }
 
-fn make_executable(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn make_executable(path: &Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
