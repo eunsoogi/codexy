@@ -34,10 +34,46 @@ fn validator_rejects_non_blocking_waits_described_as_blocked() -> TestResult {
 }
 
 #[test]
+fn validator_rejects_negated_resolved_and_pending_review_waits() -> TestResult {
+    for handoff in [
+        "Blocked while reviewer reports no requested changes are pending.",
+        "Blocked while requested changes are resolved and reviewer confirmation is pending.",
+        "Blocked while feedback from the maintainer is pending.",
+        "Blocked while a security review is pending.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            !output.status.success(),
+            "review wait unexpectedly passed: {handoff}"
+        );
+        assert!(stderr(&output).contains("waiting state"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_uncertainty_and_token_pressure_as_blockers() -> TestResult {
+    for handoff in [
+        "Blocked because the implementation remains uncertain.",
+        "Blocked because token pressure is high.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            !output.status.success(),
+            "operational pressure unexpectedly passed: {handoff}"
+        );
+        assert!(stderr(&output).contains("waiting state"));
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",
+        "Blocked: requested changes are not resolved.",
         "Blocked: required status checks are failing.",
+        "Blocked: required checks failed during a hard investigation.",
         "Blocked: child thread omitted required goal tool evidence.",
         "Blocked: worktree setup failed with an invalid reference.",
         "Blocked: async tool failed authentication.",

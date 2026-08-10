@@ -25,6 +25,9 @@ const REVIEW_SUBJECTS: &[&str] = &[
     "review comment",
     "requested changes",
     "changes requested",
+    "maintainer feedback",
+    "feedback from maintainer",
+    "security review",
 ];
 
 const ACTIONABLE_REVIEW_STATES: &[&str] = &[
@@ -32,16 +35,9 @@ const ACTIONABLE_REVIEW_STATES: &[&str] = &[
     "actionable review",
     "changes requested",
     "requested changes",
-    "suggestion",
-    "unresolved",
+    "review suggestion",
+    "unresolved review",
     "resolution required",
-];
-
-const NON_ACTIONABLE_REVIEW_STATES: &[&str] = &[
-    "no actionable feedback",
-    "no actionable review feedback",
-    "no feedback",
-    "no review feedback",
 ];
 
 const PENDING_STATES: &[&str] = &[
@@ -53,7 +49,27 @@ const PENDING_STATES: &[&str] = &[
     "not returned",
     "not yet returned",
     "has not returned",
-    "hasn't returned",
+];
+
+const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
+    "hard",
+    "slow",
+    "uncertain",
+    "uncertainty",
+    "incomplete",
+    "token pressure",
+    "token budget",
+    "token limit",
+];
+
+const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
+const RESOLUTIONS: &[&str] = &[
+    "resolved",
+    "fixed",
+    "addressed",
+    "cleared",
+    "complete",
+    "completed",
 ];
 
 pub(in crate::validation) fn classify_producer(value: &str) -> Option<WaitDisposition> {
@@ -62,18 +78,88 @@ pub(in crate::validation) fn classify_producer(value: &str) -> Option<WaitDispos
         .then_some(WaitDisposition::Nonterminal)
 }
 
+pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDisposition> {
+    let words = words(text);
+    if contains_any_phrase(&words, OPERATIONAL_NONTERMINAL_STATES) {
+        return Some(WaitDisposition::Nonterminal);
+    }
+    classify_reviewer_words(&words)
+}
+
 pub(in crate::validation) fn classify_reviewer_text(text: &str) -> Option<WaitDisposition> {
-    if !contains_any(text, REVIEW_SUBJECTS) {
+    classify_reviewer_words(&words(text))
+}
+
+fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
+    if !contains_any_phrase(&words, REVIEW_SUBJECTS)
+        && !has_nearby_words(&words, "feedback", "maintainer", 3)
+    {
         return None;
     }
-    if contains_any(text, ACTIONABLE_REVIEW_STATES)
-        && !contains_any(text, NON_ACTIONABLE_REVIEW_STATES)
+    if ACTIONABLE_REVIEW_STATES
+        .iter()
+        .any(|phrase| has_affirmative_unresolved_phrase(&words, phrase))
     {
         return Some(WaitDisposition::Actionable);
     }
-    contains_any(text, PENDING_STATES).then_some(WaitDisposition::Nonterminal)
+    (contains_any_phrase(&words, PENDING_STATES)
+        || has_affirmative_resolution(&words)
+        || contains_any_phrase(&words, &["no actionable feedback", "no review feedback"]))
+    .then_some(WaitDisposition::Nonterminal)
 }
 
-fn contains_any(text: &str, values: &[&str]) -> bool {
-    values.iter().any(|value| text.contains(value))
+fn has_affirmative_unresolved_phrase(words: &[&str], phrase: &str) -> bool {
+    phrase_positions(words, phrase).any(|start| {
+        let end = start + word_count(phrase);
+        let before = &words[start.saturating_sub(3)..start];
+        let after = &words[end..words.len().min(end + 5)];
+        !before.iter().any(|word| NEGATIONS.contains(word))
+            && (!(has_affirmative_resolution(before) || has_affirmative_resolution(after))
+                || after.contains(&"unresolved"))
+    })
+}
+
+fn has_affirmative_resolution(words: &[&str]) -> bool {
+    words.iter().enumerate().any(|(index, word)| {
+        RESOLUTIONS.contains(word)
+            && !words[index.saturating_sub(2)..index]
+                .iter()
+                .any(|prior| NEGATIONS.contains(prior))
+    })
+}
+
+fn contains_any_phrase(words: &[&str], phrases: &[&str]) -> bool {
+    phrases
+        .iter()
+        .any(|phrase| phrase_positions(words, phrase).next().is_some())
+}
+
+fn has_nearby_words(words: &[&str], first: &str, second: &str, distance: usize) -> bool {
+    words.iter().enumerate().any(|(index, word)| {
+        *word == first
+            && words[index.saturating_sub(distance)..words.len().min(index + distance + 1)]
+                .contains(&second)
+    })
+}
+
+fn phrase_positions<'a>(
+    tokens: &'a [&'a str],
+    phrase: &'a str,
+) -> impl Iterator<Item = usize> + 'a {
+    let phrase = words(phrase);
+    tokens
+        .windows(phrase.len())
+        .enumerate()
+        .filter(move |(_, window)| *window == phrase)
+        .map(|(index, _)| index)
+}
+
+fn word_count(text: &str) -> usize {
+    words(text).len()
+}
+
+fn words(text: &str) -> Vec<&str> {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect()
 }

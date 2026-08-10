@@ -69,16 +69,31 @@ pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     values.next().is_none().then_some(value)
 }
 
-pub(super) fn has_distinct_values(line: &str, name: &str, minimum: usize) -> bool {
+pub(super) fn has_distinct_substantive_values(
+    line: &str,
+    name: &str,
+    minimum_values: usize,
+    minimum_words: usize,
+    minimum_characters: usize,
+) -> bool {
     field(line, name)
         .map(|value| {
             value
                 .split('|')
                 .map(str::trim)
-                .filter(|value| !value.is_empty())
+                .filter(|value| is_substantive(value, minimum_words, minimum_characters))
                 .collect::<std::collections::BTreeSet<_>>()
                 .len()
-                >= minimum
+                >= minimum_values
         })
         .unwrap_or(false)
+}
+
+pub(super) fn is_substantive(value: &str, minimum_words: usize, minimum_characters: usize) -> bool {
+    let words = value
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
+    words.len() >= minimum_words && characters >= minimum_characters
 }
