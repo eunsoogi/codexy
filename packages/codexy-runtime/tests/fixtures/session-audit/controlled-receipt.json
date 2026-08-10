@@ -22,7 +22,7 @@
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "78a8786e7c40850b6f3e1b9fabe8b5c0b2cb1f461a5726c03b0bcb78f92ea804"
+        "sha256": "670c28a7a7f8feb13e3a04dd9b020199ef267a6fbb822443f5864a38c79add37"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -40,7 +40,7 @@
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "78a8786e7c40850b6f3e1b9fabe8b5c0b2cb1f461a5726c03b0bcb78f92ea804"
+        "sha256": "670c28a7a7f8feb13e3a04dd9b020199ef267a6fbb822443f5864a38c79add37"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -54,7 +54,7 @@
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "78a8786e7c40850b6f3e1b9fabe8b5c0b2cb1f461a5726c03b0bcb78f92ea804"
+        "sha256": "670c28a7a7f8feb13e3a04dd9b020199ef267a6fbb822443f5864a38c79add37"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
