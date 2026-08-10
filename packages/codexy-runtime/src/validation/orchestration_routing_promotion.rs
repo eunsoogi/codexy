@@ -91,15 +91,35 @@ fn action_end(words: &[&str], operand: usize) -> usize {
 }
 
 fn action_start(words: &[&str], operand: usize) -> usize {
-    words[..operand]
+    let temporal_start = words[..operand]
         .iter()
         .enumerate()
         .rev()
         .find_map(|(index, word)| {
             (*word == "while" && starts_new_action(&words[index + 1..=operand]))
                 .then_some(index + 1)
-        })
+        });
+    temporal_start
+        .or_else(|| conjunction_action_start(words, operand))
         .unwrap_or(0)
+}
+
+fn conjunction_action_start(words: &[&str], operand: usize) -> Option<usize> {
+    (0..operand).rev().find_map(|index| {
+        (matches!(words[index], "and" | "but")
+            && introduces_action(&words[..index])
+            && introduces_action(&words[index + 1..=operand])
+            && starts_policy_subject(&words[index + 1..operand]))
+        .then_some(index + 1)
+    })
+}
+
+fn starts_policy_subject(words: &[&str]) -> bool {
+    words.contains(&"promotion")
+        || (words.contains(&"generic") && words.contains(&"child") && words.contains(&"default"))
+        || words
+            .iter()
+            .any(|word| matches!(*word, "reviewer" | "reviewers"))
 }
 
 fn starts_new_action(words: &[&str]) -> bool {

@@ -13,6 +13,7 @@ fn validator_binds_promotion_and_default_operands_to_subclauses() -> TestResult 
         "Promotion above Terra/high MAY proceed after final acceptance alone, while reviewers are allowed only as an explicit exception selected by complete validated measurement.",
         "Promotion above Terra/high, while #549 remains open, MAY proceed after final acceptance alone.",
         "- Reviewers are allowed only as an explicit exception selected by complete validated measurement, while Promotion above Terra/high MAY proceed after final acceptance alone.",
+        "- Reviewers are allowed only as an explicit exception selected by complete validated measurement while #549 remains open, and Promotion above Terra/high MAY proceed after final acceptance alone.",
         "Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement! Promotion above Terra/high MAY proceed after final acceptance alone.",
         "Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement? Promotion above Terra/high MAY proceed after final acceptance alone.",
     ] {
@@ -24,6 +25,7 @@ fn validator_binds_promotion_and_default_operands_to_subclauses() -> TestResult 
     }
     for control in [
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY proceed.",
+        "Promotion above Terra/high MAY proceed only as an explicit exception selected by complete validated measurement and requires no additional reviewer action.",
         "Generic implementation child Terra/high default MUST apply generally, while reviewers MAY apply only when #549 remains open.",
     ] {
         let errors = validate(with_routing_addition(&skill, control))?;
