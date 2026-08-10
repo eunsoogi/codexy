@@ -6,19 +6,24 @@ Migrate only an existing supported topic root. MUST preserve existing `raw/`, `w
 
 ## Procedure
 
-1. MUST read existing frontmatter and record the topic root, source paths, and
-   current index state in a new `log.md` entry.
-2. MUST keep each existing raw file byte-for-byte. If a source changed, MUST
+1. MUST read the complete existing topic tree, including frontmatter, indexes,
+   raw sources, and the current log.
+2. MUST validate every referenced provenance and freshness input before any log
+   or derived write. MUST preserve every complete relative `sources:` scalar
+   exactly. If a source chain is missing, broken, weak, drifted, or
+   contradictory, MUST stop, MUST report the provenance gap, and MUST leave the
+   entire topic tree unchanged. A malformed or future date receives zero
+   freshness credit and MUST be reported before any derived write.
+3. Only after the preflight passes, MUST append one migration entry to `log.md`
+   with the topic root, source paths, index state, byte accounting, and
+   freshness result.
+4. MUST keep each existing raw file byte-for-byte. If a source changed, MUST
    ingest a new immutable revision instead of modifying historical raw material.
-3. MUST add missing derived frontmatter only when its value is already present
+5. MUST add missing derived frontmatter only when its value is already present
    in supported data. MUST rebuild indexes from frontmatter after the
    source-of-truth Markdown is valid.
-4. MUST preserve every complete relative `sources:` scalar exactly. If a source
-   chain is missing, broken, weak, drifted, or contradictory, MUST stop and
-   MUST report the provenance gap; MUST NOT infer or fabricate a replacement.
-5. MUST recompile only the affected articles, then query through the normal
-   bounded index-and-article path. MUST record the byte accounting and freshness
-   result.
+6. MUST recompile only the affected articles, then query through the normal
+   master-index, category-index, and article path.
 
 ## Completion checks
 

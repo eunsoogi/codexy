@@ -2,4 +2,4 @@
 title: Supported topic index
 ---
 
-- [Retrieval](wiki/retrieval.md)
+- [Wiki articles](wiki/_index.md)
