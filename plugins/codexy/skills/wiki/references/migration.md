@@ -15,7 +15,7 @@ Migrate only an existing supported topic root. MUST preserve existing `raw/`, `w
    source-of-truth Markdown is valid.
 4. MUST preserve every complete relative `sources:` scalar exactly. If a source
    chain is missing, broken, weak, drifted, or contradictory, MUST stop and
-   report the provenance gap; MUST NOT infer or fabricate a replacement.
+   MUST report the provenance gap; MUST NOT infer or fabricate a replacement.
 5. MUST recompile only the affected articles, then query through the normal
    bounded index-and-article path. MUST record the byte accounting and freshness
    result.

@@ -51,7 +51,15 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
     let normalized = guide.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(normalized.contains("MUST preserve existing `raw/`, `wiki/`, `_index.md`, and `log.md`"));
     assert!(normalized.contains("MUST NOT delete, overwrite, or rename existing topic data"));
-    assert!(normalized.contains("MUST stop and report the provenance gap"));
+    let provenance_rule = normalized
+        .split("5. MUST recompile")
+        .next()
+        .and_then(|prefix| prefix.rsplit("4. ").next())
+        .ok_or("missing provenance-gap migration rule")?;
+    assert_eq!(
+        provenance_rule.trim(),
+        "MUST preserve every complete relative `sources:` scalar exactly. If a source chain is missing, broken, weak, drifted, or contradictory, MUST stop and MUST report the provenance gap; MUST NOT infer or fabricate a replacement."
+    );
     assert_eq!(read(&root.join("before/raw/source.md"))?, read(&root.join("after/raw/source.md"))?);
     let article = read(&root.join("after/wiki/topic.md"))?;
     assert!(article.contains("sources:\n  - raw/source.md"));
