@@ -89,6 +89,10 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
         (
+            "Generic implementation child Terra/high default MAY apply generally, while #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
             "Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),

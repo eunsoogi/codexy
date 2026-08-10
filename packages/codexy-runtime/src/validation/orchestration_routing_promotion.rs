@@ -48,6 +48,7 @@ fn clauses(text: &str) -> Vec<String> {
         .collect::<Vec<_>>()
         .join(" ")
         .replace(", but ", ";")
+        .replace(", while #549", " while #549")
         .replace(", while ", ";")
         .split([';', '.'])
         .map(|clause| clause.trim().to_ascii_lowercase())
