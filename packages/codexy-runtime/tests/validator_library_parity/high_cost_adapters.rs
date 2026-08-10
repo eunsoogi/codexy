@@ -144,7 +144,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         (
             "tests/validator_token_polling_runtime_identity.rs",
             "support::instruction_policy_fixture",
-            "skills/orchestration/SKILL.md",
+            "skills/orchestration/references/token-efficient.md",
         ),
         (
             "tests/token_quota_containment.rs",
