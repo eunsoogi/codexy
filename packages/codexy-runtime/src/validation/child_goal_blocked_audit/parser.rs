@@ -112,14 +112,18 @@ fn substantive_identity(
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
-    let concepts = words
+    let content = words
         .iter()
-        .filter(|word| word.chars().count() >= 2 && word.chars().any(char::is_alphabetic))
+        .filter(|word| word.chars().count() >= 4 && word.chars().any(char::is_alphabetic))
         .map(|word| word.to_lowercase())
+        .collect::<Vec<_>>();
+    let concepts = content
+        .iter()
+        .cloned()
         .collect::<std::collections::BTreeSet<_>>();
     (words.len() >= minimum_words
         && characters >= minimum_characters
         && concepts.len() >= minimum_concepts
-        && concepts.len() * 2 > words.len())
+        && concepts.len() == content.len())
     .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
 }

@@ -2,7 +2,7 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const OPEN_PR_STATE: &str =
-    r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
+    r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#;
 
 #[test]
 fn validator_rejects_non_blocking_waits_described_as_blocked() -> TestResult {
@@ -46,7 +46,11 @@ fn validator_rejects_negated_resolved_and_pending_review_waits() -> TestResult {
             !output.status.success(),
             "review wait unexpectedly passed: {handoff}"
         );
-        assert!(stderr(&output).contains("waiting state"));
+        assert!(
+            stderr(&output).contains("waiting state"),
+            "missing waiting diagnostic for {handoff}: {}",
+            stderr(&output)
+        );
     }
     Ok(())
 }
@@ -62,30 +66,46 @@ fn validator_rejects_uncertainty_and_token_pressure_as_blockers() -> TestResult 
             !output.status.success(),
             "operational pressure unexpectedly passed: {handoff}"
         );
-        assert!(stderr(&output).contains("waiting state"));
+        assert!(
+            stderr(&output).contains("waiting state"),
+            "missing waiting diagnostic for {handoff}: {}",
+            stderr(&output)
+        );
     }
     Ok(())
 }
 
 #[test]
 fn validator_prioritizes_actionable_review_over_operational_context() -> TestResult {
-    let actionable = validate(
+    for handoff in [
         "Blocked: requested changes remain unresolved while work is incomplete.",
-    )?;
-    assert!(
-        actionable.status.success(),
-        "actionable mixed context was rejected: {}",
-        stderr(&actionable)
-    );
+        "Blocked: review feedback is not resolved while work is incomplete.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            output.status.success(),
+            "actionable mixed context was rejected: {handoff}\n{}",
+            stderr(&output)
+        );
+    }
 
-    let nonterminal = validate(
+    for handoff in [
+        "Blocked: requested changes are not unresolved.",
+        "Blocked: review feedback is resolved while work is incomplete.",
+        "Blocked: no review feedback remains unresolved while work is incomplete.",
         "Blocked: no requested changes remain unresolved while work is incomplete.",
-    )?;
-    assert!(
-        !nonterminal.status.success(),
-        "negated mixed context unexpectedly passed"
-    );
-    assert!(stderr(&nonterminal).contains("waiting state"));
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            !output.status.success(),
+            "nonterminal review context unexpectedly passed: {handoff}"
+        );
+        assert!(
+            stderr(&output).contains("waiting state"),
+            "missing waiting diagnostic for {handoff}: {}",
+            stderr(&output)
+        );
+    }
     Ok(())
 }
 
