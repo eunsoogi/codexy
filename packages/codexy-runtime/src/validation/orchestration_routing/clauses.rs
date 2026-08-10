@@ -4,12 +4,7 @@ pub(super) fn boundaries(instruction: &str) -> Vec<String> {
     while cursor < bytes.len() {
         let boundary = match bytes[cursor] {
             b';' => Some((cursor, cursor + 1)),
-            b'.' => simple_after(bytes, cursor + 1).map(|next| (cursor, next)),
-            _ if word_at(bytes, cursor, b"and")
-                && (cursor == 0 || !bytes[cursor - 1].is_ascii_alphanumeric()) =>
-            {
-                simple_after(bytes, cursor + 3).map(|next| (cursor, next))
-            }
+            _ if cursor > start && simple_task_modal_at(bytes, cursor) => Some((cursor, cursor)),
             _ => None,
         };
         if let Some((end, next)) = boundary {
@@ -24,17 +19,41 @@ pub(super) fn boundaries(instruction: &str) -> Vec<String> {
     clauses
 }
 
-fn simple_after(bytes: &[u8], cursor: usize) -> Option<usize> {
-    let next = cursor
-        + bytes[cursor..]
-            .iter()
-            .take_while(|byte| byte.is_ascii_whitespace())
-            .count();
-    word_at(bytes, next, b"simple").then_some(next)
+fn simple_task_modal_at(bytes: &[u8], start: usize) -> bool {
+    let Some(mut cursor) = word_end(bytes, start, b"simple") else {
+        return false;
+    };
+    cursor = whitespace_after(bytes, cursor);
+    if !bytes
+        .get(cursor..cursor + 4)
+        .is_some_and(|task| task.eq_ignore_ascii_case(b"task"))
+    {
+        return false;
+    }
+    cursor += 4 + usize::from(bytes.get(cursor + 4) == Some(&b's'));
+    cursor = whitespace_after(bytes, cursor);
+    [b"must".as_slice(), b"may", b"should", b"can", b"cannot"]
+        .iter()
+        .any(|modal| word_end(bytes, cursor, modal).is_some())
 }
 
-fn word_at(bytes: &[u8], start: usize, word: &[u8]) -> bool {
+fn whitespace_after(bytes: &[u8], start: usize) -> usize {
+    start
+        + bytes[start..]
+            .iter()
+            .take_while(|byte| byte.is_ascii_whitespace())
+            .count()
+}
+
+fn word_end(bytes: &[u8], start: usize, word: &[u8]) -> Option<usize> {
+    let end = start + word.len();
     bytes
-        .get(start..start + word.len())
-        .is_some_and(|candidate| candidate.eq_ignore_ascii_case(word))
+        .get(start..end)
+        .filter(|candidate| candidate.eq_ignore_ascii_case(word))
+        .filter(|_| {
+            bytes
+                .get(end)
+                .is_none_or(|next| !next.is_ascii_alphabetic())
+        })
+        .map(|_| end)
 }
