@@ -84,12 +84,19 @@ fn validator_rejects_every_additional_active_luna_max_simple_assignment() -> Tes
         "- Simple-task candidate routing MUST use Luna/max even when high-risk.\n",
         "1. Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n",
         "- Container policy:\n  - Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n",
+        "- Simple task MUST use model: \"gpt-5.6-luna\" with thinking: \"max\" even when high-risk.\n",
     ] {
         assert_policy_rejected(
             skill.replacen(simple_rule, &format!("{simple_rule}\n{addition}"), 1),
             "simple-work Luna/max candidates must require every bounded-work predicate",
         )?;
     }
+    let errors = validate(skill.replacen(
+        simple_rule,
+        &format!("{simple_rule}\n- Simple tasks MUST NOT use Luna/max.\n"),
+        1,
+    ))?;
+    assert!(errors.is_empty(), "Luna/max prohibition was an assignment: {errors:#?}");
     for inactive in [
         "```md\n- Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n```\n",
         "<!-- - Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk. -->\n",

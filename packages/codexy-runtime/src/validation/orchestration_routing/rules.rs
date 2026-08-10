@@ -21,13 +21,46 @@ pub(super) fn simple_route_is_affirmative(bullet: &str) -> bool {
     bullet.strip_prefix(SIMPLE_ROUTE_PREFIX) == Some(SIMPLE_ROUTE_CONJUNCTION)
 }
 
-pub(super) fn is_simple_luna_assignment(bullet: &str) -> bool {
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum SimpleLunaAssignment {
+    Affirmative,
+    Prohibition,
+}
+
+pub(super) fn simple_luna_assignment(bullet: &str) -> Option<SimpleLunaAssignment> {
     let normalized = bullet.to_ascii_lowercase();
-    normalized.contains("simple")
-        && ((normalized.contains("gpt-5.6-luna")
-            && normalized.contains("reasoning_effort")
-            && normalized.contains("max"))
-            || normalized.contains("luna/max"))
+    let has_operands = normalized.contains("luna/max")
+        || normalized.contains("gpt-5.6-luna")
+            && ["reasoning_effort", "reasoning-effort", "thinking"]
+                .into_iter()
+                .any(|field| field_equals(&normalized, field, "max"));
+    (normalized.contains("simple") && has_operands).then_some(())?;
+    Some(if normalized.contains("must not") {
+        SimpleLunaAssignment::Prohibition
+    } else if normalized.contains("must") {
+        SimpleLunaAssignment::Affirmative
+    } else {
+        return None;
+    })
+}
+
+fn field_equals(text: &str, field: &str, expected: &str) -> bool {
+    text.match_indices(field).any(|(start, _)| {
+        let valid_start = text[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|character| !character.is_ascii_alphanumeric() && character != '_');
+        let value = text[start + field.len()..]
+            .trim_start()
+            .strip_prefix(':')
+            .map(str::trim_start)
+            .unwrap_or_default()
+            .trim_start_matches(['"', '`']);
+        valid_start
+            && value.strip_prefix(expected).is_some_and(|suffix| {
+                suffix.is_empty() || suffix.starts_with(['"', '`', ' ', ',', ';', '.', ')'])
+            })
+    })
 }
 
 pub(super) const ROUTING_REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
