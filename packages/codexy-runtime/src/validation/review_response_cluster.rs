@@ -30,7 +30,7 @@ const SENTINEL_CLAUSES: &[&str] = &[
 
 pub(super) fn check_instruction_policy(path: &Path, text: &str, errors: &mut Vec<String>) {
     procedure::check(path, text, errors);
-    let clauses = if path.ends_with("skills/codex-orchestration/SKILL.md") {
+    let clauses = if path.ends_with("skills/orchestration/SKILL.md") {
         Some(ORCHESTRATION_CLAUSES)
     } else if path.ends_with("skills/git-workflow/SKILL.md") {
         Some(GIT_WORKFLOW_CLAUSES)

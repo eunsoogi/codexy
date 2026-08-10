@@ -11,7 +11,7 @@ case "$0" in
   *) script_dir=. ;;
 esac
 plugin_root=$(CDPATH= cd -- "$script_dir" && pwd -P)
-delegate="$plugin_root/skills/codex-orchestration/scripts/bootstrap-codexy-agents"
+delegate="$plugin_root/skills/orchestration/scripts/bootstrap-codexy-agents"
 if [ ! -f "$plugin_root/.codex-plugin/plugin.json" ]; then
   echo "bootstrap-codexy-agents must run from an installed Codexy plugin root" >&2
   exit 2

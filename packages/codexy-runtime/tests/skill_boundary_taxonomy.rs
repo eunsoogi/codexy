@@ -88,11 +88,16 @@ fn overlap_boundaries_and_non_markdown_authority_are_explicit() -> TestResult {
     }
 
     let classification = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
-    assert!(section(&classification, "Authority Boundary")?
+    let authority = section(&classification, "Authority Boundary")?;
+    assert!(authority
         .lines()
         .any(|line| !line.trim().is_empty()));
+    assert_eq!(classification.matches("## Authority Boundary").count(), 1);
+    assert!(authority.lines().any(|line| {
+        line == "`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action."
+    }));
     Ok(())
 }
 
@@ -107,7 +112,7 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
     let complete_table = format!(
         "{partial_table}{}",
         r#"| Atomic scope | issue-sized |
-| Required skills | task-classification |
+| Required skills | orchestration |
 | Required tools/evidence | goal, plan |
 | First allowed action | implement after classification |
 | Stop/blocker | None |

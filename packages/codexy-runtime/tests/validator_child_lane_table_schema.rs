@@ -14,7 +14,7 @@ fn validator_rejects_arbitrary_ninth_gfm_classification_row() -> TestResult {
     let output = crate::support::validator_child_lane_ownership_file(&path)?;
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains(
-        "child-owned lane control evidence includes create_goal or update_plan before formal $task-classification evidence completed"
+        "child-owned lane control evidence includes create_goal or update_plan before formal $orchestration evidence completed"
     ));
     Ok(())
 }
@@ -209,7 +209,7 @@ fn classification_rows() -> [&'static str; 8] {
         "| Secondary surfaces | validators |",
         "| Owner decision | affirmative child-owned because the delegated child owns implementation |",
         "| Atomic scope | issue-sized |",
-        "| Required skills | task-classification |",
+        "| Required skills | orchestration |",
         "| Required tools/evidence | goal, plan |",
         "| First allowed action | implement after classification |",
         "| Stop/blocker | None |",

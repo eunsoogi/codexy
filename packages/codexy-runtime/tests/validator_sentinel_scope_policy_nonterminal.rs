@@ -5,10 +5,10 @@ use super::validator_sentinel_scope_policy_fixture::{
 };
 
 const SURFACES: &[&str] = &[
-    "skills/codex-orchestration/SKILL.md",
-    "skills/codex-orchestration/references/classification-and-control.md",
+    "skills/orchestration/SKILL.md",
+    "skills/orchestration/references/classification-and-control.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/token-efficient-orchestration/SKILL.md",
+    "skills/orchestration/SKILL.md",
 ];
 
 #[test]

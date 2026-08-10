@@ -5,7 +5,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 const OPEN_PR_STATE: &str =
     r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
 const CONTRACT: &str =
-    "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.";
+    "Codexy orchestration contract: active @Codexy workflow routes through $orchestration.";
 const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.";
 const OWNERSHIP_BOUNDARY: &str = "Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.";
 const GIT_PREFLIGHT: &str = "Git graph/log preflight captured before editing:\n\
@@ -71,7 +71,7 @@ fn validator_cli_rejects_tautological_duplicate_state() -> TestResult {
 fn validator_cli_rejects_colonless_list_heading_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: no merge; leave PR open until parent final acceptance.\n\

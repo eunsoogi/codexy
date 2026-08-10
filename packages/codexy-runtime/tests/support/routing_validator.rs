@@ -25,7 +25,7 @@ pub(crate) fn assert_accepted(skill: String) -> TestResult {
 pub(crate) fn duplicate_recipient_section(policy: &str) -> TestResult<String> {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     Ok(skill.replacen(
         "## Read Next",

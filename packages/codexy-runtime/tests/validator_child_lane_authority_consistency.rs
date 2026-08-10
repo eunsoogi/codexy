@@ -198,7 +198,7 @@ fn classification_without_owner(source: &str, owner: &str) -> String {
 
 fn classification_table(display_owner: &str) -> String {
     format!(
-        "| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | {display_owner} |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+        "| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | {display_owner} |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
     )
 }
 

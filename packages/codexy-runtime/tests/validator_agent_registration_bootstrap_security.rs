@@ -9,7 +9,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn bootstrap_and_registrar_reject_abbreviated_options() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
-    let scripts = plugin_root.join("skills/codex-orchestration/scripts");
+    let scripts = plugin_root.join("skills/orchestration/scripts");
     let codex_home = temp.path().join("home/.codex");
 
     for arguments in [
@@ -48,7 +48,7 @@ fn bootstrap_rejects_symlink_invocation_before_running_a_sibling() -> TestResult
 
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     let attack_dir = temp.path().join("attack");
     std::fs::create_dir(&attack_dir)?;
     let linked_bootstrap = attack_dir.join("bootstrap-codexy-agents");
@@ -81,7 +81,7 @@ fn bootstrap_rejects_a_symlinked_registrar() -> TestResult {
 
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
-    let scripts = plugin_root.join("skills/codex-orchestration/scripts");
+    let scripts = plugin_root.join("skills/orchestration/scripts");
     let registrar = scripts.join("register-codexy-agents");
     std::fs::remove_file(&registrar)?;
     let marker = temp.path().join("attacker-ran");
@@ -110,7 +110,7 @@ fn validator_rejects_a_symlinked_bootstrap_entrypoint() -> TestResult {
 
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     let target = temp.path().join("outside-bootstrap");
     std::fs::rename(&bootstrap, &target)?;
     symlink(&target, &bootstrap)?;

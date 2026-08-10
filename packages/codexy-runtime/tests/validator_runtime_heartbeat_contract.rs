@@ -74,7 +74,7 @@ const TRANSITION_CLAUSES: &[&str] = &[
 
 #[test]
 fn plugin_fixture_reset_restores_a_mutated_skill() -> TestResult {
-    let relative = std::path::Path::new("skills/token-efficient-orchestration/SKILL.md");
+    let relative = std::path::Path::new("skills/orchestration/SKILL.md");
     let fixture = support::plugin_fixture_with_mutable_files(&[relative])?;
     let path = fixture.root().join(relative);
     let original = fs::read_to_string(&path)?;
@@ -90,10 +90,10 @@ fn plugin_fixture_reset_restores_a_mutated_skill() -> TestResult {
 fn validator_requires_runtime_heartbeat_contract() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let heartbeat = fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/runtime-heartbeats.md"),
+        root.join("plugins/codexy/skills/orchestration/references/runtime-heartbeats.md"),
     )?;
     let token = fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
     )?;
 
     structured_contract::assert_rules(
@@ -105,31 +105,31 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
         structured_contract_rules::TOKEN_CONTAINMENT,
     );
     assert_rejected_clauses(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
         ORCHESTRATION_CLAUSES,
         "removed heartbeat policy",
         "runtime heartbeat contract",
     )?;
     assert_rejected_clauses(
-        "skills/token-efficient-orchestration/SKILL.md",
+        "skills/orchestration/references/token-efficient.md",
         TOKEN_CLAUSES,
         "removed heartbeat policy",
         "runtime heartbeat contract",
     )?;
     assert_rejected_clauses(
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
         EXTERNAL_GATE_CLAUSES,
         "removed event-wait policy",
         "runtime heartbeat external-gate policy",
     )?;
     assert_rejected_clauses(
-        "skills/token-efficient-orchestration/templates/delta-poll.md",
+        "skills/orchestration/templates/delta-poll.md",
         TEMPLATE_CLAUSES,
         "removed heartbeat slot",
         "runtime heartbeat",
     )?;
     assert_rejected_clauses(
-        "skills/codex-orchestration/references/goal-transition-reporting.md",
+        "skills/orchestration/references/goal-transition-reporting.md",
         TRANSITION_CLAUSES,
         "removed monitor identity policy",
         "monitor identities",
@@ -140,7 +140,7 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
 #[test]
 fn validator_rejects_weak_runtime_heartbeat_policy() -> TestResult {
     let fixture = support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;

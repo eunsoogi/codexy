@@ -97,11 +97,11 @@ fn classification(source: &str, authority: &str, display: &str, gfm: bool) -> St
     let decision = format!("affirmative {display} because the selected lane owns implementation");
     let fields = if gfm {
         format!(
-            "| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | {decision} |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
+            "| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | {decision} |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | goal, plan |\n| First allowed action | implement after classification |\n| Stop/blocker | None |"
         )
     } else {
         format!(
-            "Lane type: implementation\nSecondary surfaces: validators\nOwner decision: {decision}\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
+            "Lane type: implementation\nSecondary surfaces: validators\nOwner decision: {decision}\nAtomic scope: issue-sized\nRequired skills: orchestration\nRequired tools/evidence: goal, plan\nFirst allowed action: implement after classification\nStop/blocker: None"
         )
     };
     format!(

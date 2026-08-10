@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use crate::support;
 
@@ -7,7 +7,7 @@ mod validator_merge_authorization_routes;
 
 fn fixture() -> Result<support::PluginFixture, Box<dyn std::error::Error>> {
     Ok(support::plugin_fixture_with_mutable_files(&[
-        Path::new("skills/codex-orchestration/SKILL.md"),
+        Path::new("skills/orchestration/SKILL.md"),
         Path::new("skills/proof-driven-completion/SKILL.md"),
         Path::new("skills/git-workflow/references/merge-and-main-sync.md"),
     ])?)
@@ -18,11 +18,17 @@ fn policy_fixture_declares_native_mutation_paths() -> Result<(), Box<dyn std::er
     let fixture = fixture()?;
     let declared = support::fixture_mutable_files(fixture.root()).ok_or("fixture paths")?;
     let expected = [
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
         "skills/git-workflow/references/merge-and-main-sync.md",
         "skills/proof-driven-completion/SKILL.md",
     ];
-    assert_eq!(declared, expected.map(Path::new).map(std::path::PathBuf::from));
+    let expected = expected.map(Path::new).map(std::path::PathBuf::from);
+    assert_eq!(declared.len(), expected.len(), "fixture paths must not omit or duplicate a mutation surface");
+    assert_eq!(
+        declared.into_iter().collect::<BTreeSet<_>>(),
+        expected.into_iter().collect::<BTreeSet<_>>(),
+        "fixture paths must preserve exact native mutation-surface membership"
+    );
     Ok(())
 }
 
@@ -30,7 +36,7 @@ fn policy_fixture_declares_native_mutation_paths() -> Result<(), Box<dyn std::er
 fn policy_rejects_a_profile_that_converts_gates_to_permission()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = fixture()?;
-    let path = fixture.root().join("skills/codex-orchestration/SKILL.md");
+    let path = fixture.root().join("skills/orchestration/SKILL.md");
     let mut text = std::fs::read_to_string(&path)?;
     text.push_str("\nA later workflow profile can treat passing gates as permission to merge without a separate authorization record.\n");
     std::fs::write(path, text)?;

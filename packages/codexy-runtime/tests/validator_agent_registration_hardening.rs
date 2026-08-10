@@ -168,7 +168,7 @@ fn fixture(root: &Path) -> std::io::Result<PathBuf> {
 
 fn command(plugin: &Path, home: &Path) -> Command {
     let mut command =
-        Command::new(plugin.join("skills/codex-orchestration/scripts/register-codexy-agents"));
+        Command::new(plugin.join("skills/orchestration/scripts/register-codexy-agents"));
     command
         .args(["--plugin-root"])
         .arg(plugin)
@@ -182,7 +182,7 @@ fn run(plugin: &Path, home: &Path, extra: &[&str]) -> std::io::Result<Output> {
 }
 
 fn python(plugin: &Path, argument: &Path, body: &str) -> std::io::Result<Output> {
-    let scripts = plugin.join("skills/codex-orchestration/scripts");
+    let scripts = plugin.join("skills/orchestration/scripts");
     let prelude = "import sys; sys.dont_write_bytecode=True\nfrom pathlib import Path\nsys.path.insert(0, sys.argv[1])\n";
     Command::new("python3")
         .args(["-c", &format!("{prelude}{body}"), scripts.to_str().unwrap()])

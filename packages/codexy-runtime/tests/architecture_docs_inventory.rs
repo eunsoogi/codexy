@@ -23,6 +23,14 @@ fn architecture_guide_matches_packaged_inventory() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
     validate_guide(root, &guide).map_err(Into::into)
+        .and_then(|()| {
+            let documented = skill_path_consumer_count(&guide)?;
+            let discovered = packaged_skills(root)?.len();
+            (documented == discovered)
+                .then_some(())
+                .ok_or_else(|| format!("skill path-consumer count {documented} differs from discovered inventory {discovered}"))
+        })
+        .map_err(Into::into)
 }
 
 #[test]
@@ -181,6 +189,20 @@ fn section<'a>(guide: &'a str, heading: &str) -> Result<&'a str, String> {
 fn first_row(guide: &str, heading: &str) -> Result<String, String> {
     section(guide, heading)?.lines().find(|line| line.starts_with("| `")).map(str::to_owned)
         .ok_or_else(|| format!("missing row in {heading}"))
+}
+
+fn skill_path_consumer_count(guide: &str) -> Result<usize, String> {
+    let section = section(guide, "Skill path-consumer map")?;
+    let sentence = section
+        .lines()
+        .find(|line| line.starts_with("All "))
+        .ok_or("missing skill path-consumer count")?;
+    sentence
+        .strip_prefix("All ")
+        .and_then(|line| line.split_whitespace().next())
+        .ok_or("missing skill path-consumer number")?
+        .parse()
+        .map_err(|error| format!("invalid skill path-consumer count: {error}"))
 }
 
 fn parse_toml(path: &PathBuf) -> Result<toml::Value, String> {

@@ -104,13 +104,23 @@ pub(crate) const DELEGATION: &[Rule] = &[
     ),
 ];
 
-pub(crate) const TOKEN_PROMPT: &[Rule] = &[Rule::new(
-    "token.prompt.required-invocation",
-    "you",
-    Modality::Required,
-    &["use"],
-    &["$token-efficient-orchestration", "event-driven handoffs"],
-)];
+pub(crate) const TOKEN_PROMPT: &[Rule] = &[
+    Rule::new(
+        "token.prompt.required-invocation",
+        "you",
+        Modality::Required,
+        &["use"],
+        &["$orchestration", "workflow profile"],
+    ),
+    Rule::new(
+        "token.prompt.classification-before-setup",
+        "explicit audit evidence",
+        Modality::Required,
+        &["render"],
+        &["formal classification table"],
+    )
+    .in_lifecycle(&["before setup"]),
+];
 
 pub(crate) const PARENT_EXECUTION_BUDGET: &[Rule] = &[
     Rule::new(

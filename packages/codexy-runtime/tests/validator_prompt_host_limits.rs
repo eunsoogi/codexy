@@ -24,7 +24,7 @@ fn packaged_manifest_prompts_fit_host_limit_and_keep_primary_routing() -> TestRe
     support::assert_structured_literals(
         prompts[0].as_str().ok_or("primary defaultPrompt")?,
         "primary default prompt routing",
-        &["$task-classification", "$codex-orchestration"],
+        &["$orchestration", "$orchestration"],
     );
     Ok(())
 }

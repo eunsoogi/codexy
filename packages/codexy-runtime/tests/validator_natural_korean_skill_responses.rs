@@ -12,10 +12,10 @@ use structured_contract::{Contract, Modality, Rule};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const SHARED_GUIDANCE: &str =
-    "plugins/codexy/skills/codex-orchestration/references/natural-korean-responses.md";
+    "plugins/codexy/skills/orchestration/references/natural-korean-responses.md";
 
 const REPRESENTATIVE_SKILLS: [&str; 4] = [
-    "plugins/codexy/skills/codex-orchestration/SKILL.md",
+    "plugins/codexy/skills/orchestration/SKILL.md",
     "plugins/codexy/skills/debugging/SKILL.md",
     "plugins/codexy/skills/proof-driven-completion/SKILL.md",
     "plugins/codexy/skills/qa/SKILL.md",
@@ -117,10 +117,10 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
 
     for path in REPRESENTATIVE_SKILLS {
         let skill = std::fs::read_to_string(root.join(path))?;
-        let expected = if path.ends_with("codex-orchestration/SKILL.md") {
+        let expected = if path.ends_with("orchestration/SKILL.md") {
             "references/natural-korean-responses.md"
         } else {
-            "../codex-orchestration/references/natural-korean-responses.md"
+            "../orchestration/references/natural-korean-responses.md"
         };
         assert!(
             reference_targets(&skill).iter().any(|target| *target == expected),

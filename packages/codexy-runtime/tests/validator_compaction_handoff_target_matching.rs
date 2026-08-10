@@ -14,7 +14,7 @@ const PR_STATE_WITH_EMPTY_ISSUES: &str = r#"{"number":172,"state":"OPEN","isDraf
 fn validator_cli_rejects_duplicate_state_for_stale_pr_number() -> TestResult {
     let output = validate_handoff_with_default_pr_state(&format!(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          {STALE_DUPLICATE_STATE}\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\
@@ -159,7 +159,7 @@ fn validator_cli_rejects_issue_reference_when_pr_state_has_empty_linked_issue_me
 fn valid_handoff_with_duplicate_state(duplicate_state: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          {duplicate_state}\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {GIT_PREFLIGHT}\n\

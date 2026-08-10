@@ -31,7 +31,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 
     let mut errors = Vec::new();
     if !evidence_fields::has_codexy_orchestration_contract(&text) {
-        errors.push("compacted continuation evidence missing Codexy orchestration contract: include active @Codexy or $codex-orchestration workflow instructions before continuing".into());
+        errors.push("compacted continuation evidence missing Codexy orchestration contract: include active @Codexy or $orchestration workflow instructions before continuing".into());
     }
     if !evidence_fields::has_duplicate_or_no_active_work_state(&text, pr_state) {
         errors.push("compacted continuation evidence missing duplicate/no-active-work state: re-check current issue and PR status before editing".into());

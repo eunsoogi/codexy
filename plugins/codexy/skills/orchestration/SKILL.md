@@ -1,9 +1,9 @@
 ---
-name: codex-orchestration
-description: MUST use when coordinating Codex plugin calls, long-running goals, issue-sized decomposition, multi-agent or multi-thread execution, worktrees, todo/update_plan tracking, and orchestrator-led implementation loops.
+name: orchestration
+description: MUST use first for Codexy task classification and then for goals, plans, issue-sized lanes, threads, worktrees, compaction ledgers, token discipline, and orchestrator-led execution loops.
 ---
 
-# Codex Orchestration
+# Orchestration
 
 ## Purpose
 
@@ -52,8 +52,7 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 MUST read these relative references before acting on the matching surface:
 
-- `references/classification-and-control.md` for classification, goal, plan,
-  child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and sentinel discipline.
 - `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries,
   thread discovery, Codex app worktree preflights, and worktree rules.
@@ -62,12 +61,13 @@ MUST read these relative references before acting on the matching surface:
 - `references/runtime-heartbeats.md` for external waits.
 - `references/parent-stop-preflight.md` for ownership checks before implementation edits.
 - `references/execution-budget.md` for finite child execution and termination.
+- `references/token-efficient.md` for compact event deltas and token discipline.
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 
 ## Classification Gate
 
-MUST run `$task-classification` before this skill starts setup, validation, release,
+MUST classify the lane through this skill before setup, validation, release,
 delegation, implementation, PR handling, review-response routing, or merge
 coordination for Codexy work. Classification evidence MUST name the lane type,
 owner decision, atomic scope, required skills, required tools or evidence,
@@ -75,6 +75,8 @@ first allowed action, and any stop blocker. Missing classification before
 setup, validation, release, or other workflow actions is a workflow defect:
 MUST stop, classify, and only then MUST continue through the matching Codexy workflow.
 
+## Authority Boundary
+`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action.
 ## Packaged Agents
 
 Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
@@ -99,9 +101,7 @@ diagnosing, or invoking a packaged specialist. MUST NOT treat
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
 - MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
-- In long multi-issue or multi-PR polling loops, MUST use
-  `$token-efficient-orchestration` for preserving all proof gates while
-  carrying only current deltas.
+- In long multi-issue or multi-PR polling loops, MUST preserve all proof gates while carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
   completion, merge, default Codexy merge flow, or no explicit stop/wait/
   draft-only/leave-open instruction.

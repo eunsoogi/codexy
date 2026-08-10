@@ -5,7 +5,7 @@ use crate::support::{InstructionPolicyFixture, stderr, TestResult};
 const SENTINEL_PATH: &str = "agents/codexy-sentinel.toml";
 const SENTINEL_CLAUSE: &str =
     "Sentinel MUST consolidate examples from the same defect class into one blocker with one structural repair strategy.";
-const ORCHESTRATION_PATH: &str = "skills/codex-orchestration/SKILL.md";
+const ORCHESTRATION_PATH: &str = "skills/orchestration/SKILL.md";
 const ORCHESTRATION_CLAUSE: &str =
     "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.";
 

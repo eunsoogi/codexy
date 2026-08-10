@@ -10,21 +10,21 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let token_skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
     )?;
     let prompt_yaml = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/agents/openai.yaml"),
+        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
     )?;
     let template = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/templates/delta-poll.md"),
+        root.join("plugins/codexy/skills/orchestration/templates/delta-poll.md"),
     )?;
     let receipt = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "plugins/codexy/skills/orchestration/templates/session-audit-proof-receipt.json",
     ))?;
     let orchestration =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let transition = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/codex-orchestration/references/goal-transition-reporting.md",
+        "plugins/codexy/skills/orchestration/references/goal-transition-reporting.md",
     ))?;
 
     structured_contract::assert_rules(
@@ -41,11 +41,18 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     );
 
     let prompt = structured_contract_artifacts::Prompt::parse(&prompt_yaml)?;
-    assert_eq!(prompt.display_name(), "Token-Efficient Orchestration");
+    assert_eq!(prompt.display_name(), "Execution Coordinator");
     assert!(prompt.allow_implicit_invocation());
     structured_contract::assert_rules(
         &structured_contract::Contract::markdown(prompt.default_prompt()),
         structured_contract_rules::TOKEN_PROMPT,
+    );
+    let missing_setup_timing = prompt.default_prompt().replace("before setup", "after setup");
+    assert_ne!(missing_setup_timing, prompt.default_prompt());
+    assert!(
+        structured_contract::Contract::markdown(&missing_setup_timing)
+            .assert_rule(structured_contract_rules::TOKEN_PROMPT[1])
+            .is_err()
     );
     structured_contract_artifacts::TextShape::new(prompt.default_prompt())
         .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
@@ -53,6 +60,16 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "token.skill.no-stale-version-or-review-gate",
         &["installed Codexy plugin is version 1.1.0", "Codex review"],
     );
+    for surface in [&token_skill, &orchestration, prompt.default_prompt()] {
+        structured_contract_artifacts::TextShape::new(surface).assert_absent_concepts(
+            "orchestration.no-removed-skill-routes",
+            &[
+                "$task-classification",
+                "$codex-orchestration",
+                "$token-efficient-orchestration",
+            ],
+        );
+    }
     structured_contract_artifacts::TextShape::new(&template)
         .assert_absent_concepts("token.delta-template.no-review-gate", &["Codex review"]);
 

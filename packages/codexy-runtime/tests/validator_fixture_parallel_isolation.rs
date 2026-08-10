@@ -8,6 +8,8 @@ mod default_fixture;
 #[cfg(windows)]
 #[path = "validator_fixture_parallel_isolation/readonly_escape.rs"]
 mod readonly_escape;
+#[path = "validator_fixture_parallel_isolation/reset_writability.rs"]
+mod reset_writability;
 
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()

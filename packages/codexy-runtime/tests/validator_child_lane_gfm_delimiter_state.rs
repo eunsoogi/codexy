@@ -195,7 +195,7 @@ fn table_for(delimiter: &str, complete: bool, decision: &str) -> String {
         "| Secondary surfaces | validators |",
         owner_row.as_str(),
         "| Atomic scope | issue-sized |",
-        "| Required skills | task-classification |",
+        "| Required skills | orchestration |",
         "| Required tools/evidence | goal, plan |",
         "| First allowed action | implement after classification |",
         "| Stop/blocker | None |",

@@ -86,6 +86,6 @@ fn appended_policy(addition: &str) -> TestResult<String> {
 fn routing_skill() -> TestResult<String> {
     Ok(std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?)
 }

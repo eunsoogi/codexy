@@ -9,7 +9,7 @@ fn orchestration_guidance_covers_registration_schema_and_fork_preflight()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/agent-registration.md"),
+        root.join("plugins/codexy/skills/orchestration/references/agent-registration.md"),
     )?;
     for required in [
         "$CODEX_HOME/agents/codexy",
@@ -40,7 +40,7 @@ fn validator_requires_packaged_registration_modules() -> Result<(), Box<dyn std:
         let plugin_root = installed_fixture(temp.path())?;
         std::fs::remove_file(
             plugin_root
-                .join("skills/codex-orchestration/scripts")
+                .join("skills/orchestration/scripts")
                 .join(module),
         )?;
         let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -113,7 +113,7 @@ fn registration_does_not_write_bytecode_into_plugin_scripts()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
-    let scripts_root = plugin_root.join("skills/codex-orchestration/scripts");
+    let scripts_root = plugin_root.join("skills/orchestration/scripts");
     let bytecode = scripts_root.join("__pycache__");
     if bytecode.exists() {
         std::fs::remove_dir_all(&bytecode)?;
@@ -229,7 +229,7 @@ fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathB
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {
-    Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+    Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents"))
 }
 
 fn path(path: &std::path::Path) -> Result<&str, Box<dyn std::error::Error>> {

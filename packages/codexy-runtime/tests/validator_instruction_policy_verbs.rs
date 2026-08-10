@@ -67,7 +67,7 @@ fn validator_cli_rejects_conditional_clause_bare_imperatives() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_skill_description_bare_imperatives() -> TestResult {
-    let fixture = copy_plugin_fixture("skills/task-classification/SKILL.md")?;
+    let fixture = copy_plugin_fixture("skills/orchestration/SKILL.md")?;
     let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     assert!(skill.contains("description: MUST use first"));

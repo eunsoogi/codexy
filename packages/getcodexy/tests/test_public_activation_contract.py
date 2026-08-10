@@ -59,7 +59,7 @@ codexy-update = "codexy_runtime_tools.updater:main"
             repository / ".github/workflows/python-package.yml",
             repository / "packages/getcodexy/src/codexy_runtime_tools/runtime.py",
             repository / "plugins/codexy/check-codexy-agents",
-            repository / "plugins/codexy/skills/codex-orchestration/references/agent-registration.md",
+            repository / "plugins/codexy/skills/orchestration/references/agent-registration.md",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("chmod +x install && ./install", text)

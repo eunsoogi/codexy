@@ -5,7 +5,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn workflow_profiles_are_exactly_versioned_and_have_one_invariant_floor() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/workflow-profiles.json"),
+        root.join("plugins/codexy/skills/orchestration/references/workflow-profiles.json"),
     )?)?;
 
     assert_eq!(contract["version"], 1);
@@ -179,7 +179,7 @@ fn workflow_profile_metadata_is_current_lane_active_markdown_and_unambiguous() -
 #[test]
 fn workflow_profile_contract_rejects_extra_or_contradictory_structure() -> TestResult {
     let contract_path = std::path::Path::new(
-        "skills/codex-orchestration/references/workflow-profiles.json",
+        "skills/orchestration/references/workflow-profiles.json",
     );
     for (field, value) in [
         (
@@ -235,10 +235,10 @@ pub(super) fn formal_classification() -> &'static str {
 
 fn formal_classification_for(source: &str, owner: &str) -> &'static str {
     match (source, owner) {
-        ("current-thread-classified", "parent-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative parent-owned because the parent owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
-        ("current-thread-classified", "external/human-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: external/human-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative external/human-owned because an external owner owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
-        ("current-thread-classified", "current-thread-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
-        ("parent-supplied", "child-owned") => "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns the work |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("current-thread-classified", "parent-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: parent-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative parent-owned because the parent owns the work |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("current-thread-classified", "external/human-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: external/human-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative external/human-owned because an external owner owns the work |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("current-thread-classified", "current-thread-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns the work |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
+        ("parent-supplied", "child-owned") => "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative child-owned because the delegated child owns the work |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
         _ => panic!("test fixture only supports valid ownership records"),
     }
 }
