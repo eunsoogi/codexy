@@ -46,6 +46,9 @@ mod validator_gpt_5_6_routing_contextual;
 #[path = "../validator_gpt_5_6_routing_evidence_forms.rs"]
 mod validator_gpt_5_6_routing_evidence_forms;
 
+#[path = "../validator_gpt_5_6_routing_549_contract.rs"]
+mod validator_gpt_5_6_routing_549_contract;
+
 #[path = "../validator_gpt_5_6_routing_field_semantics.rs"]
 mod validator_gpt_5_6_routing_field_semantics;
 
@@ -84,6 +87,9 @@ mod validator_role_instruction_policy;
 
 #[path = "../validator_roles.rs"]
 mod validator_roles;
+
+#[path = "../validator_routing_measurement.rs"]
+mod validator_routing_measurement;
 
 #[path = "../validator_sentinel_handoff_current_evidence.rs"]
 mod validator_sentinel_handoff_current_evidence;

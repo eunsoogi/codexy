@@ -32,6 +32,8 @@ const REGISTERED_REFERENCES: &[&str] = &[
     "references/token-efficient.md",
     "references/plain-language-user-replies.md",
     "references/natural-korean-responses.md",
+    "references/routing-evaluation-corpus.json",
+    "references/routing-evaluation-results.schema.json",
 ];
 pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
     let instructions = agent

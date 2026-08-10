@@ -47,9 +47,9 @@ fn cli_routing_matrix_preserves_exact_mutations_and_diagnostics() {
         },
         Mutation {
             label: "R2 generic child model",
-            needle: "model: \"gpt-5.6-terra\"",
-            replacement: "model: \"gpt-5.6-luna\"",
-            expected: "generic child thread must explicitly request gpt-5.6-terra/high",
+            needle: "generic implementation children MUST request `gpt-5.6-terra`",
+            replacement: "generic implementation children MUST request `gpt-5.6-luna`",
+            expected: "current generic child route must remain gpt-5.6-terra/high until #549 merges",
             evidence: false,
         },
         Mutation {

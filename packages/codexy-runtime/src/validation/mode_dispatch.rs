@@ -6,7 +6,7 @@ use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
     conventional_commit, getcodexy_component_contract, github_labels, hooks, instruction_policy,
     issue_intake, lsp, manifest, mcp, merge_authorization, merge_message, orchestration_routing,
-    review_response_cluster, roles, runtime, touched_loc, workflow_profiles,
+    review_response_cluster, roles, routing_measurement, runtime, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -27,6 +27,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(roles::check(plugin_root));
             all.extend(instruction_policy::check(plugin_root));
             all.extend(orchestration_routing::check(plugin_root));
+            all.extend(routing_measurement::check_canonical(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             all
@@ -54,6 +55,9 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors
         }
         Mode::ReviewResponseCluster(receipt) => review_response_cluster::diagnostics(&receipt),
+        Mode::RoutingMeasurement { corpus, results } => {
+            routing_measurement::diagnostics(&corpus, &results)
+        }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => {

@@ -113,6 +113,7 @@ mod review_thread_waiting_phrases;
 mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
+mod routing_measurement;
 mod runtime;
 mod runtime_candidate_manifest;
 mod runtime_release_contract;

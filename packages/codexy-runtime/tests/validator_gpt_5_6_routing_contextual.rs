@@ -58,9 +58,9 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
             "root/orchestrator must use gpt-5.6-sol",
         ),
         (
-            "- Generic implementation, debugging, integration, and QA child thread: MUST",
-            "- MUST NOT follow this obsolete example: Generic implementation, debugging, integration, and QA child thread: MUST",
-            "generic child thread must explicitly request gpt-5.6-terra/high",
+            "- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra`",
+            "- MUST NOT follow this obsolete example: Until #549 merges, generic implementation children MUST request `gpt-5.6-terra`",
+            "current generic child route must remain gpt-5.6-terra/high until #549 merges",
         ),
         (
             "- `gpt-5.6-luna` is only for repository discovery, cataloging, simple",
@@ -73,12 +73,12 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
     assert_routing_rejected(
         |skill| {
             skill.replacen(
-                "Generic implementation, debugging, integration, and QA child thread: MUST\n  explicitly request",
-                "Generic implementation, debugging, integration, and QA child thread: MUST NOT\n  explicitly request",
+                "Until #549 merges, generic implementation children MUST request",
+                "Until #549 merges, generic implementation children MUST NOT request",
                 1,
             )
         },
-        "generic child thread must explicitly request gpt-5.6-terra/high",
+        "current generic child route must remain gpt-5.6-terra/high until #549 merges",
     )?;
     for replacement in [
         "Named custom specialists MUST receive model and reasoning-effort overrides at spawn time.",
@@ -141,7 +141,7 @@ fn validator_cli_rejects_contextual_gpt_5_6_routing_bypasses() -> TestResult {
                 1,
             )
         },
-        "generic child thread must explicitly request gpt-5.6-terra/high",
+        "current generic child route must remain gpt-5.6-terra/high until #549 merges",
     )
 }
 

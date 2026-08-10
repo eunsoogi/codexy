@@ -20,8 +20,12 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
-- Generic implementation, debugging, integration, and QA child thread: MUST
-  explicitly request `model: "gpt-5.6-terra"` and `reasoning_effort: "high"`.
+- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"`.
+- A matching named specialist MUST be selected before generic child routing; its TOML remains authoritative.
+- Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: "max"` only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.
+- Candidate general work MUST compare Terra/high, Terra/xhigh, and Terra/max and select the lowest effort meeting measured quality and economics gates.
+- Measurement gate: promotion above Terra/high MUST have zero P0/P1 defects, at least 95% acceptance, either a five-point first-pass gain or 20% fewer repairs, and no more than 1.5x median cost or wall time.
+- Ambiguous, high-risk, or incomplete classification MUST fail closed to root or a named specialist; it MUST NOT select Luna.
 - `gpt-5.6-luna` is only for repository discovery, cataloging, simple
   documentation drafting, bounded polling, and repetitive checks. MUST NOT use
   Luna as the blanket default for implementation, security review, or ambiguous
@@ -42,6 +46,7 @@ execution loop and MUST be read with root `AGENTS.md`.
 - Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST
   explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT
   infer either from historical actual `turn_context` state, the sender, or ambient defaults.
+- The #417 reproduction MUST reject a create/send handoff that omits recipient `model` or `thinking`; ambient or sender-derived Sol/medium is invalid.
 - Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
   `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
   and `thinking: "medium"`.
@@ -52,18 +57,11 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 MUST read these relative references before acting on the matching surface:
 
-- `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and sentinel discipline.
-- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
-- `references/thread-and-worktree-routing.md` for parent/child boundaries,
-  thread discovery, Codex app worktree preflights, and worktree rules.
-- `references/orchestration-loop.md` for intake, plan, dispatch, integration,
-  verification, finish, failure modes, and handoffs.
-- `references/runtime-heartbeats.md` for external waits.
-- `references/parent-stop-preflight.md` for ownership checks before implementation edits.
-- `references/execution-budget.md` for finite child execution and termination.
-- `references/token-efficient.md` for compact event deltas and token discipline.
-- `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
-- `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
+- `references/task-classification.md` and `references/classification-and-control.md` for classification, goals, plans, child execution, codegraph, LSP, and Sentinel discipline.
+- `references/goal-transition-reporting.md` and `references/thread-and-worktree-routing.md` for delegated receipts, parent/child boundaries, discovery, and worktree preflights.
+- `references/orchestration-loop.md`, `references/runtime-heartbeats.md`, `references/parent-stop-preflight.md`, and `references/execution-budget.md` for the execution loop, waits, ownership checks, and finite work.
+- `references/token-efficient.md`, `references/plain-language-user-replies.md`, and `references/natural-korean-responses.md` for compact and user-facing handoffs.
+- `references/routing-evaluation-corpus.json` and `references/routing-evaluation-results.schema.json` for frozen paired child-routing measurement.
 
 ## Classification Gate
 

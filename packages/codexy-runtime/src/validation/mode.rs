@@ -31,6 +31,10 @@ pub enum Mode {
         pr_state: String,
     },
     ReviewResponseCluster(String),
+    RoutingMeasurement {
+        corpus: String,
+        results: String,
+    },
     Mcp,
     Hooks,
     Roles,

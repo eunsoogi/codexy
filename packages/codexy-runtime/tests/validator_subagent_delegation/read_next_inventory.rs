@@ -2,7 +2,7 @@ use crate::support;
 use std::path::Path;
 
 const SKILL: &str = "skills/orchestration/SKILL.md";
-const REFERENCES: [&str; 11] = [
+const REFERENCES: [&str; 13] = [
     "references/task-classification.md",
     "references/classification-and-control.md",
     "references/goal-transition-reporting.md",
@@ -14,6 +14,8 @@ const REFERENCES: [&str; 11] = [
     "references/token-efficient.md",
     "references/plain-language-user-replies.md",
     "references/natural-korean-responses.md",
+    "references/routing-evaluation-corpus.json",
+    "references/routing-evaluation-results.schema.json",
 ];
 
 pub(super) fn registered_orchestration_references() -> super::TestResult<Vec<String>> {

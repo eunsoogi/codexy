@@ -16,11 +16,11 @@ fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
             skill.replacen(
                 "## Recipient Model Routing",
                 &format!(
-                    "- Generic implementation, debugging, integration, and QA child thread: MUST\n{prefix}\u{2003}  explicitly request `model: \"gpt-5.6-terra\"` and `reasoning_effort: \"high\"`.\n\n## Recipient Model Routing"
+                    "- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with\n{prefix}\u{2003}  `reasoning_effort: \"high\"`.\n\n## Recipient Model Routing"
                 ),
                 1,
             ),
-            "generic child thread must explicitly request",
+            "current generic child route must remain",
         )?;
     }
     Ok(())

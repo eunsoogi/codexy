@@ -10,89 +10,19 @@ mod assignments;
 mod evidence;
 mod policy;
 mod required_bullets;
+mod rules;
 
 #[cfg(test)]
 mod tests;
 
 use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
 use required_bullets::missing_required_bullets;
+use rules::{
+    ACTIVE_TIER_STARTS, DELIVERY_POLICY, RECIPIENT_ROUTING_BULLETS, ROUTING_REQUIRED_BULLETS,
+};
 
 const SKILL_PATH: &str = "skills/orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
-const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.";
-const ACTIVE_TIER_STARTS: &[&str] = &[
-    "Root/orchestrator",
-    "Generic implementation",
-    "A named custom specialist",
-    "`codexy-sentinel`",
-    "`gpt-5.6-luna`",
-];
-
-const REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
-    (
-        "Root/orchestrator: MUST use `gpt-5.6-sol`",
-        &[],
-        "root/orchestrator must use gpt-5.6-sol",
-    ),
-    (
-        "Generic implementation, debugging, integration, and QA child thread: MUST",
-        &["model: \"gpt-5.6-terra\"", "reasoning_effort: \"high\""],
-        "generic child thread must explicitly request gpt-5.6-terra/high",
-    ),
-    (
-        "`gpt-5.6-luna` is only for repository discovery, cataloging, simple",
-        &[
-            "documentation drafting, bounded polling, and repetitive checks.",
-            "MUST NOT use Luna as the blanket default for implementation, security review, or ambiguous reasoning.",
-        ],
-        "Luna must stay limited to enumerated low-risk mechanical work",
-    ),
-    (
-        "Cost guidance: Luna is an optimization for bounded low-risk work, not a",
-        &["quality-neutral replacement for Terra."],
-        "Luna cost guidance must reject quality-neutral replacement claims",
-    ),
-    (
-        "A named custom specialist TOML is the model and reasoning-effort source of",
-        &["truth. MUST NOT pass model or reasoning-effort overrides."],
-        "named custom specialists must keep their TOML model and reasoning effort",
-    ),
-    (
-        "`codexy-sentinel` remains `gpt-5.6-sol` / `xhigh`.",
-        &[
-            "MUST NOT use Ultra.",
-            "Custom-agent invocations MUST use `fork_turns=\"none\"` or a positive bounded count with a self-contained handoff.",
-        ],
-        "codexy-sentinel must remain gpt-5.6-sol/xhigh and MUST NOT use Ultra",
-    ),
-];
-
-const RECIPIENT_ROUTING_BULLETS: &[(&str, &[&str], &str)] = &[
-    (
-        "Configured UI model is authoritative; active child/parent thread ledger entries MUST",
-        &[
-            "record each destination owner's configured UI `model` and `thinking`",
-            "separately from historical actual `turn_context` model and per-message overrides.",
-        ],
-        "active child/parent thread ledger must record the configured UI model and thinking",
-    ),
-    (
-        "Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST",
-        &[
-            "explicitly pass the recipient's configured UI `model` and `thinking`.",
-            "MUST NOT infer either from historical actual `turn_context` state, the sender, or ambient defaults.",
-        ],
-        "thread messages must explicitly pass the recipient model and thinking",
-    ),
-    (
-        "Parent-to-generic-child delivery MUST pass",
-        &[
-            "`model: \"gpt-5.6-terra\"` and `thinking: \"high\"`",
-            "child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.",
-        ],
-        "parent-to-generic-child messages must use recipient gpt-5.6-terra/high; child-to-root messages must use recipient gpt-5.6-sol/medium",
-    ),
-];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let path = plugin_root.join(SKILL_PATH);
@@ -113,7 +43,7 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
             display_relative(&path)
         )];
     }
-    let routing_starts = REQUIRED_BULLETS
+    let routing_starts = ROUTING_REQUIRED_BULLETS
         .iter()
         .map(|(start, _, _)| *start)
         .chain(ACTIVE_TIER_STARTS.iter().copied())
@@ -124,7 +54,7 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
         .collect::<Vec<_>>();
     let mut errors = routing_bullets
         .iter()
-        .flat_map(|bullets| missing_required_bullets(&path, bullets, REQUIRED_BULLETS))
+        .flat_map(|bullets| missing_required_bullets(&path, bullets, ROUTING_REQUIRED_BULLETS))
         .collect::<Vec<_>>();
     let recipient_sections = sections_for_heading(skill, RECIPIENT_ROUTING_HEADING);
     if recipient_sections.is_empty() {
