@@ -68,6 +68,28 @@ fn validator_rejects_uncertainty_and_token_pressure_as_blockers() -> TestResult 
 }
 
 #[test]
+fn validator_prioritizes_actionable_review_over_operational_context() -> TestResult {
+    let actionable = validate(
+        "Blocked: requested changes remain unresolved while work is incomplete.",
+    )?;
+    assert!(
+        actionable.status.success(),
+        "actionable mixed context was rejected: {}",
+        stderr(&actionable)
+    );
+
+    let nonterminal = validate(
+        "Blocked: no requested changes remain unresolved while work is incomplete.",
+    )?;
+    assert!(
+        !nonterminal.status.success(),
+        "negated mixed context unexpectedly passed"
+    );
+    assert!(stderr(&nonterminal).contains("waiting state"));
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",

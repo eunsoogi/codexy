@@ -75,13 +75,16 @@ pub(super) fn has_distinct_substantive_values(
     minimum_values: usize,
     minimum_words: usize,
     minimum_characters: usize,
+    minimum_concepts: usize,
 ) -> bool {
     field(line, name)
         .map(|value| {
             value
                 .split('|')
                 .map(str::trim)
-                .filter(|value| is_substantive(value, minimum_words, minimum_characters))
+                .filter_map(|value| {
+                    substantive_identity(value, minimum_words, minimum_characters, minimum_concepts)
+                })
                 .collect::<std::collections::BTreeSet<_>>()
                 .len()
                 >= minimum_values
@@ -89,11 +92,34 @@ pub(super) fn has_distinct_substantive_values(
         .unwrap_or(false)
 }
 
-pub(super) fn is_substantive(value: &str, minimum_words: usize, minimum_characters: usize) -> bool {
+pub(super) fn is_substantive(
+    value: &str,
+    minimum_words: usize,
+    minimum_characters: usize,
+    minimum_concepts: usize,
+) -> bool {
+    substantive_identity(value, minimum_words, minimum_characters, minimum_concepts).is_some()
+}
+
+fn substantive_identity(
+    value: &str,
+    minimum_words: usize,
+    minimum_characters: usize,
+    minimum_concepts: usize,
+) -> Option<String> {
     let words = value
         .split(|character: char| !character.is_alphanumeric())
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
-    words.len() >= minimum_words && characters >= minimum_characters
+    let concepts = words
+        .iter()
+        .filter(|word| word.chars().count() >= 2 && word.chars().any(char::is_alphabetic))
+        .map(|word| word.to_lowercase())
+        .collect::<std::collections::BTreeSet<_>>();
+    (words.len() >= minimum_words
+        && characters >= minimum_characters
+        && concepts.len() >= minimum_concepts
+        && concepts.len() * 2 > words.len())
+    .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
 }

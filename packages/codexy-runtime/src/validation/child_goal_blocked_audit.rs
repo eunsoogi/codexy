@@ -81,8 +81,8 @@ fn check_blocked_call(events: &[ActiveEvent], call_index: usize) -> Vec<String> 
     {
         errors.push("blocked goal gate requires an exact unanswered user question".into());
     }
-    if !has_distinct_substantive_values(gate, "decision branches", 2, 3, 12)
-        || !field(gate, "material impact").is_some_and(|value| is_substantive(value, 4, 16))
+    if !has_distinct_substantive_values(gate, "decision branches", 2, 3, 12, 2)
+        || !field(gate, "material impact").is_some_and(|value| is_substantive(value, 4, 16, 2))
     {
         errors.push("blocked goal gate requires distinct material decision branches".into());
     }
@@ -175,7 +175,7 @@ fn invalid_field(value: Option<&str>) -> bool {
 fn invalid_question(value: Option<&str>) -> bool {
     invalid_field(value)
         || value.is_none_or(|value| {
-            !value.ends_with('?') || !is_substantive(value.trim_end_matches('?'), 4, 12)
+            !value.ends_with('?') || !is_substantive(value.trim_end_matches('?'), 4, 12, 2)
         })
 }
 

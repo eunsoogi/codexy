@@ -80,10 +80,14 @@ pub(in crate::validation) fn classify_producer(value: &str) -> Option<WaitDispos
 
 pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDisposition> {
     let words = words(text);
+    let reviewer = classify_reviewer_words(&words);
+    if reviewer == Some(WaitDisposition::Actionable) {
+        return reviewer;
+    }
     if contains_any_phrase(&words, OPERATIONAL_NONTERMINAL_STATES) {
         return Some(WaitDisposition::Nonterminal);
     }
-    classify_reviewer_words(&words)
+    reviewer
 }
 
 pub(in crate::validation) fn classify_reviewer_text(text: &str) -> Option<WaitDisposition> {
