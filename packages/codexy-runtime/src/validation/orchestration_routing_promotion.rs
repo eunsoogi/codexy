@@ -106,7 +106,7 @@ fn action_start(words: &[&str], operand: usize) -> usize {
 
 fn conjunction_action_start(words: &[&str], operand: usize) -> Option<usize> {
     (0..operand).rev().find_map(|index| {
-        (matches!(words[index], "and" | "but")
+        (matches!(words[index], "and" | "but" | "or")
             && introduces_action(&words[..index])
             && introduces_action(&words[index + 1..=operand])
             && starts_policy_subject(&words[index + 1..operand]))
