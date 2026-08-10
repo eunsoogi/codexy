@@ -19,6 +19,7 @@ fn canonical_measurement_schema_rejects_every_closed_contract_mutation() -> Test
         ("observation closure", mutation(|schema| schema["properties"]["results"]["items"]["additionalProperties"] = json!(true))),
         ("integer tokens", mutation(|schema| schema["properties"]["results"]["items"]["properties"]["tokens"] = json!({"type":"number"}))),
         ("token minimum", mutation(|schema| schema["properties"]["results"]["items"]["properties"]["tokens"]["minimum"] = json!(-1))),
+        ("repair maximum", mutation(|schema| { schema["properties"]["results"]["items"]["properties"]["repairs_retries"].as_object_mut().unwrap().remove("maximum"); })),
         ("cost shape", mutation(|schema| schema["properties"]["results"]["items"]["properties"]["observed_cost_usd"] = json!({"type":"integer","minimum":0}))),
     ] {
         let mut schema: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;

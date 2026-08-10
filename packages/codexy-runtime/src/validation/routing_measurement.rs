@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::routing_measurement_schema::is_closed;
 
 const CORPUS_SCHEMA: &str = "codexy.routing-evaluation-corpus.v1";
+const CORPUS_ID: &str = "routing-549-v1";
 const RESULTS_SCHEMA: &str = "codexy.routing-evaluation-results.v1";
 const EFFORTS: [&str; 3] = ["high", "xhigh", "max"];
 #[derive(Deserialize)]
@@ -137,7 +138,7 @@ fn check_corpus(corpus: &Corpus) -> Vec<String> {
         .map(|task| task.id.as_str())
         .collect::<BTreeSet<_>>();
     if corpus.schema != CORPUS_SCHEMA
-        || corpus.corpus_id.is_empty()
+        || corpus.corpus_id != CORPUS_ID
         || classes != BTreeSet::from(["ambiguous", "general", "simple"])
         || ids.len() != corpus.tasks.len()
         || corpus
@@ -185,22 +186,25 @@ fn viable(observed: &BTreeMap<(&str, &str), &Observation>, effort: &str) -> bool
             .count() as f64
             / records.len() as f64
     };
-    let repairs = |records: &[&Observation]| {
-        records
-            .iter()
-            .map(|result| result.repairs_retries)
-            .sum::<u32>()
+    let (Some(candidate_repairs), Some(baseline_repairs)) = (repairs(&records), repairs(&baseline))
+    else {
+        return false;
     };
     complete
         && comparable_baseline
         && acceptance(&records) >= 0.95
         && (acceptance(&records) - acceptance(&baseline) >= 0.05
-            || repairs(&baseline) > 0
-                && repairs(&records) as f64 <= repairs(&baseline) as f64 * 0.8)
+            || baseline_repairs > 0 && candidate_repairs as f64 <= baseline_repairs as f64 * 0.8)
         && median(&records, |result| &result.wall_time_ms)
             <= median(&baseline, |result| &result.wall_time_ms) * 1.5
         && median(&records, |result| &result.observed_cost_usd)
             <= median(&baseline, |result| &result.observed_cost_usd) * 1.5
+}
+
+fn repairs(records: &[&Observation]) -> Option<u64> {
+    records.iter().try_fold(0_u64, |total, result| {
+        total.checked_add(u64::from(result.repairs_retries))
+    })
 }
 
 fn metric(value: &Value, integer: bool) -> bool {

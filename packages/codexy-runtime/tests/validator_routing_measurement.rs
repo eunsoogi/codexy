@@ -78,6 +78,42 @@ fn routing_measurement_cli_rejects_metrics_that_violate_the_closed_schema() -> T
     Ok(())
 }
 
+#[test]
+fn routing_measurement_cli_bounds_counts_and_requires_the_canonical_corpus() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let corpus = temp.path().join("corpus.json");
+    let results = temp.path().join("results.json");
+    fs::write(&corpus, CORPUS)?;
+    let mut maximum = results_value("high", false);
+    for result in maximum["results"].as_array_mut().expect("results array") {
+        result["repairs_retries"] = json!(u32::MAX);
+    }
+    fs::write(&results, serde_json::to_vec(&maximum)?)?;
+    let maximum_output = run(&corpus, &results)?;
+    assert!(
+        maximum_output.status.success(),
+        "u32 maximum must remain fail-closed without crashing: {}",
+        String::from_utf8_lossy(&maximum_output.stderr)
+    );
+
+    let mut oversized = maximum.clone();
+    oversized["results"][0]["repairs_retries"] = json!(u64::from(u32::MAX) + 1);
+    fs::write(&results, serde_json::to_vec(&oversized)?)?;
+    assert!(!run(&corpus, &results)?.status.success(), "maximum-plus-one passed");
+    let mut malformed = maximum.clone();
+    malformed["results"][0]["repairs_retries"] = json!("not-an-integer");
+    fs::write(&results, serde_json::to_vec(&malformed)?)?;
+    assert!(!run(&corpus, &results)?.status.success(), "malformed count passed");
+
+    let wrong_corpus = CORPUS.replace("routing-549-v1", "routing-other");
+    fs::write(&corpus, &wrong_corpus)?;
+    let mut stale = results_value("high", false);
+    stale["corpus_id"] = json!("routing-other");
+    fs::write(&results, serde_json::to_vec(&stale)?)?;
+    assert!(!run(&corpus, &results)?.status.success(), "wrong corpus identity passed");
+    Ok(())
+}
+
 fn run(corpus: &std::path::Path, results: &std::path::Path) -> std::io::Result<std::process::Output> {
     Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-routing-measurement", "--routing-corpus-file"])

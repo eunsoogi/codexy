@@ -75,6 +75,36 @@ fn validator_requires_the_simple_route_to_be_one_affirmative_conjunction() -> Te
     )
 }
 
+#[test]
+fn validator_rejects_every_additional_active_luna_max_simple_assignment() -> TestResult {
+    let skill = routing_skill()?;
+    let simple_rule = "Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.";
+    for addition in [
+        "- Simple-task candidate routing MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n",
+        "- Simple-task candidate routing MUST use Luna/max even when high-risk.\n",
+        "1. Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n",
+        "- Container policy:\n  - Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n",
+    ] {
+        assert_policy_rejected(
+            skill.replacen(simple_rule, &format!("{simple_rule}\n{addition}"), 1),
+            "simple-work Luna/max candidates must require every bounded-work predicate",
+        )?;
+    }
+    for inactive in [
+        "```md\n- Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk.\n```\n",
+        "<!-- - Simple task MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` even when high-risk. -->\n",
+        "![Simple task MUST use gpt-5.6-luna with reasoning_effort max even when high-risk](image.png)\n",
+        "<img alt=\"Simple task MUST use gpt-5.6-luna with reasoning_effort max even when high-risk\">\n",
+    ] {
+        let errors = validate(skill.replacen(simple_rule, &format!("{simple_rule}\n{inactive}"), 1))?;
+        assert!(
+            errors.is_empty(),
+            "inactive content {inactive:?} was treated as active: {errors:#?}"
+        );
+    }
+    Ok(())
+}
+
 fn routing_skill() -> TestResult<String> {
     Ok(std::fs::read_to_string(
         codexy_runtime::paths::repository_root()

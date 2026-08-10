@@ -21,6 +21,15 @@ pub(super) fn simple_route_is_affirmative(bullet: &str) -> bool {
     bullet.strip_prefix(SIMPLE_ROUTE_PREFIX) == Some(SIMPLE_ROUTE_CONJUNCTION)
 }
 
+pub(super) fn is_simple_luna_assignment(bullet: &str) -> bool {
+    let normalized = bullet.to_ascii_lowercase();
+    normalized.contains("simple")
+        && ((normalized.contains("gpt-5.6-luna")
+            && normalized.contains("reasoning_effort")
+            && normalized.contains("max"))
+            || normalized.contains("luna/max"))
+}
+
 pub(super) const ROUTING_REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
     (
         "Root/orchestrator: MUST use `gpt-5.6-sol`",

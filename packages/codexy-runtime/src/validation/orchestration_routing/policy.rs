@@ -94,6 +94,10 @@ pub(super) fn policy_instructions(section: &str, starts: &[&str]) -> Vec<String>
             finish_block(&mut instructions, &mut current);
             continue;
         }
+        if trimmed.starts_with("![") || trimmed.starts_with('<') {
+            finish_block(&mut instructions, &mut current);
+            continue;
+        }
         let instruction = policy_line(trimmed).filter(|instruction| {
             has_list_marker(trimmed)
                 || starts.iter().any(|start| {
