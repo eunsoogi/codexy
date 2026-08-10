@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use super::semantics::{destination_values, soft_wrap_mutant};
+use super::semantics::{
+    destination_values, rendered_target_for_test, rendered_target_mutant, soft_wrap_mutant,
+};
 
 const REPLY: &str =
     "[Plain-Language User Replies](skills/orchestration/references/plain-language-user-replies.md)";
@@ -23,6 +25,19 @@ fn slash_and_backslash_debug_and_qa_links_have_one_identity() {
             assert!(!value.contains('\\') && !value.contains("skills/codex-orchestration/"));
         }
     }
+}
+
+#[test]
+fn rendered_target_rejects_legacy_platform_separator_mutant() {
+    let windows = "skills\\codex-orchestration\\references\\plain-language-user-replies.md";
+    assert_eq!(
+        rendered_target_for_test(windows),
+        "skills/orchestration/references/plain-language-user-replies.md"
+    );
+    assert_ne!(
+        rendered_target_mutant(windows),
+        rendered_target_for_test(windows)
+    );
 }
 
 #[test]

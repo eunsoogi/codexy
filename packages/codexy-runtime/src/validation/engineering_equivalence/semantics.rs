@@ -175,7 +175,7 @@ fn canonical_target(path: &Path, target: &str) -> String {
     } else {
         &relative
     });
-    canonical.replace("skills/codex-orchestration/", "skills/orchestration/")
+    rendered_target(&canonical)
 }
 
 fn soft_wrap(value: &str) -> String {
@@ -200,6 +200,22 @@ fn component_target(path: &Path) -> String {
         })
         .collect::<Vec<_>>()
         .join("/")
+}
+
+fn rendered_target(value: &str) -> String {
+    value
+        .replace('\\', "/")
+        .replace("skills/codex-orchestration/", "skills/orchestration/")
+}
+
+#[cfg(test)]
+pub(super) fn rendered_target_mutant(value: &str) -> String {
+    value.replace("skills/codex-orchestration/", "skills/orchestration/")
+}
+
+#[cfg(test)]
+pub(super) fn rendered_target_for_test(value: &str) -> String {
+    rendered_target(value)
 }
 
 fn resolve(path: &Path, target: &str, plugin_root: &Path) -> Result<PathBuf, String> {
