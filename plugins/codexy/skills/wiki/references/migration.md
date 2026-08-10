@@ -12,8 +12,10 @@ Migrate only an existing supported topic root. MUST preserve existing `raw/`, `w
    or derived write. MUST preserve every complete relative `sources:` scalar
    exactly. If a source chain is missing, broken, weak, drifted, or
    contradictory, MUST stop, MUST report the provenance gap, and MUST leave the
-   entire topic tree unchanged. A malformed or future date receives zero
-   freshness credit and MUST be reported before any derived write.
+   entire topic tree unchanged. If freshness data is missing or malformed, MUST
+   stop, MUST report the freshness gap, and MUST leave the entire topic tree
+   unchanged. A valid future date MUST receive zero freshness credit and MUST
+   be reported before any derived write, but it does not invalidate provenance.
 3. Only after the preflight passes, MUST append one migration entry to `log.md`
    with the topic root, source paths, index state, byte accounting, and
    freshness result.

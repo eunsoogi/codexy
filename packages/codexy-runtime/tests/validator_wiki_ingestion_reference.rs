@@ -64,6 +64,11 @@ fn migration_fixture_preserves_raw_history_and_adds_only_derived_metadata() -> T
         snapshot(&root.join("failure/after"))?,
         "a failed preflight must leave the entire topic tree unchanged"
     );
+    assert_eq!(
+        snapshot(&root.join("invalid-freshness/before"))?,
+        snapshot(&root.join("invalid-freshness/after"))?,
+        "invalid freshness must leave the entire topic tree unchanged"
+    );
     assert_eq!(read(&root.join("success/before/raw/source.md"))?, read(&root.join("success/after/raw/source.md"))?);
     let master = read(&root.join("success/after/_index.md"))?;
     let category = read(&root.join("success/after/wiki/_index.md"))?;
@@ -81,12 +86,16 @@ fn negative_fixtures_expose_broken_provenance_and_future_freshness() -> TestResu
     let root = fixture_root().join("negative");
     let broken = read(&root.join("broken-provenance.md"))?;
     let future = read(&root.join("future-freshness.md"))?;
+    let valid = read(&root.join("valid-freshness.md"))?;
+    let malformed = read(&root.join("malformed-freshness.md"))?;
 
     assert!(broken.contains("sources:\n  - raw/missing.md"));
     assert!(!root.join("raw/missing.md").exists());
     assert!(future.contains("verified: 2100-01-01"));
     assert!(root.join("raw/available.md").exists());
-    assert_eq!(future_date_credit(&future), 0);
+    assert_eq!(freshness_credit(&valid, "2026-08-10"), 25);
+    assert_eq!(freshness_credit(&future, "2026-08-10"), 0);
+    assert_eq!(freshness_credit(&malformed, "2026-08-10"), 0);
     Ok(())
 }
 
@@ -120,6 +129,34 @@ fn collect_snapshot(
     Ok(())
 }
 
-fn future_date_credit(article: &str) -> u8 {
-    article.contains("verified: 2100-01-01").then_some(0).unwrap_or(25)
+fn freshness_credit(article: &str, evaluation_date: &str) -> u8 {
+    let verified = article
+        .lines()
+        .find_map(|line| line.strip_prefix("verified: "))
+        .and_then(canonical_date);
+    let evaluation = canonical_date(evaluation_date);
+    match (verified, evaluation) {
+        (Some(verified), Some(evaluation)) if verified <= evaluation => 25,
+        _ => 0,
+    }
+}
+
+fn canonical_date(value: &str) -> Option<(u16, u8, u8)> {
+    let bytes = value.as_bytes();
+    if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
+        return None;
+    }
+    let year = value[..4].parse().ok()?;
+    let month = value[5..7].parse().ok()?;
+    let day = value[8..].parse().ok()?;
+    (month > 0 && month <= 12 && day > 0 && day <= days_in_month(year, month)).then_some((year, month, day))
+}
+
+fn days_in_month(year: u16, month: u8) -> u8 {
+    match month {
+        2 if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    }
 }
