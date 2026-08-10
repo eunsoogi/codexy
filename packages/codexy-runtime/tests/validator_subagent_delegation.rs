@@ -5,6 +5,8 @@ use std::process::{Command, Output};
 mod structured_contract;
 #[path = "structured_contract_rules/mod.rs"]
 mod structured_contract_rules;
+#[path = "validator_subagent_delegation/read_next_inventory.rs"]
+mod read_next_inventory;
 use crate::support::{self, PluginFixture};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -146,6 +148,14 @@ fn validator_rejects_recursive_permission_in_every_registered_reference() -> Tes
 }
 
 #[test]
+fn registered_references_include_every_same_line_read_next_reference() -> TestResult {
+    let references = registered_orchestration_references()?;
+
+    assert_eq!(references, read_next_inventory::expected_references());
+    Ok(())
+}
+
+#[test]
 fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let orchestration =
@@ -203,19 +213,5 @@ fn stderr(output: &Output) -> String {
 }
 
 fn registered_orchestration_references() -> TestResult<Vec<String>> {
-    let skill = std::fs::read_to_string(
-        codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/orchestration/SKILL.md"),
-    )?;
-    let references = skill
-        .split_once("## Read Next")
-        .and_then(|(_, remainder)| remainder.split_once("## Classification Gate"))
-        .map(|(section, _)| section)
-        .ok_or("orchestration Read Next section")?;
-    Ok(references
-        .lines()
-        .filter_map(|line| line.split('`').nth(1))
-        .filter(|path| path.starts_with("references/") && path.ends_with(".md"))
-        .map(|path| format!("skills/orchestration/{path}"))
-        .collect())
+    read_next_inventory::registered_orchestration_references()
 }
