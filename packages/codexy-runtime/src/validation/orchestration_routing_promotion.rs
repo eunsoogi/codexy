@@ -31,12 +31,22 @@ pub(super) fn has_temporally_narrowed_generic_default(bullet: &str) -> bool {
             && ["while", "until", "only when"]
                 .iter()
                 .any(|word| clause.contains(word))
-            && affirmative_modal(&words(&clause))
+            && {
+                let words = words(&clause);
+                words.iter().enumerate().any(|(index, word)| {
+                    *word == "apply"
+                        && positive_operand(&words, index)
+                        && temporal_qualifier(&words, index)
+                })
+            }
     })
 }
 
 fn clauses(text: &str) -> Vec<String> {
     text.to_ascii_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
         .replace(", but ", ";")
         .replace(", while ", ";")
         .split([';', '.'])
@@ -60,13 +70,6 @@ fn words(clause: &str) -> Vec<&str> {
         .collect()
 }
 
-fn affirmative_modal(words: &[&str]) -> bool {
-    words
-        .iter()
-        .position(|word| *word == "apply")
-        .is_some_and(|index| positive_operand(words, index))
-}
-
 fn positive_operand(words: &[&str], operand: usize) -> bool {
     let start = operand.saturating_sub(3);
     let Some(modal) = (start..operand)
@@ -79,6 +82,15 @@ fn positive_operand(words: &[&str], operand: usize) -> bool {
         && !words[modal + 1..=operand]
             .iter()
             .any(|word| matches!(*word, "not" | "never"))
+}
+
+fn temporal_qualifier(words: &[&str], operand: usize) -> bool {
+    let suffix = words[operand + 1..]
+        .iter()
+        .take_while(|word| **word != "apply")
+        .copied()
+        .collect::<Vec<_>>();
+    suffix.contains(&"549") && suffix.iter().any(|word| matches!(*word, "while" | "until"))
 }
 
 fn validation_is_preceded(words: &[&str]) -> bool {

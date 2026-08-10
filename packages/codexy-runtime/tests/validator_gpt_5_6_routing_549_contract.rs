@@ -81,6 +81,14 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
         (
+            "Generic implementation child Terra/high default cannot apply generally but MAY apply only while #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
+            "Generic implementation child Terra/high default cannot apply generally,\twhile Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
             "Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
@@ -89,14 +97,13 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
     ] {
-        assert_policy_rejected(
-            skill.replacen(
-                "Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.",
-                &format!("Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.\n{addition}"),
-                1,
-            ),
-            expected,
-        )?;
+        let errors = validate(skill.replacen(
+            "Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.",
+            &format!("Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.\n{addition}"),
+            1,
+        ))?;
+        assert!(!errors.is_empty(), "routing bypass unexpectedly passed for {addition:?}");
+        assert!(errors.iter().any(|error| error.contains(expected)), "missing {expected:?} for {addition:?}: {errors:#?}");
     }
     for prohibition in [
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement.\n",
@@ -105,6 +112,7 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
         "Promotion above Terra/high cannot proceed before complete validated measurement.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY comment.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY proceed.\n",
+        "Generic implementation child Terra/high default MAY apply generally but cannot apply while #549 remains open.\n",
     ] {
         let errors = validate(skill.replacen(
             "## Recipient Model Routing",
