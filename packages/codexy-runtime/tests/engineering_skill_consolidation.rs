@@ -1,194 +1,173 @@
-use std::{collections::BTreeSet, path::Path};
-use sha2::{Digest, Sha256};
-use serde::Deserialize;
+use std::path::Path;
 
-type TestResult = Result<(), Box<dyn std::error::Error>>;
+use serde_json::Value;
 
-const LEGACY_SKILLS: [&str; 6] = [
-    "debugging",
-    "domain-driven-development",
-    "qa",
-    "refactoring",
-    "spec-driven-development",
-    "test-driven-development",
-];
-
-const ENGINEERING_REFERENCES: [&str; 6] = [
-    "diagnosis.md", "domain-modeling.md", "quality-assurance.md", "refactoring.md",
-    "specification.md", "test-driven-development.md",
-];
-
-const REQUIRED_SECTIONS: [&str; 6] = [
-    "## Diagnosis",
-    "## Specification",
-    "## Domain modeling",
-    "## Test-driven development",
-    "## Refactoring",
-    "## Quality assurance",
-];
-
-#[derive(Clone, Copy)]
-struct LegacyCase {
-    legacy: &'static str,
-    reference: &'static str,
-    must_rules: usize,
-    outputs: &'static [&'static str],
-    contracts: &'static [&'static str],
-}
-
-#[derive(Deserialize)]
-struct Manifest { records: Vec<ManifestRecord> }
-#[derive(Deserialize)]
-struct ManifestRecord { id: String, destination: String, must_sha256: String }
-
-const PARITY_CASES: [LegacyCase; 6] = [
-    LegacyCase { legacy: "debugging", reference: "diagnosis.md", must_rules: 18, outputs: &["Symptom:", "Reproduction:", "Expected:", "Actual:", "Hypotheses:", "Experiment:", "Result:", "Fix:", "Regression proof:", "Cleanup:"], contracts: &["plain-language-user-replies.md", "natural-korean-responses.md"] },
-    LegacyCase { legacy: "domain-driven-development", reference: "domain-modeling.md", must_rules: 16, outputs: &["Glossary:", "Bounded contexts:", "Owned invariants:", "Boundary adapters:", "Domain errors:", "Proofs:", "Risks:"], contracts: &[] },
-    LegacyCase { legacy: "spec-driven-development", reference: "specification.md", must_rules: 13, outputs: &["Spec source:", "Atomic outcome:", "In scope:", "Out of scope:", "Success criteria:", "Proof plan:", "Open questions:"], contracts: &[] },
-    LegacyCase { legacy: "test-driven-development", reference: "test-driven-development.md", must_rules: 18, outputs: &["Behavior:", "Root-cause boundary:", "Harness cost:", "Integration target:", "Performance RED:", "RED command:", "RED reason:", "GREEN command:", "Broader verification:", "Refactor notes:", "Not covered:"], contracts: &[] },
-    LegacyCase { legacy: "refactoring", reference: "refactoring.md", must_rules: 36, outputs: &["Refactor goal:", "Behavior preserved:", "Touched implementation LOC:", "Governed LOC compliance (all files <=250 LOC):", "Structural remediation rationale:", "Public contracts checked:", "Tests or regression proof:", "Verification:", "Follow-up issues:"], contracts: &[] },
-    LegacyCase { legacy: "qa", reference: "quality-assurance.md", must_rules: 16, outputs: &["Claim:", "Channel:", "Invocation:", "Expected observable:", "Evidence:", "Result:", "Cleanup:"], contracts: &["plain-language-user-replies.md", "natural-korean-responses.md"] },
-];
+use crate::support::{TestResult, copy_plugin_fixture};
 
 #[test]
-fn engineering_skill_is_the_only_packaged_route_for_the_six_workflows() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let skills = root.join("plugins/codexy/skills");
-    let engineering = skills.join("engineering");
-    let skill = engineering_documents(&engineering)?;
-    let prompt = std::fs::read_to_string(engineering.join("agents/openai.yaml"))?;
-    let matrix = std::fs::read_to_string(
-        engineering.join("references/legacy-rule-equivalence-matrix.md"),
-    )?;
-    let manifest: Manifest = serde_json::from_str(&std::fs::read_to_string(
-        engineering.join("references/legacy-rule-manifest.json"),
-    )?)?;
+fn production_validator_accepts_the_real_engineering_route_and_mode_all() -> TestResult {
+    let (_temporary, plugin_root) = copy_plugin_fixture()?;
 
-    validate_engineering_skill(&engineering, &skill)?;
-    assert!(prompt.contains("$engineering"));
-    assert!(prompt.contains("$task-classification"));
-    for trigger in ["diagnosis", "specification", "domain modeling", "test-driven development", "refactoring", "quality assurance"] {
-        assert!(skill.contains(trigger), "frontmatter or route omits {trigger}");
-    }
-    for case in PARITY_CASES {
-        assert!(matrix.contains(case.legacy), "matrix omits {}", case.legacy);
+    let diagnostics = codexy_runtime::validation::engineering_equivalence_diagnostics(&plugin_root);
+    assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+    let all = codexy_runtime::validation::errors(&plugin_root, codexy_runtime::validation::Mode::All);
+    assert!(all.is_empty(), "{all:#?}");
+    Ok(())
+}
+
+#[test]
+fn production_validator_rejects_baseline_and_source_inventory_mutations() -> TestResult {
+    let sources = codexy_runtime::validation::engineering_equivalence_baseline_sources();
+    assert!(codexy_runtime::validation::engineering_equivalence_baseline_diagnostics(&sources).is_empty());
+
+    for mutation in [
+        BaselineMutation::Bytes,
+        BaselineMutation::Missing,
+        BaselineMutation::Extra,
+        BaselineMutation::Duplicate,
+        BaselineMutation::Unknown,
+    ] {
+        let mut changed = sources.clone();
+        apply_baseline_mutation(&mut changed, mutation);
         assert!(
-            !is_skill_bundle(&skills.join(case.legacy)),
-            "legacy routing surface remains: {}", case.legacy
+            !codexy_runtime::validation::engineering_equivalence_baseline_diagnostics(&changed).is_empty(),
+            "baseline mutation {mutation:?} must fail"
         );
     }
-    assert_eq!(manifest.records.len(), PARITY_CASES.len());
-    let ids = manifest.records.iter().map(|record| record.id.as_str()).collect::<BTreeSet<_>>();
-    assert_eq!(ids.len(), manifest.records.len());
-    for record in &manifest.records {
-        let document = std::fs::read_to_string(engineering.join("references").join(&record.destination))?;
-        assert!(skill.contains(&format!("references/{}", record.destination)), "broken entrypoint link");
-        assert_eq!(must_hash(&document), record.must_sha256, "substituted legacy rule identity");
-    }
     Ok(())
 }
 
 #[test]
-fn engineering_contract_rejects_each_section_and_invariant_omission() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let engineering = root.join("plugins/codexy/skills/engineering");
-    let skill = engineering_documents(&engineering)?;
-    for required in REQUIRED_SECTIONS {
-        assert!(validate_engineering_skill(&engineering, &skill.replacen(required, "", 1)).is_err());
-    }
-    for case in PARITY_CASES {
-        let document = std::fs::read_to_string(engineering.join("references").join(case.reference))?;
-        for rule in document.lines().filter(|line| line.contains("MUST")) {
-            let missing = document.replacen(rule, "", 1);
-            assert!(!valid_case(case, &missing), "omitting {rule:?} must fail");
-        }
-    }
-    Ok(())
-}
-
-fn validate_engineering_skill(engineering: &Path, skill: &str) -> Result<(), String> {
-    let frontmatter = skill.split("---").nth(1).ok_or("skill frontmatter missing")?;
-    let frontmatter: serde_yaml::Value = serde_yaml::from_str(frontmatter)
-        .map_err(|error| format!("invalid skill frontmatter: {error}"))?;
-    if frontmatter["name"].as_str() != Some("engineering") {
-        return Err("engineering skill name missing".to_owned());
-    }
-
-    for required in REQUIRED_SECTIONS {
-        if !skill.contains(required) {
-            return Err(format!("engineering contract omits {required:?}"));
-        }
-    }
-    if !valid_inventory(&PARITY_CASES) { return Err("invalid legacy-rule inventory".to_owned()); }
-    for case in PARITY_CASES {
-        let document = std::fs::read_to_string(engineering.join("references").join(case.reference))
-            .map_err(|error| error.to_string())?;
-        if !valid_case(case, &document) { return Err(format!("invalid parity case: {}", case.legacy)); }
-    }
-    Ok(())
-}
-
-fn valid_case(case: LegacyCase, document: &str) -> bool {
-    document.lines().filter(|line| line.contains("MUST")).count() == case.must_rules
-        && case.outputs.iter().all(|output| document.contains(output))
-        && case.contracts.iter().all(|contract| document.contains(contract))
-}
-
-fn must_hash(document: &str) -> String {
-    let mut rules = document.lines().filter(|line| line.contains("MUST")).collect::<Vec<_>>().join("\n");
-    rules.push('\n');
-    format!("{:x}", Sha256::digest(rules.as_bytes()))
-}
-
-fn valid_inventory(cases: &[LegacyCase]) -> bool {
-    cases.len() == LEGACY_SKILLS.len()
-        && cases.iter().map(|case| case.legacy).collect::<BTreeSet<_>>()
-            == LEGACY_SKILLS.into_iter().collect()
-        && cases.iter().map(|case| case.reference).collect::<BTreeSet<_>>().len() == cases.len()
-        && cases.iter().map(|case| case.reference).collect::<BTreeSet<_>>()
-            == ENGINEERING_REFERENCES.into_iter().collect()
-}
-
-#[test]
-fn legacy_skill_paths_are_not_retained_as_compatibility_aliases() {
-    let root = codexy_runtime::paths::repository_root();
-    let skills = root.join("plugins/codexy/skills");
-    for legacy in LEGACY_SKILLS {
-        assert!(!is_skill_bundle(&skills.join(legacy)), "legacy bundle remains: {legacy}");
-    }
-}
-
-#[test]
-fn parity_inventory_rejects_missing_duplicate_unknown_and_stale_entries() {
-    assert!(valid_inventory(&PARITY_CASES));
-    assert!(!valid_inventory(&PARITY_CASES[..5]));
-    let mut duplicate = PARITY_CASES;
-    duplicate[5] = duplicate[0];
-    assert!(!valid_inventory(&duplicate));
-    let mut unknown = PARITY_CASES;
-    unknown[0] = LegacyCase { legacy: "unknown", ..unknown[0] };
-    assert!(!valid_inventory(&unknown));
-    let mut stale = PARITY_CASES;
-    stale[0] = LegacyCase { reference: "stale.md", ..stale[0] };
-    assert!(!valid_inventory(&stale));
-}
-
-fn is_skill_bundle(path: &Path) -> bool {
-    path.join("SKILL.md").is_file() || path.join("agents/openai.yaml").is_file()
-}
-
-fn engineering_documents(engineering: &Path) -> Result<String, std::io::Error> {
-    let mut documents = std::fs::read_to_string(engineering.join("SKILL.md"))?;
-    for reference in [
-        "diagnosis.md",
-        "specification.md",
-        "domain-modeling.md",
-        "test-driven-development.md",
-        "refactoring.md",
-        "quality-assurance.md",
+fn production_validator_rejects_manifest_projection_mutations() -> TestResult {
+    for mutation in [
+        ManifestMutation::MissingRule,
+        ManifestMutation::ExtraRule,
+        ManifestMutation::DuplicateRule,
+        ManifestMutation::UnknownRule,
+        ManifestMutation::StaleSource,
+        ManifestMutation::TwiceMappedRule,
+        ManifestMutation::DuplicateDestination,
+        ManifestMutation::MissingDestination,
+        ManifestMutation::UnlinkedDestination,
     ] {
-        documents.push('\n');
-        documents.push_str(&std::fs::read_to_string(engineering.join("references").join(reference))?);
+        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        apply_manifest_mutation(&plugin_root, mutation)?;
+        assert_rejected(&plugin_root, &format!("manifest {mutation:?}"));
     }
-    Ok(documents)
+    Ok(())
+}
+
+#[test]
+fn production_validator_rejects_destination_and_trigger_mutations() -> TestResult {
+    for mutation in [
+        TextMutation::MustToMay,
+        TextMutation::Negation,
+        TextMutation::Lexical,
+        TextMutation::TriggerRemoval,
+        TextMutation::TriggerSubstitution,
+        TextMutation::BrokenLink,
+        TextMutation::OutsideLink,
+    ] {
+        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        apply_text_mutation(&plugin_root, mutation)?;
+        assert_rejected(&plugin_root, &format!("text {mutation:?}"));
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug)]
+enum BaselineMutation { Bytes, Missing, Extra, Duplicate, Unknown }
+
+#[derive(Clone, Copy, Debug)]
+enum ManifestMutation {
+    MissingRule, ExtraRule, DuplicateRule, UnknownRule, StaleSource, TwiceMappedRule,
+    DuplicateDestination, MissingDestination, UnlinkedDestination,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum TextMutation {
+    MustToMay, Negation, Lexical, TriggerRemoval, TriggerSubstitution, BrokenLink, OutsideLink,
+}
+
+fn apply_baseline_mutation(sources: &mut Vec<(String, String)>, mutation: BaselineMutation) {
+    match mutation {
+        BaselineMutation::Bytes => sources[0].1.push('x'),
+        BaselineMutation::Missing => { sources.pop(); }
+        BaselineMutation::Extra => sources.push(("unexpected".to_owned(), "bytes".to_owned())),
+        BaselineMutation::Duplicate => sources[1].0 = sources[0].0.clone(),
+        BaselineMutation::Unknown => sources[0].0 = "unknown".to_owned(),
+    }
+}
+
+fn apply_manifest_mutation(plugin_root: &Path, mutation: ManifestMutation) -> TestResult {
+    let manifest_path = plugin_root.join("skills/engineering/references/legacy-rule-manifest.json");
+    let mut manifest: Value = serde_json::from_str(&std::fs::read_to_string(&manifest_path)?)?;
+    let mappings = manifest["mappings"].as_array_mut().ok_or("manifest mappings missing")?;
+    match mutation {
+        ManifestMutation::DuplicateDestination => mappings[1]["destination"] = mappings[0]["destination"].clone(),
+        ManifestMutation::MissingDestination => mappings[0]["destination"] = Value::String("missing.md".to_owned()),
+        ManifestMutation::UnlinkedDestination => mappings[0]["entrypoint"] = Value::String("SKILL.md#missing".to_owned()),
+        ManifestMutation::StaleSource => mappings[0]["source"] = Value::String("debugging-v0".to_owned()),
+        _ => mutate_identity_file(plugin_root, mappings[0]["identity_file"].as_str().ok_or("identity file missing")?, mutation)?,
+    }
+    std::fs::write(manifest_path, serde_json::to_string_pretty(&manifest)?)?;
+    Ok(())
+}
+
+fn mutate_identity_file(plugin_root: &Path, relative: &str, mutation: ManifestMutation) -> TestResult {
+    let path = plugin_root.join("skills/engineering/references").join(relative);
+    let mut value: Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    let identities = value["identities"].as_array_mut().ok_or("identities missing")?;
+    match mutation {
+        ManifestMutation::MissingRule => { identities.pop(); }
+        ManifestMutation::ExtraRule => identities.push(Value::String("unexpected:rule".to_owned())),
+        ManifestMutation::DuplicateRule => identities.push(identities[0].clone()),
+        ManifestMutation::UnknownRule => identities[0] = Value::String("unknown:rule".to_owned()),
+        ManifestMutation::TwiceMappedRule => identities.push(identities[1].clone()),
+        ManifestMutation::StaleSource | ManifestMutation::DuplicateDestination | ManifestMutation::MissingDestination | ManifestMutation::UnlinkedDestination => unreachable!(),
+    }
+    std::fs::write(path, serde_json::to_string_pretty(&value)?)?;
+    Ok(())
+}
+
+fn apply_text_mutation(plugin_root: &Path, mutation: TextMutation) -> TestResult {
+    let skill = plugin_root.join("skills/engineering/SKILL.md");
+    let first_destination = first_destination(plugin_root)?;
+    let destination = plugin_root.join("skills/engineering/references").join(first_destination);
+    let path = match mutation { TextMutation::TriggerRemoval | TextMutation::TriggerSubstitution => &skill, _ => &destination };
+    let original = std::fs::read_to_string(path)?;
+    let changed = match mutation {
+        TextMutation::MustToMay => original.replacen("MUST", "MAY", 1),
+        TextMutation::Negation => original.replacen("MUST NOT", "MUST", 1),
+        TextMutation::Lexical => original.replacen("evidence", "guesswork", 1),
+        TextMutation::TriggerRemoval => mutate_first_trigger(&original, "MUST use [", "Use ["),
+        TextMutation::TriggerSubstitution => mutate_first_trigger(&original, "behavior", "ceremony"),
+        TextMutation::BrokenLink => original.replacen(".md)", "-missing.md)", 1),
+        TextMutation::OutsideLink => original.replacen(
+            "](../../codex-orchestration/references/plain-language-user-replies.md)",
+            "](../../../../AGENTS.md)",
+            1,
+        ),
+    };
+    std::fs::write(path, changed)?;
+    Ok(())
+}
+
+fn mutate_first_trigger(original: &str, from: &str, to: &str) -> String {
+    let offset = original.find("MUST use [").unwrap_or_default();
+    let (prefix, route) = original.split_at(offset);
+    format!("{prefix}{}", route.replacen(from, to, 1))
+}
+
+fn first_destination(plugin_root: &Path) -> TestResult<String> {
+    let manifest = std::fs::read_to_string(plugin_root.join("skills/engineering/references/legacy-rule-manifest.json"))?;
+    let value: Value = serde_json::from_str(&manifest)?;
+    value["mappings"][0]["destination"].as_str().map(ToOwned::to_owned).ok_or_else(|| "destination missing".into())
+}
+
+fn assert_rejected(plugin_root: &Path, label: &str) {
+    assert!(
+        !codexy_runtime::validation::engineering_equivalence_diagnostics(plugin_root).is_empty(),
+        "{label} must fail"
+    );
 }

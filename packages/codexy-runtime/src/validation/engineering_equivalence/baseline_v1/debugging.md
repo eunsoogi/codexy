@@ -1,11 +1,16 @@
-# Diagnosis
+---
+name: debugging
+description: MUST use when behavior is wrong, tests fail, processes hang, output is unexpected, regressions appear, UI breaks, GitHub automation misbehaves, or a root cause is unknown.
+---
+
+# Debugging
 
 ## Purpose
 
 MUST find the cause before applying the fix. Debugging is reproduction, evidence
 collection, hypothesis testing, minimal repair, and regression proof.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md) while preserving exact debugging evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow [Plain-Language User Replies](../codex-orchestration/references/plain-language-user-replies.md) while preserving exact debugging evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md).
 
 ## Workflow
 

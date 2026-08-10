@@ -69,6 +69,7 @@ mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
 mod custom_agent_schema;
+mod engineering_equivalence;
 mod getcodexy_component_contract;
 mod github_labels;
 mod handoff_claims;
@@ -133,6 +134,11 @@ use std::path::Path;
 
 use anyhow::Result;
 
+pub use engineering_equivalence::{
+    baseline_diagnostics as engineering_equivalence_baseline_diagnostics,
+    baseline_sources as engineering_equivalence_baseline_sources,
+    diagnostics as engineering_equivalence_diagnostics,
+};
 pub use mode::Mode;
 pub use mode_dispatch::{errors, run};
 pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;

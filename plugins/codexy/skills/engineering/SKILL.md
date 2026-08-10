@@ -15,35 +15,42 @@ Proof-driven completion is the separate final-claim audit.
 ## Diagnosis
 
 MUST use [Diagnosis](references/diagnosis.md) when behavior is wrong, tests
-fail, output is unexpected, a process hangs, or the cause is unknown.
+fail, processes hang, output is unexpected, regressions appear, UI breaks,
+GitHub automation misbehaves, or a root cause is unknown.
 
 ## Specification
 
-MUST use [Specification](references/specification.md) when an issue, PRD,
-acceptance criteria, or other brief requires an atomic outcome and proof plan.
+MUST use [Specification](references/specification.md) when a task starts from a
+PRD, issue, acceptance criteria, design brief, API contract, user story, or
+ambiguous feature request that needs implementation discipline before editing.
 
 ## Domain modeling
 
-MUST use [Domain modeling](references/domain-modeling.md) when business terms,
-workflows, invariants, permissions, state transitions, or ownership boundaries
-need explicit modeling.
+MUST use [Domain modeling](references/domain-modeling.md) when implementation
+touches business concepts, workflows, bounded contexts, domain language,
+invariants, aggregates, state transitions, permissions, or cross-module
+ownership boundaries.
 
 ## Test-driven development
 
-MUST use [Test-driven development](references/test-driven-development.md) before
-changing behavior, refactoring, validators, documentation rules, or workflows.
+MUST use [Test-driven development](references/test-driven-development.md) when
+implementing a feature, bug fix, behavior change, refactor, validator, harness,
+CLI behavior, documentation rule, plugin skill, workflow rule, or release
+automation before production edits.
 
 ## Refactoring
 
-MUST use [Refactoring](references/refactoring.md) when restructuring behavior
-without changing contracts, reducing coupling, or keeping governed files within
-the 250-LOC target.
+MUST use [Refactoring](references/refactoring.md) when restructuring existing
+code without changing behavior, splitting large files or modules, reducing
+coupling, extracting helpers, simplifying boundaries, or keeping implementation
+files at or below the default 250 LOC target.
 
 ## Quality assurance
 
-MUST use [Quality assurance](references/quality-assurance.md) to prove acceptance
-criteria through the real user, maintainer, automation, plugin, or configuration
-surface.
+MUST use [Quality assurance](references/quality-assurance.md) when verifying
+completed work, designing manual QA, checking real user surfaces, validating
+release candidates, acceptance criteria, repository settings, plugin behavior,
+or PR readiness.
 
 ## Selection and boundaries
 

@@ -1,12 +1,17 @@
-# Quality assurance
+---
+name: qa
+description: MUST use when verifying completed work, designing manual QA, checking real user surfaces, validating release candidates, acceptance criteria, repository settings, plugin behavior, or PR readiness.
+---
+
+# QA
 
 ## Purpose
 
-QA turns claims into observable evidence. Automated tests are
-useful, but work is not proven until the surface users, maintainers, or
-automation depend on has been driven and inspected.
+QA turns claims into observable evidence. Automated tests are useful, but work
+is not proven until the surface users, maintainers, or automation depend on has
+been driven and inspected.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md) while preserving exact QA evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow [Plain-Language User Replies](../codex-orchestration/references/plain-language-user-replies.md) while preserving exact QA evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md).
 
 ## Workflow
 
