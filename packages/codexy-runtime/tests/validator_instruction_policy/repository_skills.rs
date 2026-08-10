@@ -25,10 +25,9 @@ fn validator_cli_rejects_repository_skill_instruction_policy_regressions() -> Te
     assert!(stderr(&output).contains("mandatory instructions must use MUST"));
 
     std::fs::write(&skill_path, skill)?;
-    std::fs::write(
-        &prompt_path,
-        prompt.replace("You MUST run $orchestration", "Run $orchestration"),
-    )?;
+    let mutated = prompt.replace("You MUST use $orchestration", "Use $orchestration");
+    assert_ne!(prompt, mutated, "repository prompt fixture was not mutated");
+    std::fs::write(&prompt_path, mutated)?;
     let output = validator(&plugin_root, "--check")?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("mandatory instructions must use MUST"));

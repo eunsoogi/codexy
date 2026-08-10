@@ -33,6 +33,7 @@ const MUTABLE_PLUGIN_FILES: &[&str] = &[
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
 ];
+const ORCHESTRATION_PROMPT: &str = "You MUST use $orchestration";
 #[rustfmt::skip]
 const ROOT_AGENTS_BARE_CASES: &[(&str, &str)] = &[("MUST use Codexy codegraph MCP", "Use Codexy codegraph MCP"), ("MUST preflight branch refs", "preflight branch refs"), ("MUST wait", "Wait"), ("MUST keep metadata current", "Keep metadata current"), ("MUST add nested", "Add nested"), ("MUST put executable", "Put executable"), ("MUST treat failures", "Treat failures"), ("MUST capture", "Capture"), ("MUST mention unrelated", "Mention unrelated")];
 
@@ -164,7 +165,7 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     support::assert_structured_literals(
         &original,
         "agent default prompt policy",
-        &["You MUST run $orchestration"],
+        &[ORCHESTRATION_PROMPT],
     );
     for prompt in [
         "Run $orchestration before setup, then create a branch.",
@@ -182,7 +183,11 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     ] {
         std::fs::write(
             &prompt_path,
-            original.replace("You MUST run $orchestration", prompt),
+            {
+                let mutated = original.replace(ORCHESTRATION_PROMPT, prompt);
+                assert_ne!(original, mutated, "fixture prompt was not mutated");
+                mutated
+            },
         )?;
 
         let output = validator(&plugin_root, "--check")?;

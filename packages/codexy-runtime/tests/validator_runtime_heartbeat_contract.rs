@@ -93,7 +93,7 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
         root.join("plugins/codexy/skills/orchestration/references/runtime-heartbeats.md"),
     )?;
     let token = fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
     )?;
 
     structured_contract::assert_rules(
@@ -111,7 +111,7 @@ fn validator_requires_runtime_heartbeat_contract() -> TestResult {
         "runtime heartbeat contract",
     )?;
     assert_rejected_clauses(
-        "skills/orchestration/SKILL.md",
+        "skills/orchestration/references/token-efficient.md",
         TOKEN_CLAUSES,
         "removed heartbeat policy",
         "runtime heartbeat contract",

@@ -5,7 +5,6 @@ use crate::support;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const REFERENCE: &str = "skills/orchestration/references/runtime-heartbeats.md";
-const TOKEN_SKILL: &str = "skills/orchestration/SKILL.md";
 const HOST_FALLBACK: &str = "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.";
 const LEGACY_ELIGIBILITY: &str = "When GitHub CI, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
 const LEGACY_REGISTRATION: &str = "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";
@@ -27,7 +26,7 @@ const AFFIRMATIVE_NEAR_NEGATORS: &[&str] = &[
     "The owner MUST register not only a heartbeat instead of repeated model continuations or ending without a wakeup path.",
 ];
 const AFFIRMATIVE_HYPHENATED_TARGET: &str = "The owner MUST register a heartbeat-only wake route instead of repeated model continuations or ending without a wakeup path.";
-const MUTABLE_FILES: &[&str] = &[REFERENCE, TOKEN_SKILL];
+const MUTABLE_FILES: &[&str] = &[REFERENCE];
 
 fn plugin_fixture() -> TestResult<support::PluginFixture> {
     let mutable_files = MUTABLE_FILES.iter().map(std::path::Path::new).collect::<Vec<_>>();
@@ -138,18 +137,16 @@ fn validator_rejects_weakened_host_transition_fallbacks() -> TestResult {
 
 #[test]
 fn validator_rejects_weakened_desktop_and_slingshot_recovery_routes() -> TestResult {
-    for relative in [REFERENCE, TOKEN_SKILL] {
-        assert_rejected_policy_mutation(
-            relative,
-            DESKTOP_CONTINUITY,
-            "The owner MAY finalize a desktop-origin root turn between ordinary child waits.",
-        )?;
-        assert_rejected_policy_mutation(
-            relative,
-            SLINGSHOT_RECOVERY,
-            "The owner MAY repeat a slingshot-host wait call or schedule a heartbeat relay.",
-        )?;
-    }
+    assert_rejected_policy_mutation(
+        REFERENCE,
+        DESKTOP_CONTINUITY,
+        "The owner MAY finalize a desktop-origin root turn between ordinary child waits.",
+    )?;
+    assert_rejected_policy_mutation(
+        REFERENCE,
+        SLINGSHOT_RECOVERY,
+        "The owner MAY repeat a slingshot-host wait call or schedule a heartbeat relay.",
+    )?;
     Ok(())
 }
 

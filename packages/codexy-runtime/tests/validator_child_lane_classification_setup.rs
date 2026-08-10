@@ -53,7 +53,7 @@ Maintainer reassignment: none
 #[test]
 fn validator_allows_child_setup_after_complete_task_classification() -> TestResult {
     assert_allowed(&format!(
-        "{}\nChild created implementation branch codexy/231-branch-classification-guard after classification.\n{}",
+        "{}\nChild created implementation branch codexy/231-branch-classification-guard after orchestration.\n{}",
         complete_child_classification(),
         ownership_footer()
     ))?;

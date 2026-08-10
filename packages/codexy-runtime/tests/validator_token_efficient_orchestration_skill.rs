@@ -10,7 +10,7 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let token_skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
     )?;
     let prompt_yaml = std::fs::read_to_string(
         root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
@@ -41,8 +41,12 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     );
 
     let prompt = structured_contract_artifacts::Prompt::parse(&prompt_yaml)?;
-    assert_eq!(prompt.display_name(), "Token-Efficient Orchestration");
+    assert_eq!(prompt.display_name(), "Execution Coordinator");
     assert!(prompt.allow_implicit_invocation());
+    assert!(prompt.default_prompt().contains("You MUST use $orchestration"));
+    assert!(prompt
+        .default_prompt()
+        .contains("formal classification table before setup"));
     structured_contract::assert_rules(
         &structured_contract::Contract::markdown(prompt.default_prompt()),
         structured_contract_rules::TOKEN_PROMPT,
@@ -53,6 +57,16 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
         "token.skill.no-stale-version-or-review-gate",
         &["installed Codexy plugin is version 1.1.0", "Codex review"],
     );
+    for surface in [&token_skill, &orchestration, prompt.default_prompt()] {
+        structured_contract_artifacts::TextShape::new(surface).assert_absent_concepts(
+            "orchestration.no-removed-skill-routes",
+            &[
+                "$task-classification",
+                "$codex-orchestration",
+                "$token-efficient-orchestration",
+            ],
+        );
+    }
     structured_contract_artifacts::TextShape::new(&template)
         .assert_absent_concepts("token.delta-template.no-review-gate", &["Codex review"]);
 
