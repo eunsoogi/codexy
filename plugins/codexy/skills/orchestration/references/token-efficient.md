@@ -73,6 +73,9 @@ MUST use this flow after compaction and before handoff:
 Before a child stops, archives, yields ownership, or calls `update_goal(complete)`
 or `update_goal(blocked)`, it MUST send exactly one terminal handoff delta to the
 source parent.
+`update_goal(blocked)` additionally requires the typed unanswered user-decision
+gate; token pressure, repeated continuations, unchanged fingerprints, external
+producers, and coordination waits MUST NOT authorize a blocked goal.
 That delta MUST include the stable event identity, issue/PR, child task id,
 branch/worktree, exact HEAD and dirty/index state, last completed proof, current
 external gate, preserved artifacts or reservation, and one parent-owned next

@@ -12,6 +12,14 @@ fn validator_rejects_non_blocking_waits_described_as_blocked() -> TestResult {
         "Blocker: queued worktree setup has not completed yet.",
         "Blocked on asynchronous tool completion.",
         "Blocked: async tool has not returned yet.",
+        "Blocked while waiting for parent authorization.",
+        "Blocked while waiting for dependency integration.",
+        "Blocked while waiting for a resource slot.",
+        "Blocked while waiting for a Sentinel result.",
+        "Blocked while waiting for CI completion.",
+        "Blocked while waiting for connector review.",
+        "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.",
+        "Blocked after repeated true impasse because an external state change is required.",
     ] {
         let output = validate(handoff)?;
         assert!(
@@ -45,7 +53,7 @@ fn validator_preserves_real_blockers() -> TestResult {
 #[test]
 fn validator_preserves_true_impasse() -> TestResult {
     let output = validate(
-        "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.",
+        "Blocked by an unanswered user decision that materially changes the result; no safe default and no in-scope action exist.",
     )?;
     assert!(output.status.success(), "{}", stderr(&output));
     Ok(())

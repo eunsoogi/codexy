@@ -11,6 +11,9 @@ const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane
 const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fatal";
 const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
 const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
+const NONTERMINAL_GATE_WAIT: &str = "sentinel|ci|connector review|parent authorization|dependency integration|dependency merge|resource slot|alternate evidence|event-idle child";
+const DISALLOWED_BLOCKED_RATIONALE: &str =
+    "maintainer input|human input|external state change|true impasse";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
@@ -67,6 +70,8 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
         || mentions_return_wait(text)
+        || has_any(text, DISALLOWED_BLOCKED_RATIONALE)
+        || (has_any(text, NONTERMINAL_GATE_WAIT) && mentions_waiting_context(text))
         || (has_any(text, CHILD_WORK)
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
@@ -138,13 +143,13 @@ fn mentions_missing_child_evidence(text: &str) -> bool {
         && has_any(text, "evidence|goal tool|todo|plan|verification evidence")
 }
 fn has_true_impasse_rationale(text: &str) -> bool {
-    (has_unnegated_phrase(text, "true impasse", 16)
-        || has_unnegated_phrase(text, "cannot make meaningful progress", 16)
-        || has_unnegated_phrase(text, "can't make meaningful progress", 16))
+    has_any(text, "unanswered user decision|missing user information")
         && has_any(
             text,
-            "without user input|without maintainer input|without human input|external state change|requires user input|requires maintainer input|requires human input",
+            "materially changes the result|materially changes result",
         )
+        && has_any(text, "no safe default|safe default=unavailable")
+        && has_any(text, "no in-scope action|in-scope action=unavailable")
 }
 fn has_any(text: &str, phrases: &str) -> bool {
     phrases

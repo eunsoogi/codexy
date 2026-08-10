@@ -82,13 +82,3 @@ pub(super) fn has_distinct_values(line: &str, name: &str, minimum: usize) -> boo
         })
         .unwrap_or(false)
 }
-
-pub(super) fn has_elapsed_minimum(line: &str) -> bool {
-    let parse = |name| field(line, name).and_then(|value| value.parse::<u64>().ok());
-    parse("first monotonic ms")
-        .zip(parse("observed monotonic ms"))
-        .zip(parse("minimum interval ms"))
-        .is_some_and(|((first, observed), minimum)| {
-            minimum > 0 && observed.saturating_sub(first) >= minimum
-        })
-}
