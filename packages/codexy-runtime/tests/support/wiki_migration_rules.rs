@@ -1,9 +1,12 @@
-use super::wiki_minimal_contract_markdown::{ActiveEvent, ActiveKind, Document, Scope};
+use super::{
+    wiki_active_token_stream::{Clause, Mode, clauses},
+    wiki_minimal_contract_markdown::Document,
+};
 
 pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
     let document = Document::parse(source)?;
-    let scope = Rules::parse(&document, &document.section("## Scope")?);
-    let procedure = Rules::parse(&document, &document.section("## Procedure")?);
+    let scope = Rules::new(clauses(&document, &document.section("## Scope")?));
+    let procedure = Rules::new(clauses(&document, &document.section("## Procedure")?));
     scope.require(
         Mode::Must,
         &["preserve", "existing"],
@@ -38,53 +41,12 @@ pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
     ])
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Mode {
-    Must,
-    MustNot,
-}
-
-struct Clause {
-    mode: Mode,
-    prose: String,
-    inline: Vec<String>,
-}
-
 struct Rules {
     clauses: Vec<Clause>,
 }
 
 impl Rules {
-    fn parse(document: &Document, scope: &Scope) -> Self {
-        let events = document.active_events(scope);
-        let modes = events.iter().flat_map(modalities).collect::<Vec<_>>();
-        let clauses = modes
-            .iter()
-            .enumerate()
-            .map(|(index, &(start, mode))| {
-                let next = modes.get(index + 1).map_or(usize::MAX, |next| next.0);
-                let end = next.min(sentence_end(&events, start));
-                let sentence = sentence_start(&events, start);
-                let begin = modes[..index]
-                    .last()
-                    .is_some_and(|prior| prior.0 >= sentence)
-                    .then_some(start)
-                    .unwrap_or(sentence);
-                Clause {
-                    mode,
-                    prose: prose_between(&events, begin, end),
-                    inline: events
-                        .iter()
-                        .filter(|event| {
-                            event.kind == ActiveKind::Inline
-                                && event.start >= start
-                                && event.start < end
-                        })
-                        .map(|event| event.value.into())
-                        .collect(),
-                }
-            })
-            .collect();
+    fn new(clauses: Vec<Clause>) -> Self {
         Self { clauses }
     }
 
@@ -93,7 +55,7 @@ impl Rules {
             .clauses
             .iter()
             .enumerate()
-            .filter(|(_, clause)| clause.matches(terms, inline))
+            .filter(|(_, clause)| matches(clause, terms, inline))
             .collect::<Vec<_>>();
         if matches.len() != 1 || matches[0].1.mode != mode {
             return Err(format!(
@@ -101,7 +63,7 @@ impl Rules {
                 terms.join(", ")
             ));
         }
-        matches[0].1.reject_qualifiers()?;
+        reject_qualifiers(&matches[0].1.prose)?;
         Ok(matches[0].0)
     }
 
@@ -118,120 +80,36 @@ impl Rules {
     }
 }
 
-impl Clause {
-    fn matches(&self, terms: &[&str], inline: &[&str]) -> bool {
-        terms.iter().all(|term| phrase(&self.prose, term))
-            && self.inline.len() == inline.len()
-            && inline
-                .iter()
-                .all(|identity| self.inline.iter().any(|found| found == identity))
-    }
-
-    fn reject_qualifiers(&self) -> Result<(), String> {
-        [
-            "except",
-            "unless",
-            "baseline",
-            "allowlist",
-            "compatibility",
-            "alias",
-            "external",
-            "restore",
-        ]
-        .iter()
-        .all(|term| !phrase(&self.prose, term))
-        .then_some(())
-        .ok_or_else(|| "qualified typed normative clause".into())
-    }
+fn matches(clause: &Clause, terms: &[&str], inline: &[&str]) -> bool {
+    terms.iter().all(|term| phrase(&clause.prose, term))
+        && clause.inline.len() == inline.len()
+        && inline
+            .iter()
+            .all(|identity| clause.inline.iter().any(|found| found == identity))
 }
 
-fn modalities(event: &ActiveEvent<'_>) -> Vec<(usize, Mode)> {
-    if event.kind != ActiveKind::Prose {
-        return Vec::new();
-    }
-    event
-        .value
-        .match_indices("MUST")
-        .filter_map(|(offset, _)| {
-            let tail = &event.value[offset + 4..];
-            let boundary = event.value[..offset]
-                .chars()
-                .next_back()
-                .is_none_or(|value| !value.is_ascii_alphabetic())
-                && tail
-                    .chars()
-                    .next()
-                    .is_none_or(|value| value.is_whitespace());
-            boundary.then_some((
-                event.start + offset,
-                tail.strip_prefix(" NOT")
-                    .map_or(Mode::Must, |_| Mode::MustNot),
-            ))
-        })
-        .collect()
+fn reject_qualifiers(words: &[String]) -> Result<(), String> {
+    [
+        "except",
+        "unless",
+        "baseline",
+        "allowlist",
+        "compatibility",
+        "alias",
+        "external",
+        "restore",
+    ]
+    .iter()
+    .all(|term| !words.iter().any(|word| word == term))
+    .then_some(())
+    .ok_or_else(|| "qualified typed normative clause".into())
 }
 
-fn sentence_start(events: &[ActiveEvent<'_>], start: usize) -> usize {
-    let Some(event) = events
-        .iter()
-        .find(|event| event.kind == ActiveKind::Prose && event.start <= start && start < event.end)
-    else {
-        return start;
-    };
-    event.value[..start - event.start]
-        .rfind(['.', '\n'])
-        .map_or(event.start, |offset| event.start + offset + 1)
-}
-
-fn sentence_end(events: &[ActiveEvent<'_>], start: usize) -> usize {
-    events
-        .iter()
-        .filter(|event| event.kind == ActiveKind::Prose && event.end > start)
-        .find_map(|event| {
-            let from = start.saturating_sub(event.start);
-            event.value[from..]
-                .find('.')
-                .map(|offset| event.start + from + offset + 1)
-        })
-        .unwrap_or(usize::MAX)
-}
-
-fn prose_between(events: &[ActiveEvent<'_>], start: usize, end: usize) -> String {
-    events
-        .iter()
-        .filter(|event| event.kind == ActiveKind::Prose && event.end > start && event.start < end)
-        .map(|event| {
-            let from = start.saturating_sub(event.start);
-            let to = end.saturating_sub(event.start).min(event.value.len());
-            &event.value[from..to]
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn phrase(text: &str, term: &str) -> bool {
-    let normalized = normalize(text);
-    let term = normalize(term);
-    normalized
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .windows(term.split_whitespace().count())
-        .any(|words| words.join(" ") == term)
-}
-
-fn normalize(source: &str) -> String {
-    source
-        .to_ascii_lowercase()
-        .chars()
-        .map(|value| {
-            if value.is_ascii_alphanumeric() {
-                value
-            } else {
-                ' '
-            }
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+fn phrase(words: &[String], term: &str) -> bool {
+    let term = term
+        .split(|value: char| !value.is_ascii_alphanumeric())
+        .filter(|value| !value.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    words.windows(term.len()).any(|window| window == term)
 }

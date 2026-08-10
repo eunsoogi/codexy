@@ -34,6 +34,7 @@ mod release_cache_resources;
 mod release_version;
 pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
+pub(crate) mod wiki_active_token_stream;
 pub(crate) mod wiki_core_article;
 pub(crate) mod wiki_core_contract;
 pub(crate) mod wiki_migration_fixture;

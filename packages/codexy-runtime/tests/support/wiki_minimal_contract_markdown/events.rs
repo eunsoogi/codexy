@@ -149,9 +149,14 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
                     html.push_str(&value);
                 }
             }
+            Event::SoftBreak | Event::HardBreak => {
+                document.text.push(Text {
+                    range,
+                    value: "\n".into(),
+                });
+                mark(&mut heading, &mut link, &mut table);
+            }
             Event::InlineHtml(_)
-            | Event::SoftBreak
-            | Event::HardBreak
             | Event::Rule
             | Event::TaskListMarker(_)
             | Event::FootnoteReference(_)

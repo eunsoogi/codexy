@@ -95,3 +95,22 @@ fn migration_rules_bind_exact_inline_identities_and_clause_local_qualifiers() ->
     assert!(unrelated_result.is_ok(), "unrelated qualifier prose: {unrelated_result:?}");
     Ok(())
 }
+
+#[test]
+fn migration_rules_reject_active_token_stream_polarity_and_prefix_mutations() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let guide = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/migration.md"))?;
+    let rule = "MUST validate every referenced provenance and freshness input before any log\n   or derived write";
+    for (name, replacement) in [
+        ("multiple spaces", "MUST  NOT validate"),
+        ("tab", "MUST\tNOT validate"),
+        ("soft break", "MUST\nNOT validate"),
+        ("split event", "MUST **NOT** validate"),
+    ] {
+        let mutation = guide.replacen(rule, &rule.replacen("MUST validate", replacement, 1), 1);
+        assert!(validate_migration_rules(&mutation).is_err(), "{name}");
+    }
+    let prefix = rule.replacen("MUST validate", "Unless `route`, MUST validate", 1);
+    assert!(validate_migration_rules(&guide.replacen(rule, &prefix, 1)).is_err(), "split prefix");
+    Ok(())
+}
