@@ -82,17 +82,8 @@ MUST stop, classify, and only then MUST continue through the matching Codexy wor
 
 ## Packaged Agents
 
-Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
-TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`; MUST keep one specialist agent per file.
-`plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
-specialist worker.
-
-Installed Codexy specialists require the stable registration bridge and an
-independent schema/invocation preflight. MUST read
-`references/agent-registration.md` before registering, updating, uninstalling,
-diagnosing, or invoking a packaged specialist. MUST NOT treat
-`plugins/codexy/.codex/agents` as installed custom agents.
+MUST read `references/agent-registration.md` before registering, updating,
+uninstalling, diagnosing, or invoking a packaged specialist.
 
 ## Required Control Plane
 

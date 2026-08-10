@@ -1,5 +1,15 @@
 # Agent Registration And Invocation
 
+## Packaged Artifact Boundary
+
+Codexy ships specialist custom-agent TOMLs at
+`plugins/codexy/agents/<name>.toml`, with discovery metadata in
+`plugins/codexy/agents/catalog.toml`; MUST keep one specialist per file.
+`plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
+specialist worker. Installed specialists require the stable registration bridge
+and independent schema/invocation preflight. MUST NOT treat
+`plugins/codexy/.codex/agents` as installed custom agents.
+
 ## Source-Only Pre-Session Update
 
 The repository source includes a pre-session updater implementation for future

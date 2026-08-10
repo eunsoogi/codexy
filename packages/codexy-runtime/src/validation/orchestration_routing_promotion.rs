@@ -67,12 +67,15 @@ fn operand_subject<'a>(words: &'a [&'a str], operand: usize) -> &'a [&'a str] {
 }
 
 fn temporal_qualifier(words: &[&str], operand: usize) -> bool {
+    let prefix = &words[action_start(words, operand)..operand];
     let suffix = words[operand + 1..action_end(words, operand)]
         .iter()
         .take_while(|word| !matches!(**word, "must" | "may" | "can" | "cannot" | "apply"))
         .copied()
         .collect::<Vec<_>>();
-    suffix.iter().any(|word| matches!(*word, "while" | "until"))
+    prefix.iter().any(|word| matches!(*word, "while" | "until"))
+        || prefix.windows(2).any(|window| window == ["only", "when"])
+        || suffix.iter().any(|word| matches!(*word, "while" | "until"))
         || suffix.windows(2).any(|window| window == ["only", "when"])
 }
 
@@ -81,7 +84,7 @@ fn action_end(words: &[&str], operand: usize) -> usize {
         .iter()
         .enumerate()
         .find_map(|(offset, word)| {
-            (*word == "while" && starts_new_action(&words[operand + offset + 2..]))
+            (*word == "while" && starts_new_following_action(&words[operand + offset + 2..]))
                 .then_some(operand + offset + 1)
         })
         .unwrap_or(words.len())
@@ -90,11 +93,27 @@ fn action_end(words: &[&str], operand: usize) -> usize {
 fn action_start(words: &[&str], operand: usize) -> usize {
     words[..operand]
         .iter()
-        .rposition(|word| *word == "while")
-        .map_or(0, |index| index + 1)
+        .enumerate()
+        .rev()
+        .find_map(|(index, word)| {
+            (*word == "while" && starts_new_action(&words[index + 1..=operand]))
+                .then_some(index + 1)
+        })
+        .unwrap_or(0)
 }
 
 fn starts_new_action(words: &[&str]) -> bool {
+    let temporal_prefix = words
+        .first()
+        .is_some_and(|word| word.chars().all(|character| character.is_ascii_digit()));
+    introduces_action(words)
+        && (!temporal_prefix
+            || words
+                .iter()
+                .any(|word| matches!(*word, "reviewer" | "reviewers")))
+}
+
+fn starts_new_following_action(words: &[&str]) -> bool {
     !words
         .first()
         .is_some_and(|word| word.chars().all(|character| character.is_ascii_digit()))
