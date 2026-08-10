@@ -62,9 +62,17 @@ pub(super) fn luna_assignment_clauses(section: &str) -> Vec<String> {
             .then(|| policy_line(trimmed))
             .flatten()
         })
-        .flat_map(|instruction| instruction.split(';'))
-        .map(str::trim)
+        .flat_map(|instruction| clause_boundaries(instruction))
+        .map(|clause| clause.trim().to_owned())
         .filter(|clause| !clause.is_empty())
+        .collect()
+}
+
+fn clause_boundaries(instruction: &str) -> Vec<String> {
+    instruction
+        .replace(". Simple", ";Simple")
+        .replace(" and Simple", ";Simple")
+        .split(';')
         .map(str::to_owned)
         .collect()
 }

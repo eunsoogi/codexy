@@ -125,6 +125,7 @@ fn routing_measurement_cli_rejects_every_same_id_frozen_corpus_tuple_mutation() 
         CORPUS.replacen("Add one mutation test", "Change the exact prompt", 1),
         CORPUS.replacen("The test is faithful and bounded.", "Changed oracle.", 1),
         CORPUS.replacen("simple-local-validator", "same-id-but-changed", 1),
+        CORPUS.replacen("\"classification\":\"simple\"", "\"classification\":\"general\"", 1),
     ];
     let mut extra = serde_json::from_str::<Value>(CORPUS)?;
     extra["tasks"].as_array_mut().expect("tasks").push(json!({
@@ -137,6 +138,13 @@ fn routing_measurement_cli_rejects_every_same_id_frozen_corpus_tuple_mutation() 
     let mut reordered = serde_json::from_str::<Value>(CORPUS)?;
     reordered["tasks"].as_array_mut().expect("tasks").reverse();
     cases.push(serde_json::to_string(&reordered)?);
+    let mut missing = serde_json::from_str::<Value>(CORPUS)?;
+    missing["tasks"].as_array_mut().expect("tasks").pop();
+    cases.push(serde_json::to_string(&missing)?);
+    let mut duplicate = serde_json::from_str::<Value>(CORPUS)?;
+    let repeated = duplicate["tasks"][0].clone();
+    duplicate["tasks"].as_array_mut().expect("tasks").push(repeated);
+    cases.push(serde_json::to_string(&duplicate)?);
 
     for mutated in cases {
         fs::write(&corpus, mutated)?;
@@ -147,6 +155,10 @@ fn routing_measurement_cli_rejects_every_same_id_frozen_corpus_tuple_mutation() 
     }
     fs::write(&corpus, CORPUS)?;
     assert!(run(&corpus, &results)?.status.success());
+    let mut wrong_result = results_value("high", false);
+    wrong_result["results"][0]["task_id"] = json!("wrong-task-id");
+    fs::write(&results, serde_json::to_vec(&wrong_result)?)?;
+    assert!(!run(&corpus, &results)?.status.success(), "wrong result task id passed");
     Ok(())
 }
 
