@@ -10,10 +10,15 @@ pub(crate) struct Clause {
     pub(crate) mode: Mode,
     pub(crate) prose: Vec<String>,
     pub(crate) inline: Vec<String>,
+    plain: String,
 }
 
 enum Token {
-    Word { value: String, spaced: bool },
+    Word {
+        value: String,
+        spaced: bool,
+        prefix: String,
+    },
     Inline(String),
     Sentence,
 }
@@ -22,6 +27,7 @@ enum Token {
 struct Gap {
     whitespace: bool,
     punctuation: bool,
+    text: String,
 }
 
 pub(crate) fn clauses(document: &Document, scope: &Scope) -> Vec<Clause> {
@@ -57,6 +63,7 @@ pub(crate) fn clauses(document: &Document, scope: &Scope) -> Vec<Clause> {
                         _ => None,
                     })
                     .collect(),
+                plain: tokens[begin..end].iter().filter_map(plain).collect(),
             }
         })
         .collect()
@@ -89,8 +96,10 @@ fn prose_tokens(source: &str, tokens: &mut Vec<Token>, gap: &mut Gap) {
                 *gap = Gap::default();
             } else if character.is_whitespace() {
                 gap.whitespace = true;
+                gap.text.push(character);
             } else {
                 gap.punctuation = true;
+                gap.text.push(character);
             }
         }
     }
@@ -113,6 +122,7 @@ fn flush(word: &mut String, tokens: &mut Vec<Token>, gap: &mut Gap) {
         tokens.push(Token::Word {
             value: std::mem::take(word),
             spaced: gap.whitespace && !gap.punctuation,
+            prefix: std::mem::take(&mut gap.text),
         });
         *gap = Gap::default();
     }
@@ -129,6 +139,7 @@ fn mode_at(tokens: &[Token], index: usize, token: &Token) -> Option<(usize, Mode
         Some(Token::Word {
             value,
             spaced: true,
+            ..
         }) if value == "NOT" => Some((index, Mode::MustNot)),
         _ => Some((index, Mode::Must)),
     }
@@ -153,4 +164,50 @@ fn word(token: &Token) -> Option<&str> {
         Token::Word { value, .. } => Some(value),
         Token::Inline(_) | Token::Sentence => None,
     }
+}
+
+fn plain(token: &Token) -> Option<String> {
+    match token {
+        Token::Word { value, prefix, .. } => Some(format!("{prefix}{value}")),
+        Token::Inline(_) | Token::Sentence => None,
+    }
+}
+
+impl Clause {
+    pub(crate) fn contains_phrase(&self, phrase: &str) -> bool {
+        let wanted = words(phrase);
+        self.prose
+            .windows(wanted.len())
+            .any(|window| window == wanted)
+            || self.inline.iter().any(|identity| words(identity) == wanted)
+    }
+
+    pub(crate) fn contains_plain_identity(&self, identity: &str) -> bool {
+        let mut offset = 0;
+        while let Some(found) = self.plain[offset..].find(identity) {
+            let start = offset + found;
+            let end = start + identity.len();
+            if boundary(self.plain[..start].chars().last())
+                && boundary(self.plain[end..].chars().next())
+            {
+                return true;
+            }
+            offset = end;
+        }
+        false
+    }
+}
+
+fn words(value: &str) -> Vec<String> {
+    value
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect()
+}
+
+fn boundary(character: Option<char>) -> bool {
+    character.is_none_or(|character| {
+        !character.is_ascii_alphanumeric() && !matches!(character, '.' | '_' | '-' | '/')
+    })
 }

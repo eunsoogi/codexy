@@ -42,7 +42,7 @@ pub(crate) fn validate_core_skill(source: &str, removed: &[&str]) -> Result<(), 
             &document,
             &root,
             Mode::MustNot,
-            &[action, "topic", "root", "implicitly"],
+            &[action, "topic root", "implicitly"],
         )?;
     }
     require_ordered_clause(
@@ -142,15 +142,7 @@ fn require_ordered_clause(
 }
 
 fn phrase(clause: &Clause, term: &str) -> bool {
-    let terms = term
-        .split(|value: char| !value.is_ascii_alphanumeric())
-        .filter(|value| !value.is_empty())
-        .map(str::to_ascii_lowercase)
-        .collect::<Vec<_>>();
-    clause
-        .prose
-        .windows(terms.len())
-        .any(|window| window == terms)
+    clause.contains_phrase(term)
 }
 
 fn ordered_phrase(clause: &Clause, terms: &[&str]) -> bool {

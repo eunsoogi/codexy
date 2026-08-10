@@ -63,7 +63,7 @@ pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
         (
             Mode::Must,
             &["append one migration entry", "final commit action"],
-            &["log.md"],
+            &[],
         ),
         (
             Mode::Must,
@@ -100,7 +100,7 @@ impl Rules {
                 terms.join(", ")
             ));
         }
-        reject_qualifiers(&matches[0].1.prose)?;
+        reject_qualifiers(matches[0].1)?;
         Ok(matches[0].0)
     }
 
@@ -121,9 +121,9 @@ impl Rules {
             .clauses
             .iter()
             .filter(|clause| {
-                phrase(&clause.prose, "append")
+                phrase(clause, "append")
                     && (clause.inline.iter().any(|identity| identity == "log.md")
-                        || phrase(&clause.prose, "log md"))
+                        || clause.contains_plain_identity("log.md"))
             })
             .count();
         (appends == 1)
@@ -133,14 +133,15 @@ impl Rules {
 }
 
 fn matches(clause: &Clause, terms: &[&str], inline: &[&str]) -> bool {
-    terms.iter().all(|term| phrase(&clause.prose, term))
-        && clause.inline.len() == inline.len()
-        && inline
-            .iter()
-            .all(|identity| clause.inline.iter().any(|found| found == identity))
+    terms.iter().all(|term| phrase(clause, term))
+        && (inline.is_empty()
+            || (clause.inline.len() == inline.len()
+                && inline
+                    .iter()
+                    .all(|identity| clause.inline.iter().any(|found| found == identity))))
 }
 
-fn reject_qualifiers(words: &[String]) -> Result<(), String> {
+fn reject_qualifiers(clause: &Clause) -> Result<(), String> {
     [
         "except",
         "unless",
@@ -152,16 +153,11 @@ fn reject_qualifiers(words: &[String]) -> Result<(), String> {
         "restore",
     ]
     .iter()
-    .all(|term| !words.iter().any(|word| word == term))
+    .all(|term| !clause.prose.iter().any(|word| word == term))
     .then_some(())
     .ok_or_else(|| "qualified typed normative clause".into())
 }
 
-fn phrase(words: &[String], term: &str) -> bool {
-    let term = term
-        .split(|value: char| !value.is_ascii_alphanumeric())
-        .filter(|value| !value.is_empty())
-        .map(str::to_ascii_lowercase)
-        .collect::<Vec<_>>();
-    words.windows(term.len()).any(|window| window == term)
+fn phrase(clause: &Clause, term: &str) -> bool {
+    clause.contains_phrase(term)
 }

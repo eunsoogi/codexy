@@ -144,6 +144,8 @@ mod validator_wiki_ingestion_reference;
 
 #[path = "../validator_wiki_contract_mutations.rs"]
 mod validator_wiki_contract_mutations;
+#[path = "../validator_wiki_token_identity.rs"]
+mod validator_wiki_token_identity;
 
 #[path = "../validator_wiki_connector_review.rs"]
 mod validator_wiki_connector_review;
