@@ -6,7 +6,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 fn budget_fixture() -> TestResult<support::InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/references/execution-budget.md",
+        "skills/orchestration/references/execution-budget.md",
     ))?)
 }
 

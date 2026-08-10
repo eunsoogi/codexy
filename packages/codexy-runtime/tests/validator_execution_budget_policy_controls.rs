@@ -7,7 +7,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn validator_allows_negated_countermand_examples() -> TestResult {
     let fixture = support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/references/execution-budget.md",
+        "skills/orchestration/references/execution-budget.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;

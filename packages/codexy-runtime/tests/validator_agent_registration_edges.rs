@@ -15,7 +15,7 @@ fn conflict_detector_covers_quoted_dotted_and_inline_forms()
     let fixture = plugin_fixture()?;
     let scripts = fixture
         .root()
-        .join("skills/codex-orchestration/scripts");
+        .join("skills/orchestration/scripts");
     let script_path = path(&scripts)?;
     let body = r#"
 import sys
@@ -174,12 +174,12 @@ fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {
-    Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+    Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents"))
 }
 
 fn script_text(plugin_root: &std::path::Path) -> std::io::Result<String> {
     std::fs::read_to_string(
-        plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"),
+        plugin_root.join("skills/orchestration/scripts/register-codexy-agents"),
     )
 }
 

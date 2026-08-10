@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
+const SKILL_PATH: &str = "skills/orchestration/SKILL.md";
 const ACTUAL_EVIDENCE: &str = r#"- Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
 - Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 

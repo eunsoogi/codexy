@@ -12,7 +12,7 @@ rationale wording.
 ## Loop
 
 1. Intake:
-   - MUST run `$task-classification` before setup, delegation, implementation,
+   - MUST use `$orchestration` before setup, delegation, implementation,
      validation, PR handling, review-response routing, or merge coordination.
    - MUST read the latest request, repository instructions, active issue, and
      relevant local skills.
@@ -73,7 +73,7 @@ rationale wording.
 ## Failure Modes
 
 - Starting setup, delegation, implementation, validation, PR handling, review
-  response, or merge coordination before `$task-classification`.
+  response, or merge coordination before `$orchestration`.
 - Treating subagents as child-owned Codex thread/worktree owners.
 - Marking a goal blocked because review, child work, worktree/thread setup, or
   another asynchronous tool is pending.

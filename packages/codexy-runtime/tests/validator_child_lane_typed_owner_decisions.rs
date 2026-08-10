@@ -77,6 +77,6 @@ fn assert_control(authority: &str, decision: &str, expected: bool) -> TestResult
 
 fn classification(authority: &str, decision: &str) -> String {
     format!(
-        "Ownership metadata source: current-thread-classified\nLane ownership: {authority}\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | validators |\n| Owner decision | {decision} |\n| Atomic scope | issue-sized |\n| Required skills | task-classification |\n| Required tools/evidence | goal, plan |\n| First allowed action | validate after classification |\n| Stop/blocker | None |"
+        "Ownership metadata source: current-thread-classified\nLane ownership: {authority}\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | validation |\n| Secondary surfaces | validators |\n| Owner decision | {decision} |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | goal, plan |\n| First allowed action | validate after classification |\n| Stop/blocker | None |"
     )
 }

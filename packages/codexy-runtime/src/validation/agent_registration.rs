@@ -7,8 +7,8 @@ use crate::paths::display_relative;
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let root_bootstrap = plugin_root.join("bootstrap-codexy-agents");
     let update_checker = plugin_root.join("check-codexy-agents");
-    let script = plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents");
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let script = plugin_root.join("skills/orchestration/scripts/register-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     let mut errors = Vec::new();
     if !root_bootstrap.is_file() {
         errors.push(format!(

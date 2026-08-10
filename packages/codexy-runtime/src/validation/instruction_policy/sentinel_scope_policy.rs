@@ -16,19 +16,19 @@ const LIVE_OBSERVATION_CLAUSES: &[&str] = &[
 ];
 const NONTERMINAL_OBSERVATION_CLAUSE: &str = "A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result.";
 const LIVE_OBSERVATION_SKILLS: &[&str] = &[
-    "skills/codex-orchestration/SKILL.md",
+    "skills/orchestration/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/token-efficient-orchestration/SKILL.md",
+    "skills/orchestration/references/token-efficient.md",
 ];
 const NONTERMINAL_OBSERVATION_SURFACES: &[&str] = &[
-    "skills/codex-orchestration/SKILL.md",
-    "skills/codex-orchestration/references/classification-and-control.md",
+    "skills/orchestration/SKILL.md",
+    "skills/orchestration/references/classification-and-control.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/token-efficient-orchestration/SKILL.md",
+    "skills/orchestration/references/token-efficient.md",
 ];
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    if path.ends_with("skills/codex-orchestration/SKILL.md") {
+    if path.ends_with("skills/orchestration/SKILL.md") {
         report(path, text, errors);
     }
     let requires_live_policy = LIVE_OBSERVATION_SKILLS

@@ -5,7 +5,7 @@ use support::{TestResult, stderr, validator_instruction_policy_file};
 #[test]
 fn validator_rejects_missing_parent_goal_transition_reporting_contract() -> TestResult {
     let fixture = support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/references/goal-transition-reporting.md",
+        "skills/orchestration/references/goal-transition-reporting.md",
     ))?;
     let reference = fixture.path();
     let text = std::fs::read_to_string(&reference)?;

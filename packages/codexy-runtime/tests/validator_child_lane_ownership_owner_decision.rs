@@ -54,7 +54,7 @@ fn validator_rejects_parent_setup_after_thread_tool_discovery_owner_decision()
         r#"Owner decision: parent-owned for thread/worktree tool discovery only; child routing required
 Parent coordination: searching for thread tools and preparing handoff text
 Parent implementation setup: created implementation branch codexy/146-thread-tool-discovery
-Implementation-surface reads: parent read plugins/codexy/skills/task-classification/SKILL.md
+Implementation-surface reads: parent read plugins/codexy/skills/orchestration/SKILL.md
 Maintainer reassignment: none
 "#,
     )?;

@@ -9,9 +9,9 @@ mod digests;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const PACKAGED_PROOF_PATHS: &[&str] = &[
-    "skills/codex-orchestration/references/execution-budget.md",
-    "skills/token-efficient-orchestration/SKILL.md",
-    "skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+    "skills/orchestration/references/execution-budget.md",
+    "skills/orchestration/SKILL.md",
+    "skills/orchestration/templates/session-audit-proof-receipt.json",
 ];
 
 #[test]
@@ -138,7 +138,7 @@ fn installed_content_proof_rejects_unsafe_path_identities() -> TestResult {
     for path in [
         "/private/template",
         "../template",
-        "skills/token-efficient-orchestration/../template",
+        "skills/orchestration/../template",
     ] {
         let mut receipt = session_fixture("controlled-receipt.json")?;
         for pointer in [
@@ -171,7 +171,7 @@ fn equal_record_receipt_rejects_duration_only_window_keys() -> TestResult {
 #[test]
 fn template_selects_only_equal_record_window_fields() -> TestResult {
     let template: Value = serde_json::from_str(include_str!(
-        "../../../plugins/codexy/skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json"
+        "../../../plugins/codexy/skills/orchestration/templates/session-audit-proof-receipt.json"
     ))?;
     let policy = &template["audit"]["comparison"]["windowPolicy"];
     assert_eq!(policy["kind"], "equal-record-count");

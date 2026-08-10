@@ -9,7 +9,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
             && prior_child_lane_context_applies(&lines, index)
             && formal_child_classification_complete_index_before(&lines, index).is_none()
     }) {
-        return vec!["child-owned lane control evidence includes create_goal or update_plan before formal $task-classification evidence completed".to_owned()];
+        return vec!["child-owned lane control evidence includes create_goal or update_plan before formal $orchestration evidence completed".to_owned()];
     }
     Vec::new()
 }

@@ -1,6 +1,9 @@
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+use std::collections::BTreeSet;
+use std::path::Path;
+
 const FIELDS: [&str; 8] = [
     "Lane type",
     "Secondary surfaces",
@@ -13,10 +16,10 @@ const FIELDS: [&str; 8] = [
 ];
 
 #[test]
-fn task_classification_uses_formal_tables_only_when_required() -> TestResult {
+fn orchestration_owns_formal_classification_tables_only_when_required() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/task-classification.md"),
     )?;
     let table = formal_output_table(&skill)?;
 
@@ -44,15 +47,71 @@ fn task_classification_uses_formal_tables_only_when_required() -> TestResult {
     .is_err());
 
     let prompt = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/agents/openai.yaml"),
+        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
     )?;
     let prompt: serde_yaml::Value = serde_yaml::from_str(&prompt)?;
     let default_prompt = prompt["interface"]["default_prompt"]
         .as_str()
-        .ok_or("missing task-classification default prompt")?;
+        .ok_or("missing orchestration default prompt")?;
     assert_eq!(
         default_prompt,
-        "You MUST use $task-classification first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
+        "You MUST use $orchestration first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
+    );
+    Ok(())
+}
+
+#[test]
+fn relocated_orchestration_references_resolve_from_their_new_locations() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let references = root.join("plugins/codexy/skills/orchestration/references");
+
+    for entry in std::fs::read_dir(&references)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|extension| extension == "md") {
+            assert_local_links(&path, &std::fs::read_to_string(&path)?)?;
+        }
+    }
+
+    let relocated = references.join("task-classification.md");
+    let original = std::fs::read_to_string(&relocated)?;
+    assert!(assert_local_links(
+        &relocated,
+        &original.replacen(
+            "workflow-profiles.json",
+            "orchestration/references/workflow-profiles.json",
+            1,
+        ),
+    )
+    .is_err());
+    let token_efficient = references.join("token-efficient.md");
+    assert!(assert_local_links(
+        &token_efficient,
+        &std::fs::read_to_string(&token_efficient)?.replacen(
+            "../templates/delta-poll.md",
+            "templates/delta-poll.md",
+            1,
+        ),
+    )
+    .is_err());
+    Ok(())
+}
+
+#[test]
+fn consolidated_skill_routes_are_unique_across_the_fixture_inventory() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let fixtures = root.join("packages/codexy-runtime/tests");
+
+    for entry in std::fs::read_dir(fixtures)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|extension| extension == "rs") {
+            assert_unique_skill_routes(&path, &std::fs::read_to_string(&path)?)?;
+        }
+    }
+
+    assert!(unique_skill_routes("orchestration, orchestration, git-workflow").is_err());
+    assert_eq!(
+        unique_skill_routes("orchestration, git-workflow")?,
+        ["git-workflow", "orchestration"].into_iter().collect()
     );
     Ok(())
 }
@@ -100,4 +159,40 @@ fn field_names(table: &str) -> Result<Vec<&str>, String> {
         return Err("classification fields are missing, duplicated, or out of order".to_owned());
     }
     Ok(names)
+}
+
+fn assert_local_links(path: &Path, text: &str) -> Result<(), String> {
+    let base = path.parent().ok_or("document has no parent")?;
+    for remainder in text.split("](").skip(1) {
+        let target = remainder.split(')').next().ok_or("unterminated link")?;
+        if target.starts_with("http://") || target.starts_with("https://") || target.starts_with('#') {
+            continue;
+        }
+        let local = target.split('#').next().unwrap_or(target);
+        if !base.join(local).exists() {
+            return Err(format!("broken local link from {} to {target}", path.display()));
+        }
+    }
+    Ok(())
+}
+
+fn assert_unique_skill_routes(path: &Path, text: &str) -> Result<(), String> {
+    let fixture_text = text.replace(r"\n", "\n");
+    for (line_number, line) in fixture_text.lines().enumerate() {
+        if let Some((_, skills)) = line.split_once("Required skills: ") {
+            unique_skill_routes(skills).map_err(|error| {
+                format!("{}:{} has an invalid required-skills route: {error}", path.display(), line_number + 1)
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn unique_skill_routes(skills: &str) -> Result<BTreeSet<&str>, String> {
+    let routes = skills.split(',').map(str::trim).collect::<Vec<_>>();
+    let unique = routes.iter().copied().collect::<BTreeSet<_>>();
+    if routes.iter().any(|route| route.is_empty()) || unique.len() != routes.len() {
+        return Err(format!("duplicate or empty route in {skills:?}"));
+    }
+    Ok(unique)
 }

@@ -16,27 +16,27 @@ use weakening::has_weakening_suffix;
 const NORMALIZED_DISCOVERY_CLAUSE: &str = "search the callable tool surface for automation_update";
 
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    let (requirement, clauses) = if path.ends_with("skills/codex-orchestration/SKILL.md") {
+    let (requirement, clauses) = if path.ends_with("skills/orchestration/SKILL.md") {
         (
             "orchestration skill must preserve the runtime heartbeat external-gate policy",
             EXTERNAL_GATE,
         )
-    } else if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md") {
+    } else if path.ends_with("skills/orchestration/references/runtime-heartbeats.md") {
         (
             "runtime heartbeat contract must preserve its lifecycle policy",
             ORCHESTRATION,
         )
-    } else if path.ends_with("skills/token-efficient-orchestration/SKILL.md") {
+    } else if path.ends_with("skills/orchestration/references/token-efficient.md") {
         (
             "token-efficient skill must preserve the runtime heartbeat contract",
             TOKEN,
         )
-    } else if path.ends_with("skills/token-efficient-orchestration/templates/delta-poll.md") {
+    } else if path.ends_with("skills/orchestration/templates/delta-poll.md") {
         (
             "runtime heartbeat delta template must preserve lifecycle slots",
             TEMPLATE,
         )
-    } else if path.ends_with("skills/codex-orchestration/references/goal-transition-reporting.md") {
+    } else if path.ends_with("skills/orchestration/references/goal-transition-reporting.md") {
         (
             "goal transition contract must distinguish heartbeat and process monitor identities",
             TRANSITION,
@@ -54,7 +54,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             ));
         }
     }
-    if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
+    if path.ends_with("skills/orchestration/references/runtime-heartbeats.md")
         && normalized.contains("may fold a live packaged sentinel into heartbeat observation")
     {
         errors.push(format!(
@@ -62,7 +62,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
-    if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
+    if path.ends_with("skills/orchestration/references/runtime-heartbeats.md")
         && has_unweakened_clause(&normalized, LEGACY_CHILD_STATE_ELIGIBILITY)
     {
         errors.push(format!(
@@ -70,7 +70,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             display_relative(path)
         ));
     }
-    if path.ends_with("skills/codex-orchestration/references/runtime-heartbeats.md")
+    if path.ends_with("skills/orchestration/references/runtime-heartbeats.md")
         && has_unconditional_heartbeat_registration(&normalized, RESTRICTED_HEARTBEAT_CONTEXT)
     {
         errors.push(format!(

@@ -4,7 +4,7 @@ use crate::support::{self, TestResult, stderr};
 
 const REQUIRED_CONTRACTS: &[(&str, &str)] = &[
     (
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
         "Before review-response edits, MUST create one root-cause cluster for each actionable defect class.",
     ),
     (

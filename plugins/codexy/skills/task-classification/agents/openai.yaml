@@ -1,6 +1,0 @@
-interface:
-  display_name: "Task Classification"
-  short_description: "Classify Codexy work before setup, routing, or edits."
-  default_prompt: "You MUST use $task-classification first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
-policy:
-  allow_implicit_invocation: true

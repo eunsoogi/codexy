@@ -7,11 +7,10 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const HEARTBEAT_IDENTITY: &str = "heartbeat route MUST bind";
 const PROCESS_IDENTITY: &str = "separate process-backed monitor MUST bind";
+const TOKEN_REFERENCE: &str = "skills/orchestration/references/token-efficient.md";
 
 fn validate_polling_policy(removed_identity: Option<&str>) -> TestResult<std::process::Output> {
-    let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/token-efficient-orchestration/SKILL.md",
-    ))?;
+    let fixture = support::instruction_policy_fixture(Path::new(TOKEN_REFERENCE))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
     let updated = removed_identity.map_or_else(

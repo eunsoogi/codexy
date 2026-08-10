@@ -3,15 +3,16 @@ fn codex_orchestration_requires_situational_specialist_routing()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let control = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/codex-orchestration/references/classification-and-control.md",
+        "plugins/codexy/skills/orchestration/references/classification-and-control.md",
     ))?;
     let loop_ref = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/orchestration-loop.md"),
+        root.join("plugins/codexy/skills/orchestration/references/orchestration-loop.md"),
     )?;
-    let classification =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
+    let classification = std::fs::read_to_string(root.join(
+        "plugins/codexy/skills/orchestration/references/task-classification.md",
+    ))?;
     let skill_flat = skill.split_whitespace().collect::<Vec<_>>().join(" ");
     let control_flat = control.split_whitespace().collect::<Vec<_>>().join(" ");
 

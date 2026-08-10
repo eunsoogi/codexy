@@ -103,7 +103,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     for (relative, mutable_file) in [
         (
             "tests/validator_gpt_5_6_routing.rs",
-            "skills/codex-orchestration/SKILL.md",
+            "skills/orchestration/SKILL.md",
         ),
         (
             "tests/validator_role_instruction_policy.rs",
@@ -129,32 +129,32 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         (
             "tests/validator_execution_budget_policy_controls.rs",
             "support::instruction_policy_fixture",
-            "skills/codex-orchestration/references/execution-budget.md",
+            "skills/orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_parent_execution_budget_countermands.rs",
             "support::instruction_policy_fixture",
-            "skills/codex-orchestration/references/execution-budget.md",
+            "skills/orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_parent_execution_budget_policy.rs",
             "support::instruction_policy_fixture",
-            "skills/codex-orchestration/references/execution-budget.md",
+            "skills/orchestration/references/execution-budget.md",
         ),
         (
             "tests/validator_token_polling_runtime_identity.rs",
             "support::instruction_policy_fixture",
-            "skills/token-efficient-orchestration/SKILL.md",
+            "skills/orchestration/references/token-efficient.md",
         ),
         (
             "tests/token_quota_containment.rs",
             "support::instruction_policy_fixture",
-            "skills/codex-orchestration/SKILL.md",
+            "skills/orchestration/SKILL.md",
         ),
         (
             "tests/validator_runtime_heartbeat_wait_priority.rs",
             "support::plugin_fixture_with_mutable_files",
-            "skills/codex-orchestration/references/runtime-heartbeats.md",
+            "skills/orchestration/references/runtime-heartbeats.md",
         ),
     ] {
         let source = std::fs::read_to_string(root.join(relative))?;
@@ -183,7 +183,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
         "runtime heartbeat fixture isolation control",
         &[
             "support::plugin_fixture_with_mutable_files",
-            "skills/codex-orchestration/references/runtime-heartbeats.md",
+            "skills/orchestration/references/runtime-heartbeats.md",
         ],
     );
     let source_artifact = std::fs::read_to_string(
@@ -200,7 +200,7 @@ fn high_cost_validator_suites_route_checked_fixtures_through_the_library()
     for (relative, mutable_file) in [
         (
             "tests/validator_agent_registration_bootstrap.rs",
-            "skills/codex-orchestration/scripts/bootstrap-codexy-agents",
+            "skills/orchestration/scripts/bootstrap-codexy-agents",
         ),
         (
             "tests/validator_agent_registration_bootstrap_security.rs",

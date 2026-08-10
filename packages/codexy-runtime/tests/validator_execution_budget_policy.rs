@@ -53,7 +53,7 @@ const ADJACENT_MIXED_POLARITY_COUNTERMANDS: &[&str] = &[
     "Artifact churn MUST NOT renew the budget.\n## File churn MAY renew the budget.",
 ];
 
-const EXECUTION_BUDGET: &str = "skills/codex-orchestration/references/execution-budget.md";
+const EXECUTION_BUDGET: &str = "skills/orchestration/references/execution-budget.md";
 
 fn policy_fixture() -> TestResult<InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(Path::new(EXECUTION_BUDGET))?)
@@ -69,7 +69,7 @@ fn reset_budget_file(fixture: &InstructionPolicyFixture) -> TestResult<(std::pat
 fn validator_requires_finite_execution_budget_contract() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let contract = fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/execution-budget.md"),
+        root.join("plugins/codexy/skills/orchestration/references/execution-budget.md"),
     )?;
     Contract::markdown(&contract)
         .assert_rule(Rule::new(

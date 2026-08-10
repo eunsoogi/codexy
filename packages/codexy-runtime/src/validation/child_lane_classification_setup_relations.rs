@@ -81,7 +81,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
                             && window[index + 1..]
                                 .iter()
                                 .take(4)
-                                .any(|word| *word == "classification")
+                                .any(|word| matches!(*word, "classification" | "orchestration"))
                     }),
                 })
         })

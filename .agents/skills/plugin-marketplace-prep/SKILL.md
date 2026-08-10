@@ -70,8 +70,8 @@ validation proves the packaged paths match the repository layout.
    - the executable pre-start Codexy agent bootstrap exists at
      `bootstrap-codexy-agents`, the non-mutating update checker exists at
      `check-codexy-agents`, and the executable bootstrap and registration delegates exist under
-     `skills/codex-orchestration/scripts/bootstrap-codexy-agents` and
-     `skills/codex-orchestration/scripts/register-codexy-agents`,
+     `skills/orchestration/scripts/bootstrap-codexy-agents` and
+     `skills/orchestration/scripts/register-codexy-agents`,
    - Codexy reviewer agent metadata identifies it as the mandatory gate at the
      end of every non-trivial atomic work unit,
    - thread/worktree orchestration wording includes handoff fields, evidence,

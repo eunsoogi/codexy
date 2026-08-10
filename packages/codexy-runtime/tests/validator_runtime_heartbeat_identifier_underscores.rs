@@ -8,7 +8,7 @@ const AUTOMATION_UPDATE: &str = "automation_update";
 
 fn validate_discovery_name(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;

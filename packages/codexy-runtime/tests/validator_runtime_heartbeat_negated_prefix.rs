@@ -9,7 +9,7 @@ const DISCOVERY_REQUIREMENT: &str =
 
 fn validate_discovery_clause(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
@@ -70,7 +70,7 @@ fn validator_accepts_mandatory_modal_prefix_for_discovery_clause() -> TestResult
 #[test]
 fn validator_accepts_unnegated_discovery_clause() -> TestResult {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let output = support::validator_instruction_policy_file(fixture.path())?;
     assert!(

@@ -5,11 +5,26 @@ use std::path::{Component, Path, PathBuf};
 pub(crate) struct PluginFixture {
     _temp: tempfile::TempDir,
     root: PathBuf,
+    mutable_files: Vec<PathBuf>,
 }
 
 impl PluginFixture {
-    pub(super) fn from_parts(temp: tempfile::TempDir, root: PathBuf) -> Self {
-        Self { _temp: temp, root }
+    pub(super) fn from_parts(
+        temp: tempfile::TempDir,
+        root: PathBuf,
+        mutable_files: &[&Path],
+    ) -> Self {
+        let mut mutable_files = mutable_files
+            .iter()
+            .map(|path| super::plugin_fixture_mutable::normalized(path))
+            .collect::<Vec<_>>();
+        mutable_files.sort();
+        mutable_files.dedup();
+        Self {
+            _temp: temp,
+            root,
+            mutable_files,
+        }
     }
 
     pub(crate) fn root(&self) -> &Path {
@@ -18,9 +33,27 @@ impl PluginFixture {
 
     pub(crate) fn reset_file(&self, relative: &Path) -> std::io::Result<()> {
         validate_relative_file(relative)?;
+        if !self
+            .mutable_files
+            .contains(&super::plugin_fixture_mutable::normalized(relative))
+        {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "fixture reset path must be declared mutable",
+            ));
+        }
         let source = source_root().join(relative);
-        std::fs::copy(source, self.root.join(relative)).map(|_| ())
+        let target = self.root.join(relative);
+        clear_readonly(&target)?;
+        std::fs::copy(source, &target)?;
+        clear_readonly(&target)
     }
+}
+
+fn clear_readonly(path: &Path) -> std::io::Result<()> {
+    let mut permissions = std::fs::metadata(path)?.permissions();
+    permissions.set_readonly(false);
+    std::fs::set_permissions(path, permissions)
 }
 
 #[track_caller]
@@ -37,7 +70,7 @@ pub(crate) fn plugin_fixture() -> TestResult<PluginFixture> {
         let root = temp.path().join("codexy");
         super::copy_dir(source_root(), &root)?;
         materialize_admission_runtime_suite(&root)?;
-        Ok(PluginFixture::from_parts(temp, root))
+        Ok(PluginFixture::from_parts(temp, root, &[]))
     }
 }
 
@@ -123,7 +156,7 @@ fn materialize_fixture(
     super::plugin_fixture_copy::materialize(source_root(), &root, mutable_files, &identity)?;
     materialize_admission_runtime_suite(&root)?;
     super::plugin_fixture_mutable::record(&root, mutable_files);
-    Ok(PluginFixture::from_parts(temp, root))
+    Ok(PluginFixture::from_parts(temp, root, mutable_files))
 }
 
 fn fixture_identity(profile: &str, caller: &'static Location<'static>) -> String {

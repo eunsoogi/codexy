@@ -4,13 +4,13 @@ use support::{InstructionPolicyFixture, TestResult, stderr, validator};
 
 fn copy_plugin_fixture() -> TestResult<InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
     ))?)
 }
 
 fn copy_plugin_and_dreaming_fixture() -> TestResult<(tempfile::TempDir, std::path::PathBuf)> {
     support::copy_plugin_fixture_with_mutable_files(&[
-        std::path::Path::new("skills/codex-orchestration/SKILL.md"),
+        std::path::Path::new("skills/orchestration/SKILL.md"),
         std::path::Path::new("skills/dreaming/SKILL.md"),
     ])
     .map_err(Into::into)

@@ -2,7 +2,7 @@ use crate::support;
 
 use support::{InstructionPolicyFixture, TestResult, stderr, validator_instruction_policy_file};
 
-const ROUTING: &str = "skills/codex-orchestration/references/thread-and-worktree-routing.md";
+const ROUTING: &str = "skills/orchestration/references/thread-and-worktree-routing.md";
 
 fn policy_fixture() -> TestResult<InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(ROUTING))?)

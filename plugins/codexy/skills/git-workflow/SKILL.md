@@ -43,7 +43,7 @@ pulling, and ordinary push.
 ## Start Work
 
 1. MUST read `AGENTS.md` and this skill.
-2. MUST run `$task-classification` before issue setup, branch/worktree setup,
+2. MUST use `$orchestration` before issue setup, branch/worktree setup,
    delegation, implementation, PR handling, review-response routing, merge
    coordination, or validation-only work begins. MUST keep classification evidence
    in the thread or handoff.
@@ -230,7 +230,7 @@ when domain intent is unclear, and MUST stage only resolved files.
 ## Quick Checklist
 
 - Issue exists or a maintainer provided an explicit issue-sized scope.
-- `$task-classification` ran first and records lane type, owner, scope, skills,
+- `$orchestration` classified the lane and records type, owner, scope, skills,
   tools/evidence, and first allowed action.
 - Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
 - No unrelated files are staged; no force push or force-with-lease is used.

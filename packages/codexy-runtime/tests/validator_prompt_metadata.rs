@@ -4,6 +4,11 @@ use crate::support;
 
 use support::copy_dir;
 
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
+#[path = "validator_prompt_metadata/classification_contract.rs"]
+mod classification_contract;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -37,9 +42,11 @@ fn validator_cli_rejects_top_level_prompt_without_orchestration_route() -> TestR
     copy_fixture(&plugin_root)?;
     let prompt_path = plugin_root.join("agents/openai.yaml");
     let prompt = std::fs::read_to_string(&prompt_path)?;
+    let removed = prompt.replace("$orchestration", "Codexy orchestration");
+    assert_ne!(removed, prompt, "fixture mutation must change the prompt");
     std::fs::write(
         &prompt_path,
-        prompt.replace("$codex-orchestration", "Codexy orchestration"),
+        removed,
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
@@ -67,7 +74,8 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
     let prompt_path = plugin_root.join("skills/git-workflow/agents/openai.yaml");
-    assert!(!std::fs::read_to_string(prompt_path)?.contains("$codex-orchestration"));
+    structured_contract_artifacts::TextShape::new(&std::fs::read_to_string(prompt_path)?)
+        .assert_absent_concepts("skill-prompt.no-top-level-orchestration-route", &["$orchestration"]);
 
     let output = validator(&plugin_root, "--check-roles")?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -78,7 +86,7 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult
 fn codex_orchestration_spawn_agent_examples_use_message_argument() -> TestResult {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     assert!(!skill.contains("prompt="));
     assert!(skill.contains("spawn_agent(agent_type=\"codexy-sentinel\", message="));
@@ -92,7 +100,7 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details() -> TestResu
     let root = codexy_runtime::paths::repository_root();
     let agents = std::fs::read_to_string(root.join("AGENTS.md"))?;
     let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
 
     assert!(agents.contains("Dogfooding Guardrails"));
     assert!(agents.contains("failures to follow governing `AGENTS.md`"));
@@ -114,7 +122,7 @@ fn repo_instructions_own_dogfood_policy_with_orchestration_details() -> TestResu
     assert!(!skill.contains("## Registered MCP Exposure Defects"));
 
     let thread_ref = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/codex-orchestration/references/thread-and-worktree-routing.md",
+        "plugins/codexy/skills/orchestration/references/thread-and-worktree-routing.md",
     ))?;
     for expected in [
         "Thread Tool Discovery Procedure",
@@ -141,54 +149,6 @@ fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
     assert!(skill.contains("parent MUST NOT patch the child-owned"));
     assert!(skill.contains("explicit maintainer reassignment"));
-    Ok(())
-}
-
-#[test]
-fn codexy_workflows_require_task_classification_first() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let classification =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/task-classification/SKILL.md"))?;
-    let orchestration =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
-    let git_workflow =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
-    let qa_prompt =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
-    let release_prompt =
-        std::fs::read_to_string(root.join(".agents/skills/release-engineering/agents/openai.yaml"))?;
-
-    assert!(classification.contains("name: task-classification"));
-    assert!(classification.contains("MUST run this skill first for any Codexy work"));
-    assert!(classification.contains("Classification Output"));
-    assert!(classification.contains("| Lane type |"));
-    assert!(classification.contains("| Owner decision |"));
-    assert!(classification.contains("| Required skills |"));
-    assert!(classification.contains("| Required tools/evidence |"));
-    assert!(classification.contains("lane-relevant required evidence"));
-    assert!(classification.contains("unavailable-tool fallbacks"));
-    assert!(classification.contains("| First allowed action |"));
-
-    for lane_type in [
-        "orchestration/lane setup",
-        "implementation",
-        "review response",
-        "GitHub/merge",
-        "validation/QA",
-        "documentation/skill authoring",
-        "plugin/release",
-    ] {
-        assert!(classification.contains(lane_type));
-    }
-
-    assert!(orchestration.contains("$task-classification"));
-    assert!(orchestration.contains(
-        "Missing classification before\nsetup, validation, release, or other workflow actions"
-    ));
-    assert!(git_workflow.contains("$task-classification"));
-    assert!(git_workflow.contains("classification evidence"));
-    assert!(qa_prompt.contains("$task-classification"));
-    assert!(release_prompt.contains("$task-classification"));
     Ok(())
 }
 

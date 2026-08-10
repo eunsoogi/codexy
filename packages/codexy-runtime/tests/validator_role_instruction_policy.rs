@@ -5,6 +5,9 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
+
 #[test]
 fn validator_cli_check_roles_rejects_agent_modal_policy_violations() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -52,13 +55,15 @@ fn validator_cli_check_roles_rejects_openai_yaml_modal_policy_violations() -> Te
     let plugin_root = role_fixture(&temp, "agents/openai.yaml")?;
     let prompt_path = plugin_root.join("agents/openai.yaml");
     let prompt = std::fs::read_to_string(&prompt_path)?;
-    assert!(prompt.contains("You MUST run $task-classification"));
+    let parsed = structured_contract_artifacts::Prompt::parse(&prompt)?;
+    assert_eq!(parsed.display_name(), "Codexy");
+    assert!(parsed.allow_implicit_invocation());
+    assert!(validator(&plugin_root, "--check-roles")?.status.success());
+    let weakened = prompt.replace("You MUST use $orchestration", "Use $orchestration");
+    assert_ne!(weakened, prompt, "fixture mutation must change the prompt");
     std::fs::write(
         &prompt_path,
-        prompt.replace(
-            "You MUST run $task-classification",
-            "Run $task-classification",
-        ),
+        weakened,
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;

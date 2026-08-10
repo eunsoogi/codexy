@@ -24,6 +24,17 @@ impl TextShape {
         );
     }
 
+    pub(crate) fn assert_required_concepts(&self, rule_id: &str, required: &[&str]) {
+        let missing: Vec<_> = required
+            .iter()
+            .filter(|concept| !contains_phrase(&self.normalized, &normalize(concept)))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "structured contract {rule_id} is missing required concepts {missing:?}"
+        );
+    }
+
     pub(crate) fn assert_absent_inflections(&self, rule_id: &str, stems: &[&str]) {
         let present: Vec<_> = self
             .normalized

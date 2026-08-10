@@ -8,7 +8,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn assert_rejected_routing_skill(skill: String, expected: &str) -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = routing_fixture(&temp)?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let path = plugin_root.join("skills/orchestration/SKILL.md");
     let source = std::fs::read_to_string(source_routing_skill())?;
     std::fs::write(&path, skill)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
@@ -39,14 +39,14 @@ fn routing_fixture(temp: &tempfile::TempDir) -> std::io::Result<PathBuf> {
     let plugin_root = temp.path().join("codexy");
     support::copy_plugin_fixture_into_with_mutable_files(
         &plugin_root,
-        &[Path::new("skills/codex-orchestration/SKILL.md")],
+        &[Path::new("skills/orchestration/SKILL.md")],
     )?;
     Ok(plugin_root)
 }
 
 fn source_routing_skill() -> PathBuf {
     codexy_runtime::paths::repository_root()
-        .join("plugins/codexy/skills/codex-orchestration/SKILL.md")
+        .join("plugins/codexy/skills/orchestration/SKILL.md")
 }
 
 #[test]

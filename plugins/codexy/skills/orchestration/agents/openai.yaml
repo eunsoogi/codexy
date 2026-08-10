@@ -1,0 +1,7 @@
+interface:
+  display_name: "Execution Coordinator"
+  short_description: "Classify and coordinate goals, agents, threads, compaction, and worktrees."
+  default_prompt: "You MUST use $orchestration first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
+policy:
+  allow_implicit_invocation: true
+guidance: "After a forked Codex worktree child thread finishes setup and a thread id is available, the orchestrator MUST call set_thread_title when available; the title MUST clearly include project, issue number, and lane purpose so users can distinguish concurrent child threads; if title renaming is unavailable, the orchestrator MUST report the limitation and MUST continue because thread title clarity is not a merge blocker."

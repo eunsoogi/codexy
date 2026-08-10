@@ -60,9 +60,9 @@ fn narrow_instruction_policy_adapter_matches_the_cli_boundary()
 #[test]
 fn narrow_routing_adapter_matches_the_cli_boundary() -> Result<(), Box<dyn std::error::Error>> {
     let (_temp, plugin_root) = copy_plugin_fixture(&[Path::new(
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
     )])?;
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let path = plugin_root.join("skills/orchestration/SKILL.md");
     let source = std::fs::read_to_string(&path)?;
     std::fs::write(
         path,

@@ -42,7 +42,7 @@ pub(super) fn run(
     extra: &[&str],
 ) -> TestResult<Output> {
     Ok(
-        Command::new(plugin_root.join("skills/codex-orchestration/scripts/register-codexy-agents"))
+        Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents"))
             .args([
                 "--plugin-root",
                 path(plugin_root)?,
