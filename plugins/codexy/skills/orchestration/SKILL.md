@@ -17,7 +17,7 @@ own bounded atomic units only; Root `AGENTS.md` owns repo-wide dogfooding policy
 
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
-- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"`.
+- Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.
 - A matching named specialist MUST be selected before generic child routing; its TOML remains authoritative.
 - Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: "max"` only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.
 - Candidate general work MUST compare Terra/high, Terra/xhigh, and Terra/max and select the lowest effort meeting measured quality and economics gates.

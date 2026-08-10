@@ -4,7 +4,6 @@ use super::policy::policy_line;
 pub(super) const ACTIVE_TIER_STARTS: &[&str] = &[
     "Root/orchestrator",
     "Generic implementation",
-    "Until #549 merges",
     "A matching named specialist",
     "Candidate simple work",
     "Candidate general work",
@@ -116,9 +115,12 @@ pub(super) const ROUTING_REQUIRED_BULLETS: &[(&str, &[&str], &str)] = &[
         "root/orchestrator must use gpt-5.6-sol",
     ),
     (
-        "Until #549 merges, generic implementation children MUST request `gpt-5.6-terra`",
-        &["reasoning_effort: \"high\""],
-        "current generic child route must remain gpt-5.6-terra/high until #549 merges",
+        "Generic implementation children MUST request `gpt-5.6-terra`",
+        &[
+            "reasoning_effort: \"high\"` as the fail-closed default.",
+            "Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.",
+        ],
+        "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
     ),
     (
         "A matching named specialist MUST be selected before generic child routing;",

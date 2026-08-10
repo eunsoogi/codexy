@@ -16,11 +16,11 @@ fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
             skill.replacen(
                 "## Recipient Model Routing",
                 &format!(
-                    "- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with\n{prefix}\u{2003}  `reasoning_effort: \"high\"`.\n\n## Recipient Model Routing"
+                    "- Generic implementation children MUST request `gpt-5.6-terra` with\n{prefix}\u{2003}  `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.\n\n## Recipient Model Routing"
                 ),
                 1,
             ),
-            "current generic child route must remain",
+            "generic child route must retain",
         )?;
     }
     Ok(())

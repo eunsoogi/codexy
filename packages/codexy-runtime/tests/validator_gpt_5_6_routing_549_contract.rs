@@ -7,8 +7,8 @@ fn validator_requires_issue_549_candidate_routing_contract() -> TestResult {
     let skill = routing_skill()?;
     for (needle, expected) in [
         (
-            "Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"`.",
-            "current generic child route must remain gpt-5.6-terra/high until #549 merges",
+            "Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"high\"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
         (
             "A matching named specialist MUST be selected before generic child routing; its TOML remains authoritative.",
@@ -42,7 +42,7 @@ fn validator_requires_issue_549_candidate_routing_contract() -> TestResult {
         );
     }
     assert_rejected(
-        "- Until #549 merges, generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"max\"`.",
+        "- Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: \"max\"` as the fail-closed default.",
         "gpt-5.6-terra/high",
     )
 }

@@ -34,6 +34,22 @@ fn promotion_selects_max_when_xhigh_is_not_viable() -> TestResult {
 }
 
 #[test]
+fn promotion_rejects_final_only_acceptance_gain_after_retries() -> TestResult {
+    let mut result = results("xhigh");
+    set(&mut result, "high", "simple-local-validator", "acceptance", json!("fail"));
+    for effort in ["xhigh", "max"] {
+        for task in [
+            "simple-local-validator",
+            "general-routing-contract",
+            "ambiguous-specialist-boundary",
+        ] {
+            set(&mut result, effort, task, "repairs_retries", json!(1));
+        }
+    }
+    assert_failure(&result, "expected high")
+}
+
+#[test]
 fn promotion_boundaries_require_quality_proof_and_economics() -> TestResult {
     let mut at_limit = results("xhigh");
     set(&mut at_limit, "high", "simple-local-validator", "acceptance", json!("fail"));

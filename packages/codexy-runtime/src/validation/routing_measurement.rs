@@ -4,6 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::routing_measurement_schema::is_closed;
 
+mod viability;
+use viability::viable;
+
 const CORPUS_SCHEMA: &str = "codexy.routing-evaluation-corpus.v1";
 const CORPUS_ID: &str = "routing-549-v1";
 const RESULTS_SCHEMA: &str = "codexy.routing-evaluation-results.v1";
@@ -176,61 +179,6 @@ fn check_corpus(corpus: &Corpus) -> Vec<String> {
     }
 }
 
-fn viable(observed: &BTreeMap<(&str, &str), &Observation>, effort: &str) -> bool {
-    if effort == "high" {
-        return false;
-    }
-    let high = EFFORTS[0];
-    let records = observed
-        .values()
-        .copied()
-        .filter(|result| result.thinking == effort)
-        .collect::<Vec<_>>();
-    let baseline = observed
-        .values()
-        .copied()
-        .filter(|result| result.thinking == high)
-        .collect::<Vec<_>>();
-    let complete = records.iter().all(|result| {
-        result.tokens.is_number()
-            && result.wall_time_ms.is_number()
-            && result.observed_cost_usd.is_number()
-            && result.p0_p1_misses == 0
-            && result.proof_complete
-    });
-    let comparable_baseline = baseline.iter().all(|result| {
-        result.tokens.is_number()
-            && result.wall_time_ms.is_number()
-            && result.observed_cost_usd.is_number()
-    });
-    let acceptance = |records: &[&Observation]| {
-        records
-            .iter()
-            .filter(|result| result.acceptance == "pass")
-            .count() as f64
-            / records.len() as f64
-    };
-    let (Some(candidate_repairs), Some(baseline_repairs)) = (repairs(&records), repairs(&baseline))
-    else {
-        return false;
-    };
-    complete
-        && comparable_baseline
-        && acceptance(&records) >= 0.95
-        && (acceptance(&records) - acceptance(&baseline) >= 0.05
-            || baseline_repairs > 0 && candidate_repairs as f64 <= baseline_repairs as f64 * 0.8)
-        && median(&records, |result| &result.wall_time_ms)
-            <= median(&baseline, |result| &result.wall_time_ms) * 1.5
-        && median(&records, |result| &result.observed_cost_usd)
-            <= median(&baseline, |result| &result.observed_cost_usd) * 1.5
-}
-
-fn repairs(records: &[&Observation]) -> Option<u64> {
-    records.iter().try_fold(0_u64, |total, result| {
-        total.checked_add(u64::from(result.repairs_retries))
-    })
-}
-
 fn metric(value: &Value, integer: bool) -> bool {
     value.is_null()
         || if integer {
@@ -238,12 +186,4 @@ fn metric(value: &Value, integer: bool) -> bool {
         } else {
             value.as_f64().is_some_and(|value| value >= 0.0)
         }
-}
-fn median(records: &[&Observation], field: impl Fn(&Observation) -> &Value) -> f64 {
-    let mut values = records
-        .iter()
-        .filter_map(|result| field(result).as_f64())
-        .collect::<Vec<_>>();
-    values.sort_by(f64::total_cmp);
-    values[values.len() / 2]
 }
