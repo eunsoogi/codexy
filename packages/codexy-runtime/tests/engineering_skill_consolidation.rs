@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use pulldown_cmark::{Event, Parser, Tag};
 use serde_json::Value;
 
 use crate::support::{TestResult, copy_plugin_fixture};
@@ -40,18 +41,44 @@ fn production_validator_rejects_baseline_and_source_inventory_mutations() -> Tes
 #[test]
 fn production_validator_preserves_legacy_relative_source_targets() {
     let mut sources = codexy_runtime::validation::engineering_equivalence_baseline_sources();
+    let expected = legacy_receiver_targets();
     for name in ["debugging", "qa"] {
         let (_, source) = sources
             .iter()
             .find(|(candidate, _)| candidate == name)
             .expect("legacy source");
-        assert!(source.contains("../orchestration/references/plain-language-user-replies.md"));
-        assert!(!source.contains("../codex-orchestration/"));
+        assert_eq!(receiver_targets(source), expected);
     }
     sources[0].1 = sources[0].1.replacen("../orchestration/", "../codex-orchestration/", 1);
+    assert_ne!(receiver_targets(&sources[0].1), expected);
+    sources[2].1 = sources[2].1.replacen(
+        "[Plain-Language User Replies](../orchestration/references/plain-language-user-replies.md)",
+        "Plain-Language User Replies",
+        1,
+    );
+    assert_ne!(receiver_targets(&sources[2].1), expected);
     let diagnostics = codexy_runtime::validation::engineering_equivalence_baseline_diagnostics(&sources);
     assert!(diagnostics.iter().any(|error| error.contains("bytes differ")));
     assert!(diagnostics.iter().any(|error| error.contains("aggregate SHA-256")));
+}
+
+fn legacy_receiver_targets() -> Vec<String> {
+    [
+        "../orchestration/references/plain-language-user-replies.md",
+        "../orchestration/references/natural-korean-responses.md",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect()
+}
+
+fn receiver_targets(markdown: &str) -> Vec<String> {
+    Parser::new(markdown)
+        .filter_map(|event| match event {
+            Event::Start(Tag::Link { dest_url, .. }) => Some(dest_url.into_string()),
+            _ => None,
+        })
+        .collect()
 }
 
 #[test]
