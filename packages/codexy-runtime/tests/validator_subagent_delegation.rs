@@ -170,19 +170,13 @@ fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> Test
 }
 
 fn plugin_fixture() -> TestResult<PluginFixture> {
-    Ok(support::plugin_fixture_with_mutable_files(&[
-        Path::new("agents/codexy-cartographer.toml"),
-        Path::new("skills/orchestration/SKILL.md"),
-        Path::new("skills/orchestration/references/classification-and-control.md"),
-        Path::new("skills/orchestration/references/goal-transition-reporting.md"),
-        Path::new("skills/orchestration/references/thread-and-worktree-routing.md"),
-        Path::new("skills/orchestration/references/orchestration-loop.md"),
-        Path::new("skills/orchestration/references/runtime-heartbeats.md"),
-        Path::new("skills/orchestration/references/parent-stop-preflight.md"),
-        Path::new("skills/orchestration/references/execution-budget.md"),
-        Path::new("skills/orchestration/references/plain-language-user-replies.md"),
-        Path::new("skills/orchestration/references/natural-korean-responses.md"),
-    ])?)
+    let mut mutable = vec![
+        "agents/codexy-cartographer.toml".into(),
+        "skills/orchestration/SKILL.md".into(),
+    ];
+    mutable.extend(registered_orchestration_references()?.into_iter().map(Into::into));
+    let mutable = mutable.iter().map(std::path::PathBuf::as_path).collect::<Vec<_>>();
+    Ok(support::plugin_fixture_with_mutable_files(&mutable)?)
 }
 
 fn reset_fixture_file(fixture: &PluginFixture, relative: &Path) -> TestResult<std::path::PathBuf> {
