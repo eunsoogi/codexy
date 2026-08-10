@@ -1,3 +1,5 @@
+use super::policy::policy_line;
+
 pub(super) const ACTIVE_TIER_STARTS: &[&str] = &[
     "Root/orchestrator",
     "Generic implementation",
@@ -29,18 +31,62 @@ pub(super) enum SimpleLunaAssignment {
 
 pub(super) fn simple_luna_assignment(bullet: &str) -> Option<SimpleLunaAssignment> {
     let normalized = bullet.to_ascii_lowercase();
-    let has_operands = normalized.contains("luna/max")
-        || normalized.contains("gpt-5.6-luna")
+    let is_compact_luna_max = token_present(&normalized, "luna/max");
+    let has_operands = is_compact_luna_max
+        || token_present(&normalized, "gpt-5.6-luna")
             && ["reasoning_effort", "reasoning-effort", "thinking"]
                 .into_iter()
                 .any(|field| field_equals(&normalized, field, "max"));
     (normalized.contains("simple") && has_operands).then_some(())?;
-    Some(if normalized.contains("must not") {
+    Some(if has_prohibition(&normalized) {
         SimpleLunaAssignment::Prohibition
-    } else if normalized.contains("must") {
+    } else if ["must use", "may use", "should use", "can use"]
+        .iter()
+        .any(|modality| normalized.contains(modality))
+    {
         SimpleLunaAssignment::Affirmative
     } else {
         return None;
+    })
+}
+
+pub(super) fn luna_assignment_clauses(section: &str) -> Vec<String> {
+    section
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim_start_matches(' ').trim_end();
+            (!trimmed.is_empty()
+                && !trimmed.starts_with('#')
+                && !trimmed.starts_with("![")
+                && !trimmed.starts_with('<'))
+            .then(|| policy_line(trimmed))
+            .flatten()
+        })
+        .flat_map(|instruction| instruction.split(';'))
+        .map(str::trim)
+        .filter(|clause| !clause.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+fn has_prohibition(text: &str) -> bool {
+    [
+        "must not use",
+        "may not use",
+        "should not use",
+        "cannot use",
+        "can not use",
+    ]
+    .iter()
+    .any(|modality| text.contains(modality))
+}
+
+fn token_present(text: &str, expected: &str) -> bool {
+    text.match_indices(expected).any(|(start, _)| {
+        let before = text[..start].chars().next_back();
+        let after = text[start + expected.len()..].chars().next();
+        before.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
+            && after.is_none_or(|character| !character.is_ascii_alphanumeric() && character != '-')
     })
 }
 

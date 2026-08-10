@@ -19,7 +19,8 @@ use policy::{affirmative_field_values, policy_instructions, sections_for_heading
 use required_bullets::missing_required_bullets;
 use rules::{
     ACTIVE_TIER_STARTS, DELIVERY_POLICY, RECIPIENT_ROUTING_BULLETS, ROUTING_REQUIRED_BULLETS,
-    SimpleLunaAssignment, simple_luna_assignment, simple_route_is_affirmative,
+    SimpleLunaAssignment, luna_assignment_clauses, simple_luna_assignment,
+    simple_route_is_affirmative,
 };
 
 const SKILL_PATH: &str = "skills/orchestration/SKILL.md";
@@ -57,10 +58,10 @@ pub(super) fn check_skill(path: &Path, skill: &str) -> Vec<String> {
         .iter()
         .flat_map(|bullets| missing_required_bullets(&path, bullets, ROUTING_REQUIRED_BULLETS))
         .collect::<Vec<_>>();
-    let simple_luna_assignments = routing_bullets
+    let simple_luna_assignments = routing_sections
         .iter()
-        .flatten()
-        .filter(|bullet| simple_luna_assignment(bullet) == Some(SimpleLunaAssignment::Affirmative))
+        .flat_map(|section| luna_assignment_clauses(section))
+        .filter(|clause| simple_luna_assignment(clause) == Some(SimpleLunaAssignment::Affirmative))
         .collect::<Vec<_>>();
     if simple_luna_assignments.len() != 1
         || simple_luna_assignments

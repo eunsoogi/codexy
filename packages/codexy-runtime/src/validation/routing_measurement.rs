@@ -8,6 +8,35 @@ const CORPUS_SCHEMA: &str = "codexy.routing-evaluation-corpus.v1";
 const CORPUS_ID: &str = "routing-549-v1";
 const RESULTS_SCHEMA: &str = "codexy.routing-evaluation-results.v1";
 const EFFORTS: [&str; 3] = ["high", "xhigh", "max"];
+
+#[derive(Clone, Copy)]
+struct CanonicalTask {
+    id: &'static str,
+    classification: &'static str,
+    prompt: &'static str,
+    acceptance_oracle: &'static str,
+}
+
+const CANONICAL_TASKS: [CanonicalTask; 3] = [
+    CanonicalTask {
+        id: "simple-local-validator",
+        classification: "simple",
+        prompt: "Add one mutation test without editing production code.",
+        acceptance_oracle: "The test is faithful and bounded.",
+    },
+    CanonicalTask {
+        id: "general-routing-contract",
+        classification: "general",
+        prompt: "Map the routing contract and return a minimal proof plan.",
+        acceptance_oracle: "The plan preserves current Terra/high.",
+    },
+    CanonicalTask {
+        id: "ambiguous-specialist-boundary",
+        classification: "ambiguous",
+        prompt: "Classify an ownership-sensitive routing change and select the safe handler.",
+        acceptance_oracle: "The result fails closed without Luna.",
+    },
+];
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Corpus {
@@ -127,26 +156,21 @@ fn corpus_diagnostics(text: &str) -> Vec<String> {
     )
 }
 fn check_corpus(corpus: &Corpus) -> Vec<String> {
-    let classes = corpus
-        .tasks
-        .iter()
-        .map(|task| task.classification.as_str())
-        .collect::<BTreeSet<_>>();
-    let ids = corpus
-        .tasks
-        .iter()
-        .map(|task| task.id.as_str())
-        .collect::<BTreeSet<_>>();
     if corpus.schema != CORPUS_SCHEMA
         || corpus.corpus_id != CORPUS_ID
-        || classes != BTreeSet::from(["ambiguous", "general", "simple"])
-        || ids.len() != corpus.tasks.len()
-        || corpus
+        || corpus.tasks.len() != CANONICAL_TASKS.len()
+        || !corpus
             .tasks
             .iter()
-            .any(|task| task.prompt.trim().is_empty() || task.acceptance_oracle.trim().is_empty())
+            .zip(CANONICAL_TASKS)
+            .all(|(task, canonical)| {
+                task.id == canonical.id
+                    && task.classification == canonical.classification
+                    && task.prompt == canonical.prompt
+                    && task.acceptance_oracle == canonical.acceptance_oracle
+            })
     {
-        vec!["routing measurement corpus must freeze unique simple, general, and ambiguous tasks with exact prompt identities".into()]
+        vec!["routing measurement corpus must freeze the exact ordered simple, general, and ambiguous task tuples".into()]
     } else {
         Vec::new()
     }

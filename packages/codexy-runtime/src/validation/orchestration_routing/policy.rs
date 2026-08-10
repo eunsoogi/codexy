@@ -192,7 +192,7 @@ fn finish_block(blocks: &mut Vec<String>, block: &mut Option<String>) {
     blocks.extend(block.take());
 }
 
-fn policy_line(line: &str) -> Option<&str> {
+pub(super) fn policy_line(line: &str) -> Option<&str> {
     list_item(line)
         .map(strip_task_marker)
         .or((!line.starts_with('#')).then_some(line))

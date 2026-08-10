@@ -114,6 +114,42 @@ fn routing_measurement_cli_bounds_counts_and_requires_the_canonical_corpus() -> 
     Ok(())
 }
 
+#[test]
+fn routing_measurement_cli_rejects_every_same_id_frozen_corpus_tuple_mutation() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let corpus = temp.path().join("corpus.json");
+    let results = temp.path().join("results.json");
+    fs::write(&results, serde_json::to_vec(&results_value("high", false))?)?;
+
+    let mut cases = vec![
+        CORPUS.replacen("Add one mutation test", "Change the exact prompt", 1),
+        CORPUS.replacen("The test is faithful and bounded.", "Changed oracle.", 1),
+        CORPUS.replacen("simple-local-validator", "same-id-but-changed", 1),
+    ];
+    let mut extra = serde_json::from_str::<Value>(CORPUS)?;
+    extra["tasks"].as_array_mut().expect("tasks").push(json!({
+        "id":"extra-task",
+        "classification":"simple",
+        "prompt":"Extra task.",
+        "acceptance_oracle":"Extra oracle."
+    }));
+    cases.push(serde_json::to_string(&extra)?);
+    let mut reordered = serde_json::from_str::<Value>(CORPUS)?;
+    reordered["tasks"].as_array_mut().expect("tasks").reverse();
+    cases.push(serde_json::to_string(&reordered)?);
+
+    for mutated in cases {
+        fs::write(&corpus, mutated)?;
+        assert!(
+            !run(&corpus, &results)?.status.success(),
+            "same-id mutated frozen corpus was accepted"
+        );
+    }
+    fs::write(&corpus, CORPUS)?;
+    assert!(run(&corpus, &results)?.status.success());
+    Ok(())
+}
+
 fn run(corpus: &std::path::Path, results: &std::path::Path) -> std::io::Result<std::process::Output> {
     Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args(["--check-routing-measurement", "--routing-corpus-file"])
