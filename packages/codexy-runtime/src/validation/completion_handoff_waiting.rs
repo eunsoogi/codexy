@@ -1,8 +1,7 @@
 const WAITING_STATE_ERROR: &str = "pending child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
-const NO_ACTIONABLE_REVIEW_FEEDBACK: &str = "no actionable feedback|no feedback|no review feedback";
-const ACTIONABLE_REVIEW_FEEDBACK: &str =
-    "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution";
+use super::child_goal_blocked_audit::wait_taxonomy::{WaitDisposition, classify_reviewer_text};
+
 const EXTERNAL_CHECK_FAILURE: &str = "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed";
 const FALSE_CHECK_LABEL: &str = "required checks are failing: no|required status checks are failing: no|status checks are failing: no|required checks failed: no|required status checks failed: no|status checks failed: no|required checks are failing: false|required status checks are failing: false|status checks are failing: false|required checks failed: false|required status checks failed: false|status checks failed: false|required checks are failing: none|required status checks are failing: none|status checks are failing: none|required checks failed: none|required status checks failed: none|status checks failed: none|required checks are failing? no|required status checks are failing? no|status checks are failing? no|required checks failed? no|required status checks failed? no|status checks failed? no|required checks are failing? false|required status checks are failing? false|status checks are failing? false|required checks failed? false|required status checks failed? false|status checks failed? false|required checks are failing? none|required status checks are failing? none|status checks are failing? none|required checks failed? none|required status checks failed? none|status checks failed? none|required checks are failing = no|required status checks are failing = no|status checks are failing = no|required checks failed = no|required status checks failed = no|status checks failed = no|required checks are failing = false|required status checks are failing = false|status checks are failing = false|required checks failed = false|required status checks failed = false|status checks failed = false|required checks are failing = none|required status checks are failing = none|status checks are failing = none|required checks failed = none|required status checks failed = none|status checks failed = none|required checks are failing - no|required status checks are failing - no|status checks are failing - no|required checks failed - no|required status checks failed - no|status checks failed - no|required checks are failing - false|required status checks are failing - false|status checks are failing - false|required checks failed - false|required status checks failed - false|status checks failed - false|required checks are failing - none|required status checks are failing - none|status checks are failing - none|required checks failed - none|required status checks failed - none|status checks failed - none";
 const SECURITY_REVIEW_BLOCKER: &str = "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review is waiting|security review waiting|security review is awaiting|security review awaiting|security review in progress|security review failed|security review failure";
@@ -70,6 +69,7 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
         || mentions_return_wait(text)
+        || classify_reviewer_text(text) == Some(WaitDisposition::Nonterminal)
         || has_any(text, DISALLOWED_BLOCKED_RATIONALE)
         || (has_any(text, NONTERMINAL_GATE_WAIT) && mentions_waiting_context(text))
         || (has_any(text, CHILD_WORK)
@@ -77,10 +77,7 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
             && !mentions_missing_child_evidence(text))
 }
 fn mentions_actionable_review_feedback(text: &str) -> bool {
-    !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
-        && has_any(text, "review|requested changes|changes requested")
-        && (has_any(text, ACTIONABLE_REVIEW_FEEDBACK)
-            || has_any(text, "review comment|review comments"))
+    classify_reviewer_text(text) == Some(WaitDisposition::Actionable)
 }
 fn mentions_external_gate_blocker(text: &str) -> bool {
     (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))

@@ -18,6 +18,8 @@ fn validator_rejects_non_blocking_waits_described_as_blocked() -> TestResult {
         "Blocked while waiting for a Sentinel result.",
         "Blocked while waiting for CI completion.",
         "Blocked while waiting for connector review.",
+        "Blocked while reviewer feedback is pending.",
+        "Blocked while waiting for reviewer feedback; no actionable feedback has arrived.",
         "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.",
         "Blocked after repeated true impasse because an external state change is required.",
     ] {

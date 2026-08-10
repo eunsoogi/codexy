@@ -40,6 +40,13 @@ pub(super) fn assert_boundaries() -> TestResult {
             "review-event",
             "",
         ),
+        ("reviewer", "reviewer-pending", "review-event", ""),
+        (
+            "async-tool",
+            "async-tool-pending",
+            "tool-result-event",
+            "",
+        ),
         ("resource-slot", "resource-slot-pending", "slot-event", ""),
         (
             "alternate-evidence",

@@ -1,20 +1,10 @@
 mod parser;
+pub(super) mod wait_taxonomy;
 
 use parser::{
     ActiveEvent, OrderedEvent, active_events, field, has_distinct_values, is_blocked_pre_delivery,
 };
-
-const NONTERMINAL_PRODUCERS: &[&str] = &[
-    "sentinel-running",
-    "child-pending",
-    "ci-queued",
-    "connector-review-pending",
-    "parent-authorization-pending",
-    "dependency-integration-pending",
-    "resource-slot-pending",
-    "alternate-evidence-pending",
-    "event-idle-child",
-];
+use wait_taxonomy::{WaitDisposition, classify_producer};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let events = active_events(evidence);
@@ -151,7 +141,8 @@ fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
         .filter_map(|(index, event)| {
             (invalid_field(field(&event.line, "state fingerprint"))
                 || !field(&event.line, "producer state")
-                    .is_some_and(|value| NONTERMINAL_PRODUCERS.contains(&value))
+                    .and_then(classify_producer)
+                    .is_some_and(|state| state == WaitDisposition::Nonterminal)
                 || invalid_wake_route(field(&event.line, "wake route"))
                 || field(&event.line, "ownership") != Some("retained")
                 || field(&event.line, "goal state") != Some("active")
