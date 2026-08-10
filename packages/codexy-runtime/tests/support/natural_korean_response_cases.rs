@@ -27,10 +27,10 @@ pub(super) fn assert_response_cases() {
         ResponseCase {
             name: "debugging",
             user_summary: "문제를 재현했고 원인을 확인했습니다.",
-            machine_evidence: r##"{"command":"cargo test --test suite_all","path":"plugins/codexy/skills/debugging/SKILL.md","identifier":"response_errors","product":"Codexy"}"##,
+            machine_evidence: r##"{"command":"cargo test --test suite_all","path":"plugins/codexy/skills/engineering/references/diagnosis.md","identifier":"response_errors","product":"Codexy"}"##,
             protected: &[
                 "cargo test --test suite_all",
-                "plugins/codexy/skills/debugging/SKILL.md",
+                "plugins/codexy/skills/engineering/references/diagnosis.md",
                 "response_errors",
                 "Codexy",
             ],
@@ -70,7 +70,7 @@ pub(super) fn assert_response_cases() {
             machine_evidence: r##"{"command":"카고 테스트","path":"디버깅 스킬","product":"코덱시"}"##,
             protected: &[
                 "cargo test --test suite_all",
-                "plugins/codexy/skills/debugging/SKILL.md",
+                "plugins/codexy/skills/engineering/references/diagnosis.md",
                 "Codexy",
             ],
             valid: false,

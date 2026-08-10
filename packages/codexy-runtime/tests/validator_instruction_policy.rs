@@ -31,7 +31,7 @@ const MUTABLE_PLUGIN_FILES: &[&str] = &[
     "skills/orchestration/agents/openai.yaml",
     "skills/git-workflow/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
+    "skills/engineering/references/refactoring.md",
 ];
 const ORCHESTRATION_PROMPT: &str = "You MUST use $orchestration";
 #[rustfmt::skip]

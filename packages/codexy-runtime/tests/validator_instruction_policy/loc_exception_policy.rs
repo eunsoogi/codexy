@@ -220,7 +220,7 @@ fn validator_cli_rejects_negated_unconditional_loc_contract() -> TestResult {
 fn current_refactoring_and_sentinel_surfaces_prohibit_exceptions() -> TestResult {
     let fixture = plugin_fixture()?;
     let plugin_root = fixture.root();
-    let refactoring = std::fs::read_to_string(plugin_root.join("skills/refactoring/SKILL.md"))?;
+    let refactoring = std::fs::read_to_string(plugin_root.join("skills/engineering/references/refactoring.md"))?;
     let sentinel = std::fs::read_to_string(plugin_root.join("agents/codexy-sentinel.toml"))?;
     assert!(!refactoring.contains("remaining large-file exceptions"));
     assert!(!refactoring.contains("Exceptions and rationale"));

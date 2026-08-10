@@ -1,6 +1,0 @@
-interface:
-  display_name: "Debugging"
-  short_description: "Reproduce, isolate, fix, and prove regressions."
-  default_prompt: "You MUST use $debugging to reproduce this failure, MUST test hypotheses, and MUST verify the smallest fix."
-policy:
-  allow_implicit_invocation: true

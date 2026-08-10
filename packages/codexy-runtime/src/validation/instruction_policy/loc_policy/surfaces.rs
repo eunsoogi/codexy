@@ -4,7 +4,7 @@ pub(super) const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
     "skills/plugin-marketplace-prep/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
+    "skills/engineering/references/refactoring.md",
 ];
 pub(super) const GOVERNED_AGENT_ROLES: &[&str] = &["agents/codexy-sculptor.toml"];
 pub(super) const UNCONDITIONAL_CONTRACT: &str = "every governed file MUST stay at or below 250 LOC";

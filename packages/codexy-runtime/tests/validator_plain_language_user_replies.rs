@@ -44,9 +44,9 @@ const SAFE_GATE_EXAMPLES: [(&str, &str); 2] = [
 
 const ROUTED_SURFACES: [&str; 4] = [
     "plugins/codexy/skills/orchestration/SKILL.md",
-    "plugins/codexy/skills/debugging/SKILL.md",
+    "plugins/codexy/skills/engineering/references/diagnosis.md",
     "plugins/codexy/skills/proof-driven-completion/SKILL.md",
-    "plugins/codexy/skills/qa/SKILL.md",
+    "plugins/codexy/skills/engineering/references/quality-assurance.md",
 ];
 
 const GUIDANCE_RULES: &[Rule] = &[
@@ -148,6 +148,8 @@ fn shared_guidance_covers_plain_english_and_korean_replies() -> TestResult {
         let text = std::fs::read_to_string(root.join(path))?;
         let target = if path.ends_with("orchestration/SKILL.md") {
             "references/plain-language-user-replies.md"
+        } else if path.contains("engineering/references/") {
+            "../../orchestration/references/plain-language-user-replies.md"
         } else {
             "../orchestration/references/plain-language-user-replies.md"
         };

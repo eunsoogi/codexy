@@ -5,7 +5,7 @@ use crate::support;
 fn tdd_skill_requires_root_cause_first_performance_repairs() {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/test-driven-development/SKILL.md"),
+            .join("plugins/codexy/skills/engineering/references/test-driven-development.md"),
     )
     .expect("TDD skill");
     support::assert_structured_literals(

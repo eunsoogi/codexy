@@ -16,9 +16,9 @@ const SHARED_GUIDANCE: &str =
 
 const REPRESENTATIVE_SKILLS: [&str; 4] = [
     "plugins/codexy/skills/orchestration/SKILL.md",
-    "plugins/codexy/skills/debugging/SKILL.md",
+    "plugins/codexy/skills/engineering/references/diagnosis.md",
     "plugins/codexy/skills/proof-driven-completion/SKILL.md",
-    "plugins/codexy/skills/qa/SKILL.md",
+    "plugins/codexy/skills/engineering/references/quality-assurance.md",
 ];
 
 const FAITHFUL_CASES: [(&str, &str); 3] = [
@@ -119,6 +119,8 @@ fn representative_skills_share_plain_korean_response_guidance() -> TestResult {
         let skill = std::fs::read_to_string(root.join(path))?;
         let expected = if path.ends_with("orchestration/SKILL.md") {
             "references/natural-korean-responses.md"
+        } else if path.contains("engineering/references/") {
+            "../../orchestration/references/natural-korean-responses.md"
         } else {
             "../orchestration/references/natural-korean-responses.md"
         };

@@ -1,15 +1,10 @@
----
-name: spec-driven-development
-description: MUST use when a task starts from a PRD, issue, acceptance criteria, design brief, API contract, user story, or ambiguous feature request that needs implementation discipline before editing.
----
-
-# Spec-Driven Development
+# Specification
 
 ## Purpose
 
-MUST treat the spec as the implementation contract. Convert intent into observable
-claims, prove the claims with targeted evidence, and MUST keep the branch scoped to
-one issue-sized outcome.
+MUST treat the specification as the implementation contract. Convert intent into
+observable claims, prove the claims with targeted evidence, and MUST keep the
+branch scoped to one issue-sized outcome.
 
 ## Workflow
 
@@ -29,14 +24,14 @@ one issue-sized outcome.
    - split unrelated behavior into follow-up issues,
    - MUST name the owning branch or worktree,
    - MUST NOT bundle cleanup unless it is required to prove the spec.
-4. Define proofs before implementation:
+4. MUST define proofs before implementation:
    - one proof for the happy path,
    - one proof for the riskiest boundary or edge case,
    - one regression proof for behavior that MUST NOT change,
    - one external-surface proof when the spec affects CLI, GitHub, browser,
      desktop, plugin, marketplace, or repository settings.
 5. Implement only spec-backed changes.
-6. MUST re-run proofs and map each changed file back to a requirement.
+6. MUST re-run proofs and MUST map each changed file back to the requirement.
 7. Before PR or merge, audit whether every explicit requirement has current
    evidence.
 

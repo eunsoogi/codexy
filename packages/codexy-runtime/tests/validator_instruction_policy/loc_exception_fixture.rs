@@ -5,7 +5,7 @@ use crate::support::{self, PluginFixture, TestResult};
 pub(super) const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
+    "skills/engineering/references/refactoring.md",
 ];
 pub(super) const REFERENCE_PATH: &str = "skills/wiki/references/loc-policy.md";
 

@@ -6,7 +6,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn validator_cli_rejects_passive_mandatory_skill_instruction() -> TestResult {
-    let fixture = policy_fixture("skills/qa/SKILL.md")?;
+    let fixture = policy_fixture("skills/engineering/references/quality-assurance.md")?;
     let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [
@@ -164,7 +164,7 @@ fn validator_cli_rejects_bare_imperative_after_non_modal_to_from() -> TestResult
 
 #[test]
 fn validator_cli_rejects_markdown_workflow_bare_imperatives() -> TestResult {
-    let fixture = policy_fixture("skills/debugging/SKILL.md")?;
+    let fixture = policy_fixture("skills/engineering/references/diagnosis.md")?;
     let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     for addition in [

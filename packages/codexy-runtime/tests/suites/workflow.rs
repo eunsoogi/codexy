@@ -136,6 +136,9 @@ mod validator_subthread_subagent_instructions;
 #[path = "../validator_tdd_root_cause_guidance.rs"]
 mod validator_tdd_root_cause_guidance;
 
+#[path = "../engineering_skill_consolidation.rs"]
+mod engineering_skill_consolidation;
+
 #[path = "../validator_touched_skill_loc.rs"]
 mod validator_touched_skill_loc;
 

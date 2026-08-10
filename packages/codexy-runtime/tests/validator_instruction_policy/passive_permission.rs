@@ -9,7 +9,7 @@ mod root_agents;
 const GOVERNED_SKILLS: &[&str] = &[
     "skills/git-workflow/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
-    "skills/refactoring/SKILL.md",
+    "skills/engineering/references/refactoring.md",
 ];
 
 #[test]
