@@ -48,6 +48,8 @@ mod validator_gpt_5_6_routing_evidence_forms;
 
 #[path = "../validator_gpt_5_6_routing_549_contract.rs"]
 mod validator_gpt_5_6_routing_549_contract;
+#[path = "../validator_gpt_5_6_routing_549_simple_conjunction.rs"]
+mod validator_gpt_5_6_routing_549_simple_conjunction;
 
 #[path = "../validator_gpt_5_6_routing_field_semantics.rs"]
 mod validator_gpt_5_6_routing_field_semantics;

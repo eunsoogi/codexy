@@ -57,6 +57,14 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
         ),
         (
+            "Promotion above Terra/high is allowed without complete validated measurement.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
+            "Promotion above Terra/high MAY proceed only as an explicit exception selected by complete validated measurement even without complete validated measurement.\n",
+            "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
+        ),
+        (
             "Promotion above Terra/high MUST be allowed after final acceptance alone.\n",
             "promotion above Terra/high must remain an explicit exception selected by complete validated measurement",
         ),
@@ -93,6 +101,22 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
         (
+            "Generic implementation child Terra/high default MAY apply only when #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
+            "Generic implementation child gpt-5.6-terra/high default MAY apply only while #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
+            "Generic implementation child Terra/high default MAY apply generally, while issue #549 remains open.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
+            "Generic implementation child Terra/high default MAY apply until this PR merges.\n",
+            "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
+        ),
+        (
             "Generic implementation child Terra/high default MAY apply only while #549 remains open.\n",
             "generic child route must retain gpt-5.6-terra/high as the fail-closed default",
         ),
@@ -116,6 +140,7 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
         "Promotion above Terra/high cannot proceed before complete validated measurement.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY comment.\n",
         "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while reviewers MAY proceed.\n",
+        "Promotion above Terra/high MUST NOT be allowed without complete validated measurement, while #549 reviewers MAY proceed.\n",
         "Generic implementation child Terra/high default MAY apply generally but cannot apply while #549 remains open.\n",
     ] {
         let errors = validate(skill.replacen(
@@ -123,37 +148,9 @@ fn validator_rejects_active_promotion_exceptions_without_complete_validation() -
             &format!("{prohibition}\n## Recipient Model Routing"),
             1,
         ))?;
-        assert!(errors.is_empty(), "valid prohibition failed: {errors:#?}");
+        assert!(errors.is_empty(), "valid prohibition {prohibition:?} failed: {errors:#?}");
     }
     Ok(())
-}
-
-#[test]
-fn validator_requires_the_simple_route_to_be_one_affirmative_conjunction() -> TestResult {
-    let skill = routing_skill()?;
-    let errors = validate(skill.clone())?;
-    assert!(errors.is_empty(), "valid routing policy failed: {errors:#?}");
-    let simple_rule = "Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: \"max\"` only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.";
-    for replacement in [
-        simple_rule.replacen("only when", "even when", 1),
-        simple_rule.replacen("fixed scope", "fixed scope, fixed scope", 1),
-        simple_rule.replacen("deterministic oracle", "heuristic oracle", 1),
-        simple_rule.replacen("low-risk/reversible boundary", "high-risk boundary", 1),
-        simple_rule.replacen("no unresolved domain", "an unresolved domain", 1),
-    ] {
-        assert_policy_rejected(
-            skill.replacen(simple_rule, &replacement, 1),
-            "simple-work Luna/max candidates must require every bounded-work predicate",
-        )?;
-    }
-    assert_policy_rejected(
-        skill.replacen(
-            "A matching named specialist MUST be selected before generic child routing;",
-            "A matching named specialist MUST be selected after generic child routing;",
-            1,
-        ),
-        "named specialist routing must precede generic child routing without TOML overrides",
-    )
 }
 
 #[test]
