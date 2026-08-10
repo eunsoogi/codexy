@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-};
+use std::{collections::BTreeSet, path::Path};
 
 use super::data::{Mapping, identity as load_identity, manifest as load_manifest};
 use super::routes::{canonical_identity_path, entrypoint_section};
@@ -181,25 +178,15 @@ fn check_mapping(
     let path = references.join(destination);
     let destination_text = std::fs::read_to_string(&path).unwrap_or_default();
     errors.extend(local_links(&destination_text, &path, plugin_root));
-    let expected_values = counts(
-        source_semantics
-            .iter()
-            .filter(|item| item.id.contains(":semantic:"))
-            .map(|item| item.value.as_str()),
-    );
+    let expected_values = source_semantics
+        .iter()
+        .filter(|item| item.id.contains(":semantic:"))
+        .map(|item| item.value.clone())
+        .collect::<Vec<_>>();
     let destination_values = destination_values(&destination_text, &path);
-    let actual_values = counts(destination_values.iter().map(String::as_str));
-    if expected_values != actual_values {
+    if expected_values != destination_values {
         errors.push(format!(
             "engineering destination equivalence differs for {source}"
         ));
     }
-}
-
-fn counts<'a>(values: impl Iterator<Item = &'a str>) -> BTreeMap<&'a str, usize> {
-    let mut counts = BTreeMap::new();
-    for value in values {
-        *counts.entry(value).or_default() += 1;
-    }
-    counts
 }

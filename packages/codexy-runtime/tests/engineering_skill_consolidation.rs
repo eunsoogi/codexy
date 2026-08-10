@@ -105,6 +105,9 @@ fn production_validator_rejects_manifest_projection_mutations() -> TestResult {
 #[test]
 fn production_validator_rejects_destination_and_trigger_mutations() -> TestResult {
     for mutation in [
+        TextMutation::WorkflowOrder,
+        TextMutation::WorkflowMissing,
+        TextMutation::WorkflowDuplicate,
         TextMutation::MustToMay,
         TextMutation::Negation,
         TextMutation::Lexical,
@@ -131,7 +134,8 @@ enum ManifestMutation {
 
 #[derive(Clone, Copy, Debug)]
 enum TextMutation {
-    MustToMay, Negation, Lexical, TriggerRemoval, TriggerSubstitution, BrokenLink, OutsideLink,
+    WorkflowOrder, WorkflowMissing, WorkflowDuplicate, MustToMay, Negation, Lexical,
+    TriggerRemoval, TriggerSubstitution, BrokenLink, OutsideLink,
 }
 
 fn apply_baseline_mutation(sources: &mut Vec<(String, String)>, mutation: BaselineMutation) {
@@ -178,10 +182,16 @@ fn mutate_identity_file(plugin_root: &Path, relative: &str, mutation: ManifestMu
 fn apply_text_mutation(plugin_root: &Path, mutation: TextMutation) -> TestResult {
     let skill = plugin_root.join("skills/engineering/SKILL.md");
     let first_destination = first_destination(plugin_root)?;
-    let destination = plugin_root.join("skills/engineering/references").join(first_destination);
+    let destination = plugin_root.join("skills/engineering/references").join(match mutation {
+        TextMutation::WorkflowOrder | TextMutation::WorkflowMissing | TextMutation::WorkflowDuplicate => "test-driven-development.md".to_owned(),
+        _ => first_destination,
+    });
     let path = match mutation { TextMutation::TriggerRemoval | TextMutation::TriggerSubstitution => &skill, _ => &destination };
     let original = std::fs::read_to_string(path)?;
     let changed = match mutation {
+        TextMutation::WorkflowOrder => swap_workflow_steps(&original),
+        TextMutation::WorkflowMissing => original.replacen(red_step(), "", 1),
+        TextMutation::WorkflowDuplicate => original.replacen(red_step(), &format!("{}\n{}", red_step(), red_step()), 1),
         TextMutation::MustToMay => original.replacen("MUST", "MAY", 1),
         TextMutation::Negation => original.replacen("MUST NOT", "MUST", 1),
         TextMutation::Lexical => original.replacen("evidence", "guesswork", 1),
@@ -197,6 +207,16 @@ fn apply_text_mutation(plugin_root: &Path, mutation: TextMutation) -> TestResult
     std::fs::write(path, changed)?;
     Ok(())
 }
+
+fn swap_workflow_steps(original: &str) -> String {
+    original
+        .replacen(red_step(), "__RED__", 1)
+        .replacen(green_step(), red_step(), 1)
+        .replacen("__RED__", green_step(), 1)
+}
+
+fn red_step() -> &'static str { "3. MUST run the proof before implementation and capture RED." }
+fn green_step() -> &'static str { "6. MUST run the same proof and capture GREEN." }
 
 fn mutate_first_trigger(original: &str, from: &str, to: &str) -> String {
     let offset = original.find("MUST use [").unwrap_or_default();
