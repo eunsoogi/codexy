@@ -57,10 +57,16 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 MUST read these relative references before acting on the matching surface:
 
-- `references/task-classification.md` and `references/classification-and-control.md` for classification, goals, plans, child execution, codegraph, LSP, and Sentinel discipline.
-- `references/goal-transition-reporting.md` and `references/thread-and-worktree-routing.md` for delegated receipts, parent/child boundaries, discovery, and worktree preflights.
-- `references/orchestration-loop.md`, `references/runtime-heartbeats.md`, `references/parent-stop-preflight.md`, and `references/execution-budget.md` for the execution loop, waits, ownership checks, and finite work.
-- `references/token-efficient.md`, `references/plain-language-user-replies.md`, and `references/natural-korean-responses.md` for compact and user-facing handoffs.
+- `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and Sentinel discipline.
+- `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
+- `references/thread-and-worktree-routing.md` for parent/child boundaries, thread discovery, Codex app worktree preflights, and worktree rules.
+- `references/orchestration-loop.md` for intake, plan, dispatch, integration, verification, finish, failure modes, and handoffs.
+- `references/runtime-heartbeats.md` for external waits.
+- `references/parent-stop-preflight.md` for ownership checks before implementation edits.
+- `references/execution-budget.md` for finite child execution and termination.
+- `references/token-efficient.md` for compact event deltas and token discipline.
+- `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
+- `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 - `references/routing-evaluation-corpus.json` and `references/routing-evaluation-results.schema.json` for frozen paired child-routing measurement.
 
 ## Classification Gate
