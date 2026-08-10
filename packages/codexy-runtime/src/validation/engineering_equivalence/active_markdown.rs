@@ -1,6 +1,6 @@
 use std::path::{Component, Path};
 
-use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
+use pulldown_cmark::{Event, HeadingLevel, Parser, Tag, TagEnd};
 
 pub(super) struct Document {
     headings: Vec<Heading>,
@@ -46,17 +46,18 @@ impl Document {
                     links.push(Link {
                         start: range.start,
                         target: dest_url.into_string(),
-                        top_level: !stack.iter().copied().any(|blocked| blocked),
+                        top_level: top_level(&stack),
                     });
                     stack.push(false);
                 }
                 Event::Start(tag) => stack.push(inactive_or_container(&tag)),
-                Event::End(_) => {
-                    let Some(inactive) = stack.pop() else {
+                Event::End(TagEnd::Heading(HeadingLevel::H2)) => {
+                    let Some(_) = stack.pop() else {
                         continue;
                     };
-                    if !inactive && stack.last().is_none_or(|item| *item) {
-                        if let Some(open) = heading.take() {
+                    let open = heading.take();
+                    if top_level(&stack) {
+                        if let Some(open) = open {
                             headings.push(Heading {
                                 start: open.start,
                                 end: source.len(),
@@ -64,6 +65,9 @@ impl Document {
                             });
                         }
                     }
+                }
+                Event::End(_) => {
+                    stack.pop();
                 }
                 Event::Text(value) | Event::Code(value) => {
                     if let Some(open) = &mut heading {
@@ -96,6 +100,10 @@ impl Document {
             .count()
             == 1
     }
+}
+
+pub(super) fn top_level(stack: &[bool]) -> bool {
+    stack.iter().all(|excluded| !excluded)
 }
 
 fn inactive_or_container(tag: &Tag<'_>) -> bool {
@@ -163,4 +171,18 @@ fn normalized_local_target(target: &str) -> Option<String> {
         .collect::<Vec<_>>()
         .join("/");
     (!normalized.is_empty()).then_some(normalized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::top_level;
+
+    #[test]
+    fn top_level_rejects_every_excluded_ancestor() {
+        assert!(top_level(&[]));
+        assert!(top_level(&[false, false]));
+        assert!(!top_level(&[true]));
+        assert!(!top_level(&[false, true]));
+        assert!(!top_level(&[true, false]));
+    }
 }

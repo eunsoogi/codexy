@@ -16,6 +16,10 @@ fn production_validator_rejects_entrypoint_heading_mutations() -> TestResult {
         HeadingMutation::RawHtml,
         HeadingMutation::InlineCode,
         HeadingMutation::Escaped,
+        HeadingMutation::BlockQuote,
+        HeadingMutation::OrderedList,
+        HeadingMutation::UnorderedList,
+        HeadingMutation::NestedContainers,
     ] {
         let (_temporary, plugin_root) = copy_plugin_fixture()?;
         mutate_heading(&plugin_root, mutation)?;
@@ -68,6 +72,10 @@ enum HeadingMutation {
     RawHtml,
     InlineCode,
     Escaped,
+    BlockQuote,
+    OrderedList,
+    UnorderedList,
+    NestedContainers,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -117,6 +125,12 @@ fn mutate_heading(plugin_root: &Path, mutation: HeadingMutation) -> TestResult {
         }
         HeadingMutation::InlineCode => replace(&skill_path, "## Diagnosis", "`## Diagnosis`")?,
         HeadingMutation::Escaped => replace(&skill_path, "## Diagnosis", "\\## Diagnosis")?,
+        HeadingMutation::BlockQuote => replace(&skill_path, "## Diagnosis", "> ## Diagnosis")?,
+        HeadingMutation::OrderedList => replace(&skill_path, "## Diagnosis", "1. ## Diagnosis")?,
+        HeadingMutation::UnorderedList => replace(&skill_path, "## Diagnosis", "- ## Diagnosis")?,
+        HeadingMutation::NestedContainers => {
+            replace(&skill_path, "## Diagnosis", "> - ## Diagnosis")?
+        }
     }
     Ok(())
 }
