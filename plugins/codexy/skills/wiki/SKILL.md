@@ -10,10 +10,18 @@ The active topic is the bounded context; MUST NOT inspect other topics unless
 the user explicitly expands scope. MUST keep user prompts and tool metadata
 outside the context budget.
 
-[Minimal Contract](references/minimal-contract.md) is the normative source for
-workflow dispositions, provenance, freshness, and measurable limits.
+## Topic root
+
+Before initialization, ingestion, compilation, querying, refresh, or migration,
+the caller MUST supply one explicit topic root. When the root is absent, the
+caller MUST request it before operating. The caller MUST NOT search, select, or
+initialize a topic root implicitly.
 
 ## Core workflow
+
+Before freshness verification, compilation, or query, MUST read [Minimal Contract](references/minimal-contract.md)
+before operating. It is the normative source for workflow dispositions, provenance,
+freshness, and measurable limits.
 
 MUST use the core path `init → ingest → compile → query → refresh`.
 

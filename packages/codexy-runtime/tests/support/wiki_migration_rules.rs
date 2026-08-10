@@ -36,8 +36,44 @@ pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
         ),
         (Mode::Must, &["stop"], &[]),
         (Mode::Must, &["report", "provenance gap"], &[]),
-        (Mode::Must, &["leave", "entire topic tree unchanged"], &[]),
-        (Mode::Must, &["append", "migration entry"], &["log.md"]),
+        (
+            Mode::Must,
+            &[
+                "leave the entire topic tree unchanged",
+                "provenance failure",
+            ],
+            &[],
+        ),
+        (
+            Mode::Must,
+            &["stage", "all derived changes", "completion log entry"],
+            &[],
+        ),
+        (
+            Mode::Must,
+            &[
+                "validate",
+                "staged derived changes",
+                "completion log entry",
+                "together",
+            ],
+            &[],
+        ),
+        (Mode::Must, &["atomically commit derived files"], &[]),
+        (
+            Mode::Must,
+            &["append one migration entry", "final commit action"],
+            &["log.md"],
+        ),
+        (
+            Mode::Must,
+            &[
+                "roll back every staged",
+                "derived change",
+                "leave the entire topic tree unchanged",
+            ],
+            &[],
+        ),
     ])
 }
 

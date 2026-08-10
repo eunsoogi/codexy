@@ -16,6 +16,15 @@ fn parsed_skill_shape_rejects_each_core_identity_mutation() -> TestResult {
         ("heading", skill.replacen("## Core workflow", "## Retired workflow", 1)),
         ("inventory", skill.replacen("init → ingest → compile → query → refresh", "init → query", 1)),
         ("link", skill.replacen("[Migration](references/migration.md)", "Migration", 1)),
+        ("topic root", skill.replacen("## Topic root", "## Topic roots", 1)),
+        (
+            "implicit topic root",
+            skill.replacen("MUST NOT search, select, or", "MUST search, select, or", 1),
+        ),
+        (
+            "contract loading",
+            skill.replacen("MUST read [Minimal Contract]", "MAY read [Minimal Contract]", 1),
+        ),
         ("removed", format!("{skill}\n`collect`")),
     ] {
         assert!(validate_core_skill(&mutation, REMOVED_WORKFLOWS).is_err(), "{name}");
@@ -33,6 +42,10 @@ fn normalized_migration_rules_reject_each_required_rule_mutation() -> TestResult
         ("source scalar", "`sources:` scalar"),
         ("provenance gap", "provenance gap"),
         ("preflight", "MUST validate every referenced provenance and freshness input before any log"),
+        ("stage", "MUST stage all derived changes and the completion log entry"),
+        ("staged validation", "MUST validate staged derived changes and the completion log entry"),
+        ("atomic commit", "MUST atomically commit derived files"),
+        ("rollback", "MUST roll back every staged or\n   derived change"),
         ("write", "MUST append one migration entry"),
     ] {
         let mutation = guide.replacen(required, "retired rule", 1);

@@ -2,6 +2,8 @@ use std::path::{Component, Path, PathBuf};
 
 use serde_yaml::{Mapping, Value};
 
+use super::wiki_core_raw_ingestion::{RawIngestionState, raw_ingestion};
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) struct CanonicalDate {
     year: u16,
@@ -59,6 +61,7 @@ pub(crate) struct ArticleAssessment {
     pub(crate) findings: Vec<ArticleFinding>,
     pub(crate) source_scalars: Vec<String>,
     pub(crate) resolved_sources: Vec<PathBuf>,
+    pub(crate) raw_ingestion: RawIngestionState,
 }
 
 impl ArticleAssessment {
@@ -67,6 +70,7 @@ impl ArticleAssessment {
             self.freshness,
             FreshnessState::Missing | FreshnessState::Malformed
         ) || !matches!(self.provenance, ProvenanceState::Complete)
+            || !matches!(self.raw_ingestion, RawIngestionState::Complete)
     }
 }
 
@@ -97,10 +101,14 @@ pub(crate) fn assess_article(
             findings: Vec::new(),
             source_scalars: Vec::new(),
             resolved_sources: Vec::new(),
+            raw_ingestion: RawIngestionState::Missing,
         };
     };
     let freshness = freshness(&mapping, evaluation_day);
     let (provenance, source_scalars, resolved_sources) = provenance(&mapping, topic_root);
+    let raw_ingestion = matches!(provenance, ProvenanceState::Complete)
+        .then(|| raw_ingestion(&resolved_sources))
+        .unwrap_or(RawIngestionState::Missing);
     let future = matches!(freshness, FreshnessState::Future);
     ArticleAssessment {
         freshness_credit: u8::from(matches!(freshness, FreshnessState::Valid(_))) * 25,
@@ -112,6 +120,7 @@ pub(crate) fn assess_article(
             .collect(),
         source_scalars,
         resolved_sources,
+        raw_ingestion,
     }
 }
 

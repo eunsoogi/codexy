@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::support::wiki_core_article::{
     ArticleFinding, CanonicalDate, FreshnessState, ProvenanceState, assess_article,
 };
+use crate::support::wiki_core_raw_ingestion::RawIngestionState;
 use crate::support::wiki_core_contract::{
     frontmatter_string, markdown_link_count, validate_core_skill,
 };
@@ -42,6 +43,7 @@ fn supported_topic_fixture_proves_ingest_to_bounded_query() -> TestResult {
     assert_eq!(assessment.freshness_credit, 25);
     assert!(matches!(assessment.freshness, FreshnessState::Valid(_)));
     assert_eq!(assessment.provenance, ProvenanceState::Complete);
+    assert_eq!(assessment.raw_ingestion, RawIngestionState::Complete);
     assert!(index.len() <= 4_000);
     assert!(category.len() <= 4_000);
     assert!(article.len() <= 4_000);
