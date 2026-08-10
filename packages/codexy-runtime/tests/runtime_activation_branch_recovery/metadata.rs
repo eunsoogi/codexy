@@ -13,10 +13,19 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let plugin = repo.join("plugins/codexy");
-    let manifest = fs::read(plugin.join(".codex-plugin/plugin.json"))?;
+    let mut manifest: Value = serde_json::from_slice(&fs::read(
+        plugin.join(".codex-plugin/plugin.json"),
+    )?)?;
     fs::remove_dir_all(&plugin)?;
     copy_dir(root.join("plugins/codexy"), &plugin)?;
-    fs::write(plugin.join(".codex-plugin/plugin.json"), manifest)?;
+    let candidate: Value = serde_json::from_slice(&fs::read(
+        plugin.join(".codex-plugin/plugin.json"),
+    )?)?;
+    manifest["interface"]["defaultPrompt"] = candidate["interface"]["defaultPrompt"].clone();
+    fs::write(
+        plugin.join(".codex-plugin/plugin.json"),
+        format!("{}\n", serde_json::to_string_pretty(&manifest)?),
+    )?;
     for relative in [
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",
@@ -25,6 +34,36 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         let target = repo.join(relative);
         fs::create_dir_all(target.parent().ok_or("component contract parent")?)?;
         fs::copy(root.join(relative), target)?;
+    }
+    Ok(())
+}
+
+pub(super) fn assert_canonical_default_prompt(
+    repo: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let manifest: Value = serde_json::from_str(&fs::read_to_string(
+        repo.join("plugins/codexy/.codex-plugin/plugin.json"),
+    )?)?;
+    let prompt = manifest["interface"]["defaultPrompt"]
+        .as_array()
+        .ok_or("candidate manifest defaultPrompt")?;
+    if !prompt.iter().any(|item| {
+        item.as_str()
+            .is_some_and(|text| text.contains("$orchestration"))
+    }) {
+        return Err("candidate manifest defaultPrompt omits $orchestration".into());
+    }
+    for retired in [
+        "$task-classification",
+        "$codex-orchestration",
+        "$token-efficient-orchestration",
+    ] {
+        if prompt
+            .iter()
+            .any(|item| item.as_str().is_some_and(|text| text.contains(retired)))
+        {
+            return Err(format!("candidate manifest retains retired route {retired}").into());
+        }
     }
     Ok(())
 }
