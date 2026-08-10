@@ -147,19 +147,23 @@ fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
 #[test]
 fn codexy_workflows_require_task_classification_first() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
-    let classification =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let orchestration =
         std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
+    let classification = std::fs::read_to_string(
+        root.join("plugins/codexy/skills/orchestration/references/task-classification.md"),
+    )?;
     let git_workflow =
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
     let qa_prompt =
         std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
     let release_prompt =
         std::fs::read_to_string(root.join(".agents/skills/release-engineering/agents/openai.yaml"))?;
+    let plugin_prompt =
+        std::fs::read_to_string(root.join("plugins/codexy/agents/openai.yaml"))?;
 
-    assert!(classification.contains("name: orchestration"));
-    assert!(classification.contains("MUST run this skill first for any Codexy work"));
+    assert!(orchestration.contains("name: orchestration"));
+    assert!(orchestration.contains("MUST classify the lane through this skill before setup"));
+    assert!(classification.contains("MUST classify first for any Codexy work"));
     assert!(classification.contains("Classification Output"));
     assert!(classification.contains("| Lane type |"));
     assert!(classification.contains("| Owner decision |"));
@@ -181,7 +185,6 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
         assert!(classification.contains(lane_type));
     }
 
-    assert!(orchestration.contains("$orchestration"));
     assert!(orchestration.contains(
         "Missing classification before\nsetup, validation, release, or other workflow actions"
     ));
@@ -189,6 +192,12 @@ fn codexy_workflows_require_task_classification_first() -> TestResult {
     assert!(git_workflow.contains("classification evidence"));
     assert!(qa_prompt.contains("$orchestration"));
     assert!(release_prompt.contains("$orchestration"));
+    assert!(plugin_prompt.contains("You MUST use $orchestration before setup"));
+    for surface in [&orchestration, &classification, &git_workflow, &qa_prompt, &release_prompt, &plugin_prompt] {
+        for removed in ["$task-classification", "$codex-orchestration", "$token-efficient-orchestration"] {
+            assert!(!surface.contains(removed), "stale skill route: {removed}");
+        }
+    }
     Ok(())
 }
 
