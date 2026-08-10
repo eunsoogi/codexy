@@ -155,4 +155,13 @@ impl Document {
             })
             .count()
     }
+
+    pub(crate) fn active_text(&self, scope: &Scope) -> String {
+        self.text
+            .iter()
+            .filter(|text| scope.contains(text.range.start))
+            .map(|text| text.value.as_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }

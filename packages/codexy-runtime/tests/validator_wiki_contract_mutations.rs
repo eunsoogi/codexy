@@ -37,5 +37,22 @@ fn normalized_migration_rules_reject_each_required_rule_mutation() -> TestResult
         let mutation = guide.replacen(required, "retired rule", 1);
         assert!(validate_migration_rules(&mutation).is_err(), "{name}");
     }
+    let rule = "MUST validate every referenced provenance and freshness input before any log\n   or derived write";
+    for (name, mutation) in [
+        ("comment", format!("<!-- {rule} -->")),
+        ("fence", format!("```text\n{rule}\n```")),
+        ("inline", format!("`{rule}`")),
+        ("html", format!("<div>{rule}</div>")),
+        ("negated", rule.replacen("MUST validate", "MUST NOT validate", 1)),
+        ("weakened", rule.replacen("MUST validate", "MAY validate", 1)),
+        ("except", format!("{rule} except a baseline")),
+        ("allowlist", format!("{rule} allowlist compatibility alias external restore")),
+    ] {
+        let mutated = guide.replacen(rule, &mutation, 1);
+        assert!(validate_migration_rules(&mutated).is_err(), "{name}");
+    }
+    let article = "---\ntitle: Test\n---\nbody";
+    assert!(crate::support::wiki_core_contract::frontmatter_string(article, "title").is_ok());
+    assert!(crate::support::wiki_core_contract::frontmatter_string(&article.replacen("---", "---garbage", 2), "title").is_err());
     Ok(())
 }

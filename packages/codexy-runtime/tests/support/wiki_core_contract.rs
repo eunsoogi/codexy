@@ -35,8 +35,16 @@ pub(crate) fn frontmatter_string(source: &str, key: &str) -> Result<String, Stri
     if opening.trim_end_matches('\r') != "---" {
         return Err("frontmatter opening".into());
     }
-    let (_, frontmatter) = remainder.split_once("\n---").ok_or("frontmatter closing")?;
-    let yaml = &remainder[..remainder.len() - frontmatter.len() - 4];
+    let mut end = 0;
+    for line in remainder.split_inclusive('\n') {
+        if line.trim_end_matches(['\r', '\n']) == "---" {
+            break;
+        }
+        end += line.len();
+    }
+    let yaml = (end < remainder.len())
+        .then_some(&remainder[..end])
+        .ok_or("frontmatter closing")?;
     let Value::Mapping(mapping) =
         serde_yaml::from_str::<Value>(yaml).map_err(|error| error.to_string())?
     else {
@@ -50,42 +58,36 @@ pub(crate) fn frontmatter_string(source: &str, key: &str) -> Result<String, Stri
 }
 
 pub(crate) fn validate_migration_rules(source: &str) -> Result<(), String> {
-    let shape = NormalizedRules::new(source);
-    let rules: &[&[&str]] = &[
-        &["must preserve existing", "raw", "wiki", "index", "log"],
-        &[
-            "must not delete",
-            "overwrite",
-            "rename",
-            "existing topic data",
-        ],
-        &[
-            "must preserve every complete",
-            "relative",
-            "sources scalar",
-            "exactly",
-        ],
-        &[
-            "must stop",
-            "must report the provenance gap",
-            "must leave the entire topic tree unchanged",
-        ],
-        &[
-            "must validate every referenced provenance",
-            "freshness input",
-            "before any log",
-            "derived write",
-        ],
-    ];
-    if rules.iter().any(|rule| !shape.has_required_concepts(rule))
-        || !shape.has_ordered_concepts(&[
-            "must validate every referenced provenance and freshness input before any log or derived write",
-            "must append one migration entry",
-        ])
-    {
-        return Err("migration rule identity".into());
-    }
-    Ok(())
+    let document = Document::parse(source)?;
+    let scope = RuleRecords::parse(&document.active_text(&document.section("## Scope")?));
+    let procedure = RuleRecords::parse(&document.active_text(&document.section("## Procedure")?));
+    scope.require(Mode::Must, &["preserve", "existing"])?;
+    scope.require(
+        Mode::MustNot,
+        &["delete", "overwrite", "rename", "existing topic data"],
+    )?;
+    procedure.require_ordered(&[
+        (
+            Mode::Must,
+            &[
+                "validate",
+                "referenced provenance",
+                "freshness input",
+                "before any log",
+                "derived write",
+            ],
+        ),
+        (
+            Mode::Must,
+            &["preserve", "complete relative", "scalar", "exactly"],
+        ),
+        (Mode::Must, &["stop"]),
+        (Mode::Must, &["report", "provenance gap"]),
+        (Mode::Must, &["leave", "entire topic tree unchanged"]),
+        (Mode::Must, &["append", "migration entry"]),
+    ])?;
+    scope.reject_qualifiers()?;
+    procedure.reject_qualifiers()
 }
 
 fn required_count(count: usize, identity: &str) -> Result<(), String> {
@@ -94,41 +96,78 @@ fn required_count(count: usize, identity: &str) -> Result<(), String> {
         .ok_or_else(|| format!("missing or duplicate {identity}"))
 }
 
-struct NormalizedRules(String);
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    Must,
+    MustNot,
+}
 
-impl NormalizedRules {
+struct RuleRecords(Vec<(Mode, String)>);
+
+impl RuleRecords {
     fn new(source: &str) -> Self {
-        Self(
-            source
-                .to_ascii_lowercase()
-                .split(|character: char| !character.is_ascii_alphanumeric())
-                .filter(|token| !token.is_empty())
-                .collect::<Vec<_>>()
-                .join(" "),
-        )
-    }
-
-    fn has_required_concepts(&self, required: &[&str]) -> bool {
-        required
-            .iter()
-            .all(|concept| phrase(&self.0, &normalize(concept)))
-    }
-
-    fn has_ordered_concepts(&self, required: &[&str]) -> bool {
-        let mut offset = 0;
-        for concept in required {
-            let concept = normalize(concept);
-            let Some(index) = self.0[offset..]
-                .match_indices(&concept)
-                .find_map(|(index, _)| {
-                    phrase_at(&self.0, offset + index, &concept).then_some(index)
-                })
-            else {
-                return false;
-            };
-            offset += index + concept.len();
+        let mut records = Vec::new();
+        for sentence in source.split('.') {
+            let normalized = normalize(sentence);
+            let mut clauses = normalized.split(" must ");
+            let first = clauses.next().unwrap_or_default();
+            let leading = first.strip_prefix("must ").into_iter();
+            for clause in leading.chain(clauses) {
+                let clause = clause.trim_start_matches("must ");
+                let (mode, tail) = clause
+                    .strip_prefix("not ")
+                    .map_or((Mode::Must, clause), |tail| (Mode::MustNot, tail));
+                if !tail.is_empty() {
+                    records.push((mode, tail.into()));
+                }
+            }
         }
-        true
+        Self(records)
+    }
+
+    fn parse(source: &str) -> Self {
+        Self::new(source)
+    }
+
+    fn require(&self, mode: Mode, terms: &[&str]) -> Result<(), String> {
+        self.0
+            .iter()
+            .any(|(found, tail)| {
+                *found == mode && terms.iter().all(|term| phrase(tail, &normalize(term)))
+            })
+            .then_some(())
+            .ok_or("missing normative record".into())
+    }
+
+    fn require_ordered(&self, expected: &[(Mode, &[&str])]) -> Result<(), String> {
+        let mut from = 0;
+        for (mode, terms) in expected {
+            let Some(index) = self.0[from..].iter().position(|(found, tail)| {
+                *found == *mode && terms.iter().all(|term| phrase(tail, &normalize(term)))
+            }) else {
+                return Err("missing or reordered normative record".into());
+            };
+            from += index + 1;
+        }
+        Ok(())
+    }
+
+    fn reject_qualifiers(&self) -> Result<(), String> {
+        let forbidden = [
+            "except",
+            "unless",
+            "baseline",
+            "allowlist",
+            "compatibility",
+            "alias",
+            "external",
+            "restore",
+        ];
+        self.0
+            .iter()
+            .all(|(_, tail)| forbidden.iter().all(|term| !phrase(tail, term)))
+            .then_some(())
+            .ok_or("qualified normative route".into())
     }
 }
 
