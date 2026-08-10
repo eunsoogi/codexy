@@ -145,6 +145,9 @@ mod validator_wiki_ingestion_reference;
 #[path = "../validator_wiki_contract_mutations.rs"]
 mod validator_wiki_contract_mutations;
 
+#[path = "../validator_wiki_migration_delta_mutations.rs"]
+mod validator_wiki_migration_delta_mutations;
+
 #[path = "../validator_wiki_minimal_contract.rs"]
 mod validator_wiki_minimal_contract;
 

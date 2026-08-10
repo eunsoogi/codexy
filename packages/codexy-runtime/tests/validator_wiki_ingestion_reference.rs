@@ -6,8 +6,9 @@ use crate::support::wiki_core_article::{
     ArticleFinding, CanonicalDate, FreshnessState, ProvenanceState, assess_article,
 };
 use crate::support::wiki_core_contract::{
-    frontmatter_string, markdown_link_count, validate_core_skill, validate_migration_rules,
+    frontmatter_string, markdown_link_count, validate_core_skill,
 };
+use crate::support::wiki_migration_rules::validate_migration_rules;
 use crate::support::wiki_migration_fixture::{assert_successful_additive_migration, snapshot};
 
 const REMOVED_WORKFLOWS: &[&str] = &[

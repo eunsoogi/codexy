@@ -46,6 +46,19 @@ pub(super) struct Text {
     pub(super) value: String,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum ActiveKind {
+    Prose,
+    Inline,
+}
+
+pub(crate) struct ActiveEvent<'a> {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) kind: ActiveKind,
+    pub(crate) value: &'a str,
+}
+
 #[derive(Clone)]
 pub(crate) struct Scope(Range<usize>);
 
@@ -164,28 +177,38 @@ impl Document {
         self.active_values(scope, false)
     }
 
-    fn active_values(&self, scope: &Scope, include_inline: bool) -> String {
-        let mut parts = self
+    pub(crate) fn active_events(&self, scope: &Scope) -> Vec<ActiveEvent<'_>> {
+        let mut events = self
             .text
             .iter()
             .filter(|text| scope.contains(text.range.start))
-            .map(|text| (text.range.start, text.value.as_str()))
+            .map(|text| ActiveEvent {
+                start: text.range.start,
+                end: text.range.end,
+                kind: ActiveKind::Prose,
+                value: &text.value,
+            })
             .chain(
-                include_inline
-                    .then(|| {
-                        self.inline_code
-                            .iter()
-                            .filter(|code| scope.contains(code.range.start))
-                            .map(|code| (code.range.start, code.value.as_str()))
-                    })
-                    .into_iter()
-                    .flatten(),
+                self.inline_code
+                    .iter()
+                    .filter(|code| scope.contains(code.range.start))
+                    .map(|code| ActiveEvent {
+                        start: code.range.start,
+                        end: code.range.end,
+                        kind: ActiveKind::Inline,
+                        value: &code.value,
+                    }),
             )
             .collect::<Vec<_>>();
-        parts.sort_unstable_by_key(|(offset, _)| *offset);
-        parts
+        events.sort_unstable_by_key(|event| event.start);
+        events
+    }
+
+    fn active_values(&self, scope: &Scope, include_inline: bool) -> String {
+        self.active_events(scope)
             .into_iter()
-            .map(|(_, value)| value)
+            .filter(|event| include_inline || event.kind == ActiveKind::Prose)
+            .map(|event| event.value)
             .collect::<Vec<_>>()
             .join(" ")
     }

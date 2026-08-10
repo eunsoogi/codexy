@@ -1,6 +1,7 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-use crate::support::wiki_core_contract::{validate_core_skill, validate_migration_rules};
+use crate::support::wiki_core_contract::validate_core_skill;
+use crate::support::wiki_migration_rules::validate_migration_rules;
 
 const REMOVED_WORKFLOWS: &[&str] = &[
     "collect", "plan", "project", "inventory", "dataset", "archive", "ll", "status", "session",
@@ -67,5 +68,30 @@ fn normalized_migration_rules_reject_each_required_rule_mutation() -> TestResult
     assert!(crate::support::wiki_core_contract::frontmatter_string(article, "title").is_ok());
     let bad_closing = article.replacen("\n---\nbody", "\n---garbage\nbody", 1);
     assert!(crate::support::wiki_core_contract::frontmatter_string(&bad_closing, "title").is_err());
+    Ok(())
+}
+
+#[test]
+fn migration_rules_bind_exact_inline_identities_and_clause_local_qualifiers() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let guide = std::fs::read_to_string(root.join("plugins/codexy/skills/wiki/references/migration.md"))?;
+    for (name, from, to) in [
+        ("raw decoy", "`raw/`", "`raw`"),
+        ("wiki decoy", "`wiki/`", "`wiki-old`"),
+        ("index decoy", "`_index.md`", "`_index.md.bak`"),
+        ("log decoy", "`log.md`", "`log.txt`"),
+    ] {
+        assert!(validate_migration_rules(&guide.replacen(from, to, 1)).is_err(), "{name}");
+    }
+    let moved_source = guide.replacen("`sources:` scalar", "`origin:` scalar", 1);
+    let moved_source = format!("{moved_source}\n4. Explanation: `sources:` is a YAML key.");
+    assert!(validate_migration_rules(&moved_source).is_err(), "moved sources identity");
+    let unrelated = guide.replacen(
+        "Unsupported material remains untouched and is not evidence for compiled articles.",
+        "Unsupported material remains untouched and is not evidence for compiled articles. External explanation only.",
+        1,
+    );
+    let unrelated_result = validate_migration_rules(&unrelated);
+    assert!(unrelated_result.is_ok(), "unrelated qualifier prose: {unrelated_result:?}");
     Ok(())
 }
