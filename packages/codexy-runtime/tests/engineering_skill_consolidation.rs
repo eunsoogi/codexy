@@ -1,4 +1,6 @@
 use std::{collections::BTreeSet, path::Path};
+use sha2::{Digest, Sha256};
+use serde::Deserialize;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -34,6 +36,11 @@ struct LegacyCase {
     contracts: &'static [&'static str],
 }
 
+#[derive(Deserialize)]
+struct Manifest { records: Vec<ManifestRecord> }
+#[derive(Deserialize)]
+struct ManifestRecord { id: String, destination: String, must_sha256: String }
+
 const PARITY_CASES: [LegacyCase; 6] = [
     LegacyCase { legacy: "debugging", reference: "diagnosis.md", must_rules: 18, outputs: &["Symptom:", "Reproduction:", "Expected:", "Actual:", "Hypotheses:", "Experiment:", "Result:", "Fix:", "Regression proof:", "Cleanup:"], contracts: &["plain-language-user-replies.md", "natural-korean-responses.md"] },
     LegacyCase { legacy: "domain-driven-development", reference: "domain-modeling.md", must_rules: 16, outputs: &["Glossary:", "Bounded contexts:", "Owned invariants:", "Boundary adapters:", "Domain errors:", "Proofs:", "Risks:"], contracts: &[] },
@@ -53,6 +60,9 @@ fn engineering_skill_is_the_only_packaged_route_for_the_six_workflows() -> TestR
     let matrix = std::fs::read_to_string(
         engineering.join("references/legacy-rule-equivalence-matrix.md"),
     )?;
+    let manifest: Manifest = serde_json::from_str(&std::fs::read_to_string(
+        engineering.join("references/legacy-rule-manifest.json"),
+    )?)?;
 
     validate_engineering_skill(&engineering, &skill)?;
     assert!(prompt.contains("$engineering"));
@@ -66,6 +76,14 @@ fn engineering_skill_is_the_only_packaged_route_for_the_six_workflows() -> TestR
             !is_skill_bundle(&skills.join(case.legacy)),
             "legacy routing surface remains: {}", case.legacy
         );
+    }
+    assert_eq!(manifest.records.len(), PARITY_CASES.len());
+    let ids = manifest.records.iter().map(|record| record.id.as_str()).collect::<BTreeSet<_>>();
+    assert_eq!(ids.len(), manifest.records.len());
+    for record in &manifest.records {
+        let document = std::fs::read_to_string(engineering.join("references").join(&record.destination))?;
+        assert!(skill.contains(&format!("references/{}", record.destination)), "broken entrypoint link");
+        assert_eq!(must_hash(&document), record.must_sha256, "substituted legacy rule identity");
     }
     Ok(())
 }
@@ -114,6 +132,12 @@ fn valid_case(case: LegacyCase, document: &str) -> bool {
     document.lines().filter(|line| line.contains("MUST")).count() == case.must_rules
         && case.outputs.iter().all(|output| document.contains(output))
         && case.contracts.iter().all(|contract| document.contains(contract))
+}
+
+fn must_hash(document: &str) -> String {
+    let mut rules = document.lines().filter(|line| line.contains("MUST")).collect::<Vec<_>>().join("\n");
+    rules.push('\n');
+    format!("{:x}", Sha256::digest(rules.as_bytes()))
 }
 
 fn valid_inventory(cases: &[LegacyCase]) -> bool {

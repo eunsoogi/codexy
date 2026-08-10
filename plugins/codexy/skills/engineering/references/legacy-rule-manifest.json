@@ -1,0 +1,10 @@
+{
+  "records": [
+    {"id":"debugging.rules","destination":"diagnosis.md","must_sha256":"8b8e67a5baea84ff9a8aeb68230ca615ead85cac6f3a40dac8e57910c92aebc9"},
+    {"id":"domain-driven-development.rules","destination":"domain-modeling.md","must_sha256":"59636679db007ad388b1b314f9a89e687a069d0b030c1faf20c96ea2a651219e"},
+    {"id":"spec-driven-development.rules","destination":"specification.md","must_sha256":"f5b1b50721b130c7e2f6250b4eba0d0868fb16090fe11e56a2aa91b557fcb307"},
+    {"id":"test-driven-development.rules","destination":"test-driven-development.md","must_sha256":"2c556b1579ad6fade90f9299459c2297d9b0c54740ee8786186d6d67ff821a2c"},
+    {"id":"refactoring.rules","destination":"refactoring.md","must_sha256":"ccac592375af9f9130a7247da71048d4ff8581a7775387566911ffab6b39c9aa"},
+    {"id":"qa.rules","destination":"quality-assurance.md","must_sha256":"baaf3d8bece96945c8bd4d4fc9b823b684715ce3b90106bd5e2d8c37a1bcb94d"}
+  ]
+}
