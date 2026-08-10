@@ -20,6 +20,7 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 ignore = "0.4"
 libc = "0.2"
+pulldown-cmark = { version = "=0.13.4", default-features = false }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -30,9 +31,6 @@ toml = "0.9"
 unicase = "2"
 unicode-normalization = "0.1"
 unicode_categories = "0.1"
-
-[dev-dependencies]
-pulldown-cmark = { version = "=0.13.4", default-features = false }
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

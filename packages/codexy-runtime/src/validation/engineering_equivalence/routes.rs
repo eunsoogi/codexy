@@ -1,7 +1,6 @@
 use std::path::{Component, Path, PathBuf};
 
-use regex::Regex;
-
+use super::active_markdown::Document;
 use super::data::Mapping;
 
 pub(super) fn entrypoint_section<'a>(
@@ -22,24 +21,15 @@ pub(super) fn entrypoint_section<'a>(
     {
         return Err("mapping has a stale destination or entrypoint".to_owned());
     }
-    let heading = headings(skill)
-        .into_iter()
-        .filter(|item| item.anchor == anchor)
-        .collect::<Vec<_>>();
-    if heading.len() != 1 {
+    let document = Document::parse(skill);
+    let Some(heading) = document.unique_heading(anchor) else {
         return Err(format!(
             "entrypoint anchor {anchor} must resolve to one heading"
         ));
-    }
-    let heading = &heading[0];
+    };
     let section = &skill[heading.start..heading.end];
     let target = format!("references/{destination}");
-    if links(section)
-        .iter()
-        .filter(|value| **value == target)
-        .count()
-        != 1
-    {
+    if !document.exact_top_level_link(heading, &target) {
         return Err(format!(
             "entrypoint anchor {anchor} must link once to {target}"
         ));
@@ -91,55 +81,4 @@ pub(super) fn canonical_identity_path(
         ));
     }
     Ok(path)
-}
-
-struct Heading {
-    anchor: String,
-    start: usize,
-    end: usize,
-}
-
-fn headings(text: &str) -> Vec<Heading> {
-    let mut result = Vec::new();
-    let mut offset = 0;
-    for line in text.lines() {
-        if let Some(title) = line.strip_prefix("## ") {
-            result.push(Heading {
-                anchor: heading_anchor(title),
-                start: offset,
-                end: text.len(),
-            });
-        }
-        offset += line.len() + 1;
-    }
-    for index in 0..result.len().saturating_sub(1) {
-        result[index].end = result[index + 1].start;
-    }
-    result
-}
-
-fn heading_anchor(title: &str) -> String {
-    let mut anchor = String::new();
-    let mut separator = false;
-    for character in title.trim().chars().flat_map(char::to_lowercase) {
-        if character.is_ascii_alphanumeric() {
-            if separator && !anchor.is_empty() {
-                anchor.push('-');
-            }
-            anchor.push(character);
-            separator = false;
-        } else {
-            separator = true;
-        }
-    }
-    anchor
-}
-
-fn links(text: &str) -> Vec<&str> {
-    static LINKS: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-    LINKS
-        .get_or_init(|| Regex::new(r"\[[^\]]+\]\(([^)]+)\)").expect("valid link regex"))
-        .captures_iter(text)
-        .filter_map(|item| item.get(1).map(|target| target.as_str()))
-        .collect()
 }

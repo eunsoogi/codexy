@@ -11,10 +11,33 @@ fn production_validator_rejects_entrypoint_heading_mutations() -> TestResult {
         HeadingMutation::Substituted,
         HeadingMutation::Duplicated,
         HeadingMutation::FragmentSubstituted,
+        HeadingMutation::Fenced,
+        HeadingMutation::HtmlComment,
+        HeadingMutation::RawHtml,
+        HeadingMutation::InlineCode,
+        HeadingMutation::Escaped,
     ] {
         let (_temporary, plugin_root) = copy_plugin_fixture()?;
         mutate_heading(&plugin_root, mutation)?;
         assert_rejected(&plugin_root, &format!("heading {mutation:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn production_validator_rejects_inactive_destination_link_mutations() -> TestResult {
+    for mutation in [
+        LinkMutation::Fenced,
+        LinkMutation::HtmlComment,
+        LinkMutation::RawHtml,
+        LinkMutation::InlineCode,
+        LinkMutation::Escaped,
+        LinkMutation::Image,
+        LinkMutation::BlockQuote,
+    ] {
+        let (_temporary, plugin_root) = copy_plugin_fixture()?;
+        mutate_link(&plugin_root, mutation)?;
+        assert_rejected(&plugin_root, &format!("link {mutation:?}"));
     }
     Ok(())
 }
@@ -40,6 +63,22 @@ enum HeadingMutation {
     Substituted,
     Duplicated,
     FragmentSubstituted,
+    Fenced,
+    HtmlComment,
+    RawHtml,
+    InlineCode,
+    Escaped,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum LinkMutation {
+    Fenced,
+    HtmlComment,
+    RawHtml,
+    InlineCode,
+    Escaped,
+    Image,
+    BlockQuote,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -69,7 +108,57 @@ fn mutate_heading(plugin_root: &Path, mutation: HeadingMutation) -> TestResult {
         HeadingMutation::FragmentSubstituted => mutate_manifest(plugin_root, |mapping| {
             mapping["entrypoint"] = Value::String("SKILL.md#specification".to_owned());
         })?,
+        HeadingMutation::Fenced => replace(&skill_path, "## Diagnosis", "```markdown\n## Diagnosis\n```")?,
+        HeadingMutation::HtmlComment => {
+            replace(&skill_path, "## Diagnosis", "<!--\n## Diagnosis\n-->")?
+        }
+        HeadingMutation::RawHtml => {
+            replace(&skill_path, "## Diagnosis", "<div>\n## Diagnosis\n</div>")?
+        }
+        HeadingMutation::InlineCode => replace(&skill_path, "## Diagnosis", "`## Diagnosis`")?,
+        HeadingMutation::Escaped => replace(&skill_path, "## Diagnosis", "\\## Diagnosis")?,
     }
+    Ok(())
+}
+
+fn mutate_link(plugin_root: &Path, mutation: LinkMutation) -> TestResult {
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
+    let link = "[Diagnosis](references/diagnosis.md)";
+    let whole_clause = "MUST use [Diagnosis](references/diagnosis.md)";
+    match mutation {
+        LinkMutation::RawHtml => {
+            return replace(
+                &skill_path,
+                whole_clause,
+                "<div>\nMUST use [Diagnosis](references/diagnosis.md)\n</div>",
+            );
+        }
+        LinkMutation::BlockQuote => {
+            return replace(
+                &skill_path,
+                whole_clause,
+                "> MUST use [Diagnosis](references/diagnosis.md)",
+            );
+        }
+        _ => {}
+    }
+    let replacement = match mutation {
+        LinkMutation::Fenced => "```markdown\nMUST use [Diagnosis](references/diagnosis.md)\n```",
+        LinkMutation::HtmlComment => "<!-- MUST use [Diagnosis](references/diagnosis.md) -->",
+        LinkMutation::RawHtml => link,
+        LinkMutation::InlineCode => "`[Diagnosis](references/diagnosis.md)`",
+        LinkMutation::Escaped => "\\[Diagnosis\\](references/diagnosis.md)",
+        LinkMutation::Image => "![Diagnosis](references/diagnosis.md)",
+        LinkMutation::BlockQuote => link,
+    };
+    replace(&skill_path, link, replacement)
+}
+
+fn replace(path: &Path, needle: &str, replacement: &str) -> TestResult {
+    let skill = std::fs::read_to_string(path)?;
+    let changed = skill.replacen(needle, replacement, 1);
+    assert_ne!(skill, changed, "fixture mutation must change the skill");
+    std::fs::write(path, changed)?;
     Ok(())
 }
 
