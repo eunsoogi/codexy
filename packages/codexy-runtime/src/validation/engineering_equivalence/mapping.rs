@@ -4,6 +4,7 @@ use std::{
 };
 
 use super::data::{Mapping, identity as load_identity, manifest as load_manifest};
+use super::routes::{canonical_identity_path, entrypoint_section};
 use super::semantics::{Semantic, destination_values, local_links, normalized_text, trigger};
 
 const ROUTES: [(&str, &str, &str); 6] = [
@@ -112,11 +113,6 @@ fn check_mapping(
     plugin_root: &Path,
     errors: &mut Vec<String>,
 ) {
-    if mapping.destination != destination || mapping.entrypoint != format!("SKILL.md#{anchor}") {
-        errors.push(format!(
-            "engineering mapping for {source} has a stale destination or entrypoint"
-        ));
-    }
     let expected_trigger = match trigger(source_text) {
         Ok(value) => value,
         Err(error) => {
@@ -129,10 +125,14 @@ fn check_mapping(
         &expected_trigger,
         &plugin_root.join("skills/engineering/SKILL.md"),
     );
-    let target = format!("references/{destination}");
-    let route = route_clause(skill, &target);
+    let route = match entrypoint_section(mapping, destination, anchor, skill) {
+        Ok(route) => route,
+        Err(error) => {
+            errors.push(format!("engineering mapping for {source}: {error}"));
+            ""
+        }
+    };
     if normalized_skill.matches(&normalized_trigger).count() != 1
-        || skill.matches(&target).count() != 1
         || !route.contains("MUST use [")
         || !normalized_text(route, &plugin_root.join("skills/engineering/SKILL.md"))
             .contains(&normalized_trigger)
@@ -141,7 +141,13 @@ fn check_mapping(
             "engineering route for {source} must expose one exact trigger and destination link"
         ));
     }
-    let identity_path = references.join(&mapping.identity_file);
+    let identity_path = match canonical_identity_path(references, source, &mapping.identity_file) {
+        Ok(path) => path,
+        Err(error) => {
+            errors.push(error);
+            return;
+        }
+    };
     let identity = load_identity(&identity_path, errors);
     let Some(identity) = identity else {
         return;
@@ -188,17 +194,6 @@ fn check_mapping(
             "engineering destination equivalence differs for {source}"
         ));
     }
-}
-
-fn route_clause<'a>(skill: &'a str, target: &str) -> &'a str {
-    let Some(link) = skill.find(target) else {
-        return "";
-    };
-    let start = skill[..link].rfind("\n## ").map_or(0, |index| index + 1);
-    let end = skill[link..]
-        .find("\n## ")
-        .map_or(skill.len(), |index| link + index);
-    &skill[start..end]
 }
 
 fn counts<'a>(values: impl Iterator<Item = &'a str>) -> BTreeMap<&'a str, usize> {

@@ -139,6 +139,9 @@ mod validator_tdd_root_cause_guidance;
 #[path = "../engineering_skill_consolidation.rs"]
 mod engineering_skill_consolidation;
 
+#[path = "../engineering_skill_route_boundaries.rs"]
+mod engineering_skill_route_boundaries;
+
 #[path = "../validator_touched_skill_loc.rs"]
 mod validator_touched_skill_loc;
 

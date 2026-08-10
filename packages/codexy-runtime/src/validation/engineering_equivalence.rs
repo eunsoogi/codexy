@@ -1,6 +1,7 @@
 mod baseline;
 mod data;
 mod mapping;
+mod routes;
 mod semantics;
 
 use std::path::Path;

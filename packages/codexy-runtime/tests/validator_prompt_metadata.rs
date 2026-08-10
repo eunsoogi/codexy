@@ -152,6 +152,7 @@ fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
     Ok(())
 }
 
+#[test]
 fn validator_cli_rejects_tab_indented_prompt_yaml() -> TestResult {
     assert_prompt_indent_rejected("  display_name:", "\tdisplay_name:")
 }
