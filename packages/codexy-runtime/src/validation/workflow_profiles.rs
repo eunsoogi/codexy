@@ -54,9 +54,8 @@ pub(super) fn check_evidence(plugin_root: &Path, evidence: &str) -> Vec<String> 
         )
         .is_none()
     {
-        errors.push(
-            "strict workflow evidence requires the formal orchestration contract".to_owned(),
-        );
+        errors
+            .push("strict workflow evidence requires the formal orchestration contract".to_owned());
     }
     errors
 }

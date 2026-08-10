@@ -10,8 +10,9 @@ fn codex_orchestration_requires_situational_specialist_routing()
     let loop_ref = std::fs::read_to_string(
         root.join("plugins/codexy/skills/orchestration/references/orchestration-loop.md"),
     )?;
-    let classification =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
+    let classification = std::fs::read_to_string(root.join(
+        "plugins/codexy/skills/orchestration/references/task-classification.md",
+    ))?;
     let skill_flat = skill.split_whitespace().collect::<Vec<_>>().join(" ");
     let control_flat = control.split_whitespace().collect::<Vec<_>>().join(" ");
 

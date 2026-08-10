@@ -63,6 +63,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/execution-budget.md` for finite child execution and termination.
 - `references/token-efficient.md` for compact event deltas and token discipline.
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
+- `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 
 ## Classification Gate
 

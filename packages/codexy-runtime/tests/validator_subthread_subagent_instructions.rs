@@ -7,8 +7,9 @@ fn codexy_workflows_distinguish_subthreads_from_subagents() -> Result<(), Box<dy
     let thread_routing = std::fs::read_to_string(root.join(
         "plugins/codexy/skills/orchestration/references/thread-and-worktree-routing.md",
     ))?;
-    let classification =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
+    let classification = std::fs::read_to_string(root.join(
+        "plugins/codexy/skills/orchestration/references/task-classification.md",
+    ))?;
     let git_workflow =
         std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
 

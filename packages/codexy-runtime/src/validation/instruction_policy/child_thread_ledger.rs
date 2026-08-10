@@ -136,8 +136,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             "orchestration skill must not replace a usable owner after Sentinel BLOCK",
             &["must create a replacement thread after a sentinel block"],
         );
-    } else if path.ends_with("skills/orchestration/references/thread-and-worktree-routing.md")
-    {
+    } else if path.ends_with("skills/orchestration/references/thread-and-worktree-routing.md") {
         require_all(
             path,
             text,

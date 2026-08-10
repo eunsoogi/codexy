@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use crate::support;
 
@@ -22,7 +22,13 @@ fn policy_fixture_declares_native_mutation_paths() -> Result<(), Box<dyn std::er
         "skills/git-workflow/references/merge-and-main-sync.md",
         "skills/proof-driven-completion/SKILL.md",
     ];
-    assert_eq!(declared, expected.map(Path::new).map(std::path::PathBuf::from));
+    let expected = expected.map(Path::new).map(std::path::PathBuf::from);
+    assert_eq!(declared.len(), expected.len(), "fixture paths must not omit or duplicate a mutation surface");
+    assert_eq!(
+        declared.into_iter().collect::<BTreeSet<_>>(),
+        expected.into_iter().collect::<BTreeSet<_>>(),
+        "fixture paths must preserve exact native mutation-surface membership"
+    );
     Ok(())
 }
 
