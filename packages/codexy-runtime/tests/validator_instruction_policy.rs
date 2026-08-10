@@ -28,7 +28,7 @@ const MUTABLE_PLUGIN_FILES: &[&str] = &[
     "agents/codexy-sentinel.toml",
     "agents/codexy-weaver.toml",
     "agents/openai.yaml",
-    "skills/codex-orchestration/agents/openai.yaml",
+    "skills/orchestration/agents/openai.yaml",
     "skills/git-workflow/SKILL.md",
     "skills/proof-driven-completion/SKILL.md",
     "skills/refactoring/SKILL.md",
@@ -130,14 +130,14 @@ fn validator_cli_rejects_manifest_default_prompt_bare_imperatives() -> TestResul
     let text = std::fs::read_to_string(&manifest_path)?;
     let mut manifest: serde_json::Value = serde_json::from_str(&text)?;
     for prompt in [
-        "Run $task-classification before setup, then create a branch.",
-        "You MUST run $task-classification, then use $codex-orchestration.",
+        "Run $orchestration before setup, then create a branch.",
+        "You MUST run $orchestration, then use $orchestration.",
         "You MUST track goals; assign specialist roles.",
         "You MUST verify evidence, and use squash-merge gates.",
         "Stop and fix if proof contradicts the claim.",
         "Maintain a visible todo list.",
         "You MUST use skills, keep routing hidden.",
-        "Re-run $task-classification before setup.",
+        "Re-run $orchestration before setup.",
         "Drive external surfaces directly.",
         "Track goals and todos.",
         "Check priority before writing.",
@@ -164,17 +164,17 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     support::assert_structured_literals(
         &original,
         "agent default prompt policy",
-        &["You MUST run $task-classification"],
+        &["You MUST run $orchestration"],
     );
     for prompt in [
-        "Run $task-classification before setup, then create a branch.",
-        "You MUST run $task-classification, then use $codex-orchestration.",
+        "Run $orchestration before setup, then create a branch.",
+        "You MUST run $orchestration, then use $orchestration.",
         "You MUST track goals; assign specialist roles.",
         "You MUST verify evidence, and use squash-merge gates.",
         "Stop and fix if proof contradicts the claim.",
         "Maintain a visible todo list.",
         "You MUST use skills, keep routing hidden.",
-        "Re-run $task-classification",
+        "Re-run $orchestration",
         "Drive external surfaces directly.",
         "Track goals and todos.",
         "Check priority before writing.",
@@ -182,7 +182,7 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
     ] {
         std::fs::write(
             &prompt_path,
-            original.replace("You MUST run $task-classification", prompt),
+            original.replace("You MUST run $orchestration", prompt),
         )?;
 
         let output = validator(&plugin_root, "--check")?;
@@ -197,7 +197,7 @@ fn validator_cli_rejects_yaml_default_prompt_bare_imperatives() -> TestResult {
         format!("{original}\nguidance: \"Run child setup.\"\n"),
     )?;
     assert!(!validator(&plugin_root, "--check")?.status.success());
-    let skill_prompt = plugin_root.join("skills/codex-orchestration/agents/openai.yaml");
+    let skill_prompt = plugin_root.join("skills/orchestration/agents/openai.yaml");
     let skill = std::fs::read_to_string(&skill_prompt)?;
     std::fs::write(
         &skill_prompt,

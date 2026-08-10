@@ -184,9 +184,9 @@ pub(super) fn archive_repository(
         "packages/codexy-runtime/tests/suites/all.rs",
         "plugins/codexy/hooks/capability-contract.json",
         "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
-        "plugins/codexy/skills/codex-orchestration/references/workflow-profiles.json",
-        "plugins/codexy/skills/task-classification/SKILL.md",
-        "plugins/codexy/skills/task-classification/agents/openai.yaml",
+        "plugins/codexy/skills/orchestration/references/workflow-profiles.json",
+        "plugins/codexy/skills/orchestration/SKILL.md",
+        "plugins/codexy/skills/orchestration/agents/openai.yaml",
     ] {
         let destination = repo.join(relative);
         if let Some(parent) = destination.parent() {

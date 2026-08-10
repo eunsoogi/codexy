@@ -7,7 +7,7 @@ use structured_contract::{Contract, Modality, Rule};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const GUIDANCE: &str =
-    "plugins/codexy/skills/codex-orchestration/references/plain-language-user-replies.md";
+    "plugins/codexy/skills/orchestration/references/plain-language-user-replies.md";
 
 const OPAQUE_TERMS: [&str; 8] = [
     "Sentinel verdict",
@@ -43,7 +43,7 @@ const SAFE_GATE_EXAMPLES: [(&str, &str); 2] = [
 ];
 
 const ROUTED_SURFACES: [&str; 4] = [
-    "plugins/codexy/skills/codex-orchestration/SKILL.md",
+    "plugins/codexy/skills/orchestration/SKILL.md",
     "plugins/codexy/skills/debugging/SKILL.md",
     "plugins/codexy/skills/proof-driven-completion/SKILL.md",
     "plugins/codexy/skills/qa/SKILL.md",
@@ -146,10 +146,10 @@ fn shared_guidance_covers_plain_english_and_korean_replies() -> TestResult {
 
     for path in ROUTED_SURFACES {
         let text = std::fs::read_to_string(root.join(path))?;
-        let target = if path.ends_with("codex-orchestration/SKILL.md") {
+        let target = if path.ends_with("orchestration/SKILL.md") {
             "references/plain-language-user-replies.md"
         } else {
-            "../codex-orchestration/references/plain-language-user-replies.md"
+            "../orchestration/references/plain-language-user-replies.md"
         };
         assert_eq!(
             reference_targets(&text),

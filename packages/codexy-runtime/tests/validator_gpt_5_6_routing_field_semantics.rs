@@ -110,7 +110,7 @@ fn allows_selection_of_unchanged_toml_values() -> TestResult {
 fn assert_status(addition: &str, accepted: bool) -> TestResult {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?
     .replacen(
         "## Read Next",

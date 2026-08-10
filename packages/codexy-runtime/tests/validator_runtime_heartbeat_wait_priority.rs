@@ -4,8 +4,8 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const REFERENCE: &str = "skills/codex-orchestration/references/runtime-heartbeats.md";
-const TOKEN_SKILL: &str = "skills/token-efficient-orchestration/SKILL.md";
+const REFERENCE: &str = "skills/orchestration/references/runtime-heartbeats.md";
+const TOKEN_SKILL: &str = "skills/orchestration/SKILL.md";
 const HOST_FALLBACK: &str = "After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.";
 const LEGACY_ELIGIBILITY: &str = "When GitHub CI, review-thread state, child state, or another external gate will outlive the current turn, the owning parent orchestrator or child MUST search the callable tool surface for `automation_update` before declaring persistent monitoring unavailable.";
 const LEGACY_REGISTRATION: &str = "The owner MUST register a heartbeat instead of repeated model continuations or ending without a wakeup path.";

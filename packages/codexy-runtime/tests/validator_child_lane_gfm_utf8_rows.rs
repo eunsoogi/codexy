@@ -72,7 +72,7 @@ fn classification_rows(secondary_row: &str) -> String {
         secondary_row,
         "| Owner decision | affirmative child-owned because the delegated child owns implementation |",
         "| Atomic scope | issue-sized |",
-        "| Required skills | task-classification |",
+        "| Required skills | orchestration |",
         "| Required tools/evidence | goal, plan |",
         "| First allowed action | implement after classification |",
         "| Stop/blocker | None |",

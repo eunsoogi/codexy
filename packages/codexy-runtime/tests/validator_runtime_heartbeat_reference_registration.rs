@@ -4,13 +4,13 @@ use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const RELATIVE: &str = "skills/codex-orchestration/references/runtime-heartbeats.md";
+const RELATIVE: &str = "skills/orchestration/references/runtime-heartbeats.md";
 
 #[test]
 fn runtime_heartbeat_reference_is_registered_packaged_and_delegation_checked() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     assert!(
         skill
             .lines()

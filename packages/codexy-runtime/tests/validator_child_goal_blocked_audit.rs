@@ -7,7 +7,7 @@ mod event_window;
 #[path = "validator_child_goal_blocked_audit/nonterminal_order.rs"]
 mod nonterminal_order;
 
-const CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: task-classification\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
+const CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: orchestration\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
 
 #[test]
 fn validator_rejects_rapid_unchanged_continuations_and_crossed_parent_direction() -> TestResult {

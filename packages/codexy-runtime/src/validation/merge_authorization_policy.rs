@@ -12,7 +12,7 @@ mod merge_authorization_routes;
 const AUTHORIZATION_REFERENCE: &str = "skills/git-workflow/references/merge-authorization.md";
 const GLOBAL_SURFACES: &[&str] = &[
     AUTHORIZATION_REFERENCE,
-    "skills/codex-orchestration/references/classification-and-control.md",
+    "skills/orchestration/references/classification-and-control.md",
     "skills/proof-driven-completion/SKILL.md",
 ];
 

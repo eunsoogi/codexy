@@ -5,7 +5,7 @@ type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 const OPEN_PR_STATE: &str =
     r#"{"number":170,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN"}"#;
 const CONTRACT: &str =
-    "Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.";
+    "Codexy orchestration contract: active @Codexy workflow routes through $orchestration.";
 const DUPLICATE_STATE: &str = "Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.";
 const OWNERSHIP_BOUNDARY: &str = "Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.";
 const GIT_PREFLIGHT: &str = "Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.";
@@ -41,7 +41,7 @@ fn validator_cli_rejects_after_compaction_continuation_without_evidence() -> Tes
 fn validator_cli_rejects_unchecked_checklist_evidence() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         - [ ] Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         - [ ] Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          - [ ] Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          - [ ] Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          - [ ] Git graph/log preflight captured before editing:\n\
@@ -130,7 +130,7 @@ fn validator_cli_rejects_git_preflight_block_with_prose_negation() -> TestResult
 fn validator_cli_rejects_arbitrary_heading_text_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: no merge; leave PR open until parent final acceptance.\n\
@@ -151,7 +151,7 @@ fn validator_cli_rejects_arbitrary_heading_text_after_partial_git_preflight() ->
 fn validator_cli_rejects_unrelated_list_section_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: no merge; leave PR open until parent final acceptance.\n\
@@ -172,7 +172,7 @@ fn validator_cli_rejects_unrelated_list_section_after_partial_git_preflight() ->
 fn validator_cli_rejects_unbulleted_section_label_after_partial_git_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: no merge; leave PR open until parent final acceptance.\n\
@@ -192,7 +192,7 @@ fn validator_cli_rejects_unbulleted_section_label_after_partial_git_preflight() 
 fn validator_cli_rejects_unchecked_git_preflight_checklist_item() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         - [x] Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         - [x] Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          - [x] Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          - [x] Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          - [ ] Git graph/log preflight captured before editing:\n\

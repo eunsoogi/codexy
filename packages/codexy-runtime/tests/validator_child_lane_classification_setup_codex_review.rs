@@ -30,7 +30,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative external/human-owned because an external owner owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -62,7 +62,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because routing is delegated to child thread thread-148
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -83,7 +83,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative current-thread-owned because the current thread owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -104,7 +104,7 @@ Lane ownership: child-owned
 - Secondary surfaces: workflow, validators
 - Owner decision: affirmative current-thread-owned because the current thread owns implementation
 - Atomic scope: issue-sized
-- Required skills: task-classification, codex-orchestration, git-workflow
+- Required skills: orchestration, orchestration, git-workflow
 - Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 - First allowed action: create branch after classification
 - Stop/blocker: None
@@ -136,7 +136,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: branch/worktree setup evidence for codexy/231-classification-guard, goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -156,7 +156,7 @@ fn validator_rejects_setup_before_list_style_classification_without_prior_owner(
 - Secondary surfaces: workflow, validators
 - Owner decision: affirmative current-thread-owned because the current thread owns implementation
 - Atomic scope: issue-sized
-- Required skills: task-classification, codex-orchestration, git-workflow
+- Required skills: orchestration, orchestration, git-workflow
 - Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 - First allowed action: create branch after classification
 - Stop/blocker: None
@@ -176,7 +176,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: evidence that child branch/worktree setup did not occur before classification, goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -197,7 +197,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: negative test for child branch/worktree setup before classification, goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -218,7 +218,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative current-thread-owned because the current thread owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: negative test for child branch/worktree setup before classification; child branch codexy/231-branch-classification-guard was created before classification
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -238,7 +238,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: evidence that no child branch/worktree setup occurred before classification, goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None

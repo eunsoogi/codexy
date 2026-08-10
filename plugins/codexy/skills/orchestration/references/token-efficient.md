@@ -1,9 +1,4 @@
----
-name: token-efficient-orchestration
-description: MUST use during Codexy multi-PR coordination, review-response loops, or compaction recovery when token use is growing; preserves proof gates while replacing full-context replay and autonomous polling with bounded event deltas and ledgers.
----
-
-# Token-Efficient Orchestration
+# Token-Efficient Coordination
 
 ## Purpose
 
@@ -108,7 +103,7 @@ orchestrator MAY retain its compact ledger without re-reading old details.
 ## Runtime Heartbeats
 
 For an eligible external gate that outlives the current turn, parent orchestrators
-and child owners MUST follow `$codex-orchestration`'s runtime-heartbeat contract.
+and child owners MUST follow `$orchestration`'s runtime-heartbeat contract.
 The compact lane ledger MUST retain the heartbeat automation id, target thread,
 bounded schedule, state fingerprint, material-event set, and delete/disable state.
 Heartbeat prompts MUST suppress unchanged observations and MUST wake the owner only

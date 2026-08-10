@@ -18,7 +18,7 @@ const EXTERNAL_GATE_GOAL_GUARD: &str = "A parent or child MUST retain its active
 
 fn orchestration_fixture() -> TestResult<support::InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
     ))?)
 }
 
@@ -144,12 +144,12 @@ fn session_audit_keeps_first_call_identity_and_output_for_duplicate_call_ids() -
 fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let orchestration =
-        fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let token_skill = fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     let token_prompt = fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/agents/openai.yaml"),
+        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
     )?;
 
     structured_contract::assert_rules(

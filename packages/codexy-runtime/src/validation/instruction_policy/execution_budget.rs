@@ -29,7 +29,7 @@ const REQUIRED_CLAUSES: &[&str] = &[
     "The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.",
 ];
 pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
-    if !path.ends_with("skills/codex-orchestration/references/execution-budget.md") {
+    if !path.ends_with("skills/orchestration/references/execution-budget.md") {
         return;
     }
     require_all(

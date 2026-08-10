@@ -9,7 +9,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 fn validate_replacement(replacement: &str) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;
@@ -176,7 +176,7 @@ fn consecutive_markdown_boundaries_before_weakening_suffix_do_not_supply_policy(
 #[test]
 fn conditional_markdown_heading_does_not_supply_policy() -> TestResult {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/codex-orchestration/references/runtime-heartbeats.md",
+        "skills/orchestration/references/runtime-heartbeats.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;

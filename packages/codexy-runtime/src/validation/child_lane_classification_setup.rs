@@ -39,7 +39,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         formal_child_classification_complete_index_before(&lines, *setup_index).is_none()
             || child_setup_claims_before_classification(setup_clause)
     }) {
-        return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $task-classification evidence completed".to_owned()];
+        return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $orchestration evidence completed".to_owned()];
     }
     Vec::new()
 }
@@ -160,7 +160,7 @@ pub(super) fn latest_classification_before(
 
 pub(super) fn line_claims_setup_before_classification(line: &str) -> bool {
     let line = trimmed_value(line);
-    "before task classification|before the task classification|before task-classification|before the task-classification|before formal task classification|before the formal task classification|before formal task-classification|before the formal task-classification|before formal $task-classification|before the formal $task-classification|before formal `$task-classification`|before the formal `$task-classification`|before formal classification output|before the formal classification output|before classification|before the classification|before $task-classification|before the $task-classification"
+    "before task classification|before the task classification|before orchestration|before the orchestration|before formal task classification|before the formal task classification|before formal orchestration|before the formal orchestration|before formal $orchestration|before the formal $orchestration|before formal `$orchestration`|before the formal `$orchestration`|before formal classification output|before the formal classification output|before classification|before the classification|before $orchestration|before the $orchestration"
         .split('|')
     .any(|marker| line.contains(marker))
 }

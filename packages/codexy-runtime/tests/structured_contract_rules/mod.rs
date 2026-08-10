@@ -109,7 +109,7 @@ pub(crate) const TOKEN_PROMPT: &[Rule] = &[Rule::new(
     "you",
     Modality::Required,
     &["use"],
-    &["$token-efficient-orchestration", "event-driven handoffs"],
+    &["$orchestration", "event-driven handoffs"],
 )];
 
 pub(crate) const PARENT_EXECUTION_BUDGET: &[Rule] = &[

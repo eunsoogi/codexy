@@ -88,7 +88,7 @@ fn validator_rejects_role_that_permits_recursive_delegation() -> TestResult {
 #[test]
 fn validator_rejects_orchestration_without_first_level_delegation_contract() -> TestResult {
     let fixture = plugin_fixture()?;
-    let skill_path = fixture.root().join("skills/codex-orchestration/SKILL.md");
+    let skill_path = fixture.root().join("skills/orchestration/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
@@ -108,7 +108,7 @@ fn validator_rejects_orchestration_without_first_level_delegation_contract() -> 
 #[test]
 fn validator_rejects_recursive_permission_in_orchestration_skill() -> TestResult {
     let fixture = plugin_fixture()?;
-    let path = fixture.root().join("skills/codex-orchestration/SKILL.md");
+    let path = fixture.root().join("skills/orchestration/SKILL.md");
     let text = std::fs::read_to_string(&path)?;
     std::fs::write(
         &path,
@@ -149,9 +149,9 @@ fn validator_rejects_recursive_permission_in_every_registered_reference() -> Tes
 fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let orchestration =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let loop_reference = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/orchestration-loop.md"),
+        root.join("plugins/codexy/skills/orchestration/references/orchestration-loop.md"),
     )?;
 
     structured_contract::assert_rules(
@@ -172,16 +172,16 @@ fn packaged_contract_allows_child_helpers_and_forbids_helper_recursion() -> Test
 fn plugin_fixture() -> TestResult<PluginFixture> {
     Ok(support::plugin_fixture_with_mutable_files(&[
         Path::new("agents/codexy-cartographer.toml"),
-        Path::new("skills/codex-orchestration/SKILL.md"),
-        Path::new("skills/codex-orchestration/references/classification-and-control.md"),
-        Path::new("skills/codex-orchestration/references/goal-transition-reporting.md"),
-        Path::new("skills/codex-orchestration/references/thread-and-worktree-routing.md"),
-        Path::new("skills/codex-orchestration/references/orchestration-loop.md"),
-        Path::new("skills/codex-orchestration/references/runtime-heartbeats.md"),
-        Path::new("skills/codex-orchestration/references/parent-stop-preflight.md"),
-        Path::new("skills/codex-orchestration/references/execution-budget.md"),
-        Path::new("skills/codex-orchestration/references/plain-language-user-replies.md"),
-        Path::new("skills/codex-orchestration/references/natural-korean-responses.md"),
+        Path::new("skills/orchestration/SKILL.md"),
+        Path::new("skills/orchestration/references/classification-and-control.md"),
+        Path::new("skills/orchestration/references/goal-transition-reporting.md"),
+        Path::new("skills/orchestration/references/thread-and-worktree-routing.md"),
+        Path::new("skills/orchestration/references/orchestration-loop.md"),
+        Path::new("skills/orchestration/references/runtime-heartbeats.md"),
+        Path::new("skills/orchestration/references/parent-stop-preflight.md"),
+        Path::new("skills/orchestration/references/execution-budget.md"),
+        Path::new("skills/orchestration/references/plain-language-user-replies.md"),
+        Path::new("skills/orchestration/references/natural-korean-responses.md"),
     ])?)
 }
 
@@ -211,7 +211,7 @@ fn stderr(output: &Output) -> String {
 fn registered_orchestration_references() -> TestResult<Vec<String>> {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     let references = skill
         .split_once("## Read Next")
@@ -222,6 +222,6 @@ fn registered_orchestration_references() -> TestResult<Vec<String>> {
         .lines()
         .filter_map(|line| line.split('`').nth(1))
         .filter(|path| path.starts_with("references/") && path.ends_with(".md"))
-        .map(|path| format!("skills/codex-orchestration/{path}"))
+        .map(|path| format!("skills/orchestration/{path}"))
         .collect())
 }

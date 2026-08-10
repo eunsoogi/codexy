@@ -28,7 +28,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "must not recycle the worktree",
             ],
         );
-    } else if path.ends_with("skills/codex-orchestration/SKILL.md") {
+    } else if path.ends_with("skills/orchestration/SKILL.md") {
         require_all(
             path,
             text,
@@ -136,7 +136,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
             "orchestration skill must not replace a usable owner after Sentinel BLOCK",
             &["must create a replacement thread after a sentinel block"],
         );
-    } else if path.ends_with("skills/codex-orchestration/references/thread-and-worktree-routing.md")
+    } else if path.ends_with("skills/orchestration/references/thread-and-worktree-routing.md")
     {
         require_all(
             path,
@@ -153,7 +153,7 @@ pub(super) fn check(path: &Path, text: &str, errors: &mut Vec<String>) {
                 "dirty or locked candidate worktrees",
             ],
         );
-    } else if path.ends_with("skills/codex-orchestration/references/goal-transition-reporting.md") {
+    } else if path.ends_with("skills/orchestration/references/goal-transition-reporting.md") {
         require_all(
             path,
             text,

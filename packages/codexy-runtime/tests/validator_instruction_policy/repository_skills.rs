@@ -27,7 +27,7 @@ fn validator_cli_rejects_repository_skill_instruction_policy_regressions() -> Te
     std::fs::write(&skill_path, skill)?;
     std::fs::write(
         &prompt_path,
-        prompt.replace("You MUST run $task-classification", "Run $task-classification"),
+        prompt.replace("You MUST run $orchestration", "Run $orchestration"),
     )?;
     let output = validator(&plugin_root, "--check")?;
     assert!(!output.status.success());

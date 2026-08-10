@@ -34,7 +34,7 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
 }
 
 pub(super) fn check_orchestration_contract(plugin_root: &Path, errors: &mut Vec<String>) {
-    let path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let path = plugin_root.join("skills/orchestration/SKILL.md");
     let Ok(skill) = fs::read_to_string(&path) else {
         errors.push(format!(
             "{} nonrecursive delegation contract cannot be read",
@@ -80,7 +80,7 @@ fn registered_orchestration_references(skill: &str) -> Vec<String> {
                 && path.ends_with(".md")
                 && !path.split('/').any(|component| component == "..")
         })
-        .map(|path| format!("skills/codex-orchestration/{path}"))
+        .map(|path| format!("skills/orchestration/{path}"))
         .collect()
 }
 

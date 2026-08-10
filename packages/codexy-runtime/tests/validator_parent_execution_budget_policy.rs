@@ -20,7 +20,7 @@ const PARENT_CLAUSES: &[&str] = &[
 
 fn copy_budget_fixture() -> TestResult<support::InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/references/execution-budget.md",
+        "skills/orchestration/references/execution-budget.md",
     ))?)
 }
 
@@ -28,7 +28,7 @@ fn copy_budget_fixture() -> TestResult<support::InstructionPolicyFixture> {
 fn validator_requires_parent_stage_fanout_and_reviewer_budgets() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let source = fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/execution-budget.md"),
+        root.join("plugins/codexy/skills/orchestration/references/execution-budget.md"),
     )?;
     structured_contract::assert_rules(
         &structured_contract::Contract::markdown(&source),

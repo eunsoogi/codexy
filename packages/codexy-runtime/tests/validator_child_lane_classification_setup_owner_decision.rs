@@ -102,7 +102,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -124,7 +124,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -147,7 +147,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -167,7 +167,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative current-thread-owned because the current thread owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None
@@ -206,7 +206,7 @@ Lane type: validation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative parent-owned because the parent owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None"#
@@ -220,7 +220,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because the delegated child owns implementation
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None"#
@@ -234,7 +234,7 @@ Lane type: implementation
 Secondary surfaces: workflow, validators
 Owner decision: affirmative child-owned because parent-owned is not selected
 Atomic scope: issue-sized
-Required skills: task-classification, codex-orchestration, git-workflow
+Required skills: orchestration, orchestration, git-workflow
 Required tools/evidence: goal, plan, codegraph, LSP, Sentinel
 First allowed action: create branch after classification
 Stop/blocker: None"#

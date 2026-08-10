@@ -6,7 +6,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 fn plugin_fixture() -> TestResult<support::InstructionPolicyFixture> {
     Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/codex-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
     ))?)
 }
 

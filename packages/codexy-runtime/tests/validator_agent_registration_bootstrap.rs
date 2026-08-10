@@ -17,7 +17,7 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path(), &[])?;
     let codex_home = temp.path().join("home/.codex");
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
 
     let first = Command::new(&bootstrap)
         .args(["--codex-home", path(&codex_home)?])
@@ -58,7 +58,7 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
 fn installed_bootstrap_rejects_plugin_root_overrides() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path(), &[])?;
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     let codex_home = temp.path().join("home/.codex");
 
     let output = Command::new(&bootstrap)
@@ -113,9 +113,9 @@ fn pre_start_bootstrap_rejects_custom_config_discovery_roots() -> TestResult {
 fn orchestration_guidance_bootstraps_exact_roles_without_generic_fallback() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let registration = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/codex-orchestration/references/agent-registration.md"),
+        root.join("plugins/codexy/skills/orchestration/references/agent-registration.md"),
     )?;
 
     let guidance = format!("{skill}\n{registration}");
@@ -176,10 +176,10 @@ fn validator_requires_the_installed_bootstrap_entrypoint() -> TestResult {
     let plugin_root = installed_plugin(
         temp.path(),
         &[Path::new(
-            "skills/codex-orchestration/scripts/bootstrap-codexy-agents",
+            "skills/orchestration/scripts/bootstrap-codexy-agents",
         )],
     )?;
-    let bootstrap = plugin_root.join("skills/codex-orchestration/scripts/bootstrap-codexy-agents");
+    let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     if bootstrap.exists() {
         std::fs::remove_file(&bootstrap)?;
     }

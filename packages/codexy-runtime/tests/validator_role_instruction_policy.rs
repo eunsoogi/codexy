@@ -52,12 +52,12 @@ fn validator_cli_check_roles_rejects_openai_yaml_modal_policy_violations() -> Te
     let plugin_root = role_fixture(&temp, "agents/openai.yaml")?;
     let prompt_path = plugin_root.join("agents/openai.yaml");
     let prompt = std::fs::read_to_string(&prompt_path)?;
-    assert!(prompt.contains("You MUST run $task-classification"));
+    assert!(prompt.contains("You MUST run $orchestration"));
     std::fs::write(
         &prompt_path,
         prompt.replace(
-            "You MUST run $task-classification",
-            "Run $task-classification",
+            "You MUST run $orchestration",
+            "Run $orchestration",
         ),
     )?;
 

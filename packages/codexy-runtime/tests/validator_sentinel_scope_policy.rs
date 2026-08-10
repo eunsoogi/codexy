@@ -84,9 +84,9 @@ fn validator_cli_rejects_missing_sentinel_scope_policy() -> TestResult {
 fn validator_cli_rejects_missing_orchestration_scope_policy() -> TestResult {
     let fixture = fixture()?;
     for clause in SENTINEL_SCOPE_CLAUSES {
-        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        fixture.reset_file(std::path::Path::new("skills/orchestration/SKILL.md"))?;
         let plugin_root = fixture.root();
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, skill.replace(clause, "removed policy clause."))?;
 
@@ -119,9 +119,9 @@ fn validator_cli_rejects_contradictory_sentinel_scope_policy() -> TestResult {
 fn validator_cli_rejects_contradictory_orchestration_scope_policy() -> TestResult {
     let fixture = fixture()?;
     for contradiction in CONTRADICTORY_SCOPE_POLICY {
-        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        fixture.reset_file(std::path::Path::new("skills/orchestration/SKILL.md"))?;
         let plugin_root = fixture.root();
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{contradiction}\n"))?;
 
@@ -149,8 +149,8 @@ fn validator_cli_accepts_scope_policy_prohibitions() -> TestResult {
             stderr(&output)
         );
 
-        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        fixture.reset_file(std::path::Path::new("skills/orchestration/SKILL.md"))?;
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{prohibition}\n"))?;
         let output = validator(&plugin_root, "--check")?;
@@ -167,18 +167,18 @@ fn validator_cli_accepts_scope_policy_prohibitions() -> TestResult {
 fn validator_cli_rejects_live_sentinel_controls_but_allows_exemptions() -> TestResult {
     let fixture = fixture()?;
     for control in LIVE_SENTINEL_CONTROLS {
-        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        fixture.reset_file(std::path::Path::new("skills/orchestration/SKILL.md"))?;
         let plugin_root = fixture.root();
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{control}\n"))?;
         let output = validator(&plugin_root, "--check")?;
         assert!(!output.status.success(), "{control:?} was permitted");
     }
     for exemption in LIVE_SENTINEL_EXEMPTIONS {
-        fixture.reset_file(std::path::Path::new("skills/codex-orchestration/SKILL.md"))?;
+        fixture.reset_file(std::path::Path::new("skills/orchestration/SKILL.md"))?;
         let plugin_root = fixture.root();
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, format!("{skill}\n{exemption}\n"))?;
         let output = validator(&plugin_root, "--check")?;

@@ -65,10 +65,10 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
     }
     if !default_prompt.iter().any(|item| {
         item.as_str()
-            .is_some_and(|text| text.contains("$codex-orchestration"))
+            .is_some_and(|text| text.contains("$orchestration"))
     }) {
         bail!(
-            "{} interface.defaultPrompt must route through $codex-orchestration",
+            "{} interface.defaultPrompt must route through $orchestration",
             display_relative(&path)
         );
     }

@@ -9,7 +9,7 @@ use support::routing_validator::{
 fn validator_rejects_mixed_unicode_supplied_matrix_clause() -> TestResult {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     for prefix in [" ", "  ", "   "] {
         assert_policy_rejected(

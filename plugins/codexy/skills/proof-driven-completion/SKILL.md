@@ -12,7 +12,7 @@ skill requires evidence that directly matches every explicit requirement before
 the agent says work is done, closes an issue, merges a PR, or marks a goal
 complete.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../codex-orchestration/references/plain-language-user-replies.md) while preserving exact completion evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../codex-orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow [Plain-Language User Replies](../orchestration/references/plain-language-user-replies.md) while preserving exact completion evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../orchestration/references/natural-korean-responses.md).
 
 ## Completion Audit
 

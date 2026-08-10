@@ -9,7 +9,7 @@ const OPEN_PR_STATE: &str =
 fn validator_cli_rejects_bulleted_preflight_negation_after_commands() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: no merge; leave PR open until parent final acceptance.\n\

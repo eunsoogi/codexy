@@ -10,21 +10,21 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let token_skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     let prompt_yaml = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/agents/openai.yaml"),
+        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
     )?;
     let template = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/token-efficient-orchestration/templates/delta-poll.md"),
+        root.join("plugins/codexy/skills/orchestration/templates/delta-poll.md"),
     )?;
     let receipt = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/token-efficient-orchestration/templates/session-audit-proof-receipt.json",
+        "plugins/codexy/skills/orchestration/templates/session-audit-proof-receipt.json",
     ))?;
     let orchestration =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/codex-orchestration/SKILL.md"))?;
+        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
     let transition = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/codex-orchestration/references/goal-transition-reporting.md",
+        "plugins/codexy/skills/orchestration/references/goal-transition-reporting.md",
     ))?;
 
     structured_contract::assert_rules(

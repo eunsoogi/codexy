@@ -13,10 +13,10 @@ const FIELDS: [&str; 8] = [
 ];
 
 #[test]
-fn task_classification_uses_formal_tables_only_when_required() -> TestResult {
+fn orchestration_owns_formal_classification_tables_only_when_required() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/SKILL.md"),
+        root.join("plugins/codexy/skills/orchestration/references/task-classification.md"),
     )?;
     let table = formal_output_table(&skill)?;
 
@@ -44,15 +44,15 @@ fn task_classification_uses_formal_tables_only_when_required() -> TestResult {
     .is_err());
 
     let prompt = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/task-classification/agents/openai.yaml"),
+        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
     )?;
     let prompt: serde_yaml::Value = serde_yaml::from_str(&prompt)?;
     let default_prompt = prompt["interface"]["default_prompt"]
         .as_str()
-        .ok_or("missing task-classification default prompt")?;
+        .ok_or("missing orchestration default prompt")?;
     assert_eq!(
         default_prompt,
-        "You MUST use $task-classification first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
+        "You MUST use $orchestration first to select the light, standard, or strict workflow profile. Light is the default for read-only, documentation, tiny fixes, and ordinary single-owner mutations; standard covers non-trivial single-owner work. Light and standard MUST NOT require a visible eight-row table, goal/plan receipts, or skip rationales. Strict work, durable delegation, multi-lane ownership, and explicit audit evidence MUST render the ordered formal classification table before setup, delegation, implementation, PR, review-response, or merge work begins."
     );
     Ok(())
 }

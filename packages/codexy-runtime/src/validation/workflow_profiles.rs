@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::workflow_profile_evidence::{current_active_lines, field_value, has_strict_work_signal};
 
-const CONTRACT_PATH: &str = "skills/codex-orchestration/references/workflow-profiles.json";
+const CONTRACT_PATH: &str = "skills/orchestration/references/workflow-profiles.json";
 const PROFILES: [&str; 3] = ["light", "standard", "strict"];
 const TRIGGERS: [&str; 4] = [
     "strict",
@@ -55,7 +55,7 @@ pub(super) fn check_evidence(plugin_root: &Path, evidence: &str) -> Vec<String> 
         .is_none()
     {
         errors.push(
-            "strict workflow evidence requires the formal task-classification contract".to_owned(),
+            "strict workflow evidence requires the formal orchestration contract".to_owned(),
         );
     }
     errors

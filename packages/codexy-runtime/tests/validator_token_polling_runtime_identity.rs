@@ -10,7 +10,7 @@ const PROCESS_IDENTITY: &str = "separate process-backed monitor MUST bind";
 
 fn validate_polling_policy(removed_identity: Option<&str>) -> TestResult<std::process::Output> {
     let fixture = support::instruction_policy_fixture(Path::new(
-        "skills/token-efficient-orchestration/SKILL.md",
+        "skills/orchestration/SKILL.md",
     ))?;
     let path = fixture.path();
     let original = fs::read_to_string(&path)?;

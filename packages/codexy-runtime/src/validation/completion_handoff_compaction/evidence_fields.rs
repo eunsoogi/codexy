@@ -8,7 +8,7 @@ const DUPLICATE_STATE_TARGETS: &[&str] = &["pr #", "pull request #", "issue #", 
 #[rustfmt::skip]
 const DUPLICATE_STATE_CHECKS: &[&str] = &["re-check", "rechecked", "re-checked", "checked", "confirmed", "current github state", "after current"];
 #[rustfmt::skip]
-const CODEXY_CONTRACT_PHRASES: &[&str] = &["@codexy", "$codex-orchestration", "active codexy workflow", "active codexy plugin workflow", "preserve codexy workflow", "preserved codexy workflow", "routes through $codex-orchestration", "route through $codex-orchestration"];
+const CODEXY_CONTRACT_PHRASES: &[&str] = &["@codexy", "$orchestration", "active codexy workflow", "active codexy plugin workflow", "preserve codexy workflow", "preserved codexy workflow", "routes through $orchestration", "route through $orchestration"];
 #[rustfmt::skip]
 const OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["child-owned", "child owned", "parent orchestrator", "parent monitors", "parent monitor", "who may edit", "who may only orchestrate", "only orchestrate", "receive edits"];
 #[rustfmt::skip]

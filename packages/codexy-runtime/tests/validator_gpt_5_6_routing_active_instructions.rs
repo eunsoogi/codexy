@@ -8,7 +8,7 @@ use support::routing_validator::{
 fn before_recipient(text: &str) -> TestResult<String> {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?;
     Ok(skill.replacen(
         "## Recipient Model Routing",

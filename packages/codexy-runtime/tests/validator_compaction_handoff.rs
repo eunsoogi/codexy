@@ -56,7 +56,7 @@ fn validator_cli_accepts_compacted_continuation_with_required_codexy_evidence() 
 fn validator_cli_rejects_compacted_continuation_without_git_graph_preflight() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Next action: edit files.\n",
@@ -72,7 +72,7 @@ fn validator_cli_rejects_compacted_continuation_without_git_graph_preflight() ->
 fn validator_cli_rejects_compacted_continuation_without_stop_condition() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Git graph/log preflight: pwd, git status --short --branch, git rev-parse HEAD, git rev-parse origin/main, and git log --graph were captured before editing.\n\
@@ -170,7 +170,7 @@ fn validator_cli_rejects_uncaptured_duplicate_state() -> TestResult {
 fn validator_cli_rejects_compacted_continuation_with_git_preflight_shorthand() -> TestResult {
     let output = validate_open_pr_handoff(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          Duplicate/no-active-work state: PR #170 is duplicate/no-active-work after current GitHub state re-check.\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          Stop condition: stop without implementation edits until duplicate/no-active-work evidence is rebuilt.\n\
@@ -215,7 +215,7 @@ fn validator_cli_rejects_negated_git_preflight_evidence() -> TestResult {
 fn valid_handoff_with(duplicate_state: &str, git_preflight: &str, stop_condition: &str) -> String {
     format!(
         "Post-compaction continuation readiness:\n\
-         Codexy orchestration contract: active @Codexy workflow routes through $codex-orchestration.\n\
+         Codexy orchestration contract: active @Codexy workflow routes through $orchestration.\n\
          {duplicate_state}\n\
          Parent/child ownership boundary: parent orchestrator monitors only; child-owned lanes receive edits.\n\
          {git_preflight}\n\

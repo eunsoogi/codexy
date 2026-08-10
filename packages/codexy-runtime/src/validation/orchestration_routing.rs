@@ -17,7 +17,7 @@ mod tests;
 use policy::{affirmative_field_values, policy_instructions, sections_for_heading};
 use required_bullets::missing_required_bullets;
 
-const SKILL_PATH: &str = "skills/codex-orchestration/SKILL.md";
+const SKILL_PATH: &str = "skills/orchestration/SKILL.md";
 const RECIPIENT_ROUTING_HEADING: &str = "## Recipient Model Routing";
 const DELIVERY_POLICY: &str = "Parent-to-generic-child delivery MUST pass `model: \"gpt-5.6-terra\"` and `thinking: \"high\"`; child-to-root delivery MUST pass `model: \"gpt-5.6-sol\"` and `thinking: \"medium\"`.";
 const ACTIVE_TIER_STARTS: &[&str] = &[

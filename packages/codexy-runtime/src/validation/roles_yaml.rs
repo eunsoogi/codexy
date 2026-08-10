@@ -99,11 +99,11 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
     if path == plugin_root.join("agents/openai.yaml")
         && !matches!(
             prompt_yaml::get_path(&parsed, &["interface", "default_prompt"]),
-            Some(prompt_yaml::Scalar::Text(text)) if text.contains("$codex-orchestration")
+            Some(prompt_yaml::Scalar::Text(text)) if text.contains("$orchestration")
         )
     {
         errors.push(format!(
-            "{} interface.default_prompt must route through $codex-orchestration",
+            "{} interface.default_prompt must route through $orchestration",
             display_relative(path)
         ));
     }

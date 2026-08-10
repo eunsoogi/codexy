@@ -170,7 +170,7 @@ fn validator_rejects_prohibited_fields_after_abbreviations() -> TestResult {
 fn validator_rejects_required_clause_hidden_in_inline_comment() -> TestResult {
     let skill = std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/codex-orchestration/SKILL.md"),
+            .join("plugins/codexy/skills/orchestration/SKILL.md"),
     )?
     .replacen(
         "explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT",

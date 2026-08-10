@@ -80,7 +80,7 @@ fn validator_cli_rejects_wrapped_prohibition_list_inversion() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_wrapped_duplicate_modal_wording() -> TestResult {
-    let fixture = policy_fixture("skills/codex-orchestration/SKILL.md")?;
+    let fixture = policy_fixture("skills/orchestration/SKILL.md")?;
     let skill_path = fixture.path();
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nMUST NOT\nMUST treat project agents as installed custom agents.\n");
@@ -213,7 +213,7 @@ fn validator_cli_rejects_markdown_workflow_bare_imperatives() -> TestResult {
 
 #[test]
 fn validator_cli_rejects_text_fence_handoff_bare_imperatives() -> TestResult {
-    let fixture = policy_fixture("skills/codex-orchestration/references/orchestration-loop.md")?;
+    let fixture = policy_fixture("skills/orchestration/references/orchestration-loop.md")?;
     let skill_path = fixture.path();
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(

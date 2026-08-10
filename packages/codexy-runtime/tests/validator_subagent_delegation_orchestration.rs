@@ -17,7 +17,7 @@ fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -
     {
         let temp = tempfile::tempdir()?;
         let plugin_root = fixture(&temp)?;
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let mut skill = std::fs::read_to_string(&skill_path)?;
         skill.push_str(&format!(
             "\nA child implementation thread MAY spawn bounded first-level specialist helpers or Sentinel reviewers, {suffix}.\n",
@@ -37,7 +37,7 @@ fn validator_rejects_recursive_permission_appended_to_canonical_child_clause() -
 fn validator_allows_orchestrator_child_thread_creation() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nThe root orchestrator MUST create a child thread.\n");
     skill.push_str("The root orchestrator MAY create child threads.\n");
@@ -65,7 +65,7 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = fixture(&temp)?;
-        let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+        let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
         let mut skill = std::fs::read_to_string(&skill_path)?;
         skill.push_str(&format!("\n{instruction}\n"));
         std::fs::write(skill_path, skill)?;
@@ -78,7 +78,7 @@ fn validator_rejects_nonroot_child_thread_creation_in_orchestration() -> TestRes
 fn validator_rejects_nonroot_permission_in_orchestration() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str("\nA child owner MAY spawn another helper.\n");
     std::fs::write(skill_path, skill)?;
@@ -93,7 +93,7 @@ fn validator_rejects_nonroot_permission_in_orchestration() -> TestResult {
 fn validator_rejects_conjoined_nonroot_child_thread_creation() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = fixture(&temp)?;
-    let skill_path = plugin_root.join("skills/codex-orchestration/SKILL.md");
+    let skill_path = plugin_root.join("skills/orchestration/SKILL.md");
     let mut skill = std::fs::read_to_string(&skill_path)?;
     skill.push_str(
         "\nThe root orchestrator MUST create a child thread and a Sentinel MUST create a child thread.\n",

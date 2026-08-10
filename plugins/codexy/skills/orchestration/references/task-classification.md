@@ -1,15 +1,10 @@
----
-name: task-classification
-description: MUST use first for incoming Codexy work to classify the lane type, owner, required skills, evidence, and first allowed action before setup, delegation, implementation, PR handling, review response, or merge work begins.
----
-
-# Task Classification
+# Task Classification Within Orchestration
 
 ## Purpose
 
-MUST run this skill first for any Codexy work to select a workflow profile
+MUST classify first for any Codexy work to select a workflow profile
 before acting. The versioned canonical contract
-is [Workflow Profiles](../codex-orchestration/references/workflow-profiles.json):
+is [Workflow Profiles](../orchestration/references/workflow-profiles.json):
 `light` is the default, `standard` scales proof for non-trivial single-owner
 work, and `strict` applies to high-risk work. The contract's invariant floor
 applies to every profile and profiles MUST NOT weaken merge gates.
@@ -187,14 +182,14 @@ the first workflow action:
 
 - Missing formal classification evidence blocks strict setup, delegation,
   multi-lane work, audit evidence, release work, and PR-readiness claims.
-- Child lanes MUST emit the complete task-classification table before
+- Child lanes MUST emit the complete orchestration table before
   creating or switching to an implementation branch or worktree. Handoff
   evidence MUST NOT report child-created branch/worktree setup before that
   table; `scripts/validate-plugin-config --check-child-lane-ownership
   --evidence-file <path>` catches this workflow defect. Issue #231 tracks the
   exact dogfood evidence from issue #228: child branch
   `codexy/228-reject-generic-reviewer-gate-sentinel-proof` was created
-  immediately after thread rename and before formal `$task-classification`
+  immediately after thread rename and before formal `$orchestration`
   evidence.
 - Formal classification MUST happen before acting on or using the owner decision to
   edit files, set up branches or worktrees, delegate lanes, or route review
@@ -220,7 +215,7 @@ the first workflow action:
 - Creating a branch or worktree before deciding whether the lane is
   parent-owned or child-owned.
 - Creating or switching to a child implementation branch or worktree after a
-  thread rename but before the complete task-classification table.
+  thread rename but before the complete orchestration table.
 - Treating review response, merge, validation, release, and implementation as
   one generic task.
 - Letting a parent patch a child-owned implementation or review-response lane.
