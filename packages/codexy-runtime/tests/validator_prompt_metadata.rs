@@ -4,6 +4,11 @@ use crate::support;
 
 use support::copy_dir;
 
+#[path = "structured_contract_artifacts.rs"]
+mod structured_contract_artifacts;
+#[path = "validator_prompt_metadata/classification_contract.rs"]
+mod classification_contract;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -37,9 +42,11 @@ fn validator_cli_rejects_top_level_prompt_without_orchestration_route() -> TestR
     copy_fixture(&plugin_root)?;
     let prompt_path = plugin_root.join("agents/openai.yaml");
     let prompt = std::fs::read_to_string(&prompt_path)?;
+    let removed = prompt.replace("$orchestration", "Codexy orchestration");
+    assert_ne!(removed, prompt, "fixture mutation must change the prompt");
     std::fs::write(
         &prompt_path,
-        prompt.replace("$orchestration", "Codexy orchestration"),
+        removed,
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
@@ -67,7 +74,8 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
     let prompt_path = plugin_root.join("skills/git-workflow/agents/openai.yaml");
-    assert!(!std::fs::read_to_string(prompt_path)?.contains("$orchestration"));
+    structured_contract_artifacts::TextShape::new(&std::fs::read_to_string(prompt_path)?)
+        .assert_absent_concepts("skill-prompt.no-top-level-orchestration-route", &["$orchestration"]);
 
     let output = validator(&plugin_root, "--check-roles")?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -141,63 +149,6 @@ fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
     assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
     assert!(skill.contains("parent MUST NOT patch the child-owned"));
     assert!(skill.contains("explicit maintainer reassignment"));
-    Ok(())
-}
-
-#[test]
-fn codexy_workflows_require_task_classification_first() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let orchestration =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
-    let classification = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/references/task-classification.md"),
-    )?;
-    let git_workflow =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
-    let qa_prompt =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/qa/agents/openai.yaml"))?;
-    let release_prompt =
-        std::fs::read_to_string(root.join(".agents/skills/release-engineering/agents/openai.yaml"))?;
-    let plugin_prompt =
-        std::fs::read_to_string(root.join("plugins/codexy/agents/openai.yaml"))?;
-
-    assert!(orchestration.contains("name: orchestration"));
-    assert!(orchestration.contains("MUST classify the lane through this skill before setup"));
-    assert!(classification.contains("MUST classify first for any Codexy work"));
-    assert!(classification.contains("Classification Output"));
-    assert!(classification.contains("| Lane type |"));
-    assert!(classification.contains("| Owner decision |"));
-    assert!(classification.contains("| Required skills |"));
-    assert!(classification.contains("| Required tools/evidence |"));
-    assert!(classification.contains("lane-relevant required evidence"));
-    assert!(classification.contains("unavailable-tool fallbacks"));
-    assert!(classification.contains("| First allowed action |"));
-
-    for lane_type in [
-        "orchestration/lane setup",
-        "implementation",
-        "review response",
-        "GitHub/merge",
-        "validation/QA",
-        "documentation/skill authoring",
-        "plugin/release",
-    ] {
-        assert!(classification.contains(lane_type));
-    }
-
-    assert!(orchestration.contains(
-        "Missing classification before\nsetup, validation, release, or other workflow actions"
-    ));
-    assert!(git_workflow.contains("$orchestration"));
-    assert!(git_workflow.contains("classification evidence"));
-    assert!(qa_prompt.contains("$orchestration"));
-    assert!(release_prompt.contains("$orchestration"));
-    assert!(plugin_prompt.contains("You MUST use $orchestration before setup"));
-    for surface in [&orchestration, &classification, &git_workflow, &qa_prompt, &release_prompt, &plugin_prompt] {
-        for removed in ["$task-classification", "$codex-orchestration", "$token-efficient-orchestration"] {
-            assert!(!surface.contains(removed), "stale skill route: {removed}");
-        }
-    }
     Ok(())
 }
 

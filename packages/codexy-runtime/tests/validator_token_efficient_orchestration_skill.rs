@@ -43,13 +43,16 @@ fn token_efficient_orchestration_skill_preserves_proof_gates()
     let prompt = structured_contract_artifacts::Prompt::parse(&prompt_yaml)?;
     assert_eq!(prompt.display_name(), "Execution Coordinator");
     assert!(prompt.allow_implicit_invocation());
-    assert!(prompt.default_prompt().contains("You MUST use $orchestration"));
-    assert!(prompt
-        .default_prompt()
-        .contains("formal classification table before setup"));
     structured_contract::assert_rules(
         &structured_contract::Contract::markdown(prompt.default_prompt()),
         structured_contract_rules::TOKEN_PROMPT,
+    );
+    let missing_setup_timing = prompt.default_prompt().replace("before setup", "after setup");
+    assert_ne!(missing_setup_timing, prompt.default_prompt());
+    assert!(
+        structured_contract::Contract::markdown(&missing_setup_timing)
+            .assert_rule(structured_contract_rules::TOKEN_PROMPT[1])
+            .is_err()
     );
     structured_contract_artifacts::TextShape::new(prompt.default_prompt())
         .assert_absent_inflections("token.prompt.no-polling-language", &["poll"]);
