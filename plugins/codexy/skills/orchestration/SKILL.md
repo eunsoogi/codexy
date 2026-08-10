@@ -13,9 +13,6 @@ invoking Codex thread owns intent, decomposition, routing, evidence integration,
 and final completion claims. Specialists and separate Codex thread/worktree lanes
 own bounded atomic units only.
 
-Root `AGENTS.md` owns repo-wide dogfooding policy. This skill supplies the
-execution loop and MUST be read with root `AGENTS.md`.
-
 ## GPT-5.6 Routing Matrix
 
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
@@ -78,6 +75,10 @@ owner decision, atomic scope, required skills, required tools or evidence,
 first allowed action, and any stop blocker. Missing classification before
 setup, validation, release, or other workflow actions is a workflow defect:
 MUST stop, classify, and only then MUST continue through the matching Codexy workflow.
+
+## Authority Boundary
+
+`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action.
 
 ## Packaged Agents
 
