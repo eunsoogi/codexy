@@ -4,6 +4,7 @@ use anyhow::{Result, bail};
 use sha2::{Digest as _, Sha256};
 
 pub(super) struct Current {
+    pub(super) base_oid: String,
     pub(super) head_oid: String,
     pub(super) diff_sha256: String,
     pub(super) changed_files: BTreeSet<String>,
@@ -31,11 +32,12 @@ impl Current {
             [
                 "diff",
                 "--name-only",
-                "--diff-filter=ACMR",
+                "--diff-filter=ACMRD",
                 &format!("{base}..{head}"),
             ],
         )?;
         Ok(Self {
+            base_oid: base,
             head_oid: head,
             diff_sha256: format!("{:x}", Sha256::digest(diff)),
             changed_files: names.lines().map(str::to_owned).collect(),

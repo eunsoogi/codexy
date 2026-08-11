@@ -107,7 +107,7 @@ pub(super) fn check(
     {
         bail!("review economics must retain seeded P0 safety and P1 correctness parity");
     }
-    let mut ratios = BTreeMap::<&str, Vec<f64>>::new();
+    let mut ratios = BTreeMap::<&str, Vec<(u64, u64)>>::new();
     for lane in &report.lanes {
         let expected = corpus
             .lanes
@@ -154,26 +154,38 @@ pub(super) fn check(
             ratios
                 .entry(&lane.profile)
                 .or_default()
-                .push(lane.review_ms as f64 / lane.implementation_ms as f64);
+                .push((lane.review_ms, lane.implementation_ms));
         }
     }
-    if median(ratios.get("standard")) > 0.30 || median(ratios.get("strict")) > 0.50 {
+    if !within_budget(ratios.get("standard"), 300_000)
+        || !within_budget(ratios.get("strict"), 500_000)
+    {
         bail!("review economics exceeds the profile review-time median budget");
     }
     Ok(())
 }
 
-fn median(values: Option<&Vec<f64>>) -> f64 {
+fn within_budget(values: Option<&Vec<(u64, u64)>>, limit_ppm: u64) -> bool {
     let Some(values) = values.filter(|items| !items.is_empty()) else {
-        return f64::INFINITY;
+        return false;
     };
     let mut values = values.clone();
-    values.sort_by(f64::total_cmp);
+    values.sort_by(|left, right| {
+        (u128::from(left.0) * u128::from(right.1)).cmp(&(u128::from(right.0) * u128::from(left.1)))
+    });
     let middle = values.len() / 2;
     if values.len() % 2 == 0 {
-        (values[middle - 1] + values[middle]) / 2.0
+        let (left_numerator, left_denominator) = values[middle - 1];
+        let (right_numerator, right_denominator) = values[middle];
+        (u128::from(left_numerator) * u128::from(right_denominator)
+            + u128::from(right_numerator) * u128::from(left_denominator))
+            * 1_000_000
+            <= 2 * u128::from(left_denominator)
+                * u128::from(right_denominator)
+                * u128::from(limit_ppm)
     } else {
-        values[middle]
+        u128::from(values[middle].0) * 1_000_000
+            <= u128::from(values[middle].1) * u128::from(limit_ppm)
     }
 }
 

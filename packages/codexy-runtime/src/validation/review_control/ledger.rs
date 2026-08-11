@@ -39,10 +39,16 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
     {
         bail!("review packet event identity is duplicate or ledger schema is invalid");
     }
-    let prior = packet
-        .predecessor_event_id
-        .as_ref()
-        .and_then(|id| ledger.events.iter().find(|event| &event.id == id));
+    let prior = match &packet.predecessor_event_id {
+        Some(id) => Some(
+            ledger
+                .events
+                .iter()
+                .find(|event| &event.id == id)
+                .ok_or_else(|| anyhow::anyhow!("review packet predecessor event is absent"))?,
+        ),
+        None => None,
+    };
     let same = ledger
         .events
         .iter()
@@ -84,18 +90,31 @@ fn transition(
         "delta"
             if prior.is_some_and(|event| {
                 event.profile == packet.profile
-                    && event.head_oid == packet.identity_head()
                     && event.state == "full"
+                    && event.head_oid == packet.identity_base()
+                    && event.head_oid != packet.identity_head()
             }) =>
         {
             Ok((1, 1))
         }
-        "passed" if prior.is_some_and(|event| matches!(event.state.as_str(), "full" | "delta")) => {
-            Ok((prior.unwrap().full_used, prior.unwrap().delta_used))
+        "passed"
+            if prior.is_some_and(|event| {
+                event.profile == packet.profile
+                    && event.head_oid == packet.identity_head()
+                    && matches!(event.state.as_str(), "full" | "delta")
+            }) && !packet.has_unresolved_blockers() =>
+        {
+            let prior = prior.ok_or_else(|| anyhow::anyhow!("passed review has no predecessor"))?;
+            Ok((prior.full_used, prior.delta_used))
         }
         "unobservable" if prior.is_none() && !same => Ok((0, 0)),
         "parent_decision"
-            if prior.is_some_and(|event| event.state == "delta" && event.delta_used == 1) =>
+            if prior.is_some_and(|event| {
+                event.profile == packet.profile
+                    && event.head_oid == packet.identity_head()
+                    && event.state == "delta"
+                    && event.delta_used == 1
+            }) =>
         {
             Ok((1, 1))
         }

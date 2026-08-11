@@ -9,9 +9,7 @@ mod policy;
 mod repository;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
-    policy::load(plugin_root)
-        .map(|_| Vec::new())
-        .unwrap_or_else(|error| vec![error.to_string()])
+    policy::load(plugin_root).map_or_else(|error| vec![error.to_string()], |_| Vec::new())
 }
 
 pub(super) fn resolve_profile(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {

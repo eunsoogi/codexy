@@ -50,7 +50,7 @@ codexy/
 | Version synchronization | `scripts/sync-plugin-version` | Checks or updates plugin and marketplace versions. |
 | Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
 | Orchestration behavior | `plugins/codexy/skills/orchestration/SKILL.md` | Classification, thread, goal, todo, multi-agent, worktree, and token-discipline policy. |
-| Review gate contract | `plugins/codexy/agents/codexy-sentinel.toml` | Required reviewer gate for non-trivial atomic lanes. |
+| Review gate contract | `plugins/codexy/skills/orchestration/references/review-profiles.json` | Closed light/standard/strict reviewer selection; Sentinel is strict-only. |
 | MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
 | User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
 | Repository-only skills | `.agents/skills/**/SKILL.md` | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy. |
@@ -65,7 +65,8 @@ codexy/
 - MUST put executable Git, issue, PR, review, and merge rules in
   `plugins/codexy/skills/git-workflow/SKILL.md`, not in this file.
 - Codex connector automatic review MUST remain disabled. Before merge, the parent/orchestrator
-  MUST request one explicit `@codex review` after an owning child Sentinel PASS on a frozen head;
+  MUST request one explicit `@codex review` after the owning child returns the
+  profile-selected reviewer PASS on a frozen head;
   the executable review and repair procedure lives in the canonical Git workflow skill.
 
 ## Release/version-only orchestration
@@ -77,7 +78,7 @@ codexy/
   commit, pushing it, and opening the version-bump PR.
 - MUST record why the workflow is unavailable or insufficient before using a
   manual fallback. After either route, the parent MUST still cover issue
-  linkage, repository labels, full tests, package CI, packaged Sentinel,
+  linkage, repository labels, full tests, package CI, profile-selected reviewer,
   merge-message validation, and post-merge release/install proof.
 - MUST keep executable Git and release commands in their canonical skills rather
   than duplicating them here.

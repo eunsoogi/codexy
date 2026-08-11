@@ -108,11 +108,13 @@ fn validate(
 ) -> Result<()> {
     if packet.schema != "codexy.review-packet.v2"
         || packet.event_id.is_empty()
+        || packet.identity.base_oid != current.base_oid
         || packet.identity.head_oid != current.head_oid
         || packet.identity.diff_sha256 != current.diff_sha256
         || packet.reviewer != profile.reviewer
         || packet.changed_files.iter().collect::<BTreeSet<_>>()
             != current.changed_files.iter().collect()
+        || packet.changed_files.len() != current.changed_files.len()
     {
         bail!(
             "review packet must bind the exact current head, diff, selected reviewer, and changed files"
@@ -212,7 +214,15 @@ impl Packet {
     pub(super) fn identity_head(&self) -> &str {
         &self.identity.head_oid
     }
-    pub(super) fn readiness_budget_exhausted(&self) -> bool {
+    pub(super) fn identity_base(&self) -> &str {
+        &self.identity.base_oid
+    }
+    pub(super) fn has_unresolved_blockers(&self) -> bool {
+        self.findings
+            .iter()
+            .any(|finding| finding.kind == "blocker" && !finding.resolved)
+    }
+    pub(super) const fn readiness_budget_exhausted(&self) -> bool {
         self.readiness_export.budget_exhausted
     }
 }
