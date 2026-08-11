@@ -5,8 +5,8 @@ use anyhow::{Result, bail};
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
     conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, roles, routing_measurement, routing_policy,
-    runtime, tdd_classification, touched_loc, workflow_profiles,
+    manifest, mcp, merge_authorization, merge_message, review_control, roles, routing_measurement,
+    routing_policy, runtime, tdd_classification, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -27,6 +27,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(roles::check(plugin_root));
             all.extend(routing_policy::check(plugin_root));
             all.extend(tdd_classification::check(plugin_root));
+            all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             all

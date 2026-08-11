@@ -37,6 +37,9 @@ mod validator_child_routing_policy;
 #[path = "../validator_tdd_classification_policy.rs"]
 mod validator_tdd_classification_policy;
 
+#[path = "../validator_review_control.rs"]
+mod validator_review_control;
+
 #[path = "../validator_routing_measurement.rs"]
 mod validator_routing_measurement;
 

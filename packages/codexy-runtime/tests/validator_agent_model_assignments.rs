@@ -39,6 +39,12 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
         effort: "low",
     },
     ExpectedAgent {
+        name: "codexy-inspector",
+        filename: "codexy-inspector.toml",
+        model: "gpt-5.6-terra",
+        effort: "max",
+    },
+    ExpectedAgent {
         name: "codexy-sentinel",
         filename: "codexy-sentinel.toml",
         model: "gpt-5.6-sol",

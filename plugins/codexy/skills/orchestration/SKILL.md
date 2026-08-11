@@ -20,6 +20,10 @@ The closed machine-owned routing authority is
 is `references/routing-evaluation-results.json`. This matrix is the human-readable
 workflow projection and MUST NOT be parsed as policy.
 
+Bounded review selection is separately owned by the closed
+`references/review-profiles.json` contract. It is not generic child routing and
+MUST NOT be inferred from this prose projection.
+
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
 - Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.
@@ -75,6 +79,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 - `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
+- `references/review-profiles.json` for structured light, standard, and strict review selection and bounded review budgets.
 
 ## Classification Gate
 

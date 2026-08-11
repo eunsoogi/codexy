@@ -91,6 +91,7 @@ mod readiness_context;
 mod release_publish_contract;
 mod removed_mcp;
 mod repository_skill_root;
+mod review_control;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -172,6 +173,21 @@ pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_
 /// Returns an error for unreadable, malformed, or incomplete policy or request data.
 pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     tdd_classification::resolve(plugin_root, request)
+}
+
+/// Resolves one typed review profile from the packaged review-control policy.
+pub fn resolve_review_profile(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
+    review_control::resolve_profile(plugin_root, request)
+}
+
+/// Validates one typed review packet against the packaged bounded-review policy.
+pub fn check_review_packet(plugin_root: &Path, packet: &str) -> Result<()> {
+    review_control::check_packet(plugin_root, packet)
+}
+
+/// Validates one typed review-economics report against parity and profile budgets.
+pub fn check_review_economics(plugin_root: &Path, economics: &str) -> Result<()> {
+    review_control::check_economics(plugin_root, economics)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

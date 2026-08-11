@@ -12,6 +12,7 @@ agent_files = [
   "codexy-weaver.toml",
   "codexy-auditor.toml",
   "codexy-shipwright.toml",
+  "codexy-inspector.toml",
   "codexy-sentinel.toml",
   "codexy-warden.toml",
 ]

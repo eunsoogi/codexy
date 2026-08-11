@@ -46,6 +46,7 @@ fn role_equivalence_records_the_exact_reduction() -> TestResult {
     let expected = RETAINED
         .iter()
         .map(|name| format!("{name}.toml"))
+        .chain(std::iter::once("codexy-inspector.toml".to_owned()))
         .collect::<BTreeSet<_>>();
     assert_eq!(configured, expected);
 
@@ -60,7 +61,7 @@ fn role_equivalence_records_the_exact_reduction() -> TestResult {
         );
     }
     assert!(mapping.contains("`codexy-inspector` is reserved for #562"));
-    assert!(!catalog.contains("codexy-inspector"));
+    assert!(catalog.contains("codexy-inspector.toml"));
     Ok(())
 }
 
@@ -102,7 +103,5 @@ fn active_routing_does_not_recreate_retired_roles_as_aliases() -> TestResult {
             "retired role remains in child routing: {name}"
         );
     }
-    assert!(!routing.contains("codexy-inspector"));
-    assert!(!child_control.contains("codexy-inspector"));
     Ok(())
 }
