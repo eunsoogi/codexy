@@ -34,6 +34,11 @@ unicode_categories = "0.1"
 [dev-dependencies]
 pulldown-cmark = { version = "=0.13.4", default-features = false }
 
+[[bin]]
+name = "codexy-activate-runtime"
+path = "src/bin/codexy-activate-runtime.rs"
+required-features = ["runtime-activation"]
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"

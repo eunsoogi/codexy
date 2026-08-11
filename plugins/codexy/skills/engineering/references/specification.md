@@ -1,15 +1,10 @@
----
-name: spec-driven-development
-description: MUST use when a task starts from a PRD, issue, acceptance criteria, design brief, API contract, user story, or ambiguous feature request that needs implementation discipline before editing.
----
-
-# Spec-Driven Development
+# Specification
 
 ## Purpose
 
-MUST treat the spec as the implementation contract. Convert intent into observable
-claims, prove the claims with targeted evidence, and MUST keep the branch scoped to
-one issue-sized outcome.
+MUST treat the spec as the implementation contract. Convert intent into
+observable claims, prove the claims with targeted evidence, and MUST keep the
+branch scoped to one issue-sized outcome.
 
 ## Workflow
 

@@ -16,7 +16,7 @@ fn all_packaged_skill_markdown_is_collected() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let markdown = skill_markdown_files(&root)?;
     for expected in [
-        root.join("plugins/codexy/skills/test-driven-development/SKILL.md"),
+        root.join("plugins/codexy/skills/engineering/SKILL.md"),
         root.join("plugins/codexy/skills/git-workflow/references/local-git-and-branches.md"),
     ] {
         assert!(markdown.contains(&expected), "missing {}", expected.display());

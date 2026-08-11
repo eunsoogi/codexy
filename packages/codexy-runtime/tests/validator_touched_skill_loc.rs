@@ -12,7 +12,7 @@ fn touched_loc_rejects_oversized_skill_instruction_files() -> Result<(), Box<dyn
     copy_fixture(&repo_root)?;
     init_repo(&repo_root)?;
 
-    let skill_path = repo_root.join("plugins/codexy/skills/qa/SKILL.md");
+    let skill_path = repo_root.join("plugins/codexy/skills/engineering/references/quality-assurance.md");
     let oversized = (0..=250)
         .map(|index| format!("line {index}"))
         .collect::<Vec<_>>()
@@ -22,7 +22,7 @@ fn touched_loc_rejects_oversized_skill_instruction_files() -> Result<(), Box<dyn
     let output = validator(&repo_root, "--check-touched-loc", "HEAD")?;
 
     assert!(!output.status.success());
-    assert!(stderr(&output).contains("plugins/codexy/skills/qa/SKILL.md has 251 lines"));
+    assert!(stderr(&output).contains("plugins/codexy/skills/engineering/references/quality-assurance.md has 251 lines"));
     Ok(())
 }
 

@@ -1,5 +1,8 @@
 use std::collections::BTreeSet;
 
+#[path = "skill_boundary_taxonomy/overlap_boundaries.rs"]
+mod overlap_boundaries;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -47,27 +50,7 @@ fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResul
 fn overlap_boundaries_and_consumer_taxonomy_are_explicit() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
-    let boundaries = data_rows(subsection(
-        &guide,
-        "### Overlap boundaries",
-        "## Skill path-consumer map",
-    )?)
-    .into_iter()
-    .map(|row| row[0].clone())
-    .collect::<BTreeSet<_>>();
-    assert_eq!(
-        boundaries,
-        [
-            "Change method and diagnosis",
-            "Packaging and release",
-            "Planning and domain ownership",
-            "Routing, execution, and context",
-            "Verification and completion",
-        ]
-        .into_iter()
-        .map(str::to_owned)
-        .collect()
-    );
+    overlap_boundaries::assert_canonical(&guide)?;
 
     let consumers = data_rows(section(&guide, "Skill path-consumer map")?)
         .into_iter()
@@ -165,16 +148,6 @@ fn table_rows(section: &str) -> Vec<Vec<String>> {
                 .collect()
         })
         .collect()
-}
-
-fn subsection<'a>(text: &'a str, start: &str, end: &str) -> Result<&'a str, String> {
-    let (_, remainder) = text
-        .split_once(start)
-        .ok_or_else(|| format!("missing subsection: {start}"))?;
-    remainder
-        .split_once(end)
-        .map(|(body, _)| body)
-        .ok_or_else(|| format!("missing subsection end: {end}"))
 }
 
 fn data_rows(section: &str) -> Vec<Vec<String>> {

@@ -1,6 +1,0 @@
-interface:
-  display_name: "QA"
-  short_description: "Verify claims through the real surface."
-  default_prompt: "You MUST use $orchestration before validation or QA work, then you MUST use $qa to turn acceptance criteria into observable QA scenarios and evidence."
-policy:
-  allow_implicit_invocation: true

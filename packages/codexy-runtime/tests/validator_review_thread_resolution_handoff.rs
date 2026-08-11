@@ -201,7 +201,7 @@ fn two_unresolved_review_threads_pr_state() -> &'static str {
                     "id": "PRRT_kwDOMissing",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/qa/SKILL.md",
+                    "path": "plugins/codexy/skills/engineering/references/quality-assurance.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r2"}]}
                 }
             ]
