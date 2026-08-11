@@ -87,3 +87,85 @@ fn cross_profile_review_requires_an_explicit_unobservable_escalation() -> TestRe
     assert!(super::check_packet(fixture.root(), &ledger, &strict)?.status.success());
     Ok(())
 }
+
+#[test]
+fn review_cycle_requires_the_tip_and_stops_same_class_replays() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let repo = tempfile::tempdir()?;
+    init_repository(repo.path())?;
+    let base = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"full\"}\n")?;
+    commit(repo.path(), "full")?;
+    let full_head = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    let ledger = repo.path().join("review-ledger.json");
+    let full = packet_for(repo.path(), &base, "e-full", "full")?;
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &full)?.status.success());
+
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"repair-one\"}\n")?;
+    commit(repo.path(), "repair-one")?;
+    let mut delta = packet_for(repo.path(), &full_head, "e-delta", "delta")?;
+    delta["predecessor_event_id"] = json!("e-full");
+    delta["budget"] = json!({"full_used":1,"delta_used":1});
+    delta["readiness_export"]["budget_exhausted"] = json!(true);
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &delta)?.status.success());
+    let repair_one = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"repair-two\"}\n")?;
+    commit(repo.path(), "repair-two")?;
+    let mut branched_delta = packet_for(repo.path(), &full_head, "e-branched", "delta")?;
+    branched_delta["predecessor_event_id"] = json!("e-full");
+    branched_delta["budget"] = json!({"full_used":1,"delta_used":1});
+    branched_delta["readiness_export"]["budget_exhausted"] = json!(true);
+    let branched = check_packet_at(fixture.root(), repo.path(), &ledger, &branched_delta)?.status.success();
+
+    let restarted = packet_for(repo.path(), &repair_one, "e-restarted", "full")?;
+    let restarted = check_packet_at(fixture.root(), repo.path(), &ledger, &restarted)?.status.success();
+    assert!(!branched && !restarted);
+
+    Ok(())
+}
+
+#[test]
+fn delta_rejects_a_new_unresolved_blocker_in_the_same_defect_class() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let repo = tempfile::tempdir()?;
+    init_repository(repo.path())?;
+    let base = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"full\"}\n")?;
+    commit(repo.path(), "full")?;
+    let full_head = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    let ledger = repo.path().join("review-ledger.json");
+    let full = packet_for(repo.path(), &base, "e-full", "full")?;
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &full)?.status.success());
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"repair\"}\n")?;
+    commit(repo.path(), "repair")?;
+    let mut delta = packet_for(repo.path(), &full_head, "e-delta", "delta")?;
+    delta["predecessor_event_id"] = json!("e-full");
+    delta["budget"] = json!({"full_used":1,"delta_used":1});
+    delta["readiness_export"]["budget_exhausted"] = json!(true);
+    let mut repeated = delta["findings"][0].clone();
+    repeated["id"] = json!("f-2");
+    repeated["counterexample"] = json!("same defect class");
+    delta["findings"].as_array_mut().ok_or("findings")?.push(repeated);
+    delta["readiness_export"]["unresolved_blocker_ids"] = json!(["f-1", "f-2"]);
+    assert!(!check_packet_at(fixture.root(), repo.path(), &ledger, &delta)?.status.success());
+    Ok(())
+}
+
+#[test]
+fn clean_full_review_can_transition_to_passed() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let temp = tempfile::tempdir()?;
+    let ledger = temp.path().join("review-ledger.json");
+    let mut full = super::packet("e-clean-full", "full");
+    full["findings"] = json!([]);
+    full["resolution"] = json!({"repaired_finding_ids":[],"changed_boundaries":[]});
+    full["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+    assert!(super::check_packet(fixture.root(), &ledger, &full)?.status.success());
+    let mut passed = full;
+    passed["event_id"] = json!("e-clean-passed");
+    passed["predecessor_event_id"] = json!("e-clean-full");
+    passed["state"] = json!("passed");
+    assert!(super::check_packet(fixture.root(), &ledger, &passed)?.status.success());
+    Ok(())
+}

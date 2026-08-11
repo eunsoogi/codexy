@@ -18,6 +18,7 @@ struct Ledger {
 #[serde(deny_unknown_fields)]
 struct Event {
     id: String,
+    predecessor_event_id: Option<String>,
     profile: String,
     head_oid: String,
     state: String,
@@ -53,6 +54,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
     {
         bail!("review packet event identity is duplicate or ledger schema is invalid");
     }
+    let tip = ledger.events.last();
     let prior = match &packet.predecessor_event_id {
         Some(id) => Some(
             ledger
@@ -63,11 +65,10 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         ),
         None => None,
     };
-    let same = ledger
-        .events
-        .iter()
-        .any(|event| event.head_oid == packet.identity_head());
-    let expected = transition(packet, profile, prior, same)?;
+    if tip.map(|event| event.id.as_str()) != packet.predecessor_event_id.as_deref() {
+        bail!("review packet must extend the current ledger tip without branching or restart");
+    }
+    let expected = transition(packet, profile, prior, tip.is_some())?;
     if matches!(packet.state.as_str(), "delta" | "passed") {
         account_for_prior_blockers(packet, prior)?;
     }
@@ -80,6 +81,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
     }
     ledger.events.push(Event {
         id: packet.event_id.clone(),
+        predecessor_event_id: packet.predecessor_event_id.clone(),
         profile: packet.profile.clone(),
         head_oid: packet.identity_head().to_owned(),
         state: packet.state.clone(),
@@ -105,8 +107,8 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
 
 fn account_for_prior_blockers(packet: &Packet, prior: Option<&Event>) -> Result<()> {
     let prior = prior.ok_or_else(|| anyhow::anyhow!("delta has no durable predecessor"))?;
-    if prior.blockers.is_empty() || packet.boundaries().is_empty() {
-        bail!("delta must account for durable blockers and changed boundaries");
+    if packet.boundaries().is_empty() {
+        bail!("terminal review must account for changed boundaries");
     }
     let prior_ids = prior
         .blockers
@@ -136,6 +138,18 @@ fn account_for_prior_blockers(packet: &Packet, prior: Option<&Event>) -> Result<
     }) {
         bail!("delta resolves a blocker outside its durable predecessor");
     }
+    let prior_classes = prior
+        .blockers
+        .iter()
+        .map(|blocker| blocker.defect_class.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    if packet.findings.iter().any(|finding| {
+        finding.kind == "blocker"
+            && !prior_ids.contains(finding.id.as_str())
+            && prior_classes.contains(finding.defect_class.as_str())
+    }) {
+        bail!("delta repeats a durable blocker class under a new identity");
+    }
     Ok(())
 }
 
@@ -143,19 +157,19 @@ fn transition(
     packet: &Packet,
     profile: &Profile,
     prior: Option<&Event>,
-    same: bool,
+    has_tip: bool,
 ) -> Result<(u8, u8)> {
     if packet.escalation().is_some() && packet.state != "full" {
         bail!("review packet escalation is only valid for a replacement full review");
     }
     if profile.reviewer.is_none() {
-        if packet.state == "passed" && prior.is_none() && !same {
+        if packet.state == "passed" && prior.is_none() && !has_tip {
             return Ok((0, 0));
         }
         bail!("light review packets must terminate without an LLM reviewer");
     }
     match packet.state.as_str() {
-        "full" if prior.is_none() && !same && packet.escalation().is_none() => Ok((1, 0)),
+        "full" if prior.is_none() && !has_tip && packet.escalation().is_none() => Ok((1, 0)),
         "full"
             if prior.is_some_and(|event| {
                 packet.escalation().is_some_and(|escalation| {
@@ -190,7 +204,7 @@ fn transition(
             let prior = prior.ok_or_else(|| anyhow::anyhow!("passed review has no predecessor"))?;
             Ok((prior.full_used, prior.delta_used))
         }
-        "unobservable" if prior.is_none() && !same => Ok((0, 0)),
+        "unobservable" if prior.is_none() && !has_tip => Ok((0, 0)),
         "parent_decision"
             if prior.is_some_and(|event| {
                 event.profile == packet.profile
