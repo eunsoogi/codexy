@@ -54,6 +54,15 @@ fn validator_keeps_coordinated_external_predicate_local() -> TestResult {
 }
 
 #[test]
+fn validator_bounds_coordinated_negation_to_its_completed_external_event() -> TestResult {
+    assert_disposition(
+        "Blocked: neither CI nor Sentinel has returned and review feedback remains unresolved.",
+        true,
+    )?;
+    assert_disposition("Blocked: neither CI nor Sentinel has returned.", false)
+}
+
+#[test]
 fn validator_ends_available_reviewer_event_before_later_feedback() -> TestResult {
     assert_disposition(
         "Blocked: no reviewer available; review feedback remains unresolved.",

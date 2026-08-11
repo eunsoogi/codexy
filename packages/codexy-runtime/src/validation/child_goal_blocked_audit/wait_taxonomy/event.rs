@@ -156,7 +156,6 @@ fn event_start(subjects: &[Subject], index: usize, words: &[&str]) -> Option<usi
     let subject = subjects[index];
     let prior = subjects[index - 1];
     (subject.start > 0
-        && !is_coordinated_negation(words, subject.start)
         && (subject_group(subject.kind) != subject_group(prior.kind)
             || has_local_predicate(words, prior, subject.start)))
     .then(|| local_negation_start(words, prior.end, subject.start).unwrap_or(subject.start))
@@ -187,13 +186,6 @@ fn has_predicate_boundary(words: &[&str]) -> bool {
         || contains_any_phrase(words, REVIEW_PREDICATES)
         || contains_any_phrase(words, OPERATIONAL_PREDICATES)
         || contains_any_phrase(words, PREDICATE_BOUNDARY_TERMINALS)
-}
-
-fn is_coordinated_negation(words: &[&str], subject_start: usize) -> bool {
-    words[..subject_start]
-        .iter()
-        .rposition(|word| *word == "neither")
-        .is_some_and(|neither| words[neither + 1..subject_start].contains(&"nor"))
 }
 
 fn contains_any_phrase(words: &[&str], phrases: &[&str]) -> bool {
