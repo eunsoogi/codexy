@@ -168,7 +168,7 @@ The parent handoff MUST include PR number, latest head SHA, relevant comments
 or review thread URLs, allowed files, expected return evidence, and stop
 condition. For non-trivial lanes it MUST require goal tool usage,
 todo/plan tool usage, multi-agent usage or concrete not-useful rationale,
-unavailable-tool fallbacks, current-diff sentinel review findings, codegraph
+unavailable-tool fallbacks, current-diff selected-profile review findings, codegraph
 evidence, and LSP status.
 
 After the owning child pushes a review-response commit, the parent MUST inspect

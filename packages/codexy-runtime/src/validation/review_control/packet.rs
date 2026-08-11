@@ -53,12 +53,12 @@ struct Verification {
 #[serde(deny_unknown_fields)]
 pub(super) struct Finding {
     pub(super) id: String,
-    defect_class: String,
+    pub(super) defect_class: String,
     criterion_id: String,
     counterexample: String,
     head_oid: String,
-    kind: String,
-    reopen_count: u8,
+    pub(super) kind: String,
+    pub(super) reopen_count: u8,
     pub(super) resolved: bool,
 }
 #[derive(Deserialize)]
@@ -229,6 +229,9 @@ impl Packet {
     }
     pub(super) fn identity_base(&self) -> &str {
         &self.identity.base_oid
+    }
+    pub(super) fn boundaries(&self) -> &[String] {
+        &self.direct_boundaries
     }
     pub(super) fn has_unresolved_blockers(&self) -> bool {
         self.findings

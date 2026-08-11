@@ -12,7 +12,7 @@ Codex connector automatic review MUST remain disabled.
 6. [no-automatic-or-duplicate] Automatic, per-push, duplicate, unchanged-head, and piecemeal Codex connector review requests MUST NOT be made.
 7. [material-expansion-exception] Another connector review MUST NOT be requested unless a maintainer explicitly authorizes it after material scope expansion.
 
-Human review, Sentinel, title, label, completion-handoff, CI, review-thread resolution, and
+Human review, selected-profile review evidence, title, label, completion-handoff, CI, review-thread resolution, and
 merge-message gates MUST remain required. Existing actionable human or connector review threads
 MUST remain merge-blocking until the current head resolves them or an accepted no-change rationale
 covers them.
@@ -22,4 +22,4 @@ covers them.
 Only the parent/orchestrator requests the one connector review and waits for its terminal output.
 The owning child receives the batched actionable findings, owns any repair and permitted same-profile delta recheck,
 and MUST NOT request a connector review. This procedure does not enable automatic connector review
-or replace any existing human, Sentinel, title, label, completion-handoff, CI, or merge-message gate.
+or replace any existing human, selected-profile, title, label, completion-handoff, CI, or merge-message gate.

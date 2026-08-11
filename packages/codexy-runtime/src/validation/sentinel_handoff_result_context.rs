@@ -6,38 +6,6 @@ pub(super) fn packaged_terminal_result(text: &str) -> bool {
         .any(|(_, status)| matches!(status, SentinelState::Terminal(_)))
 }
 
-pub(super) fn segments(text: &str) -> Vec<(usize, &str)> {
-    let mut result = Vec::new();
-    let mut start = 0;
-    for (end, _) in text.match_indices(['.', '!', '?', ';', '\n']) {
-        push(text, start, end, &mut result);
-        start = end + 1;
-    }
-    push(text, start, text.len(), &mut result);
-    result
-}
-
-fn push<'a>(text: &'a str, start: usize, end: usize, result: &mut Vec<(usize, &'a str)>) {
-    let sentence = &text[start..end];
-    let mut offset = 0;
-    loop {
-        let next = [" but ", " while ", " and ", ","]
-            .iter()
-            .filter_map(|delimiter| {
-                sentence[offset..]
-                    .find(delimiter)
-                    .map(|index| (index, *delimiter))
-            })
-            .min_by_key(|(index, _)| *index);
-        let Some((index, delimiter)) = next else {
-            result.push((start + offset, &sentence[offset..]));
-            return;
-        };
-        result.push((start + offset, &sentence[offset..offset + index]));
-        offset += index + delimiter.len();
-    }
-}
-
 pub(super) fn active(text: &str, start: usize) -> bool {
     let line_start = text[..start].rfind('\n').map_or(0, |index| index + 1);
     let line_end = text[start..]

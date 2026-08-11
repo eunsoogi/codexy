@@ -1,4 +1,4 @@
-use super::sentinel_handoff::{SENTINEL_MARKERS, affirmed_phrase_starts, clause_bounds, has_any};
+use super::sentinel_lifecycle::{SENTINEL_MARKERS, affirmed_phrase_starts, clause_bounds, has_any};
 
 const PASS: &str = "sentinel: pass|sentinel pass|sentinel returned pass|sentinel status: pass|sentinel verdict: pass|sentinel result: pass|sentinel gate returned pass";
 const BLOCK: &str = "sentinel: block|sentinel block|sentinel returned block|sentinel status: block|sentinel verdict: block|sentinel result: block|sentinel gate returned block";
@@ -37,13 +37,6 @@ pub(super) struct StatusEvent {
     pub(super) start: usize,
     pub(super) state: SentinelState,
     pub(super) provenance: StatusProvenance,
-}
-
-pub(super) fn marker_starts(text: &str) -> Vec<(usize, SentinelState)> {
-    marker_events(text)
-        .into_iter()
-        .map(|event| (event.start, event.state))
-        .collect()
 }
 
 pub(super) fn marker_events(text: &str) -> Vec<StatusEvent> {

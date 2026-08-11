@@ -20,6 +20,16 @@ struct Event {
     state: String,
     full_used: u8,
     delta_used: u8,
+    blockers: Vec<Blocker>,
+    boundaries: Vec<String>,
+}
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct Blocker {
+    id: String,
+    defect_class: String,
+    resolved: bool,
+    reopen_count: u8,
 }
 
 pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<()> {
@@ -54,6 +64,9 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         .iter()
         .any(|event| event.head_oid == packet.identity_head());
     let expected = transition(packet, profile, prior, same)?;
+    if packet.state == "delta" {
+        account_for_prior_blockers(packet, prior)?;
+    }
     if (packet.budget.full_used, packet.budget.delta_used) != expected
         || packet.readiness_budget_exhausted()
             != (expected.0 == profile.full_review_limit
@@ -68,8 +81,39 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         state: packet.state.clone(),
         full_used: expected.0,
         delta_used: expected.1,
+        blockers: packet
+            .findings
+            .iter()
+            .filter(|item| item.kind == "blocker")
+            .map(|item| Blocker {
+                id: item.id.clone(),
+                defect_class: item.defect_class.clone(),
+                resolved: item.resolved,
+                reopen_count: item.reopen_count,
+            })
+            .collect(),
+        boundaries: packet.boundaries().to_vec(),
     });
     fs::write(path, serde_json::to_vec_pretty(&ledger)?)?;
+    Ok(())
+}
+
+fn account_for_prior_blockers(packet: &Packet, prior: Option<&Event>) -> Result<()> {
+    let prior = prior.ok_or_else(|| anyhow::anyhow!("delta has no durable predecessor"))?;
+    if prior.blockers.is_empty() || packet.boundaries().is_empty() {
+        bail!("delta must account for durable blockers and changed boundaries");
+    }
+    for old in &prior.blockers {
+        let Some(next) = packet.findings.iter().find(|item| item.id == old.id) else {
+            bail!("delta omits a prior blocker");
+        };
+        if next.kind != "blocker"
+            || next.defect_class != old.defect_class
+            || next.reopen_count < old.reopen_count
+        {
+            bail!("delta mutates durable blocker identity");
+        }
+    }
     Ok(())
 }
 

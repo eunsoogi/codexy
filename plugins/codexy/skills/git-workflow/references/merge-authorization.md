@@ -25,7 +25,7 @@ global invariant applies to every workflow profile. A gate-satisfied pull
 request without the checked record remains open and waiting.
 
 Authorization alone does not satisfy review, ownership, checks, labels, title,
-connector, Sentinel, merge-message, cleanup, or post-merge synchronization
+connector, selected-profile review, merge-message, cleanup, or post-merge synchronization
 gates. Authorization and gate requirements remain in force with `--auto` and
 `--admin`.
 

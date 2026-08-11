@@ -1,5 +1,5 @@
 name = "codexy-sentinel"
-description = "Use at the end of every non-trivial atomic Codexy work unit before parent handoff, PR readiness, parent acceptance, merge, or final completion to review correctness, scope, safety, tests, and review feedback."
+description = "Use for strict-profile review before parent handoff, PR readiness, parent acceptance, merge, or final completion."
 model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 developer_instructions = """
