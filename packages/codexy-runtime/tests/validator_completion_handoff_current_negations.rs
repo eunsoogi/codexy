@@ -32,7 +32,7 @@ fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     std::fs::write(&handoff_path, handoff)?;
     std::fs::write(
         &pr_state_path,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOWaiting","isResolved":false,"isOutdated":false,"path":"src/validation/review_thread_resolution.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}}]}}"#,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","reviewProfile":"light","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"PRRT_kwDOWaiting","isResolved":false,"isOutdated":false,"path":"src/validation/review_thread_resolution.rs","comments":{"nodes":[{"url":"https://github.com/eunsoogi/codexy/pull/174#discussion_r2"}]}}]}}"#,
     )?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }

@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use serde_json::json;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
@@ -28,6 +30,17 @@ fn validator_keeps_deferrals_and_readiness_distinct_from_completion() -> TestRes
         ),
     ] {
         accept_open_pr_handoff(&handoff)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_requires_typed_review_for_pr_and_parent_ready_handoffs() -> TestResult {
+    for handoff in ["PR ready for parent handoff.\n", "Parent handoff ready.\n"] {
+        assert!(!validate_readiness_handoff(handoff, json!({}))?.status.success());
+        let strict = validate_readiness_handoff(handoff, strict_review())?;
+        assert!(strict.status.success(), "{}", String::from_utf8_lossy(&strict.stderr));
+        assert!(validate_readiness_handoff(handoff, json!({"reviewProfile":"light"}))?.status.success());
     }
     Ok(())
 }
@@ -75,4 +88,38 @@ fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
         ),
     )?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn validate_readiness_handoff(handoff: &str, review: serde_json::Value) -> OutputResult {
+    let temp = tempfile::tempdir()?;
+    let handoff_path = temp.path().join("handoff.md");
+    let pr_state_path = temp.path().join("pr-state.json");
+    std::fs::write(&handoff_path, handoff)?;
+    let mut state = json!({
+        "number":128, "state":"OPEN", "isDraft":false, "mergeStateStatus":"CLEAN", "reviewDecision":"APPROVED",
+        "headRefName":"codexy/221-sentinel-bounded-wait-status",
+        "headRefOid":HEAD, "localHeadOid":HEAD, "remoteHeadOid":HEAD,
+        "worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status",
+        "reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}
+    });
+    state.as_object_mut().expect("state").extend(
+        review
+            .as_object()
+            .expect("review")
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone())),
+    );
+    std::fs::write(&pr_state_path, serde_json::to_vec(&state)?)?;
+    validate_completion_handoff(&handoff_path, &pr_state_path)
+}
+
+fn strict_review() -> serde_json::Value {
+    json!({
+        "reviewProfile":"strict",
+        "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":HEAD,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[]},
+        "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
+            {"id":"e-full","predecessor_event_id":null,"profile":"strict","base_oid":"base","head_oid":HEAD,"state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
+            {"id":"e-passed","predecessor_event_id":"e-full","profile":"strict","base_oid":"base","head_oid":HEAD,"state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}
+        ]}
+    })
 }
