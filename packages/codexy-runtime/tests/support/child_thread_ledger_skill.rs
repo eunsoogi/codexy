@@ -46,35 +46,19 @@ pub(crate) fn validator_completion_handoff_files(
     pr_state_path: &std::path::Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let handoff = std::fs::read_to_string(handoff_path)?;
-    let mut state =
-        serde_json::from_str::<serde_json::Value>(&std::fs::read_to_string(pr_state_path)?)?;
-    if state.get("reviewEvidence").is_none() && state.get("reviewDecision").is_some() {
-        let head = state
-            .get("headRefOid")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or_default();
-        state["reviewEvidence"] = serde_json::json!({"schema":"codexy.review-readiness.v1","head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed"});
-    }
-    validator_completion_handoff(&handoff, &serde_json::to_string(&state)?)
+    let state = std::fs::read_to_string(pr_state_path)?;
+    validator_completion_handoff(&handoff, &state)
 }
 
 pub(crate) fn validator_completion_handoff(
     handoff: &str,
     pr_state: &str,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    let mut state = serde_json::from_str::<serde_json::Value>(pr_state)?;
-    if state.get("reviewEvidence").is_none() && state.get("number").is_some() {
-        let head = state
-            .get("headRefOid")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or_default();
-        state["reviewEvidence"] = serde_json::json!({"schema":"codexy.review-readiness.v1","head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed"});
-    }
     validator_in_process_mode(
         &codexy_runtime::paths::repository_root().join("plugins/codexy"),
         Mode::CompletionHandoff {
             handoff: handoff.to_owned(),
-            pr_state: serde_json::to_string(&state)?,
+            pr_state: pr_state.to_owned(),
         },
     )
 }

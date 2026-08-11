@@ -1,13 +1,16 @@
 use std::{collections::BTreeSet, path::Path};
 
 use anyhow::{Result, bail};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     ledger,
     policy::{self, Reviewer},
     repository,
 };
+
+#[path = "packet_readiness.rs"]
+mod readiness;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -27,6 +30,7 @@ pub(super) struct Packet {
     resolution: Resolution,
     pub(super) budget: Budget,
     readiness_export: ReadinessExport,
+    escalation: Option<Escalation>,
 }
 
 #[derive(Deserialize)]
@@ -82,6 +86,13 @@ struct ReadinessExport {
     unresolved_blocker_ids: Vec<String>,
     budget_exhausted: bool,
     parent_decision_required: bool,
+}
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Escalation {
+    pub(super) from_profile: String,
+    pub(super) predecessor_event_id: String,
+    pub(super) discarded_lower_profile: bool,
 }
 
 pub(super) fn check(
@@ -163,55 +174,7 @@ fn validate(
     {
         bail!("review packet finding is not a current-head in-scope bounded finding");
     }
-    let resolved = packet
-        .findings
-        .iter()
-        .filter(|finding| finding.resolved)
-        .map(|finding| finding.id.as_str())
-        .collect::<BTreeSet<_>>();
-    let repaired = unique(
-        packet.resolution.repaired_finding_ids.iter(),
-        "repaired finding",
-    )?;
-    if repaired != resolved
-        || (!resolved.is_empty() && packet.resolution.changed_boundaries.is_empty())
-        || packet.resolution.repaired_finding_ids.iter().any(|id| {
-            !findings.contains(id.as_str())
-                || !packet
-                    .findings
-                    .iter()
-                    .any(|finding| finding.id == *id && finding.resolved)
-        })
-        || packet
-            .resolution
-            .changed_boundaries
-            .iter()
-            .any(|id| !boundaries.contains(id.as_str()))
-    {
-        bail!("review packet resolution must name resolved findings and direct boundaries");
-    }
-    let unresolved = packet
-        .findings
-        .iter()
-        .filter(|finding| finding.kind == "blocker" && !finding.resolved)
-        .map(|finding| finding.id.as_str())
-        .collect::<BTreeSet<_>>();
-    if unique(
-        packet.readiness_export.unresolved_blocker_ids.iter(),
-        "unresolved blocker",
-    )?
-    .iter()
-    .copied()
-    .collect::<BTreeSet<_>>()
-        != unresolved
-        || packet.readiness_export.head_oid != current.head_oid
-        || packet.readiness_export.profile != packet.profile
-        || packet.readiness_export.reviewer != packet.reviewer
-        || packet.readiness_export.parent_decision_required
-            != matches!(packet.state.as_str(), "parent_decision" | "unobservable")
-    {
-        bail!("review packet readiness export must be a packet-bound policy-free summary");
-    }
+    readiness::validate(packet, &findings, &boundaries, &current.head_oid)?;
     Ok(())
 }
 
@@ -240,5 +203,8 @@ impl Packet {
     }
     pub(super) const fn readiness_budget_exhausted(&self) -> bool {
         self.readiness_export.budget_exhausted
+    }
+    pub(super) fn escalation(&self) -> Option<&Escalation> {
+        self.escalation.as_ref()
     }
 }

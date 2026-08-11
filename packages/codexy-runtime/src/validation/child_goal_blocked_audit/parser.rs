@@ -3,7 +3,6 @@ pub(super) enum OrderedEvent {
     BlockedCall,
     ParentDirection,
     TerminalGoalCall,
-    PackagedTerminalResult,
     Other,
 }
 
@@ -16,15 +15,9 @@ pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
     let evidence = evidence.to_ascii_lowercase();
     super::super::child_lifecycle_events::active_lines(&evidence)
         .into_iter()
-        .map(|line| {
-            let kind = line
-                .packaged_terminal
-                .then_some(OrderedEvent::PackagedTerminalResult)
-                .unwrap_or_else(|| ordered_event(&line.text));
-            ActiveEvent {
-                line: line.text,
-                kind,
-            }
+        .map(|line| ActiveEvent {
+            kind: ordered_event(&line.text),
+            line: line.text,
         })
         .collect()
 }

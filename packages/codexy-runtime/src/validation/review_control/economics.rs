@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{Result, bail};
 use serde::Deserialize;
+use sha2::{Digest as _, Sha256};
 
 use super::{policy, repository};
 
@@ -12,7 +13,12 @@ use super::{policy, repository};
 #[serde(deny_unknown_fields)]
 struct Economics {
     schema: String,
+    status: String,
+    head_oid: Option<String>,
+    policy_sha256: Option<String>,
+    corpus_sha256: Option<String>,
     lanes: Vec<Lane>,
+    reason: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -58,7 +64,6 @@ struct Lane {
     observed_p1: u32,
     tokens: Option<u64>,
     token_source: Option<String>,
-    review_share_ppm: u32,
     seed_outcomes: Vec<SeedOutcome>,
 }
 #[derive(Deserialize)]
@@ -74,13 +79,28 @@ pub(super) fn check(
     text: &str,
 ) -> Result<()> {
     let report: Economics = serde_json::from_str(text)?;
+    if report.status == "unavailable" {
+        validate_unavailable(&report)?;
+        bail!("review economics observations are unavailable and cannot prove profile economics");
+    }
     let profiles = policy::load(plugin_root)?;
-    let corpus: Corpus = serde_json::from_str(&fs::read_to_string(
-        plugin_root.join("skills/orchestration/references/review-economics-corpus.json"),
-    )?)?;
+    let policy_bytes =
+        fs::read(plugin_root.join("skills/orchestration/references/review-profiles.json"))?;
+    let corpus_bytes =
+        fs::read(plugin_root.join("skills/orchestration/references/review-economics-corpus.json"))?;
+    let corpus: Corpus = serde_json::from_slice(&corpus_bytes)?;
     let head = repository::current_head(repository_root)?;
-    if report.schema != "codexy.review-economics.v1" || report.lanes.is_empty() {
-        bail!("review economics must use the closed v1 schema with lanes");
+    if report.schema != "codexy.review-economics.v2"
+        || report.status != "observed"
+        || report.head_oid.as_deref() != Some(&head)
+        || report.policy_sha256.as_deref() != Some(&digest(&policy_bytes))
+        || report.corpus_sha256.as_deref() != Some(&digest(&corpus_bytes))
+        || report.reason.is_some()
+        || report.lanes.is_empty()
+    {
+        bail!(
+            "review economics must bind observed repository inputs to the current policy and head"
+        );
     }
     if corpus.schema != "codexy.review-economics-corpus.v1" {
         bail!("review economics corpus schema is invalid");
@@ -125,6 +145,7 @@ pub(super) fn check(
             .ok_or_else(|| anyhow::anyhow!("economics names an unknown profile"))?;
         if lane.id.is_empty()
             || lane.implementation_ms == 0
+            || total_measured_ms(lane) == 0
             || lane.head_oid != head
             || lane.baseline_p0 != lane.observed_p0
             || lane.baseline_p1 != lane.observed_p1
@@ -133,7 +154,6 @@ pub(super) fn check(
             || lane.reopened_blockers > lane.unique_blockers
             || lane.tokens.is_some_and(|tokens| tokens == 0)
             || (lane.tokens.is_some() != (lane.token_source.as_deref() == Some("runtime")))
-            || lane.review_share_ppm != review_share(lane)
             || lane.kind != expected.kind
             || lane.profile != expected.profile
             || lane
@@ -165,6 +185,21 @@ pub(super) fn check(
     Ok(())
 }
 
+fn validate_unavailable(report: &Economics) -> Result<()> {
+    if report.schema != "codexy.review-economics.v2"
+        || report.head_oid.is_some()
+        || report.policy_sha256.is_some()
+        || report.corpus_sha256.is_some()
+        || !report.lanes.is_empty()
+        || report.reason.as_deref().is_none_or(str::is_empty)
+    {
+        bail!(
+            "unavailable review economics must record null measurements without an acceptance claim"
+        );
+    }
+    Ok(())
+}
+
 fn within_budget(values: Option<&Vec<(u64, u64)>>, limit_ppm: u64) -> bool {
     let Some(values) = values.filter(|items| !items.is_empty()) else {
         return false;
@@ -189,10 +224,13 @@ fn within_budget(values: Option<&Vec<(u64, u64)>>, limit_ppm: u64) -> bool {
     }
 }
 
-fn review_share(lane: &Lane) -> u32 {
-    let total = u128::from(lane.implementation_ms)
+fn digest(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn total_measured_ms(lane: &Lane) -> u128 {
+    u128::from(lane.implementation_ms)
         + u128::from(lane.verification_ms)
         + u128::from(lane.review_ms)
-        + u128::from(lane.repair_ms);
-    u32::try_from(u128::from(lane.review_ms) * 1_000_000 / total).unwrap_or(u32::MAX)
+        + u128::from(lane.repair_ms)
 }

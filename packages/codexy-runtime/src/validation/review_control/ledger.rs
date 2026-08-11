@@ -3,7 +3,10 @@ use std::{fs, path::Path};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
-use super::{packet::Packet, policy::Profile};
+use super::{
+    packet::{Escalation, Packet},
+    policy::{self, Profile},
+};
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -22,6 +25,7 @@ struct Event {
     delta_used: u8,
     blockers: Vec<Blocker>,
     boundaries: Vec<String>,
+    escalation: Option<Escalation>,
 }
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -93,6 +97,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
             })
             .collect(),
         boundaries: packet.boundaries().to_vec(),
+        escalation: packet.escalation().cloned(),
     });
     fs::write(path, serde_json::to_vec_pretty(&ledger)?)?;
     Ok(())
@@ -103,16 +108,33 @@ fn account_for_prior_blockers(packet: &Packet, prior: Option<&Event>) -> Result<
     if prior.blockers.is_empty() || packet.boundaries().is_empty() {
         bail!("delta must account for durable blockers and changed boundaries");
     }
+    let prior_ids = prior
+        .blockers
+        .iter()
+        .map(|blocker| blocker.id.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
     for old in &prior.blockers {
         let Some(next) = packet.findings.iter().find(|item| item.id == old.id) else {
             bail!("delta omits a prior blocker");
         };
+        let expected_reopen_count = if old.resolved && !next.resolved {
+            old.reopen_count
+                .checked_add(1)
+                .ok_or_else(|| anyhow::anyhow!("delta reopens a blocker too many times"))?
+        } else {
+            old.reopen_count
+        };
         if next.kind != "blocker"
             || next.defect_class != old.defect_class
-            || next.reopen_count < old.reopen_count
+            || next.reopen_count != expected_reopen_count
         {
             bail!("delta mutates durable blocker identity");
         }
+    }
+    if packet.findings.iter().any(|finding| {
+        finding.kind == "blocker" && finding.resolved && !prior_ids.contains(finding.id.as_str())
+    }) {
+        bail!("delta resolves a blocker outside its durable predecessor");
     }
     Ok(())
 }
@@ -123,6 +145,9 @@ fn transition(
     prior: Option<&Event>,
     same: bool,
 ) -> Result<(u8, u8)> {
+    if packet.escalation().is_some() && packet.state != "full" {
+        bail!("review packet escalation is only valid for a replacement full review");
+    }
     if profile.reviewer.is_none() {
         if packet.state == "passed" && prior.is_none() && !same {
             return Ok((0, 0));
@@ -130,7 +155,21 @@ fn transition(
         bail!("light review packets must terminate without an LLM reviewer");
     }
     match packet.state.as_str() {
-        "full" if prior.is_none() && !same => Ok((1, 0)),
+        "full" if prior.is_none() && !same && packet.escalation().is_none() => Ok((1, 0)),
+        "full"
+            if prior.is_some_and(|event| {
+                packet.escalation().is_some_and(|escalation| {
+                    escalation.discarded_lower_profile
+                        && escalation.predecessor_event_id == event.id
+                        && escalation.from_profile == event.profile
+                        && event.state == "unobservable"
+                        && event.head_oid == packet.identity_head()
+                        && policy::is_strictly_higher(&event.profile, &packet.profile)
+                })
+            }) =>
+        {
+            Ok((1, 0))
+        }
         "delta"
             if prior.is_some_and(|event| {
                 event.profile == packet.profile

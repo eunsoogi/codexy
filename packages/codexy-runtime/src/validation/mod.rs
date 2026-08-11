@@ -108,8 +108,6 @@ mod runtime;
 mod runtime_candidate_manifest;
 mod runtime_release_contract;
 mod runtime_release_schema;
-mod sentinel_handoff_status;
-mod sentinel_lifecycle;
 mod tdd_classification;
 mod touched_loc;
 mod touched_loc_remediation;

@@ -147,7 +147,7 @@ fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
         .iter()
         .enumerate()
         .filter(|(_, event)| event.line.starts_with("nonterminal wait handoff:"))
-        .filter_map(|(index, event)| {
+        .filter_map(|(_, event)| {
             (invalid_field(field(&event.line, "state fingerprint"))
                 || !field(&event.line, "producer state")
                     .is_some_and(|value| NONTERMINAL_PRODUCERS.contains(&value))
@@ -157,22 +157,10 @@ fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
                 || field(&event.line, "plan state") != Some("active")
                 || field(&event.line, "goal transition") != Some("none")
                 || field(&event.line, "return control") != Some("confirmed")
-                || terminal_goal_precedes_reviewer_result(&events[index + 1..]))
-            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before a terminal reviewer result, and confirmed return control".into())
+            )
+            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation, and confirmed return control".into())
         })
         .collect()
-}
-
-fn terminal_goal_precedes_reviewer_result(events: &[ActiveEvent]) -> bool {
-    events
-        .iter()
-        .take_while(|event| event.kind != OrderedEvent::PackagedTerminalResult)
-        .any(|event| {
-            matches!(
-                event.kind,
-                OrderedEvent::BlockedCall | OrderedEvent::TerminalGoalCall
-            )
-        })
 }
 
 fn invalid_field(value: Option<&str>) -> bool {

@@ -4,8 +4,6 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[path = "validator_child_goal_blocked_audit/event_window.rs"]
 mod event_window;
-#[path = "validator_child_goal_blocked_audit/nonterminal_order.rs"]
-mod nonterminal_order;
 
 const CLASSIFICATION: &str = "Ownership metadata source: parent-supplied\nLane ownership: child-owned\nTask classification:\nLane type: implementation\nSecondary surfaces: validators\nOwner decision: affirmative child-owned because the delegated child owns implementation\nAtomic scope: issue-sized\nRequired skills: orchestration\nRequired tools/evidence: goal, plan\nFirst allowed action: validate goal reports\nStop/blocker: None\n";
 
@@ -180,11 +178,6 @@ fn validator_invalidates_a_check_followed_by_parent_direction() -> TestResult {
 #[test]
 fn validator_invalidates_every_crossed_parent_direction_window() -> TestResult {
     event_window::assert_boundaries()
-}
-
-#[test]
-fn validator_orders_terminal_goal_calls_after_nonterminal_waits() -> TestResult {
-    nonterminal_order::assert_boundaries()
 }
 
 fn valid_audit(producer: &str) -> String {

@@ -7,6 +7,8 @@ use crate::support::TestResult;
 
 #[path = "validator_review_control/economics.rs"]
 mod review_economics;
+#[path = "validator_review_control/ledger.rs"]
+mod review_ledger;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {
@@ -132,9 +134,27 @@ fn named_inspector_precedes_generic_child_routing_without_caller_override() -> T
 
 #[test]
 fn economics_rejects_missing_parity_and_review_share_overages() -> TestResult {
-    let fixture = crate::support::plugin_fixture()?; let mut valid = review_economics::report(); review_economics::seed_outcomes(&mut valid, &git(["rev-parse", "HEAD"]));
+    let fixture = crate::support::plugin_fixture()?; let mut valid = review_economics::report(); review_economics::bind(&mut valid, fixture.root(), &git(["rev-parse", "HEAD"]));
     assert!(check_economics(fixture.root(), &valid)?.status.success());
-    for mutate in [|value: &mut Value| value["lanes"][1]["baseline_p0"] = json!(2), |value: &mut Value| value["lanes"][0]["review_ms"] = json!(31), review_economics::strict_overage] { let mut invalid = valid.clone(); mutate(&mut invalid); assert!(!check_economics(fixture.root(), &invalid)?.status.success()); }
+    for mutate in [|value: &mut Value| value["lanes"][1]["baseline_p0"] = json!(2), |value: &mut Value| value["lanes"][0]["review_ms"] = json!(50), review_economics::strict_overage] { let mut invalid = valid.clone(); mutate(&mut invalid); assert!(!check_economics(fixture.root(), &invalid)?.status.success()); }
+    let unavailable = review_economics::unavailable();
+    let output = check_economics(fixture.root(), &unavailable)?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unavailable"));
+    Ok(())
+}
+
+#[test]
+fn repository_economics_result_is_readable_and_fails_closed_when_unobserved() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let report = fs::read_to_string(
+        fixture
+            .root()
+            .join("skills/orchestration/references/review-economics-result.json"),
+    )?;
+    let output = check_economics(fixture.root(), &serde_json::from_str(&report)?)?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unavailable"));
     Ok(())
 }
 
