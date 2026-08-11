@@ -19,6 +19,28 @@ pub(super) fn assert_boundaries() -> TestResult {
     ))?;
     assert!(missing_information.status.success());
 
+    let ordinary_domain_repetition = run_validator(&blocked_evidence(
+        valid_gate()
+            .replace(
+                "Should the irreversible migration preserve legacy identifiers or replace them?",
+                "Should the account migration preserve account identifiers or require replacement?",
+            )
+            .replace(
+                "preserve identifiers and retain compatibility|replace identifiers and require migration",
+                "preserve existing identifiers and keep existing compatibility|replace existing identifiers and require migration",
+            )
+            .replace(
+                "the choice changes persisted identifiers and migration behavior",
+                "the account migration choice changes account identifiers and compatibility",
+            ),
+        valid_pre_mutation(),
+    ))?;
+    assert!(
+        ordinary_domain_repetition.status.success(),
+        "ordinary repeated domain terms were rejected: {}",
+        String::from_utf8_lossy(&ordinary_domain_repetition.stderr)
+    );
+
     for (lane, producer, wake_route, prior_event) in [
         ("547-sentinel", "sentinel-running", "sentinel-event", ""),
         (
@@ -93,7 +115,6 @@ pub(super) fn assert_boundaries() -> TestResult {
         valid_gate().replace("Should the irreversible migration preserve legacy identifiers or replace them?", "x x x x x x x x x x x x?"),
         valid_gate().replace("Should the irreversible migration preserve legacy identifiers or replace them?", "choice choice choice choice?"),
         valid_gate().replace("Should the irreversible migration preserve legacy identifiers or replace them?", "choose migration choose migration?"),
-        valid_gate().replace("Should the irreversible migration preserve legacy identifiers or replace them?", "alpha beta gamma alpha?"),
         valid_gate().replace("preserve identifiers and retain compatibility|replace identifiers and require migration", "same branch|same branch"),
         valid_gate().replace("preserve identifiers and retain compatibility|replace identifiers and require migration", "none|unavailable"),
         valid_gate().replace("preserve identifiers and retain compatibility|replace identifiers and require migration", "x|y"),

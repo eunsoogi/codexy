@@ -130,6 +130,9 @@ fn substantive_identity(
     (words.len() >= minimum_words
         && characters >= minimum_characters
         && concepts.len() >= minimum_concepts
-        && concepts.len() == content.len())
-    .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
+        && (concepts.len() == content.len()
+            || (content.len() >= 5
+                && concepts.len() >= minimum_concepts + 2
+                && concepts.len() * 5 >= content.len() * 4)))
+        .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
 }

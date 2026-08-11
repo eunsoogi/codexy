@@ -65,7 +65,6 @@ const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
 const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 #[derive(Clone, Copy)]
 struct ReviewSubject {
-    start: usize,
     end: usize,
     negated: bool,
 }
@@ -110,8 +109,14 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
     let resolution_states = words
         .iter()
         .enumerate()
-        .filter(|(_, word)| matches!(**word, "resolved" | "unresolved"))
-        .filter_map(|(index, word)| classify_resolution(words, &subjects, index, word))
+        .filter(|(_, word)| matches!(**word, "resolved" | "unresolved" | "open"))
+        .flat_map(|(index, word)| {
+            subjects.iter().filter_map(move |subject| {
+                review_subject_owns_state(words, *subject, index)
+                    .then(|| classify_resolution(words, *subject, index, word))
+                    .flatten()
+            })
+        })
         .collect::<Vec<_>>();
     if resolution_states.contains(&WaitDisposition::Actionable) {
         return Some(WaitDisposition::Actionable);
@@ -133,11 +138,10 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
 
 fn classify_resolution(
     words: &[&str],
-    subjects: &[ReviewSubject],
+    subject: ReviewSubject,
     index: usize,
     state: &str,
 ) -> Option<WaitDisposition> {
-    let subject = closest_subject(subjects, index)?;
     if subject.negated {
         return Some(WaitDisposition::Nonterminal);
     }
@@ -145,20 +149,17 @@ fn classify_resolution(
         .iter()
         .any(|word| NEGATIONS.contains(word));
     match (state, state_negated) {
-        ("unresolved", false) | ("resolved", true) => Some(WaitDisposition::Actionable),
-        ("resolved", false) | ("unresolved", true) => Some(WaitDisposition::Nonterminal),
+        ("unresolved" | "open", false) | ("resolved", true) => Some(WaitDisposition::Actionable),
+        ("resolved", false) | ("unresolved" | "open", true) => Some(WaitDisposition::Nonterminal),
         _ => None,
     }
 }
 
-fn closest_subject(subjects: &[ReviewSubject], state_index: usize) -> Option<ReviewSubject> {
-    subjects.iter().copied().min_by_key(|subject| {
-        if subject.end <= state_index {
-            state_index - subject.end
-        } else {
-            subject.start.saturating_sub(state_index)
-        }
-    })
+fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {
+    state_index >= subject.end
+        && !words[subject.end..state_index]
+            .iter()
+            .any(|word| matches!(*word, "resolved" | "unresolved" | "open"))
 }
 
 fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
@@ -167,7 +168,6 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
         .flat_map(|phrase| {
             let length = word_count(phrase);
             phrase_positions(words, phrase).map(move |start| ReviewSubject {
-                start,
                 end: start + length,
                 negated: subject_is_negated(words, start),
             })
@@ -178,7 +178,6 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             && words[index.saturating_sub(3)..words.len().min(index + 4)].contains(&"maintainer")
         {
             subjects.push(ReviewSubject {
-                start: index,
                 end: index + 1,
                 negated: subject_is_negated(words, index),
             });

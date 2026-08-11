@@ -112,6 +112,34 @@ fn validator_prioritizes_actionable_review_over_operational_context() -> TestRes
 }
 
 #[test]
+fn validator_binds_review_state_to_its_predicate() -> TestResult {
+    for handoff in [
+        "Blocked: review feedback is resolved while work remains unresolved and incomplete.",
+        "Blocked: work remains open while review feedback is resolved.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            !output.status.success(),
+            "operational state was incorrectly attached to review feedback: {handoff}"
+        );
+        assert!(stderr(&output).contains("waiting state"));
+    }
+
+    for handoff in [
+        "Blocked: review feedback remains unresolved while work is incomplete.",
+        "Blocked: review feedback remains open while work is incomplete.",
+    ] {
+        let output = validate(handoff)?;
+        assert!(
+            output.status.success(),
+            "review-owned actionable state was rejected: {handoff}\n{}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",
