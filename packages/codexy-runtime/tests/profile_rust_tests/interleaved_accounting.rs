@@ -70,8 +70,7 @@ assert_no_inference("target boundary", (
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 from profile_rust_receipts import SCHEMA, load, write
-from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets, platform_counts
-import contextlib, copy, io
+from profile_rust_shards import SHARDS, aggregate, canonical_tests, owned_targets
 panic_output = "\n".join((
     "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
     "test contract::panic - should panic ... ok",
@@ -109,71 +108,15 @@ index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=re
 if index_tree != sys.argv[2]:
     raise SystemExit(f"private index tree drift: {index_tree!r} != {sys.argv[2]!r}")
 targets = sorted(module.declared_test_targets(repository))
-authoritative_counts = platform_counts(repository)
-if set(authoritative_counts) != {"posix", "windows"} or any(not isinstance(count, int) or count < 1 for count in authoritative_counts.values()):
-    raise SystemExit(f"invalid authoritative platform shape: {authoritative_counts!r}")
-expected_integrated_counts = {"posix": 2171, "windows": 2050}
-if authoritative_counts != expected_integrated_counts:
-    raise SystemExit(
-        f"integrated cardinality authority drift: "
-        f"{authoritative_counts!r} != {expected_integrated_counts!r}"
-    )
-def invalid_inventory_failure(invalid_inventory):
-    with tempfile.TemporaryDirectory() as directory:
-        root = pathlib.Path(directory); (root / "scripts").mkdir(); receipts = root / "receipts"; receipts.mkdir()
-        (root / "scripts" / "profile_rust_shard_inventory.json").write_text(__import__("json").dumps(invalid_inventory))
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output): status = aggregate(receipts, root)
-        if status != 1 or not output.getvalue().startswith("aggregate-receipts\t0\tFAIL\tinvalid Rust shard inventory"):
-            raise SystemExit(f"invalid authoritative inventory escaped aggregate failure: {invalid_inventory!r} {status} {output.getvalue()!r}")
-for invalid_inventory in ({}, {"schema": "codexy.rust-shard.inventory/v1", "platform_counts": {"posix": 1}}, [], None):
-    invalid_inventory_failure(invalid_inventory)
+platforms = ("posix", "windows")
 def receipt_set(directory):
     rows = []
-    for platform, count in authoritative_counts.items():
+    for platform in platforms:
         for index, shard in enumerate(SHARDS):
-            size = count // len(SHARDS) + (index < count % len(SHARDS))
-            tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
-            value = {"schema": SCHEMA, "state": "PASS", "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "run_id": 1, "run_attempt": 1, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
+            tests = [f"suite_all::{platform}_{shard}_baseline"]
+            value = {"schema": SCHEMA, "state": "PASS", "status": 0, "platform": platform, "shard": shard, "argv": SHARDS[shard], "head": head, "index_tree": index_tree, "run_id": 1, "run_attempt": 1, "tests": tests, "digest": __import__("profile_rust_receipts").digest(Counter(tests)), "listed_digest": __import__("profile_rust_receipts").digest(Counter(tests)), "physical_targets": sorted(owned_targets(set(targets), shard)), "elapsed": 1, "started": index, "finished": index + 1}
             rows.append(value)
-    for platform, count in authoritative_counts.items():
-        if sum(len(value["tests"]) for value in rows if value["platform"] == platform) != count:
-            raise SystemExit(f"fixture distribution lost authoritative inventory for {platform}")
     return rows
-def mutate_one_identity(rows, platform, delta):
-    value = next(value for value in rows if value["platform"] == platform)
-    if delta < 0:
-        value["tests"].pop()
-    else:
-        value["tests"].append(f"suite_all::{platform}_identity_extra")
-    tests = Counter(value["tests"])
-    value["digest"] = __import__("profile_rust_receipts").digest(tests)
-    value["listed_digest"] = __import__("profile_rust_receipts").digest(tests)
-def assert_cardinality_only(before, rows, platform, delta):
-    expected = {(platform, shard) for platform in authoritative_counts for shard in SHARDS}
-    found = {(value["platform"], value["shard"]) for value in rows}
-    if len(rows) != len(expected) or found != expected:
-        raise SystemExit(f"receipt topology changed: rows={len(rows)} found={found!r}")
-    changed = []
-    for original, value in zip(before, rows):
-        if original["tests"] != value["tests"]:
-            changed.append((original, value))
-        elif original != value:
-            raise SystemExit(f"non-inventory receipt field changed: {original!r} -> {value!r}")
-    if len(changed) != 1 or changed[0][0]["platform"] != platform:
-        raise SystemExit(f"expected one {platform} canonical-identity mutation: {changed!r}")
-    original, value = changed[0]
-    stable = ("schema", "state", "platform", "shard", "argv", "head", "index_tree", "run_id", "run_attempt", "physical_targets", "elapsed", "started", "finished")
-    if any(original[key] != value[key] for key in stable) or len(value["tests"]) != len(original["tests"]) + delta:
-        raise SystemExit(f"mutation exceeded one canonical identity: {original!r} -> {value!r}")
-    for value in rows:
-        tests = Counter(value["tests"])
-        if value["state"] != "PASS" or value["digest"] != __import__("profile_rust_receipts").digest(tests) or value["listed_digest"] != __import__("profile_rust_receipts").digest(tests):
-            raise SystemExit(f"receipt validity changed: {value!r}")
-    counts = {name: sum(len(value["tests"]) for value in rows if value["platform"] == name) for name in authoritative_counts}
-    expected_counts = dict(authoritative_counts); expected_counts[platform] += delta
-    if counts != expected_counts:
-        raise SystemExit(f"expected only cardinality delta: counts={counts!r} expected={expected_counts!r}")
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
@@ -183,13 +126,14 @@ def rehash(value):
     observed = Counter(value["tests"])
     value["digest"] = __import__("profile_rust_receipts").digest(observed)
     value["listed_digest"] = __import__("profile_rust_receipts").digest(observed)
-def one_short(rows):
-    rows[0]["tests"].pop()
+def valid_new_unique_test(rows):
+    rows[0]["tests"].append("suite_all::posix_new_unique_test")
     rehash(rows[0])
-def one_extra(rows):
-    rows[-1]["tests"].append("suite_archive::authoritative_inventory_extra")
-    rehash(rows[-1])
+def duplicate_cross_shard_identity(rows):
+    rows[1]["tests"].append(rows[0]["tests"][0])
+    rehash(rows[1])
 check("complete 14 receipt set", lambda rows: None, 0)
+check("valid new unique test receipt", valid_new_unique_test, 0)
 with tempfile.TemporaryDirectory() as directory:
     root = pathlib.Path(directory); rows = receipt_set(root)[:7]
     for index, value in enumerate(rows): write(root / f"{index}.json", value)
@@ -211,23 +155,13 @@ def real_retries(rows):
             value["started"] += 3600
             value["finished"] += 3600
 check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
-check("authenticated GitHub retry receipt provenance", real_retries, 0)
-def check_cardinality_delta(label, platform, delta):
-    with tempfile.TemporaryDirectory() as directory:
-        root = pathlib.Path(directory); rows = receipt_set(root); before = copy.deepcopy(rows); mutate_one_identity(rows, platform, delta)
-        assert_cardinality_only(before, rows, platform, delta)
-        for index, value in enumerate(rows): write(root / f"{index}.json", value)
-        if aggregate(root, repository) != 1: raise SystemExit(label)
-check_cardinality_delta("posix one canonical identity missing", "posix", -1)
-check_cardinality_delta("posix one canonical identity extra", "posix", 1)
-check_cardinality_delta("windows one canonical identity missing", "windows", -1)
-check_cardinality_delta("windows one canonical identity extra", "windows", 1)
+check("mixed GitHub retry receipt provenance", real_retries, 1)
 for label, mutate in (
     ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
     ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
-    ("pending", lambda rows: rows[0].update(state="PENDING")), ("one short", one_short), ("one extra", one_extra),
+    ("pending", lambda rows: rows[0].update(state="PENDING")), ("missing process status", lambda rows: rows[0].pop("status")), ("nonzero process status", lambda rows: rows[0].update(status=1)), ("boolean process status", lambda rows: rows[0].update(status=False)), ("duplicate cross-shard identity", duplicate_cross_shard_identity),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),

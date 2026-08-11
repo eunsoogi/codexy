@@ -10,32 +10,20 @@ const ARCHITECTURE_PATHS: &[(&str, &str)] = &[
         "tests/validator_prompt_metadata.rs",
     ),
     (
-        "packages/codexy-runtime/src/validation/instruction_policy.rs",
-        "src/validation/instruction_policy.rs",
+        "packages/codexy-runtime/src/validation/manifest.rs",
+        "src/validation/manifest.rs",
     ),
     (
-        "packages/codexy-runtime/tests/validator_instruction_policy.rs",
-        "tests/validator_instruction_policy.rs",
+        "packages/codexy-runtime/src/validation/markdown.rs",
+        "src/validation/markdown.rs",
     ),
     (
-        "packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs",
-        "src/validation/instruction_policy/runtime_heartbeat.rs",
+        "packages/codexy-runtime/src/validation/mcp.rs",
+        "src/validation/mcp.rs",
     ),
     (
-        "packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs",
-        "src/validation/instruction_policy/sentinel_scope_policy.rs",
-    ),
-    (
-        "packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs",
-        "src/validation/instruction_policy/child_thread_ledger.rs",
-    ),
-    (
-        "packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs",
-        "src/validation/instruction_policy/loc_policy/surfaces.rs",
-    ),
-    (
-        "packages/codexy-runtime/src/validation/orchestration_routing.rs",
-        "src/validation/orchestration_routing.rs",
+        "packages/codexy-runtime/src/validation/lsp.rs",
+        "src/validation/lsp.rs",
     ),
     (
         "packages/codexy-runtime/tests/architecture_docs_inventory.rs",
@@ -44,14 +32,6 @@ const ARCHITECTURE_PATHS: &[(&str, &str)] = &[
     (
         "packages/codexy-runtime/tests/skill_boundary_taxonomy.rs",
         "tests/skill_boundary_taxonomy.rs",
-    ),
-    (
-        "packages/codexy-runtime/tests/structured_contract*.rs",
-        "tests/structured_contract*.rs",
-    ),
-    (
-        "packages/codexy-runtime/tests/task_classification_presentation.rs",
-        "tests/task_classification_presentation.rs",
     ),
 ];
 const BOUNDARY_PATHS: &[(&str, &str)] = &[

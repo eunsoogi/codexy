@@ -64,7 +64,6 @@ mod completion_handoff_pending_worktree_search;
 mod completion_handoff_pending_worktree_segments;
 mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
-mod connector_review_policy;
 mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
@@ -73,10 +72,6 @@ mod getcodexy_component_contract;
 mod github_labels;
 mod handoff_claims;
 mod hooks;
-mod instruction_policy;
-mod instruction_policy_match;
-mod instruction_policy_purpose;
-mod instruction_policy_text;
 mod issue_intake;
 mod issue_intake_receipt;
 mod lsp;
@@ -88,23 +83,14 @@ mod mcp_runtime;
 mod merge_authorization;
 mod merge_authorization_contract;
 mod merge_authorization_json;
-mod merge_authorization_policy;
 mod merge_message;
 mod mode;
 mod mode_dispatch;
-mod orchestration_routing;
-mod orchestration_routing_api;
-mod orchestration_routing_assignment;
-mod orchestration_routing_effort;
-mod orchestration_routing_luna_policy;
-mod orchestration_routing_override;
-mod orchestration_routing_semantics;
 mod prompt_yaml;
 mod readiness_context;
 mod release_publish_contract;
 mod removed_mcp;
 mod repository_skill_root;
-mod review_response_cluster;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -113,6 +99,10 @@ mod review_thread_waiting_phrases;
 mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
+mod routing_json;
+mod routing_measurement;
+mod routing_measurement_schema;
+mod routing_policy;
 mod runtime;
 mod runtime_candidate_manifest;
 mod runtime_release_contract;
@@ -135,8 +125,6 @@ use anyhow::Result;
 
 pub use mode::Mode;
 pub use mode_dispatch::{errors, run};
-pub use orchestration_routing_api::diagnostics as orchestration_routing_diagnostics;
-pub use review_response_cluster::diagnostics as review_response_cluster_diagnostics;
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
 
 /// Returns the LSP file extensions covered by Codexy validation metadata.
@@ -160,28 +148,20 @@ pub fn touched_loc_diagnostics(root: &Path, base_ref: &str) -> Result<Vec<String
     touched_loc::diagnostics_at(root, base_ref)
 }
 
-/// Returns instruction-policy diagnostics for one explicit surface.
-///
-/// # Errors
-///
-/// Returns an error when the surface cannot be read.
-pub fn instruction_policy_diagnostics(path: &Path) -> Result<Vec<String>> {
-    let text = std::fs::read_to_string(path)?;
-    let mut errors = Vec::new();
-    instruction_policy::check_surface(path, &text, &mut errors);
-    Ok(errors)
-}
-
-/// Returns global diagnostics for the canonical merge-authorization policy.
-#[must_use]
-pub fn merge_authorization_policy_diagnostics(plugin_root: &Path) -> Vec<String> {
-    merge_authorization_policy::check(plugin_root)
-}
-
 /// Returns diagnostics for one authorization record and captured PR state.
 #[must_use]
 pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> Vec<String> {
     merge_authorization::check(authorization, pr_state)
+}
+
+/// Resolves one typed child-routing request from the packaged policy data.
+///
+/// # Errors
+///
+/// Returns an error for unreadable, malformed, or incomplete policy, request,
+/// or routing-measurement artifacts.
+pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
+    routing_policy::resolve(plugin_root, request)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

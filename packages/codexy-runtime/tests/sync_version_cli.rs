@@ -185,6 +185,10 @@ pub(super) fn archive_repository(
         "plugins/codexy/hooks/capability-contract.json",
         "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
         "plugins/codexy/skills/orchestration/references/workflow-profiles.json",
+        "plugins/codexy/skills/orchestration/references/child-routing-policy.json",
+        "plugins/codexy/skills/orchestration/references/routing-evaluation-corpus.json",
+        "plugins/codexy/skills/orchestration/references/routing-evaluation-results.schema.json",
+        "plugins/codexy/skills/orchestration/references/routing-evaluation-results.json",
         "plugins/codexy/skills/orchestration/SKILL.md",
         "plugins/codexy/skills/orchestration/agents/openai.yaml",
     ] {
