@@ -15,9 +15,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_clean = claims::clean(&text);
     let claims_synced = claims::synced(&text);
     let claims_pushed = claims::pushed(&text);
-    let claims_bare_pr_ready = claims_pr_ready && has_standalone_ready_line(&text);
-    let claims_current_pr_readiness = claims_bare_pr_ready
-        || (claims_child_readiness && (claims_pr_ready || claims_synced || claims_pushed));
+    let claims_current_pr_readiness = is_current_pr_readiness(handoff);
     let mut errors = Vec::new();
     errors.extend(
         negative_proof_labels(
@@ -110,13 +108,15 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     errors
 }
 
-pub(super) fn claims_pr_ready(handoff: &str) -> bool {
+pub(super) fn is_current_pr_readiness(handoff: &str) -> bool {
     let normalized = handoff.to_ascii_lowercase();
     let text = super::readiness_context::current_text(&normalized);
     let claims_pr_ready = claims::pr_ready(&text);
-    claims_pr_ready
-        && (claims::standalone_ready_line(&text)
-            || (claims::child_readiness(&text) && claims_pr_ready))
+    let claims_child_readiness = claims::child_readiness(&text);
+    let claims_synced = claims::synced(&text);
+    let claims_pushed = claims::pushed(&text);
+    (claims_pr_ready && has_standalone_ready_line(&text))
+        || (claims_child_readiness && (claims_pr_ready || claims_synced || claims_pushed))
 }
 
 fn negative_proof_labels(
