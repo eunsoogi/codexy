@@ -1,8 +1,9 @@
 const READINESS_WORDS: [&str; 2] = ["pr", "merge"];
 const STATUS_WORDS: [&str; 3] = ["blocker", "blockers", "status"];
-const PENDING_WORDS: [&str; 3] = ["blocked", "unresolved", "waiting"];
 
-pub(super) fn is_neutral_heading(fragment: &str) -> bool {
+use crate::validation::readiness_state::{ReadinessState, classify};
+
+pub(crate) fn is_neutral_heading(fragment: &str) -> bool {
     let Some((heading, value)) = fragment.trim().split_once(':') else {
         return false;
     };
@@ -23,18 +24,7 @@ fn is_readiness_heading(words: &[&str]) -> bool {
 }
 
 fn is_pending_status(words: &[&str]) -> bool {
-    PENDING_WORDS.iter().any(|pending| words.contains(pending))
-        || has_word_pair(words, "not", "ready")
-        || has_word_pair(words, "not", "complete")
-}
-
-fn has_word_pair(words: &[&str], first: &str, second: &str) -> bool {
-    words
-        .windows(2)
-        .any(|pair| pair[0] == first && pair[1] == second)
-        || words
-            .windows(3)
-            .any(|pair| pair[0] == first && pair[2] == second)
+    matches!(classify(&words.join(" ")), Some(ReadinessState::Neutral))
 }
 
 fn words(text: &str) -> Vec<&str> {

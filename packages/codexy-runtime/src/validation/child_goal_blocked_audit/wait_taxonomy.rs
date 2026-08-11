@@ -146,12 +146,37 @@ fn classify_resolution(
     if subject.negated {
         return Some(WaitDisposition::Nonterminal);
     }
-    let state_negated = words[..index].iter().any(|word| NEGATIONS.contains(word));
+    let state_negated = local_state_negation(words, index);
     match (state, state_negated) {
         ("unresolved" | "open", false) | ("resolved", true) => Some(WaitDisposition::Actionable),
         ("resolved", false) | ("unresolved" | "open", true) => Some(WaitDisposition::Nonterminal),
         _ => None,
     }
+}
+
+fn local_state_negation(words: &[&str], state_index: usize) -> bool {
+    let predicate_start = words[..state_index]
+        .iter()
+        .rposition(|word| {
+            matches!(
+                *word,
+                "resolved"
+                    | "unresolved"
+                    | "open"
+                    | "pending"
+                    | "waiting"
+                    | "awaiting"
+                    | "queued"
+                    | "running"
+                    | "idle"
+                    | "unavailable"
+                    | "processing"
+            )
+        })
+        .map_or(0, |index| index + 1);
+    words[predicate_start..state_index]
+        .iter()
+        .any(|word| NEGATIONS.contains(word))
 }
 
 fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {

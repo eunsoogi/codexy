@@ -1,5 +1,5 @@
 const WAITING_STATE_ERROR: &str = "pending child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
-mod readiness_status;
+pub(crate) mod readiness_status;
 
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
 use super::child_goal_blocked_audit::wait_taxonomy::{

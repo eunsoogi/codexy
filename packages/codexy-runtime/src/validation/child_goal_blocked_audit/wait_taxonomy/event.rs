@@ -60,7 +60,7 @@ const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 
 const OPERATIONAL_PREDICATES: &[&str] = &["result", "wait"];
 const REVIEW_PREDICATES: &[&str] = &["resolved", "unresolved", "open"];
-const PREDICATE_BOUNDARY_TERMINALS: &[&str] = &["available"];
+const PREDICATE_BOUNDARY_TERMINALS: &[&str] = &["available", "has returned"];
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum SubjectKind {
@@ -162,16 +162,21 @@ fn event_start(subjects: &[Subject], index: usize, words: &[&str]) -> Option<usi
     let subject = subjects[index];
     let prior = subjects[index - 1];
     (subject.start > 0
-        && coordination(words, subjects[index - 1], subjects[index]) == Coordination::Independent
+        && coordination(words, subjects, index) == Coordination::Independent
         && (subject_group(subject.kind) != subject_group(prior.kind)
             || has_local_predicate(words, prior, subject.start)))
     .then(|| local_negation_start(words, prior.end, subject.start).unwrap_or(subject.start))
 }
 
-fn coordination(words: &[&str], prior: Subject, subject: Subject) -> Coordination {
+fn coordination(words: &[&str], subjects: &[Subject], index: usize) -> Coordination {
     let before = |start: usize| start.checked_sub(1).and_then(|index| words.get(index));
-    let shared_negation =
-        before(prior.start) == Some(&"neither") && before(subject.start) == Some(&"nor");
+    let mut first = index;
+    while first > 0 && before(subjects[first].start) == Some(&"nor") {
+        first -= 1;
+    }
+    let shared_negation = first < index
+        && before(subjects[first].start) == Some(&"neither")
+        && before(subjects[index].start) == Some(&"nor");
     shared_negation
         .then_some(Coordination::SharedNegation)
         .unwrap_or(Coordination::Independent)

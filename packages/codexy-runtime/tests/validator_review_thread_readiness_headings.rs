@@ -14,6 +14,8 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
         "Maintainer override: yes. PR readiness status: not ready.\n",
         "Maintainer override: yes. merge readiness status: not currently ready.\n",
         "Maintainer override: yes. merge readiness status: not yet complete.\n",
+        "Maintainer override: yes. merge-readiness blockers: pending CI.\n",
+        "Maintainer override: yes. PR readiness status: incomplete verification.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(
@@ -50,6 +52,7 @@ fn validator_rejects_wait_events_after_neutral_readiness_status() -> TestResult 
         "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: CI queued.\n",
         "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: Sentinel running.\n",
         "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: review feedback pending.\n",
+        "Maintainer override: yes. merge-readiness blockers: pending CI. Blocked: CI queued.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(

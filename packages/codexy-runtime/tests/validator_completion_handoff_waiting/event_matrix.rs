@@ -28,6 +28,15 @@ fn validator_keeps_pending_review_separate_from_later_operational_open() -> Test
 }
 
 #[test]
+fn validator_binds_review_negation_to_its_local_predicate() -> TestResult {
+    assert_disposition(
+        "Blocked: review feedback is not pending but remains unresolved.",
+        true,
+    )?;
+    assert_disposition("Blocked: review feedback is resolved.", false)
+}
+
+#[test]
 fn validator_keeps_ci_negation_out_of_later_review_event() -> TestResult {
     assert_disposition(
         "Blocked: no CI result and review feedback remains unresolved.",
@@ -63,6 +72,18 @@ fn validator_keeps_coordinated_external_predicate_local() -> TestResult {
     )?;
     assert_disposition(
         "Blocked: no CI result and review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
+fn validator_keeps_all_neither_nor_operands_with_one_predicate() -> TestResult {
+    assert_disposition(
+        "Blocked: neither CI nor Sentinel nor reviewer has returned.",
+        false,
+    )?;
+    assert_disposition(
+        "Blocked: neither CI nor Sentinel nor reviewer has returned but review feedback remains unresolved.",
         true,
     )
 }
