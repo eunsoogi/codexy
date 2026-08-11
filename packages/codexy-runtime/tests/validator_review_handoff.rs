@@ -28,6 +28,8 @@ fn completion_handoff_binds_the_terminal_event_of_its_review_ledger() -> TestRes
         |state: &mut Value| state["reviewEvidence"]["event_id"] = json!("other"),
         |state: &mut Value| state["reviewLedger"]["events"][0]["head_oid"] = json!("stale"),
         |state: &mut Value| state["reviewLedger"]["events"][0]["state"] = json!("delta"),
+        |state: &mut Value| state["reviewLedger"]["events"][1]["base_oid"] = json!("other"),
+        |state: &mut Value| state["reviewLedger"]["events"][1]["boundaries"] = json!(["other"]),
         |state: &mut Value| { state["reviewLedger"]["events"].as_array_mut().expect("events").remove(0); },
     ] {
         assert!(!validate_bound(mutate)?.status.success());
@@ -61,6 +63,8 @@ fn completion_handoff_accepts_the_escalated_parent_decision_cycle() -> TestResul
     for mutate in [
         |state: &mut Value| state["reviewLedger"]["events"][3]["predecessor_event_id"] = json!("e-strict"),
         |state: &mut Value| state["reviewLedger"]["events"][3]["head_oid"] = json!("stale"),
+        |state: &mut Value| state["reviewLedger"]["events"][3]["base_oid"] = json!("other"),
+        |state: &mut Value| state["reviewLedger"]["events"][3]["boundaries"] = json!(["other"]),
     ] {
         assert!(!validate_escalated_parent_decision(mutate)?.status.success());
     }
@@ -146,14 +150,14 @@ fn validate_light() -> TestResult<std::process::Output> {
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     fs::write(
         &state,
-        r#"{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewProfile":"light"}"#,
+        r#"{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"NOT_REQUIRED","reviewProfile":"light"}"#,
     )?;
     crate::support::validator_completion_handoff_files(&handoff, &state)
 }
 
 fn state_json(evidence: &str, profile: Option<&str>) -> String {
     let profile = profile.map_or("null".to_owned(), |value| format!("\"{value}\""));
-    format!(r#"{{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewProfile":{profile},"reviewEvidence":{evidence}}}"#)
+    format!(r#"{{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"APPROVED","reviewProfile":{profile},"reviewEvidence":{evidence}}}"#)
 }
 
 fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::Output> {
@@ -162,7 +166,7 @@ fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::O
     let state_path = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     let mut state = json!({
-        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"h",
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"h", "reviewDecision":"APPROVED",
         "reviewProfile":"standard",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"h","profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"h","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","base_oid":"base","head_oid":"h","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}
@@ -180,7 +184,7 @@ fn validate_escalated_delta(
     let state_path = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     let mut state = json!({
-        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair",
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair", "reviewDecision":"APPROVED",
         "reviewProfile":"strict",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
@@ -203,7 +207,7 @@ fn validate_escalated_parent_decision(
     let state_path = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     let mut state = json!({
-        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair",
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair", "reviewDecision":"PARENT_DECISION",
         "reviewProfile":"strict",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"parent_decision","event_id":"e-parent","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
@@ -224,7 +228,7 @@ fn validate_delta_base(mutate: impl FnOnce(&mut Value)) -> TestResult<std::proce
     let state_path = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     let mut state = json!({
-        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair",
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair", "reviewDecision":"APPROVED",
         "reviewProfile":"standard",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[

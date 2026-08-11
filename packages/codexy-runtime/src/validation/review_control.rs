@@ -3,12 +3,12 @@ use std::path::Path;
 use anyhow::Result;
 
 mod economics;
-mod handoff;
 mod history;
 mod ledger;
 mod packet;
 mod policy;
 mod repository;
+mod terminal;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     policy::load(plugin_root).map_or_else(|error| vec![error.to_string()], |_| Vec::new())
@@ -36,5 +36,9 @@ pub(super) fn check_economics(
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {
-    handoff::check(plugin_root, pr_state)
+    terminal::check_handoff(plugin_root, pr_state)
+}
+
+pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
+    terminal::is_lifecycle_terminal(plugin_root, record)
 }

@@ -14,18 +14,18 @@ pub(super) struct ActiveEvent {
 
 use super::negation::{is_negation, is_token_character};
 
-pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
-    let evidence = evidence.to_ascii_lowercase();
-    super::super::child_lifecycle_events::active_lines(&evidence)
+pub(super) fn active_events(plugin_root: &std::path::Path, evidence: &str) -> Vec<ActiveEvent> {
+    super::super::child_lifecycle_events::active_lines(evidence)
         .into_iter()
         .map(|line| ActiveEvent {
-            kind: ordered_event(&line.text),
+            kind: ordered_event(plugin_root, &line.text),
             line: line.text,
         })
         .collect()
 }
 
-pub(super) fn ordered_event(line: &str) -> OrderedEvent {
+pub(super) fn ordered_event(plugin_root: &std::path::Path, line: &str) -> OrderedEvent {
+    let line = line.to_ascii_lowercase();
     if line
         .strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
@@ -34,29 +34,13 @@ pub(super) fn ordered_event(line: &str) -> OrderedEvent {
         OrderedEvent::BlockedCall
     } else if line.starts_with("parent direction event:") {
         OrderedEvent::ParentDirection
-    } else if is_typed_review_terminal(line) {
+    } else if super::super::review_control::is_lifecycle_terminal(plugin_root, &line) {
         OrderedEvent::TypedReviewTerminal
-    } else if is_terminal_goal_call(line) {
+    } else if is_terminal_goal_call(&line) {
         OrderedEvent::TerminalGoalCall
     } else {
         OrderedEvent::Other
     }
-}
-
-fn is_typed_review_terminal(line: &str) -> bool {
-    line.starts_with("typed review terminal:")
-        && field(line, "schema") == Some("codexy.review-readiness.v1")
-        && matches!(field(line, "profile"), Some("standard" | "strict"))
-        && matches!(field(line, "state"), Some("passed" | "parent_decision"))
-        && field(line, "event_id").is_some_and(valid_identifier)
-        && field(line, "head_oid").is_some_and(valid_identifier)
-}
-
-fn valid_identifier(value: &str) -> bool {
-    !value.is_empty()
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 pub(super) fn is_blocked_pre_delivery(line: &str) -> bool {

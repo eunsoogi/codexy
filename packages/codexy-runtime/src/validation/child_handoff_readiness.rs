@@ -110,6 +110,15 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     errors
 }
 
+pub(super) fn claims_pr_ready(handoff: &str) -> bool {
+    let normalized = handoff.to_ascii_lowercase();
+    let text = super::readiness_context::current_text(&normalized);
+    let claims_pr_ready = claims::pr_ready(&text);
+    claims_pr_ready
+        && (claims::standalone_ready_line(&text)
+            || (claims::child_readiness(&text) && claims_pr_ready))
+}
+
 fn negative_proof_labels(
     text: &str,
     claims_pr_ready: bool,

@@ -40,7 +40,12 @@ fn validator_requires_typed_review_for_pr_and_parent_ready_handoffs() -> TestRes
         assert!(!validate_readiness_handoff(handoff, json!({}))?.status.success());
         let strict = validate_readiness_handoff(handoff, strict_review())?;
         assert!(strict.status.success(), "{}", String::from_utf8_lossy(&strict.stderr));
-        assert!(validate_readiness_handoff(handoff, json!({"reviewProfile":"light"}))?.status.success());
+        assert!(validate_readiness_handoff(
+            handoff,
+            json!({"reviewProfile":"light","reviewDecision":"NOT_REQUIRED"})
+        )?
+        .status
+        .success());
     }
     Ok(())
 }

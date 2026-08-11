@@ -63,7 +63,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             let mut errors = child_lane_ownership::check(&evidence);
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(child_goal_reporting::check(&evidence));
-            errors.extend(child_goal_blocked_audit::check(&evidence));
+            errors.extend(child_goal_blocked_audit::check(plugin_root, &evidence));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

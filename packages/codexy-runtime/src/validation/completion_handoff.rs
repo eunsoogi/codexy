@@ -36,7 +36,7 @@ pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<St
             pr_number(&pr_state)
         )];
     }
-    if pr_state.get("reviewDecision").is_some() || claims_completion(handoff) {
+    if claims_completion(handoff) || super::child_handoff_readiness::claims_pr_ready(handoff) {
         let review_errors = super::review_control::check_handoff(plugin_root, &pr_state);
         if !review_errors.is_empty() {
             return review_errors;

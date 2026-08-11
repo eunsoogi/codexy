@@ -8,8 +8,8 @@ use parser::{
 };
 use wait_taxonomy::{WaitDisposition, classify_producer};
 
-pub(super) fn check(evidence: &str) -> Vec<String> {
-    let events = active_events(evidence);
+pub(super) fn check(plugin_root: &std::path::Path, evidence: &str) -> Vec<String> {
+    let events = active_events(plugin_root, evidence);
     let mut errors = Vec::new();
     let mut child_owned = false;
     let mut lane_start = 0;

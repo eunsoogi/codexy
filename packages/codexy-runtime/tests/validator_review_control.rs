@@ -11,6 +11,10 @@ mod review_economics;
 mod review_ledger;
 #[path = "validator_review_control/escalation.rs"]
 mod review_escalation;
+#[path = "validator_review_control/terminal_scope.rs"]
+mod terminal_scope;
+#[path = "validator_review_control/handoff_decision.rs"]
+mod handoff_decision;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {

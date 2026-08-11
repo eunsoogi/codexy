@@ -134,7 +134,9 @@ fn unavailable(event: &Event) -> bool {
 fn escalated_full(unobservable: &Event, full: &Event) -> bool {
     unavailable(unobservable)
         && full.state == "full"
+        && full.base_oid == unobservable.base_oid
         && full.head_oid == unobservable.head_oid
+        && full.boundaries == unobservable.boundaries
         && (full.full_used, full.delta_used) == (1, 0)
         && full.escalation.as_ref().is_some_and(|escalation| {
             escalation.discarded_lower_profile
@@ -151,6 +153,7 @@ fn delta_after(full: &Event, delta: &Event) -> bool {
         && delta.head_oid != full.head_oid
         && delta.escalation.is_none()
         && (delta.full_used, delta.delta_used) == (1, 1)
+        && delta.boundaries == full.boundaries
         && preserves_blockers(full, delta)
 }
 
@@ -160,6 +163,7 @@ fn passed_after(prior: &Event, passed: &Event, delta_used: u8) -> bool {
         && passed.head_oid == prior.head_oid
         && passed.escalation.is_none()
         && (passed.full_used, passed.delta_used) == (1, delta_used)
+        && preserves_scope(prior, passed)
         && passed.blockers.iter().all(|blocker| blocker.resolved)
         && preserves_blockers(prior, passed)
 }
@@ -170,7 +174,12 @@ fn parent_decision(delta: &Event, decision: &Event) -> bool {
         && decision.head_oid == delta.head_oid
         && decision.escalation.is_none()
         && (decision.full_used, decision.delta_used) == (1, 1)
+        && preserves_scope(delta, decision)
         && preserves_blockers(delta, decision)
+}
+
+fn preserves_scope(prior: &Event, next: &Event) -> bool {
+    next.base_oid == prior.base_oid && next.boundaries == prior.boundaries
 }
 
 fn preserves_blockers(prior: &Event, next: &Event) -> bool {
