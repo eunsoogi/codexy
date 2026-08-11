@@ -70,8 +70,8 @@ mod workflow_profile_grammar;
 #[path = "../validator_roles.rs"]
 mod validator_roles;
 
-#[path = "../validator_sentinel_handoff_current_evidence.rs"]
-mod validator_sentinel_handoff_current_evidence;
+#[path = "../validator_review_handoff.rs"]
+mod validator_review_handoff;
 
 #[path = "../validator_sentinel_handoff_result_units.rs"]
 mod validator_sentinel_handoff_result_units;

@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 
 mod economics;
+mod handoff;
 mod ledger;
 mod packet;
 mod policy;
@@ -31,4 +32,8 @@ pub(super) fn check_economics(
     economics: &str,
 ) -> Result<()> {
     economics::check(plugin_root, repository_root, economics)
+}
+
+pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {
+    handoff::check(plugin_root, pr_state)
 }

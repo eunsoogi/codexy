@@ -48,7 +48,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),
         Mode::IssueIntake { receipt } => issue_intake::check(&receipt),
         Mode::CompletionHandoff { handoff, pr_state } => {
-            let mut errors = completion_handoff::check(&handoff, &pr_state);
+            let mut errors = completion_handoff::check(plugin_root, &handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
