@@ -1,3 +1,4 @@
+mod negation;
 mod parser;
 pub(super) mod wait_taxonomy;
 

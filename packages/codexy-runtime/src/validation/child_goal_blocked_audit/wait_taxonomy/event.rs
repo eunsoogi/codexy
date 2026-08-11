@@ -1,3 +1,5 @@
+use super::super::negation::{is_negation, is_token_character};
+
 const EVENT_SUBJECTS: &[(&str, SubjectKind)] = &[
     ("review feedback", SubjectKind::Review),
     ("review comment", SubjectKind::Review),
@@ -56,8 +58,6 @@ const LIFECYCLE_STATES: &[&str] = &[
     "not yet returned",
     "has not returned",
 ];
-const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
-
 const OPERATIONAL_PREDICATES: &[&str] = &["result", "wait"];
 const REVIEW_PREDICATES: &[&str] = &["resolved", "unresolved", "open"];
 const PREDICATE_BOUNDARY_TERMINALS: &[&str] = &["available", "has returned"];
@@ -119,8 +119,7 @@ pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
 pub(super) fn has_lifecycle_state(words: &[&str]) -> bool {
     contains_any_phrase(words, LIFECYCLE_STATES)
         || words.windows(2).enumerate().any(|(index, window)| {
-            window == ["has", "returned"]
-                && words[..index].iter().any(|word| NEGATIONS.contains(word))
+            window == ["has", "returned"] && words[..index].iter().any(|word| is_negation(word))
         })
 }
 
@@ -129,7 +128,7 @@ pub(super) fn is_nonterminal_wait(words: &[&str]) -> bool {
 }
 
 pub(super) fn words(text: &str) -> Vec<&str> {
-    text.split(|character: char| !character.is_alphanumeric())
+    text.split(|character: char| !is_token_character(character))
         .filter(|word| !word.is_empty())
         .collect()
 }
@@ -197,7 +196,7 @@ fn has_local_predicate(words: &[&str], subject: Subject, next_start: usize) -> b
 fn local_negation_start(words: &[&str], start: usize, end: usize) -> Option<usize> {
     words[start..end]
         .iter()
-        .rposition(|word| NEGATIONS.contains(word))
+        .rposition(|word| is_negation(word))
         .filter(|index| has_predicate_boundary(&words[start..start + index]))
         .map(|index| start + index)
 }

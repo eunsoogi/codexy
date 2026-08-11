@@ -12,6 +12,8 @@ pub(super) struct ActiveEvent {
     pub(super) kind: OrderedEvent,
 }
 
+use super::negation::{is_negation, is_token_character};
+
 pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
     let evidence = evidence.to_ascii_lowercase();
     super::super::child_lifecycle_events::active_lines(&evidence)
@@ -114,7 +116,7 @@ fn substantive_identity(
     minimum_concepts: usize,
 ) -> Option<String> {
     let tokens = value
-        .split(|character: char| !character.is_alphanumeric())
+        .split(|character: char| !is_token_character(character))
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let words = tokens
@@ -145,6 +147,7 @@ fn substantive_identity(
         })
         .map(|number| format!("number:{number}"))
         .collect::<std::collections::BTreeSet<_>>();
+    let negative = tokens.iter().any(|word| is_negation(word));
     let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
     let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
         short_tokens
@@ -164,6 +167,7 @@ fn substantive_identity(
             concepts
                 .into_iter()
                 .chain(numeric_metadata)
+                .chain(negative.then_some("polarity:negative".to_owned()))
                 .collect::<Vec<_>>()
                 .join("|")
         })

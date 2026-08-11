@@ -1,6 +1,7 @@
 #[path = "wait_taxonomy/event.rs"]
 mod event;
 
+use super::negation::is_negation;
 use event::{event_words, has_lifecycle_state, is_nonterminal_wait, words};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -56,7 +57,6 @@ const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
     "token limit",
 ];
 
-const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 #[derive(Clone, Copy)]
 struct ReviewSubject {
     end: usize,
@@ -176,7 +176,7 @@ fn local_state_negation(words: &[&str], state_index: usize) -> bool {
         .map_or(0, |index| index + 1);
     words[predicate_start..state_index]
         .iter()
-        .any(|word| NEGATIONS.contains(word))
+        .any(|word| is_negation(word))
 }
 
 fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {
@@ -215,7 +215,7 @@ fn has_affirmative_phrase(words: &[&str], phrase: &str) -> bool {
 }
 
 fn is_negated_at(words: &[&str], index: usize) -> bool {
-    words[..index].iter().any(|word| NEGATIONS.contains(word))
+    words[..index].iter().any(|word| is_negation(word))
 }
 
 fn subject_is_negated(words: &[&str], index: usize) -> bool {

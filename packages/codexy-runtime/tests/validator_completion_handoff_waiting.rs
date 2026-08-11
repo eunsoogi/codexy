@@ -3,6 +3,8 @@ pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[path = "validator_completion_handoff_waiting/event_matrix.rs"]
 mod event_matrix;
+#[path = "validator_completion_handoff_waiting/contraction_polarity.rs"]
+mod contraction_polarity;
 
 const OPEN_PR_STATE: &str =
     r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#;

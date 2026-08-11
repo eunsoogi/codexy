@@ -197,6 +197,35 @@ fn validator_accepts_terminal_handoff_material_impact() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn validator_preserves_negated_branch_identity() -> TestResult {
+    let output = run_validator(&blocked_evidence(
+        valid_gate().replace(
+            "preserve identifiers and retain compatibility|replace identifiers and require migration",
+            "enable destructive migration for legacy accounts|do not enable destructive migration for legacy accounts",
+        ),
+        valid_pre_mutation(),
+    ))?;
+    assert!(
+        output.status.success(),
+        "negated branch identity was rejected: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let duplicate = run_validator(&blocked_evidence(
+        valid_gate().replace(
+            "preserve identifiers and retain compatibility|replace identifiers and require migration",
+            "do not enable destructive migration for legacy accounts|do not enable destructive migration for legacy accounts",
+        ),
+        valid_pre_mutation(),
+    ))?;
+    assert!(
+        !duplicate.status.success(),
+        "identical negative branches were accepted: {}",
+        String::from_utf8_lossy(&duplicate.stderr)
+    );
+    Ok(())
+}
+
 fn assert_short_token_padding_rejected(gate: String) -> TestResult {
     let output = run_validator(&blocked_evidence(gate, valid_pre_mutation()))?;
     assert!(
