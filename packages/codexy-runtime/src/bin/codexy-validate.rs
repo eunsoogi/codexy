@@ -5,6 +5,9 @@ use clap::Parser;
 
 use codexy_runtime::{paths, validation};
 
+#[path = "codexy-validate/tdd.rs"]
+mod tdd;
+
 #[derive(Debug, Parser)]
 #[command(about = "Validate Codexy plugin configuration surfaces.")]
 #[allow(clippy::struct_excessive_bools)]
@@ -69,6 +72,10 @@ struct Cli {
     resolve_child_routing: bool,
     #[arg(long, requires = "resolve_child_routing")]
     routing_request_file: Option<PathBuf>,
+    #[arg(long)]
+    resolve_tdd_classification: bool,
+    #[arg(long, requires = "resolve_tdd_classification")]
+    tdd_classification_request_file: Option<PathBuf>,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
     check_mcp: bool,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_mcp", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
@@ -99,6 +106,9 @@ fn main() -> Result<()> {
             "{}",
             serde_json::to_string(&validation::resolve_child_routing(&plugin_root, &request)?)?
         );
+        return Ok(());
+    }
+    if tdd::emit_resolution(&cli, &plugin_root)? {
         return Ok(());
     }
     if cli.print_covered_extensions {
@@ -201,6 +211,7 @@ fn ensure_one_mode(cli: &Cli) -> Result<()> {
         cli.check_completion_handoff,
         cli.check_routing_measurement,
         cli.resolve_child_routing,
+        cli.resolve_tdd_classification,
         cli.check_mcp,
         cli.check_hooks,
         cli.check_roles,
