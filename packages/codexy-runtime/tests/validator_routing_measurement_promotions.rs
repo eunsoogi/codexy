@@ -97,6 +97,9 @@ fn results_reject_stale_identity_duplicates_and_unknown_fields() -> TestResult {
     let mut wrong_prompt = results("high");
     wrong_prompt["results"][0]["prompt"] = json!("stale prompt");
     assert_failure(&wrong_prompt, "must contain one closed Terra observation")?;
+    let mut wrong_oracle = results("high");
+    wrong_oracle["results"][0]["acceptance_oracle"] = json!("stale oracle");
+    assert_failure(&wrong_oracle, "must contain one closed Terra observation")?;
     let mut extra = results("high");
     extra["results"][0]["unexpected"] = json!(true);
     assert_failure(&extra, "must be closed typed JSON")
@@ -104,16 +107,17 @@ fn results_reject_stale_identity_duplicates_and_unknown_fields() -> TestResult {
 
 fn results(selected: &str) -> Value {
     let tasks = [
-        ("simple-local-validator", "Add one mutation test without editing production code."),
-        ("general-routing-contract", "Map the routing contract and return a minimal proof plan."),
-        ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler."),
+        ("simple-local-validator", "Add one mutation test without editing production code.", "The test is faithful and bounded."),
+        ("general-routing-contract", "Map the routing contract and return a minimal proof plan.", "The plan preserves current Terra/high."),
+        ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler.", "The result fails closed without Luna."),
     ];
     let observations = ["high", "xhigh", "max"]
         .into_iter()
         .flat_map(|thinking| {
-            tasks.iter().map(move |(task_id, prompt)| {
+            tasks.iter().map(move |(task_id, prompt, acceptance_oracle)| {
                 json!({
                     "task_id": task_id, "prompt": prompt,
+                    "acceptance_oracle": acceptance_oracle,
                     "model": "gpt-5.6-terra", "thinking": thinking,
                     "acceptance": "pass", "p0_p1_misses": 0,
                     "proof_complete": true, "repairs_retries": 0,

@@ -1,53 +1,29 @@
+use anyhow::{Result, bail};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 
-use super::routing_measurement_schema::is_closed;
+use super::{routing_json, routing_measurement_schema::is_closed};
 
 mod viability;
 use viability::viable;
 
 const CORPUS_SCHEMA: &str = "codexy.routing-evaluation-corpus.v1";
-const CORPUS_ID: &str = "routing-549-v1";
 const RESULTS_SCHEMA: &str = "codexy.routing-evaluation-results.v1";
 const EFFORTS: [&str; 3] = ["high", "xhigh", "max"];
+const CORPUS_PATH: &str = "skills/orchestration/references/routing-evaluation-corpus.json";
+const SCHEMA_PATH: &str = "skills/orchestration/references/routing-evaluation-results.schema.json";
 
-#[derive(Clone, Copy)]
-struct CanonicalTask {
-    id: &'static str,
-    classification: &'static str,
-    prompt: &'static str,
-    acceptance_oracle: &'static str,
-}
-
-const CANONICAL_TASKS: [CanonicalTask; 3] = [
-    CanonicalTask {
-        id: "simple-local-validator",
-        classification: "simple",
-        prompt: "Add one mutation test without editing production code.",
-        acceptance_oracle: "The test is faithful and bounded.",
-    },
-    CanonicalTask {
-        id: "general-routing-contract",
-        classification: "general",
-        prompt: "Map the routing contract and return a minimal proof plan.",
-        acceptance_oracle: "The plan preserves current Terra/high.",
-    },
-    CanonicalTask {
-        id: "ambiguous-specialist-boundary",
-        classification: "ambiguous",
-        prompt: "Classify an ownership-sensitive routing change and select the safe handler.",
-        acceptance_oracle: "The result fails closed without Luna.",
-    },
-];
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct Corpus {
     schema: String,
     corpus_id: String,
     tasks: Vec<Task>,
 }
-#[derive(Deserialize)]
+
+#[derive(Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct Task {
     id: String,
@@ -55,6 +31,7 @@ struct Task {
     prompt: String,
     acceptance_oracle: String,
 }
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Results {
@@ -63,11 +40,13 @@ struct Results {
     selected_effort: String,
     results: Vec<Observation>,
 }
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Observation {
+pub(super) struct Observation {
     task_id: String,
     prompt: String,
+    acceptance_oracle: String,
     model: String,
     thinking: String,
     acceptance: String,
@@ -78,41 +57,114 @@ struct Observation {
     wall_time_ms: Value,
     observed_cost_usd: Value,
 }
-pub(super) fn check_canonical(plugin_root: &std::path::Path) -> Vec<String> {
-    let corpus = plugin_root.join("skills/orchestration/references/routing-evaluation-corpus.json");
-    let schema =
-        plugin_root.join("skills/orchestration/references/routing-evaluation-results.schema.json");
-    let mut errors = std::fs::read_to_string(&corpus)
-        .map_err(|error| format!("{}: {error}", crate::paths::display_relative(&corpus)))
-        .map_or_else(|error| vec![error], |text| corpus_diagnostics(&text));
-    match std::fs::read_to_string(&schema)
+
+pub(super) fn check_canonical(plugin_root: &Path, results_path: &Path) -> Vec<String> {
+    let corpus_path = plugin_root.join(CORPUS_PATH);
+    let schema_path = plugin_root.join(SCHEMA_PATH);
+    let corpus = read_corpus(&corpus_path);
+    let mut errors = corpus
+        .as_ref()
+        .map_or_else(|error| vec![error.to_string()], validate_corpus);
+    match std::fs::read_to_string(&schema_path)
         .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|text| routing_json::parse(&text).ok())
     {
         Some(schema) if is_closed(&schema) => {}
         _ => errors.push(format!(
             "{} must be a closed routing-measurement JSON schema",
-            crate::paths::display_relative(&schema)
+            crate::paths::display_relative(&schema_path)
         )),
+    }
+    match (corpus, std::fs::read_to_string(results_path)) {
+        (Ok(corpus), Ok(results)) => errors.extend(diagnostics_for(&corpus, &results)),
+        (_, Err(error)) => errors.push(format!(
+            "{}: {error}",
+            crate::paths::display_relative(results_path)
+        )),
+        _ => {}
     }
     errors
 }
-pub(super) fn diagnostics(corpus: &str, results: &str) -> Vec<String> {
-    let Ok(corpus) = serde_json::from_str::<Corpus>(corpus) else {
-        return vec!["routing measurement corpus must be closed typed JSON".into()];
+
+pub(super) fn diagnostics(plugin_root: &Path, corpus: &str, results: &str) -> Vec<String> {
+    let canonical = read_corpus(&plugin_root.join(CORPUS_PATH));
+    let input = parse_corpus(corpus);
+    match (canonical, input) {
+        (Ok(canonical), Ok(input)) if input == canonical => diagnostics_for(&canonical, results),
+        (Ok(_), Ok(_)) => {
+            vec!["routing measurement corpus must match the packaged frozen corpus".into()]
+        }
+        (Err(error), _) | (_, Err(error)) => vec![error.to_string()],
+    }
+}
+
+pub(super) fn selected_effort(plugin_root: &Path, corpus: &str, results: &str) -> Result<String> {
+    let errors = diagnostics(plugin_root, corpus, results);
+    if errors.is_empty() {
+        parse_results(results).map(|results| results.selected_effort)
+    } else {
+        bail!(errors.join("; "))
+    }
+}
+
+fn read_corpus(path: &Path) -> Result<Corpus> {
+    parse_corpus(&std::fs::read_to_string(path)?)
+}
+
+fn parse_corpus(text: &str) -> Result<Corpus> {
+    let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
+    let corpus = serde_json::from_value::<Corpus>(value)?;
+    if validate_corpus(&corpus).is_empty() {
+        Ok(corpus)
+    } else {
+        bail!("routing measurement corpus must be closed typed JSON")
+    }
+}
+
+fn parse_results(text: &str) -> Result<Results> {
+    let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
+    Ok(serde_json::from_value(value)?)
+}
+
+fn validate_corpus(corpus: &Corpus) -> Vec<String> {
+    let ids = corpus
+        .tasks
+        .iter()
+        .map(|task| task.id.as_str())
+        .collect::<BTreeSet<_>>();
+    if corpus.schema != CORPUS_SCHEMA
+        || corpus.corpus_id.trim().is_empty()
+        || corpus.tasks.is_empty()
+        || ids.len() != corpus.tasks.len()
+        || corpus.tasks.iter().any(|task| {
+            task.classification.is_empty()
+                || task.prompt.is_empty()
+                || task.acceptance_oracle.is_empty()
+        })
+    {
+        vec!["routing measurement corpus must be closed typed JSON".into()]
+    } else {
+        Vec::new()
+    }
+}
+
+fn diagnostics_for(corpus: &Corpus, results: &str) -> Vec<String> {
+    let Ok(results) = parse_results(results) else {
+        return vec!["routing measurement results must be closed typed JSON".into()];
     };
-    let mut errors = check_corpus(&corpus);
-    let Ok(results) = serde_json::from_str::<Results>(results) else {
-        errors.push("routing measurement results must be closed typed JSON".into());
-        return errors;
-    };
+    let mut errors = Vec::new();
     if results.schema != RESULTS_SCHEMA || results.corpus_id != corpus.corpus_id {
         errors.push("routing measurement results must bind the frozen corpus identity".into());
     }
     let tasks = corpus
         .tasks
         .iter()
-        .map(|task| (task.id.as_str(), task.prompt.as_str()))
+        .map(|task| {
+            (
+                task.id.as_str(),
+                (task.prompt.as_str(), task.acceptance_oracle.as_str()),
+            )
+        })
         .collect::<BTreeMap<_, _>>();
     let expected = tasks
         .keys()
@@ -121,7 +173,7 @@ pub(super) fn diagnostics(corpus: &str, results: &str) -> Vec<String> {
     let mut observed = BTreeMap::new();
     for result in &results.results {
         let key = (result.task_id.as_str(), result.thinking.as_str());
-        if tasks.get(key.0) != Some(&result.prompt.as_str())
+        if tasks.get(key.0) != Some(&(result.prompt.as_str(), result.acceptance_oracle.as_str()))
             || result.model != "gpt-5.6-terra"
             || !EFFORTS.contains(&key.1)
             || !matches!(result.acceptance.as_str(), "pass" | "fail")
@@ -152,38 +204,12 @@ pub(super) fn diagnostics(corpus: &str, results: &str) -> Vec<String> {
     }
     errors
 }
-fn corpus_diagnostics(text: &str) -> Vec<String> {
-    serde_json::from_str::<Corpus>(text).map_or_else(
-        |_| vec!["routing measurement corpus must be closed typed JSON".into()],
-        |corpus| check_corpus(&corpus),
-    )
-}
-fn check_corpus(corpus: &Corpus) -> Vec<String> {
-    if corpus.schema != CORPUS_SCHEMA
-        || corpus.corpus_id != CORPUS_ID
-        || corpus.tasks.len() != CANONICAL_TASKS.len()
-        || !corpus
-            .tasks
-            .iter()
-            .zip(CANONICAL_TASKS)
-            .all(|(task, canonical)| {
-                task.id == canonical.id
-                    && task.classification == canonical.classification
-                    && task.prompt == canonical.prompt
-                    && task.acceptance_oracle == canonical.acceptance_oracle
-            })
-    {
-        vec!["routing measurement corpus must freeze the exact ordered simple, general, and ambiguous task tuples".into()]
-    } else {
-        Vec::new()
-    }
-}
 
 fn metric(value: &Value, integer: bool) -> bool {
     value.is_null()
         || if integer {
             value.as_u64().is_some()
         } else {
-            value.as_f64().is_some_and(|value| value >= 0.0)
+            value.as_f64().is_some_and(|number| number >= 0.0)
         }
 }

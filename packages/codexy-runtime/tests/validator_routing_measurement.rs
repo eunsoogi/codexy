@@ -173,17 +173,18 @@ fn run(corpus: &std::path::Path, results: &std::path::Path) -> std::io::Result<s
 
 fn results_value(selected_effort: &str, omit_cost: bool) -> Value {
     let prompts = [
-        ("simple-local-validator", "Add one mutation test without editing production code."),
-        ("general-routing-contract", "Map the routing contract and return a minimal proof plan."),
-        ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler."),
+        ("simple-local-validator", "Add one mutation test without editing production code.", "The test is faithful and bounded."),
+        ("general-routing-contract", "Map the routing contract and return a minimal proof plan.", "The plan preserves current Terra/high."),
+        ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler.", "The result fails closed without Luna."),
     ];
     let results = ["high", "xhigh", "max"]
         .into_iter()
         .flat_map(|thinking| {
-            prompts.iter().map(move |(task_id, prompt)| {
+            prompts.iter().map(move |(task_id, prompt, acceptance_oracle)| {
                 json!({
                     "task_id": task_id,
                     "prompt": prompt,
+                    "acceptance_oracle": acceptance_oracle,
                     "model": "gpt-5.6-terra",
                     "thinking": thinking,
                     "acceptance": "pass",

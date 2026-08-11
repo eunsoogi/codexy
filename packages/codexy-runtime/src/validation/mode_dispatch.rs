@@ -5,8 +5,8 @@ use anyhow::{Result, bail};
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
     conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, roles, runtime, touched_loc,
-    workflow_profiles,
+    manifest, mcp, merge_authorization, merge_message, roles, routing_measurement, routing_policy,
+    runtime, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -25,6 +25,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(lsp::check(plugin_root));
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
+            all.extend(routing_policy::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             all
@@ -48,6 +49,9 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             let mut errors = completion_handoff::check(&handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
+        }
+        Mode::RoutingMeasurement { corpus, results } => {
+            routing_measurement::diagnostics(plugin_root, &corpus, &results)
         }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),

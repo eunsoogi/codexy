@@ -17,6 +17,7 @@ fn canonical_measurement_schema_rejects_every_closed_contract_mutation() -> Test
         ("schema constant", mutation(|schema| schema["properties"]["schema"] = json!({"const":"other"}))),
         ("effort enum", mutation(|schema| schema["properties"]["selected_effort"] = json!({"enum":["high"]}))),
         ("observation closure", mutation(|schema| schema["properties"]["results"]["items"]["additionalProperties"] = json!(true))),
+        ("acceptance oracle", mutation(|schema| { schema["properties"]["results"]["items"]["required"].as_array_mut().unwrap().retain(|item| item != "acceptance_oracle"); })),
         ("integer tokens", mutation(|schema| schema["properties"]["results"]["items"]["properties"]["tokens"] = json!({"type":"number"}))),
         ("token minimum", mutation(|schema| schema["properties"]["results"]["items"]["properties"]["tokens"]["minimum"] = json!(-1))),
         ("repair maximum", mutation(|schema| { schema["properties"]["results"]["items"]["properties"]["repairs_retries"].as_object_mut().unwrap().remove("maximum"); })),

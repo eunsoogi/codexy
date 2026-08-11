@@ -15,6 +15,11 @@ own bounded atomic units only; Root `AGENTS.md` owns repo-wide dogfooding policy
 
 ## GPT-5.6 Routing Matrix
 
+The closed machine-owned routing authority is
+`references/child-routing-policy.json`; its paired current measurement evidence
+is `references/routing-evaluation-results.json`. This matrix is the human-readable
+workflow projection and MUST NOT be parsed as policy.
+
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
 - Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.
@@ -40,13 +45,15 @@ own bounded atomic units only; Root `AGENTS.md` owns repo-wide dogfooding policy
 - Configured UI model is authoritative; active child/parent thread ledger entries MUST
   record each destination owner's configured UI `model` and `thinking` separately
   from historical actual `turn_context` model and per-message overrides.
-- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST
-  explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT
-  infer either from historical actual `turn_context` state, the sender, or ambient defaults.
-- The #417 reproduction MUST reject a create/send handoff that omits recipient `model` or `thinking`; ambient or sender-derived Sol/medium is invalid.
-- Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
-  `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
-  and `thinking: "medium"`.
+- Before every child creation or delivery, the parent MUST load the policy and
+  send a closed typed classification request that includes the target tool's
+  supported model/thinking pairs to the resolver. It MUST fail closed without a
+  child call when its result lacks a generic recipient binding; an unavailable
+  Luna/max candidate falls back to supported Terra/high or the safe route.
+- Every `send_message_to_thread` call MUST explicitly pass the recipient's
+  configured UI `model` and `thinking`; it MUST NOT infer ambient defaults.
+- Parent-to-generic-child delivery uses `gpt-5.6-terra`/`high`; child-to-root
+  delivery uses `gpt-5.6-sol`/`medium`.
 - Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
 - Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 
@@ -64,7 +71,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/token-efficient.md` for compact event deltas and token discipline.
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
-- `references/routing-evaluation-corpus.json` and `references/routing-evaluation-results.schema.json` for frozen paired child-routing measurement.
+- `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
 
 ## Classification Gate
 
