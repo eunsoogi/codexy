@@ -12,7 +12,7 @@ production code. Then make the smallest change that turns the proof green and
 MUST keep broader verification proportional to risk.
 
 Documentation, README, instruction-only skill prose, and reference Markdown
-MUST NOT use manufactured RED tests, phrase mutations, or prose TDD. Verify
+MUST NOT use manufactured RED tests, phrase mutations, or prose TDD. MUST verify
 those edits by direct diff and readback plus applicable existence, link, render,
 frontmatter, or package-structure checks.
 
@@ -75,7 +75,7 @@ Not covered:
 - RED and GREEN MUST be the same proof unless there is a documented reason to
   change it.
 - The proof MUST be faithful to the requested behavior, not merely convenient.
-- For plugin skills and reference Markdown, use structural readback rather than
+- For plugin skills and reference Markdown, MUST use structural readback rather than
   executable tests of wording.
 - For workflow or GitHub behavior, a local test is supporting evidence; the
   matching GitHub or CLI surface MUST still be inspected.
