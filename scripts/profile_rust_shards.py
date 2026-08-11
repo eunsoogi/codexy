@@ -47,6 +47,11 @@ def valid_provenance(item: dict[str, object]) -> bool:
     return all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in values)
 
 
+def valid_process_status(item: dict[str, object]) -> bool:
+    value = item.get("status")
+    return isinstance(value, int) and not isinstance(value, bool) and value == 0
+
+
 def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> int:
     try:
         receipts = load(directory)
@@ -71,7 +76,7 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     for item in receipts:
         platform, shard = item.get("platform"), item.get("shard")
         item_tests = Counter(item.get("tests", []))
-        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
+        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_process_status(item) or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
             receipt_valid = False
             continue
         tests[platform].update(item_tests)
