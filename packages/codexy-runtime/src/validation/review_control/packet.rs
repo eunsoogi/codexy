@@ -163,7 +163,19 @@ fn validate(
     {
         bail!("review packet finding is not a current-head in-scope bounded finding");
     }
-    if packet.resolution.repaired_finding_ids.iter().any(|id| {
+    let resolved = packet
+        .findings
+        .iter()
+        .filter(|finding| finding.resolved)
+        .map(|finding| finding.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let repaired = unique(
+        packet.resolution.repaired_finding_ids.iter(),
+        "repaired finding",
+    )?;
+    if repaired != resolved
+        || (!resolved.is_empty() && packet.resolution.changed_boundaries.is_empty())
+        || packet.resolution.repaired_finding_ids.iter().any(|id| {
         !findings.contains(id.as_str())
             || !packet
                 .findings

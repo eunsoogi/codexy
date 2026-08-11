@@ -52,7 +52,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
     let same = ledger
         .events
         .iter()
-        .any(|event| event.profile == packet.profile && event.head_oid == packet.identity_head());
+        .any(|event| event.head_oid == packet.identity_head());
     let expected = transition(packet, profile, prior, same)?;
     if (packet.budget.full_used, packet.budget.delta_used) != expected
         || packet.readiness_budget_exhausted()

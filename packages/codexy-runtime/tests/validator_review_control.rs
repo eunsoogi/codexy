@@ -67,6 +67,7 @@ fn delta_recheck_binds_one_repair_commit_to_the_full_review_head() -> TestResult
     delta["predecessor_event_id"] = json!("e-full");
     delta["budget"] = json!({"full_used":1,"delta_used":1});
     delta["findings"][0]["resolved"] = json!(true);
+    delta["resolution"] = json!({"repaired_finding_ids":["f-1"],"changed_boundaries":["validator"]});
     delta["readiness_export"]["unresolved_blocker_ids"] = json!([]);
     delta["readiness_export"]["budget_exhausted"] = json!(true);
     assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &delta)?.status.success());
@@ -95,6 +96,7 @@ fn packet_rejects_dual_unknown_inspector_overage_and_nonblocking_observations_pa
     let fixture = crate::support::plugin_fixture()?;
     let temp = tempfile::tempdir()?;
     let valid = packet("e-valid", "full");
+    let dual_ledger = temp.path().join("dual.json");
     for mutate in [
         |value: &mut Value| value["reviewer"]["name"] = json!("codexy-sentinel"),
         |value: &mut Value| value["unknown"] = json!(true),
@@ -108,7 +110,8 @@ fn packet_rejects_dual_unknown_inspector_overage_and_nonblocking_observations_pa
     strict["reviewer"] = json!({"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"});
     strict["readiness_export"]["profile"] = json!("strict");
     strict["readiness_export"]["reviewer"] = strict["reviewer"].clone();
-    assert!(check_packet(fixture.root(), &temp.path().join("strict.json"), &strict)?.status.success());
+    assert!(check_packet(fixture.root(), &dual_ledger, &valid)?.status.success());
+    assert!(!check_packet(fixture.root(), &dual_ledger, &strict)?.status.success());
     for kind in ["evidence_only", "github_metadata"] {
         let mut observed = packet(&format!("e-{kind}"), "full");
         observed["findings"][0]["kind"] = json!(kind);
