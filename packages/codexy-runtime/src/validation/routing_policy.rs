@@ -5,59 +5,61 @@ use std::path::Path;
 
 use super::{routing_json, routing_measurement};
 
-mod capabilities;
-use capabilities::Capabilities;
+mod routes;
+mod thread_capabilities;
+use routes::{selected_general_route, simple_route};
+use thread_capabilities::ThreadCapabilities;
 
 const POLICY_PATH: &str = "skills/orchestration/references/child-routing-policy.json";
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Policy {
-    schema: String,
-    generic: Route,
-    named_specialist: Specialist,
-    simple: Simple,
-    general: General,
-    fallback: String,
-    delivery: Delivery,
+pub(super) struct Policy {
+    pub(super) schema: String,
+    pub(super) generic: Route,
+    pub(super) named_specialist: Specialist,
+    pub(super) simple: Simple,
+    pub(super) general: General,
+    pub(super) fallback: String,
+    pub(super) delivery: Delivery,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Route {
-    model: String,
-    thinking: String,
+pub(super) struct Route {
+    pub(super) model: String,
+    pub(super) thinking: String,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Specialist {
-    catalog: String,
-    caller_overrides: String,
+pub(super) struct Specialist {
+    pub(super) catalog: String,
+    pub(super) caller_overrides: String,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Simple {
-    model: String,
-    thinking: String,
-    all_required: Vec<String>,
+pub(super) struct Simple {
+    pub(super) model: String,
+    pub(super) thinking: String,
+    pub(super) all_required: Vec<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct General {
-    model: String,
-    candidate_efforts: Vec<String>,
-    measurement_results: String,
+pub(super) struct General {
+    pub(super) model: String,
+    pub(super) candidate_efforts: Vec<String>,
+    pub(super) measurement_results: String,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Delivery {
-    parent_to_generic: Route,
-    child_to_root: Route,
+pub(super) struct Delivery {
+    pub(super) parent_to_generic: Route,
+    pub(super) child_to_root: Route,
 }
 
 #[derive(Deserialize)]
@@ -69,8 +71,9 @@ struct Request {
     named_specialist: Option<String>,
     #[serde(default)]
     simple_predicates: Option<Predicates>,
+    codex_thread_operation: String,
     #[serde(default)]
-    recipient_capabilities: Option<Capabilities>,
+    codex_thread_capabilities: Option<ThreadCapabilities>,
 }
 
 #[derive(Deserialize)]
@@ -110,12 +113,14 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
     match request.classification.as_str() {
         "simple" if simple_is_complete(request.simple_predicates.as_ref()) => Ok(simple_route(
             &policy,
-            request.recipient_capabilities.as_ref(),
+            request.codex_thread_capabilities.as_ref(),
+            &request.codex_thread_operation,
         )),
         "general" => selected_general_route(
             plugin_root,
             &policy,
-            request.recipient_capabilities.as_ref(),
+            request.codex_thread_capabilities.as_ref(),
+            &request.codex_thread_operation,
         ),
         "simple" | "ambiguous" | "high_risk" | "incomplete" => Ok(json!({"route":policy.fallback})),
         _ => bail!("child routing request classification is not recognized"),
@@ -147,6 +152,7 @@ fn parse_request(text: &str) -> Result<Request> {
     if request.schema != REQUEST_SCHEMA {
         bail!("child routing request has an unsupported schema");
     }
+    thread_capabilities::validate_operation(&request.codex_thread_operation)?;
     Ok(request)
 }
 
@@ -198,43 +204,4 @@ fn simple_is_complete(predicates: Option<&Predicates>) -> bool {
             && item.low_risk_reversible
             && item.no_unresolved_decision
     })
-}
-
-fn simple_route(policy: &Policy, capabilities: Option<&Capabilities>) -> Value {
-    if capabilities::supports(capabilities, &policy.simple.model, &policy.simple.thinking) {
-        route("generic", &policy.simple.model, &policy.simple.thinking)
-    } else {
-        generic_or_fallback(policy, capabilities, &policy.generic.thinking)
-    }
-}
-
-fn selected_general_route(
-    plugin_root: &Path,
-    policy: &Policy,
-    capabilities: Option<&Capabilities>,
-) -> Result<Value> {
-    let corpus = plugin_root.join("skills/orchestration/references/routing-evaluation-corpus.json");
-    let results = plugin_root
-        .join("skills/orchestration/references")
-        .join(&policy.general.measurement_results);
-    let corpus = std::fs::read_to_string(corpus)?;
-    let results = std::fs::read_to_string(results)?;
-    let selected = routing_measurement::selected_effort(plugin_root, &corpus, &results)?;
-    Ok(generic_or_fallback(policy, capabilities, &selected))
-}
-
-fn generic_or_fallback(
-    policy: &Policy,
-    capabilities: Option<&Capabilities>,
-    thinking: &str,
-) -> Value {
-    if capabilities::supports(capabilities, &policy.generic.model, thinking) {
-        route("generic", &policy.generic.model, thinking)
-    } else {
-        json!({"route":policy.fallback})
-    }
-}
-
-fn route(kind: &str, model: &str, thinking: &str) -> Value {
-    json!({"route":kind,"model":model,"thinking":thinking})
 }

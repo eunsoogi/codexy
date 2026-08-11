@@ -12,22 +12,31 @@ fn resolver_uses_closed_policy_for_generic_simple_and_fallback_routes() -> TestR
     let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY), Path::new(RESULTS)])?;
     assert_route(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"general","recipient_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}}),
-        json!({"route":"generic","model":"gpt-5.6-terra","thinking":"high"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"general","codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-terra","thinking":"high"}),
     )?;
     assert_route(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":true},"recipient_capabilities":{"models":[{"model":"gpt-5.6-luna","thinking":["max"]}]}}),
-        json!({"route":"generic","model":"gpt-5.6-luna","thinking":"max"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":true},"codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-5.6-luna","thinking":["max"]}]}}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-luna","thinking":"max"}),
     )?;
     assert_route(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-architect"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-architect","codex_thread_operation":"create_thread"}),
         json!({"route":"named_specialist","agent_type":"codexy-architect"}),
     )?;
     assert_route(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"ambiguous"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"ambiguous","codex_thread_operation":"create_thread"}),
+        json!({"route":"root_or_named_specialist"}),
+    )?;
+    assert_route(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"create_thread"
+        }),
         json!({"route":"root_or_named_specialist"}),
     )?;
     Ok(())
@@ -54,13 +63,13 @@ fn policy_rejects_unknown_fields_invalid_simple_evidence_and_unearned_promotion(
 
     let output = resolve(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":false}}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":false},"codex_thread_operation":"create_thread"}),
     )?;
     assert!(output.status.success(), "incomplete classification did not return a fail-closed route");
     assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, json!({"route":"root_or_named_specialist"}));
     let unknown = resolve(
         fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-unknown"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-unknown","codex_thread_operation":"create_thread"}),
     )?;
     assert!(!unknown.status.success(), "unknown named specialist passed");
 
@@ -73,7 +82,7 @@ fn policy_rejects_unknown_fields_invalid_simple_evidence_and_unearned_promotion(
 }
 
 #[test]
-fn resolver_requires_structured_recipient_capabilities_for_generic_routes() -> TestResult {
+fn resolver_binds_generic_routes_to_codex_app_thread_operations() -> TestResult {
     let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY), Path::new(RESULTS)])?;
     let predicates = json!({
         "fixed_scope": true,
@@ -87,9 +96,10 @@ fn resolver_requires_structured_recipient_capabilities_for_generic_routes() -> T
             "schema":"codexy.child-routing-request.v1",
             "classification":"simple",
             "simple_predicates": predicates,
-            "recipient_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}
+            "codex_thread_operation":"send_message_to_thread",
+            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}
         }),
-        json!({"route":"generic","model":"gpt-5.6-terra","thinking":"high"}),
+        json!({"route":"generic","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-terra","thinking":"high"}),
     )?;
     assert_route(
         fixture.root(),
@@ -97,22 +107,63 @@ fn resolver_requires_structured_recipient_capabilities_for_generic_routes() -> T
             "schema":"codexy.child-routing-request.v1",
             "classification":"simple",
             "simple_predicates": predicates,
-            "recipient_capabilities":{"models":[
+            "codex_thread_operation":"create_thread",
+            "codex_thread_capabilities":{"models":[
                 {"model":"gpt-5.6-terra","thinking":["high"]},
                 {"model":"gpt-5.6-luna","thinking":["max"]}
             ]}
         }),
-        json!({"route":"generic","model":"gpt-5.6-luna","thinking":"max"}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-luna","thinking":"max"}),
     )?;
     assert_route(
         fixture.root(),
         json!({
             "schema":"codexy.child-routing-request.v1",
             "classification":"general",
-            "recipient_capabilities":{"models":[]}
+            "codex_thread_operation":"create_thread",
+            "codex_thread_capabilities":{"models":[]}
         }),
         json!({"route":"root_or_named_specialist"}),
     )?;
+    let unknown_request_field = resolve(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"create_thread",
+            "unexpected":true
+        }),
+    )?;
+    assert!(
+        !unknown_request_field.status.success(),
+        "generic routing accepted a request outside the closed Codex app thread contract"
+    );
+    let unsupported_operation = resolve(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"unsupported_operation",
+            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}
+        }),
+    )?;
+    assert!(
+        !unsupported_operation.status.success(),
+        "generic routing accepted a non-Codex-thread operation"
+    );
+    let invalid_capabilities = resolve(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"create_thread",
+            "codex_thread_capabilities":{"models":[],"unexpected":true}
+        }),
+    )?;
+    assert!(
+        !invalid_capabilities.status.success(),
+        "generic routing accepted malformed Codex app thread capabilities"
+    );
     Ok(())
 }
 

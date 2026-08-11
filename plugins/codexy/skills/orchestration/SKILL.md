@@ -45,13 +45,16 @@ workflow projection and MUST NOT be parsed as policy.
 - Configured UI model is authoritative; active child/parent thread ledger entries MUST
   record each destination owner's configured UI `model` and `thinking` separately
   from historical actual `turn_context` model and per-message overrides.
-- Before every child creation or delivery, the parent MUST load the policy and
-  send a closed typed classification request that includes the target tool's
-  supported model/thinking pairs to the resolver. It MUST fail closed without a
-  child call when its result lacks a generic recipient binding; an unavailable
-  Luna/max candidate falls back to supported Terra/high or the safe route.
-- Every `send_message_to_thread` call MUST explicitly pass the recipient's
-  configured UI `model` and `thinking`; it MUST NOT infer ambient defaults.
+- Before every Codex app `create_thread` or `send_message_to_thread` call, the
+  parent MUST load the policy and send a closed typed classification request with
+  `codex_thread_operation` set to that exact operation and
+  `codex_thread_capabilities` set to the app surface's advertised
+  model/thinking pairs. It MUST fail closed without a child-thread call when its
+  result lacks a generic recipient binding; an unavailable Luna/max candidate
+  falls back to advertised Terra/high or the safe route.
+- The generic resolver result binds the same `codex_thread_operation`, `model`,
+  and `thinking` that the parent MUST pass explicitly to that Codex app call.
+  A named-specialist or safe-route result has no generic thread override.
 - Parent-to-generic-child delivery uses `gpt-5.6-terra`/`high`; child-to-root
   delivery uses `gpt-5.6-sol`/`medium`.
 - Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
