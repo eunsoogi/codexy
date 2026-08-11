@@ -85,6 +85,22 @@ fn validator_bounds_coordinated_negation_to_its_completed_external_event() -> Te
 }
 
 #[test]
+fn validator_rejects_stale_nonlocal_coordination() -> TestResult {
+    assert_disposition(
+        "Blocked: neither option is safe CI has returned nor another run is needed but review feedback remains unresolved.",
+        true,
+    )?;
+    assert_disposition(
+        "Blocked: neither CI has returned nor review feedback remains unresolved.",
+        false,
+    )?;
+    assert_disposition(
+        "Blocked: neither CI nor Sentinel has returned but review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
 fn validator_models_coordination_grammar_across_subject_predicates() -> TestResult {
     for (other, other_predicate) in OTHER_SUBJECTS {
         for review_first in [false, true] {
