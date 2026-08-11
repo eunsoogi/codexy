@@ -59,10 +59,6 @@ struct Cli {
     handoff_file: Option<PathBuf>,
     #[arg(long, requires = "check_completion_handoff")]
     pr_state_file: Option<PathBuf>,
-    #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_issue_intake", "check_completion_handoff", "check_mcp", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
-    check_review_response_cluster: bool,
-    #[arg(long, requires = "check_review_response_cluster")]
-    review_response_cluster_file: Option<PathBuf>,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_hooks", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
     check_mcp: bool,
     #[arg(long, conflicts_with_all = ["check", "check_lsp", "check_rust_lsp_readiness", "check_merge_message", "check_pr_title", "check_issue_title", "check_completion_handoff", "check_mcp", "check_roles", "check_runtime_artifacts", "check_child_lane_ownership", "check_touched_loc", "print_covered_extensions"])]
@@ -140,11 +136,6 @@ fn main() -> Result<()> {
             handoff: read_required_file(&cli.handoff_file, "--handoff-file")?,
             pr_state: read_required_file(&cli.pr_state_file, "--pr-state-file")?,
         }
-    } else if cli.check_review_response_cluster {
-        validation::Mode::ReviewResponseCluster(read_required_file(
-            &cli.review_response_cluster_file,
-            "--review-response-cluster-file",
-        )?)
     } else if cli.check_mcp {
         validation::Mode::Mcp
     } else if cli.check_hooks {
@@ -185,7 +176,6 @@ fn ensure_one_mode(cli: &Cli) -> Result<()> {
         cli.check_issue_title,
         cli.check_issue_intake,
         cli.check_completion_handoff,
-        cli.check_review_response_cluster,
         cli.check_mcp,
         cli.check_hooks,
         cli.check_roles,

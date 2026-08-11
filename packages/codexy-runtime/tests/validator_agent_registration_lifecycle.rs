@@ -5,31 +5,6 @@ use crate::support;
 use support::copy_dir;
 
 #[test]
-fn orchestration_guidance_covers_registration_schema_and_fork_preflight()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::repository_root();
-    let skill = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/references/agent-registration.md"),
-    )?;
-    for required in [
-        "$CODEX_HOME/agents/codexy",
-        "--diagnose",
-        "role-discovery",
-        "tool-schema",
-        "fresh task",
-        "fork_turns=\"none\"",
-        "positive bounded count",
-        "MUST NOT manage `features.multi_agent_v2`",
-    ] {
-        assert!(
-            skill.contains(required),
-            "missing orchestration guidance: {required}"
-        );
-    }
-    Ok(())
-}
-
-#[test]
 fn validator_requires_packaged_registration_modules() -> Result<(), Box<dyn std::error::Error>> {
     for module in [
         "agent_registration_support.py",

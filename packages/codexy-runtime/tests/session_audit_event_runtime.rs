@@ -2,25 +2,7 @@ use std::{fs, process::Command};
 
 use serde_json::Value;
 
-#[path = "structured_contract.rs"]
-mod structured_contract;
-#[path = "structured_contract_artifacts.rs"]
-mod structured_contract_artifacts;
-#[path = "structured_contract_rules/mod.rs"]
-mod structured_contract_rules;
-#[path = "token_quota_containment/goal_guard.rs"]
-mod goal_guard;
-use crate::support;
-
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
-const EXTERNAL_GATE_GOAL_GUARD: &str = "A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains.";
-
-fn orchestration_fixture() -> TestResult<support::InstructionPolicyFixture> {
-    Ok(support::instruction_policy_fixture(std::path::Path::new(
-        "skills/orchestration/SKILL.md",
-    ))?)
-}
 
 #[test]
 fn session_audit_reports_metadata_only_deduplicated_aggregates() -> TestResult {
@@ -49,10 +31,7 @@ fn session_audit_reports_metadata_only_deduplicated_aggregates() -> TestResult {
     assert_eq!(report["sessions"][0]["latest_cumulative_tokens"], 220);
     assert_eq!(report["sessions"][0]["recent_turn_average_tokens"], 73);
     assert_eq!(report["sessions"][0]["tool_calls"]["functions.exec"], 3);
-    assert_eq!(
-        report["sessions"][0]["tool_output_bytes"]["functions.exec"],
-        33
-    );
+    assert_eq!(report["sessions"][0]["tool_output_bytes"]["functions.exec"], 33);
     assert_eq!(
         report["sessions"][0]["event_ids"],
         serde_json::json!([
@@ -65,7 +44,7 @@ fn session_audit_reports_metadata_only_deduplicated_aggregates() -> TestResult {
 }
 
 #[test]
-fn session_audit_rejects_invalid_top_level_metadata_keys() -> TestResult {
+fn session_audit_rejects_invalid_tool_names() -> TestResult {
     let temp = tempfile::tempdir()?;
     let input = temp.path().join("invalid.jsonl");
     fs::write(
@@ -80,7 +59,7 @@ fn session_audit_rejects_invalid_top_level_metadata_keys() -> TestResult {
 }
 
 #[test]
-fn session_audit_uses_codex_per_turn_metadata_without_emitting_content() -> TestResult {
+fn session_audit_uses_codex_metadata_without_emitting_content() -> TestResult {
     let temp = tempfile::tempdir()?;
     let input = temp.path().join("codex-session.jsonl");
     fs::write(
@@ -105,15 +84,12 @@ fn session_audit_uses_codex_per_turn_metadata_without_emitting_content() -> Test
     assert_eq!(report["sessions"][0]["latest_cumulative_tokens"], 160);
     assert_eq!(report["sessions"][0]["recent_turn_average_tokens"], 50);
     assert_eq!(report["sessions"][0]["tool_calls"]["functions.exec"], 1);
-    assert_eq!(
-        report["sessions"][0]["tool_output_bytes"]["functions.exec"],
-        4
-    );
+    assert_eq!(report["sessions"][0]["tool_output_bytes"]["functions.exec"], 4);
     Ok(())
 }
 
 #[test]
-fn session_audit_keeps_first_call_identity_and_output_for_duplicate_call_ids() -> TestResult {
+fn session_audit_keeps_first_duplicate_call_identity_and_output() -> TestResult {
     let temp = tempfile::tempdir()?;
     let input = temp.path().join("duplicate-call-id.jsonl");
     fs::write(
@@ -133,89 +109,7 @@ fn session_audit_keeps_first_call_identity_and_output_for_duplicate_call_ids() -
     let report: Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(report["duplicate_events_skipped"], 2);
     assert_eq!(report["sessions"][0]["tool_calls"]["functions.exec"], 1);
-    assert_eq!(
-        report["sessions"][0]["tool_output_bytes"]["functions.exec"],
-        4
-    );
-    Ok(())
-}
-
-#[test]
-fn token_policy_forbids_root_goal_and_autonomous_polling_regressions() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let orchestration =
-        fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
-    let token_skill = fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/references/token-efficient.md"),
-    )?;
-    let token_prompt = fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/agents/openai.yaml"),
-    )?;
-
-    structured_contract::assert_rules(
-        &structured_contract::Contract::markdown(&orchestration),
-        structured_contract_rules::ORCHESTRATION,
-    );
-    structured_contract::assert_rules(
-        &structured_contract::Contract::markdown(&token_skill),
-        structured_contract_rules::TOKEN_CONTAINMENT,
-    );
-    let token_prompt = structured_contract_artifacts::Prompt::parse(&token_prompt)?;
-    structured_contract::assert_rules(
-        &structured_contract::Contract::markdown(token_prompt.default_prompt()),
-        structured_contract_rules::TOKEN_PROMPT,
-    );
-    Ok(())
-}
-
-#[test]
-fn validator_rejects_legacy_root_goal_and_polling_mandates() -> TestResult {
-    let fixture = orchestration_fixture()?;
-    let path = fixture.path();
-    let original = fs::read_to_string(&path)?;
-    fs::write(
-        &path,
-        replace_once(
-            &original,
-            EXTERNAL_GATE_GOAL_GUARD,
-            "A parent or child MAY retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains.",
-        )?,
-    )?;
-    let missing_guard = support::validator_instruction_policy_file(path)?;
-    assert!(!missing_guard.status.success());
-    assert!(support::stderr(&missing_guard).contains("parent or child must retain its active goal and plan"));
-
-    fs::write(
-        &path,
-        format!("{original}\n- MUST keep polling and keep the goal active.\n"),
-    )?;
-    let legacy_mandate = support::validator_instruction_policy_file(path)?;
-    assert!(!legacy_mandate.status.success());
-    assert!(support::stderr(&legacy_mandate).contains("autonomous polling"));
-    Ok(())
-}
-
-#[test]
-fn token_goal_guard_requires_a_bound_subject_and_lifecycle() -> TestResult {
-    goal_guard::assert_boundaries()
-}
-
-#[test]
-fn validator_ignores_negated_and_historical_legacy_polling_examples() -> TestResult {
-    let fixture = orchestration_fixture()?;
-    let path = fixture.path();
-    let original = fs::read_to_string(&path)?;
-    fs::write(
-        &path,
-        format!(
-            "{original}\n## Historical Example\n\
-             - Historical example: MUST keep polling and keep the goal active.\n\
-             - It is false that MUST keep polling and keep the goal active.\n"
-        ),
-    )?;
-
-    let output = support::validator_instruction_policy_file(path)?;
-    assert!(output.status.success(), "{}", support::stderr(&output));
+    assert_eq!(report["sessions"][0]["tool_output_bytes"]["functions.exec"], 4);
     Ok(())
 }
 
@@ -228,14 +122,4 @@ fn audit(input: &std::path::Path) -> TestResult<std::process::Output> {
 
 fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
-}
-
-fn replace_once(text: &str, from: &str, to: &str) -> TestResult<String> {
-    let (before, after) = text
-        .split_once(from)
-        .ok_or("current external-gate guard must exist exactly once")?;
-    if after.contains(from) {
-        return Err("current external-gate guard must exist exactly once".into());
-    }
-    Ok(format!("{before}{to}{after}"))
 }

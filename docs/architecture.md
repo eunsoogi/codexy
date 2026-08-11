@@ -56,7 +56,7 @@ rules.
 | `qa` | Keep | Verifying completed work, acceptance criteria, a release candidate, or PR readiness. | Drives the real CLI, GitHub, app, plugin, config, docs, or browser surface behind each claim. |
 | `refactoring` | Keep | Restructuring existing code without changing behavior or reducing oversized modules. | Preserves contracts while reducing coupling, extracting responsibilities, and enforcing LOC limits. |
 | `spec-driven-development` | Keep | Starting from an issue, PRD, user story, design brief, or acceptance criteria. | Converts the spec into one atomic outcome, explicit non-goals, success criteria, and proof plan. |
-| `test-driven-development` | Keep | Implementing a feature, fix, refactor, validator, docs rule, or workflow behavior. | Requires a faithful RED proof, the smallest GREEN change, and proportional broader verification. |
+| `test-driven-development` | Keep | Implementing engineering behavior such as a feature, fix, refactor, validator, harness, CLI, workflow, or release behavior. | Requires a faithful RED proof, the smallest GREEN change, and proportional broader verification; instruction-only prose uses structural readback instead. |
 | `wiki` | Keep | Building or operating a topic-scoped compiled knowledge base. | Handles source collection, inventory, ingestion, compilation, query, audit, archive, and session context. |
 
 ## Repository-only skills
@@ -93,10 +93,8 @@ user-facing prompts.
 | Host discovery | `.codex-plugin/plugin.json`, `skills/*/SKILL.md`, `.agents/skills/*/SKILL.md` | Discovers packaged and repository-only skill folders and reads frontmatter trigger metadata. |
 | Skill prompt metadata | `skills/*/agents/openai.yaml`, `.agents/skills/*/agents/openai.yaml`, `packages/codexy-runtime/src/validation/roles_yaml.rs` | Publishes display names, invocation prompts, and implicit-invocation policy. |
 | Plugin entry prompt | `agents/openai.yaml`, `packages/codexy-runtime/tests/validator_prompt_metadata.rs` | Routes users through `$orchestration` and named skill invocations. |
-| Recursive instruction validation | `packages/codexy-runtime/src/validation/instruction_policy.rs`, `packages/codexy-runtime/tests/validator_instruction_policy.rs` | Scans skill bodies, prompt metadata, references, and mandatory policy wording. |
-| Path-specific policy validation | `packages/codexy-runtime/src/validation/instruction_policy/runtime_heartbeat.rs`, `packages/codexy-runtime/src/validation/instruction_policy/sentinel_scope_policy.rs`, `packages/codexy-runtime/src/validation/instruction_policy/child_thread_ledger.rs`, `packages/codexy-runtime/src/validation/instruction_policy/loc_policy/surfaces.rs`, `packages/codexy-runtime/src/validation/orchestration_routing.rs` | Consumes the orchestration, QA, proof, refactoring, and Git workflow paths. |
+| Structural plugin validation | `packages/codexy-runtime/src/validation/manifest.rs`, `packages/codexy-runtime/src/validation/markdown.rs`, `packages/codexy-runtime/src/validation/roles_yaml.rs`, `packages/codexy-runtime/src/validation/mcp.rs`, `packages/codexy-runtime/src/validation/lsp.rs`, `packages/codexy-runtime/tests/skill_reference_links.rs` | Validates manifests, frontmatter, schemas, paths, inventories, links, and package configuration without interpreting skill or reference prose. |
 | Inventory and taxonomy tests | `packages/codexy-runtime/tests/architecture_docs_inventory.rs`, `packages/codexy-runtime/tests/skill_boundary_taxonomy.rs` | Enforces folder/frontmatter identity, one decision per skill, path stability, and documented boundaries. |
-| Structured contracts | `packages/codexy-runtime/tests/structured_contract*.rs`, `packages/codexy-runtime/tests/task_classification_presentation.rs` | Guards prompt fields, skill invocations, and the GFM presentation contract. |
 | Skill resources | `skills/*/references/**`, `skills/*/templates/**`, cross-skill `$name` links | Supplies detailed workflows and preserves referenced paths without duplicating core skill bodies. |
 
 ## MCP servers
