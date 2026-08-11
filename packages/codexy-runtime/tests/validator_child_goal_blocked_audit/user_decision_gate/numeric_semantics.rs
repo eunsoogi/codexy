@@ -40,3 +40,18 @@ fn validator_preserves_distinct_numbered_branch_metadata() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn validator_rejects_bare_ordinal_branch_labels() -> TestResult {
+    let gate = valid_gate().replace(
+        "preserve identifiers and retain compatibility|replace identifiers and require migration",
+        "1 preserve existing identifiers|2 preserve existing identifiers",
+    );
+    let output = run_validator(&blocked_evidence(gate, valid_pre_mutation()))?;
+    assert!(
+        !output.status.success(),
+        "bare ordinal labels fabricated distinct decision branches: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

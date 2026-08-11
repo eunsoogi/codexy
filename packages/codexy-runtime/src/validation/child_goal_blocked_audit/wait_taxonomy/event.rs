@@ -1,26 +1,26 @@
-const EVENT_SUBJECTS: &[&str] = &[
-    "review feedback",
-    "review comment",
-    "requested changes",
-    "changes requested",
-    "maintainer feedback",
-    "feedback from maintainer",
-    "security review",
-    "connector review",
-    "parent authorization",
-    "dependency integration",
-    "resource slot",
-    "async tool",
-    "asynchronous tool",
-    "implementation",
-    "reviewer",
-    "sentinel",
-    "resource",
-    "operation",
-    "review",
-    "tool",
-    "work",
-    "ci",
+const EVENT_SUBJECTS: &[(&str, SubjectKind)] = &[
+    ("review feedback", SubjectKind::Review),
+    ("review comment", SubjectKind::Review),
+    ("requested changes", SubjectKind::ReviewState),
+    ("changes requested", SubjectKind::ReviewState),
+    ("maintainer feedback", SubjectKind::Review),
+    ("feedback from maintainer", SubjectKind::Review),
+    ("security review", SubjectKind::Review),
+    ("connector review", SubjectKind::Review),
+    ("parent authorization", SubjectKind::Producer),
+    ("dependency integration", SubjectKind::Producer),
+    ("resource slot", SubjectKind::Producer),
+    ("async tool", SubjectKind::Producer),
+    ("asynchronous tool", SubjectKind::Producer),
+    ("implementation", SubjectKind::Producer),
+    ("reviewer", SubjectKind::Review),
+    ("sentinel", SubjectKind::Producer),
+    ("resource", SubjectKind::Producer),
+    ("operation", SubjectKind::Producer),
+    ("review", SubjectKind::Review),
+    ("tool", SubjectKind::Producer),
+    ("work", SubjectKind::Producer),
+    ("ci", SubjectKind::Producer),
 ];
 
 const ASYNC_SUBJECTS: &[&str] = &[
@@ -57,29 +57,32 @@ const LIFECYCLE_STATES: &[&str] = &[
     "has not returned",
 ];
 
-const REVIEW_STATES: &[&str] = &["resolved", "unresolved", "open"];
 const OPERATIONAL_PREDICATES: &[&str] = &["result", "wait"];
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum SubjectKind {
+    Producer,
+    Review,
+    ReviewState,
+}
 
 #[derive(Clone, Copy)]
 struct Subject {
     start: usize,
-    end: usize,
+    kind: SubjectKind,
 }
 
 pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
     let words = words(text);
     let mut starts = vec![0];
-    let complete_subjects = subjects(&words)
-        .into_iter()
-        .filter(|subject| subject_has_predicate(&words, *subject))
-        .collect::<Vec<_>>();
-    if let Some(first_subject) = complete_subjects.first()
+    let subjects = subjects(&words);
+    if let Some(first_subject) = subjects.first()
         && contains_any_phrase(&words[..first_subject.start], OPERATIONAL_PREDICATES)
     {
         starts.push(first_subject.start);
     }
-    for subject in complete_subjects.into_iter().skip(1) {
-        if subject.start > 0 && !is_coordinated_negation(&words, subject.start) {
+    for (index, subject) in subjects.iter().enumerate().skip(1) {
+        if starts_new_event(&subjects, index, &words) {
             starts.push(subject.start);
         }
     }
@@ -113,15 +116,18 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
     let mut subjects = Vec::new();
     let mut start = 0;
     while start < words.len() {
-        if let Some(phrase) = EVENT_SUBJECTS
+        if let Some((phrase, kind)) = EVENT_SUBJECTS
             .iter()
-            .map(|phrase| words_of(phrase))
-            .filter(|phrase| words[start..].starts_with(phrase))
-            .max_by_key(Vec::len)
+            .map(|(phrase, kind)| (words_of(phrase), *kind))
+            .filter(|(phrase, _)| words[start..].starts_with(phrase))
+            .max_by_key(|(phrase, _)| phrase.len())
         {
-            let end = start + phrase.len();
-            subjects.push(Subject { start, end });
-            start = end;
+            let subject_start = start;
+            start += phrase.len();
+            subjects.push(Subject {
+                start: subject_start,
+                kind,
+            });
         } else {
             start += 1;
         }
@@ -129,20 +135,12 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
     subjects
 }
 
-fn subject_has_predicate(words: &[&str], subject: Subject) -> bool {
-    let next_subject = subjects(words)
-        .into_iter()
-        .filter(|next| next.start > subject.start)
-        .map(|next| next.start)
-        .min()
-        .unwrap_or(words.len());
-    contains_any_phrase(&words[subject.end..next_subject], LIFECYCLE_STATES)
-        || contains_any_phrase(&words[subject.end..next_subject], REVIEW_STATES)
-        || contains_any_phrase(&words[subject.end..next_subject], OPERATIONAL_PREDICATES)
-        || matches!(
-            words[subject.start..subject.end],
-            ["requested", "changes"] | ["changes", "requested"]
-        )
+fn starts_new_event(subjects: &[Subject], index: usize, words: &[&str]) -> bool {
+    let subject = subjects[index];
+    subject.start > 0
+        && !is_coordinated_negation(words, subject.start)
+        && !(subject.kind == SubjectKind::ReviewState
+            && subjects[index - 1].kind == SubjectKind::Review)
 }
 
 fn is_coordinated_negation(words: &[&str], subject_start: usize) -> bool {

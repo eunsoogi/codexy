@@ -22,6 +22,14 @@ fn validator_keeps_ci_negation_out_of_later_review_event() -> TestResult {
 }
 
 #[test]
+fn validator_keeps_predicate_free_ci_negation_out_of_later_review_event() -> TestResult {
+    assert_disposition(
+        "Blocked: no CI and review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
 fn validator_extracts_subject_predicate_events_independent_of_separator() -> TestResult {
     for separator in SEPARATORS {
         assert_disposition(

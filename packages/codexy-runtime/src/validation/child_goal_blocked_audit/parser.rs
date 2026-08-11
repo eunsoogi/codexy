@@ -139,8 +139,10 @@ fn substantive_identity(
         .collect::<std::collections::BTreeSet<_>>();
     let numeric_metadata = tokens
         .iter()
-        .filter(|word| word.chars().all(char::is_numeric))
-        .map(|word| format!("number:{word}"))
+        .enumerate()
+        .filter(|(_, word)| word.chars().all(char::is_numeric))
+        .filter(|(index, _)| numeric_metadata_is_embedded(&tokens, *index))
+        .map(|(_, word)| format!("number:{word}"))
         .collect::<std::collections::BTreeSet<_>>();
     let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
     let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
@@ -164,4 +166,12 @@ fn substantive_identity(
                 .collect::<Vec<_>>()
                 .join("|")
         })
+}
+
+fn numeric_metadata_is_embedded(tokens: &[&str], index: usize) -> bool {
+    index > 0
+        && index + 1 < tokens.len()
+        && [tokens[index - 1], tokens[index + 1]]
+            .into_iter()
+            .all(|word| word.chars().any(char::is_alphabetic))
 }
