@@ -1,4 +1,4 @@
-use super::{TestResult, blocked_evidence, run_validator, valid_audit, valid_pre_mutation};
+use super::{TestResult, blocked_evidence, run_validator, valid_gate, valid_pre_mutation};
 
 const DIRECTION: &str = "Parent direction event: version=direction-2; cancellation=received\n";
 
@@ -12,16 +12,16 @@ pub(super) fn assert_boundaries() -> TestResult {
             valid_pre_mutation(),
         ),
     ] {
-        assert_rejected(&blocked_evidence(valid_audit("none"), &pre_mutation))?;
+        assert_rejected(&blocked_evidence(valid_gate(), &pre_mutation))?;
     }
 
-    let stale = blocked_evidence(valid_audit("none"), valid_pre_mutation());
+    let stale = blocked_evidence(valid_gate(), valid_pre_mutation());
     let fresh = stale.replacen(
         "Goal tool call: update_goal(blocked)",
         &format!(
-            "{DIRECTION}{}Parent goal pre-delivery: operation=update_goal(blocked); parent task=parent-417; delivery=confirmed; task surface=codex task/thread; issue=#417; plan step=impasse-audit; branch=codexy/417; worktree=/worktree; head=abc; clean/index=clean; evidence=typed blocked audit; next action=block goal; parent direction version=direction-3; transition key=417:blocked:audit-417\n{}Goal tool call: update_goal(blocked)",
-            valid_audit("none"),
-            "Blocked goal pre-mutation check: audit id=audit-417; pre-delivery parent direction version=direction-3; current parent direction version=direction-3; cancellation=absent\n",
+            "{DIRECTION}{}Parent goal pre-delivery: operation=update_goal(blocked); parent task=parent-417; delivery=confirmed; task surface=codex task/thread; issue=#417; plan step=user-decision-gate; branch=codexy/417; worktree=/worktree; head=abc; clean/index=clean; evidence=typed user-decision gate; next action=block goal; parent direction version=direction-3; transition key=417:blocked:audit-417\n{}Goal tool call: update_goal(blocked)",
+            valid_gate(),
+            "Blocked goal pre-mutation check: gate id=audit-417; pre-delivery parent direction version=direction-3; current parent direction version=direction-3; cancellation=absent\n",
         ),
         1,
     );

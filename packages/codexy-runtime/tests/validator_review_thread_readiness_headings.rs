@@ -14,6 +14,9 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
         "Maintainer override: yes. PR readiness status: not ready.\n",
         "Maintainer override: yes. merge readiness status: not currently ready.\n",
         "Maintainer override: yes. merge readiness status: not yet complete.\n",
+        "Maintainer override: yes. merge-readiness blockers: pending CI.\n",
+        "Maintainer override: yes. PR readiness status: incomplete verification.\n",
+        "Maintainer override: yes. PR ready:\n- not currently ready for handoff.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(
@@ -30,7 +33,10 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
 fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult {
     for handoff in [
         "Maintainer override: yes. PR-readiness blockers: none.\n",
+        "Maintainer override: yes. PR-readiness blockers: no.\n",
+        "Maintainer override: yes. PR-readiness blockers: clear.\n",
         "Maintainer override: yes. PR readiness status: ready.\n",
+        "Maintainer override: yes. PR ready: yes.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(
@@ -40,6 +46,26 @@ fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8_lossy(&output.stderr).contains("missing reviewThreads"));
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_wait_events_after_neutral_readiness_status() -> TestResult {
+    for handoff in [
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: CI queued.\n",
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: Sentinel running.\n",
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: review feedback pending.\n",
+        "Maintainer override: yes. merge-readiness blockers: pending CI. Blocked: CI queued.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator must reject a real wait event after neutral status {handoff:?}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("waiting state evidence"));
     }
     Ok(())
 }

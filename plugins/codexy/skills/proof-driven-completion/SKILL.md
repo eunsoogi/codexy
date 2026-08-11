@@ -174,6 +174,9 @@ MUST include:
   child MUST send one nonterminal wait handoff, retain its active goal, plan, and
   ownership, and return control; it MUST NOT poll, complete, or block the goal for
   that wait. A qualifying event resumes the retained goal and plan.
+- MUST allow `update_goal(status="blocked")` only for an exact unanswered user
+  decision or missing user information that materially changes the result and
+  has no safe default or in-scope action.
 - MUST NOT accept a non-trivial child implementation handoff as complete when it
   omits actual goal-tool usage, actual todo/plan tool usage, required
   situational multi-agent usage, a concrete not-useful rationale tied to

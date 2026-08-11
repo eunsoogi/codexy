@@ -32,10 +32,12 @@ terminal child result, a Sentinel verdict, a new HEAD, a GitHub check-state chan
 actionable review feedback, review-thread resolution, or an explicit user/parent
 message. The prompt MUST suppress unchanged observations and MUST wake the owner only for a material gate change or an explicit user/parent message.
 
-A live Sentinel, pending child, queued CI, or pending connector review is a
-nonterminal producer. The owner MUST preserve ownership through a nonterminal
-wait handoff and MUST use its event route rather than declaring an execution
-impasse. Only an unavailable wake route may contribute to a blocked-goal audit.
+A live Sentinel, pending child, queued CI, pending connector review, parent
+authorization, dependency integration, or resource slot is a nonterminal
+producer. The owner MUST preserve ownership through a nonterminal wait handoff
+and MUST use its event route rather than declaring an execution impasse. An
+unavailable wake route does not authorize a blocked goal; only an unanswered
+material user decision or missing user information can do so.
 
 ## Goal And Terminal Lifecycle
 

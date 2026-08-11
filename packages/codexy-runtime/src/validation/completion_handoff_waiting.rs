@@ -1,8 +1,11 @@
 const WAITING_STATE_ERROR: &str = "pending child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
+pub(crate) mod readiness_status;
+
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
-const NO_ACTIONABLE_REVIEW_FEEDBACK: &str = "no actionable feedback|no feedback|no review feedback";
-const ACTIONABLE_REVIEW_FEEDBACK: &str =
-    "feedback|requested changes|changes requested|suggestion|unresolved|actionable|resolution";
+use super::child_goal_blocked_audit::wait_taxonomy::{
+    WaitDisposition, classify_reviewer_text, classify_wait_text,
+};
+
 const EXTERNAL_CHECK_FAILURE: &str = "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed";
 const FALSE_CHECK_LABEL: &str = "required checks are failing: no|required status checks are failing: no|status checks are failing: no|required checks failed: no|required status checks failed: no|status checks failed: no|required checks are failing: false|required status checks are failing: false|status checks are failing: false|required checks failed: false|required status checks failed: false|status checks failed: false|required checks are failing: none|required status checks are failing: none|status checks are failing: none|required checks failed: none|required status checks failed: none|status checks failed: none|required checks are failing? no|required status checks are failing? no|status checks are failing? no|required checks failed? no|required status checks failed? no|status checks failed? no|required checks are failing? false|required status checks are failing? false|status checks are failing? false|required checks failed? false|required status checks failed? false|status checks failed? false|required checks are failing? none|required status checks are failing? none|status checks are failing? none|required checks failed? none|required status checks failed? none|status checks failed? none|required checks are failing = no|required status checks are failing = no|status checks are failing = no|required checks failed = no|required status checks failed = no|status checks failed = no|required checks are failing = false|required status checks are failing = false|status checks are failing = false|required checks failed = false|required status checks failed = false|status checks failed = false|required checks are failing = none|required status checks are failing = none|status checks are failing = none|required checks failed = none|required status checks failed = none|status checks failed = none|required checks are failing - no|required status checks are failing - no|status checks are failing - no|required checks failed - no|required status checks failed - no|status checks failed - no|required checks are failing - false|required status checks are failing - false|status checks are failing - false|required checks failed - false|required status checks failed - false|status checks failed - false|required checks are failing - none|required status checks are failing - none|status checks are failing - none|required checks failed - none|required status checks failed - none|status checks failed - none";
 const SECURITY_REVIEW_BLOCKER: &str = "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review is waiting|security review waiting|security review is awaiting|security review awaiting|security review in progress|security review failed|security review failure";
@@ -11,13 +14,17 @@ const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane
 const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fatal";
 const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
 const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
+const NONTERMINAL_GATE_WAIT: &str = "sentinel|ci|connector review|parent authorization|dependency integration|dependency merge|resource slot|alternate evidence|event-idle child";
+const DISALLOWED_BLOCKED_RATIONALE: &str =
+    "maintainer input|human input|external state change|true impasse";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
         return Some(error);
     }
     let false_blocked_wait = |fragment: &str, context: &str| {
-        claims_blocked_state(fragment)
+        !readiness_status::is_neutral_heading(fragment)
+            && claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
             && (!mentions_resolved_blocker(fragment)
@@ -29,11 +36,14 @@ pub(super) fn check(handoff: &str) -> Option<String> {
                 .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
             && !mentions_returned_async_failure_context(fragment, &text)
     };
+    let has_neutral_readiness_status = text
+        .split(['\n', '.'])
+        .any(readiness_status::is_neutral_heading);
     if text.split(['\n', '.']).any(|context| {
         context
             .split([',', ';'])
             .any(|fragment| false_blocked_wait(fragment, context))
-    }) || false_blocked_wait(&text, &text)
+    }) || (false_blocked_wait(&text, &text) && !has_neutral_readiness_status)
     {
         return Some(WAITING_STATE_ERROR.into());
     }
@@ -44,8 +54,6 @@ fn mentions_true_blocker(text: &str) -> bool {
         || mentions_missing_child_evidence(text)
         || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
-        || has_any(text, "feedback from the maintainer")
-        || has_any(text, "feedback from maintainer|maintainer feedback")
         || mentions_async_tool_failure(text)
 }
 fn mentions_resolved_blocker(text: &str) -> bool {
@@ -67,18 +75,21 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
         || mentions_return_wait(text)
+        || classify_wait_text(text) == Some(WaitDisposition::Nonterminal)
+        || has_any(text, DISALLOWED_BLOCKED_RATIONALE)
+        || (has_any(text, NONTERMINAL_GATE_WAIT) && mentions_waiting_context(text))
         || (has_any(text, CHILD_WORK)
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
 }
 fn mentions_actionable_review_feedback(text: &str) -> bool {
-    !has_any(text, NO_ACTIONABLE_REVIEW_FEEDBACK)
-        && has_any(text, "review|requested changes|changes requested")
-        && (has_any(text, ACTIONABLE_REVIEW_FEEDBACK)
-            || has_any(text, "review comment|review comments"))
+    classify_wait_text(text) == Some(WaitDisposition::Actionable)
 }
 fn mentions_external_gate_blocker(text: &str) -> bool {
-    (has_any(text, SECURITY_REVIEW_BLOCKER) && !has_any(text, SECURITY_REVIEW_NON_BLOCKER))
+    (has_any(text, SECURITY_REVIEW_BLOCKER)
+        && !has_any(text, SECURITY_REVIEW_NON_BLOCKER)
+        && (has_any(text, "failed|failure")
+            || classify_reviewer_text(text) != Some(WaitDisposition::Nonterminal)))
         || (has_any(text, EXTERNAL_CHECK_FAILURE)
             && !has_any(text, FALSE_CHECK_LABEL)
             && !mentions_resolved_blocker(text))
@@ -138,13 +149,13 @@ fn mentions_missing_child_evidence(text: &str) -> bool {
         && has_any(text, "evidence|goal tool|todo|plan|verification evidence")
 }
 fn has_true_impasse_rationale(text: &str) -> bool {
-    (has_unnegated_phrase(text, "true impasse", 16)
-        || has_unnegated_phrase(text, "cannot make meaningful progress", 16)
-        || has_unnegated_phrase(text, "can't make meaningful progress", 16))
+    has_any(text, "unanswered user decision|missing user information")
         && has_any(
             text,
-            "without user input|without maintainer input|without human input|external state change|requires user input|requires maintainer input|requires human input",
+            "materially changes the result|materially changes result",
         )
+        && has_any(text, "no safe default|safe default=unavailable")
+        && has_any(text, "no in-scope action|in-scope action=unavailable")
 }
 fn has_any(text: &str, phrases: &str) -> bool {
     phrases

@@ -88,6 +88,7 @@ mod mode;
 mod mode_dispatch;
 mod prompt_yaml;
 mod readiness_context;
+mod readiness_state;
 mod release_publish_contract;
 mod removed_mcp;
 mod repository_skill_root;

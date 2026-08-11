@@ -75,29 +75,32 @@ It MUST preserve the lane instead of transitioning.
 It MUST NOT perform the stop/archive/blocked transition when delivery is
 unavailable.
 
-## Blocked Goal Audit
+## Blocked Goal User-Decision Gate
 
-`update_goal(blocked)` is reserved for a genuine execution impasse. Before its
-pre-delivery receipt, the child MUST record one typed `Blocked goal audit:` with
-an audit id; at least three distinct material observation ids and distinct state
-fingerprints; first and observed monotonic milliseconds; a positive minimum
-interval satisfied by the elapsed time; `producer state=none` or
-`producer state=terminal-failure`; `safe action=unavailable`; and
-`wake route=unavailable`. A live `sentinel-running`, `child-pending`,
-`ci-queued`, or `connector-review-pending` producer is nonterminal and MUST NOT
-lead to a blocked call.
+`update_goal(blocked)` is reserved for an unanswered material user decision or
+missing user information. Before its pre-delivery receipt, the child MUST record
+one typed `Blocked goal user-decision gate:` with a gate id;
+`blocker class=user-decision` or `missing-user-information`;
+`decision owner=user`; the exact `user question`; `user response=unanswered`;
+at least two distinct `decision branches`; their `material impact`;
+`safe default=unavailable`; and `in-scope action=unavailable`.
+Sentinel, CI, connector review, parent authorization, dependency integration,
+resource slots, alternate evidence routes, and event-idle children are
+nonterminal and MUST NOT lead to a blocked call. Repeated turns, fingerprints,
+elapsed time, token pressure, difficulty, uncertainty, or incomplete work MUST
+NOT authorize a blocked goal.
 
 Immediately before the blocked call, the child MUST record a final `Blocked goal
-pre-mutation check:` with the audit id, the pre-delivery and current parent
+pre-mutation check:` with the gate id, the pre-delivery and current parent
 direction versions, and `cancellation=absent`. A changed direction version or
 received cancellation MUST prevent the mutation. The static validator MUST
-reject a blocked call without this audit or check.
+reject a blocked call without this gate or check.
 
-Every parent correction or cancellation received after the selected typed audit
+Every parent correction or cancellation received after the selected typed gate
 MUST be recorded as `Parent direction event:` with its version and cancellation
 state. That ordered event invalidates the whole audit/pre-delivery evidence
 window, whether it appears before or after a stale matching pre-mutation check.
-Before any blocked call, the child MUST perform a fresh typed audit and a fresh
+Before any blocked call, the child MUST perform a fresh typed gate and a fresh
 pre-delivery receipt after that event, followed by a matching pre-mutation check.
 
 A child that is only waiting MUST use `Nonterminal wait handoff:` with a stable

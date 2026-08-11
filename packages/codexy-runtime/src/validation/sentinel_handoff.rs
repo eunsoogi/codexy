@@ -141,8 +141,13 @@ pub(super) fn check(handoff: &str, head_ref_oid: Option<&str>) -> Vec<String> {
 }
 fn claims_readiness(text: &str) -> bool {
     let current = super::readiness_context::current_text(text);
-    has_any(&current, READINESS_MARKERS)
-        || child_handoff_claims_current_pr_readiness(&current)
+    READINESS_MARKERS.split('|').any(|phrase| {
+        affirmed_phrase_starts(&current, phrase).any(|start| {
+            !super::completion_handoff_waiting::readiness_status::is_neutral_span_at(
+                &current, start,
+            )
+        })
+    }) || child_handoff_claims_current_pr_readiness(&current)
         || super::completion_handoff::claims_completion(&current)
 }
 fn child_handoff_claims_current_pr_readiness(text: &str) -> bool {

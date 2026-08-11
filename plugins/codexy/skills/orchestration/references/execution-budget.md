@@ -24,10 +24,9 @@ Repeated child waiting turns, goal refreshes, polling, duplicate narrative, unbo
 The execution-budget contract MUST apply to GPT-5.6 Terra child lanes while remaining model-agnostic and MUST NOT hard-code model-specific prose into the state machine.
 
 Exhaustion, unchanged observations, and an external gate are not blocked-goal
-evidence. A blocked mutation needs the separate typed impasse audit: three
-distinct material observations and fingerprints, elapsed monotonic time meeting
-a positive declared minimum, no live producer, no safe action, and no wake
-route. Before mutation, the child MUST compare the latest parent-direction
+evidence. A blocked mutation needs the separate typed unanswered user-decision
+gate with an exact question, material branches, and proof that no safe default
+or in-scope action exists. Before mutation, the child MUST compare the latest parent-direction
 version with the pre-delivery version; a newer direction or cancellation MUST
 stop the blocked call. A nonterminal wait handoff MUST retain ownership and an
 active goal state and MUST NOT have a complete or blocked goal transition.
