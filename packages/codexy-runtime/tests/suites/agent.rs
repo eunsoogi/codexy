@@ -1,6 +1,9 @@
 #[path = "../validator_agent_model_assignments.rs"]
 mod validator_agent_model_assignments;
 
+#[path = "../validator_specialist_role_reduction.rs"]
+mod validator_specialist_role_reduction;
+
 #[path = "../validator_agent_registration.rs"]
 mod validator_agent_registration;
 

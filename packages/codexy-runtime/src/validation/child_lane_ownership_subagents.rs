@@ -5,15 +5,15 @@ use super::child_lane_ownership_subagent_format::{
     has_helper_only_purpose, has_unavailable_helper_rationale, key_allows_list_metadata_boundary,
     line_is_list_item, strip_list_marker,
 };
-
-const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-sentinel codexy-shipwright codexy-tracer codexy-warden codexy-weaver";
+const CODEXY_SPECIALIST_AGENTS: &str = "codexy-architect codexy-auditor codexy-cartographer codexy-sentinel codexy-shipwright codexy-warden codexy-weaver";
+const RETIRED_CODEXY_SPECIALIST_AGENTS: &str =
+    "codexy-forge codexy-pathfinder codexy-scribe codexy-sculptor codexy-tracer";
 const SUBAGENT_OWNER_ACTION_MARKERS: &str = "assigned to subagent|assigned to sub-agent|assigned to multi_agent|assigned to multi-agent|routed to subagent|routed to sub-agent|routed to multi_agent|routed to multi-agent|owned by subagent|owned by multi_agent|owned by multi-agent";
 const SUBAGENT_OWNER_ACTION_DENIAL_MARKERS: &str = "not assigned to subagent|not assigned to sub-agent|not assigned to multi_agent|not assigned to multi-agent|not assigned to spawn_agent|not routed to subagent|not routed to sub-agent|not routed to multi_agent|not routed to multi-agent|not routed to spawn_agent|not owned by subagent|not owned by multi_agent|not owned by multi-agent|not owned by spawn_agent";
 const SUBAGENT_OWNER_LABEL_MARKERS: &str =
     "subagent owner|multi_agent owner|multi-agent owner|spawn_agent owner";
 const SUBAGENT_OWNER_DENIAL_MARKERS: &str = "not the owner|not owner|not implementation owner|not a child owner|not a subthread owner|not a worktree owner|no subagent owner|no sub-agent owner|no multi_agent owner|no multi-agent owner|no spawn_agent owner|subagent owner not used|sub-agent owner not used|multi_agent owner not used|multi-agent owner not used|spawn_agent owner not used|no subagent substitute|no sub-agent substitute|no multi_agent substitute|no multi-agent substitute|no spawn_agent substitute|not a subagent substitute|not a sub-agent substitute|not a multi_agent substitute|not a multi-agent substitute|not a spawn_agent substitute|subagent substitute not used|sub-agent substitute not used|multi_agent substitute not used|multi-agent substitute not used|spawn_agent substitute not used|subagent fallback not used|sub-agent fallback not used|multi_agent fallback not used|multi-agent fallback not used|spawn_agent fallback not used";
 const NEGATED_CODEX_THREAD_OWNER_MARKERS: &str = "no codex worktree thread|no codex child thread|no codex thread|no worktree thread|no child thread|codex worktree thread unavailable|codex child thread unavailable|codex thread unavailable|codex thread tools unavailable|worktree thread unavailable|child thread unavailable|thread not available|thread was not available|not codex worktree thread|not codex child thread|not codex thread|not worktree thread|not child thread|not a codex worktree thread|not a codex child thread|not a codex thread|not a worktree thread|not a child thread|without codex worktree thread|without codex child thread|without codex thread|without worktree thread|without child thread|instead of codex worktree thread|instead of codex child thread|instead of codex thread|instead of worktree thread|instead of child thread|rather than codex worktree thread|rather than codex child thread|rather than codex thread|rather than worktree thread|rather than child thread";
-
 pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
     let mut owner_context: Option<(&str, String)> = None;
     for line in evidence.lines().map(str::trim) {
@@ -59,7 +59,6 @@ pub(super) fn has_subagent_as_thread_owner(evidence: &str) -> bool {
     }
     false
 }
-
 fn value_claims_subagent_owner(key: &str, value: &str) -> bool {
     if !has_subagent_surface(value) {
         return false;
@@ -177,8 +176,9 @@ fn has_subagent_surface(value: &str) -> bool {
 
 fn value_has_codexy_specialist_agent(value: &str) -> bool {
     let value = trimmed_value(value);
-    CODEXY_SPECIALIST_AGENTS
-        .split_whitespace()
+    [CODEXY_SPECIALIST_AGENTS, RETIRED_CODEXY_SPECIALIST_AGENTS]
+        .into_iter()
+        .flat_map(str::split_whitespace)
         .any(|marker| value.contains(marker))
 }
 

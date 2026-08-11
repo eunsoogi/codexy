@@ -8,7 +8,7 @@ use crate::support;
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
 #[rustfmt::skip]
-const ROLES: [&str; 12] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-forge", "codexy-pathfinder", "codexy-scribe", "codexy-sculptor", "codexy-sentinel", "codexy-shipwright", "codexy-tracer", "codexy-warden", "codexy-weaver"];
+const ROLES: [&str; 7] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-sentinel", "codexy-shipwright", "codexy-warden", "codexy-weaver"];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Tree = BTreeMap<PathBuf, Option<Vec<u8>>>;
@@ -63,7 +63,7 @@ fn assert_failure_is_transactional(operation: Operation) -> TestResult {
     } else {
         &[]
     };
-    let fail_after = ["14", "4", "14"][operation as usize];
+    let fail_after = ["9", "4", "9"][operation as usize];
     let output = registration_command(&plugin_root, &codex_home)
         .env("CODEXY_AGENT_REGISTRATION_FAIL_AFTER", fail_after)
         .args(extra)

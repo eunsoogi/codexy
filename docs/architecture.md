@@ -23,19 +23,18 @@ native custom-agent location by the registration bootstrap.
 | `codexy-architect` | `gpt-5.6-sol` | `high` | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points. |
 | `codexy-auditor` | `gpt-5.6-terra` | `medium` | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces. |
 | `codexy-cartographer` | `gpt-5.6-luna` | `low` | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries. |
-| `codexy-forge` | `gpt-5.6-terra` | `medium` | Makes scoped edits after the issue, branch, worktree, plan, allowed paths, and acceptance criteria are fixed. |
-| `codexy-pathfinder` | `gpt-5.6-sol` | `xhigh` | Converts ambiguous or cross-surface requests into atomic lanes, owners, proof plans, and stop conditions. |
-| `codexy-scribe` | `gpt-5.6-luna` | `low` | Writes concise README, skill, PR, release, marketplace, and workflow documentation after behavior is known. |
-| `codexy-sculptor` | `gpt-5.6-terra` | `high` | Performs behavior-preserving refactors, helper extraction, module splits, and structural LOC remediation. |
 | `codexy-sentinel` | `gpt-5.6-sol` | `xhigh` | Runs the mandatory adversarial final review of scope, correctness, safety, tests, and current-head evidence. |
 | `codexy-shipwright` | `gpt-5.6-terra` | `high` | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness. |
-| `codexy-tracer` | `gpt-5.6-sol` | `high` | Reproduces and isolates failing tests, broken automation, flaky workflows, and unexpected connector behavior. |
 | `codexy-warden` | `gpt-5.6-sol` | `xhigh` | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation. |
 | `codexy-weaver` | `gpt-5.6-terra` | `medium` | Reconciles parallel lanes, branch heads, conflicts, PR evidence, merge ordering, and post-merge synchronization. |
 
 These model assignments come directly from the packaged TOMLs. A named custom
 agent's TOML is authoritative for its model and reasoning effort; callers should
 not silently override it.
+
+The role-equivalence boundary records why the removed roles are not aliases and
+reserves Inspector as a future distinct reviewer: see
+[`specialist-role-equivalence.md`](specialist-role-equivalence.md).
 
 ## Packaged skills
 

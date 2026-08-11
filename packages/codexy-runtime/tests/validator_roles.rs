@@ -7,7 +7,7 @@ fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::err
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\nnickname_candidates = [\"\", \"Plan\"]\n");
     std::fs::write(&planner_path, planner)?;
@@ -24,7 +24,7 @@ fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::er
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\ndisplay_name = \"Planner\"\n");
     std::fs::write(&planner_path, planner)?;
@@ -44,7 +44,7 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let planner = std::fs::read_to_string(&planner_path)?;
     let planner = planner.replace("developer_instructions = \"\"\"\n", "removed = \"\"\"\n");
     std::fs::write(&planner_path, planner)?;
@@ -62,7 +62,7 @@ fn validator_cli_rejects_too_short_developer_instructions() -> Result<(), Box<dy
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     let start = planner
         .find("developer_instructions = \"\"\"\n")
@@ -90,7 +90,7 @@ fn validator_cli_allows_supported_custom_agent_config_layers()
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str(
         "\n[mcp_servers.example_mcp]\ncommand = \"example_mcp\"\nargs = [\"--stdio\"]\nenv_vars = [\"TOKEN\", { name = \"REMOTE_TOKEN\", source = \"remote\" }]\ndefault_tools_approval_mode = \"prompt\"\n\n[mcp_servers.example_mcp.tools.search]\napproval_mode = \"approve\"\n\n[[skills.config]]\npath = \"/tmp/codexy-qa/SKILL.md\"\nenabled = false\n",
@@ -131,7 +131,7 @@ fn validator_cli_rejects_array_shaped_mcp_servers() -> Result<(), Box<dyn std::e
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\nmcp_servers = [\"example_mcp\"]\n");
     std::fs::write(&planner_path, planner)?;
@@ -148,7 +148,7 @@ fn validator_cli_rejects_table_shaped_skills_config() -> Result<(), Box<dyn std:
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\n[skills.config]\n\"codexy:qa\" = { enabled = true }\n");
     std::fs::write(&planner_path, planner)?;
@@ -166,7 +166,7 @@ fn validator_cli_rejects_unsupported_skills_config_fields() -> Result<(), Box<dy
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\n[[skills.config]]\nname = \"codexy:qa\"\n");
     std::fs::write(&planner_path, planner)?;
@@ -184,7 +184,7 @@ fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dy
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str("\n[skills.unsupported]\nfoo = true\n");
     std::fs::write(&planner_path, planner)?;
@@ -199,7 +199,7 @@ fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dy
 fn copy_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
     support::copy_plugin_fixture_into_with_mutable_files(
         plugin_root,
-        &[std::path::Path::new("agents/codexy-pathfinder.toml")],
+        &[std::path::Path::new("agents/codexy-architect.toml")],
     )
 }
 
@@ -217,7 +217,7 @@ fn validate_planner_fragment(fragment: &str) -> Result<Output, Box<dyn std::erro
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let planner_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    let planner_path = plugin_root.join("agents/codexy-architect.toml");
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str(fragment);
     std::fs::write(&planner_path, planner)?;
