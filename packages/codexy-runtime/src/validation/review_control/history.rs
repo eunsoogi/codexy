@@ -99,10 +99,10 @@ fn valid_path(events: &[Event]) -> bool {
                 || (escalated_full(first, second) && passed_after(second, third, 0))
                 || (escalated_full(first, second) && delta_after(second, third))
         }
-        [unobservable, full, delta, passed] => {
+        [unobservable, full, delta, terminal] => {
             escalated_full(unobservable, full)
                 && delta_after(full, delta)
-                && passed_after(delta, passed, 1)
+                && (passed_after(delta, terminal, 1) || parent_decision(delta, terminal))
         }
         _ => false,
     }

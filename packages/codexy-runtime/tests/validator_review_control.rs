@@ -9,6 +9,8 @@ use crate::support::TestResult;
 mod review_economics;
 #[path = "validator_review_control/ledger.rs"]
 mod review_ledger;
+#[path = "validator_review_control/escalation.rs"]
+mod review_escalation;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {

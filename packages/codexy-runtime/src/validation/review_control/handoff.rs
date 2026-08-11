@@ -55,11 +55,10 @@ pub(super) fn check(plugin_root: &Path, pr_state: &Value) -> Vec<String> {
         || evidence.profile != selected
         || pr_state.get("headRefOid").and_then(Value::as_str) != Some(&evidence.head_oid)
         || evidence.reviewer != profile.reviewer
-        || evidence.state != "passed"
         || !terminal_matches(&history, &evidence, selected)
     {
         return vec![
-            "profile-routed review evidence must bind the selected reviewer and current head PASS"
+            "profile-routed review evidence must bind the selected reviewer and current-head terminal state"
                 .into(),
         ];
     }
@@ -76,7 +75,9 @@ fn terminal_matches(history: &History, evidence: &Evidence, selected: &str) -> b
     event.id == evidence.event_id
         && event.profile == selected
         && event.head_oid == evidence.head_oid
-        && event.state == "passed"
+        && matches!(event.state.as_str(), "passed" | "parent_decision")
+        && event.state == evidence.state
         && event.blockers == evidence.blockers
-        && event.blockers.iter().all(|blocker| blocker.resolved)
+        && (event.state == "parent_decision"
+            || event.blockers.iter().all(|blocker| blocker.resolved))
 }
