@@ -59,7 +59,11 @@ fn resolver_rejects_unknown_or_incomplete_machine_owned_requests() -> TestResult
 
 #[test]
 fn check_rejects_a_malformed_or_unknown_policy_boundary() -> TestResult {
-    let fixture = support::plugin_fixture()?;
+    let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY)])?;
+    assert_eq!(
+        support::fixture_mutable_files(fixture.root()),
+        Some(vec![Path::new(POLICY).to_path_buf()])
+    );
     let path = fixture.root().join(POLICY);
     let mut policy = json!({
         "schema": "codexy.tdd-classification-policy.v1",
