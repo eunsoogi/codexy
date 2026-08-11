@@ -39,7 +39,8 @@
 
 - BLOCK receipt:
 - repair plan:
-- faithful RED coverage:
+- engineering_tdd_required:
+- RED/GREEN or proportional boundary proof:
 - terminal proof:
 - fresh Sentinel review for new file state or head:
 

@@ -34,9 +34,8 @@ ownership boundaries.
 ## Test-driven development
 
 MUST use [Test-driven development](references/test-driven-development.md) when
-implementing a feature, bug fix, behavior change, refactor, validator, harness,
-CLI behavior, documentation rule, plugin skill, workflow rule, or release
-automation before production edits.
+the task classification has set `engineering_tdd_required` for an executable
+engineering boundary.
 
 ## Refactoring
 
@@ -61,7 +60,7 @@ or PR readiness.
 - MUST apply domain modeling before a change crosses a named ownership or
   invariant boundary.
 - MUST use test-driven development to establish RED, GREEN, and regression
-  proof for the change.
+  proof only for boundaries with `engineering_tdd_required`.
 - MUST use refactoring only for behavior-preserving structural work.
 - MUST use quality assurance to inspect the observable surface after automated
   proof.

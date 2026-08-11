@@ -30,6 +30,9 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
    - PR review/comment/thread state for review gates.
    - child-thread handoff or readback evidence when feedback belongs to a
      child-owned lane.
+   - TDD classification evidence before requiring RED/GREEN: engineering
+     boundaries require the same faithful proof to turn RED then GREEN;
+     non-engineering boundaries require proportional direct/readback evidence.
 4. MUST inspect the current authoritative source. MUST NOT rely on memory, intent, or
    earlier output unless it is explicitly marked as stale supporting context.
 5. MUST classify each item as proved, contradicted, incomplete, too weak, or missing.
@@ -41,6 +44,9 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
 - MUST run `git diff --check` before pushing or opening a PR.
 - MUST inspect `git status --short` and MUST NOT stage unrelated files.
 - MUST parse structured files with an appropriate parser when possible.
+- MUST keep strict safety, current-head, external-surface, and LOC gates
+  independent from `engineering_tdd_required`; absent RED is not a proof gap for
+  a non-engineering boundary.
 - For Codexy plugin architecture changes, validate LSP config, MCP config,
   role metadata or custom agent TOMLs, and thread/worktree orchestration
   wording. MUST run `scripts/validate-plugin-config --check` when that

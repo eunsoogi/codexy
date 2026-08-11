@@ -112,6 +112,7 @@ mod sentinel_handoff_evidence;
 mod sentinel_handoff_reviewer;
 mod sentinel_handoff_status;
 mod sentinel_handoff_status_evidence;
+mod tdd_classification;
 mod touched_loc;
 mod touched_loc_remediation;
 mod value_arrays;
@@ -162,6 +163,15 @@ pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> V
 /// or routing-measurement artifacts.
 pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     routing_policy::resolve(plugin_root, request)
+}
+
+/// Resolves typed work boundaries into their TDD and proportional-proof duties.
+///
+/// # Errors
+///
+/// Returns an error for unreadable, malformed, or incomplete policy or request data.
+pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
+    tdd_classification::resolve(plugin_root, request)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {
