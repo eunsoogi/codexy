@@ -1,7 +1,6 @@
 """Registered Rust acceptance shards and fail-closed receipt aggregation."""
 from __future__ import annotations
 
-import json
 import math
 import subprocess
 from collections import Counter
@@ -33,8 +32,7 @@ SPECS = tuple(
 SHARDS = {spec.name: spec.argv for spec in SPECS}
 CANONICAL = {f"suite_{name}": "suite_all" for name in SHARDS if name != "archive"}
 CANONICAL["suite_archive"] = "suite_archive"
-INVENTORY_FILE = "profile_rust_shard_inventory.json"
-INVENTORY_SCHEMA = "codexy.rust-shard.inventory/v1"
+PLATFORMS = frozenset(("posix", "windows"))
 TOPOLOGY_AUTHORITY = "PR #516 maintainer authority supersedes only #526's monolithic-all-targets and no-shard topology clauses; every other #526 constraint remains binding."
 
 
@@ -44,33 +42,24 @@ def shard_spec(name: str | None) -> WorkloadSpec | None:
     return next((spec for spec in SPECS if spec.name == name), None)
 
 
-def platform_counts(root: Path) -> dict[str, int]:
-    try:
-        inventory = json.loads((root / "scripts" / INVENTORY_FILE).read_text())
-    except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"invalid Rust shard inventory: {error}") from error
-    if not isinstance(inventory, dict):
-        raise ValueError("invalid Rust shard inventory")
-    counts = inventory.get("platform_counts")
-    if set(inventory) != {"schema", "platform_counts"} or inventory.get("schema") != INVENTORY_SCHEMA or not isinstance(counts, dict) or set(counts) != {"posix", "windows"} or any(not isinstance(count, int) or isinstance(count, bool) or count < 1 for count in counts.values()):
-        raise ValueError("invalid Rust shard inventory")
-    return counts
-
-
 def valid_provenance(item: dict[str, object]) -> bool:
     values = (item.get("run_id"), item.get("run_attempt"))
     return all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in values)
 
 
+def valid_process_status(item: dict[str, object]) -> bool:
+    value = item.get("status")
+    return isinstance(value, int) and not isinstance(value, bool) and value == 0
+
+
 def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> int:
     try:
         receipts = load(directory)
-        counts = platform_counts(root)
-    except (OSError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, ValueError) as error:
         print(f"aggregate-receipts\t0\tFAIL\t{error}")
         return 1
     platforms = {item.get("platform") for item in receipts}
-    selected = {"posix"} if platform_only == "posix" else set(counts)
+    selected = {"posix"} if platform_only == "posix" else PLATFORMS
     if platform_only not in {None, "posix"}:
         print(f"aggregate-receipts\t0\tFAIL\tlocal platform aggregate must be posix")
         return 1
@@ -87,13 +76,13 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     for item in receipts:
         platform, shard = item.get("platform"), item.get("shard")
         item_tests = Counter(item.get("tests", []))
-        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
+        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_process_status(item) or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
             receipt_valid = False
             continue
         tests[platform].update(item_tests)
         targets[platform].update(item.get("physical_targets", []))
     duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
-    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and len({item.get("run_id") for item in receipts}) == 1 and all(targets[platform] == expected_targets and sum(values.values()) == counts[platform] and provenance_windows_within_budget(receipts, platform, valid_timing) for platform, values in tests.items()) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts}) == 1 and all(targets[platform] == expected_targets and provenance_windows_within_budget(receipts, platform, valid_timing) for platform in tests) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
     for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1

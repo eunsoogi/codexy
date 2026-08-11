@@ -28,6 +28,18 @@ mod validator_agent_registration_transactions;
 #[path = "../validator_prompt_metadata.rs"]
 mod validator_prompt_metadata;
 
+#[path = "../validator_child_routing_policy.rs"]
+mod validator_child_routing_policy;
+
+#[path = "../validator_routing_measurement.rs"]
+mod validator_routing_measurement;
+
+#[path = "../validator_routing_measurement_promotions.rs"]
+mod validator_routing_measurement_promotions;
+
+#[path = "../validator_routing_measurement_schema.rs"]
+mod validator_routing_measurement_schema;
+
 #[path = "../validator_prompt_host_limits.rs"]
 mod validator_prompt_host_limits;
 

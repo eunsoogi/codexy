@@ -11,17 +11,23 @@ MUST run the current plugin-invoking Codex thread as the root/orchestrator for
 goal-oriented work. MUST NOT spawn or assign a separate orchestrator agent. The
 invoking Codex thread owns intent, decomposition, routing, evidence integration,
 and final completion claims. Specialists and separate Codex thread/worktree lanes
-own bounded atomic units only.
-
-Root `AGENTS.md` owns repo-wide dogfooding policy. This skill supplies the
-execution loop and MUST be read with root `AGENTS.md`.
+own bounded atomic units only; Root `AGENTS.md` owns repo-wide dogfooding policy.
 
 ## GPT-5.6 Routing Matrix
 
+The closed machine-owned routing authority is
+`references/child-routing-policy.json`; its paired current measurement evidence
+is `references/routing-evaluation-results.json`. This matrix is the human-readable
+workflow projection and MUST NOT be parsed as policy.
+
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
-- Generic implementation, debugging, integration, and QA child thread: MUST
-  explicitly request `model: "gpt-5.6-terra"` and `reasoning_effort: "high"`.
+- Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.
+- A matching named specialist MUST be selected before generic child routing; its TOML remains authoritative.
+- Candidate simple work MUST use `gpt-5.6-luna` with `reasoning_effort: "max"` only when fixed scope, deterministic oracle, low-risk/reversible boundary, and no unresolved domain, security, permission, release, or ownership decision all hold.
+- Candidate general work MUST compare Terra/high, Terra/xhigh, and Terra/max and select the lowest effort meeting measured quality and economics gates.
+- Measurement gate: promotion above Terra/high MUST have zero P0/P1 defects, at least 95% acceptance, either a five-point first-pass gain or 20% fewer repairs, and no more than 1.5x median cost or wall time.
+- Ambiguous, high-risk, or incomplete classification MUST fail closed to root or a named specialist; it MUST NOT select Luna.
 - `gpt-5.6-luna` is only for repository discovery, cataloging, simple
   documentation drafting, bounded polling, and repetitive checks. MUST NOT use
   Luna as the blanket default for implementation, security review, or ambiguous
@@ -39,12 +45,18 @@ execution loop and MUST be read with root `AGENTS.md`.
 - Configured UI model is authoritative; active child/parent thread ledger entries MUST
   record each destination owner's configured UI `model` and `thinking` separately
   from historical actual `turn_context` model and per-message overrides.
-- Every `send_message_to_thread` call, parent-to-child or child-to-parent, MUST
-  explicitly pass the recipient's configured UI `model` and `thinking`. MUST NOT
-  infer either from historical actual `turn_context` state, the sender, or ambient defaults.
-- Parent-to-generic-child delivery MUST pass `model: "gpt-5.6-terra"` and
-  `thinking: "high"`; child-to-root delivery MUST pass `model: "gpt-5.6-sol"`
-  and `thinking: "medium"`.
+- Before every Codex app `create_thread` or `send_message_to_thread` call, the
+  parent MUST load the policy and send a closed typed classification request with
+  `codex_thread_operation` set to that exact operation and
+  `codex_thread_capabilities` set to the app surface's advertised
+  model/thinking pairs. It MUST fail closed without a child-thread call when its
+  result lacks a generic recipient binding; an unavailable Luna/max candidate
+  falls back to advertised Terra/high or the safe route.
+- The generic resolver result binds the same `codex_thread_operation`, `model`,
+  and `thinking` that the parent MUST pass explicitly to that Codex app call.
+  A named-specialist or safe-route result has no generic thread override.
+- Parent-to-generic-child delivery uses `gpt-5.6-terra`/`high`; child-to-root
+  delivery uses `gpt-5.6-sol`/`medium`.
 - Captured #433 parent-to-generic-child evidence: configured_ui_model="gpt-5.6-terra"; actual_turn_context_model="gpt-5.6-sol"; per_message_model="gpt-5.6-terra"; send_message_to_thread({ threadId: "child-433", model: "gpt-5.6-terra", thinking: "high" }).
 - Reverse child-to-root evidence: configured_ui_model="gpt-5.6-sol"; actual_turn_context_model="gpt-5.6-terra"; per_message_model="gpt-5.6-sol"; send_message_to_thread({ threadId: "root-433", model: "gpt-5.6-sol", thinking: "medium" }).
 
@@ -52,18 +64,17 @@ execution loop and MUST be read with root `AGENTS.md`.
 
 MUST read these relative references before acting on the matching surface:
 
-- `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and sentinel discipline.
+- `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and Sentinel discipline.
 - `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
-- `references/thread-and-worktree-routing.md` for parent/child boundaries,
-  thread discovery, Codex app worktree preflights, and worktree rules.
-- `references/orchestration-loop.md` for intake, plan, dispatch, integration,
-  verification, finish, failure modes, and handoffs.
+- `references/thread-and-worktree-routing.md` for parent/child boundaries, thread discovery, Codex app worktree preflights, and worktree rules.
+- `references/orchestration-loop.md` for intake, plan, dispatch, integration, verification, finish, failure modes, and handoffs.
 - `references/runtime-heartbeats.md` for external waits.
 - `references/parent-stop-preflight.md` for ownership checks before implementation edits.
 - `references/execution-budget.md` for finite child execution and termination.
 - `references/token-efficient.md` for compact event deltas and token discipline.
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
+- `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
 
 ## Classification Gate
 
@@ -76,20 +87,13 @@ setup, validation, release, or other workflow actions is a workflow defect:
 MUST stop, classify, and only then MUST continue through the matching Codexy workflow.
 
 ## Authority Boundary
+
 `references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action.
+
 ## Packaged Agents
 
-Codexy ships specialist agent definitions as plugin-packaged Codex custom-agent
-TOML files at `plugins/codexy/agents/<name>.toml`, with discovery metadata in
-`plugins/codexy/agents/catalog.toml`; MUST keep one specialist agent per file.
-`plugins/codexy/agents/openai.yaml` is the plugin invocation interface, not a
-specialist worker.
-
-Installed Codexy specialists require the stable registration bridge and an
-independent schema/invocation preflight. MUST read
-`references/agent-registration.md` before registering, updating, uninstalling,
-diagnosing, or invoking a packaged specialist. MUST NOT treat
-`plugins/codexy/.codex/agents` as installed custom agents.
+MUST read `references/agent-registration.md` before registering, updating,
+uninstalling, diagnosing, or invoking a packaged specialist.
 
 ## Required Control Plane
 
@@ -230,8 +234,6 @@ presenting a quiet fallback as normal.
 
 MUST follow `references/parent-stop-preflight.md` before implementation edits.
 MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>` when that reference requires ownership evidence.
-
-## Completion Guard
 
 ## Event-driven token and quota containment
 

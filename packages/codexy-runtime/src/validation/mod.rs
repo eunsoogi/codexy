@@ -99,6 +99,10 @@ mod review_thread_waiting_phrases;
 mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
+mod routing_json;
+mod routing_measurement;
+mod routing_measurement_schema;
+mod routing_policy;
 mod runtime;
 mod runtime_candidate_manifest;
 mod runtime_release_contract;
@@ -148,6 +152,16 @@ pub fn touched_loc_diagnostics(root: &Path, base_ref: &str) -> Result<Vec<String
 #[must_use]
 pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> Vec<String> {
     merge_authorization::check(authorization, pr_state)
+}
+
+/// Resolves one typed child-routing request from the packaged policy data.
+///
+/// # Errors
+///
+/// Returns an error for unreadable, malformed, or incomplete policy, request,
+/// or routing-measurement artifacts.
+pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
+    routing_policy::resolve(plugin_root, request)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

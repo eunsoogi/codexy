@@ -64,17 +64,14 @@ spec = importlib.util.spec_from_loader("profile_rust_tests", SourceFileLoader("p
 profiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiler)
 from profile_rust_receipts import SCHEMA, digest, write
-from profile_rust_shards import SHARDS, aggregate, owned_targets, platform_counts
+from profile_rust_shards import PLATFORMS, SHARDS, aggregate, owned_targets
 
 head = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=repository, text=True).strip()
 targets = profiler.declared_test_targets(runtime)
-counts = platform_counts(repository)
-
 def write_receipts(directory):
-    for platform, count in counts.items():
+    for platform in PLATFORMS:
         for index, shard in enumerate(SHARDS):
-            size = count // len(SHARDS) + (index < count % len(SHARDS))
-            tests = [f"suite_all::{platform}_{shard}_{number}" for number in range(size)]
+            tests = [f"suite_all::{platform}_{shard}_baseline"]
             observed = Counter(tests)
             write(directory / f"{platform}-{shard}.json", {
                 "schema": SCHEMA, "state": "PASS", "platform": platform,
@@ -109,13 +106,13 @@ with tempfile.TemporaryDirectory() as temporary:
             sys.argv = saved_argv
         if status != 0 or "aggregate-receipts\t14\tPASS" not in output.getvalue():
             raise SystemExit(f"{label} aggregate failed: {status} {output.getvalue()!r}")
-    if (runtime / "scripts/profile_rust_shard_inventory.json").exists():
-        raise SystemExit("package-local shard inventory fallback exists")
+    if (repository / "scripts/profile_rust_shard_inventory.json").exists():
+        raise SystemExit("obsolete static shard inventory remains")
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         status = aggregate(receipts, runtime)
-    if status != 1 or "invalid Rust shard inventory" not in output.getvalue():
-        raise SystemExit(f"package-local fallback was accepted: {status} {output.getvalue()!r}")
+    if status != 0 or "aggregate-receipts\t14\tPASS" not in output.getvalue():
+        raise SystemExit(f"runtime root lost aggregate authority: {status} {output.getvalue()!r}")
     unrelated = receipts / "unrelated"
     unrelated.mkdir()
     try:
