@@ -1,5 +1,8 @@
 
-type TestResult = Result<(), Box<dyn std::error::Error>>;
+pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+#[path = "validator_completion_handoff_waiting/event_matrix.rs"]
+mod event_matrix;
 
 const OPEN_PR_STATE: &str =
     r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}}"#;
@@ -215,7 +218,7 @@ fn validator_preserves_true_impasse() -> TestResult {
     Ok(())
 }
 
-fn validate(handoff: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+pub(super) fn validate(handoff: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
@@ -224,6 +227,6 @@ fn validate(handoff: &str) -> Result<std::process::Output, Box<dyn std::error::E
     crate::support::validator_completion_handoff_files(&handoff_path, &pr_state_path)
 }
 
-fn stderr(output: &std::process::Output) -> String {
+pub(super) fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
