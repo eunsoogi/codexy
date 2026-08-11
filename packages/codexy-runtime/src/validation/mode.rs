@@ -1,8 +1,6 @@
 #[derive(Debug, Clone)]
 pub enum Mode {
     All,
-    InstructionPolicy,
-    OrchestrationRouting,
     Lsp,
     RustLspReadiness,
     MergeMessage {
@@ -30,7 +28,6 @@ pub enum Mode {
         handoff: String,
         pr_state: String,
     },
-    ReviewResponseCluster(String),
     Mcp,
     Hooks,
     Roles,

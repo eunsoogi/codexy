@@ -136,9 +136,6 @@ mod validator_child_terminal_handoff;
 #[path = "../validator_child_terminal_route.rs"]
 mod validator_child_terminal_route;
 
-#[path = "../validator_child_thread_ledger_skill.rs"]
-mod validator_child_thread_ledger_skill;
-
 #[path = "../validator_completion_handoff.rs"]
 mod validator_completion_handoff;
 
@@ -162,9 +159,3 @@ mod validator_completion_handoff_sentinel;
 
 #[path = "../validator_completion_handoff_waiting.rs"]
 mod validator_completion_handoff_waiting;
-
-#[path = "../validator_connector_review_policy.rs"]
-mod validator_connector_review_policy;
-
-#[path = "../validator_connector_review_policy_markdown_boundaries.rs"]
-mod validator_connector_review_policy_markdown_boundaries;

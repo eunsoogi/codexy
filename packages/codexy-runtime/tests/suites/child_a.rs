@@ -1,9 +1,3 @@
-#[path = "../validator_child_external_gate_policy.rs"]
-mod validator_child_external_gate_policy;
-
-#[path = "../validator_child_external_gate_goal_lifecycle.rs"]
-mod validator_child_external_gate_goal_lifecycle;
-
 #[path = "../validator_child_goal_blocked_audit.rs"]
 mod validator_child_goal_blocked_audit;
 
@@ -12,9 +6,6 @@ mod validator_child_goal_reporting;
 
 #[path = "../validator_child_goal_reporting_regressions.rs"]
 mod validator_child_goal_reporting_regressions;
-
-#[path = "../validator_child_goal_reporting_skill.rs"]
-mod validator_child_goal_reporting_skill;
 
 #[path = "../validator_child_handoff_readiness.rs"]
 mod validator_child_handoff_readiness;

@@ -4,11 +4,6 @@ use crate::support;
 
 use support::copy_dir;
 
-#[path = "structured_contract_artifacts.rs"]
-mod structured_contract_artifacts;
-#[path = "validator_prompt_metadata/classification_contract.rs"]
-mod classification_contract;
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -69,13 +64,38 @@ fn validator_cli_rejects_missing_top_level_prompt_metadata() -> TestResult {
 }
 
 #[test]
-fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult {
+fn validator_cli_rejects_skill_frontmatter_identity_mismatch() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let prompt_path = plugin_root.join("skills/git-workflow/agents/openai.yaml");
-    structured_contract_artifacts::TextShape::new(&std::fs::read_to_string(prompt_path)?)
-        .assert_absent_concepts("skill-prompt.no-top-level-orchestration-route", &["$orchestration"]);
+    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(
+        &skill_path,
+        skill.replacen("name: git-workflow", "name: wrong-identity", 1),
+    )?;
+
+    let output = validator(&plugin_root, "--check-roles")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("frontmatter name must match skill directory"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_accepts_valid_skill_frontmatter() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(
+        &skill_path,
+        skill.replacen(
+            "description: Codexy plugin GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, review-thread resolution, and squash-merge workflow. MUST use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.",
+            "description: >\n  Structured YAML frontmatter can use\n  folded scalar values.",
+            1,
+        ),
+    )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -83,72 +103,82 @@ fn validator_cli_allows_skill_prompt_without_orchestration_route() -> TestResult
 }
 
 #[test]
-fn codex_orchestration_spawn_agent_examples_use_message_argument() -> TestResult {
-    let skill = std::fs::read_to_string(
-        codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/skills/orchestration/SKILL.md"),
-    )?;
-    assert!(!skill.contains("prompt="));
-    assert!(skill.contains("spawn_agent(agent_type=\"codexy-sentinel\", message="));
-    assert!(skill.contains("spawn_agent(agent_type=\"codexy-pathfinder\", message="));
-    assert!(skill.contains("spawn_agent(agent_type=\"codexy-cartographer\", message="));
+fn validator_cli_rejects_missing_skill_frontmatter() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(&skill_path, skill.trim_start_matches("---\n"))?;
+
+    let output = validator(&plugin_root, "--check-roles")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("frontmatter must open with ---"));
     Ok(())
 }
 
 #[test]
-fn repo_instructions_own_dogfood_policy_with_orchestration_details() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let agents = std::fs::read_to_string(root.join("AGENTS.md"))?;
-    let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
+fn validator_cli_rejects_malformed_skill_frontmatter() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(
+        &skill_path,
+        skill.replacen("name: git-workflow", "name: 'git-workflow", 1),
+    )?;
 
-    assert!(agents.contains("Dogfooding Guardrails"));
-    assert!(agents.contains("failures to follow governing `AGENTS.md`"));
-    assert!(agents.contains("actual Codex callable tool surface or `tool_search`"));
-    assert!(agents.contains("`codex mcp list` shows Codexy `codegraph` or `lsp` enabled"));
-    assert!(agents.contains("preflight branch refs"));
-    assert!(agents.contains("non-existent new branch as an existing branch selector"));
-    assert!(agents.contains("MUST keep exactly one"));
-    assert!(agents.contains("MUST NOT stop at an open PR"));
-    assert!(
-        agents.contains("Child-owned lanes receive implementation and review-feedback patches")
-    );
+    let output = validator(&plugin_root, "--check-roles")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("frontmatter must be valid YAML"));
+    Ok(())
+}
 
-    assert!(skill.contains("Root `AGENTS.md` owns repo-wide dogfooding policy"));
-    assert!(skill.contains("Parent Stop Preflight"));
-    assert!(skill.contains("references/thread-and-worktree-routing.md"));
-    assert!(skill.contains("Subagents are not child-owned implementation owners"));
-    assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
-    assert!(!skill.contains("## Registered MCP Exposure Defects"));
+#[test]
+fn validator_cli_rejects_skill_frontmatter_without_closing_delimiter() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill = std::fs::read_to_string(&skill_path)?;
+    std::fs::write(&skill_path, skill.replacen("\n---\n", "\n...\n", 1))?;
 
-    let thread_ref = std::fs::read_to_string(root.join(
-        "plugins/codexy/skills/orchestration/references/thread-and-worktree-routing.md",
-    ))?;
-    for expected in [
-        "Thread Tool Discovery Procedure",
-        "Codex App Worktree Creation Preflight",
-        "thread/start",
-        "turn/start",
-        "tool_search` mismatch is an exposure/discovery defect",
-        "exact missing-handler error",
-        "no fallback route was\n   available",
-        "MUST NOT use `codex exec`, `codex fork`, or `codex app-server`",
-        "startingState.type=\"branch\"",
-        "git check-ref-format --branch",
+    let output = validator(&plugin_root, "--check-roles")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("frontmatter must close with ---"));
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_empty_skill_frontmatter_fields() -> TestResult {
+    for (field, replacement, expected) in [
+        ("name: git-workflow", "name: ", "frontmatter.name must be a non-empty string"),
+        ("description:", "description: #", "frontmatter.description must be a non-empty string"),
     ] {
-        assert!(thread_ref.contains(expected));
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_fixture(&plugin_root)?;
+        let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+        let skill = std::fs::read_to_string(&skill_path)?;
+        std::fs::write(&skill_path, skill.replacen(field, replacement, 1))?;
+        let output = validator(&plugin_root, "--check-roles")?;
+        assert!(!output.status.success());
+        assert!(stderr(&output).contains(expected));
     }
     Ok(())
 }
 
 #[test]
-fn git_workflow_requires_child_lane_ownership_evidence_check() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let skill = std::fs::read_to_string(root.join("plugins/codexy/skills/git-workflow/SKILL.md"))?;
+fn validator_cli_rejects_missing_skill_document() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy");
+    copy_fixture(&plugin_root)?;
+    std::fs::remove_file(plugin_root.join("skills/git-workflow/SKILL.md"))?;
 
-    assert!(skill.contains("--check-child-lane-ownership --evidence-file"));
-    assert!(skill.contains("parent MUST NOT patch the child-owned"));
-    assert!(skill.contains("explicit maintainer reassignment"));
+    let output = validator(&plugin_root, "--check-roles")?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("skill bundle is missing SKILL.md"));
     Ok(())
 }
 

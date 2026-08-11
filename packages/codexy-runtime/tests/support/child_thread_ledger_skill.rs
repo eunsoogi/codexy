@@ -1,4 +1,3 @@
-use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output};
 
 use codexy_runtime::paths;
@@ -10,97 +9,10 @@ use std::os::unix::process::ExitStatusExt;
 use std::os::windows::process::ExitStatusExt;
 
 pub(crate) fn validator(
-    plugin_root: &Path,
+    plugin_root: &std::path::Path,
     mode: &str,
-) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+) -> Result<Output, Box<dyn std::error::Error>> {
     validator_in_process(plugin_root, mode)
-}
-
-pub(crate) fn validator_instruction_policy(
-    plugin_root: &Path,
-) -> Result<Output, Box<dyn std::error::Error>> {
-    let canonical = codexy_runtime::paths::repository_root().join("plugins/codexy");
-    let mut changed = Vec::new();
-    let used_fixture_manifest = match super::fixture_mutable_files(plugin_root) {
-        Some(mutable_files) => {
-            collect_declared_fixture_changes(plugin_root, &canonical, &mutable_files, &mut changed)?
-        }
-        None => false,
-    };
-    if !used_fixture_manifest {
-        changed.clear();
-        collect_changed_surfaces(plugin_root, &canonical, &mut changed)?;
-    }
-    if let Some(repo_root) = plugin_root.parent().and_then(Path::parent) {
-        let current_agents = repo_root.join("AGENTS.md");
-        let canonical_agents = codexy_runtime::paths::repository_root().join("AGENTS.md");
-        if current_agents.is_file()
-            && std::fs::read(&current_agents)? != std::fs::read(canonical_agents)?
-        {
-            changed.push(current_agents);
-        }
-    }
-    if changed.is_empty() {
-        return validator_in_process_mode(plugin_root, Mode::InstructionPolicy);
-    }
-    let mut errors = Vec::new();
-    for path in changed {
-        errors.extend(validation::instruction_policy_diagnostics(&path)?);
-    }
-    Ok(output_from_errors(plugin_root, errors))
-}
-
-pub(crate) fn validator_instruction_policy_file(
-    path: &Path,
-) -> Result<Output, Box<dyn std::error::Error>> {
-    super::profile_metrics::record("validator_in_process");
-    Ok(output_from_errors(
-        path,
-        validation::instruction_policy_diagnostics(path)?,
-    ))
-}
-
-fn collect_declared_fixture_changes(
-    current: &Path,
-    canonical: &Path,
-    mutable_files: &[PathBuf],
-    changed: &mut Vec<PathBuf>,
-) -> std::io::Result<bool> {
-    for relative in mutable_files {
-        let current_path = current.join(relative);
-        let canonical_path = canonical.join(relative);
-        if !current_path.is_file() || !canonical_path.is_file() {
-            return Ok(false);
-        }
-        if std::fs::read(&current_path)? != std::fs::read(&canonical_path)? {
-            changed.push(current_path);
-        }
-    }
-    Ok(true)
-}
-
-fn collect_changed_surfaces(
-    current: &Path,
-    canonical: &Path,
-    changed: &mut Vec<PathBuf>,
-) -> std::io::Result<()> {
-    for entry in std::fs::read_dir(current)? {
-        let entry = entry?;
-        let current_path = entry.path();
-        let canonical_path = canonical.join(entry.file_name());
-        if current_path.is_dir() {
-            collect_changed_surfaces(&current_path, &canonical_path, changed)?;
-        } else if std::fs::read(&current_path)?
-            != std::fs::read(&canonical_path).unwrap_or_default()
-        {
-            changed.push(current_path);
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn validator_routing(plugin_root: &Path) -> Result<Output, Box<dyn std::error::Error>> {
-    validator_in_process_mode(plugin_root, Mode::OrchestrationRouting)
 }
 
 pub(crate) fn validator_pr_labels(pr_state: &str) -> Result<Output, Box<dyn std::error::Error>> {
@@ -113,7 +25,7 @@ pub(crate) fn validator_pr_labels(pr_state: &str) -> Result<Output, Box<dyn std:
 }
 
 pub(crate) fn validator_child_lane_ownership_file(
-    evidence_path: &Path,
+    evidence_path: &std::path::Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     validator_child_lane_ownership(&std::fs::read_to_string(evidence_path)?)
 }
@@ -130,8 +42,8 @@ pub(crate) fn validator_child_lane_ownership(
 }
 
 pub(crate) fn validator_completion_handoff_files(
-    handoff_path: &Path,
-    pr_state_path: &Path,
+    handoff_path: &std::path::Path,
+    pr_state_path: &std::path::Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     validator_completion_handoff(
         &std::fs::read_to_string(handoff_path)?,
@@ -153,7 +65,7 @@ pub(crate) fn validator_completion_handoff(
 }
 
 pub(crate) fn validator_in_process(
-    plugin_root: &Path,
+    plugin_root: &std::path::Path,
     mode: &str,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let mode = match mode {
@@ -166,15 +78,17 @@ pub(crate) fn validator_in_process(
 }
 
 fn validator_in_process_mode(
-    plugin_root: &Path,
+    plugin_root: &std::path::Path,
     mode: Mode,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     super::profile_metrics::record("validator_in_process");
-    let errors = validation::errors(plugin_root, mode);
-    Ok(output_from_errors(plugin_root, errors))
+    Ok(output_from_errors(
+        plugin_root,
+        validation::errors(plugin_root, mode),
+    ))
 }
 
-fn output_from_errors(plugin_root: &Path, errors: Vec<String>) -> Output {
+fn output_from_errors(plugin_root: &std::path::Path, errors: Vec<String>) -> Output {
     let stderr = errors
         .iter()
         .map(|error| format!("error: {error}"))
@@ -212,8 +126,6 @@ fn exit_status(success: bool) -> ExitStatus {
     ExitStatus::from_raw(u32::from(!success))
 }
 
-pub(crate) fn stderr(output: &std::process::Output) -> String {
+pub(crate) fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
-
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
