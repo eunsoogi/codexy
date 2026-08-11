@@ -36,11 +36,7 @@ pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<St
             pr_number(&pr_state)
         )];
     }
-    let review_errors = if pr_state.get("reviewEvidence").is_some() {
-        super::review_control::check_handoff(plugin_root, &pr_state)
-    } else {
-        super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"))
-    };
+    let review_errors = super::review_control::check_handoff(plugin_root, &pr_state);
     if !review_errors.is_empty() {
         return review_errors;
     }

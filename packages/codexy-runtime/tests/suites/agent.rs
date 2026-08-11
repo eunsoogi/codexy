@@ -73,20 +73,6 @@ mod validator_roles;
 #[path = "../validator_review_handoff.rs"]
 mod validator_review_handoff;
 
-#[path = "../validator_sentinel_handoff_result_units.rs"]
-mod validator_sentinel_handoff_result_units;
-
-#[path = "../validator_sentinel_handoff_nested_context.rs"]
-mod validator_sentinel_handoff_nested_context;
-
-#[path = "../validator_sentinel_handoff_review_regressions.rs"]
-mod validator_sentinel_handoff_review_regressions;
-
-#[path = "../validator_sentinel_handoff_reviewer_readiness.rs"]
-mod validator_sentinel_handoff_reviewer_readiness;
-
-#[path = "../validator_sentinel_handoff_status.rs"]
-mod validator_sentinel_handoff_status;
 
 #[path = "../validator_sentinel_loc_remediation.rs"]
 mod validator_sentinel_loc_remediation;
