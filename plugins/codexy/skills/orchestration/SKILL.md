@@ -246,6 +246,4 @@ When a Material child event arrives—terminal child state, actionable review fe
 Orchestration MUST inspect archive candidates and the active reservation ledger before creating a child; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After a selected-profile BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage when `engineering_tdd_required` is true or proportional boundary proof otherwise, repair, rerun terminal proof, then invoke only the permitted same-reviewer delta recheck. A second recurrence, timeout, or UNOBSERVABLE result requires parent decision and MUST NOT select or replace a reviewer.
 
 MUST NOT mark a plan step complete until its evidence has been inspected.
-MUST use `update_goal` only with an active or user-requested goal and current proof;
-MUST reserve `blocked` for repeated true impasses requiring user input or external
-state change.
+MUST use `update_goal` only with an active or user-requested goal and current proof; MUST reserve `blocked` for repeated true impasses requiring user input or external state change.
