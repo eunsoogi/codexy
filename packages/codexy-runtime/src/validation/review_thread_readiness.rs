@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use super::readiness_state::{ReadinessState, classify};
+use super::readiness_state::{ReadinessField, ReadinessState, classify};
 
 const MISSING_REVIEW_THREADS: &str = "PR readiness missing reviewThreads.nodes PR state evidence";
 const READY_PHRASES: &[&str] = &[
@@ -90,15 +90,18 @@ fn has_blocking_label_value(suffix: &str) -> bool {
     };
     let value = value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']);
     match label.trim() {
-        "" => has_blocking_status_value(value),
-        "blocker" | "blockers" => !matches!(classify(value), Some(ReadinessState::Affirmative)),
-        "status" => has_blocking_status_value(value),
+        "" => has_blocking_status_value(value, ReadinessField::Claim),
+        "blocker" | "blockers" => !matches!(
+            classify(value, ReadinessField::Blocker),
+            Some(ReadinessState::Affirmative)
+        ),
+        "status" => has_blocking_status_value(value, ReadinessField::Status),
         _ => false,
     }
 }
 
-fn has_blocking_status_value(value: &str) -> bool {
-    matches!(classify(value), Some(ReadinessState::Neutral))
+fn has_blocking_status_value(value: &str, field: ReadinessField) -> bool {
+    matches!(classify(value, field), Some(ReadinessState::Neutral))
         || super::handoff_claims::has_negative_label_value(&format!(": {value}"))
 }
 

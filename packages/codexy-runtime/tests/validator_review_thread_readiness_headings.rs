@@ -16,6 +16,7 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
         "Maintainer override: yes. merge readiness status: not yet complete.\n",
         "Maintainer override: yes. merge-readiness blockers: pending CI.\n",
         "Maintainer override: yes. PR readiness status: incomplete verification.\n",
+        "Maintainer override: yes. PR ready:\n- not currently ready for handoff.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(
@@ -33,6 +34,7 @@ fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult
     for handoff in [
         "Maintainer override: yes. PR-readiness blockers: none.\n",
         "Maintainer override: yes. PR readiness status: ready.\n",
+        "Maintainer override: yes. PR ready: yes.\n",
     ] {
         let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
         assert!(
