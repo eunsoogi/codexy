@@ -1,3 +1,8 @@
+#[path = "wait_taxonomy/event.rs"]
+mod event;
+
+use event::{event_words, has_lifecycle_state, is_nonterminal_wait, words};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(in crate::validation) enum WaitDisposition {
     Nonterminal,
@@ -40,17 +45,6 @@ const ACTIONABLE_REVIEW_STATES: &[&str] = &[
     "resolution required",
 ];
 
-const PENDING_STATES: &[&str] = &[
-    "pending",
-    "waiting",
-    "awaiting",
-    "in progress",
-    "processing",
-    "not returned",
-    "not yet returned",
-    "has not returned",
-];
-
 const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
     "hard",
     "slow",
@@ -65,7 +59,6 @@ const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
 const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 #[derive(Clone, Copy)]
 struct ReviewSubject {
-    start: usize,
     end: usize,
     negated: bool,
 }
@@ -82,15 +75,20 @@ pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDispos
     if reviewer == Some(WaitDisposition::Actionable) {
         return reviewer;
     }
-    if contains_any_phrase(&words, OPERATIONAL_NONTERMINAL_STATES) {
+    if event_words(text)
+        .iter()
+        .any(|event| is_nonterminal_wait(event))
+        || contains_any_phrase(&words, OPERATIONAL_NONTERMINAL_STATES)
+    {
         return Some(WaitDisposition::Nonterminal);
     }
     reviewer
 }
 
 pub(in crate::validation) fn classify_reviewer_text(text: &str) -> Option<WaitDisposition> {
-    let dispositions = review_clauses(text)
-        .filter_map(|clause| classify_reviewer_words(&words(clause)))
+    let dispositions = event_words(text)
+        .iter()
+        .filter_map(|event| classify_reviewer_words(event))
         .collect::<Vec<_>>();
     dispositions
         .contains(&WaitDisposition::Actionable)
@@ -131,7 +129,7 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
     {
         return Some(WaitDisposition::Actionable);
     }
-    (contains_any_phrase(&words, PENDING_STATES)
+    (has_lifecycle_state(words)
         || subjects.iter().all(|subject| subject.negated)
         || contains_any_phrase(&words, &["no actionable feedback", "no review feedback"]))
     .then_some(WaitDisposition::Nonterminal)
@@ -146,9 +144,7 @@ fn classify_resolution(
     if subject.negated {
         return Some(WaitDisposition::Nonterminal);
     }
-    let state_negated = words[predicate_start(words, index)..index]
-        .iter()
-        .any(|word| NEGATIONS.contains(word));
+    let state_negated = words[..index].iter().any(|word| NEGATIONS.contains(word));
     match (state, state_negated) {
         ("unresolved" | "open", false) | ("resolved", true) => Some(WaitDisposition::Actionable),
         ("resolved", false) | ("unresolved" | "open", true) => Some(WaitDisposition::Nonterminal),
@@ -158,7 +154,6 @@ fn classify_resolution(
 
 fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {
     state_index >= subject.end
-        && predicate_start(words, subject.start) == predicate_start(words, state_index)
         && !words[subject.end..state_index]
             .iter()
             .any(|word| matches!(*word, "resolved" | "unresolved" | "open"))
@@ -170,7 +165,6 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
         .flat_map(|phrase| {
             let length = word_count(phrase);
             phrase_positions(words, phrase).map(move |start| ReviewSubject {
-                start,
                 end: start + length,
                 negated: subject_is_negated(words, start),
             })
@@ -181,7 +175,6 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             && words[index.saturating_sub(3)..words.len().min(index + 4)].contains(&"maintainer")
         {
             subjects.push(ReviewSubject {
-                start: index,
                 end: index + 1,
                 negated: subject_is_negated(words, index),
             });
@@ -195,30 +188,11 @@ fn has_affirmative_phrase(words: &[&str], phrase: &str) -> bool {
 }
 
 fn is_negated_at(words: &[&str], index: usize) -> bool {
-    words[predicate_start(words, index)..index]
-        .iter()
-        .any(|word| NEGATIONS.contains(word))
+    words[..index].iter().any(|word| NEGATIONS.contains(word))
 }
 
 fn subject_is_negated(words: &[&str], index: usize) -> bool {
     is_negated_at(words, index)
-}
-
-fn predicate_start(words: &[&str], index: usize) -> usize {
-    words[..index]
-        .iter()
-        .rposition(|word| {
-            matches!(
-                *word,
-                "but" | "however" | "yet" | "although" | "though" | "whereas"
-            )
-        })
-        .map_or(0, |boundary| boundary + 1)
-}
-
-fn review_clauses(text: &str) -> impl Iterator<Item = &str> {
-    text.split(['.', ';', ':', '\n'])
-        .filter(|clause| !clause.is_empty())
 }
 
 fn contains_any_phrase(words: &[&str], phrases: &[&str]) -> bool {
@@ -241,10 +215,4 @@ fn phrase_positions<'a>(
 
 fn word_count(text: &str) -> usize {
     words(text).len()
-}
-
-fn words(text: &str) -> Vec<&str> {
-    text.split(|character: char| !character.is_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect()
 }

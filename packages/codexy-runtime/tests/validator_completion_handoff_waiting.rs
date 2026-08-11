@@ -150,6 +150,42 @@ fn validator_binds_review_state_to_its_predicate() -> TestResult {
 }
 
 #[test]
+fn validator_classifies_bounded_wait_subject_state_events() -> TestResult {
+    let grammar = [
+        ("Blocked: CI queued.", false),
+        ("Blocked: CI: queued.", false),
+        ("Blocked: Sentinel running.", false),
+        ("Blocked: reviewer idle.", false),
+        ("Blocked: security review queued.", false),
+        ("Blocked: resource unavailable.", false),
+        ("Blocked: background tool running.", false),
+        ("Blocked: review feedback: pending.", false),
+        (
+            "Blocked: review feedback is pending while implementation remains open.",
+            false,
+        ),
+        (
+            "Blocked: implementation remains open but review feedback is pending.",
+            false,
+        ),
+        (
+            "Blocked: review feedback remains unresolved while implementation remains open.",
+            true,
+        ),
+    ];
+    for (handoff, actionable) in grammar {
+        let output = validate(handoff)?;
+        assert_eq!(
+            output.status.success(),
+            actionable,
+            "incorrect bounded event disposition for {handoff}: {}",
+            stderr(&output)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",
