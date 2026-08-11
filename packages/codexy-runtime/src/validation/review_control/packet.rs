@@ -176,16 +176,17 @@ fn validate(
     if repaired != resolved
         || (!resolved.is_empty() && packet.resolution.changed_boundaries.is_empty())
         || packet.resolution.repaired_finding_ids.iter().any(|id| {
-        !findings.contains(id.as_str())
-            || !packet
-                .findings
-                .iter()
-                .any(|finding| finding.id == *id && finding.resolved)
-    }) || packet
-        .resolution
-        .changed_boundaries
-        .iter()
-        .any(|id| !boundaries.contains(id.as_str()))
+            !findings.contains(id.as_str())
+                || !packet
+                    .findings
+                    .iter()
+                    .any(|finding| finding.id == *id && finding.resolved)
+        })
+        || packet
+            .resolution
+            .changed_boundaries
+            .iter()
+            .any(|id| !boundaries.contains(id.as_str()))
     {
         bail!("review packet resolution must name resolved findings and direct boundaries");
     }
