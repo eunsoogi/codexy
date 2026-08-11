@@ -44,6 +44,25 @@ fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult
     Ok(())
 }
 
+#[test]
+fn validator_rejects_wait_events_after_neutral_readiness_status() -> TestResult {
+    for handoff in [
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: CI queued.\n",
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: Sentinel running.\n",
+        "Maintainer override: yes. merge-readiness: waiting on review cleanup. Blocked: review feedback pending.\n",
+    ] {
+        let output = validate_handoff_with_pr_state(handoff, missing_review_threads_pr_state())?;
+        assert!(
+            !output.status.success(),
+            "validator must reject a real wait event after neutral status {handoff:?}\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("waiting state evidence"));
+    }
+    Ok(())
+}
+
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {
     let temp = tempfile::tempdir()?;
     let handoff_path = temp.path().join("handoff.md");

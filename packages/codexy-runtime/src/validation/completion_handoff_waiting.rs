@@ -1,4 +1,6 @@
 const WAITING_STATE_ERROR: &str = "pending child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
+mod readiness_status;
+
 const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
 use super::child_goal_blocked_audit::wait_taxonomy::{
     WaitDisposition, classify_reviewer_text, classify_wait_text,
@@ -21,7 +23,8 @@ pub(super) fn check(handoff: &str) -> Option<String> {
         return Some(error);
     }
     let false_blocked_wait = |fragment: &str, context: &str| {
-        claims_blocked_state(fragment)
+        !readiness_status::is_neutral_heading(fragment)
+            && claims_blocked_state(fragment)
             && mentions_non_blocking_wait(fragment)
             && !has_true_impasse_rationale(fragment)
             && (!mentions_resolved_blocker(fragment)
@@ -33,11 +36,14 @@ pub(super) fn check(handoff: &str) -> Option<String> {
                 .any(|part| mentions_true_blocker(part) && !mentions_resolved_blocker(part))
             && !mentions_returned_async_failure_context(fragment, &text)
     };
+    let has_neutral_readiness_status = text
+        .split(['\n', '.'])
+        .any(readiness_status::is_neutral_heading);
     if text.split(['\n', '.']).any(|context| {
         context
             .split([',', ';'])
             .any(|fragment| false_blocked_wait(fragment, context))
-    }) || false_blocked_wait(&text, &text)
+    }) || (false_blocked_wait(&text, &text) && !has_neutral_readiness_status)
     {
         return Some(WAITING_STATE_ERROR.into());
     }

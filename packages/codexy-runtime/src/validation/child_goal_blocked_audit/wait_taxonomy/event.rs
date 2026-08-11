@@ -94,10 +94,10 @@ pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
     let words = words(text);
     let mut starts = vec![0];
     let subjects = subjects(&words);
-    if let Some(first_subject) = subjects.first()
-        && contains_any_phrase(&words[..first_subject.start], OPERATIONAL_PREDICATES)
-    {
-        starts.push(first_subject.start);
+    if let Some(first_subject) = subjects.first() {
+        if contains_any_phrase(&words[..first_subject.start], OPERATIONAL_PREDICATES) {
+            starts.push(first_subject.start);
+        }
     }
     for index in 1..subjects.len() {
         if let Some(start) = event_start(&subjects, index, &words) {
