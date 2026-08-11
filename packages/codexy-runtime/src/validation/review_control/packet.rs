@@ -190,16 +190,8 @@ impl Packet {
     pub(super) fn identity_head(&self) -> &str {
         &self.identity.head_oid
     }
-    pub(super) fn identity_base(&self) -> &str {
-        &self.identity.base_oid
-    }
     pub(super) fn boundaries(&self) -> &[String] {
         &self.direct_boundaries
-    }
-    pub(super) fn has_unresolved_blockers(&self) -> bool {
-        self.findings
-            .iter()
-            .any(|finding| finding.kind == "blocker" && !finding.resolved)
     }
     pub(super) const fn readiness_budget_exhausted(&self) -> bool {
         self.readiness_export.budget_exhausted

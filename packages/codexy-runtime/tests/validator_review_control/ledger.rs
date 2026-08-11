@@ -89,6 +89,56 @@ fn cross_profile_review_requires_an_explicit_unobservable_escalation() -> TestRe
 }
 
 #[test]
+fn escalated_review_allows_one_delta_then_pass() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let repo = tempfile::tempdir()?;
+    init_repository(repo.path())?;
+    let base = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"unobservable\"}\n")?;
+    commit(repo.path(), "unobservable")?;
+    let reviewed_head = git_at(repo.path(), ["rev-parse", "HEAD"])?;
+    let ledger = repo.path().join("review-ledger.json");
+    let mut unavailable = packet_for(repo.path(), &base, "e-unobservable", "unobservable")?;
+    unavailable["budget"] = json!({"full_used":0,"delta_used":0});
+    unavailable["findings"] = json!([]);
+    unavailable["resolution"] = json!({"repaired_finding_ids":[],"changed_boundaries":[]});
+    unavailable["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+    unavailable["readiness_export"]["budget_exhausted"] = json!(false);
+    unavailable["readiness_export"]["parent_decision_required"] = json!(true);
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &unavailable)?.status.success());
+
+    let mut strict = packet_for(repo.path(), &base, "e-strict", "full")?;
+    strict["profile"] = json!("strict");
+    strict["reviewer"] = json!({"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"});
+    strict["readiness_export"]["profile"] = json!("strict");
+    strict["readiness_export"]["reviewer"] = strict["reviewer"].clone();
+    strict["predecessor_event_id"] = json!("e-unobservable");
+    strict["escalation"] = json!({"from_profile":"standard","predecessor_event_id":"e-unobservable","discarded_lower_profile":true});
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &strict)?.status.success());
+
+    fs::write(repo.path().join("evidence.json"), "{\"state\":\"repair\"}\n")?;
+    commit(repo.path(), "repair")?;
+    let mut delta = packet_for(repo.path(), &reviewed_head, "e-delta", "delta")?;
+    delta["profile"] = json!("strict");
+    delta["reviewer"] = strict["reviewer"].clone();
+    delta["readiness_export"]["profile"] = json!("strict");
+    delta["readiness_export"]["reviewer"] = strict["reviewer"].clone();
+    delta["predecessor_event_id"] = json!("e-strict");
+    delta["budget"] = json!({"full_used":1,"delta_used":1});
+    delta["findings"][0]["resolved"] = json!(true);
+    delta["resolution"] = json!({"repaired_finding_ids":["f-1"],"changed_boundaries":["validator"]});
+    delta["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+    delta["readiness_export"]["budget_exhausted"] = json!(true);
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &delta)?.status.success());
+    let mut passed = delta;
+    passed["event_id"] = json!("e-passed");
+    passed["predecessor_event_id"] = json!("e-delta");
+    passed["state"] = json!("passed");
+    assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &passed)?.status.success());
+    Ok(())
+}
+
+#[test]
 fn review_cycle_requires_the_tip_and_stops_same_class_replays() -> TestResult {
     let fixture = crate::support::plugin_fixture()?;
     let repo = tempfile::tempdir()?;
