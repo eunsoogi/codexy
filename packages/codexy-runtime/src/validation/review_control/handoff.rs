@@ -53,6 +53,11 @@ pub(super) fn check(plugin_root: &Path, pr_state: &Value) -> Vec<String> {
     };
     if evidence.schema != "codexy.review-readiness.v1"
         || evidence.profile != selected
+        || evidence.head_oid.is_empty()
+        || pr_state
+            .get("headRefOid")
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty)
         || pr_state.get("headRefOid").and_then(Value::as_str) != Some(&evidence.head_oid)
         || evidence.reviewer != profile.reviewer
         || !terminal_matches(&history, &evidence, selected)

@@ -54,6 +54,7 @@ impl History {
         for (index, event) in self.events.iter().enumerate() {
             if !valid_id(&event.id)
                 || !valid_id(&event.base_oid)
+                || !valid_id(&event.head_oid)
                 || event.predecessor_event_id.as_deref()
                     != index
                         .checked_sub(1)

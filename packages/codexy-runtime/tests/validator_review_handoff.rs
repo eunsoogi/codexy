@@ -36,6 +36,20 @@ fn completion_handoff_binds_the_terminal_event_of_its_review_ledger() -> TestRes
 }
 
 #[test]
+fn completion_handoff_rejects_missing_or_empty_typed_review_identity() -> TestResult {
+    assert!(!validate_bound(|state| {
+        state["headRefOid"] = json!("");
+        state["reviewEvidence"]["head_oid"] = json!("");
+        for event in state["reviewLedger"]["events"].as_array_mut().expect("events") {
+            event["head_oid"] = json!("");
+        }
+    })?.status.success());
+    assert!(!validate_bound(|state| { state.as_object_mut().expect("state").remove("reviewLedger"); })?.status.success());
+    assert!(!validate_bound(|state| state["reviewProfile"] = json!("light"))?.status.success());
+    Ok(())
+}
+
+#[test]
 fn completion_handoff_accepts_the_recordable_escalated_delta_cycle() -> TestResult {
     assert!(validate_escalated_delta(|_| {})?.status.success());
     Ok(())
