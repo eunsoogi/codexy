@@ -128,6 +128,7 @@ fn validator_binds_review_state_to_its_predicate() -> TestResult {
     for handoff in [
         "Blocked: review feedback remains unresolved while work is incomplete.",
         "Blocked: review feedback remains open while work is incomplete.",
+        "Blocked: no wait but review feedback remains unresolved.",
     ] {
         let output = validate(handoff)?;
         assert!(
@@ -135,6 +136,15 @@ fn validator_binds_review_state_to_its_predicate() -> TestResult {
             "review-owned actionable state was rejected: {handoff}\n{}",
             stderr(&output)
         );
+    }
+
+    for handoff in ["Blocked: no wait but review feedback is resolved."] {
+        let output = validate(handoff)?;
+        assert!(
+            !output.status.success(),
+            "negation crossed into the review predicate: {handoff}"
+        );
+        assert!(stderr(&output).contains("waiting state"));
     }
     Ok(())
 }

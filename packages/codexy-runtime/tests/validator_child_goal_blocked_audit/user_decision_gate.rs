@@ -138,8 +138,51 @@ pub(super) fn assert_boundaries() -> TestResult {
         valid_gate().replace("in-scope action=unavailable", "in-scope action=inspect repository"),
         valid_gate().replace("blocker class=user-decision", "blocker class=parent-authorization"),
     ] {
-        let output = run_validator(&blocked_evidence(invalid, valid_pre_mutation()))?;
-        assert!(!output.status.success(), "malformed user-decision gate passed");
+        let output = run_validator(&blocked_evidence(&invalid, valid_pre_mutation()))?;
+        assert!(
+            !output.status.success(),
+            "malformed user-decision gate passed: {invalid}"
+        );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_short_token_padding_in_a_question() -> TestResult {
+    assert_short_token_padding_rejected(valid_gate().replace(
+        "Should the irreversible migration preserve legacy identifiers or replace them?",
+        "use use use use choose migration?",
+    ))
+}
+
+#[test]
+fn validator_rejects_short_token_padding_in_every_branch() -> TestResult {
+    for branches in [
+        "use use use use choose migration|replace identifiers and require migration",
+        "preserve identifiers and retain compatibility|use use use use choose migration",
+    ] {
+        assert_short_token_padding_rejected(valid_gate().replace(
+            "preserve identifiers and retain compatibility|replace identifiers and require migration",
+            branches,
+        ))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_short_token_padding_in_material_impact() -> TestResult {
+    assert_short_token_padding_rejected(valid_gate().replace(
+        "material impact=the choice changes persisted identifiers and migration behavior",
+        "material impact=use use use use choose migration",
+    ))
+}
+
+fn assert_short_token_padding_rejected(gate: String) -> TestResult {
+    let output = run_validator(&blocked_evidence(gate, valid_pre_mutation()))?;
+    assert!(
+        !output.status.success(),
+        "short-token repetition passed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }

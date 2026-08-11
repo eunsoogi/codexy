@@ -65,6 +65,7 @@ const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
 const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 #[derive(Clone, Copy)]
 struct ReviewSubject {
+    start: usize,
     end: usize,
     negated: bool,
 }
@@ -145,7 +146,7 @@ fn classify_resolution(
     if subject.negated {
         return Some(WaitDisposition::Nonterminal);
     }
-    let state_negated = words[subject.end..index]
+    let state_negated = words[predicate_start(words, index)..index]
         .iter()
         .any(|word| NEGATIONS.contains(word));
     match (state, state_negated) {
@@ -157,6 +158,7 @@ fn classify_resolution(
 
 fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {
     state_index >= subject.end
+        && predicate_start(words, subject.start) == predicate_start(words, state_index)
         && !words[subject.end..state_index]
             .iter()
             .any(|word| matches!(*word, "resolved" | "unresolved" | "open"))
@@ -168,6 +170,7 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
         .flat_map(|phrase| {
             let length = word_count(phrase);
             phrase_positions(words, phrase).map(move |start| ReviewSubject {
+                start,
                 end: start + length,
                 negated: subject_is_negated(words, start),
             })
@@ -178,6 +181,7 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             && words[index.saturating_sub(3)..words.len().min(index + 4)].contains(&"maintainer")
         {
             subjects.push(ReviewSubject {
+                start: index,
                 end: index + 1,
                 negated: subject_is_negated(words, index),
             });
@@ -191,13 +195,25 @@ fn has_affirmative_phrase(words: &[&str], phrase: &str) -> bool {
 }
 
 fn is_negated_at(words: &[&str], index: usize) -> bool {
-    words[index.saturating_sub(3)..index]
+    words[predicate_start(words, index)..index]
         .iter()
         .any(|word| NEGATIONS.contains(word))
 }
 
 fn subject_is_negated(words: &[&str], index: usize) -> bool {
-    is_negated_at(words, index) || words[..index].iter().any(|word| *word == "neither")
+    is_negated_at(words, index)
+}
+
+fn predicate_start(words: &[&str], index: usize) -> usize {
+    words[..index]
+        .iter()
+        .rposition(|word| {
+            matches!(
+                *word,
+                "but" | "however" | "yet" | "although" | "though" | "whereas"
+            )
+        })
+        .map_or(0, |boundary| boundary + 1)
 }
 
 fn review_clauses(text: &str) -> impl Iterator<Item = &str> {

@@ -120,19 +120,34 @@ fn substantive_identity(
     let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
     let content = words
         .iter()
-        .filter(|word| word.chars().count() >= 4 && word.chars().any(char::is_alphabetic))
+        .filter(|word| word.chars().any(char::is_alphabetic))
         .map(|word| word.to_lowercase())
+        .collect::<Vec<_>>();
+    let long_content = content
+        .iter()
+        .filter(|word| word.chars().count() >= 4)
         .collect::<Vec<_>>();
     let concepts = content
         .iter()
+        .filter(|word| word.chars().count() >= 4)
         .cloned()
         .collect::<std::collections::BTreeSet<_>>();
+    let short_tokens_are_unique = content
+        .iter()
+        .filter(|word| word.chars().count() < 4)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+        == content
+            .iter()
+            .filter(|word| word.chars().count() < 4)
+            .count();
     (words.len() >= minimum_words
         && characters >= minimum_characters
+        && short_tokens_are_unique
         && concepts.len() >= minimum_concepts
-        && (concepts.len() == content.len()
-            || (content.len() >= 5
+        && (concepts.len() == long_content.len()
+            || (long_content.len() >= 5
                 && concepts.len() >= minimum_concepts + 2
-                && concepts.len() * 5 >= content.len() * 4)))
+                && concepts.len() * 5 >= long_content.len() * 4)))
         .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
 }
