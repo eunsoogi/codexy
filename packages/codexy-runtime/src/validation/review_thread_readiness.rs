@@ -1,5 +1,7 @@
 use serde_json::Value;
 
+use super::readiness_state::{ReadinessField, ReadinessState, classify};
+
 const MISSING_REVIEW_THREADS: &str = "PR readiness missing reviewThreads.nodes PR state evidence";
 const READY_PHRASES: &[&str] = &[
     "merge-ready",
@@ -88,43 +90,19 @@ fn has_blocking_label_value(suffix: &str) -> bool {
     };
     let value = value.trim_start_matches([' ', '\t', '\n', '\r', '-', '*']);
     match label.trim() {
-        "" => has_blocking_status_value(value),
-        "blocker" | "blockers" => {
-            !starts_with_any(value, &["none", "no", "no blocker", "no blockers", "clear"])
-        }
-        "status" => has_blocking_status_value(value),
+        "" => has_blocking_status_value(value, ReadinessField::Claim),
+        "blocker" | "blockers" => !matches!(
+            classify(value, ReadinessField::Blocker),
+            Some(ReadinessState::Affirmative)
+        ),
+        "status" => has_blocking_status_value(value, ReadinessField::Status),
         _ => false,
     }
 }
 
-fn has_blocking_status_value(value: &str) -> bool {
-    !starts_with_any(
-        value,
-        &["ready", "complete", "completed", "passed", "clean"],
-    ) && (super::handoff_claims::has_negative_label_value(&format!(": {value}"))
-        || starts_with_any(
-            value,
-            &[
-                "blocked",
-                "blocking",
-                "waiting",
-                "pending",
-                "unresolved",
-                "incomplete",
-                "not complete",
-                "not yet complete",
-            ],
-        ))
-}
-
-fn starts_with_any(value: &str, phrases: &[&str]) -> bool {
-    phrases.iter().any(|phrase| {
-        value.strip_prefix(phrase).is_some_and(|rest| {
-            rest.chars()
-                .next()
-                .is_none_or(|character| !character.is_ascii_alphanumeric())
-        })
-    })
+fn has_blocking_status_value(value: &str, field: ReadinessField) -> bool {
+    matches!(classify(value, field), Some(ReadinessState::Neutral))
+        || super::handoff_claims::has_negative_label_value(&format!(": {value}"))
 }
 
 fn is_locally_negated(prefix: &str) -> bool {

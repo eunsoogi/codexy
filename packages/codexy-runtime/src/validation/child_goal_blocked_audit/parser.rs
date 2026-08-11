@@ -3,6 +3,7 @@ pub(super) enum OrderedEvent {
     BlockedCall,
     ParentDirection,
     TerminalGoalCall,
+    TypedReviewTerminal,
     Other,
 }
 
@@ -10,6 +11,8 @@ pub(super) struct ActiveEvent {
     pub(super) line: String,
     pub(super) kind: OrderedEvent,
 }
+
+use super::negation::{is_negation, is_token_character};
 
 pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
     let evidence = evidence.to_ascii_lowercase();
@@ -31,11 +34,29 @@ pub(super) fn ordered_event(line: &str) -> OrderedEvent {
         OrderedEvent::BlockedCall
     } else if line.starts_with("parent direction event:") {
         OrderedEvent::ParentDirection
+    } else if is_typed_review_terminal(line) {
+        OrderedEvent::TypedReviewTerminal
     } else if is_terminal_goal_call(line) {
         OrderedEvent::TerminalGoalCall
     } else {
         OrderedEvent::Other
     }
+}
+
+fn is_typed_review_terminal(line: &str) -> bool {
+    line.starts_with("typed review terminal:")
+        && field(line, "schema") == Some("codexy.review-readiness.v1")
+        && matches!(field(line, "profile"), Some("standard" | "strict"))
+        && matches!(field(line, "state"), Some("passed" | "parent_decision"))
+        && field(line, "event_id").is_some_and(valid_identifier)
+        && field(line, "head_oid").is_some_and(valid_identifier)
+}
+
+fn valid_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 pub(super) fn is_blocked_pre_delivery(line: &str) -> bool {
@@ -62,26 +83,128 @@ pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     values.next().is_none().then_some(value)
 }
 
-pub(super) fn has_distinct_values(line: &str, name: &str, minimum: usize) -> bool {
+pub(super) fn has_distinct_substantive_values(
+    line: &str,
+    name: &str,
+    minimum_values: usize,
+    minimum_words: usize,
+    minimum_characters: usize,
+    minimum_concepts: usize,
+) -> bool {
     field(line, name)
         .map(|value| {
-            value
+            let identities = value
                 .split('|')
                 .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .collect::<std::collections::BTreeSet<_>>()
-                .len()
-                >= minimum
+                .map(|value| {
+                    substantive_identity(value, minimum_words, minimum_characters, minimum_concepts)
+                })
+                .collect::<Option<Vec<_>>>();
+            identities.is_some_and(|identities| {
+                identities.len() >= minimum_values
+                    && identities
+                        .iter()
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .len()
+                        == identities.len()
+            })
         })
         .unwrap_or(false)
 }
 
-pub(super) fn has_elapsed_minimum(line: &str) -> bool {
-    let parse = |name| field(line, name).and_then(|value| value.parse::<u64>().ok());
-    parse("first monotonic ms")
-        .zip(parse("observed monotonic ms"))
-        .zip(parse("minimum interval ms"))
-        .is_some_and(|((first, observed), minimum)| {
-            minimum > 0 && observed.saturating_sub(first) >= minimum
+pub(super) fn is_substantive(
+    value: &str,
+    minimum_words: usize,
+    minimum_characters: usize,
+    minimum_concepts: usize,
+) -> bool {
+    substantive_identity(value, minimum_words, minimum_characters, minimum_concepts).is_some()
+}
+
+fn substantive_identity(
+    value: &str,
+    minimum_words: usize,
+    minimum_characters: usize,
+    minimum_concepts: usize,
+) -> Option<String> {
+    let tokens = value
+        .split(|character: char| !is_token_character(character))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let words = tokens
+        .iter()
+        .map(|word| alphabetic_content(word))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
+    let content = words
+        .iter()
+        .map(|word| word.to_lowercase())
+        .collect::<Vec<_>>();
+    let long_content = content
+        .iter()
+        .filter(|word| word.chars().count() >= 4)
+        .collect::<Vec<_>>();
+    let concepts = content
+        .iter()
+        .filter(|word| word.chars().count() >= 4)
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
+    let numeric_metadata = tokens
+        .iter()
+        .enumerate()
+        .flat_map(|(index, word)| {
+            let embedded = numeric_metadata_is_embedded(&tokens, index);
+            numeric_runs(word).into_iter().filter(move |_| embedded)
         })
+        .map(|number| format!("number:{number}"))
+        .collect::<std::collections::BTreeSet<_>>();
+    let negative = tokens.iter().any(|word| is_negation(word));
+    let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
+    let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
+        short_tokens
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+    );
+    let short_token_budget = concepts.len() / 2;
+    (words.len() >= minimum_words
+        && characters >= minimum_characters
+        && repeated_short_tokens <= short_token_budget
+        && concepts.len() >= minimum_concepts
+        && (concepts.len() == long_content.len()
+            || (long_content.len() >= 5
+                && concepts.len() >= minimum_concepts + 2
+                && concepts.len() * 5 >= long_content.len() * 4)))
+        .then(|| {
+            concepts
+                .into_iter()
+                .chain(numeric_metadata)
+                .chain(negative.then_some("polarity:negative".to_owned()))
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+}
+
+fn numeric_metadata_is_embedded(tokens: &[&str], index: usize) -> bool {
+    let lexical = alphabetic_content(tokens[index]);
+    (!lexical.is_empty() && lexical.chars().count() >= 4)
+        || (lexical.is_empty()
+            && index > 0
+            && index + 1 < tokens.len()
+            && [tokens[index - 1], tokens[index + 1]]
+                .into_iter()
+                .all(|word| !alphabetic_content(word).is_empty()))
+}
+
+fn alphabetic_content(word: &str) -> String {
+    word.chars()
+        .filter(|character| character.is_alphabetic())
+        .collect()
+}
+
+fn numeric_runs(word: &str) -> Vec<String> {
+    word.split(|character: char| !character.is_numeric())
+        .filter(|run| !run.is_empty())
+        .map(str::to_owned)
+        .collect()
 }

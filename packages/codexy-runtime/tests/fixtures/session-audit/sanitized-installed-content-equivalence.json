@@ -6,11 +6,11 @@
     "sourceChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "2741f8875e7aa3b92cea1bbf2e210c0e95768bcdd45f551143fd776a0240f56c"
+        "sha256": "15370df72465ecc0dc84ee4dc906a0acafd10c67836f922030e226923999d944"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "7a7e409c673d58d4cedb652adc669cdd3f2c54131ce93db2685b80c6a0ef99d4"
+        "sha256": "f909fa53d379a768ab27b6abd125a46ab34f02638461a01dc0a94a6bd1e85855"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -20,11 +20,11 @@
     "installedChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "2741f8875e7aa3b92cea1bbf2e210c0e95768bcdd45f551143fd776a0240f56c"
+          "sha256": "15370df72465ecc0dc84ee4dc906a0acafd10c67836f922030e226923999d944"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-          "sha256": "7a7e409c673d58d4cedb652adc669cdd3f2c54131ce93db2685b80c6a0ef99d4"
+          "sha256": "f909fa53d379a768ab27b6abd125a46ab34f02638461a01dc0a94a6bd1e85855"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
