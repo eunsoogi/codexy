@@ -72,7 +72,7 @@ fn diagnostics_separate_discovery_schema_and_fork_contracts()
     let output = run(&plugin_root, &codex_home, &["--diagnose"])?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("A role-discovery: PASS (12 marker-owned standalone agents)"));
+    assert!(stdout.contains("A role-discovery: PASS (7 marker-owned standalone agents)"));
     assert!(
         stdout.contains("B tool-schema: CONFIGURED (namespace=agents, agent_type-visible=true)")
     );
@@ -149,18 +149,22 @@ fn update_and_uninstall_touch_only_marker_owned_discovery_files()
     assert!(install.status.success(), "stderr:\n{}", stderr(&install));
     let sentinel = agents_root.join("codexy-sentinel.toml");
     std::fs::write(&sentinel, "# CODEXY MANAGED AGENT\nname = \"old\"\n")?;
-    let stale = agents_root.join("codexy-retired.toml");
+    let managed_retired = agents_root.join("codexy-forge.toml");
     std::fs::write(
-        &stale,
-        "# CODEXY MANAGED AGENT\nname = \"codexy-retired\"\n",
+        &managed_retired,
+        "# CODEXY MANAGED AGENT\nname = \"codexy-forge\"\n",
     )?;
+    let unmanaged_retired = agents_root.join("codexy-pathfinder.toml");
+    let unmanaged_retired_contents = "name = \"codexy-pathfinder\"\ndescription = \"Personal role\"\n";
+    std::fs::write(&unmanaged_retired, unmanaged_retired_contents)?;
     let user_file = agents_root.join("personal.toml");
     std::fs::write(&user_file, "name = \"personal\"\n")?;
 
     let update = run(&plugin_root, &codex_home, &[])?;
     assert!(update.status.success(), "stderr:\n{}", stderr(&update));
     assert!(std::fs::read_to_string(&sentinel)?.contains("name = \"codexy-sentinel\""));
-    assert!(!stale.exists());
+    assert!(!managed_retired.exists());
+    assert_eq!(std::fs::read_to_string(unmanaged_retired)?, unmanaged_retired_contents);
     assert_eq!(
         std::fs::read_to_string(&user_file)?,
         "name = \"personal\"\n"

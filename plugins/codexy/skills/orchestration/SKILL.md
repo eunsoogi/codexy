@@ -159,34 +159,28 @@ insufficient. Situational routing is:
 
 - MUST use `codexy-cartographer` for repository, file, dependency, or ownership
   mapping before broad exploration.
-- MUST use `codexy-pathfinder` for ambiguous, multi-step, cross-surface, or
-  approach-selection work before implementation.
 - MUST use `codexy-architect` for boundary, schema, MCP, LSP, plugin
   architecture, or long-lived extension-point changes.
-- MUST use `codexy-tracer` for failing behavior, broken automation, root-cause
-  investigation, or reproduction-heavy defects.
 - MUST use `codexy-warden` for workflows, shell commands, credentials, remote
   MCP endpoints, untrusted input, repository permissions, install scripts, local
   state mutation, or generated evidence with security implications.
 - MUST use `codexy-auditor` after implementation for acceptance-criteria,
   readiness, and observable verification passes across CLI, config, GitHub,
   browser, app, plugin, documentation, or workflow surfaces.
-- MUST use `codexy-scribe` for docs, handoff, PR, release note, or
-  user-facing workflow drafting after behavior is known.
-- MUST use `codexy-forge` for scoped implementation edits after issue, branch,
-  worktree, plan, and acceptance criteria are clear.
 - MUST use `codexy-weaver` for reconciling parallel lanes, conflict checks,
   main updates, or merge sequencing.
-- MUST use `codexy-sculptor` for refactor-heavy changes, large-file splits,
-  helper extraction, or LOC-boundary cleanup.
 - MUST use `codexy-shipwright` for release, packaging, version, marketplace,
   manifest, tag, or rollback work.
 - MUST use `codexy-sentinel` as the final reviewer gate for every non-trivial
   atomic unit before handoff, PR readiness, completion, or parent acceptance.
 
+Orchestration owns planning and approach selection. A generic owning child uses
+the engineering workflow for diagnosis, TDD, QA, and refactoring, and directly
+owns its scoped implementation, documentation, and handoff; it MUST NOT recreate
+a removed specialist as an alias.
+
 If `spawn_agent` supports the Codexy role, invoke specialists by exact agent
 type with no or bounded history, such as `spawn_agent(agent_type="codexy-sentinel", message="Review the current diff, exact head, scope, verification output, and evidence. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="none")`,
-`spawn_agent(agent_type="codexy-pathfinder", message="Produce an atomic plan and verification checklist. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="3")`, or
 `spawn_agent(agent_type="codexy-cartographer", message="Map the relevant files. MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.", fork_turns="none")`.
 
 If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST follow

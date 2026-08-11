@@ -61,19 +61,19 @@ mod tests {
 
     #[test]
     fn invalid_tools_matrix_preserves_exact_diagnostics() {
-        let path = Path::new("agents/codexy-pathfinder.toml");
+        let path = Path::new("agents/codexy-architect.toml");
         for (fragment, expected) in [
             (
                 "\n[mcp_servers.example_mcp]\ncommand = \"example_mcp\"\ntools = \"bad\"\n",
-                "agents/codexy-pathfinder.toml mcp_servers.example_mcp.tools must be a table",
+                "agents/codexy-architect.toml mcp_servers.example_mcp.tools must be a table",
             ),
             (
                 "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\napproval_mode = \"always\"\n",
-                "agents/codexy-pathfinder.toml mcp_servers.docs.tools.search.approval_mode has an unsupported value",
+                "agents/codexy-architect.toml mcp_servers.docs.tools.search.approval_mode has an unsupported value",
             ),
             (
                 "\n[mcp_servers.docs]\ncommand = \"docs\"\n[mcp_servers.docs.tools.search]\nunknown = true\n",
-                "agents/codexy-pathfinder.toml mcp_servers.docs.tools.search.unknown is not part of the supported Codex MCP tool override schema",
+                "agents/codexy-architect.toml mcp_servers.docs.tools.search.unknown is not part of the supported Codex MCP tool override schema",
             ),
         ] {
             let parsed = toml::from_str::<toml::Table>(fragment).expect("valid TOML fragment");

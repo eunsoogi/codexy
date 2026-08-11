@@ -17,7 +17,7 @@ from agent_registration_support import (
     find_conflicts,
     strip_managed_block,
 )
-REQUIRED = {"codexy-sentinel", "codexy-pathfinder"}
+REQUIRED = {"codexy-sentinel"}
 def main() -> int:
     parser = argparse.ArgumentParser(
         allow_abbrev=False,

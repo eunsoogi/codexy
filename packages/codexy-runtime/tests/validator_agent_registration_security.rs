@@ -9,7 +9,7 @@ const BEGIN: &str = "# BEGIN CODEXY MANAGED AGENTS";
 const END: &str = "# END CODEXY MANAGED AGENTS";
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 #[rustfmt::skip]
-const AGENTS: [&str; 12] = ["codexy-architect", "codexy-tracer", "codexy-scribe", "codexy-cartographer", "codexy-forge", "codexy-weaver", "codexy-pathfinder", "codexy-auditor", "codexy-sculptor", "codexy-shipwright", "codexy-sentinel", "codexy-warden"];
+const AGENTS: [&str; 7] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-sentinel", "codexy-shipwright", "codexy-warden", "codexy-weaver"];
 
 #[cfg(unix)]
 #[test]
@@ -130,13 +130,13 @@ config_file = "stale.toml"
 }
 
 #[test]
-fn diagnose_rejects_twelve_marker_owned_files_with_stale_names() -> TestResult {
+fn diagnose_rejects_seven_marker_owned_files_with_stale_names() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_fixture(temp.path())?;
     let codex_home = temp.path().join("home/.codex");
     let agents_root = codex_home.join("agents/codexy");
     std::fs::create_dir_all(&agents_root)?;
-    for index in 0..12 {
+    for index in 0..7 {
         let name = format!("codexy-retired-{index:02}");
         std::fs::write(
             agents_root.join(format!("{name}.toml")),
