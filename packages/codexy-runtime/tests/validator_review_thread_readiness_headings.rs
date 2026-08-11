@@ -33,6 +33,8 @@ fn validator_allows_readiness_blocker_headings_as_waiting_status() -> TestResult
 fn validator_rejects_affirmative_readiness_blocker_status_labels() -> TestResult {
     for handoff in [
         "Maintainer override: yes. PR-readiness blockers: none.\n",
+        "Maintainer override: yes. PR-readiness blockers: no.\n",
+        "Maintainer override: yes. PR-readiness blockers: clear.\n",
         "Maintainer override: yes. PR readiness status: ready.\n",
         "Maintainer override: yes. PR ready: yes.\n",
     ] {

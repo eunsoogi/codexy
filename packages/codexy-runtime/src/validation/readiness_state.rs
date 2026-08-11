@@ -22,16 +22,14 @@ const NEUTRAL_WORDS: &[&str] = &[
 const AFFIRMATIVE_WORDS: &[&str] = &["ready", "complete", "completed", "passed", "clean"];
 
 pub(crate) fn classify(value: &str, field: ReadinessField) -> Option<ReadinessState> {
-    if has_negative_prefix(value) {
-        return Some(ReadinessState::Neutral);
-    }
     let words = words(value);
     let first = words.first()?;
-    if has_negated_completion(&words) || NEUTRAL_WORDS.contains(first) {
-        return Some(ReadinessState::Neutral);
-    }
     if matches!(field, ReadinessField::Blocker) && matches!(*first, "none" | "no" | "clear") {
         return Some(ReadinessState::Affirmative);
+    }
+    if has_negative_prefix(value) || has_negated_completion(&words) || NEUTRAL_WORDS.contains(first)
+    {
+        return Some(ReadinessState::Neutral);
     }
     if AFFIRMATIVE_WORDS.contains(first) {
         return Some(ReadinessState::Affirmative);
