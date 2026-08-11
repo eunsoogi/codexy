@@ -132,18 +132,16 @@ fn substantive_identity(
         .filter(|word| word.chars().count() >= 4)
         .cloned()
         .collect::<std::collections::BTreeSet<_>>();
-    let short_tokens_are_unique = content
-        .iter()
-        .filter(|word| word.chars().count() < 4)
-        .collect::<std::collections::BTreeSet<_>>()
-        .len()
-        == content
-            .iter()
-            .filter(|word| word.chars().count() < 4)
-            .count();
+    let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
+    let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
+        short_tokens
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+    );
+    let short_token_budget = concepts.len() / 2;
     (words.len() >= minimum_words
         && characters >= minimum_characters
-        && short_tokens_are_unique
+        && repeated_short_tokens <= short_token_budget
         && concepts.len() >= minimum_concepts
         && (concepts.len() == long_content.len()
             || (long_content.len() >= 5

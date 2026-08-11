@@ -177,6 +177,23 @@ fn validator_rejects_short_token_padding_in_material_impact() -> TestResult {
     ))
 }
 
+#[test]
+fn validator_accepts_terminal_handoff_material_impact() -> TestResult {
+    let output = run_validator(&blocked_evidence(
+        valid_gate().replace(
+            "material impact=the choice changes persisted identifiers and migration behavior",
+            "material impact=the choice changes the destination and access boundary",
+        ),
+        valid_pre_mutation(),
+    ))?;
+    assert!(
+        output.status.success(),
+        "terminal-handoff material impact was rejected: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
 fn assert_short_token_padding_rejected(gate: String) -> TestResult {
     let output = run_validator(&blocked_evidence(gate, valid_pre_mutation()))?;
     assert!(
