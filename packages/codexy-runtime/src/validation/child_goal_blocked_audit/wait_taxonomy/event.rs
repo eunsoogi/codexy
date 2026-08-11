@@ -7,20 +7,20 @@ const EVENT_SUBJECTS: &[(&str, SubjectKind)] = &[
     ("feedback from maintainer", SubjectKind::Review),
     ("security review", SubjectKind::Review),
     ("connector review", SubjectKind::Review),
-    ("parent authorization", SubjectKind::Producer),
-    ("dependency integration", SubjectKind::Producer),
-    ("resource slot", SubjectKind::Producer),
-    ("async tool", SubjectKind::Producer),
-    ("asynchronous tool", SubjectKind::Producer),
-    ("implementation", SubjectKind::Producer),
+    ("parent authorization", SubjectKind::External),
+    ("dependency integration", SubjectKind::External),
+    ("resource slot", SubjectKind::External),
+    ("async tool", SubjectKind::External),
+    ("asynchronous tool", SubjectKind::External),
+    ("implementation", SubjectKind::Operational),
     ("reviewer", SubjectKind::Review),
-    ("sentinel", SubjectKind::Producer),
-    ("resource", SubjectKind::Producer),
-    ("operation", SubjectKind::Producer),
+    ("sentinel", SubjectKind::External),
+    ("resource", SubjectKind::External),
+    ("operation", SubjectKind::External),
     ("review", SubjectKind::Review),
-    ("tool", SubjectKind::Producer),
-    ("work", SubjectKind::Producer),
-    ("ci", SubjectKind::Producer),
+    ("tool", SubjectKind::External),
+    ("work", SubjectKind::Operational),
+    ("ci", SubjectKind::External),
 ];
 
 const ASYNC_SUBJECTS: &[&str] = &[
@@ -56,19 +56,30 @@ const LIFECYCLE_STATES: &[&str] = &[
     "not yet returned",
     "has not returned",
 ];
+const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 
 const OPERATIONAL_PREDICATES: &[&str] = &["result", "wait"];
+const REVIEW_PREDICATES: &[&str] = &["resolved", "unresolved", "open"];
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum SubjectKind {
-    Producer,
+    External,
+    Operational,
     Review,
     ReviewState,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum SubjectGroup {
+    External,
+    Operational,
+    Review,
 }
 
 #[derive(Clone, Copy)]
 struct Subject {
     start: usize,
+    end: usize,
     kind: SubjectKind,
 }
 
@@ -100,6 +111,10 @@ pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
 
 pub(super) fn has_lifecycle_state(words: &[&str]) -> bool {
     contains_any_phrase(words, LIFECYCLE_STATES)
+        || words.windows(2).enumerate().any(|(index, window)| {
+            window == ["has", "returned"]
+                && words[..index].iter().any(|word| NEGATIONS.contains(word))
+        })
 }
 
 pub(super) fn is_nonterminal_wait(words: &[&str]) -> bool {
@@ -126,6 +141,7 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
             start += phrase.len();
             subjects.push(Subject {
                 start: subject_start,
+                end: start,
                 kind,
             });
         } else {
@@ -137,10 +153,26 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
 
 fn starts_new_event(subjects: &[Subject], index: usize, words: &[&str]) -> bool {
     let subject = subjects[index];
+    let prior = subjects[index - 1];
     subject.start > 0
         && !is_coordinated_negation(words, subject.start)
-        && !(subject.kind == SubjectKind::ReviewState
-            && subjects[index - 1].kind == SubjectKind::Review)
+        && (subject_group(subject.kind) != subject_group(prior.kind)
+            || has_local_predicate(words, prior, subject.start))
+}
+
+fn subject_group(kind: SubjectKind) -> SubjectGroup {
+    match kind {
+        SubjectKind::External => SubjectGroup::External,
+        SubjectKind::Operational => SubjectGroup::Operational,
+        SubjectKind::Review | SubjectKind::ReviewState => SubjectGroup::Review,
+    }
+}
+
+fn has_local_predicate(words: &[&str], subject: Subject, next_start: usize) -> bool {
+    let words = &words[subject.end..next_start];
+    contains_any_phrase(words, LIFECYCLE_STATES)
+        || contains_any_phrase(words, REVIEW_PREDICATES)
+        || contains_any_phrase(words, OPERATIONAL_PREDICATES)
 }
 
 fn is_coordinated_negation(words: &[&str], subject_start: usize) -> bool {

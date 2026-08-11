@@ -30,6 +30,30 @@ fn validator_keeps_predicate_free_ci_negation_out_of_later_review_event() -> Tes
 }
 
 #[test]
+fn validator_keeps_nested_review_subject_polarity_local() -> TestResult {
+    assert_disposition(
+        "Blocked: reviewer reports no review feedback remains unresolved.",
+        false,
+    )?;
+    assert_disposition(
+        "Blocked: reviewer reports review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
+fn validator_keeps_coordinated_external_predicate_local() -> TestResult {
+    assert_disposition(
+        "Blocked: no CI or Sentinel result has returned.",
+        false,
+    )?;
+    assert_disposition(
+        "Blocked: no CI result and review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
 fn validator_extracts_subject_predicate_events_independent_of_separator() -> TestResult {
     for separator in SEPARATORS {
         assert_disposition(

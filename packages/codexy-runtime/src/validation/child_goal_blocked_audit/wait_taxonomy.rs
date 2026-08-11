@@ -109,12 +109,14 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
         .iter()
         .enumerate()
         .filter(|(_, word)| matches!(**word, "resolved" | "unresolved" | "open"))
-        .flat_map(|(index, word)| {
-            subjects.iter().filter_map(move |subject| {
-                review_subject_owns_state(words, *subject, index)
-                    .then(|| classify_resolution(words, *subject, index, word))
-                    .flatten()
-            })
+        .filter_map(|(index, word)| {
+            let subject = subjects
+                .iter()
+                .filter(|subject| subject.end <= index)
+                .max_by_key(|subject| subject.end)?;
+            review_subject_owns_state(words, *subject, index)
+                .then(|| classify_resolution(words, *subject, index, word))
+                .flatten()
         })
         .collect::<Vec<_>>();
     if resolution_states.contains(&WaitDisposition::Actionable) {
