@@ -73,6 +73,24 @@ fn completion_handoff_rejects_a_nonlight_zero_review_cycle() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn completion_handoff_binds_delta_to_the_preceding_full_base() -> TestResult {
+    assert!(validate_delta_base(|_| {})?.status.success());
+    for mutate in [
+        |state: &mut Value| {
+            state["reviewLedger"]["events"][1]
+                .as_object_mut()
+                .expect("delta")
+                .remove("base_oid");
+        },
+        |state: &mut Value| state["reviewLedger"]["events"][1]["base_oid"] = json!("older"),
+        |state: &mut Value| state["reviewLedger"]["events"][1]["base_oid"] = json!(""),
+    ] {
+        assert!(!validate_delta_base(mutate)?.status.success());
+    }
+    Ok(())
+}
+
 fn validate(profile: Option<&str>) -> TestResult<std::process::Output> {
     let temp = tempfile::tempdir()?;
     let handoff = temp.path().join("handoff.md");
@@ -121,7 +139,7 @@ fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::O
         "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"h",
         "reviewProfile":"standard",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"h","profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},
-        "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"standard","head_oid":"h","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","head_oid":"h","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}
+        "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"h","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","base_oid":"base","head_oid":"h","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}
     });
     mutate(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
@@ -140,10 +158,30 @@ fn validate_escalated_delta(
         "reviewProfile":"strict",
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
-            {"id":"e-unobservable","predecessor_event_id":null,"profile":"standard","head_oid":"reviewed","state":"unobservable","full_used":0,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
-            {"id":"e-strict","predecessor_event_id":"e-unobservable","profile":"strict","head_oid":"reviewed","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":{"from_profile":"standard","predecessor_event_id":"e-unobservable","discarded_lower_profile":true}},
-            {"id":"e-delta","predecessor_event_id":"e-strict","profile":"strict","head_oid":"repair","state":"delta","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null},
-            {"id":"e-passed","predecessor_event_id":"e-delta","profile":"strict","head_oid":"repair","state":"passed","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
+            {"id":"e-unobservable","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"reviewed","state":"unobservable","full_used":0,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
+            {"id":"e-strict","predecessor_event_id":"e-unobservable","profile":"strict","base_oid":"base","head_oid":"reviewed","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":{"from_profile":"standard","predecessor_event_id":"e-unobservable","discarded_lower_profile":true}},
+            {"id":"e-delta","predecessor_event_id":"e-strict","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"delta","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null},
+            {"id":"e-passed","predecessor_event_id":"e-delta","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"passed","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
+        ]}
+    });
+    mutate(&mut state);
+    fs::write(&state_path, serde_json::to_vec(&state)?)?;
+    crate::support::validator_completion_handoff_files(&handoff, &state_path)
+}
+
+fn validate_delta_base(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::Output> {
+    let temp = tempfile::tempdir()?;
+    let handoff = temp.path().join("handoff.md");
+    let state_path = temp.path().join("state.json");
+    fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
+    let mut state = json!({
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair",
+        "reviewProfile":"standard",
+        "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},
+        "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
+            {"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"reviewed","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
+            {"id":"e-delta","predecessor_event_id":"e-full","profile":"standard","base_oid":"reviewed","head_oid":"repair","state":"delta","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null},
+            {"id":"e-passed","predecessor_event_id":"e-delta","profile":"standard","base_oid":"reviewed","head_oid":"repair","state":"passed","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
         ]}
     });
     mutate(&mut state);

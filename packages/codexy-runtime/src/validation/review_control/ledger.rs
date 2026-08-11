@@ -19,6 +19,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         id: packet.event_id.clone(),
         predecessor_event_id: packet.predecessor_event_id.clone(),
         profile: packet.profile.clone(),
+        base_oid: packet.identity_base().to_owned(),
         head_oid: packet.identity_head().to_owned(),
         state: packet.state.clone(),
         full_used: packet.budget.full_used,

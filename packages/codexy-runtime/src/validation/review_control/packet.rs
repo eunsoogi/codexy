@@ -187,6 +187,9 @@ fn unique<'a>(items: impl Iterator<Item = &'a String>, label: &str) -> Result<BT
     Ok(unique)
 }
 impl Packet {
+    pub(super) fn identity_base(&self) -> &str {
+        &self.identity.base_oid
+    }
     pub(super) fn identity_head(&self) -> &str {
         &self.identity.head_oid
     }

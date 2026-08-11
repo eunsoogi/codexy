@@ -20,6 +20,7 @@ pub(super) struct Event {
     pub(super) id: String,
     pub(super) predecessor_event_id: Option<String>,
     pub(super) profile: String,
+    pub(super) base_oid: String,
     pub(super) head_oid: String,
     pub(super) state: String,
     pub(super) full_used: u8,
@@ -52,6 +53,7 @@ impl History {
         }
         for (index, event) in self.events.iter().enumerate() {
             if !valid_id(&event.id)
+                || !valid_id(&event.base_oid)
                 || event.predecessor_event_id.as_deref()
                     != index
                         .checked_sub(1)
@@ -144,6 +146,7 @@ fn escalated_full(unobservable: &Event, full: &Event) -> bool {
 fn delta_after(full: &Event, delta: &Event) -> bool {
     delta.state == "delta"
         && delta.profile == full.profile
+        && delta.base_oid == full.head_oid
         && delta.head_oid != full.head_oid
         && delta.escalation.is_none()
         && (delta.full_used, delta.delta_used) == (1, 1)

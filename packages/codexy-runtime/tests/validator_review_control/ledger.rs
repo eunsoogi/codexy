@@ -21,6 +21,8 @@ fn delta_and_pass_retain_each_prior_blocker_once() -> TestResult {
     let mut full = packet_for(repo.path(), &base, "e-full", "full")?;
     full["findings"][0]["reopen_count"] = json!(1);
     assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &full)?.status.success());
+    let wrong_base_ledger = repo.path().join("wrong-base-ledger.json");
+    assert!(check_packet_at(fixture.root(), repo.path(), &wrong_base_ledger, &full)?.status.success());
 
     fs::write(repo.path().join("evidence.json"), "{\"state\":\"repaired\"}\n")?;
     commit(repo.path(), "repair")?;
@@ -32,6 +34,16 @@ fn delta_and_pass_retain_each_prior_blocker_once() -> TestResult {
     delta["resolution"] = json!({"repaired_finding_ids":["f-1"],"changed_boundaries":["validator"]});
     delta["readiness_export"]["unresolved_blocker_ids"] = json!([]);
     delta["readiness_export"]["budget_exhausted"] = json!(true);
+
+    let mut wrong_base = packet_for(repo.path(), &base, "e-wrong-base", "delta")?;
+    wrong_base["predecessor_event_id"] = json!("e-full");
+    wrong_base["budget"] = json!({"full_used":1,"delta_used":1});
+    wrong_base["findings"][0]["reopen_count"] = json!(1);
+    wrong_base["findings"][0]["resolved"] = json!(true);
+    wrong_base["resolution"] = json!({"repaired_finding_ids":["f-1"],"changed_boundaries":["validator"]});
+    wrong_base["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+    wrong_base["readiness_export"]["budget_exhausted"] = json!(true);
+    assert!(!check_packet_at(fixture.root(), repo.path(), &wrong_base_ledger, &wrong_base)?.status.success());
 
     let mut dropped = delta.clone();
     dropped["event_id"] = json!("e-dropped");
