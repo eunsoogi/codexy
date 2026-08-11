@@ -161,7 +161,7 @@ for label, mutate in (
     ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
     ("unknown", lambda rows: rows[0].update(shard="unknown")), ("wrong head", lambda rows: rows[0].update(head="wrong")), ("wrong index", lambda rows: rows[0].update(index_tree="wrong")),
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
-    ("pending", lambda rows: rows[0].update(state="PENDING")), ("missing process status", lambda rows: rows[0].pop("status")), ("nonzero process status", lambda rows: rows[0].update(status=1)), ("duplicate cross-shard identity", duplicate_cross_shard_identity),
+    ("pending", lambda rows: rows[0].update(state="PENDING")), ("missing process status", lambda rows: rows[0].pop("status")), ("nonzero process status", lambda rows: rows[0].update(status=1)), ("boolean process status", lambda rows: rows[0].update(status=False)), ("duplicate cross-shard identity", duplicate_cross_shard_identity),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
     ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
