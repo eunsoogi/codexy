@@ -31,7 +31,23 @@ MUST NOT reuse, duplicate, or place active workflow evidence inside fenced histo
      completion state.
    - MUST identify whether the request is already scoped to an issue, PR, branch,
      child thread, or worktree.
-2. MUST choose a profile:
+2. MUST classify TDD applicability before selecting an engineering workflow:
+   - MUST use the machine-owned [TDD Classification Policy](tdd-classification-policy.json)
+     to decide `engineering_tdd_required` from typed work boundaries.
+   - Engineering boundaries require faithful RED/GREEN. These include production or
+     runtime behavior, validators, parsers (including Markdown-backed parsers),
+     hooks, CLIs, workflows, installers, package resolution, tools, executable
+     contracts, defect repairs, and behavior-preserving refactors.
+   - README, documentation, instruction-only skills, agent prompts, declarative
+     metadata, issue/PR metadata, roadmap or release prose, inventories, diagrams,
+     examples, and copy edits MUST NOT manufacture a RED. They require direct
+     readback plus the applicable structural, link, render, frontmatter, package,
+     or authentic-surface proof.
+   - Mixed work MUST run RED/GREEN only for its engineering boundaries and MUST
+     record proportional proof for its non-engineering boundaries.
+   - The file format, strict profile, review gate, or presence of a Markdown file
+     MUST NOT by itself require TDD.
+3. MUST choose a profile:
    - MUST use `light` for read-only, documentation, tiny fixes, and ordinary
      single-owner mutations unless a strict trigger applies.
    - MUST use `standard` for non-trivial single-owner work needing added planning
@@ -40,13 +56,13 @@ MUST NOT reuse, duplicate, or place active workflow evidence inside fenced histo
      high-consequence external-state, high-risk guardrail, or merge-sensitive work.
    - Durable delegation, multi-lane ownership, and explicit audit evidence MUST
      escalate to strict even when light or standard was requested.
-3. MUST classify strict work:
+4. MUST classify strict work:
    - MUST pick one primary lane type from the taxonomy below.
    - MUST pick any secondary surface that affects verification, such as plugin
      packaging, GitHub state, docs, validators, MCP, LSP, release, or browser.
    - MUST decide owner as `parent-owned`, `child-owned`, `current-thread-owned`, or
      `external/human-owned`.
-4. MUST route strict work:
+5. MUST route strict work:
    - MUST name the required Codexy skills and any explicit user-named skills.
    - MUST name required tool surfaces, including goal, plan/todo, codegraph, LSP,
      GitHub, validators, local tests, and packaged `codexy-sentinel`.
@@ -65,7 +81,7 @@ MUST NOT reuse, duplicate, or place active workflow evidence inside fenced histo
      matches the task or the concrete rationale for skipping them. It MUST NOT
      treat specialist subagent use as the child thread/worktree owner for an
      issue-sized lane.
-5. Gate:
+6. Gate:
    - State the first allowed action after classification.
    - If classification exposes missing scope, missing issue/PR identity,
      conflicting owner, bundled lanes, or unavailable required tools, MUST stop and
