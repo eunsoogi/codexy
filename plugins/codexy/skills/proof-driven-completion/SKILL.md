@@ -110,8 +110,6 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
   a maintainer explicitly approves a fallback.
 - Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
-- Review-response proof MUST exercise a bounded positive and negative matrix for every repaired root-cause cluster.
-- A repeated same-class variant MUST NOT consume a new repair cycle unless its receipt names a distinct invariant or proves the prior structural repair incomplete.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool
   fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,

@@ -112,7 +112,7 @@ targets = sorted(module.declared_test_targets(repository))
 authoritative_counts = platform_counts(repository)
 if set(authoritative_counts) != {"posix", "windows"} or any(not isinstance(count, int) or count < 1 for count in authoritative_counts.values()):
     raise SystemExit(f"invalid authoritative platform shape: {authoritative_counts!r}")
-expected_integrated_counts = {"posix": 2186, "windows": 2065}
+expected_integrated_counts = {"posix": 1746, "windows": 1625}
 if authoritative_counts != expected_integrated_counts:
     raise SystemExit(
         f"integrated cardinality authority drift: "

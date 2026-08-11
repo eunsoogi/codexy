@@ -25,54 +25,14 @@ mod validator_agent_registration_security;
 #[path = "../validator_agent_registration_transactions.rs"]
 mod validator_agent_registration_transactions;
 
-#[path = "../validator_gpt_5_6_routing.rs"]
-mod validator_gpt_5_6_routing;
-
-#[path = "../validator_gpt_5_6_routing_active_instructions.rs"]
-mod validator_gpt_5_6_routing_active_instructions;
-
-#[path = "../validator_gpt_5_6_routing_adversarial.rs"]
-mod validator_gpt_5_6_routing_adversarial;
-
-#[path = "../validator_gpt_5_6_routing_assignment_blocks.rs"]
-mod validator_gpt_5_6_routing_assignment_blocks;
-
-#[path = "../validator_gpt_5_6_routing_boundaries.rs"]
-mod validator_gpt_5_6_routing_boundaries;
-
-#[path = "../validator_gpt_5_6_routing_contextual.rs"]
-mod validator_gpt_5_6_routing_contextual;
-
-#[path = "../validator_gpt_5_6_routing_evidence_forms.rs"]
-mod validator_gpt_5_6_routing_evidence_forms;
-
-#[path = "../validator_gpt_5_6_routing_549_contract.rs"]
-mod validator_gpt_5_6_routing_549_contract;
-#[path = "../validator_gpt_5_6_routing_549_clause_scope.rs"]
-mod validator_gpt_5_6_routing_549_clause_scope;
-#[path = "../validator_gpt_5_6_routing_549_simple_conjunction.rs"]
-mod validator_gpt_5_6_routing_549_simple_conjunction;
-
-#[path = "../validator_gpt_5_6_routing_field_semantics.rs"]
-mod validator_gpt_5_6_routing_field_semantics;
-
-#[path = "../validator_gpt_5_6_routing_markdown_forms.rs"]
-mod validator_gpt_5_6_routing_markdown_forms;
-
-#[path = "../validator_gpt_5_6_routing_matrix_whitespace.rs"]
-mod validator_gpt_5_6_routing_matrix_whitespace;
-
-#[path = "../validator_gpt_5_6_routing_review_feedback.rs"]
-mod validator_gpt_5_6_routing_review_feedback;
-
 #[path = "../validator_prompt_metadata.rs"]
 mod validator_prompt_metadata;
 
 #[path = "../validator_prompt_host_limits.rs"]
 mod validator_prompt_host_limits;
 
-#[path = "../task_classification_presentation.rs"]
-mod task_classification_presentation;
+#[path = "../skill_reference_links.rs"]
+mod skill_reference_links;
 
 #[path = "../workflow_profile_contract.rs"]
 mod workflow_profile_contract;
@@ -86,18 +46,8 @@ mod workflow_profile_signals;
 #[path = "../workflow_profile_grammar.rs"]
 mod workflow_profile_grammar;
 
-#[path = "../validator_role_instruction_policy.rs"]
-mod validator_role_instruction_policy;
-
 #[path = "../validator_roles.rs"]
 mod validator_roles;
-
-#[path = "../validator_routing_measurement.rs"]
-mod validator_routing_measurement;
-#[path = "../validator_routing_measurement_schema.rs"]
-mod validator_routing_measurement_schema;
-#[path = "../validator_routing_measurement_promotions.rs"]
-mod validator_routing_measurement_promotions;
 
 #[path = "../validator_sentinel_handoff_current_evidence.rs"]
 mod validator_sentinel_handoff_current_evidence;
@@ -137,20 +87,3 @@ mod validator_sentinel_reasoning_fixture;
 
 #[path = "../validator_sentinel_reviewer_gate.rs"]
 mod validator_sentinel_reviewer_gate;
-
-#[path = "../validator_sentinel_scope_policy.rs"]
-mod validator_sentinel_scope_policy;
-
-#[path = "../validator_sentinel_scope_policy_nonterminal.rs"]
-mod validator_sentinel_scope_policy_nonterminal;
-#[path = "../validator_sentinel_scope_policy_fixture.rs"]
-mod validator_sentinel_scope_policy_fixture;
-
-#[path = "../validator_subagent_delegation.rs"]
-mod validator_subagent_delegation;
-
-#[path = "../validator_subagent_delegation_boundaries.rs"]
-mod validator_subagent_delegation_boundaries;
-
-#[path = "../validator_subagent_delegation_orchestration.rs"]
-mod validator_subagent_delegation_orchestration;

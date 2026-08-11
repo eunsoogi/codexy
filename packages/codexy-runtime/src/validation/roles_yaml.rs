@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
+use serde_yaml::{Mapping, Value};
 
 use crate::paths::display_relative;
 use crate::validation::prompt_yaml;
@@ -15,6 +16,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         roots.push(repo_root.join(".agents/skills"));
     }
     for skill_file in roots.iter().flat_map(|root| skill_files(root)) {
+        if !skill_file.is_file() {
+            errors.push(format!(
+                "{} skill bundle is missing SKILL.md",
+                display_relative(skill_file.parent().unwrap_or(plugin_root))
+            ));
+            continue;
+        }
+        errors.extend(check_skill_frontmatter(&skill_file));
         let prompt = skill_file
             .parent()
             .unwrap_or(plugin_root)
@@ -47,9 +56,89 @@ fn skill_files(root: &Path) -> Vec<PathBuf> {
         .into_iter()
         .flatten()
         .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
         .map(|entry| entry.path().join("SKILL.md"))
-        .filter(|path| path.exists())
         .collect()
+}
+
+fn check_skill_frontmatter(skill_file: &Path) -> Vec<String> {
+    let text = match fs::read_to_string(skill_file) {
+        Ok(text) => text,
+        Err(error) => return vec![format!("{}: {error}", display_relative(skill_file))],
+    };
+    let frontmatter = match frontmatter(&text, skill_file) {
+        Ok(frontmatter) => frontmatter,
+        Err(error) => return vec![error.to_string()],
+    };
+    let parsed = match serde_yaml::from_str::<Mapping>(frontmatter) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return vec![format!(
+                "{} frontmatter must be valid YAML: {error}",
+                display_relative(skill_file)
+            )];
+        }
+    };
+    let mut errors = Vec::new();
+    let name = match yaml_string(&parsed, "name") {
+        Some(name) if !name.trim().is_empty() => name,
+        _ => {
+            errors.push(format!(
+                "{} frontmatter.name must be a non-empty string",
+                display_relative(skill_file)
+            ));
+            return errors;
+        }
+    };
+    let expected = skill_file
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+    if name != expected {
+        errors.push(format!(
+            "{} frontmatter name must match skill directory `{expected}`",
+            display_relative(skill_file)
+        ));
+    }
+    if !yaml_string(&parsed, "description")
+        .is_some_and(|description| !description.trim().is_empty())
+    {
+        errors.push(format!(
+            "{} frontmatter.description must be a non-empty string",
+            display_relative(skill_file)
+        ));
+    }
+    errors
+}
+
+fn yaml_string<'a>(mapping: &'a Mapping, key: &str) -> Option<&'a str> {
+    mapping
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_str)
+}
+
+fn frontmatter<'a>(text: &'a str, skill_file: &Path) -> Result<&'a str> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let (remainder, delimiter) = if let Some(remainder) = text.strip_prefix("---\n") {
+        (remainder, "\n---\n")
+    } else if let Some(remainder) = text.strip_prefix("---\r\n") {
+        (remainder, "\r\n---\r\n")
+    } else {
+        anyhow::bail!(
+            "{} frontmatter must open with ---",
+            display_relative(skill_file)
+        );
+    };
+    remainder
+        .split_once(delimiter)
+        .map(|(frontmatter, _)| frontmatter)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "{} frontmatter must close with ---",
+                display_relative(skill_file)
+            )
+        })
 }
 
 fn openai_yaml_files(plugin_root: &Path, skill_roots: &[PathBuf]) -> Vec<PathBuf> {

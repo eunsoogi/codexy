@@ -1,13 +1,10 @@
 use std::path::Path;
 use crate::support::FixtureCommand as Command;
 
-#[path = "structured_contract.rs"]
-mod structured_contract;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 use crate::support;
 
-use structured_contract::{Contract, Modality, Rule, assert_rules};
 use structured_contract_artifacts::TextShape;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -105,67 +102,6 @@ fn pre_start_bootstrap_rejects_custom_config_discovery_roots() -> TestResult {
     assert!(
         !custom_root.exists(),
         "rejected custom config mutated its discovery root"
-    );
-    Ok(())
-}
-
-#[test]
-fn orchestration_guidance_bootstraps_exact_roles_without_generic_fallback() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let skill =
-        std::fs::read_to_string(root.join("plugins/codexy/skills/orchestration/SKILL.md"))?;
-    let registration = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/references/agent-registration.md"),
-    )?;
-
-    let guidance = format!("{skill}\n{registration}");
-    let contract = Contract::markdown_for_subject(&guidance, "you");
-    assert_rules(
-        &contract,
-        &[
-            Rule::new(
-                "agent-bootstrap.installed-entrypoint",
-                "you",
-                Modality::Required,
-                &["run"],
-                &["installed plugin", "bootstrap-codexy-agents"],
-            ),
-            Rule::new(
-                "agent-bootstrap.fresh-task-proof",
-                "you",
-                Modality::Required,
-                &["observe", "invoke"],
-                &["agent_type", "exact packaged role"],
-            ),
-            Rule::new(
-                "agent-bootstrap.no-generic-substitute",
-                "you",
-                Modality::Prohibited,
-                &["substitute"],
-                &[
-                    "default",
-                    "worker",
-                    "explorer",
-                    "Codexy specialist",
-                    "Sentinel",
-                ],
-            ),
-        ],
-    );
-    support::assert_structured_literals(
-        &guidance,
-        "agent bootstrap state protocol",
-        &[
-            "RESTART_REQUIRED",
-            "fresh task",
-            "`default`",
-            "`worker`",
-            "`explorer`",
-        ],
-    );
-    TextShape::new(&skill).assert_absent_concepts(
-        "generic fallback prohibition",
-        &["fall back to packaged TOML catalog context"],
     );
     Ok(())
 }

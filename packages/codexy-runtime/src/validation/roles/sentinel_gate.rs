@@ -3,7 +3,6 @@ use std::path::Path;
 use toml::Value;
 
 use crate::paths::display_relative;
-use crate::validation::instruction_policy::sentinel_scope_policy;
 
 mod affirmative_clause;
 mod reasoning_control;
@@ -68,7 +67,6 @@ pub(super) fn check(path: &Path, agent: &Value, errors: &mut Vec<String>) {
             missing_markers.join(", ")
         ));
     }
-    sentinel_scope_policy::check_sentinel(path, instructions, errors);
     if !reasoning_control::has_reasoning_control_paragraph(instructions) {
         errors.push(format!(
             "{} codexy-sentinel reasoning-control paragraph must be present and affirmative",

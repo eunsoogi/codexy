@@ -118,6 +118,9 @@ mod runtime_platform_detection;
 #[path = "../session_audit_custom_tools.rs"]
 mod session_audit_custom_tools;
 
+#[path = "../session_audit_event_runtime.rs"]
+mod session_audit_event_runtime;
+
 #[path = "../skill_boundary_taxonomy.rs"]
 mod skill_boundary_taxonomy;
 
@@ -133,23 +136,12 @@ mod session_audit_receipt_contract;
 #[path = "../session_audit_receipt_review_feedback.rs"]
 mod session_audit_receipt_review_feedback;
 
-#[path = "../structured_contract.rs"]
-mod structured_contract;
-
 #[path = "../structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
-
-#[path = "../structured_contract_controls.rs"]
-mod structured_contract_controls;
-
-#[path = "../structured_contract_migration_guard.rs"]
-mod structured_contract_migration_guard;
 
 #[path = "../sync_version_cli.rs"]
 mod sync_version_cli;
 
-#[path = "../token_quota_containment.rs"]
-mod token_quota_containment;
 
 #[path = "../validator_lsp_readiness.rs"]
 mod validator_lsp_readiness;

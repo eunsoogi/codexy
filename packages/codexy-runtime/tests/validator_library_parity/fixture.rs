@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Output;
 
 use crate::support;
 
@@ -7,10 +6,6 @@ pub(super) fn copy_plugin_fixture(
     mutable_files: &[&Path],
 ) -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
     Ok(support::copy_plugin_fixture_with_mutable_files(mutable_files)?)
-}
-
-pub(super) fn normalized_fixture_stderr(output: &Output, path: &Path) -> String {
-    normalize_fixture_stderr_text(&String::from_utf8_lossy(&output.stderr), path)
 }
 
 fn normalize_fixture_stderr_text(stderr: &str, path: &Path) -> String {
@@ -46,7 +41,6 @@ fn normalize_fixture_stderr_line(line: &str, suffix: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::normalize_fixture_stderr_text;
-    use crate::support;
     use std::path::Path;
 
     #[test]
@@ -80,26 +74,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn focused_instruction_policy_fixture_copies_only_the_declared_surface()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let relative = Path::new("skills/proof-driven-completion/SKILL.md");
-        let fixture = support::instruction_policy_fixture(relative)?;
-        let source = codexy_runtime::paths::repository_root()
-            .join("plugins/codexy")
-            .join(relative);
-
-        assert_eq!(fixture.profile().files(), 1);
-        assert_eq!(fixture.profile().bytes(), std::fs::metadata(source)?.len());
-        assert!(fixture.path().is_file());
-        assert!(
-            !fixture
-                .path()
-                .parent()
-                .ok_or("fixture parent")?
-                .join("agents")
-                .exists()
-        );
-        Ok(())
-    }
 }
