@@ -39,30 +39,6 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
         effort: "low",
     },
     ExpectedAgent {
-        name: "codexy-forge",
-        filename: "codexy-forge.toml",
-        model: "gpt-5.6-terra",
-        effort: "medium",
-    },
-    ExpectedAgent {
-        name: "codexy-pathfinder",
-        filename: "codexy-pathfinder.toml",
-        model: "gpt-5.6-sol",
-        effort: "xhigh",
-    },
-    ExpectedAgent {
-        name: "codexy-scribe",
-        filename: "codexy-scribe.toml",
-        model: "gpt-5.6-luna",
-        effort: "low",
-    },
-    ExpectedAgent {
-        name: "codexy-sculptor",
-        filename: "codexy-sculptor.toml",
-        model: "gpt-5.6-terra",
-        effort: "high",
-    },
-    ExpectedAgent {
         name: "codexy-sentinel",
         filename: "codexy-sentinel.toml",
         model: "gpt-5.6-sol",
@@ -72,12 +48,6 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
         name: "codexy-shipwright",
         filename: "codexy-shipwright.toml",
         model: "gpt-5.6-terra",
-        effort: "high",
-    },
-    ExpectedAgent {
-        name: "codexy-tracer",
-        filename: "codexy-tracer.toml",
-        model: "gpt-5.6-sol",
         effort: "high",
     },
     ExpectedAgent {

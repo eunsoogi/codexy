@@ -159,7 +159,7 @@ fn register_codexy_agents_allows_supported_agent_config_tables()
         .output()?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    assert!(String::from_utf8_lossy(&output.stdout).contains("would install 12 Codexy agents"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("would install 7 Codexy agents"));
     Ok(())
 }
 

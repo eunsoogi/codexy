@@ -168,6 +168,12 @@ pub(super) fn archive_repository(
         .arg(&repo)
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
+    let agents_root = repo.join("plugins/codexy/agents");
+    fs::remove_dir_all(&agents_root)?;
+    crate::support::copy_dir(
+        &codexy_runtime::paths::repository_root().join("plugins/codexy/agents"),
+        &agents_root,
+    )?;
     for relative in [
         "packages/codexy-runtime/Cargo.toml",
         "packages/codexy-runtime/Cargo.lock",

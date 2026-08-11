@@ -8,14 +8,9 @@ native_custom_agent_registration = "codex-home-standalone-agent-projection"
 native_custom_agent_projection = "managed-codexy-subdirectory"
 agent_files = [
   "codexy-architect.toml",
-  "codexy-tracer.toml",
-  "codexy-scribe.toml",
   "codexy-cartographer.toml",
-  "codexy-forge.toml",
   "codexy-weaver.toml",
-  "codexy-pathfinder.toml",
   "codexy-auditor.toml",
-  "codexy-sculptor.toml",
   "codexy-shipwright.toml",
   "codexy-sentinel.toml",
   "codexy-warden.toml",

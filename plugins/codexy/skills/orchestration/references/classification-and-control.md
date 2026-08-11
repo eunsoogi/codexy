@@ -66,23 +66,21 @@ edits.
   unavailable tooling, or lack of a matching task. It MUST NOT replace a
   required Codex child thread/worktree owner with a subagent helper.
 - Specialist routing MUST include `codexy-cartographer` for repository, file,
-  dependency, or ownership mapping; `codexy-pathfinder` for planning or
-  approach selection; `codexy-architect` for boundary, schema, MCP, LSP,
-  plugin architecture, or long-lived extension-point changes; `codexy-tracer`
-  for root-cause or failing behavior; `codexy-warden` for workflows, shell
+  dependency, or ownership mapping; `codexy-architect` for boundary, schema, MCP, LSP,
+  plugin architecture, or long-lived extension-point changes; `codexy-warden` for workflows, shell
   commands, credentials, remote MCP endpoints, untrusted input, repository
   permissions, install scripts, local state mutation, or generated evidence
   with security implications; `codexy-auditor` after implementation for
   acceptance-criteria, readiness, and observable verification passes across
   CLI, config, GitHub, browser, app, plugin, documentation, or workflow
-  surfaces;
-  `codexy-scribe` for docs, handoff, PR, release note, or workflow drafting;
-  `codexy-forge` for scoped implementation edits after issue, branch, worktree,
-  plan, and acceptance criteria are clear; `codexy-weaver` for reconciling
-  parallel lanes, conflict checks, main updates, or merge sequencing;
-  `codexy-sculptor` for refactor-heavy or LOC-boundary work;
+  surfaces; `codexy-weaver` for reconciling parallel lanes, conflict checks,
+  main updates, or merge sequencing;
   `codexy-shipwright` for release, packaging, version, marketplace, manifest,
   tag, or rollback work; and `codexy-sentinel` for the final reviewer gate.
+  Orchestration owns planning; generic owning children use the engineering
+  workflow for diagnosis, TDD, QA, and refactoring and directly own scoped
+  implementation, documentation, and handoff. They MUST NOT recreate removed
+  specialists as aliases.
 - If multi-agent tooling is available, "not useful" is acceptable only with a
   concrete rationale tied to atomicity, tiny scope, or the absence of separable
   work.

@@ -83,8 +83,8 @@ fn validator_cli_rejects_removed_custom_agent_mcp_references()
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
-        copy_fixture(&plugin_root, &["agents/codexy-pathfinder.toml"])?;
-        let path = plugin_root.join("agents/codexy-pathfinder.toml");
+        copy_fixture(&plugin_root, &["agents/codexy-architect.toml"])?;
+        let path = plugin_root.join("agents/codexy-architect.toml");
         let mut agent = std::fs::read_to_string(&path)?;
         agent.push_str(fragment);
         std::fs::write(&path, agent)?;
@@ -101,8 +101,8 @@ fn validator_cli_preserves_unrelated_mcp_command_and_url_identities()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
-    copy_fixture(&plugin_root, &[".mcp.json", "agents/codexy-pathfinder.toml"])?;
-    let agent_path = plugin_root.join("agents/codexy-pathfinder.toml");
+    copy_fixture(&plugin_root, &[".mcp.json", "agents/codexy-architect.toml"])?;
+    let agent_path = plugin_root.join("agents/codexy-architect.toml");
     std::fs::write(
         &agent_path,
         format!(
