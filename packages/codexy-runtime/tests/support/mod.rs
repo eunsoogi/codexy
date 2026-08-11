@@ -15,7 +15,6 @@ pub(crate) mod fixture_hook_path_windows;
 pub(crate) mod fixture_path;
 pub(crate) mod fixture_probe;
 pub(crate) mod fixture_text;
-mod instruction_policy_fixture;
 mod package;
 mod package_archive;
 mod package_fixture;
@@ -32,19 +31,11 @@ mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
 mod release_version;
-pub(crate) mod routing_validator;
 pub(crate) mod touched_loc;
-pub(crate) mod wiki_active_token_stream;
 pub(crate) mod wiki_core_article;
-pub(crate) mod wiki_core_contract;
 pub(crate) mod wiki_core_raw_ingestion;
 pub(crate) mod wiki_frontmatter;
 pub(crate) mod wiki_migration_fixture;
-pub(crate) mod wiki_migration_rules;
-pub(crate) mod wiki_minimal_contract;
-pub(crate) mod wiki_minimal_contract_html_cases;
-pub(crate) mod wiki_minimal_contract_link_cases;
-pub(crate) mod wiki_minimal_contract_markdown;
 pub(crate) mod windows_archive_prerequisite;
 pub(crate) mod workflow_contract;
 pub(super) mod worktree_reservation_harness;
@@ -61,8 +52,7 @@ pub(crate) use agent_model_assignments::{
 pub(crate) use child_thread_ledger_skill::{
     stderr, validator, validator_child_lane_ownership, validator_child_lane_ownership_file,
     validator_completion_handoff, validator_completion_handoff_files, validator_in_process,
-    validator_instruction_policy, validator_instruction_policy_file, validator_pr_labels,
-    validator_routing,
+    validator_pr_labels,
 };
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
@@ -80,9 +70,6 @@ pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
-};
-pub(crate) use instruction_policy_fixture::{
-    FocusedFixtureProfile, InstructionPolicyFixture, instruction_policy_fixture,
 };
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,

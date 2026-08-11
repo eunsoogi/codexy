@@ -4,10 +4,9 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
-    conventional_commit, engineering_equivalence, getcodexy_component_contract, github_labels,
-    hooks, instruction_policy, issue_intake, lsp, manifest, mcp, merge_authorization,
-    merge_message, orchestration_routing, review_response_cluster, roles, runtime, touched_loc,
-    workflow_profiles,
+    conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
+    manifest, mcp, merge_authorization, merge_message, roles, routing_measurement, routing_policy,
+    runtime, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -26,15 +25,11 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(lsp::check(plugin_root));
             all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
-            all.extend(instruction_policy::check(plugin_root));
-            all.extend(engineering_equivalence::diagnostics(plugin_root));
-            all.extend(orchestration_routing::check(plugin_root));
+            all.extend(routing_policy::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             all
         }
-        Mode::InstructionPolicy => instruction_policy::check(plugin_root),
-        Mode::OrchestrationRouting => orchestration_routing::check(plugin_root),
         Mode::Lsp => lsp::check(plugin_root),
         Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
         Mode::MergeMessage {
@@ -55,14 +50,12 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
-        Mode::ReviewResponseCluster(receipt) => review_response_cluster::diagnostics(&receipt),
+        Mode::RoutingMeasurement { corpus, results } => {
+            routing_measurement::diagnostics(plugin_root, &corpus, &results)
+        }
         Mode::Mcp => mcp::check(plugin_root),
         Mode::Hooks => hooks::check(plugin_root),
-        Mode::Roles => {
-            let mut errors = roles::check(plugin_root);
-            errors.extend(instruction_policy::check_roles(plugin_root));
-            errors
-        }
+        Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => {
             let mut errors = child_lane_ownership::check(&evidence);

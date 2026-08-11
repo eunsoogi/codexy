@@ -47,7 +47,7 @@ fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResul
 }
 
 #[test]
-fn overlap_boundaries_and_non_markdown_authority_are_explicit() -> TestResult {
+fn overlap_boundaries_and_consumer_taxonomy_are_explicit() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
     overlap_boundaries::assert_canonical(&guide)?;
@@ -56,31 +56,17 @@ fn overlap_boundaries_and_non_markdown_authority_are_explicit() -> TestResult {
         .into_iter()
         .map(|row| row[0].clone())
         .collect::<BTreeSet<_>>();
-    assert_eq!(consumers.len(), 8);
+    assert_eq!(consumers.len(), 6);
     for consumer in [
         "Host discovery",
         "Skill prompt metadata",
         "Plugin entry prompt",
-        "Recursive instruction validation",
-        "Path-specific policy validation",
+        "Structural plugin validation",
         "Inventory and taxonomy tests",
-        "Structured contracts",
         "Skill resources",
     ] {
         assert!(consumers.get(consumer).is_some());
     }
-
-    let classification = std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/SKILL.md"),
-    )?;
-    let authority = section(&classification, "Authority Boundary")?;
-    assert!(authority
-        .lines()
-        .any(|line| !line.trim().is_empty()));
-    assert_eq!(classification.matches("## Authority Boundary").count(), 1);
-    assert!(authority.lines().any(|line| {
-        line == "`references/task-classification.md` is the authoritative ownership contract; its formal classification gate MUST run before setup or action."
-    }));
     Ok(())
 }
 

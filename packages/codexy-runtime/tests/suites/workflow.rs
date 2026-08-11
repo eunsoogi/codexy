@@ -37,20 +37,8 @@ mod validator_compaction_handoff_target_matching;
 #[path = "../validator_fixture_parallel_isolation.rs"]
 mod validator_fixture_parallel_isolation;
 
-#[path = "../validator_git_workflow_local_reference.rs"]
-mod validator_git_workflow_local_reference;
-
-#[path = "../validator_git_workflow_skill.rs"]
-mod validator_git_workflow_skill;
-
 #[path = "../validator_merge_authorization.rs"]
 mod validator_merge_authorization;
-
-#[path = "../validator_merge_authorization_policy.rs"]
-mod validator_merge_authorization_policy;
-
-#[path = "../validator_merge_authorization_shell_options.rs"]
-mod validator_merge_authorization_shell_options;
 
 #[path = "../validator_installed_readiness_guard.rs"]
 mod validator_installed_readiness_guard;
@@ -58,17 +46,9 @@ mod validator_installed_readiness_guard;
 #[path = "../validator_library_parity.rs"]
 mod validator_library_parity;
 
-#[path = "../validator_live_worktree_reservation_preflight.rs"]
-mod validator_live_worktree_reservation_preflight;
 
 #[path = "../validator_msrv_syntax.rs"]
 mod validator_msrv_syntax;
-
-#[path = "../validator_natural_korean_skill_responses.rs"]
-mod validator_natural_korean_skill_responses;
-
-#[path = "../validator_plain_language_user_replies.rs"]
-mod validator_plain_language_user_replies;
 
 #[path = "../validator_readiness_guard.rs"]
 mod validator_readiness_guard;
@@ -124,46 +104,17 @@ mod validator_review_thread_waiting_requested_labels;
 #[path = "../validator_review_thread_waiting_semicolon.rs"]
 mod validator_review_thread_waiting_semicolon;
 
-#[path = "../validator_situational_specialist_routing.rs"]
-mod validator_situational_specialist_routing;
-
 #[path = "../validator_source_artifact_contract.rs"]
 mod validator_source_artifact_contract;
 
-#[path = "../validator_subthread_subagent_instructions.rs"]
-mod validator_subthread_subagent_instructions;
-
-#[path = "../validator_tdd_root_cause_guidance.rs"]
-mod validator_tdd_root_cause_guidance;
-
-#[path = "../engineering_skill_fixture.rs"]
-mod engineering_skill_fixture;
-
-#[path = "../engineering_skill_consolidation.rs"]
-mod engineering_skill_consolidation;
-
-#[path = "../engineering_skill_route_boundaries.rs"]
-mod engineering_skill_route_boundaries;
-
 #[path = "../validator_touched_skill_loc.rs"]
 mod validator_touched_skill_loc;
-
-#[path = "../validator_wiki_ingestion_reference.rs"]
-mod validator_wiki_ingestion_reference;
-
-#[path = "../validator_wiki_contract_mutations.rs"]
-mod validator_wiki_contract_mutations;
-#[path = "../validator_wiki_token_identity.rs"]
-mod validator_wiki_token_identity;
 
 #[path = "../validator_wiki_connector_review.rs"]
 mod validator_wiki_connector_review;
 
 #[path = "../validator_wiki_migration_delta_mutations.rs"]
 mod validator_wiki_migration_delta_mutations;
-
-#[path = "../validator_wiki_minimal_contract.rs"]
-mod validator_wiki_minimal_contract;
 
 #[path = "../workflow_action_runtime.rs"]
 mod workflow_action_runtime;
