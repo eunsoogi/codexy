@@ -2,6 +2,9 @@ use super::{
     CLASSIFICATION, TestResult, blocked_evidence, run_validator, valid_gate, valid_pre_mutation,
 };
 
+#[path = "user_decision_gate/numeric_semantics.rs"]
+mod numeric_semantics;
+
 pub(super) fn assert_boundaries() -> TestResult {
     let genuine_choice = run_validator(&blocked_evidence(
         valid_gate(),

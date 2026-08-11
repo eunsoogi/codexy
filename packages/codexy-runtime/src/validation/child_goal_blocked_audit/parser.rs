@@ -113,9 +113,14 @@ fn substantive_identity(
     minimum_characters: usize,
     minimum_concepts: usize,
 ) -> Option<String> {
-    let words = value
+    let tokens = value
         .split(|character: char| !character.is_alphanumeric())
         .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let words = tokens
+        .iter()
+        .copied()
+        .filter(|word| word.chars().any(char::is_alphabetic))
         .collect::<Vec<_>>();
     let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
     let content = words
@@ -132,6 +137,11 @@ fn substantive_identity(
         .filter(|word| word.chars().count() >= 4)
         .cloned()
         .collect::<std::collections::BTreeSet<_>>();
+    let numeric_metadata = tokens
+        .iter()
+        .filter(|word| word.chars().all(char::is_numeric))
+        .map(|word| format!("number:{word}"))
+        .collect::<std::collections::BTreeSet<_>>();
     let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
     let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
         short_tokens
@@ -147,5 +157,11 @@ fn substantive_identity(
             || (long_content.len() >= 5
                 && concepts.len() >= minimum_concepts + 2
                 && concepts.len() * 5 >= long_content.len() * 4)))
-        .then(|| concepts.into_iter().collect::<Vec<_>>().join("|"))
+        .then(|| {
+            concepts
+                .into_iter()
+                .chain(numeric_metadata)
+                .collect::<Vec<_>>()
+                .join("|")
+        })
 }
