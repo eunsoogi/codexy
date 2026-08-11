@@ -64,7 +64,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         .iter()
         .any(|event| event.head_oid == packet.identity_head());
     let expected = transition(packet, profile, prior, same)?;
-    if packet.state == "delta" {
+    if matches!(packet.state.as_str(), "delta" | "passed") {
         account_for_prior_blockers(packet, prior)?;
     }
     if (packet.budget.full_used, packet.budget.delta_used) != expected
