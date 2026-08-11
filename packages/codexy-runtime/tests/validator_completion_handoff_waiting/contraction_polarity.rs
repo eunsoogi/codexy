@@ -11,6 +11,14 @@ fn validator_preserves_contracted_review_polarity() -> TestResult {
             "Blocked: review feedback isn't unresolved while work is incomplete.",
             false,
         ),
+        (
+            "Blocked: review feedback isn’t resolved while work is incomplete.",
+            true,
+        ),
+        (
+            "Blocked: review feedback isn’t unresolved while work is incomplete.",
+            false,
+        ),
     ] {
         let output = validate(handoff)?;
         assert_eq!(
