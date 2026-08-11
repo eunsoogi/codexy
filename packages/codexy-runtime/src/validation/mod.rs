@@ -176,18 +176,40 @@ pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<s
 }
 
 /// Resolves one typed review profile from the packaged review-control policy.
+///
+/// # Errors
+///
+/// Returns an error for malformed profile requests or policy drift.
 pub fn resolve_review_profile(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     review_control::resolve_profile(plugin_root, request)
 }
 
 /// Validates one typed review packet against the packaged bounded-review policy.
-pub fn check_review_packet(plugin_root: &Path, packet: &str) -> Result<()> {
-    review_control::check_packet(plugin_root, packet)
+///
+/// # Errors
+///
+/// Returns an error for malformed packets, stale repository evidence, or invalid durable review transitions.
+pub fn check_review_packet(
+    plugin_root: &Path,
+    repository_root: &Path,
+    ledger_path: &Path,
+    packet: &str,
+) -> Result<()> {
+    review_control::check_packet(plugin_root, repository_root, ledger_path, packet)
 }
 
 /// Validates one typed review-economics report against parity and profile budgets.
-pub fn check_review_economics(plugin_root: &Path, economics: &str) -> Result<()> {
-    review_control::check_economics(plugin_root, economics)
+///
+/// # Errors
+///
+/// Returns an error for corpus drift, missing seeded-defect parity, or an
+/// exceeded profile budget.
+pub fn check_review_economics(
+    plugin_root: &Path,
+    repository_root: &Path,
+    economics: &str,
+) -> Result<()> {
+    review_control::check_economics(plugin_root, repository_root, economics)
 }
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

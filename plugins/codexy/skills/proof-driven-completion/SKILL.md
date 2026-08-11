@@ -100,9 +100,9 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
   `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
   against current PR state before accepting the claim.
 - For every non-trivial atomic unit, MUST require evidence that the owning thread
-  ran the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/codexy-sentinel.toml` before handoff, PR readiness,
-  completion, or parent acceptance. The reviewer gate MUST cover the current
+  followed machine-owned `orchestration/references/review-profiles.json`:
+  light has no LLM reviewer, standard has `codexy-inspector`, and strict has
+  `codexy-sentinel`. The selected reviewer gate MUST cover the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and evidence. Arbitrary reviewer agents,
   generic role names, parent-only

@@ -10,6 +10,10 @@ use codexy_runtime::{paths, validation};
 struct Cli {
     #[arg(long)]
     plugin_root: Option<PathBuf>,
+    #[arg(long)]
+    repository_root: Option<PathBuf>,
+    #[arg(long)]
+    ledger: Option<PathBuf>,
     #[arg(long, conflicts_with_all = ["check_packet", "check_economics"])]
     resolve_profile: bool,
     #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics"])]
@@ -33,10 +37,22 @@ fn main() -> Result<()> {
             serde_json::to_string(&validation::resolve_review_profile(&root, &input)?)?
         );
     } else if cli.check_packet {
-        validation::check_review_packet(&root, &input)?;
+        validation::check_review_packet(
+            &root,
+            &cli.repository_root
+                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
+            &cli.ledger
+                .ok_or_else(|| anyhow::anyhow!("--ledger is required with --check-packet"))?,
+            &input,
+        )?;
         println!("review packet validation ok");
     } else if cli.check_economics {
-        validation::check_review_economics(&root, &input)?;
+        validation::check_review_economics(
+            &root,
+            &cli.repository_root
+                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
+            &input,
+        )?;
         println!("review economics validation ok");
     } else {
         anyhow::bail!("exactly one review-control mode is required");
