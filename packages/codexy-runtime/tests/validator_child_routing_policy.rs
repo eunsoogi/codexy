@@ -25,11 +25,13 @@ fn resolver_uses_closed_policy_for_generic_simple_and_fallback_routes() -> TestR
         json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-architect","codex_thread_operation":"create_thread"}),
         json!({"route":"named_specialist","agent_type":"codexy-architect"}),
     )?;
-    assert_route(
-        fixture.root(),
-        json!({"schema":"codexy.child-routing-request.v1","classification":"ambiguous","codex_thread_operation":"create_thread"}),
-        json!({"route":"root_or_named_specialist"}),
-    )?;
+    for classification in ["ambiguous", "high_risk", "incomplete"] {
+        assert_route(
+            fixture.root(),
+            json!({"schema":"codexy.child-routing-request.v1","classification":classification,"codex_thread_operation":"create_thread"}),
+            json!({"route":"root_or_named_specialist"}),
+        )?;
+    }
     assert_route(
         fixture.root(),
         json!({
