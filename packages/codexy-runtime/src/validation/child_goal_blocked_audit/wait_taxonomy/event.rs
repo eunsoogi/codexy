@@ -77,6 +77,12 @@ enum SubjectGroup {
     Review,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Coordination {
+    Independent,
+    SharedNegation,
+}
+
 #[derive(Clone, Copy)]
 struct Subject {
     start: usize,
@@ -156,9 +162,27 @@ fn event_start(subjects: &[Subject], index: usize, words: &[&str]) -> Option<usi
     let subject = subjects[index];
     let prior = subjects[index - 1];
     (subject.start > 0
+        && coordination(words, subjects, index) == Coordination::Independent
         && (subject_group(subject.kind) != subject_group(prior.kind)
             || has_local_predicate(words, prior, subject.start)))
     .then(|| local_negation_start(words, prior.end, subject.start).unwrap_or(subject.start))
+}
+
+fn coordination(words: &[&str], subjects: &[Subject], index: usize) -> Coordination {
+    let prior = subjects[index - 1];
+    let subject = subjects[index];
+    let shared_negation = words[prior.end..subject.start].contains(&"nor")
+        && words[..prior.start]
+            .iter()
+            .rposition(|word| *word == "neither")
+            .is_some_and(|negator| {
+                subjects
+                    .iter()
+                    .all(|candidate| candidate.end <= negator || candidate.start >= prior.start)
+            });
+    shared_negation
+        .then_some(Coordination::SharedNegation)
+        .unwrap_or(Coordination::Independent)
 }
 
 fn subject_group(kind: SubjectKind) -> SubjectGroup {

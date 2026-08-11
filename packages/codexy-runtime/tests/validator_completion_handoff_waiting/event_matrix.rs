@@ -4,6 +4,20 @@ const SEPARATORS: &[&str] = &[". ", " ", " and ", " or ", " but ", " while ", " 
 const ASYNC_SUBJECTS: &[&str] = &["CI", "Sentinel", "reviewer", "resource", "tool"];
 const LIFECYCLE_STATES: &[&str] = &["queued", "running", "idle", "unavailable"];
 const POLARITIES: &[&str] = &["", "no "];
+const OTHER_SUBJECTS: &[(&str, &str)] = &[
+    ("CI", "has returned"),
+    ("CI", "result"),
+    ("implementation", "remains incomplete"),
+    ("implementation", "remains"),
+];
+const REVIEW_PREDICATE: &str = "remains unresolved";
+const COORDINATION_FORMS: &[(&str, &str)] = &[
+    ("neither ", "nor"),
+    ("no ", "and"),
+    ("", "and"),
+    ("", "or"),
+    ("", "but"),
+];
 
 #[test]
 fn validator_keeps_pending_review_separate_from_later_operational_open() -> TestResult {
@@ -59,7 +73,46 @@ fn validator_bounds_coordinated_negation_to_its_completed_external_event() -> Te
         "Blocked: neither CI nor Sentinel has returned and review feedback remains unresolved.",
         true,
     )?;
-    assert_disposition("Blocked: neither CI nor Sentinel has returned.", false)
+    assert_disposition("Blocked: neither CI nor Sentinel has returned.", false)?;
+    assert_disposition(
+        "Blocked: neither CI has returned nor review feedback remains unresolved.",
+        false,
+    )?;
+    assert_disposition(
+        "Blocked: no CI has returned and review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
+fn validator_models_coordination_grammar_across_subject_predicates() -> TestResult {
+    for (other, other_predicate) in OTHER_SUBJECTS {
+        for review_first in [false, true] {
+            for (polarity, coordinator) in COORDINATION_FORMS {
+                if review_first && *polarity == "no " {
+                    continue;
+                }
+                let (left, left_predicate, right, right_predicate) = if review_first {
+                    ("review feedback", REVIEW_PREDICATE, *other, *other_predicate)
+                } else {
+                    (*other, *other_predicate, "review feedback", REVIEW_PREDICATE)
+                };
+                let actionable = *polarity != "neither ";
+                let body = format!(
+                    "{polarity}{left} {left_predicate} {coordinator} {right} {right_predicate}"
+                );
+                for handoff in [
+                    format!("Blocked: {body}."),
+                    format!("BLOCKED: {}", body.to_ascii_uppercase()),
+                    format!("Blocked: {}", body.replace(' ', ", ")),
+                    format!("Blocked: {}", body.replace(' ', "\t")),
+                ] {
+                    assert_disposition(&handoff, actionable)?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[test]
