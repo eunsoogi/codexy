@@ -119,13 +119,12 @@ fn substantive_identity(
         .collect::<Vec<_>>();
     let words = tokens
         .iter()
-        .copied()
-        .filter(|word| word.chars().any(char::is_alphabetic))
+        .map(|word| alphabetic_content(word))
+        .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let characters = words.iter().map(|word| word.chars().count()).sum::<usize>();
     let content = words
         .iter()
-        .filter(|word| word.chars().any(char::is_alphabetic))
         .map(|word| word.to_lowercase())
         .collect::<Vec<_>>();
     let long_content = content
@@ -140,9 +139,11 @@ fn substantive_identity(
     let numeric_metadata = tokens
         .iter()
         .enumerate()
-        .filter(|(_, word)| word.chars().all(char::is_numeric))
-        .filter(|(index, _)| numeric_metadata_is_embedded(&tokens, *index))
-        .map(|(_, word)| format!("number:{word}"))
+        .flat_map(|(index, word)| {
+            let embedded = numeric_metadata_is_embedded(&tokens, index);
+            numeric_runs(word).into_iter().filter(move |_| embedded)
+        })
+        .map(|number| format!("number:{number}"))
         .collect::<std::collections::BTreeSet<_>>();
     let short_tokens = content.iter().filter(|word| word.chars().count() < 4);
     let repeated_short_tokens = short_tokens.clone().count().saturating_sub(
@@ -169,9 +170,25 @@ fn substantive_identity(
 }
 
 fn numeric_metadata_is_embedded(tokens: &[&str], index: usize) -> bool {
-    index > 0
-        && index + 1 < tokens.len()
-        && [tokens[index - 1], tokens[index + 1]]
-            .into_iter()
-            .all(|word| word.chars().any(char::is_alphabetic))
+    let lexical = alphabetic_content(tokens[index]);
+    (!lexical.is_empty() && lexical.chars().count() >= 4)
+        || (lexical.is_empty()
+            && index > 0
+            && index + 1 < tokens.len()
+            && [tokens[index - 1], tokens[index + 1]]
+                .into_iter()
+                .all(|word| !alphabetic_content(word).is_empty()))
+}
+
+fn alphabetic_content(word: &str) -> String {
+    word.chars()
+        .filter(|character| character.is_alphabetic())
+        .collect()
+}
+
+fn numeric_runs(word: &str) -> Vec<String> {
+    word.split(|character: char| !character.is_numeric())
+        .filter(|run| !run.is_empty())
+        .map(str::to_owned)
+        .collect()
 }

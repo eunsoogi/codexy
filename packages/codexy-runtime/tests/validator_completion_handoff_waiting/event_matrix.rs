@@ -54,6 +54,22 @@ fn validator_keeps_coordinated_external_predicate_local() -> TestResult {
 }
 
 #[test]
+fn validator_ends_available_reviewer_event_before_later_feedback() -> TestResult {
+    assert_disposition(
+        "Blocked: no reviewer available; review feedback remains unresolved.",
+        true,
+    )
+}
+
+#[test]
+fn validator_keeps_negated_later_review_feedback_nonterminal() -> TestResult {
+    assert_disposition(
+        "Blocked: review feedback is pending and no review comments remain unresolved.",
+        false,
+    )
+}
+
+#[test]
 fn validator_extracts_subject_predicate_events_independent_of_separator() -> TestResult {
     for separator in SEPARATORS {
         assert_disposition(

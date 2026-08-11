@@ -27,6 +27,32 @@ fn validator_rejects_numeric_padding_in_every_substantive_field() -> TestResult 
 }
 
 #[test]
+fn validator_rejects_mixed_alphanumeric_padding_in_every_substantive_field() -> TestResult {
+    for gate in [
+        valid_gate().replace(
+            "Should the irreversible migration preserve legacy identifiers or replace them?",
+            "a0000 b0000 c0000 d0000?",
+        ),
+        valid_gate().replace(
+            "preserve identifiers and retain compatibility|replace identifiers and require migration",
+            "a0000 b0000 c0000|a0001 b0001 c0001",
+        ),
+        valid_gate().replace(
+            "material impact=the choice changes persisted identifiers and migration behavior",
+            "material impact=a0002 b0002 c0002 d0002",
+        ),
+    ] {
+        let output = run_validator(&blocked_evidence(gate, valid_pre_mutation()))?;
+        assert!(
+            !output.status.success(),
+            "mixed alphanumeric padding passed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_preserves_distinct_numbered_branch_metadata() -> TestResult {
     let gate = valid_gate().replace(
         "preserve identifiers and retain compatibility|replace identifiers and require migration",

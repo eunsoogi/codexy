@@ -60,6 +60,7 @@ const NEGATIONS: &[&str] = &["no", "not", "none", "without", "neither"];
 
 const OPERATIONAL_PREDICATES: &[&str] = &["result", "wait"];
 const REVIEW_PREDICATES: &[&str] = &["resolved", "unresolved", "open"];
+const PREDICATE_BOUNDARY_TERMINALS: &[&str] = &["available"];
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum SubjectKind {
@@ -92,9 +93,9 @@ pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
     {
         starts.push(first_subject.start);
     }
-    for (index, subject) in subjects.iter().enumerate().skip(1) {
-        if starts_new_event(&subjects, index, &words) {
-            starts.push(subject.start);
+    for index in 1..subjects.len() {
+        if let Some(start) = event_start(&subjects, index, &words) {
+            starts.push(start);
         }
     }
     starts.sort_unstable();
@@ -151,13 +152,14 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
     subjects
 }
 
-fn starts_new_event(subjects: &[Subject], index: usize, words: &[&str]) -> bool {
+fn event_start(subjects: &[Subject], index: usize, words: &[&str]) -> Option<usize> {
     let subject = subjects[index];
     let prior = subjects[index - 1];
-    subject.start > 0
+    (subject.start > 0
         && !is_coordinated_negation(words, subject.start)
         && (subject_group(subject.kind) != subject_group(prior.kind)
-            || has_local_predicate(words, prior, subject.start))
+            || has_local_predicate(words, prior, subject.start)))
+    .then(|| local_negation_start(words, prior.end, subject.start).unwrap_or(subject.start))
 }
 
 fn subject_group(kind: SubjectKind) -> SubjectGroup {
@@ -169,10 +171,22 @@ fn subject_group(kind: SubjectKind) -> SubjectGroup {
 }
 
 fn has_local_predicate(words: &[&str], subject: Subject, next_start: usize) -> bool {
-    let words = &words[subject.end..next_start];
+    has_predicate_boundary(&words[subject.end..next_start])
+}
+
+fn local_negation_start(words: &[&str], start: usize, end: usize) -> Option<usize> {
+    words[start..end]
+        .iter()
+        .rposition(|word| NEGATIONS.contains(word))
+        .filter(|index| has_predicate_boundary(&words[start..start + index]))
+        .map(|index| start + index)
+}
+
+fn has_predicate_boundary(words: &[&str]) -> bool {
     contains_any_phrase(words, LIFECYCLE_STATES)
         || contains_any_phrase(words, REVIEW_PREDICATES)
         || contains_any_phrase(words, OPERATIONAL_PREDICATES)
+        || contains_any_phrase(words, PREDICATE_BOUNDARY_TERMINALS)
 }
 
 fn is_coordinated_negation(words: &[&str], subject_start: usize) -> bool {
