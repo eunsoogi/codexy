@@ -18,8 +18,8 @@ pub(super) fn is_stale(segment: &str) -> bool {
         "example",
     ]
     .iter()
-        .any(|prefix| {
-            segment.strip_prefix(prefix).is_some_and(|rest| {
+    .any(|prefix| {
+        segment.strip_prefix(prefix).is_some_and(|rest| {
             rest.chars()
                 .next()
                 .is_none_or(|character| !character.is_ascii_alphanumeric())
