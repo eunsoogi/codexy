@@ -2,8 +2,8 @@ use anyhow::Result;
 use serde_json::Value;
 
 use super::{
-    MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, devtools_plugin, github_plugin, load_json,
-    marketplace_plugin_mut, package_manifests, repo_path, write_json,
+    MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, devtools_plugin, github_plugin,
+    load_json, marketplace_plugin_mut, package_manifests, repo_path, write_json,
 };
 
 /// Synchronizes plugin, marketplace, and package versions.

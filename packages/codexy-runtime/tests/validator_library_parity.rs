@@ -11,10 +11,13 @@ use fixture::copy_plugin_fixture;
 #[test]
 fn in_process_validator_matches_cli_success_output_for_migrated_modes()
 -> Result<(), Box<dyn std::error::Error>> {
-    for mode in ["--check", "--check-mcp", "--check-roles"] {
+    for mode in ["--check", "--check-roles"] {
         let (_temp, plugin_root) = copy_plugin_fixture(&[])?;
         assert_matches_cli(&plugin_root, mode)?;
     }
+    let (temp, plugin_root) = copy_devtools_fixture()?;
+    assert_matches_cli(&plugin_root, "--check-mcp")?;
+    drop(temp);
     Ok(())
 }
 
@@ -23,7 +26,6 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
 -> Result<(), Box<dyn std::error::Error>> {
     for (mode, missing) in [
         ("--check", ".codex-plugin/plugin.json"),
-        ("--check-mcp", ".mcp.json"),
         ("--check-roles", "agents/codexy-sentinel.toml"),
     ] {
         let mutable = [Path::new(missing)];
@@ -31,6 +33,10 @@ fn in_process_validator_matches_cli_failure_diagnostics_for_migrated_modes()
         std::fs::remove_file(plugin_root.join(missing))?;
         assert_matches_cli(&plugin_root, mode)?;
     }
+    let (temp, plugin_root) = copy_devtools_fixture()?;
+    std::fs::remove_file(plugin_root.join(".mcp.json"))?;
+    assert_matches_cli(&plugin_root, "--check-mcp")?;
+    drop(temp);
     Ok(())
 }
 
@@ -133,4 +139,14 @@ fn cli_output(plugin_root: &Path, mode: &str) -> Result<Output, Box<dyn std::err
             mode,
         ])
         .output()?)
+}
+
+fn copy_devtools_fixture() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("codexy-devtools");
+    support::copy_dir(
+        &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
+        &plugin_root,
+    )?;
+    Ok((temp, plugin_root))
 }

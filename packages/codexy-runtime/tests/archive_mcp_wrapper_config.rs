@@ -65,7 +65,7 @@ fn archive_entry_checker_rejects_non_executable_mcp_wrapper_metadata() {
     let status = Command::new("python3")
         .args([
             "-c",
-            "import io, sys, tarfile\nwith tarfile.open(sys.argv[1], 'w:gz') as out:\n info = tarfile.TarInfo('plugins/codexy/mcp/codexy-mcp-lsp')\n info.mode = 0o644\n info.size = 1\n out.addfile(info, io.BytesIO(b'x'))\n",
+            "import io, sys, tarfile\nwith tarfile.open(sys.argv[1], 'w:gz') as out:\n info = tarfile.TarInfo('plugins/codexy-devtools/mcp/codexy-mcp-lsp')\n info.mode = 0o644\n info.size = 1\n out.addfile(info, io.BytesIO(b'x'))\n",
             archive_text,
         ])
         .status()

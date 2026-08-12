@@ -164,7 +164,7 @@ fn archive_gate_rejects_an_ignored_secret() {
 #[test]
 fn archive_gate_rejects_incomplete_packaged_surface() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     std::fs::write(plugin_root.join("plugin.txt"), "incomplete\n").expect("fixture");
     let archive = root.path().join("incomplete.tar.gz");
@@ -177,12 +177,12 @@ fn archive_gate_rejects_incomplete_packaged_surface() {
 #[test]
 fn archive_gate_rejects_traversal_member_before_extraction() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     let archive = root.path().join("traversal.tar.gz");
     let script = r#"import io, sys, tarfile
 with tarfile.open(sys.argv[1], "w:gz") as archive:
-    info = tarfile.TarInfo("plugins/codexy/../escape")
+    info = tarfile.TarInfo("plugins/codexy-devtools/../escape")
     payload = b"escape"
     info.size = len(payload)
     archive.addfile(info, io.BytesIO(payload))
@@ -200,7 +200,7 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
 #[test]
 fn archive_gate_rejects_unexpected_file_and_stale_content() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     let file = plugin_root.join("plugin.txt");
     std::fs::write(&file, "version=1.1.0\n").expect("fixture");
@@ -210,7 +210,7 @@ fn archive_gate_rejects_unexpected_file_and_stale_content() {
     assert!(!run_gate(&archive, &plugin_root).status.success());
 
     let extra_root = tempdir().expect("extra tempdir");
-    let extra_plugin = extra_root.path().join("plugins/codexy");
+    let extra_plugin = extra_root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&extra_plugin).expect("plugin directory");
     std::fs::write(extra_plugin.join("plugin.txt"), "version=1.1.0\n").expect("fixture");
     std::fs::write(extra_plugin.join("unexpected.txt"), "extra\n").expect("fixture");

@@ -5,7 +5,6 @@ use std::{
     process::{Command as StdCommand, Output},
     rc::Rc,
 };
-
 use crate::support::{self, FixtureCommand, make_executable};
 const AUTHORIZED: [&str; 9] = [
     "packages/codexy-runtime/Cargo.lock",
@@ -23,7 +22,6 @@ const PRESERVED: [&str; 3] = [
     "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
     "plugins/codexy-devtools/runtime-release.json",
 ];
-
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Change {
     Exact,

@@ -12,8 +12,8 @@ mod runtime_artifacts;
 mod release_contract;
 
 fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = temp_root.join("codexy");
-    support::copy_plugin_fixture_into_with_mutable_files(
+    let plugin_root = temp_root.join("codexy-devtools");
+    support::copy_devtools_fixture_into_with_mutable_files(
         &plugin_root,
         &[
             std::path::Path::new(".codex-plugin/plugin.json"),

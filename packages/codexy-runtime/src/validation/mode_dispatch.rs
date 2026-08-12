@@ -64,7 +64,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::RoutingMeasurement { corpus, results } => {
             routing_measurement::diagnostics(plugin_root, &corpus, &results)
         }
-        Mode::Mcp => mcp::check(plugin_root),
+        Mode::Mcp => mcp::check(&tooling_root(plugin_root)),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
@@ -83,15 +83,21 @@ fn is_devtools(plugin_root: &Path) -> bool {
     std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
         .ok()
         .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|manifest| manifest.get("name").and_then(serde_json::Value::as_str).map(str::to_owned))
+        .and_then(|manifest| {
+            manifest
+                .get("name")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned)
+        })
         .as_deref()
         == Some("codexy-devtools")
 }
 
 fn devtools_root(plugin_root: &Path) -> PathBuf {
-    plugin_root
-        .parent()
-        .map_or_else(|| PathBuf::from("plugins/codexy-devtools"), |parent| parent.join("codexy-devtools"))
+    plugin_root.parent().map_or_else(
+        || PathBuf::from("plugins/codexy-devtools"),
+        |parent| parent.join("codexy-devtools"),
+    )
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {

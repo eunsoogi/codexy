@@ -17,7 +17,8 @@ pub(super) fn create_runtime_package(
     std::fs::create_dir_all(&runtime_dir)?;
     std::fs::create_dir_all(&manifest_dir)?;
     std::fs::copy(
-        codexy_runtime::paths::repository_root().join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
+        codexy_runtime::paths::repository_root()
+            .join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
         manifest_dir.join("plugin.json"),
     )?;
     let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));

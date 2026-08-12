@@ -115,7 +115,7 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
     let candidate = workflow_branch(assembly, "candidate-proven)");
     for line in [
         "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
-        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
     ] {
         assert!(workflow_lines(candidate).any(|current| current == line));
     }

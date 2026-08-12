@@ -48,8 +48,17 @@ pub(super) fn check(core_version: &str) -> Result<()> {
     {
         bail!("Devtools plugin supportedPlatforms must match its marketplace entry");
     }
-    let root = manifest_path.parent().context("Devtools manifest parent")?.parent().context("Devtools plugin root")?;
-    for required in ["skills/developer-tools/SKILL.md", ".mcp.json", ".codex/lsp-client.json", "lsp/server-catalog.toml"] {
+    let root = manifest_path
+        .parent()
+        .context("Devtools manifest parent")?
+        .parent()
+        .context("Devtools plugin root")?;
+    for required in [
+        "skills/developer-tools/SKILL.md",
+        ".mcp.json",
+        ".codex/lsp-client.json",
+        "lsp/server-catalog.toml",
+    ] {
         if !root.join(required).is_file() {
             bail!("Devtools package is missing {required}");
         }
@@ -66,7 +75,8 @@ pub(super) fn set_version(version: &str) -> Result<()> {
     let mut manifest = load_json(&manifest_path)?;
     let mut marketplace = load_json(&marketplace_path)?;
     manifest["version"] = Value::String(version.to_owned());
-    marketplace_plugin_mut_named(&mut marketplace, NAME)?["version"] = Value::String(version.to_owned());
+    marketplace_plugin_mut_named(&mut marketplace, NAME)?["version"] =
+        Value::String(version.to_owned());
     write_json(&manifest_path, &manifest)?;
     write_json(&marketplace_path, &marketplace)
 }
