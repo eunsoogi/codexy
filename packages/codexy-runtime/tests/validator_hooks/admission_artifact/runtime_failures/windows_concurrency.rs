@@ -6,6 +6,8 @@ use std::sync::{Arc, Barrier};
 fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
+    let output_dir = temp.path().join("launcher-output");
+    std::fs::create_dir(&output_dir)?;
     for launcher in LAUNCHERS {
         std::fs::write(
             root.join(format!("hooks/{launcher}.py")),
@@ -18,6 +20,7 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         for launcher in LAUNCHERS {
             let root = root.clone();
             let cwd = temp.path().to_path_buf();
+            let output_dir = output_dir.clone();
             let starts = Arc::clone(&starts);
             joins.push(std::thread::spawn(move || -> Result<_, std::io::Error> {
                 starts.wait();
@@ -31,6 +34,7 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
                 child.arg("/d").arg("/c")
                     .arg(root.join(format!("hooks/{launcher}.cmd"))).arg(event)
                     .env("PLUGIN_ROOT", &root).stdin(Stdio::piped())
+                    .env("TEMP", &output_dir).env("TMP", &output_dir)
                     .stdout(Stdio::piped()).stderr(Stdio::piped());
                 let mut child = child.spawn()?;
                 child.stdin.take().expect("launcher stdin")
@@ -52,9 +56,8 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         }
         assert!(String::from_utf8(output.stdout)?.contains("CODEXY_CONCURRENT_OUTPUT"));
     }
-    let leftovers = std::fs::read_dir(root.join("hooks"))?
+    let leftovers = std::fs::read_dir(output_dir)?
         .filter_map(Result::ok)
-        .filter(|entry| entry.file_name().to_string_lossy().starts_with("codexy-hook-"))
         .count();
     assert_eq!(leftovers, 0, "temporary launcher output leaked");
     Ok(())
