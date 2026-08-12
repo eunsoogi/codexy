@@ -143,6 +143,7 @@ impl Fixture {
                 "add",
                 ".agents/plugins",
                 "plugins/codexy",
+                "plugins/codexy-github",
                 "packages/codexy-runtime/src/version/bootstrap.rs",
             ],
         )?;

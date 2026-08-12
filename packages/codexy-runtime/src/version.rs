@@ -10,6 +10,8 @@ pub mod activation;
 mod admission;
 mod bootstrap;
 mod cargo;
+mod fields;
+mod github_plugin;
 mod mutation;
 mod runtime_selection;
 mod wrappers;
@@ -22,7 +24,7 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::set_version;
 
-fn repo_path(relative: &str) -> Result<PathBuf> {
+pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
 }
 
@@ -39,14 +41,14 @@ fn package_manifests() -> Result<Vec<PathBuf>> {
     })
 }
 
-fn load_json(path: &PathBuf) -> Result<Value> {
+pub(super) fn load_json(path: &PathBuf) -> Result<Value> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
     serde_json::from_str(&text)
         .with_context(|| format!("invalid JSON in {}", display_relative(path)))
 }
 
-fn write_json(path: &PathBuf, data: &Value) -> Result<()> {
+pub(super) fn write_json(path: &PathBuf, data: &Value) -> Result<()> {
     let text = format!("{}\n", serde_json::to_string_pretty(data)?);
     fs::write(path, text).with_context(|| format!("writing {}", display_relative(path)))
 }
@@ -68,7 +70,7 @@ fn require_semver(version: &str) -> Result<()> {
     }
 }
 
-fn require_matching_version(
+pub(super) fn require_matching_version(
     version: &str,
     label: &str,
     expected: &str,
@@ -81,31 +83,17 @@ fn require_matching_version(
     Ok(())
 }
 
-fn string_field<'a>(data: &'a Value, field: &str, label: &str) -> Result<&'a str> {
+pub(super) fn string_field<'a>(data: &'a Value, field: &str, label: &str) -> Result<&'a str> {
     data.get(field)
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
         .with_context(|| format!("{label} {field} must be a string"))
 }
 
-fn string_array_field(data: &Value, field: &str, label: &str) -> Result<Vec<String>> {
-    let values = data
-        .get(field)
-        .and_then(Value::as_array)
-        .with_context(|| format!("{label} {field} must be an array"))?;
-    values
-        .iter()
-        .map(|value| {
-            value
-                .as_str()
-                .filter(|item| !item.trim().is_empty())
-                .map(ToOwned::to_owned)
-                .with_context(|| format!("{label} {field} must contain only non-empty strings"))
-        })
-        .collect()
-}
-
-fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
+pub(super) fn marketplace_plugin_mut_named<'a>(
+    marketplace: &'a mut Value,
+    name: &str,
+) -> Result<&'a mut Value> {
     let plugins = marketplace
         .get_mut("plugins")
         .and_then(Value::as_array_mut)
@@ -113,18 +101,22 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
     let matches = plugins
         .iter()
         .enumerate()
-        .filter(|(_, plugin)| plugin.get("name").and_then(Value::as_str) == Some(PLUGIN_NAME))
+        .filter(|(_, plugin)| plugin.get("name").and_then(Value::as_str) == Some(name))
         .map(|(index, _)| index)
         .collect::<Vec<_>>();
     if matches.len() != 1 {
         bail!(
-            "expected exactly one marketplace plugin named {PLUGIN_NAME:?}, found {}",
+            "expected exactly one marketplace plugin named {name:?}, found {}",
             matches.len()
         );
     }
     plugins
         .get_mut(matches[0])
         .context("marketplace plugin index disappeared")
+}
+
+fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
+    marketplace_plugin_mut_named(marketplace, PLUGIN_NAME)
 }
 
 /// Checks plugin, marketplace, and package version parity.
@@ -157,12 +149,13 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         manifest_version,
         &display_relative(&manifest_path),
     )?;
-    let manifest_platforms = string_array_field(
+    github_plugin::check(manifest_version)?;
+    let manifest_platforms = fields::string_array(
         &manifest,
         "supportedPlatforms",
         &display_relative(&manifest_path),
     )?;
-    let marketplace_platforms = string_array_field(
+    let marketplace_platforms = fields::string_array(
         marketplace_plugin_mut(&mut marketplace)?,
         "supportedPlatforms",
         "marketplace plugin entry",
@@ -187,7 +180,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         .get("releaseArchive")
         .and_then(Value::as_object)
         .map(|archive| {
-            string_array_field(
+            fields::string_array(
                 &Value::Object(archive.clone()),
                 "platforms",
                 "release archive",
@@ -204,7 +197,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         .get("package")
         .and_then(Value::as_object)
         .map(|package| {
-            string_array_field(
+            fields::string_array(
                 &Value::Object(package.clone()),
                 "platforms",
                 "publish package",
@@ -238,5 +231,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             bail!("release tag must be {expected_tag:?}, got {tag:?}");
         }
     }
-    Ok(format!("plugin version sync ok: {manifest_version}"))
+    Ok(format!(
+        "plugin version sync ok: codexy={manifest_version}, codexy-github={manifest_version}"
+    ))
 }

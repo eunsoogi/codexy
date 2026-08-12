@@ -116,11 +116,11 @@ if [ "$action" != first-run ]; then
 fi
 render_version_pr_metadata "$publication_phase"
 title=$(sed -n '1p' "$state_dir/metadata/title.txt")
-plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$title"
+plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
 if [ "$action" = first-run ]; then
   git switch -c "$branch"
-  git add packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
+  git add packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json plugins/codexy-github/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml
   git add --pathspec-from-file="$state_dir/changed-files.z" --pathspec-file-nul
   git commit -m "chore(plugin): bump version to ${VERSION}"
   git push origin "$branch"
@@ -174,7 +174,7 @@ scripts/build-version-pr-state \
   --expected-head-ref "$branch" \
   --expected-head-oid "$expected_head_oid" \
   --output "$state_dir/pr-state.json"
-plugins/codexy/hooks/codexy-pr-label-check.sh \
+plugins/codexy-github/hooks/codexy-pr-label-check.sh \
   --pr-state-file "$state_dir/pr-state.json"
 cat > "$state_dir/handoff.md" <<EOF
 Verification completed: full release-candidate checks passed before mutation.
@@ -186,7 +186,7 @@ scripts/validate-plugin-config --check-completion-handoff \
 merge_subject="${title} (#${pr_number})"
 printf '%s\n\n' "$merge_subject" > "$state_dir/merge-message.txt"
 cat "$state_dir/metadata/body.md" >> "$state_dir/merge-message.txt"
-plugins/codexy/hooks/codexy-merge-message-check.sh \
+plugins/codexy-github/hooks/codexy-merge-message-check.sh \
   --expected-pr "$pr_number" \
   --expected-issue "$ISSUE" \
   --merge-message-file "$state_dir/merge-message.txt"

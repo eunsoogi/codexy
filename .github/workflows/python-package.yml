@@ -4,12 +4,18 @@ on:
   pull_request:
     paths:
       - "packages/getcodexy/**"
+      - "plugins/codexy/**"
+      - "plugins/codexy-github/**"
+      - "docs/getcodexy-component-installation.md"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   push:
     branches: [main]
     paths:
       - "packages/getcodexy/**"
+      - "plugins/codexy/**"
+      - "plugins/codexy-github/**"
+      - "docs/getcodexy-component-installation.md"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
 
@@ -44,3 +50,36 @@ jobs:
           name: getcodexy-bootstrap-package
           path: dist/*
           if-no-files-found: error
+  github-activation-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Test dependency-aware GitHub activation
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "packages/getcodexy/src"
+          python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir dist packages/getcodexy
+          python -m venv .package-venv
+          $version = python -c "import tomllib; print(tomllib.load(open('packages/getcodexy/pyproject.toml', 'rb'))['project']['version'])"
+          .package-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$version"
+          .package-venv\Scripts\codexy-github-install.exe --help
+          $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
+          New-Item -ItemType Directory -Force -Path $checkRoot | Out-Null
+          $state = Join-Path $checkRoot "pr state.json"
+          Set-Content -NoNewline -Path $state -Value '{"state":"OPEN","repository":"owner/repo","labels":[{"name":"type/refactor"}],"repositoryLabels":[{"name":"type/refactor"}]}'
+          .package-venv\Scripts\codexy-github-check.exe --check-issue-title --issue-title "Extract GitHub workflow"
+          .package-venv\Scripts\codexy-github-check.exe --check-pr-labels --pr-state-file $state
+          .package-venv\Scripts\codexy-github-check.exe --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message "refactor(github): extract workflow (#553)`n`nFixes #552"
+          $hookRoot = Join-Path $env:RUNNER_TEMP "codexy github hook"
+          Copy-Item -Recurse -Force plugins/codexy-github/hooks $hookRoot
+          $context = '{"prompt":"Open a GitHub issue"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")
+          if ($context -notmatch '\$git-workflow') { throw "installed GitHub hook did not add workflow context" }
+          $admission = '{"tool_input":{"title":"Extract GitHub workflow"}}' | & (Join-Path $hookRoot "codexy-github-admission-issue.cmd")
+          if ($admission -notmatch '"permissionDecision":"deny"') { throw "installed GitHub admission hook did not deny an invalid title" }

@@ -16,6 +16,10 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     let mut manifest: Value = serde_json::from_slice(&fs::read(
         plugin.join(".codex-plugin/plugin.json"),
     )?)?;
+    let baseline_version = manifest["version"]
+        .as_str()
+        .ok_or("fixture core manifest version")?
+        .to_owned();
     fs::remove_dir_all(&plugin)?;
     copy_dir(root.join("plugins/codexy"), &plugin)?;
     let candidate: Value = serde_json::from_slice(&fs::read(
@@ -26,7 +30,9 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         plugin.join(".codex-plugin/plugin.json"),
         format!("{}\n", serde_json::to_string_pretty(&manifest)?),
     )?;
+    copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
+        ".agents/plugins/marketplace.json",
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",
         "packages/getcodexy/tests/fixtures/component-installation-cases.json",
@@ -35,6 +41,24 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         fs::create_dir_all(target.parent().ok_or("component contract parent")?)?;
         fs::copy(root.join(relative), target)?;
     }
+    reset_github_version(repo, &baseline_version)?;
+    Ok(())
+}
+
+fn reset_github_version(repo: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let manifest_path = repo.join("plugins/codexy-github/.codex-plugin/plugin.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path)?)?;
+    manifest["version"] = Value::String(version.to_owned());
+    fs::write(&manifest_path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
+
+    let marketplace_path = repo.join(".agents/plugins/marketplace.json");
+    let mut marketplace: Value = serde_json::from_slice(&fs::read(&marketplace_path)?)?;
+    let plugin = marketplace["plugins"]
+        .as_array_mut()
+        .and_then(|plugins| plugins.iter_mut().find(|item| item["name"] == "codexy-github"))
+        .ok_or("fixture GitHub marketplace entry")?;
+    plugin["version"] = Value::String(version.to_owned());
+    fs::write(&marketplace_path, format!("{}\n", serde_json::to_string_pretty(&marketplace)?))?;
     Ok(())
 }
 

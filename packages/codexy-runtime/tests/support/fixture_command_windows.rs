@@ -30,6 +30,14 @@ pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     .filter(|companion| companion.is_file())
 }
 
+pub(crate) fn fixture_native_launcher(is_windows: bool, program: &Path) -> Option<PathBuf> {
+    if is_windows {
+        windows_fixture_companion(program)
+    } else {
+        program.is_file().then(|| program.to_path_buf())
+    }
+}
+
 /// A copied concern fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.
@@ -38,11 +46,28 @@ pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();
     let expected = format!("py -3 -I -B \"%~dp0{stem}.py\" --event \"%event%\"");
-    std::fs::read_to_string(companion)
+    let command = std::fs::read_to_string(companion)
         .ok()?
-        .contains(&expected)
+        .replace("\r\n", "\n");
+    (command.contains(&expected) || is_fail_closed_policy_fixture(&stem, &command))
         .then_some(python)
         .filter(|python| python.is_file())
+}
+
+fn is_fail_closed_policy_fixture(stem: &str, command: &str) -> bool {
+    let diagnostic = match stem {
+        "codexy-repository-issue" => "CODEXY_REPOSITORY_ISSUE_RUNTIME",
+        "codexy-repository-pull-request" => "CODEXY_REPOSITORY_PULL_REQUEST_RUNTIME",
+        "codexy-repository-merge" => "CODEXY_REPOSITORY_MERGE_RUNTIME",
+        "codexy-repository-github-command" => "CODEXY_REPOSITORY_GITHUB_COMMAND_RUNTIME",
+        "codexy-destructive-command" => "CODEXY_DESTRUCTIVE_COMMAND_RUNTIME",
+        _ => return false,
+    };
+    command.starts_with("@echo off\nsetlocal EnableExtensions DisableDelayedExpansion\n")
+        && command.contains(diagnostic)
+        && !command.contains("py ")
+        && !command.contains("powershell")
+        && !command.contains("%*")
 }
 
 pub(super) fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'static str>, String> {

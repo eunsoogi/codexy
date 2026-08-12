@@ -11,37 +11,6 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 json_is_open_pr() { [ "$(json_string_field_value "$1" "state")" = "open" ]; }
 
-project_repository() {
-  python3 -I -B - "$script_dir" "$PWD" <<'PY'
-import sys
-
-sys.path.insert(0, sys.argv[1])
-from codexy_policy.repository import repository_identity, repository_policy_status
-
-status = repository_policy_status(sys.argv[2])
-if status is None:
-    raise SystemExit(1)
-if status:
-    identity = repository_identity(sys.argv[2])
-    if identity is None:
-        raise SystemExit(1)
-    print("/".join(identity[1:]))
-PY
-}
-
-json_is_configured_lane() {
-  repository_name="$1"
-  json_text="$2"
-  for field_name in repository nameWithOwner headRepository; do
-    [ "$(json_string_field_value "$json_text" "$field_name")" = "$repository_name" ] && return 0
-  done
-  url=$(json_string_field_value "$json_text" "url")
-  case "$url" in
-    *"github.com/$repository_name/"* | *"github.com/$repository_name") return 0 ;;
-  esac
-  return 1
-}
-
 json_has_pr_identity() {
   json_text="$1"
   for field_name in repository nameWithOwner headRepository url; do
@@ -134,9 +103,7 @@ pr_state_json=$(printf '%s' "$pr_state_json" | LC_ALL=C tr -d '\n\r')
 pr_state_state=$(json_string_field_value "$pr_state_json" "state")
 [ -n "$pr_state_state" ] || fail "PR state missing state evidence"
 json_has_pr_identity "$pr_state_json" || fail "PR state missing repository identity evidence"
-repository_name=$(project_repository) || fail "repository GitHub policy configuration invalid"
-[ -n "$repository_name" ] || exit 0
-if ! json_is_open_pr "$pr_state_json" || ! json_is_configured_lane "$repository_name" "$pr_state_json"; then
+if ! json_is_open_pr "$pr_state_json"; then
   exit 0
 fi
 if json_has_repository_label_taxonomy "$pr_state_json"; then

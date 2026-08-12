@@ -39,7 +39,7 @@ if [ -d "$agents_root" ]; then
   done
 fi
 
-if [ "$expected" -eq 8 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$expected" ]; then
+if [ "$expected" -eq 7 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$expected" ]; then
   printf '%s\n' "D bootstrap: READY"
   exit 0
 fi

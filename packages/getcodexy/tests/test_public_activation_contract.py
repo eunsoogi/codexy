@@ -6,53 +6,50 @@ import unittest
 from pathlib import Path
 
 from codexy_runtime_tools import updater
+from codexy_runtime_tools.github_pre_session import run_github_pre_session
 from codexy_runtime_tools.pre_session import run_pre_session
 
 
 class PublicActivationContractTests(unittest.TestCase):
-    def test_source_only_updater_has_no_public_activation_contract(self) -> None:
+    def test_github_component_has_a_public_dependency_aware_activation_command(self) -> None:
         repository = Path(__file__).resolve().parents[3]
-        package_metadata = (repository / "packages/getcodexy/pyproject.toml").read_text(
+        metadata = (repository / "packages/getcodexy/pyproject.toml").read_text(
             encoding="utf-8"
         )
-        scripts = tomllib.loads(package_metadata)["project"]["scripts"]
+        scripts = tomllib.loads(metadata)["project"]["scripts"]
+
+        self.assertEqual(
+            scripts["codexy-github-install"],
+            "codexy_runtime_tools.github_pre_session:main",
+        )
+        self.assertEqual(
+            scripts["codexy-github-check"],
+            "codexy_runtime_tools.github_checks:main",
+        )
+        self.assertTrue(callable(run_github_pre_session))
+        self.assertFalse((repository / "install").exists())
+        workflow = (repository / ".github/workflows/python-package.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("github-activation-windows", workflow)
+        self.assertIn("codexy-github-install.exe --help", workflow)
+        self.assertIn("codexy-github-check.exe --check-pr-labels", workflow)
+        self.assertIn("& (Join-Path $hookRoot", workflow)
+        self.assertNotIn("cmd /d /s /c", workflow)
+        self.assertIn('"plugins/codexy-github/**"', workflow)
+
+    def test_source_only_updater_remains_unpublished(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        metadata = (repository / "packages/getcodexy/pyproject.toml").read_text(
+            encoding="utf-8"
+        )
+        scripts = tomllib.loads(metadata)["project"]["scripts"]
         activation_pattern = re.compile(
             r"\buvx\s+--from\s+getcodexy(?:==[^\s]+)?\s+codexy-update\s+--pre-session\b"
         )
-        activation_commands = (
-            "uvx --from getcodexy codexy-update --pre-session",
-            "uvx --from getcodexy==1.2.2 codexy-update --pre-session",
-        )
-        metadata_with_non_scripts = """[project]
-description = "codexy-update remains source-only"
-[project.scripts]
-codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"
-# codexy-update is not an entry point
-[tool.example]
-codexy-update = "unrelated metadata"
-"""
-        metadata_with_public_script = """[project]
-[project.scripts]
-codexy-update = "codexy_runtime_tools.updater:main"
-"""
 
         self.assertFalse((repository / "install").exists())
-        self.assertEqual(
-            scripts,
-            {"codexy-mcp-runtime": "codexy_runtime_tools.runtime:main"},
-        )
-        self.assertEqual(
-            tomllib.loads(metadata_with_non_scripts)["project"]["scripts"],
-            scripts,
-        )
-        self.assertIn(
-            "codexy-update",
-            tomllib.loads(metadata_with_public_script)["project"]["scripts"],
-        )
-        self.assertIsNone(activation_pattern.search("unrelated codexy-update text"))
-        for command in activation_commands:
-            self.assertEqual(activation_pattern.search(command).group(), command)
-
+        self.assertNotIn("codexy-update", scripts)
         for path in (
             repository / "README.md",
             repository / "README.ko.md",
@@ -69,3 +66,7 @@ codexy-update = "codexy_runtime_tools.updater:main"
 
         self.assertTrue(callable(updater.main))
         self.assertTrue(callable(run_pre_session))
+
+
+if __name__ == "__main__":
+    unittest.main()

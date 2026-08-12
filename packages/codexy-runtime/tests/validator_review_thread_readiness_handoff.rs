@@ -149,7 +149,7 @@ fn unresolved_accepted_thread_ready_pr_state() -> &'static str {
             "id": "PRRT_kwDOExample",
             "isResolved": false,
             "isOutdated": false,
-            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
             "comments": {"nodes": [{
                 "author": {"login":"reviewer"},
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r1"
@@ -169,7 +169,7 @@ fn unresolved_accepted_thread_override_pr_state() -> &'static str {
             "id": "PRRT_kwDOExample",
             "isResolved": false,
             "isOutdated": false,
-            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
             "comments": {"nodes": [{
                 "author": {"login":"reviewer"},
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r1"
@@ -189,7 +189,7 @@ fn unresolved_accepted_outdated_thread_override_pr_state() -> &'static str {
             "id": "PRRT_kwDOOutdated",
             "isResolved": false,
             "isOutdated": true,
-            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
             "comments": {"nodes": [{
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r3"
             }]}
@@ -232,7 +232,7 @@ fn unresolved_alias_ready_pr_state() -> &'static str {
             "id": "PRRT_kwDOAlias",
             "isResolved": false,
             "isOutdated": false,
-            "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+            "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
             "comments": {"nodes": [{
                 "author": {"login":"reviewer"},
                 "url": "https://github.com/eunsoogi/codexy/pull/133#discussion_r2"

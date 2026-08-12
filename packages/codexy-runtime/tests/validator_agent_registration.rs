@@ -67,7 +67,6 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
     for name in [
         "codexy-architect",
         "codexy-cartographer",
-        "codexy-weaver",
         "codexy-auditor",
         "codexy-shipwright",
         "codexy-sentinel",

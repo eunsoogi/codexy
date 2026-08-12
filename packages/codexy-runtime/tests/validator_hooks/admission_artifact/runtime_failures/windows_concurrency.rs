@@ -8,12 +8,6 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
     let root = copy(temp.path())?;
     let output_dir = temp.path().join("launcher-output");
     std::fs::create_dir(&output_dir)?;
-    for launcher in LAUNCHERS {
-        std::fs::write(
-            root.join(format!("hooks/{launcher}.py")),
-            "import json, sys, time\ntime.sleep(0.2)\nevent = sys.argv[2]\nreason = 'CODEXY_CONCURRENT_OUTPUT'\nbody = {'hookSpecificOutput': {'hookEventName': event, 'decision': {'behavior': 'deny', 'message': reason}}} if event == 'PermissionRequest' else {'hookSpecificOutput': {'hookEventName': event, 'permissionDecision': 'deny', 'permissionDecisionReason': reason}}\nprint(json.dumps(body))\n",
-        )?;
-    }
     let starts = Arc::new(Barrier::new(LAUNCHERS.len() * 2));
     let mut joins = Vec::new();
     for event in ["PermissionRequest", "PreToolUse"] {
@@ -54,7 +48,7 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         } else {
             assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
         }
-        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_CONCURRENT_OUTPUT"));
+        assert!(String::from_utf8(output.stdout)?.contains("_RUNTIME"));
     }
     let leftovers = std::fs::read_dir(output_dir)?
         .filter_map(Result::ok)

@@ -63,8 +63,8 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         "gh api --method PUT ",
         "scripts/build-version-pr-state ",
         "scripts/plan-version-pr-reconciliation ",
-        "plugins/codexy/hooks/codexy-pr-title-check.sh ",
-        "plugins/codexy/hooks/codexy-pr-label-check.sh ",
+        "plugins/codexy-github/hooks/codexy-pr-title-check.sh ",
+        "plugins/codexy-github/hooks/codexy-pr-label-check.sh ",
         "scripts/validate-plugin-config --check-completion-handoff ",
     ] {
         assert!(has_trimmed_line_start(&reconcile, start), "missing reconciliation: {start}");

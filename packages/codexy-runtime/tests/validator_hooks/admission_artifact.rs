@@ -1,18 +1,15 @@
-use super::{copy, read, text, validate};
-use crate::support::FixtureCommand as Command;
+use super::{copy_github as copy, read, text, validate};
+use crate::support::{FixtureCommand as Command, fixture_native_launcher};
 use std::io::Write as _;
 use std::process::Stdio;
 
 const LAUNCHERS: &[&str] = &[
-    "codexy-thread-delivery",
     "codexy-repository-issue",
     "codexy-repository-pull-request",
     "codexy-repository-merge",
     "codexy-repository-github-command",
     "codexy-destructive-command",
 ];
-
-const INSTALLED_LAUNCHERS: &[&str] = &["codexy-thread-delivery"];
 
 #[path = "admission_artifact/runtime_failures.rs"]
 mod runtime_failures;
@@ -63,26 +60,19 @@ fn validator_rejects_dynamic_cross_concern_policy_imports() -> Result<(), Box<dy
 }
 
 #[test]
-fn installed_plugin_activates_only_the_generic_core_hook() -> Result<(), Box<dyn std::error::Error>> {
+fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     let hooks = read(&root.join("hooks/hooks.json"))?;
-    for event in ["PermissionRequest", "PreToolUse"] {
-        let groups = hooks["hooks"][event].as_array().ok_or("groups")?;
-        assert_eq!(groups.len(), INSTALLED_LAUNCHERS.len());
-        for (group, launcher) in groups.iter().zip(INSTALLED_LAUNCHERS) {
-            let handler = &group["hooks"][0];
-            assert_eq!(handler["type"], "command", "{event} {launcher}");
-            assert_eq!(handler["timeout"], 5, "{event} {launcher}");
-            assert_eq!(
-                handler["command"],
-                format!("\"${{PLUGIN_ROOT}}/hooks/{launcher}.sh\" {event}")
-            );
-            assert_eq!(
-                handler["commandWindows"],
-                format!("\"${{PLUGIN_ROOT}}/hooks/{launcher}.cmd\" {event}")
-            );
-        }
+    assert_eq!(hooks["hooks"]["UserPromptSubmit"].as_array().ok_or("prompt hooks")?.len(), 1);
+    let groups = hooks["hooks"]["PreToolUse"].as_array().ok_or("admission hooks")?;
+    assert_eq!(groups.len(), 2);
+    for group in groups {
+        let handler = &group["hooks"][0];
+        assert_eq!(handler["type"], "command");
+        assert_eq!(handler["timeout"], 5);
+        assert!(handler["command"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission.sh"));
+        assert!(handler["commandWindows"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission-"));
     }
     Ok(())
 }
@@ -94,7 +84,6 @@ fn materialized_plugin_executes_every_concern_hook_for_both_events()
     let install_base = temp.path().join("installed plugin with spaces");
     let root = copy(&install_base)?;
     let tools = [
-        "codex_app__send_message_to_thread",
         "mcp__codex_apps__github_create_issue",
         "mcp__codex_apps__github_create_pull_request",
         "mcp__codex_apps__github_merge_pull_request",
@@ -139,7 +128,7 @@ fn materialized_launchers_fail_closed_when_shared_runtime_is_unavailable()
     let root = copy(temp.path())?;
     std::fs::write(root.join("hooks/codexy-hook-runtime.sh"), "#!/bin/sh\nexit 1\n")?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        let output = Command::new(root.join("hooks/codexy-thread-delivery.sh"))
+        let output = Command::new(root.join("hooks/codexy-repository-issue.sh"))
             .arg(event)
             .env("PLUGIN_ROOT", &root)
             .stdin(Stdio::null())
@@ -148,7 +137,7 @@ fn materialized_launchers_fail_closed_when_shared_runtime_is_unavailable()
         assert!(output.stderr.is_empty());
         let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
         assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
-        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_THREAD_DELIVERY_RUNTIME"));
+        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_REPOSITORY_ISSUE_RUNTIME"));
     }
     Ok(())
 }
@@ -159,11 +148,16 @@ fn real_launchers_hide_interpreter_failures_behind_one_denial()
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     std::fs::write(
-        root.join("hooks/codexy-thread-delivery.py"),
+        root.join("hooks/codexy-repository-issue.py"),
         "raise RuntimeError('must not leak')\n",
     )?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        let output = Command::new(root.join("hooks/codexy-thread-delivery.sh"))
+        let launcher = fixture_native_launcher(
+            cfg!(windows),
+            &root.join("hooks/codexy-repository-issue.sh"),
+        )
+        .ok_or("native repository issue launcher")?;
+        let output = Command::new(launcher)
             .arg(event)
             .env("PLUGIN_ROOT", &root)
             .stdin(Stdio::null())
@@ -172,7 +166,7 @@ fn real_launchers_hide_interpreter_failures_behind_one_denial()
         assert!(output.stderr.is_empty(), "interpreter stderr leaked");
         let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
         assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
-        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_THREAD_DELIVERY_RUNTIME"));
+        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_REPOSITORY_ISSUE_RUNTIME"));
     }
     Ok(())
 }

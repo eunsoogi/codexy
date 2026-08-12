@@ -26,7 +26,8 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&output.stdout).contains("plugin version sync ok"),
+        String::from_utf8_lossy(&output.stdout)
+            .contains("plugin version sync ok: codexy=1.3.0, codexy-github=1.3.0"),
         "unexpected stdout: {}",
         String::from_utf8_lossy(&output.stdout)
     );

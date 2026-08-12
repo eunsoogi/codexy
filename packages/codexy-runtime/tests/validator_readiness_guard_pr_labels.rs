@@ -207,7 +207,7 @@ fn output_text(output: &std::process::Output) -> String {
 
 fn readiness_guard() -> std::path::PathBuf {
     codexy_runtime::paths::repository_root()
-        .join("plugins/codexy/hooks/codexy-readiness-guard.sh")
+        .join("plugins/codexy-github/hooks/codexy-readiness-guard.sh")
 }
 
 fn write_pr_state(

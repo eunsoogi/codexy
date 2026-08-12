@@ -16,7 +16,7 @@ preserves former capabilities without retaining removed callable aliases.
 | `codexy-shipwright` | Retain | Release, package, and rollback readiness. |
 | `codexy-tracer` | Remove | The engineering workflow owns diagnosis and regression investigation. |
 | `codexy-warden` | Retain | Security, permission, shell, and state-mutation boundaries. |
-| `codexy-weaver` | Retain | GitHub/integration contract; its future physical move belongs to the GitHub-plugin work. |
+| `codexy-weaver` | Move | GitHub/integration contract in the Codexy GitHub package. |
 
 `codexy-inspector` is reserved for #562 as the distinct bounded standard-review
 role. It is packaged separately from the seven retained implementation

@@ -43,7 +43,7 @@ fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
 
 fn hook_script(name: &str) -> std::path::PathBuf {
     codexy_runtime::paths::repository_root()
-        .join("plugins/codexy/hooks")
+        .join("plugins/codexy-github/hooks")
         .join(name)
 }
 

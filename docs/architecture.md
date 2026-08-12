@@ -27,11 +27,13 @@ native custom-agent location by the registration bootstrap.
 | `codexy-sentinel` | `gpt-5.6-sol` | `xhigh` | Runs the mandatory adversarial final review of scope, correctness, safety, tests, and current-head evidence. |
 | `codexy-shipwright` | `gpt-5.6-terra` | `high` | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness. |
 | `codexy-warden` | `gpt-5.6-sol` | `xhigh` | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation. |
-| `codexy-weaver` | `gpt-5.6-terra` | `medium` | Reconciles parallel lanes, branch heads, conflicts, PR evidence, merge ordering, and post-merge synchronization. |
 
 These model assignments come directly from the packaged TOMLs. A named custom
 agent's TOML is authoritative for its model and reasoning effort; callers should
 not silently override it.
+
+The optional `codexy-github` plugin separately packages `codexy-weaver` for
+GitHub integration after that plugin is installed.
 
 The role-equivalence boundary records why the removed roles are not aliases and
 describes Inspector as a distinct profile-bound reviewer: see
@@ -44,13 +46,15 @@ Skills are instruction packages discovered from
 they must be selected; the body supplies the executable workflow and evidence
 rules.
 
+The optional `codexy-github` package separately provides `git-workflow` for
+GitHub issue, branch, PR, review, merge, and main-sync work after installation.
+
 | Skill | Decision | Trigger / use | Responsibility |
 | --- | --- | --- | --- |
 | `agents-md-authoring` | Keep | Creating, moving, reviewing, or changing an `AGENTS.md`. | Keeps instruction scope, precedence, mandatory wording, and readback verification correct. |
 | `orchestration` | Keep | Classifying work and coordinating goals, plans, issue-sized lanes, agents, threads, worktrees, compaction, or token discipline. | Owns classification, the execution loop, routing boundaries, tool evidence, budgets, compact event deltas, and the final reviewer gate. |
 | `engineering` | Keep | One atomic outcome has an engineering boundary requiring diagnosis, specification, domain modeling, TDD, refactoring, or QA. | Selects the needed sections as one workflow while preserving their separate diagnosis, outcome/proof, domain-invariant, RED/GREEN for executable boundaries, behavior-preserving, and observable-surface responsibilities. |
 | `dreaming` | Keep | A lane resumes after compaction or inherited context may be stale. | Separates durable facts and active fixes from resolved or superseded history. |
-| `git-workflow` | Keep | Any Codexy Git, issue, branch, worktree, PR, review, merge, or main-sync work. | Enforces issue-backed branches, isolated worktrees, verification, review handling, and GitHub gates. |
 | `proof-driven-completion` | Keep | Before claiming success, handing off, opening or merging a PR, or completing a goal. | Maps every requirement to current authoritative evidence and blocks unsupported completion claims. |
 | `wiki` | Keep | Building or operating a topic-scoped compiled knowledge base. | Handles source collection, inventory, ingestion, compilation, query, audit, archive, and session context. |
 
@@ -76,7 +80,7 @@ remain deliberately outside the Codexy plugin payload.
 
 ## Skill path-consumer map
 
-All 7 stable packaged `skills/<name>/SKILL.md` paths in the inventory above
+All 6 stable core packaged `skills/<name>/SKILL.md` paths in the inventory above
 have a matching `skills/<name>/agents/openai.yaml`. The two repository-only
 skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
 cover their selection, registration, references, validation, tests, and

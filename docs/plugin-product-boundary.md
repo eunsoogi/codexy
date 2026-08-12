@@ -1,8 +1,8 @@
 # Three-plugin product boundary
 
 This is the public product boundary for the approved three-plugin line. It
-freezes target ownership before extraction; it does not create, publish, or
-operate the two reserved extension packages. The machine-readable inventory in
+freezes target ownership and records completed scoped extractions. It does not
+publish or operate extension packages. The machine-readable inventory in
 [`plugin-product-boundary.json`](plugin-product-boundary.json) is the
 executable and sole source for current-path ownership. Its `surfaceRecords`
 carry a stable logical-surface ID, concrete source path or registration,
@@ -15,14 +15,13 @@ non-overlapping coverage by these records.
 | Product | Public name | Package root | Responsibility |
 | --- | --- | --- | --- |
 | `codexy` | Codexy | `plugins/codexy` | Core orchestration, evidence, shared specialist and skill contracts, instruction enforcement, engineering, dreaming, and Wiki. |
-| `codexy-github` | Codexy GitHub | `plugins/codexy-github` (reserved) | GitHub issues, pull requests, reviews, and repository integration using published core contracts. |
+| `codexy-github` | Codexy GitHub | `plugins/codexy-github` | GitHub issues, pull requests, reviews, and repository integration using published core contracts. |
 | `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` (reserved) | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts. |
 
 `codexy` remains the approved core identity: its manifest name, current package
 root, public documentation, and installation identity MUST NOT be renamed as
-part of this boundary freeze. The extension names and roots are reserved
-packaging targets only; their manifests, releases, operations, and extraction
-are outside this issue.
+part of this boundary freeze. Extension installation operations are owned by the
+component installer contract; physical package ownership is recorded here.
 
 Codexy is a monorepo. The repository root is not a product package root. The
 Rust runtime owns its build metadata at
@@ -52,7 +51,7 @@ than importing a private path across product roots.
 | Current logical surface | Destination | Disposition |
 | --- | --- | --- |
 | Orchestration, specialists, instruction hooks, dreaming, engineering, and Wiki | `codexy` | Retain in core. |
-| Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow | `codexy-github` | Extract in the downstream GitHub-plugin issue. |
+| Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow | `codexy-github` | Extracted. |
 | Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extract in the downstream devtools issue. |
 | `release-engineering` and `plugin-marketplace-prep` skills | Repository-only Codex skills | Move out of the installed plugin. |
 
@@ -65,15 +64,14 @@ contract and its verification.
 
 Every mapped directory includes every current regular file below that root;
 every listed file has exactly one target destination or disposition in the
-preceding table. These are current source paths, not a claim that every source
-path remains in core after its downstream extraction issue. The reserved
-products own no physical files yet.
+preceding table. These are current source paths, including extracted GitHub
+paths; they do not imply that every future extension already has files.
 
 | Surface | Current paths | Destination |
 | --- | --- | --- |
-| Hooks | `plugins/codexy/hooks/**` | Core retains the complete current admission and instruction-enforcement import closure; generic GitHub workflow hooks extract. GitHub-policy leaves may move only after a later extraction breaks that core closure. |
-| Skills | `plugins/codexy/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow extracts; release/marketplace become repository-only. |
-| Agents | `plugins/codexy/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, moves to `codexy-github`. |
+| Hooks | `plugins/codexy/hooks/**`, `plugins/codexy-github/hooks/**` | Core retains only thread-delivery and its non-GitHub envelope; every generic GitHub, repository-GitHub, merge, review, and related policy-runtime closure is in `codexy-github`. Repository-specific `.codex` policy configuration remains at the repository root. |
+| Skills | `plugins/codexy/skills/**`, `plugins/codexy-github/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow is in `codexy-github`; release/marketplace remain repository-only. |
+| Agents | `plugins/codexy/agents/**`, `plugins/codexy-github/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, is in `codexy-github`. |
 | MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `packages/codexy-runtime/src/codegraph/**`, `packages/codexy-runtime/src/lsp/**`, `packages/codexy-runtime/src/mcp.rs`, `packages/codexy-runtime/src/bin/**`, `packages/codexy-runtime/src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision. |
 | LSP | `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/**`, `packages/codexy-runtime/src/lsp/**` | `codexy-devtools` |
 | Assets | `assets/**`, `plugins/codexy/assets/**` | Repository assets remain repository-only; plugin-local assets remain `codexy`. |
@@ -94,12 +92,11 @@ rejects omission,
 overlap or duplicate source, stale MCP selector, unknown target or disposition,
 illegal dependency, a parallel ownership projection, and an all-core
 reassignment of the devtools registrations.
-It is intentionally a freeze-time guard: it does not authorize physical
-movement of any mapped path.
+It is an ownership guard: a scoped extraction updates the inventory and its
+verification in the same change.
 
 ## Forbidden work in this boundary freeze
 
-Physical extraction, getcodexy component operations, release-train changes,
-new extension manifests, marketplace listings, and unrelated cleanup are out
-of scope. Any such change needs a separately scoped issue and an updated
-inventory contract.
+Getcodexy component operations, release-train changes, and unrelated cleanup
+remain out of scope. Any such change needs a separately scoped issue and an
+updated inventory contract.

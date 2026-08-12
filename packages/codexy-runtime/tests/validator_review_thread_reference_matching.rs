@@ -66,14 +66,14 @@ fn two_prefix_collision_review_threads_pr_state() -> &'static str {
                     "id": "PRRT_kwDOPrefixOne",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r1"}]}
                 },
                 {
                     "id": "PRRT_kwDOPrefixTen",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r10"}]}
                 }
             ]

@@ -64,9 +64,7 @@ fn validator_rejects_diagnostic_lifecycle_hooks() -> Result<(), Box<dyn std::err
 fn hard_checks_remain_packaged_executable_and_independently_callable()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = lifecycle_quiet_fixture(temp.path())?;
-    let hooks = packaged_hooks()?;
-    let hooks_text = serde_json::to_string(&hooks)?;
+    let plugin_root = github_plugin_fixture(temp.path())?;
     for script in HARD_CHECKS {
         let path = plugin_root.join("hooks").join(script);
         assert!(
@@ -78,11 +76,9 @@ fn hard_checks_remain_packaged_executable_and_independently_callable()
             path.metadata()?.permissions().mode() & 0o111 != 0,
             "packaged hard-check script must be executable: {script}"
         );
-        assert!(
-            hooks_text.find(script).is_none(),
-            "hard-check script must remain callable without lifecycle registration: {script}"
-        );
     }
+    let native = validate_hooks(&plugin_root)?;
+    assert!(native.status.success(), "native GitHub hooks failed: {}", output_text(&native));
 
     assert_static_success(
         &plugin_root.join("hooks/codexy-issue-title-check.sh"),
@@ -149,7 +145,7 @@ fn add_diagnostic_hook(
             "matcher": "*",
             "hooks": [{
                 "type": "command",
-                "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+                "command": format!("\"${{PLUGIN_ROOT}}/hooks/codexy-thread-delivery.sh\" {event}"),
                 "timeout": 3
             }]
         }]));
@@ -162,8 +158,8 @@ fn safe_post_tool_use_hook() -> serde_json::Value {
         "matcher": "*",
         "hooks": [{
             "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PostToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PostToolUse",
             "timeout": 3
         }]
     }])
@@ -211,6 +207,17 @@ fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
         plugin_root,
     )?;
     support::materialize_admission_runtime_suite(plugin_root)
+}
+
+fn github_plugin_fixture(
+    base: &std::path::Path,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let plugin_root = base.join("codexy-github");
+    support::copy_dir(
+        codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
+        &plugin_root,
+    )?;
+    Ok(plugin_root)
 }
 
 fn output_text(output: &std::process::Output) -> String {

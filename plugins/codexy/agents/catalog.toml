@@ -9,7 +9,6 @@ native_custom_agent_projection = "managed-codexy-subdirectory"
 agent_files = [
   "codexy-architect.toml",
   "codexy-cartographer.toml",
-  "codexy-weaver.toml",
   "codexy-auditor.toml",
   "codexy-shipwright.toml",
   "codexy-inspector.toml",

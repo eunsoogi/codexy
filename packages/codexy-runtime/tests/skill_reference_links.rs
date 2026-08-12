@@ -17,7 +17,7 @@ fn all_packaged_skill_markdown_is_collected() -> TestResult {
     let markdown = skill_markdown_files(&root)?;
     for expected in [
         root.join("plugins/codexy/skills/engineering/SKILL.md"),
-        root.join("plugins/codexy/skills/git-workflow/references/local-git-and-branches.md"),
+        root.join("plugins/codexy-github/skills/git-workflow/references/local-git-and-branches.md"),
     ] {
         assert!(markdown.contains(&expected), "missing {}", expected.display());
     }
@@ -51,6 +51,7 @@ fn assert_local_links(path: &Path, text: &str) -> Result<(), String> {
 fn skill_markdown_files(root: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     let mut files = Vec::new();
     collect_markdown_files(&root.join("plugins/codexy/skills"), &mut files)?;
+    collect_markdown_files(&root.join("plugins/codexy-github/skills"), &mut files)?;
     files.sort();
     Ok(files)
 }

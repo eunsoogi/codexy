@@ -8,15 +8,16 @@ macro_rules! source {
     ($path:literal) => {
         Source {
             path: $path,
-            contents: include_str!(concat!("../../../../../../plugins/codexy/hooks/", $path)),
+            contents: include_str!(concat!(
+                "../../../../../../plugins/codexy-github/hooks/",
+                $path
+            )),
         }
     };
 }
 
 pub(super) const LAUNCHERS: &[Source] = &[
     source!("codexy-hook-runtime.sh"),
-    source!("codexy-thread-delivery.sh"),
-    source!("codexy-thread-delivery.cmd"),
     source!("codexy-repository-issue.sh"),
     source!("codexy-repository-issue.cmd"),
     source!("codexy-repository-pull-request.sh"),
@@ -32,7 +33,6 @@ pub(super) const LAUNCHERS: &[Source] = &[
 // This is the one compile-time source map. The runtime closure derives which
 // pinned files the shipped entrypoint actually imports.
 pub(super) const POLICY_SOURCES: &[Source] = &[
-    source!("codexy-thread-delivery.py"),
     source!("codexy-repository-issue.py"),
     source!("codexy-repository-pull-request.py"),
     source!("codexy-repository-merge.py"),
@@ -40,7 +40,6 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy-destructive-command.py"),
     source!("codexy_policy/__init__.py"),
     source!("codexy_policy/envelope.py"),
-    source!("codexy_policy/thread_delivery.py"),
     source!("codexy_policy/repository_issue.py"),
     source!("codexy_policy/repository_pull_request.py"),
     source!("codexy_policy/repository_merge.py"),

@@ -12,7 +12,7 @@ use crate::paths::display_relative;
 use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
-const QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
+const CORE_QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostCompact",
@@ -22,6 +22,7 @@ const ALLOWED_EVENTS: &[&str] = &[
     "Stop",
     "SubagentStart",
     "SubagentStop",
+    "UserPromptSubmit",
 ];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -33,13 +34,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 
 fn check_inner(plugin_root: &Path) -> Result<()> {
     let path = plugin_root.join(HOOKS_PATH);
+    let core_contract = plugin_root.join("hooks/capability-contract.json").is_file();
     let data = load_json(&path)?;
     let events = data
         .get("hooks")
         .and_then(Value::as_object)
         .with_context(|| format!("{} hooks must be an object", display_relative(&path)))?;
     for (event, groups) in events {
-        if QUIET_EVENTS.contains(&event.as_str()) {
+        if core_contract && CORE_QUIET_EVENTS.contains(&event.as_str()) {
             bail!(
                 "{} must remain lifecycle-quiet: {event} handlers are forbidden",
                 display_relative(&path)
@@ -64,9 +66,34 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
-    capability_contract::check_topology(&path, events)?;
-    capability_contract::check(plugin_root)?;
-    admission_artifact::check(plugin_root)?;
+    if core_contract || is_core_plugin(plugin_root)? {
+        capability_contract::check_topology(&path, events)?;
+        capability_contract::check(plugin_root)?;
+    } else if is_github_plugin(plugin_root)? {
+        check_extension_topology(&path, events)?;
+        admission_artifact::check(plugin_root)?;
+    }
+    Ok(())
+}
+
+fn is_github_plugin(plugin_root: &Path) -> Result<bool> {
+    let manifest = load_json(&plugin_root.join(".codex-plugin/plugin.json"))?;
+    Ok(manifest.get("name").and_then(Value::as_str) == Some("codexy-github"))
+}
+
+fn is_core_plugin(plugin_root: &Path) -> Result<bool> {
+    let manifest = load_json(&plugin_root.join(".codex-plugin/plugin.json"))?;
+    Ok(manifest.get("name").and_then(Value::as_str) == Some("codexy"))
+}
+
+fn check_extension_topology(path: &Path, events: &serde_json::Map<String, Value>) -> Result<()> {
+    const REQUIRED: &[&str] = &["UserPromptSubmit", "PreToolUse"];
+    if events.len() != REQUIRED.len() || REQUIRED.iter().any(|event| !events.contains_key(*event)) {
+        bail!(
+            "{} extension hooks must configure UserPromptSubmit and PreToolUse",
+            display_relative(path)
+        );
+    }
     Ok(())
 }
 

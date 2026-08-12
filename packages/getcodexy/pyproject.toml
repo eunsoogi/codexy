@@ -15,6 +15,8 @@ Repository = "https://github.com/eunsoogi/codexy"
 
 [project.scripts]
 codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"
+codexy-github-install = "codexy_runtime_tools.github_pre_session:main"
+codexy-github-check = "codexy_runtime_tools.github_checks:main"
 
 [tool.uv.build-backend]
 module-name = "codexy_runtime_tools"

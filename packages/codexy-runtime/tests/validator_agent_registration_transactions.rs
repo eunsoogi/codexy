@@ -8,7 +8,7 @@ use crate::support;
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
 #[rustfmt::skip]
-const ROLES: [&str; 8] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-inspector", "codexy-sentinel", "codexy-shipwright", "codexy-warden", "codexy-weaver"];
+const ROLES: [&str; 7] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-inspector", "codexy-sentinel", "codexy-shipwright", "codexy-warden"];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Tree = BTreeMap<PathBuf, Option<Vec<u8>>>;

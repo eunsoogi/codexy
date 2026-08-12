@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Safely project the installed Codexy GitHub specialist into Codex discovery."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import stat
+import sys
+from pathlib import Path
+
+
+MARKER = "# Managed by Codexy GitHub.\n"
+ROLE = "codexy-weaver.toml"
+CORE_SENTINEL = "codexy-sentinel.toml"
+
+
+def parse() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument("--codex-home", type=Path, default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")))
+    parser.add_argument("--diagnose", action="store_true")
+    parser.add_argument("--uninstall", action="store_true")
+    return parser.parse_args()
+
+
+def regular(path: Path, label: str) -> None:
+    metadata = path.lstat()
+    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+        raise ValueError(f"{label} must be a regular non-symlink file: {path}")
+
+
+def plugin_root() -> Path:
+    script = Path(__file__).absolute()
+    regular(script, "bootstrap")
+    root = script.parents[3]
+    manifest = root / ".codex-plugin/plugin.json"
+    catalog = root / "agents/catalog.toml"
+    source = root / "agents" / ROLE
+    for path, label in [(manifest, "manifest"), (catalog, "catalog"), (source, "specialist")]:
+        regular(path, label)
+    if '"name": "codexy-github"' not in manifest.read_text(encoding="utf-8"):
+        raise ValueError("installed manifest is not codexy-github")
+    if 'agent_files = ["codexy-weaver.toml"]' not in catalog.read_text(encoding="utf-8"):
+        raise ValueError("installed catalog does not declare the GitHub specialist")
+    source_text = source.read_text(encoding="utf-8")
+    if not source_text.startswith('name = "codexy-weaver"\n') or "developer_instructions = \"\"\"" not in source_text:
+        raise ValueError("installed specialist has an invalid identity")
+    return root
+
+
+def directory(path: Path) -> None:
+    if path.exists():
+        metadata = path.lstat()
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            raise ValueError(f"discovery path must be a directory, not a symlink: {path}")
+        return
+    directory(path.parent)
+    path.mkdir()
+
+
+def discovery_home(home: Path) -> Path:
+    home = home.expanduser().absolute()
+    directory(home)
+    return home
+
+
+def destination(home: Path) -> Path:
+    root = discovery_home(home) / "agents"
+    directory(root)
+    package = root / "codexy-github"
+    directory(package)
+    return package / ROLE
+
+
+def read_destination(path: Path) -> str:
+    if not path.exists():
+        return ""
+    regular(path, "projected specialist")
+    return path.read_text(encoding="utf-8")
+
+
+def projection() -> str:
+    return MARKER + (plugin_root() / "agents" / ROLE).read_text(encoding="utf-8")
+
+
+def require_core(home: Path) -> None:
+    sentinel = home.expanduser().absolute() / "agents" / "codexy" / CORE_SENTINEL
+    if not sentinel.exists():
+        raise ValueError("Codexy core is not activated; install and bootstrap codexy first")
+    regular(sentinel, "core sentinel projection")
+    contents = sentinel.read_text(encoding="utf-8")
+    if not contents.startswith("# CODEXY MANAGED AGENT\nname = \"codexy-sentinel\"\n"):
+        raise ValueError("Codexy core is not activated; install and bootstrap codexy first")
+
+
+def lock(path: Path) -> int:
+    lock_path = path.with_suffix(".lock")
+    try:
+        return os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as error:
+        raise ValueError(f"another GitHub specialist projection is active: {lock_path}") from error
+
+
+def install(path: Path, expected: str) -> None:
+    current = read_destination(path)
+    if current and current != expected and not current.startswith(MARKER):
+        raise ValueError(f"refusing to replace unmanaged specialist: {path}")
+    fd = lock(path)
+    temporary = path.with_suffix(f".{os.getpid()}.tmp")
+    try:
+        if temporary.exists():
+            raise ValueError(f"refusing existing projection temporary: {temporary}")
+        with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as output:
+            output.write(expected)
+            output.flush()
+            os.fsync(output.fileno())
+        if read_destination(path) != current:
+            raise ValueError(f"projected specialist changed concurrently: {path}")
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+        os.close(fd)
+        path.with_suffix(".lock").unlink(missing_ok=True)
+
+
+def remove(path: Path) -> None:
+    fd = lock(path)
+    try:
+        current = read_destination(path)
+        if current and not current.startswith(MARKER):
+            raise ValueError(f"refusing to remove unmanaged specialist: {path}")
+        if current:
+            path.unlink()
+    finally:
+        os.close(fd)
+        path.with_suffix(".lock").unlink(missing_ok=True)
+
+
+def main() -> int:
+    args = parse()
+    if args.diagnose and args.uninstall:
+        raise ValueError("--diagnose and --uninstall cannot be combined")
+    expected = projection()
+    if not args.uninstall:
+        require_core(args.codex_home)
+    path = destination(args.codex_home)
+    current = read_destination(path)
+    if args.diagnose:
+        print("D role-discovery: PASS" if current == expected else "D role-discovery: UPDATE_REQUIRED")
+        return 0 if current == expected else 1
+    if args.uninstall:
+        remove(path)
+        print("D bootstrap: REMOVED")
+        return 0
+    install(path, expected)
+    print("D bootstrap: RESTART_REQUIRED")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (OSError, ValueError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        raise SystemExit(1)

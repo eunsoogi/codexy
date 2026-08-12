@@ -39,6 +39,43 @@ def run_pre_session(
     invoke = runner or (lambda command: _run(command, home))
     _validate_real_path(home, require_exists=False)
 
+    marketplace_root = official_marketplace_root(executable, invoke)
+
+    before = _json(
+        invoke([str(executable), "plugin", "list", "--json"]),
+        "plugin list",
+    )
+    _preflight(before, marketplace_root)
+
+    _json(
+        invoke(
+            [str(executable), "plugin", "marketplace", "upgrade", "codexy", "--json"]
+        ),
+        "marketplace upgrade",
+    )
+    marketplace_root = official_marketplace_root(executable, invoke)
+    _json(
+        invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
+        "plugin add",
+    )
+    plugin, version = _official_install(
+        _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list"),
+        marketplace_root,
+        package_version or distribution_version("getcodexy"),
+    )
+    current = synchronize(plugin, home, "check")
+    if current.status == "ready":
+        return PreSessionResult(plugin, version, False)
+    if current.status != "update_required":
+        raise RuntimeError(f"agent projection check failed: {current.status}")
+
+    applied = synchronize(plugin, home, "install")
+    if applied.status != "completed":
+        raise RuntimeError(f"agent projection install failed: {applied.status}")
+    return PreSessionResult(plugin, version, applied.changed)
+
+
+def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
     market = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "marketplace list",
@@ -63,44 +100,7 @@ def run_pre_session(
             invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
             "marketplace list",
         )
-    marketplace_root = _official_marketplace(market)
-
-    before = _json(
-        invoke([str(executable), "plugin", "list", "--json"]),
-        "plugin list",
-    )
-    _preflight(before, marketplace_root)
-
-    _json(
-        invoke(
-            [str(executable), "plugin", "marketplace", "upgrade", "codexy", "--json"]
-        ),
-        "marketplace upgrade",
-    )
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
-    marketplace_root = _official_marketplace(market)
-    _json(
-        invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
-        "plugin add",
-    )
-    plugin, version = _official_install(
-        _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list"),
-        marketplace_root,
-        package_version or distribution_version("getcodexy"),
-    )
-    current = synchronize(plugin, home, "check")
-    if current.status == "ready":
-        return PreSessionResult(plugin, version, False)
-    if current.status != "update_required":
-        raise RuntimeError(f"agent projection check failed: {current.status}")
-
-    applied = synchronize(plugin, home, "install")
-    if applied.status != "completed":
-        raise RuntimeError(f"agent projection install failed: {applied.status}")
-    return PreSessionResult(plugin, version, applied.changed)
+    return _official_marketplace(market)
 
 
 def _find_codex() -> Path:

@@ -47,6 +47,29 @@ const FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
     "codex mcp",
     ">",
 ];
+const NATIVE_ADMISSION_FORBIDDEN_SCRIPT_FRAGMENTS: &[&str] = &[
+    "~/",
+    "$HOME/",
+    "$HOME",
+    "${HOME}/",
+    "${HOME}",
+    "/Users/",
+    "/home/",
+    "~/.codex",
+    "$HOME/.codex",
+    "${HOME}/.codex",
+    ".codex/",
+    ".git/",
+    "auth.json",
+    "history.jsonl",
+    "PLUGIN_DATA",
+    "CLAUDE_PLUGIN_DATA",
+    "npm",
+    "curl",
+    "codex plugin",
+    "codex mcp",
+    ">",
+];
 const FORBIDDEN_SCRIPT_COMMANDS: &[&str] = &[
     "gh", "git", "mkdir", "touch", "rm", "mv", "cp", "chmod", "chown", "node", "nodejs",
 ];
@@ -67,7 +90,14 @@ pub(super) fn check_command_text(path: &Path, event: &str, command: &str) -> Res
 }
 
 pub(super) fn check_script(path: &Path, event: &str, script_path: &Path) -> Result<()> {
-    check_script_inner(path, event, script_path, FORBIDDEN_SCRIPT_FRAGMENTS, false)
+    let native_admission = script_path.file_name().and_then(|name| name.to_str())
+        == Some("codexy-github-admission.sh");
+    let forbidden = if native_admission {
+        NATIVE_ADMISSION_FORBIDDEN_SCRIPT_FRAGMENTS
+    } else {
+        FORBIDDEN_SCRIPT_FRAGMENTS
+    };
+    check_script_inner(path, event, script_path, forbidden, false)
 }
 
 fn check_script_inner(

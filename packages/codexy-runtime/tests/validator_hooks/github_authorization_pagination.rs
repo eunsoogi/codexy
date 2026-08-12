@@ -1,7 +1,7 @@
 use crate::support::{FixtureCommand as Command, make_executable};
 use serde_json::{Value, json};
 
-use super::admission_runtime::{TestResult, plugin_root, repository};
+use super::admission_runtime::{TestResult, repository};
 
 const HEAD: &str = "32b03a210b3defb2d29dd352283ea2488e60d893";
 
@@ -57,7 +57,7 @@ fn canonical_wrapper_rejects_nested_forged_and_wrong_author_associations() -> Te
 
 #[cfg(unix)]
 fn wrapper(first: &str, pages: &str, fail_paginated: bool) -> TestResult<(std::process::Output, bool)> {
-    let root = plugin_root();
+    let root = github_plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let message = owned.join("message.txt");
@@ -96,7 +96,7 @@ fn pages(first: Vec<Value>, second: Vec<Value>) -> String {
 
 #[cfg(unix)]
 fn state(comments: Vec<Value>) -> String {
-    serde_json::to_string(&json!({"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":HEAD,"comments":comments})).unwrap()
+    serde_json::to_string(&json!({"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":HEAD,"title":"fix(workflow): require intent","body":"Fixes #503\n","comments":comments})).unwrap()
 }
 
 #[cfg(unix)]
@@ -107,7 +107,12 @@ fn first_page() -> Vec<Value> {
 #[cfg(unix)]
 fn response(comments: Vec<Value>, has_next: bool) -> Value {
     let cursor = has_next.then_some("cursor-1");
-    json!({"data":{"repository":{"nameWithOwner":"eunsoogi/codexy","pullRequest":{"number":128,"baseRefName":"main","headRefOid":HEAD,"comments":{"nodes":comments,"pageInfo":{"hasNextPage":has_next,"endCursor":cursor}}}}}})
+    json!({"data":{"repository":{"nameWithOwner":"eunsoogi/codexy","pullRequest":{"number":128,"baseRefName":"main","headRefOid":HEAD,"title":"fix(workflow): require intent","body":"Fixes #503\n","comments":{"nodes":comments,"pageInfo":{"hasNextPage":has_next,"endCursor":cursor}}}}}})
+}
+
+#[cfg(unix)]
+fn github_plugin_root() -> std::path::PathBuf {
+    codexy_runtime::paths::repository_root().join("plugins/codexy-github")
 }
 
 #[cfg(unix)]

@@ -5,7 +5,7 @@ use super::admission_runtime::{TestResult, assert_tool_case, plugin_root};
 
 #[test]
 fn merge_admission_hook_admits_valid_message_and_authorization() -> TestResult {
-    let root = plugin_root();
+    let root = github_plugin_root();
     let temp = tempfile::tempdir()?;
     let message = temp.path().join("message.txt");
     let authorization = temp.path().join("authorization.json");
@@ -49,7 +49,7 @@ fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     std::fs::write(&fake_gh, "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$CODEXY_GH_RECORD\"\n")?;
     make_executable(&fake_gh)?;
     let record = workspace.path().join("gh-record.txt");
-    let wrapper = root.join("hooks/codexy-authorized-squash-merge.sh");
+    let wrapper = github_plugin_root().join("hooks/codexy-authorized-squash-merge.sh");
     let command = format!(
         "{} --expected-pr 128 --expected-issue 503 --merge-message-file {} --merge-authorization-file {} --merge-authorization-pr-state-file {} --repo eunsoogi/codexy --match-head-commit 32b03a210b3defb2d29dd352283ea2488e60d893 --subject 'fix(workflow): require intent (#128)' --body-file {}",
         wrapper.display(), message.display(), authorization.display(), state_file.display(), body.display()
@@ -82,7 +82,7 @@ fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestResult {
-    let root = plugin_root();
+    let root = github_plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = super::admission_runtime::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let message = owned.join("message.txt");
@@ -118,19 +118,19 @@ fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestR
 fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
     let message = "fix(workflow): require intent (#128)\n\nFixes #503\n";
     let subject = "fix(workflow): require intent (#128)";
-    let (output, merged, _) = wrapper_with_payload(&plugin_root(), state(), false, message, subject, "Fixes #503\n", false)?;
+    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, subject, "Fixes #503\n", false)?;
     assert!(output.status.success(), "exact payload rejected: {}", String::from_utf8_lossy(&output.stderr));
     assert!(merged, "exact payload did not reach merge");
     for (actual_subject, actual_body) in [
         ("fix: malformed subject", "Fixes #503\n"),
         (subject, "This body does not close #503\n"),
     ] {
-        let (output, merged, _) = wrapper_with_payload(&plugin_root(), state(), false, message, actual_subject, actual_body, false)?;
+        let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, actual_subject, actual_body, false)?;
         assert!(!output.status.success(), "decoy message admitted: {}", String::from_utf8_lossy(&output.stderr));
         assert!(!merged, "decoy message reached merge");
     }
     let invalid = "fix: malformed subject\n\nFixes #503\n";
-    let (output, merged, _) = wrapper_with_payload(&plugin_root(), state(), false, invalid, "fix: malformed subject", "Fixes #503\n", false)?;
+    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, invalid, "fix: malformed subject", "Fixes #503\n", false)?;
     assert!(!output.status.success(), "malformed exact payload admitted");
     assert!(!merged, "malformed exact payload reached merge");
     Ok(())
@@ -140,7 +140,7 @@ fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
 #[test]
 fn canonical_wrapper_gh_uses_immutable_body_snapshot() -> TestResult {
     let (output, merged, body) = wrapper_with_payload(
-        &plugin_root(), state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n",
+        &github_plugin_root(), state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n",
         "fix(workflow): require intent (#128)", "Fixes #503\n", true,
     )?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -164,11 +164,11 @@ fn canonical_wrapper_rejects_bad_github_authorization_captures() -> TestResult {
         state().replacen("AUTHORIZE REPOSITORY", "DO NOT AUTHORIZE REPOSITORY", 1),
         duplicate,
     ] {
-        let (output, merged) = wrapper_output(&plugin_root(), &capture, false)?;
+        let (output, merged) = wrapper_output(&github_plugin_root(), &capture, false)?;
         assert!(!output.status.success(), "bad capture admitted: {}", String::from_utf8_lossy(&output.stderr));
         assert!(!merged, "bad capture reached merge");
     }
-    let (output, merged) = wrapper_output(&plugin_root(), state(), true)?;
+    let (output, merged) = wrapper_output(&github_plugin_root(), state(), true)?;
     assert!(!output.status.success(), "GitHub API failure admitted");
     assert!(!merged, "GitHub API failure reached merge");
     Ok(())
@@ -232,4 +232,8 @@ exit 1
 }
 
 fn contract() -> &'static str { r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractCommentId":"IC_contract","contractCommentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","target":"current-pull-request","negated":false,"revoked":false}"# }
-fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer"},"authorAssociation":"MEMBER"}]}"# }
+fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","title":"fix(workflow): require intent","body":"Fixes #503\n","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer"},"authorAssociation":"MEMBER"}]}"# }
+
+fn github_plugin_root() -> std::path::PathBuf {
+    codexy_runtime::paths::repository_root().join("plugins/codexy-github")
+}

@@ -9,7 +9,8 @@ mod metrics;
 #[cfg(windows)]
 use super::fixture_command_windows::discover_windows_interpreter;
 pub(crate) use super::fixture_command_windows::{
-    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
+    fixture_native_launcher, fixture_script_launcher, windows_fixture_companion,
+    windows_static_python_fixture,
 };
 use super::{
     fixture_path::{fixture_path_environment_value, fixture_path_text},
@@ -28,9 +29,14 @@ impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
         #[cfg(windows)]
-        if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
-            return Self::from_command(Command::new(companion), false, program);
+        if let Some(python) = windows_static_python_fixture(std::path::Path::new(program)) {
+            let interpreter =
+                discover_windows_interpreter("python").unwrap_or_else(|error| panic!("{error}"));
+            let mut command = Command::new(interpreter);
+            command.args(["-I", "-B"]).arg(python).arg("--event");
+            return Self::from_command(command, false, program);
         }
+        // Native `.cmd` tests name their entrypoint; paired policy fixtures use Python directly.
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let (command, uses_posix_paths) =
                 dispatch::materialized_script_command(program, &source)

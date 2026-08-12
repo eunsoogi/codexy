@@ -28,6 +28,9 @@ mod validator_agent_registration_security;
 #[path = "../validator_agent_registration_transactions.rs"]
 mod validator_agent_registration_transactions;
 
+#[path = "../validator_github_agent_activation.rs"]
+mod validator_github_agent_activation;
+
 #[path = "../validator_prompt_metadata.rs"]
 mod validator_prompt_metadata;
 

@@ -2,14 +2,13 @@ use std::collections::BTreeSet;
 
 use crate::support::TestResult;
 
-const RETAINED: [&str; 7] = [
+const RETAINED: [&str; 6] = [
     "codexy-architect",
     "codexy-auditor",
     "codexy-cartographer",
     "codexy-sentinel",
     "codexy-shipwright",
     "codexy-warden",
-    "codexy-weaver",
 ];
 const RETIRED: [&str; 5] = [
     "codexy-forge",
@@ -30,7 +29,7 @@ const ROLE_EQUIVALENCE: [(&str, &str, &str); 12] = [
     ("codexy-shipwright", "Retain", "Release, package, and rollback readiness."),
     ("codexy-tracer", "Remove", "The engineering workflow owns diagnosis and regression investigation."),
     ("codexy-warden", "Retain", "Security, permission, shell, and state-mutation boundaries."),
-    ("codexy-weaver", "Retain", "GitHub/integration contract; its future physical move belongs to the GitHub-plugin work."),
+    ("codexy-weaver", "Move", "GitHub/integration contract in the Codexy GitHub package."),
 ];
 
 #[test]

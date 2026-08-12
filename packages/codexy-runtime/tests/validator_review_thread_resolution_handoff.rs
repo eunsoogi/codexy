@@ -85,7 +85,7 @@ fn validator_rejects_thread_mention_outside_no_change_rationale() -> TestResult 
 #[test]
 fn validator_rejects_path_only_no_change_rationale_for_multiple_threads() -> TestResult {
     let output = validate_handoff_with_pr_state(
-        "Review response: addressed and verified current head. Accepted no-change rationale documented for plugins/codexy/skills/git-workflow/SKILL.md.\n",
+        "Review response: addressed and verified current head. Accepted no-change rationale documented for plugins/codexy-github/skills/git-workflow/SKILL.md.\n",
         two_same_path_unresolved_review_threads_pr_state(),
     )?;
 
@@ -166,7 +166,7 @@ fn unresolved_review_thread_pr_state() -> &'static str {
                     "id": "PRRT_kwDOExample",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {
                         "nodes": [
                             {
@@ -194,7 +194,7 @@ fn two_unresolved_review_threads_pr_state() -> &'static str {
                     "id": "PRRT_kwDOAccepted",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r1"}]}
                 },
                 {
@@ -222,14 +222,14 @@ fn two_same_path_unresolved_review_threads_pr_state() -> &'static str {
                     "id": "PRRT_kwDOSamePathOne",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r10"}]}
                 },
                 {
                     "id": "PRRT_kwDOSamePathTwo",
                     "isResolved": false,
                     "isOutdated": false,
-                    "path": "plugins/codexy/skills/git-workflow/SKILL.md",
+                    "path": "plugins/codexy-github/skills/git-workflow/SKILL.md",
                     "comments": {"nodes": [{"url": "https://github.com/eunsoogi/codexy/pull/130#discussion_r11"}]}
                 }
             ]

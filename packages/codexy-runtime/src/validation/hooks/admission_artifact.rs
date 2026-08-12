@@ -58,7 +58,6 @@ fn source_map() -> BTreeMap<&'static str, &'static Source> {
 fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BTreeSet<String>> {
     let mut closure = BTreeSet::new();
     for root in [
-        "codexy-thread-delivery.py",
         "codexy-repository-issue.py",
         "codexy-repository-pull-request.py",
         "codexy-repository-merge.py",
