@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
+. "$self_dir/runtime-platform.sh"
+export CODEXY_PLUGIN_ROOT="$plugin_root"
+bundled_platforms="darwin-arm64 linux-x86_64"
+
+platform=$(codexy_runtime_platform)
+
+case "$platform" in
+  windows-x86_64) runtime_extension=exe ;;
+  *) runtime_extension=bin ;;
+esac
+runtime_name="codexy-mcp-lsp-$platform.$runtime_extension"
+if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
+  case "$CODEXY_RUNTIME_DIR" in
+    /*) ;;
+    *) echo "codexy-mcp-lsp runtime dir must be absolute: $CODEXY_RUNTIME_DIR" >&2; exit 127 ;;
+  esac
+  if [ -x "$CODEXY_RUNTIME_DIR/$runtime_name" ]; then
+    exec "$CODEXY_RUNTIME_DIR/$runtime_name" "$@"
+  fi
+  echo "codexy-mcp-lsp runtime not found for $platform in CODEXY_RUNTIME_DIR: $CODEXY_RUNTIME_DIR/$runtime_name" >&2
+  exit 127
+fi
+
+case " $bundled_platforms " in
+  *" $platform "*) ;;
+  *) echo "codexy-mcp-lsp unsupported platform: $platform; expected runtime: $runtime_name; bundled runtime supports: $bundled_platforms" >&2; exit 127 ;;
+esac
+bundled_runtime="$plugin_root/runtime/$runtime_name"
+if [ -x "$bundled_runtime" ]; then exec "$bundled_runtime" "$@"; fi
+if ! command -v uvx >/dev/null 2>&1; then
+  echo "codexy-mcp-lsp requires uvx on PATH; install uv or provide a bundled runtime" >&2
+  exit 127
+fi
+exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime lsp --plugin-root "$plugin_root" -- "$@"
