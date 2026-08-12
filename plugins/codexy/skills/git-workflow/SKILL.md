@@ -194,9 +194,9 @@ worker for that lane.
   actual todo/plan tool usage, multi-agent usage or a concrete not-useful
   rationale, codegraph evidence, LSP status evidence, and unavailable-tool
   fallbacks.
-- Before returning a non-trivial atomic lane as ready, the owning thread
-  MUST run the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/codexy-sentinel.toml`.
+- Before returning a non-trivial atomic lane as ready, the owning thread MUST
+  follow `orchestration/references/review-profiles.json`: light has no LLM
+  reviewer, standard has Inspector, and strict has Sentinel.
 - If human or automated review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
   directly patching the branch.
@@ -234,8 +234,8 @@ when domain intent is unclear, and MUST stage only resolved files.
   applicable.
 - Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`
   status evidence, or fallback evidence.
-- Non-trivial atomic work includes packaged Codexy reviewer agent findings or
-  approval from `plugins/codexy/agents/codexy-sentinel.toml`.
+- Non-trivial atomic work includes findings or approval from the reviewer
+  selected by `orchestration/references/review-profiles.json`.
 - PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
 - PR title has been validated with `--check-pr-title`.
 - No unresolved actionable review feedback or review threads remain.

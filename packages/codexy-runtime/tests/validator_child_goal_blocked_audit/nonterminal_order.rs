@@ -2,17 +2,39 @@ use super::{CLASSIFICATION, TestResult, run_validator};
 
 const WAIT: &str = "Nonterminal wait handoff: state fingerprint=sentinel-417-running; producer state=sentinel-running; wake route=sentinel-event; ownership=retained; goal state=active; plan state=active; goal transition=none; return control=confirmed\n";
 const GOAL_CONTEXT: &str = "Source thread id: parent-417\nGoal control state: source_thread_id=parent-417\n";
+const TERMINAL: &str = concat!(
+    r#"{"schema":"codexy.review-terminal-record.v1","head_oid":"abc","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[],"ledger":{"schema":"codexy.review-ledger.v1","events":["#,
+    r#"{"id":"e-full","predecessor_event_id":null,"profile":"strict","base_oid":"base","head_oid":"abc","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},"#,
+    r#"{"id":"e-passed","predecessor_event_id":"e-full","profile":"strict","base_oid":"base","head_oid":"abc","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}}"#,
+    "\\n"
+);
+
+const VALID_TERMINAL_LINE: &str = concat!(
+    r#"{"schema":"codexy.review-terminal-record.v1","head_oid":"abc","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[],"ledger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"strict","base_oid":"base","head_oid":"abc","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"strict","base_oid":"base","head_oid":"abc","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}}"#,
+    "\n"
+);
+
+#[test]
+fn orphan_typed_terminal_marker_cannot_release_a_nonterminal_wait() -> TestResult {
+    let output = run_validator(&format!(
+        "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{TERMINAL}{}",
+        transition("update_goal(complete)")
+    ))?;
+    assert!(
+        !output.status.success(),
+        "an unbound terminal marker must not release a nonterminal wait"
+    );
+    Ok(())
+}
 
 pub(super) fn assert_boundaries() -> TestResult {
     for call in ["update_goal(complete)", "update_goal(status=\"complete\")", "update_goal(blocked)", "update_goal(status=\"blocked\")"] {
         assert_rejected(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}evidence detail: unchanged wait\n{}", transition(call)))?;
-        assert_rejected(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{}Sentinel result: PASS\n", transition(call)))?;
+        assert_rejected(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{}{VALID_TERMINAL_LINE}", transition(call)))?;
     }
-    for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
-        for call in ["update_goal(complete)", "update_goal(blocked)"] {
-            let output = run_validator(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Sentinel result: {result}\n{}", transition(call)))?;
-            assert!(output.status.success(), "terminal {result} recovery rejected: {}", String::from_utf8_lossy(&output.stderr));
-        }
+    for call in ["update_goal(complete)", "update_goal(blocked)"] {
+        let output = run_validator(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{VALID_TERMINAL_LINE}{}", transition(call)))?;
+        assert!(output.status.success(), "typed terminal recovery rejected: {}", String::from_utf8_lossy(&output.stderr));
     }
     for result in [
         "Reviewer gate: BLOCK",
@@ -35,14 +57,14 @@ pub(super) fn assert_boundaries() -> TestResult {
             assert_rejected(&format!("{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{transition}"))?;
         }
         let output = run_validator(&format!(
-            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}Sentinel result: PASS\n{}",
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}{VALID_TERMINAL_LINE}{}",
             transition("update_goal(complete)")
         ))?;
         assert!(output.status.success(), "checked terminal result rejected: {}", String::from_utf8_lossy(&output.stderr));
     }
     for prefix in ["- [ ] ", "+ [ ] ", "1. [ ] ", "- + [ ] "] {
         let output = run_validator(&format!(
-            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}Goal tool call: update_goal(complete)\nSentinel result: PASS\n{}",
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{prefix}Goal tool call: update_goal(complete)\n{VALID_TERMINAL_LINE}{}",
             transition("update_goal(complete)")
         ))?;
         assert!(output.status.success(), "unchecked task item entered lifecycle: {}", String::from_utf8_lossy(&output.stderr));
@@ -52,7 +74,7 @@ pub(super) fn assert_boundaries() -> TestResult {
         "- [X] Parent direction event: version=direction-2; cancellation=received\nBlocked goal pre-mutation check:",
     );
     assert_invalid(&format!(
-        "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Sentinel result: BLOCK\n{checked_direction}"
+        "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{VALID_TERMINAL_LINE}{checked_direction}"
     ), "cancelled by newer parent direction")?;
     for inactive in inactive_contexts() {
         for result in ["PASS", "BLOCK", "UNOBSERVABLE"] {
@@ -77,7 +99,7 @@ pub(super) fn assert_boundaries() -> TestResult {
         }
         let ignored_gate = inactive.replace("{event}", "Reviewer gate: BLOCK");
         let output = run_validator(&format!(
-            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_gate}## Current evidence\nSentinel result: PASS\n{}",
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_gate}## Current evidence\n{VALID_TERMINAL_LINE}{}",
             transition("update_goal(complete)")
         ))?;
         assert!(output.status.success(), "inactive reviewer gate vetoed recovery: {}", String::from_utf8_lossy(&output.stderr));
@@ -85,7 +107,7 @@ pub(super) fn assert_boundaries() -> TestResult {
     for inactive in inactive_contexts() {
         let ignored_call = inactive.replace("{event}", "Goal tool call: update_goal(complete)");
         let output = run_validator(&format!(
-            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_call}## Current evidence\nSentinel result: PASS\n{}",
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{ignored_call}## Current evidence\n{VALID_TERMINAL_LINE}{}",
             transition("update_goal(complete)")
         ))?;
         assert!(output.status.success(), "inactive goal call rejected recovery: {}", String::from_utf8_lossy(&output.stderr));
@@ -99,7 +121,7 @@ pub(super) fn assert_boundaries() -> TestResult {
             &format!("{ignored_direction}## Current evidence\nBlocked goal pre-mutation check:"),
         );
         let output = run_validator(&format!(
-            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}Sentinel result: BLOCK\n{transition}"
+            "{CLASSIFICATION}{GOAL_CONTEXT}{WAIT}{VALID_TERMINAL_LINE}{transition}"
         ))?;
         assert!(output.status.success(), "inactive parent direction rejected recovery: {}", String::from_utf8_lossy(&output.stderr));
     }

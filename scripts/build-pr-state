@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+review_control_bin="${CODEXY_REVIEW_CONTROL_BIN:-codexy-review-control}"
+exec "$review_control_bin" --build-pr-state "$@"

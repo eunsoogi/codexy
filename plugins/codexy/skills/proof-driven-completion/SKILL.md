@@ -100,21 +100,21 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
   `scripts/validate-plugin-config --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
   against current PR state before accepting the claim.
 - For every non-trivial atomic unit, MUST require evidence that the owning thread
-  ran the packaged Codexy reviewer agent defined by
-  `plugins/codexy/agents/codexy-sentinel.toml` before handoff, PR readiness,
-  completion, or parent acceptance. The reviewer gate MUST cover the current
+  followed machine-owned `orchestration/references/review-profiles.json`:
+  light has no LLM reviewer, standard has `codexy-inspector`, and strict has
+  `codexy-sentinel`. The selected reviewer gate MUST cover the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and evidence. Arbitrary reviewer agents,
   generic role names, parent-only
   readthroughs, stale reviewer output, or external review passes are not
   substitutes for this gate.
-- Packaged Sentinel terminal evidence MUST state `PASS`, `BLOCK`, or
+- When the selected reviewer is Sentinel, its terminal evidence MUST state `PASS`, `BLOCK`, or
   `UNOBSERVABLE` with the reviewer name and exact head. Non-terminal `PENDING`
   or `RUNNING` observations MUST NOT be treated as reviewer verdicts or
   fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT
   satisfy PR readiness, push readiness, parent acceptance, or completion unless
   a maintainer explicitly approves a fallback.
-- Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- When the selected reviewer is Sentinel, live observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool

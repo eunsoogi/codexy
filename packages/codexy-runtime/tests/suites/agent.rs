@@ -37,6 +37,9 @@ mod validator_child_routing_policy;
 #[path = "../validator_tdd_classification_policy.rs"]
 mod validator_tdd_classification_policy;
 
+#[path = "../validator_review_control.rs"]
+mod validator_review_control;
+
 #[path = "../validator_routing_measurement.rs"]
 mod validator_routing_measurement;
 
@@ -67,23 +70,12 @@ mod workflow_profile_grammar;
 #[path = "../validator_roles.rs"]
 mod validator_roles;
 
-#[path = "../validator_sentinel_handoff_current_evidence.rs"]
-mod validator_sentinel_handoff_current_evidence;
+#[path = "../validator_review_handoff.rs"]
+mod validator_review_handoff;
 
-#[path = "../validator_sentinel_handoff_result_units.rs"]
-mod validator_sentinel_handoff_result_units;
+#[path = "../validator_pr_state_capture.rs"]
+mod validator_pr_state_capture;
 
-#[path = "../validator_sentinel_handoff_nested_context.rs"]
-mod validator_sentinel_handoff_nested_context;
-
-#[path = "../validator_sentinel_handoff_review_regressions.rs"]
-mod validator_sentinel_handoff_review_regressions;
-
-#[path = "../validator_sentinel_handoff_reviewer_readiness.rs"]
-mod validator_sentinel_handoff_reviewer_readiness;
-
-#[path = "../validator_sentinel_handoff_status.rs"]
-mod validator_sentinel_handoff_status;
 
 #[path = "../validator_sentinel_loc_remediation.rs"]
 mod validator_sentinel_loc_remediation;

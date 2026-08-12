@@ -212,9 +212,9 @@ fn assert_rejects_child_handoff(handoff: &str, pr_state: String, needle: &str) -
 }
 
 fn pr_state_with(fields: &str) -> String {
-    format!(
-        r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"APPROVED","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"automated-review"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#
-    )
+    crate::support::review_control_state::namespaced_pr_state(&format!(
+        r#"{{"number":204,"state":"OPEN","isDraft":false,"reviewDecision":"NOT_REQUIRED","reviewProfile":"light","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `068dbb247b7755035223c91ee39f26830f3c1609`","author":{{"login":"automated-review"}},"submittedAt":"2026-07-03T00:00:00Z"}}],{fields}}}"#
+    )).expect("PR state")
 }
 
 fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> OutputResult {

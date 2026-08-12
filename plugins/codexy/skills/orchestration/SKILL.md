@@ -20,6 +20,11 @@ The closed machine-owned routing authority is
 is `references/routing-evaluation-results.json`. This matrix is the human-readable
 workflow projection and MUST NOT be parsed as policy.
 
+Bounded review selection is separately owned by the closed
+`references/review-profiles.json` and `references/workflow-review-classification.json`
+contracts. The selected profile derives from the exhaustive typed classification
+record, not generic child routing or this prose projection.
+
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
 - Generic implementation children MUST request `gpt-5.6-terra` with `reasoning_effort: "high"` as the fail-closed default. Promotion above Terra/high is allowed only as an explicit exception selected by complete validated measurement.
@@ -75,6 +80,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 - `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
+- `references/review-profiles.json` and `references/workflow-review-classification.json` for structured review budgets and exhaustive typed profile selection.
 
 ## Classification Gate
 
@@ -171,8 +177,9 @@ insufficient. Situational routing is:
   main updates, or merge sequencing.
 - MUST use `codexy-shipwright` for release, packaging, version, marketplace,
   manifest, tag, or rollback work.
-- MUST use `codexy-sentinel` as the final reviewer gate for every non-trivial
-  atomic unit before handoff, PR readiness, completion, or parent acceptance.
+- MUST select exactly the reviewer prescribed by machine-owned
+  `references/review-profiles.json`: light selects no LLM reviewer, standard
+  selects `codexy-inspector`, and strict selects `codexy-sentinel`.
 
 Orchestration owns planning and approach selection. A generic owning child uses
 the engineering workflow for diagnosis, TDD, QA, and refactoring, and directly
@@ -189,19 +196,21 @@ If `spawn_agent` or the requested Codexy `agent_type` is unavailable, MUST follo
 the exact native role in a fresh task. MUST NOT substitute a generic agent for
 a packaged Codexy specialist or Sentinel.
 
-MUST end every non-trivial atomic unit with the packaged Codexy reviewer agent
-defined in `plugins/codexy/agents/codexy-sentinel.toml`. The reviewer gate MUST
-review the current diff, exact head or file state, lane scope, touched implementation-file
-LOC evidence, verification outputs, and evidence before handoff, PR readiness,
-completion, or parent acceptance. The parent may verify the evidence, but it
-MUST NOT replace the owning lane's reviewer pass with parent-only readthrough,
-an arbitrary reviewer, generic review role, or stale reviewer output.
+MUST end every non-trivial atomic unit with machine-owned
+`references/review-profiles.json`: light has no LLM reviewer; standard and
+strict each have one selected-reviewer full review and at most one delta recheck. The selected
+reviewer gate MUST review the current diff, exact head or file state, lane
+scope, touched implementation-file LOC evidence, verification outputs, and
+evidence before handoff, PR readiness, completion, or parent acceptance. The
+parent MUST NOT add a second reviewer or replace the selected reviewer with
+parent-only readthrough, an arbitrary reviewer, generic review role, or stale
+reviewer output.
 
-Packaged Sentinel terminal results MUST be `PASS`, `BLOCK`, or `UNOBSERVABLE`.
+Selected profile reviewer terminal results MUST be `PASS`, `BLOCK`, or `UNOBSERVABLE`.
 Non-terminal `PENDING`/`RUNNING` observation and same-reviewer retention MUST
 follow `references/classification-and-control.md`. The owning lane MUST keep
 push/readiness blocked until `PASS` or an explicitly approved terminal fallback.
-The Sentinel MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
+The selected reviewer MUST review only this issue's acceptance criteria, authorized behavior/files, current PR head or current diff, and necessary regressions.
 Every BLOCK finding MUST map to an in-scope acceptance criterion.
 Unrelated edge cases MUST be documented as non-blocking follow-up issues and MUST NOT block this lane.
 Recurring same-class defects MUST receive one structural root-cause repair rather than phrase patches; MUST ask parent before widening files.
@@ -231,12 +240,11 @@ MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence
 
 ## Event-driven token and quota containment
 
-Event-driven refresh: The root/orchestrator MUST NOT autonomously poll and MUST process only compact deltas for terminal child state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or review-thread resolution; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry the parent message. There MUST be no full conversation transfer and no full agent-tree listing. A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains. For that wait, the child MUST use one nonterminal wait handoff with `goal state=active` and `goal transition=none`, retain ownership, and return control when no runtime monitor exists. It MUST NOT call `update_goal(complete)` or `update_goal(blocked)` merely for that wait. Once every child-owned implementation, proof, push, review-response, and handoff obligation is actually complete, the child MAY complete its goal through the normal terminal receipt path before runtime-only monitoring. A runtime monitor remains runtime-owned rather than an autonomous model loop. A registered heartbeat automation route uses its automation id, target thread, bounded schedule, and state fingerprint; a heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume. A separate process-backed route requires those fields plus a next deadline. Both MUST suppress unchanged observations without assistant turns. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. `blocked` is reserved only for an unanswered material user decision or missing user information and MUST NOT represent an asynchronous external-gate wait.
+Event-driven refresh: The root/orchestrator MUST NOT autonomously poll and MUST process only compact deltas for terminal child state, selected-reviewer verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or review-thread resolution; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry the parent message. There MUST be no full conversation transfer and no full agent-tree listing. A parent or child MUST retain its active goal and plan during a nonterminal external-gate wait while an implementation obligation remains. For that wait, the child MUST use one nonterminal wait handoff with `goal state=active` and `goal transition=none`, retain ownership, and return control when no runtime monitor exists. It MUST NOT call `update_goal(complete)` or `update_goal(blocked)` merely for that wait. Once every child-owned implementation, proof, push, review-response, and handoff obligation is actually complete, the child MAY complete its goal through the normal terminal receipt path before runtime-only monitoring. A runtime monitor remains runtime-owned rather than an autonomous model loop. A registered heartbeat automation route uses its automation id, target thread, bounded schedule, and state fingerprint; a heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume. A separate process-backed route requires those fields plus a next deadline. Both MUST suppress unchanged observations without assistant turns. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. `blocked` is reserved only for an unanswered material user decision or missing user information and MUST NOT represent an asynchronous external-gate wait.
 
 When a Material child event arrives—terminal child state, actionable review feedback, or replacement-owner availability—the parent MUST validate the stable event identity and consume it in the same turn. To consume the event, the parent MUST perform the authorized parent-owned next action, such as route actionable review feedback, start a replacement owner, or resolve a verified gate, or MUST record a concrete execution blocker. An acknowledgement-only output MUST NOT satisfy consumption. Duplicate stable event identities MUST remain deduplicated with no parent action, and unchanged continuation observations MUST NOT create assistant turns.
 
-Orchestration MUST inspect archive candidates and the active reservation ledger before creating a child; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After Sentinel BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage when `engineering_tdd_required` is true or proportional boundary proof otherwise, repair, rerun terminal proof, then invoke exactly one fresh Sentinel review for the new file state or head.
+Orchestration MUST inspect archive candidates and the active reservation ledger before creating a child; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After a selected-profile BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage when `engineering_tdd_required` is true or proportional boundary proof otherwise, repair, rerun terminal proof, then invoke only the permitted same-reviewer delta recheck. A second recurrence, timeout, or UNOBSERVABLE result requires parent decision and MUST NOT select or replace a reviewer.
 
 MUST NOT mark a plan step complete until its evidence has been inspected.
-MUST use `update_goal` only with an active or user-requested goal and current proof;
-MUST reserve `blocked` for unanswered material user decisions or missing user information.
+MUST use `update_goal` only with an active or user-requested goal and current proof; MUST reserve `blocked` for unanswered material user decisions or missing user information.

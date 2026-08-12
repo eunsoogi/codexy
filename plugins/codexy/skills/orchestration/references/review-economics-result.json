@@ -1,0 +1,9 @@
+{
+  "schema": "codexy.review-economics.v2",
+  "status": "unavailable",
+  "head_oid": null,
+  "policy_sha256": null,
+  "corpus_sha256": null,
+  "lanes": [],
+  "reason": "No repository-owned observed review timing and seeded-defect outcomes have been captured for this head. This record is intentionally null and must fail closed until a current observed report binds the policy, corpus, and head."
+}

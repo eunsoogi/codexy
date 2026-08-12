@@ -3,7 +3,7 @@ pub(super) enum OrderedEvent {
     BlockedCall,
     ParentDirection,
     TerminalGoalCall,
-    PackagedTerminalResult,
+    TypedReviewTerminal,
     Other,
 }
 
@@ -14,24 +14,18 @@ pub(super) struct ActiveEvent {
 
 use super::negation::{is_negation, is_token_character};
 
-pub(super) fn active_events(evidence: &str) -> Vec<ActiveEvent> {
-    let evidence = evidence.to_ascii_lowercase();
-    super::super::child_lifecycle_events::active_lines(&evidence)
+pub(super) fn active_events(plugin_root: &std::path::Path, evidence: &str) -> Vec<ActiveEvent> {
+    super::super::child_lifecycle_events::active_lines(evidence)
         .into_iter()
-        .map(|line| {
-            let kind = line
-                .packaged_terminal
-                .then_some(OrderedEvent::PackagedTerminalResult)
-                .unwrap_or_else(|| ordered_event(&line.text));
-            ActiveEvent {
-                line: line.text,
-                kind,
-            }
+        .map(|line| ActiveEvent {
+            kind: ordered_event(plugin_root, &line.text),
+            line: line.text,
         })
         .collect()
 }
 
-pub(super) fn ordered_event(line: &str) -> OrderedEvent {
+pub(super) fn ordered_event(plugin_root: &std::path::Path, line: &str) -> OrderedEvent {
+    let line = line.to_ascii_lowercase();
     if line
         .strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
@@ -40,7 +34,9 @@ pub(super) fn ordered_event(line: &str) -> OrderedEvent {
         OrderedEvent::BlockedCall
     } else if line.starts_with("parent direction event:") {
         OrderedEvent::ParentDirection
-    } else if is_terminal_goal_call(line) {
+    } else if super::super::review_control::is_lifecycle_terminal(plugin_root, &line) {
+        OrderedEvent::TypedReviewTerminal
+    } else if is_terminal_goal_call(&line) {
         OrderedEvent::TerminalGoalCall
     } else {
         OrderedEvent::Other

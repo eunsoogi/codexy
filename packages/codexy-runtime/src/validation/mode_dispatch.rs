@@ -5,8 +5,8 @@ use anyhow::{Result, bail};
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
     conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, roles, routing_measurement, routing_policy,
-    runtime, tdd_classification, touched_loc, workflow_profiles,
+    manifest, mcp, merge_authorization, merge_message, review_control, roles, routing_measurement,
+    routing_policy, runtime, tdd_classification, touched_loc, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -27,6 +27,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(roles::check(plugin_root));
             all.extend(routing_policy::check(plugin_root));
             all.extend(tdd_classification::check(plugin_root));
+            all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             all
@@ -47,7 +48,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),
         Mode::IssueIntake { receipt } => issue_intake::check(&receipt),
         Mode::CompletionHandoff { handoff, pr_state } => {
-            let mut errors = completion_handoff::check(&handoff, &pr_state);
+            let mut errors = completion_handoff::check(plugin_root, &handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
@@ -62,7 +63,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             let mut errors = child_lane_ownership::check(&evidence);
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(child_goal_reporting::check(&evidence));
-            errors.extend(child_goal_blocked_audit::check(&evidence));
+            errors.extend(child_goal_blocked_audit::check(plugin_root, &evidence));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

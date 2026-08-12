@@ -1,0 +1,31 @@
+{
+  "schema": "codexy.review-profiles.v1",
+  "profiles": {
+    "light": {
+      "reviewer": null,
+      "full_review_limit": 0,
+      "delta_recheck_limit": 0,
+      "max_blocking_findings": 0
+    },
+    "standard": {
+      "reviewer": {
+        "name": "codexy-inspector",
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "max"
+      },
+      "full_review_limit": 1,
+      "delta_recheck_limit": 1,
+      "max_blocking_findings": 3
+    },
+    "strict": {
+      "reviewer": {
+        "name": "codexy-sentinel",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "xhigh"
+      },
+      "full_review_limit": 1,
+      "delta_recheck_limit": 1,
+      "max_blocking_findings": 255
+    }
+  }
+}

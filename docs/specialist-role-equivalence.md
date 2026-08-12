@@ -1,7 +1,7 @@
 # Specialist role equivalence
 
-Codexy packages seven distinct specialist roles. This mapping preserves the
-former capabilities without retaining removed callable aliases.
+Codexy retains seven distinct implementation specialist roles. This mapping
+preserves former capabilities without retaining removed callable aliases.
 
 | Former role | Disposition | Capability owner |
 | --- | --- | --- |
@@ -18,6 +18,6 @@ former capabilities without retaining removed callable aliases.
 | `codexy-warden` | Retain | Security, permission, shell, and state-mutation boundaries. |
 | `codexy-weaver` | Retain | GitHub/integration contract; its future physical move belongs to the GitHub-plugin work. |
 
-`codexy-inspector` is reserved for #562 as a future standard-review role. It
-is not packaged, catalogued, or routed by this reduction, and it is not an alias
-for Auditor or Sentinel.
+`codexy-inspector` is reserved for #562 as the distinct bounded standard-review
+role. It is packaged separately from the seven retained implementation
+specialists and is not an alias for Auditor or Sentinel.

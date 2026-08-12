@@ -1,5 +1,6 @@
 use serde_json::Value;
-pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
+use std::path::Path;
+pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<String> {
     let pr_state = match serde_json::from_str::<Value>(pr_state) {
         Ok(value) => value,
         Err(error) => return vec![format!("completion handoff PR state JSON error: {error}")],
@@ -35,10 +36,13 @@ pub(super) fn check(handoff: &str, pr_state: &str) -> Vec<String> {
             pr_number(&pr_state)
         )];
     }
-    let sentinel_errors =
-        super::sentinel_handoff::check(handoff, string_field(&pr_state, "headRefOid"));
-    if !sentinel_errors.is_empty() {
-        return sentinel_errors;
+    if claims_completion(handoff)
+        || super::child_handoff_readiness::is_current_pr_readiness(handoff)
+    {
+        let review_errors = super::review_control::check_handoff(plugin_root, &pr_state);
+        if !review_errors.is_empty() {
+            return review_errors;
+        }
     }
     Vec::new()
 }

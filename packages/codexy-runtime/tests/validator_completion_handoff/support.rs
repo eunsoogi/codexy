@@ -38,12 +38,15 @@ pub(super) fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> O
 }
 
 fn validate_completion_handoff(handoff: &str, pr_state: &str) -> OutputResult {
-    crate::support::validator_completion_handoff(handoff, pr_state)
+    crate::support::validator_completion_handoff(
+        handoff,
+        &crate::support::review_control_state::namespaced_pr_state(pr_state)?,
+    )
 }
 
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     validate_handoff_with_pr_state(
         handoff,
-        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893"}"#,
+        r#"{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","reviewProfile":"strict","reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"32b03a210b3defb2d29dd352283ea2488e60d893","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[]},"reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"strict","base_oid":"base","head_oid":"32b03a210b3defb2d29dd352283ea2488e60d893","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"strict","base_oid":"base","head_oid":"32b03a210b3defb2d29dd352283ea2488e60d893","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}}"#,
     )
 }

@@ -42,7 +42,7 @@
 - engineering_tdd_required:
 - RED/GREEN or proportional boundary proof:
 - terminal proof:
-- fresh Sentinel review for new file state or head:
+- one same-profile delta recheck for the repaired head:
 
 ## New Child Setup
 

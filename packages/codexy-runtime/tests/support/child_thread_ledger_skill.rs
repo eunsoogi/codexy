@@ -45,10 +45,9 @@ pub(crate) fn validator_completion_handoff_files(
     handoff_path: &std::path::Path,
     pr_state_path: &std::path::Path,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    validator_completion_handoff(
-        &std::fs::read_to_string(handoff_path)?,
-        &std::fs::read_to_string(pr_state_path)?,
-    )
+    let handoff = std::fs::read_to_string(handoff_path)?;
+    let state = std::fs::read_to_string(pr_state_path)?;
+    validator_completion_handoff(&handoff, &state)
 }
 
 pub(crate) fn validator_completion_handoff(

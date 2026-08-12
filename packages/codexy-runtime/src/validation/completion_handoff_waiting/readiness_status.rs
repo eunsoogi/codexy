@@ -9,26 +9,6 @@ pub(crate) fn is_neutral_heading(fragment: &str) -> bool {
     heading_field(&heading_words).is_some_and(|field| is_pending_status(value, field))
 }
 
-pub(crate) fn is_neutral_span_at(text: &str, marker_start: usize) -> bool {
-    let line_start = text[..marker_start]
-        .rfind(['.', '\n'])
-        .map_or(0, |index| index + 1);
-    let line = &text[line_start..];
-    let Some((heading, value)) = line.split_once(':') else {
-        return false;
-    };
-    let heading_end = line_start + heading.len();
-    if marker_start > heading_end {
-        return false;
-    }
-    let value = if value.trim().is_empty() {
-        line.split_once('\n').map_or(value, |(_, next)| next)
-    } else {
-        value
-    };
-    heading_field(&words(heading)).is_some_and(|field| is_pending_status(value, field))
-}
-
 fn heading_field(words: &[&str]) -> Option<ReadinessField> {
     let Some(readiness) = words.iter().position(|word| *word == "readiness") else {
         return ready_alias_field(words);

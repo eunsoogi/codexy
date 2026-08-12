@@ -8,6 +8,7 @@ pub(super) fn active_line(line: &str) -> Option<&str> {
 
 pub(super) fn is_stale(segment: &str) -> bool {
     let segment = without_container_prefix(segment);
+    let segment = segment.to_ascii_lowercase();
     [
         "historical example",
         "previous example",
@@ -31,8 +32,16 @@ pub(super) fn current_text(text: &str) -> String {
     let mut current = String::new();
     let mut stale_heading = false;
     let mut stale_label = false;
+    let mut fenced = false;
     for (index, raw_line) in lines.iter().enumerate() {
         let trimmed = without_container_prefix(raw_line);
+        if trimmed.starts_with("```") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced || trimmed.starts_with('>') {
+            continue;
+        }
         if trimmed.starts_with('#') {
             stale_heading = is_stale(trimmed.trim_start_matches('#').trim_start());
             stale_label = false;

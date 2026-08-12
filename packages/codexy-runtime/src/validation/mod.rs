@@ -92,6 +92,8 @@ mod readiness_state;
 mod release_publish_contract;
 mod removed_mcp;
 mod repository_skill_root;
+mod review;
+mod review_control;
 mod review_thread_evidence;
 mod review_thread_readiness;
 mod review_thread_resolution;
@@ -108,11 +110,6 @@ mod runtime;
 mod runtime_candidate_manifest;
 mod runtime_release_contract;
 mod runtime_release_schema;
-mod sentinel_handoff;
-mod sentinel_handoff_evidence;
-mod sentinel_handoff_reviewer;
-mod sentinel_handoff_status;
-mod sentinel_handoff_status_evidence;
 mod tdd_classification;
 mod touched_loc;
 mod touched_loc_remediation;
@@ -130,22 +127,11 @@ pub use mode_dispatch::{errors, run};
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
 
 /// Returns the LSP file extensions covered by Codexy validation metadata.
-///
-/// # Errors
-///
-/// Returns an error when LSP configuration files cannot be read or parsed.
 pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
     lsp::covered_extensions(plugin_root)
 }
 
 /// Returns touched-LOC diagnostics for an explicit repository root.
-///
-/// This is the library boundary used by high-volume semantic tests; CLI tests
-/// remain responsible for command parsing and process-level parity.
-///
-/// # Errors
-///
-/// Returns an error when Git state or a governed file cannot be inspected.
 pub fn touched_loc_diagnostics(root: &Path, base_ref: &str) -> Result<Vec<String>> {
     touched_loc::diagnostics_at(root, base_ref)
 }
@@ -157,11 +143,6 @@ pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> V
 }
 
 /// Resolves one typed child-routing request from the packaged policy data.
-///
-/// # Errors
-///
-/// Returns an error for unreadable, malformed, or incomplete policy, request,
-/// or routing-measurement artifacts.
 pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     routing_policy::resolve(plugin_root, request)
 }
@@ -174,6 +155,10 @@ pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_
 pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     tdd_classification::resolve(plugin_root, request)
 }
+
+pub use review::{
+    build_review_pr_state, check_review_economics, check_review_packet, resolve_review_profile,
+};
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {
     value

@@ -8,8 +8,8 @@ use parser::{
 };
 use wait_taxonomy::{WaitDisposition, classify_producer};
 
-pub(super) fn check(evidence: &str) -> Vec<String> {
-    let events = active_events(evidence);
+pub(super) fn check(plugin_root: &std::path::Path, evidence: &str) -> Vec<String> {
+    let events = active_events(plugin_root, evidence);
     let mut errors = Vec::new();
     let mut child_owned = false;
     let mut lane_start = 0;
@@ -151,16 +151,17 @@ fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
                 || field(&event.line, "plan state") != Some("active")
                 || field(&event.line, "goal transition") != Some("none")
                 || field(&event.line, "return control") != Some("confirmed")
-                || terminal_goal_precedes_reviewer_result(&events[index + 1..]))
-            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before a terminal reviewer result, and confirmed return control".into())
+                || terminal_goal_precedes_typed_review_terminal(&events[index + 1..])
+            )
+            .then_some("nonterminal wait handoff requires a stable fingerprint, nonterminal producer, available wake route, retained ownership, active goal and plan state, no complete/blocked goal mutation before typed profile-routed terminal review evidence, and confirmed return control".into())
         })
         .collect()
 }
 
-fn terminal_goal_precedes_reviewer_result(events: &[ActiveEvent]) -> bool {
+fn terminal_goal_precedes_typed_review_terminal(events: &[ActiveEvent]) -> bool {
     events
         .iter()
-        .take_while(|event| event.kind != OrderedEvent::PackagedTerminalResult)
+        .take_while(|event| event.kind != OrderedEvent::TypedReviewTerminal)
         .any(|event| {
             matches!(
                 event.kind,
