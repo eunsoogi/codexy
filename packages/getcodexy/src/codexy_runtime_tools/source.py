@@ -77,6 +77,12 @@ class RuntimeSourceIdentity:
             assert self.release is not None
             self.release.verify_archive(archive, platform=platform)
 
+    def package_plugin_root(self) -> str:
+        if self.mode is RuntimeSourceMode.SELECTED_RELEASE:
+            assert self.release is not None
+            return self.release.package_plugin_root()
+        return "codexy"
+
     def cache_key(self, *, platform: str, server: str) -> str | None:
         if self.mode is RuntimeSourceMode.SELECTED_RELEASE:
             assert self.release is not None

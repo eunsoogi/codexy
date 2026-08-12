@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 MAX_ARCHIVE_FILES = 2_048
 MAX_UNPACKED_BYTES = 512 * 1024 * 1024
 CANONICAL_REPOSITORY_ID = 1_269_350_143
+RUNTIME_PLUGIN_ROOTS = frozenset({"codexy", "codexy-devtools"})
 
 
 class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -191,12 +192,18 @@ def acquire_package(
     return archive
 
 
-def unpack_runtime(*, archive: Path, work: Path, runtime_name: str) -> tuple[Path, Path]:
+def unpack_runtime(*, archive: Path, work: Path, runtime_name: str,
+                   plugin_root: str = "codexy") -> tuple[Path, Path]:
+    if plugin_root not in RUNTIME_PLUGIN_ROOTS:
+        raise ValueError(f"runtime package has unsupported plugin root: {plugin_root}")
     extracted = work / "package"
     extracted.mkdir()
     _safe_extract_tar(archive, extracted)
-    runtime = extracted / "plugins" / "codexy" / "runtime" / runtime_name
-    manifest = extracted / "plugins" / "codexy" / ".codex-plugin" / "plugin.json"
+    plugins = extracted / "plugins"
+    if any((plugins / other).exists() for other in RUNTIME_PLUGIN_ROOTS - {plugin_root}):
+        raise RuntimeError("runtime package contains mixed plugin roots")
+    runtime = plugins / plugin_root / "runtime" / runtime_name
+    manifest = plugins / plugin_root / ".codex-plugin" / "plugin.json"
     if not runtime.is_file() or runtime.is_symlink() or not manifest.is_file() or manifest.is_symlink():
         raise RuntimeError("runtime package is missing its exact runtime binary or plugin manifest")
     return runtime, manifest

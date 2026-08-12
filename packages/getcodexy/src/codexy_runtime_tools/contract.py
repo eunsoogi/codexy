@@ -72,6 +72,9 @@ class RuntimeRelease:
         return marker == self.marker(platform=platform, server=server,
             binary_sha256=hashlib.sha256(binary).hexdigest())
 
+    def package_plugin_root(self) -> str:
+        return "codexy-devtools" if self.state == "candidate-proven" else "codexy"
+
     def verify_archive(self, archive: Path, *, platform: str) -> bool:
         if self.state == "legacy-public":
             return True
@@ -80,11 +83,12 @@ class RuntimeRelease:
                 names = [member.name for member in package.getmembers()]
                 if len({name.casefold() for name in names}) != len(names):
                     raise ValueError("runtime archive has duplicate or casefold paths")
-                package.getmember("plugins/codexy-devtools/.codex-plugin/plugin.json")
-                candidate = document(package.extractfile("plugins/codexy-devtools/runtime-candidate.json").read())
+                plugin_root = self.package_plugin_root()
+                package.getmember(f"plugins/{plugin_root}/.codex-plugin/plugin.json")
+                candidate = document(package.extractfile(f"plugins/{plugin_root}/runtime-candidate.json").read())
                 if _canonical(candidate) != self.artifact.payload_manifest_sha256:
                     raise ValueError("runtime candidate digest does not match release")
-                _validate_candidate(candidate, self, package, platform)
+                _validate_candidate(candidate, self, package, platform, plugin_root)
         except (AttributeError, KeyError, OSError, tarfile.TarError, TypeError, json.JSONDecodeError) as error:
             raise ValueError(f"invalid runtime candidate: {error}") from error
         return True
@@ -139,7 +143,8 @@ def load(plugin_root: Path) -> RuntimeRelease:
         platforms(value.get("platforms"), require_path=state == "candidate-proven"))
 
 
-def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfile.TarFile, platform: str) -> None:
+def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfile.TarFile,
+                        platform: str, plugin_root: str) -> None:
     candidate = object(candidate, "candidate")
     if release.state != "candidate-proven":
         raise ValueError("legacy runtime release has no candidate payload")
@@ -152,6 +157,6 @@ def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfil
     if inventory != release.platforms or platform not in inventory:
         raise ValueError("runtime candidate inventory does not match release")
     for binary in inventory[platform].values():
-        member = package.extractfile(f"plugins/codexy-devtools/{binary['path']}")
+        member = package.extractfile(f"plugins/{plugin_root}/{binary['path']}")
         if member is None or hashlib.sha256(member.read()).hexdigest() != binary["sha256"]:
             raise ValueError("runtime candidate binary digest does not match")
