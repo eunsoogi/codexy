@@ -137,6 +137,7 @@ class RuntimePackageRootTests(unittest.TestCase):
             self.write_archive(archive, {
                 f"plugins/codexy/runtime/{runtime_name}": BINARIES["lsp"],
                 "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
+                "plugins/codexy-github/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
             })
             installed = root / "cache/bin/codexy-mcp-lsp"
             config = SimpleNamespace(

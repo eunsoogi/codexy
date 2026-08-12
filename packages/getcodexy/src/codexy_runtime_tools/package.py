@@ -18,6 +18,7 @@ MAX_ARCHIVE_FILES = 2_048
 MAX_UNPACKED_BYTES = 512 * 1024 * 1024
 CANONICAL_REPOSITORY_ID = 1_269_350_143
 RUNTIME_PLUGIN_ROOTS = frozenset({"codexy", "codexy-devtools"})
+RUNTIME_PLUGIN_ROOTS_FOLDED = frozenset(root.casefold() for root in RUNTIME_PLUGIN_ROOTS)
 
 
 class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -192,16 +193,41 @@ def acquire_package(
     return archive
 
 
+def _runtime_archive_roots(archive: Path) -> set[str]:
+    try:
+        with tarfile.open(archive, "r:gz") as package:
+            roots = set()
+            for member in package.getmembers():
+                name = member.name[:-1] if member.name.endswith("/") else member.name
+                if "\\" in name:
+                    raise RuntimeError("runtime package has non-canonical archive path")
+                parts = name.split("/")
+                if not name or any(part in {"", ".", ".."} for part in parts):
+                    raise RuntimeError("runtime package has ambiguous archive path")
+                if parts[0].casefold() == "plugins" and parts[0] != "plugins":
+                    raise RuntimeError("runtime package has non-canonical plugin root")
+                if parts[0] != "plugins" or len(parts) == 1:
+                    continue
+                root = parts[1]
+                if root.casefold() in RUNTIME_PLUGIN_ROOTS_FOLDED and root not in RUNTIME_PLUGIN_ROOTS:
+                    raise RuntimeError("runtime package has non-canonical plugin root")
+                if root in RUNTIME_PLUGIN_ROOTS:
+                    roots.add(root)
+            return roots
+    except tarfile.TarError as error:
+        raise ValueError(f"invalid runtime package archive: {error}") from error
+
+
 def unpack_runtime(*, archive: Path, work: Path, runtime_name: str,
                    plugin_root: str = "codexy") -> tuple[Path, Path]:
     if plugin_root not in RUNTIME_PLUGIN_ROOTS:
         raise ValueError(f"runtime package has unsupported plugin root: {plugin_root}")
+    if _runtime_archive_roots(archive) != {plugin_root}:
+        raise RuntimeError("runtime package contains mixed plugin roots")
     extracted = work / "package"
     extracted.mkdir()
     _safe_extract_tar(archive, extracted)
     plugins = extracted / "plugins"
-    if any((plugins / other).exists() for other in RUNTIME_PLUGIN_ROOTS - {plugin_root}):
-        raise RuntimeError("runtime package contains mixed plugin roots")
     runtime = plugins / plugin_root / "runtime" / runtime_name
     manifest = plugins / plugin_root / ".codex-plugin" / "plugin.json"
     if not runtime.is_file() or runtime.is_symlink() or not manifest.is_file() or manifest.is_symlink():
