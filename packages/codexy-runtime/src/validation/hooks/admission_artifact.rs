@@ -5,13 +5,28 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
+mod import_parser;
 mod sources;
+use import_parser::imports;
 use sources::{LAUNCHERS, POLICY_SOURCES, Source};
 
 pub(super) fn is_launcher(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
-        Some("codexy-admission.sh" | "codexy-admission.cmd")
+        Some(
+            "codexy-thread-delivery.sh"
+                | "codexy-thread-delivery.cmd"
+                | "codexy-repository-issue.sh"
+                | "codexy-repository-issue.cmd"
+                | "codexy-repository-pull-request.sh"
+                | "codexy-repository-pull-request.cmd"
+                | "codexy-repository-merge.sh"
+                | "codexy-repository-merge.cmd"
+                | "codexy-repository-github-command.sh"
+                | "codexy-repository-github-command.cmd"
+                | "codexy-destructive-command.sh"
+                | "codexy-destructive-command.cmd"
+        )
     )
 }
 
@@ -42,15 +57,59 @@ fn source_map() -> BTreeMap<&'static str, &'static Source> {
 
 fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BTreeSet<String>> {
     let mut closure = BTreeSet::new();
-    let mut visiting = BTreeSet::new();
-    visit(
-        "codexy-admission.py",
-        hooks,
-        sources,
-        &mut closure,
-        &mut visiting,
-    )?;
+    for root in [
+        "codexy-thread-delivery.py",
+        "codexy-repository-issue.py",
+        "codexy-repository-pull-request.py",
+        "codexy-repository-merge.py",
+        "codexy-repository-github-command.py",
+        "codexy-destructive-command.py",
+    ] {
+        let concern = closure_from(root, hooks, sources)?;
+        check_concern_boundary(root, &concern)?;
+        closure.extend(concern);
+    }
     Ok(closure)
+}
+
+fn closure_from(
+    root: &str,
+    hooks: &Path,
+    sources: &BTreeMap<&str, &Source>,
+) -> Result<BTreeSet<String>> {
+    let mut closure = BTreeSet::new();
+    visit(root, hooks, sources, &mut closure, &mut BTreeSet::new())?;
+    Ok(closure)
+}
+
+fn check_concern_boundary(root: &str, closure: &BTreeSet<String>) -> Result<()> {
+    let forbidden = match root {
+        "codexy-destructive-command.py" => &[
+            "codexy_policy/body.py",
+            "codexy_policy/github.py",
+            "codexy_policy/github_alias.py",
+            "codexy_policy/github_api.py",
+            "codexy_policy/github_target.py",
+            "codexy_policy/graphql.py",
+            "codexy_policy/graphql_parser.py",
+            "codexy_policy/merge.py",
+            "codexy_policy/pull_request.py",
+            "codexy_policy/shell_github.py",
+            "codexy_policy/shell_github_opaque.py",
+            "codexy_policy/shell_github_policy.py",
+            "codexy_policy/titles.py",
+        ][..],
+        "codexy-repository-github-command.py" => &[
+            "codexy_policy/shell_destructive.py",
+            "codexy_policy/shell_destructive_opaque.py",
+            "codexy_policy/shell_destructive_policy.py",
+        ][..],
+        _ => return Ok(()),
+    };
+    if let Some(path) = forbidden.iter().find(|path| closure.contains(**path)) {
+        bail!("packaged {root} import closure crosses concern boundary through {path}");
+    }
+    Ok(())
 }
 
 fn visit(
@@ -76,48 +135,6 @@ fn visit(
     visiting.remove(path);
     closure.insert(path.to_owned());
     Ok(())
-}
-
-fn imports(path: &str, source: &str) -> Result<Vec<String>> {
-    if source.lines().map(str::trim_start).any(|line| {
-        line.starts_with("importlib.")
-            || line.starts_with("__import__(")
-            || line.starts_with("exec(")
-    }) {
-        bail!("packaged admission runtime rejects dynamic imports: {path}");
-    }
-    let mut result = Vec::new();
-    for line in source.lines() {
-        let line = line.trim();
-        let Some((prefix, _)) = line.split_once(" import ") else {
-            continue;
-        };
-        let Some(module) = prefix.strip_prefix("from ") else {
-            continue;
-        };
-        if let Some(module) = module.strip_prefix('.') {
-            if module.is_empty()
-                || !module
-                    .chars()
-                    .all(|value| value.is_ascii_alphanumeric() || value == '_')
-            {
-                bail!("packaged admission runtime rejects ambiguous relative import in {path}");
-            }
-            result.push(format!("codexy_policy/{module}.py"));
-        } else if let Some(module) = module.strip_prefix("codexy_policy.") {
-            if !module
-                .chars()
-                .all(|value| value.is_ascii_alphanumeric() || value == '.')
-            {
-                bail!("packaged admission runtime rejects ambiguous policy import in {path}");
-            }
-            result.push(format!("codexy_policy/{}.py", module.replace('.', "/")));
-        }
-    }
-    if path.starts_with("codexy_policy/") && path != "codexy_policy/__init__.py" {
-        result.push("codexy_policy/__init__.py".to_owned());
-    }
-    Ok(result)
 }
 
 fn check_pinned(hooks: &Path, source: &Source) -> Result<()> {

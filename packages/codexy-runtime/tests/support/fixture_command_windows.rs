@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-#[cfg(windows)]
-use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
 #[derive(Hash, PartialEq, Eq)]
@@ -32,7 +30,7 @@ pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     .filter(|companion| companion.is_file())
 }
 
-/// The copied admission fixture has a Windows command companion whose sole runtime invocation
+/// A copied concern fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.
 pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
@@ -45,17 +43,6 @@ pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
         .contains(&expected)
         .then_some(python)
         .filter(|python| python.is_file())
-}
-
-#[cfg(windows)]
-pub(super) fn windows_static_python_command(program: &Path) -> Result<Option<Command>, String> {
-    let Some(python) = windows_static_python_fixture(program) else {
-        return Ok(None);
-    };
-    let mut command = Command::new(discover_windows_interpreter("py")?);
-    command.args(["-3", "-I", "-B"]);
-    command.arg(python).arg("--event");
-    Ok(Some(command))
 }
 
 pub(super) fn fixture_script_interpreter(contents: &[u8]) -> Result<Option<&'static str>, String> {

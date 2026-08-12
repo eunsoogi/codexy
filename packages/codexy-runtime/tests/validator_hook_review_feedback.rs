@@ -35,7 +35,7 @@ fn validator_requires_generic_hook_timeouts() -> Result<(), Box<dyn std::error::
     let root = fixture(temp.path())?;
     let path = root.join("hooks/hooks.json");
     let mut hooks = read(&path)?;
-    hooks["hooks"]["PostToolUse"][0]["hooks"][0]
+    hooks["hooks"]["PermissionRequest"][0]["hooks"][0]
         .as_object_mut()
         .ok_or("handler")?
         .remove("timeout");

@@ -29,16 +29,13 @@ fn packaged_hooks_are_lifecycle_quiet() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[test]
-fn validator_accepts_an_unrelated_safe_lifecycle_hook() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_an_unaccounted_safe_lifecycle_hook() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = lifecycle_quiet_fixture(temp.path())?;
 
     let output = validate_hooks(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "validator should accept safe non-diagnostic hooks\n{}",
-        output_text(&output)
-    );
+    assert!(!output.status.success());
+    assert!(output_text(&output).contains("only the two preventive concern events"));
     Ok(())
 }
 
@@ -166,6 +163,7 @@ fn safe_post_tool_use_hook() -> serde_json::Value {
         "hooks": [{
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
             "timeout": 3
         }]
     }])

@@ -87,19 +87,19 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> TestResult {
 #[test]
 fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let shell = temp.path().join("codexy-admission.sh");
-    let command = temp.path().join("codexy-admission.cmd");
-    let python = temp.path().join("codexy-admission.py");
+    let shell = temp.path().join("codexy-thread-delivery.sh");
+    let command = temp.path().join("codexy-thread-delivery.cmd");
+    let python = temp.path().join("codexy-thread-delivery.py");
     std::fs::write(&shell, "#!/bin/sh\n")?;
     std::fs::write(
         &command,
-        "py -3 -I -B \"%~dp0codexy-admission.py\" --event \"%event%\"\n",
+        "py -3 -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",
     )?;
     assert_eq!(windows_static_python_fixture(&shell), None);
     std::fs::write(&python, "print('fixture')\n")?;
     assert_eq!(windows_static_python_fixture(&shell), Some(python));
     for source in [
-        "python -I -B \"%~dp0codexy-admission.py\" --event \"%event%\"\n",
+        "python -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",
         "py -3 fixture.py\n",
     ] {
         std::fs::write(&command, source)?;

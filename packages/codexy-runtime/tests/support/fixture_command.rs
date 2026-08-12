@@ -7,7 +7,7 @@ mod dispatch;
 #[path = "fixture_command_metrics.rs"]
 mod metrics;
 #[cfg(windows)]
-use super::fixture_command_windows::{discover_windows_interpreter, windows_static_python_command};
+use super::fixture_command_windows::discover_windows_interpreter;
 pub(crate) use super::fixture_command_windows::{
     fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
 };
@@ -27,12 +27,6 @@ pub(crate) struct FixtureCommand {
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
-        #[cfg(windows)]
-        if let Some(command) = windows_static_python_command(std::path::Path::new(program))
-            .unwrap_or_else(|error| panic!("{error}"))
-        {
-            return Self::from_command(command, false, program);
-        }
         #[cfg(windows)]
         if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
             return Self::from_command(Command::new(companion), false, program);

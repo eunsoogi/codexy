@@ -48,17 +48,17 @@ fn validator_rejects_an_invalid_retained_capability_entry(
     let root = copy(temp.path())?;
     let path = root.join("hooks/capability-contract.json");
     let mut contract = read(&path)?;
-    contract["capabilities"][1]["schema"] = serde_json::json!("wrong-schema");
+    contract["concerns"][1]["inputContract"] = serde_json::json!("wrong-schema");
     std::fs::write(path, serde_json::to_vec(&contract)?)?;
-    assert_rejected(&root, "missing, extra, stale, or tampered capability")
+    assert_rejected(&root, "missing, extra, stale, or tampered concern")
 }
 
 #[test]
 fn validator_rejects_tampered_retained_capability_content_digests(
 ) -> Result<(), Box<dyn std::error::Error>> {
     for (path, expected) in [
-        ("capabilities.1.contentDigest", "missing, extra, stale, or tampered capability"),
-        ("contentDigest", "content digest does not bind its exact capabilities"),
+        ("concerns.1.contentDigest", "missing, extra, stale, or tampered concern"),
+        ("contentDigest", "content digest does not bind its exact concerns"),
     ] {
         let temp = tempfile::tempdir()?;
         let root = copy(temp.path())?;
@@ -67,10 +67,39 @@ fn validator_rejects_tampered_retained_capability_content_digests(
         if path == "contentDigest" {
             contract[path] = serde_json::json!("0000000000000000");
         } else {
-            contract["capabilities"][1]["contentDigest"] = serde_json::json!("0000000000000000");
+            contract["concerns"][1]["contentDigest"] = serde_json::json!("0000000000000000");
         }
         std::fs::write(contract_path, serde_json::to_vec(&contract)?)?;
         assert_rejected(&root, expected)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_missing_reordered_or_cross_platform_concern_bindings(
+) -> Result<(), Box<dyn std::error::Error>> {
+    for mutation in ["missing", "reordered", "windows"] {
+        let temp = tempfile::tempdir()?;
+        let root = copy(temp.path())?;
+        let path = root.join("hooks/hooks.json");
+        let mut hooks = read(&path)?;
+        let groups = hooks["hooks"]["PreToolUse"]
+            .as_array_mut()
+            .ok_or("groups")?;
+        match mutation {
+            "missing" => {
+                groups.pop();
+            }
+            "reordered" => groups.swap(0, 1),
+            "windows" => {
+                groups[0]["hooks"][0]["commandWindows"] = serde_json::json!(
+                    "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd\" PreToolUse"
+                );
+            }
+            _ => unreachable!(),
+        }
+        std::fs::write(path, serde_json::to_vec(&hooks)?)?;
+        assert_rejected(&root, "concern")?;
     }
     Ok(())
 }

@@ -58,6 +58,12 @@ def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] =
     return _identity(candidate) or lexical
 
 
+def available(command: str, cwd: str, path: str | None = None) -> bool:
+    """Return whether a command resolves to an executable without policy identity."""
+    candidate = _path(command, cwd, path)
+    return candidate is not None and path_state(str(candidate), ()).kind == "executable"
+
+
 def alias_transition(
     executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, PathState], ...],
 ) -> AliasTransition | None:

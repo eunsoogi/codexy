@@ -1,11 +1,14 @@
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::process::{Stdio};
 use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
 
 use serde_json::{Value, json};
 
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+#[path = "admission_runtime/concern_launchers.rs"]
+mod concern_launchers;
+#[path = "admission_runtime/connector_inputs.rs"]
+mod connector_inputs;
 
 #[test]
 fn opaque_graphql_mutations_fail_closed_without_blocking_queries() -> TestResult {
@@ -208,32 +211,11 @@ pub(super) fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, 
 }
 
 fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
-    let description = input.to_string();
-    let mut child = Command::new(root.join("hooks/codexy-admission.sh"));
-    let event = input["hook_event_name"].as_str().ok_or("event")?;
-    child.arg(event);
-    child.env_clear();
-    if let Some(path) = std::env::var_os("PATH") {
-        child.env("PATH", path);
-    }
-    child.env_path("PLUGIN_ROOT", root);
-    child.envs(environment.iter().copied());
-    child.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = child.spawn()?;
-    child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
-    let output = child.wait_with_output()?;
-    assert!(output.status.success(), "launcher failed: {}", String::from_utf8_lossy(&output.stderr));
-    if denied { let value: Value = serde_json::from_slice(&output.stdout).map_err(|error| format!("expected deny for {description}: {error}"))?; let decision = if event == "PermissionRequest" { &value["hookSpecificOutput"]["decision"]["behavior"] } else { &value["hookSpecificOutput"]["permissionDecision"] }; assert_eq!(decision, "deny", "{description}"); } else { assert_eq!(output.stdout, b"", "{description}"); }
-    Ok(())
+    concern_launchers::assert_input(root, input, denied, environment)
 }
 
-#[cfg(unix)]
 pub(super) fn executable(name: &str) -> TestResult<PathBuf> {
-    std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)
-        .map(|directory| directory.join(name))
-        .find(|path| path.is_file())
-        .ok_or_else(|| format!("{name} executable"))
-        .map_err(Into::into)
+    crate::support::executable_path(name).map_err(Into::into)
 }
 
 pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {

@@ -22,6 +22,9 @@ mod validator_hook_review_feedback;
 #[path = "../validator_hook_safety_tokens.rs"]
 mod validator_hook_safety_tokens;
 
+#[path = "../validator_hook_single_concern_topology.rs"]
+mod validator_hook_single_concern_topology;
+
 #[path = "../validator_hooks.rs"]
 mod validator_hooks;
 

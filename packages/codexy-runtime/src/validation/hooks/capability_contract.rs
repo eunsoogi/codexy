@@ -1,31 +1,67 @@
 use std::path::Path;
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow, bail};
 use serde::Deserialize;
+use serde_json::{Map, Value};
 
 use crate::paths::display_relative;
 use crate::validation::load_json;
 
 const PATH: &str = "hooks/capability-contract.json";
-const SCHEMA: &str = "codexy.hooks.capability-contract";
-const CAPABILITIES: &[(&str, &str, bool, &[&str])] = &[
-    (
-        "PermissionRequest",
-        "codexy.hooks.permission-request",
-        true,
-        &[],
-    ),
-    (
-        "PreToolUse",
-        "codexy.hooks.pre-tool-use",
-        true,
-        &[
-            "bash-command",
-            "github-title",
-            "thread-delivery-model-thinking",
-        ],
-    ),
-    ("SessionEnd", "codexy.hooks.session-end", false, &[]),
+const SCHEMA: &str = "codexy.hooks.capability-contract.v2";
+const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+
+struct Expected {
+    id: &'static str,
+    trigger: &'static str,
+    input: &'static str,
+    launcher: &'static str,
+    diagnostic: &'static str,
+}
+
+const CONCERNS: &[Expected] = &[
+    Expected {
+        id: "thread-delivery",
+        trigger: "^codex_app__send_message_to_thread$",
+        input: "codexy.hooks.thread-delivery.v1",
+        launcher: "codexy-thread-delivery",
+        diagnostic: "CODEXY_THREAD_DELIVERY_",
+    },
+    Expected {
+        id: "repository-issue",
+        trigger: "^mcp__codex_apps__github_(create|update)_issue$",
+        input: "codexy.hooks.repository-issue.v1",
+        launcher: "codexy-repository-issue",
+        diagnostic: "CODEXY_REPOSITORY_ISSUE_",
+    },
+    Expected {
+        id: "repository-pull-request",
+        trigger: "^mcp__codex_apps__github_(create|update)_pull_request$",
+        input: "codexy.hooks.repository-pull-request.v1",
+        launcher: "codexy-repository-pull-request",
+        diagnostic: "CODEXY_REPOSITORY_PULL_REQUEST_",
+    },
+    Expected {
+        id: "repository-merge",
+        trigger: "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
+        input: "codexy.hooks.repository-merge.v1",
+        launcher: "codexy-repository-merge",
+        diagnostic: "CODEXY_REPOSITORY_MERGE_",
+    },
+    Expected {
+        id: "repository-github-command",
+        trigger: "^Bash$",
+        input: "codexy.hooks.repository-github-command.v1",
+        launcher: "codexy-repository-github-command",
+        diagnostic: "CODEXY_REPOSITORY_GITHUB_COMMAND_",
+    },
+    Expected {
+        id: "destructive-command",
+        trigger: "^Bash$",
+        input: "codexy.hooks.destructive-command.v1",
+        launcher: "codexy-destructive-command",
+        diagnostic: "CODEXY_DESTRUCTIVE_COMMAND_",
+    },
 ];
 
 #[derive(Debug, Deserialize)]
@@ -33,16 +69,19 @@ const CAPABILITIES: &[(&str, &str, bool, &[&str])] = &[
 struct CapabilityContract {
     schema: String,
     content_digest: String,
-    capabilities: Vec<Capability>,
+    concerns: Vec<Concern>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Capability {
-    event: String,
-    schema: String,
-    authoritative_inputs: Vec<String>,
+struct Concern {
+    concern_id: String,
+    trigger: String,
+    events: Vec<String>,
+    input_contract: String,
     preventive: bool,
+    entrypoints: Vec<String>,
+    diagnostic_family: String,
     content_digest: String,
 }
 
@@ -55,56 +94,112 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
                 display_relative(&path)
             )
         })?;
-    if contract.schema != SCHEMA || contract.capabilities.len() != CAPABILITIES.len() {
+    if contract.schema != SCHEMA || contract.concerns.len() != CONCERNS.len() {
         bail!(
-            "{} must contain the exact checked-in hook capability schemas",
+            "{} must contain the exact ordered hook concerns",
             display_relative(&path)
         );
     }
-    for (actual, expected) in contract.capabilities.iter().zip(CAPABILITIES) {
-        let (event, schema, preventive, inputs) = expected;
-        if actual.event != *event
-            || actual.schema != *schema
-            || actual.preventive != *preventive
-            || actual
-                .authoritative_inputs
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-                != *inputs
-            || actual.content_digest != capability_digest(event, schema, *preventive, inputs)
+    for (actual, expected) in contract.concerns.iter().zip(CONCERNS) {
+        let entrypoints = entrypoints(expected.launcher);
+        if actual.concern_id != expected.id
+            || actual.trigger != expected.trigger
+            || actual.events.iter().map(String::as_str).collect::<Vec<_>>() != EVENTS
+            || actual.input_contract != expected.input
+            || !actual.preventive
+            || actual.entrypoints != entrypoints
+            || actual.diagnostic_family != expected.diagnostic
+            || actual.content_digest != concern_digest(expected)
         {
             bail!(
-                "{} has a missing, extra, stale, or tampered capability",
-                display_relative(&path)
+                "{} has a missing, extra, stale, or tampered concern: {}",
+                display_relative(&path),
+                expected.id
             );
         }
     }
     if contract.content_digest != contract_digest() {
         bail!(
-            "{} content digest does not bind its exact capabilities",
+            "{} content digest does not bind its exact concerns",
             display_relative(&path)
         );
     }
     Ok(())
 }
 
-fn capability_digest(event: &str, schema: &str, preventive: bool, inputs: &[&str]) -> String {
-    let semantics = if preventive {
-        "preventive"
-    } else {
-        "nonpreventive"
-    };
-    fnv(&[event, schema, semantics, &inputs.join("\u{1f}")].join("\0"))
+pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result<()> {
+    if events.len() != EVENTS.len() || EVENTS.iter().any(|event| !events.contains_key(*event)) {
+        bail!(
+            "{} must configure only the two preventive concern events",
+            display_relative(path)
+        );
+    }
+    for event in EVENTS {
+        let groups = events[*event].as_array().with_context(|| {
+            format!("{} {event} groups must be an array", display_relative(path))
+        })?;
+        if groups.len() != CONCERNS.len() {
+            bail!(
+                "{} {event} must bind every concern exactly once",
+                display_relative(path)
+            );
+        }
+        for (group, concern) in groups.iter().zip(CONCERNS) {
+            let object = group
+                .as_object()
+                .context("concern group must be an object")?;
+            let handlers = object.get("hooks").and_then(Value::as_array);
+            if object.get("matcher").and_then(Value::as_str) != Some(concern.trigger)
+                || handlers.is_none_or(|items| items.len() != 1)
+            {
+                bail!(
+                    "{} {event} concern topology mismatch: {}",
+                    display_relative(path),
+                    concern.id
+                );
+            }
+            let handler = handlers
+                .and_then(|items| items[0].as_object())
+                .context("handler")?;
+            let command = format!("\"${{PLUGIN_ROOT}}/hooks/{}.sh\" {event}", concern.launcher);
+            let windows = format!(
+                "\"${{PLUGIN_ROOT}}/hooks/{}.cmd\" {event}",
+                concern.launcher
+            );
+            if handler.get("command").and_then(Value::as_str) != Some(command.as_str())
+                || handler.get("commandWindows").and_then(Value::as_str) != Some(windows.as_str())
+            {
+                bail!(
+                    "{} {event} concern entrypoint mismatch: {}",
+                    display_relative(path),
+                    concern.id
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+fn entrypoints(launcher: &str) -> Vec<String> {
+    ["sh", "cmd", "py"]
+        .map(|extension| format!("{launcher}.{extension}"))
+        .to_vec()
+}
+
+fn concern_digest(concern: &Expected) -> String {
+    fnv(&[
+        concern.id,
+        concern.trigger,
+        concern.input,
+        concern.diagnostic,
+        &EVENTS.join("\u{1f}"),
+        &entrypoints(concern.launcher).join("\u{1f}"),
+    ]
+    .join("\0"))
 }
 
 fn contract_digest() -> String {
-    let digests = CAPABILITIES
-        .iter()
-        .map(|(event, schema, preventive, inputs)| {
-            capability_digest(event, schema, *preventive, inputs)
-        })
-        .collect::<Vec<_>>();
+    let digests = CONCERNS.iter().map(concern_digest).collect::<Vec<_>>();
     fnv(&[SCHEMA, &digests.join("\0")].join("\0"))
 }
 
