@@ -17,6 +17,8 @@ class RuntimePackageRootSpellingTests(unittest.TestCase):
     def test_noncanonical_roots_are_rejected_before_extraction(self) -> None:
         cases = {
             "case-variant": f"plugins/CODEXY/runtime/{RUNTIME_NAME}",
+            "windows-trailing-dot": f"plugins/codexy./runtime/{RUNTIME_NAME}",
+            "windows-trailing-space": f"plugins/codexy /runtime/{RUNTIME_NAME}",
             "case-variant-plugins": f"Plugins/codexy/runtime/{RUNTIME_NAME}",
             "windows-separators": rf"plugins\codexy\runtime\{RUNTIME_NAME}",
             "traversal": f"plugins/codexy/../codexy/runtime/{RUNTIME_NAME}",

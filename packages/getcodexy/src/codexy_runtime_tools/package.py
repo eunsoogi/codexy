@@ -209,6 +209,8 @@ def _runtime_archive_roots(archive: Path) -> set[str]:
                 if parts[0] != "plugins" or len(parts) == 1:
                     continue
                 root = parts[1]
+                if root.rstrip(". ") != root:
+                    raise RuntimeError("runtime package has non-canonical plugin root")
                 if root.casefold() in RUNTIME_PLUGIN_ROOTS_FOLDED and root not in RUNTIME_PLUGIN_ROOTS:
                     raise RuntimeError("runtime package has non-canonical plugin root")
                 if root in RUNTIME_PLUGIN_ROOTS:
