@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 import shlex
 
-from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+from .execution_context import ExecutionContext, SINGLE_QUOTED_DOLLAR, assignment
+from .executable_identity import resolve as executable_identity
 
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
 CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
@@ -54,3 +55,19 @@ def dynamic_control_executable(command: str) -> bool:
                 return True
             command_start = False
     return False
+
+
+def contains_policy_executable(
+    command: str, context: ExecutionContext, expected: str,
+) -> bool:
+    """Recognize a resolved policy executable in opaque shell syntax."""
+    try:
+        lexer = shlex.shlex(separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+        lexer.whitespace_split, lexer.commenters = True, ""
+        path = dict(context.environment).get("PATH")
+        return any(
+            executable_identity(token, context.cwd, context.executable_aliases, path) == expected
+            for token in lexer
+        )
+    except ValueError:
+        return True

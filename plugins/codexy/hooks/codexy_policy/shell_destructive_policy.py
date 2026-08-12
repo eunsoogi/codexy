@@ -10,8 +10,8 @@ class DestructivePolicy:
     owns_opaque = staticmethod(destructive_opaque)
 
     @staticmethod
-    def opaque_invocation(tokens: list[str]) -> bool:
-        del tokens
+    def opaque_invocation(tokens: list[str], context: ExecutionContext) -> bool:
+        del tokens, context
         return True
 
     def command(self, invocation, outer: ExecutionContext, depth: int):
@@ -21,7 +21,7 @@ class DestructivePolicy:
             denied, remote, alias = evaluate_git(invocation.arguments, invocation.context)
             if alias is not None:
                 from .shell_evaluator import evaluate
-                denied = evaluate(alias, invocation.context, depth + 1, self)
+                denied = evaluate(alias.command, alias.context, depth + 1, self)
             if remote is None:
                 return denied, CommandEffect(outer)
             if invocation.context.cwd != outer.cwd or invocation.context.git_dir != outer.git_dir:

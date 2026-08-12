@@ -24,8 +24,8 @@ CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 
 
 class Policy(Protocol):
-    def owns_opaque(self, command: str) -> bool: ...
-    def opaque_invocation(self, tokens: list[str]) -> bool: ...
+    def owns_opaque(self, command: str, context: ExecutionContext) -> bool: ...
+    def opaque_invocation(self, tokens: list[str], context: ExecutionContext) -> bool: ...
     def command(
         self, invocation: Invocation, outer: ExecutionContext, depth: int
     ) -> tuple[bool, CommandEffect] | None: ...
@@ -38,7 +38,7 @@ def evaluate(
         return True
     lexical_command = command
     if OPAQUE.search(command):
-        if context.cwd_owned is not False and policy.owns_opaque(command):
+        if context.cwd_owned is not False and policy.owns_opaque(command, context):
             return True
         try:
             opaque_tokens = shlex.split(command)
@@ -58,7 +58,7 @@ def evaluate(
                 return True
         lexical_command = SUBCOMMAND.sub(DYNAMIC_VALUE, command)
         if CONTROL.search(command):
-            return policy.owns_opaque(command) or dynamic_control_executable(command)
+            return policy.owns_opaque(command, context) or dynamic_control_executable(command)
     try:
         lexer = shlex.shlex(
             separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}"
@@ -90,7 +90,7 @@ def _segment(
             invocation.script, invocation.context, depth + 1, policy
         ), CommandEffect(context)
     if invocation.opaque:
-        return policy.opaque_invocation(tokens), CommandEffect(None)
+        return policy.opaque_invocation(tokens, invocation.context), CommandEffect(None)
     if invocation.executable is None:
         return False, CommandEffect(invocation.context)
     if invocation.executable == "false":

@@ -214,7 +214,6 @@ fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &
     concern_launchers::assert_input(root, input, denied, environment)
 }
 
-#[cfg(unix)]
 pub(super) fn executable(name: &str) -> TestResult<PathBuf> {
     std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)
         .map(|directory| directory.join(name))

@@ -12,15 +12,15 @@ class GithubPolicy:
     owns_opaque = staticmethod(github_opaque)
 
     @staticmethod
-    def opaque_invocation(tokens: list[str]) -> bool:
-        return github_opaque(" ".join(tokens))
+    def opaque_invocation(tokens: list[str], context: ExecutionContext) -> bool:
+        return github_opaque(" ".join(tokens), context)
 
     def command(self, invocation, outer: ExecutionContext, depth: int):
         if invocation.executable == "git":
             _, remote, alias = evaluate_git(invocation.arguments, invocation.context)
             if alias is not None:
                 from .shell_evaluator import evaluate
-                denied = evaluate(alias, invocation.context, depth + 1, self)
+                denied = evaluate(alias.command, alias.context, depth + 1, self)
                 return denied, CommandEffect(outer)
             if remote is None:
                 return False, CommandEffect(outer)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, replace
 
 from .execution_context import ExecutionContext, git_config
 from .git_command import normalize as normalize_git
@@ -13,9 +14,15 @@ from .shell_context import flag
 REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.IGNORECASE)
 
 
+@dataclass(frozen=True)
+class AliasCommand:
+    command: str
+    context: ExecutionContext
+
+
 def evaluate(
     args: list[str], context: ExecutionContext
-) -> tuple[bool, tuple[str, str, str] | None, str | None]:
+) -> tuple[bool, tuple[str, str, str] | None, AliasCommand | None]:
     environment_config = git_config(context)
     if environment_config is None:
         return True, None, None
@@ -26,7 +33,11 @@ def evaluate(
     if invocation is None:
         return True, None, None
     if invocation.alias_command is not None:
-        return not invocation.alias_command, None, invocation.alias_command
+        normalized = replace(
+            context, cwd=invocation.cwd, cwd_owned=invocation.cwd_owned,
+            git_dir=invocation.git_dir,
+        )
+        return not invocation.alias_command, None, AliasCommand(invocation.alias_command, normalized)
     if invocation.operation is None:
         return False, None, None
     if invocation.operation == "config":
