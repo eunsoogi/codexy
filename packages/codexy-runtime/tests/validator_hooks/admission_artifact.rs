@@ -1,5 +1,5 @@
 use super::{copy_github as copy, read, text, validate};
-use crate::support::FixtureCommand as Command;
+use crate::support::{FixtureCommand as Command, fixture_native_launcher};
 use std::io::Write as _;
 use std::process::Stdio;
 
@@ -152,7 +152,12 @@ fn real_launchers_hide_interpreter_failures_behind_one_denial()
         "raise RuntimeError('must not leak')\n",
     )?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        let output = Command::new(root.join("hooks/codexy-repository-issue.sh"))
+        let launcher = fixture_native_launcher(
+            cfg!(windows),
+            &root.join("hooks/codexy-repository-issue.sh"),
+        )
+        .ok_or("native repository issue launcher")?;
+        let output = Command::new(launcher)
             .arg(event)
             .env("PLUGIN_ROOT", &root)
             .stdin(Stdio::null())

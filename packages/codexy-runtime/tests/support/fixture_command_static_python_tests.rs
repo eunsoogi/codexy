@@ -1,4 +1,4 @@
-use crate::support::windows_static_python_fixture;
+use crate::support::{fixture_native_launcher, windows_static_python_fixture};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -21,5 +21,19 @@ fn windows_static_python_fixture_accepts_only_allowlisted_fail_closed_policy_pai
     std::fs::write(unrelated.with_extension("cmd"), "@echo off\n")?;
     std::fs::write(unrelated.with_extension("py"), "#!/usr/bin/python3\n")?;
     assert_eq!(windows_static_python_fixture(&unrelated), None);
+    Ok(())
+}
+
+#[test]
+fn native_fixture_launcher_uses_only_the_platform_entrypoint() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let shell = temp.path().join("codexy-repository-issue.sh");
+    let command = temp.path().join("codexy-repository-issue.cmd");
+    std::fs::write(&shell, "#!/bin/sh\n")?;
+    std::fs::write(&command, "@echo off\n")?;
+    assert_eq!(fixture_native_launcher(false, &shell), Some(shell.clone()));
+    assert_eq!(fixture_native_launcher(true, &shell), Some(command.clone()));
+    std::fs::remove_file(command)?;
+    assert_eq!(fixture_native_launcher(true, &shell), None);
     Ok(())
 }

@@ -30,6 +30,14 @@ pub(crate) fn windows_fixture_companion(program: &Path) -> Option<PathBuf> {
     .filter(|companion| companion.is_file())
 }
 
+pub(crate) fn fixture_native_launcher(is_windows: bool, program: &Path) -> Option<PathBuf> {
+    if is_windows {
+        windows_fixture_companion(program)
+    } else {
+        program.is_file().then(|| program.to_path_buf())
+    }
+}
+
 /// A copied concern fixture has a Windows command companion whose sole runtime invocation
 /// is an adjacent Python dispatcher. Test support may run that dispatcher directly when `py`
 /// is unavailable, while preserving the command's `--event` argument contract.

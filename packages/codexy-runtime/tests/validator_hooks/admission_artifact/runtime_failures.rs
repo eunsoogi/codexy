@@ -1,5 +1,6 @@
 use super::{Command, Stdio, copy};
 use super::LAUNCHERS;
+use crate::support::fixture_native_launcher;
 #[cfg(windows)]
 use std::io::Write as _;
 
@@ -49,7 +50,12 @@ fn assert_runtime_denial(
     path: Option<&std::ffi::OsStr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for event in ["PermissionRequest", "PreToolUse"] {
-        let mut command = Command::new(root.join("hooks/codexy-repository-issue.sh"));
+        let launcher = fixture_native_launcher(
+            cfg!(windows),
+            &root.join("hooks/codexy-repository-issue.sh"),
+        )
+        .ok_or("native repository issue launcher")?;
+        let mut command = Command::new(launcher);
         command.arg(event).env("PLUGIN_ROOT", root).stdin(Stdio::null());
         if let Some(path) = path {
             command.env("PATH", path);
