@@ -46,13 +46,7 @@ pub(crate) fn project_modeled_paths(
                 continue;
             }
             let begin = found + prefix.len();
-            let tail = &command[begin..];
-            let end = begin
-                + tail
-                    .find(" && ")
-                    .or_else(|| tail.find(" || "))
-                    .or_else(|| tail.find(';'))
-                    .unwrap_or(tail.len());
+            let end = begin + shell_command_terminator(&command[begin..]);
             if let Some(replacement) = modeled_path_token(&command[begin..end], &convert)? {
                 command.replace_range(begin..end, &replacement);
                 start = begin + replacement.len();
@@ -85,13 +79,7 @@ pub(crate) fn project_modeled_paths(
                 continue;
             }
             let begin = found + prefix.len();
-            let tail = &command[begin..];
-            let end = begin
-                + tail
-                    .find(" && ")
-                    .or_else(|| tail.find(" || "))
-                    .or_else(|| tail.find(';'))
-                    .unwrap_or(tail.len());
+            let end = begin + shell_command_terminator(&command[begin..]);
             let Some((path_begin, path_end)) =
                 modeled_path_operand_bounds(&command[begin..end], prefix == "cp ")
             else {
@@ -113,12 +101,63 @@ pub(crate) fn project_modeled_paths(
 }
 
 fn shell_command_boundary(command: &str, offset: usize) -> bool {
-    command[..offset]
-        .chars()
-        .next_back()
-        .is_none_or(|character| {
-            character.is_whitespace() || matches!(character, ';' | '&' | '|' | '(')
-        })
+    let mut command_start = true;
+    let mut quote = None;
+    let bytes = command.as_bytes();
+    let mut index = 0;
+    while index < offset {
+        let byte = bytes[index];
+        if let Some(active_quote) = quote {
+            if byte == active_quote {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+        match byte {
+            b'\'' | b'\"' => {
+                quote = Some(byte);
+                command_start = false;
+            }
+            b'\\' => {
+                command_start = false;
+                index += 1;
+            }
+            b';' | b'\n' | b'(' => command_start = true,
+            b'&' | b'|' if bytes.get(index + 1) == Some(&byte) => {
+                command_start = true;
+                index += 1;
+            }
+            value if value.is_ascii_whitespace() => {}
+            _ => command_start = false,
+        }
+        index += 1;
+    }
+    quote.is_none() && command_start
+}
+
+fn shell_command_terminator(segment: &str) -> usize {
+    let mut quote = None;
+    let bytes = segment.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if let Some(active_quote) = quote {
+            if byte == active_quote {
+                quote = None;
+            }
+            index += 1;
+            continue;
+        }
+        match byte {
+            b'\'' | b'\"' => quote = Some(byte),
+            b'\\' => index += 1,
+            b';' | b'\n' | b'&' | b'|' => return segment[..index].trim_end().len(),
+            _ => {}
+        }
+        index += 1;
+    }
+    segment.trim_end().len()
 }
 
 fn modeled_path_operand_bounds(segment: &str, copy_source: bool) -> Option<(usize, usize)> {
