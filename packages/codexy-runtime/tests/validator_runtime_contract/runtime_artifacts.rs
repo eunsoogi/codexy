@@ -94,32 +94,34 @@ fn validator_cli_rejects_package_without_native_windows_mcp_dispatcher()
 
 #[test]
 fn validator_cli_rejects_duplicate_server_runtime_bytes() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_to(temp.path())?;
-    select_candidate_platforms(&plugin_root)?;
-    for runtime_name in packaged_runtime_names() {
-        let fixture = if runtime_name.contains("codegraph") {
-            runtime_binary_fixture(&runtime_name.replace("codegraph", "lsp"))
-        } else {
-            runtime_binary_fixture(runtime_name)
-        };
-        write_runtime_fixture(&plugin_root, runtime_name, &fixture)?;
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = copy_plugin_to(temp.path())?;
+        select_candidate_platforms(&plugin_root)?;
+        for runtime_name in packaged_runtime_names() {
+            let fixture = if runtime_name.contains(platform) && runtime_name.contains("codegraph") {
+                runtime_binary_fixture(&runtime_name.replace("codegraph", "lsp"))
+            } else {
+                runtime_binary_fixture(runtime_name)
+            };
+            write_runtime_fixture(&plugin_root, runtime_name, &fixture)?;
+        }
+
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+            .args([
+                "--plugin-root",
+                plugin_root.to_str().ok_or("plugin root path")?,
+                "--check-runtime-artifacts",
+            ])
+            .output()?;
+
+        assert!(!output.status.success(), "{platform} duplicate unexpectedly passed");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("must not contain duplicate native MCP runtime bytes") && stderr.contains(platform),
+            "unexpected stderr for {platform}: {stderr}",
+        );
     }
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-runtime-artifacts",
-        ])
-        .output()?;
-
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("must not contain duplicate native MCP runtime bytes"),
-        "unexpected stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
     Ok(())
 }
 

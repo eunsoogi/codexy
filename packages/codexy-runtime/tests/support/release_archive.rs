@@ -101,10 +101,10 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
     }
     let legacy = workflow_branch(assembly, "legacy-public)");
     for binary in [
-        "plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin",
-        "plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin",
-        "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin",
-        "plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin",
+        "plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin",
+        "plugins/codexy-devtools/runtime/codexy-mcp-codegraph-darwin-arm64.bin",
+        "plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin",
+        "plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin",
     ] {
         assert!(workflow_lines(legacy).any(|line| {
             line.split_whitespace()
@@ -229,7 +229,9 @@ fn complete_plugin_fixture_with_runtime(
                 } else {
                     vec![0x7f, b'E', b'L', b'F']
                 };
-                std::fs::write(&path, header.repeat(1024))?;
+                let mut bytes = header.repeat(1024);
+                bytes[16] = u8::from(server == "codegraph");
+                std::fs::write(&path, bytes)?;
             }
             crate::support::make_executable(&path)?;
         }

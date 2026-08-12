@@ -21,21 +21,31 @@ pub(super) struct CandidateFixture {
 
 impl CandidateFixture {
     pub(super) fn new(wrapper: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::new_with_dispatcher(wrapper, true)
+    }
+
+    pub(super) fn new_without_dispatcher(
+        wrapper: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::new_with_dispatcher(wrapper, false)
+    }
+
+    fn new_with_dispatcher(
+        wrapper: &str,
+        include_dispatcher: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempdir()?;
         let root = temp.path();
         let seed_root = candidate_fixture_seed()?;
         crate::support::copy_dir(seed_root, root)?;
         let plugin = root.join("plugins/codexy-devtools");
-        for server in ["lsp", "codegraph"] {
+        fs::write(plugin.join("mcp/codexy-mcp-devtools"), wrapper)?;
+        if include_dispatcher {
             fs::write(
-                plugin.join("mcp").join(format!("codexy-mcp-{server}")),
-                wrapper,
+                root.join("staged-runtime/codexy-mcp-devtools-windows-x86_64.exe"),
+                "dispatcher-windows\n",
             )?;
         }
-        fs::write(
-            root.join("staged-runtime/codexy-mcp-devtools-windows-x86_64.exe"),
-            "dispatcher-windows\n",
-        )?;
         run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
         run_git(root, &["commit", "-qm", "fixture wrapper"])?;
         let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])? )
@@ -161,7 +171,7 @@ mod tests {
             "mutated script\n",
         )?;
         std::fs::write(
-            first.root().join("plugins/codexy-devtools/mcp/codexy-mcp-lsp"),
+            first.root().join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
             "mutated wrapper\n",
         )?;
 
@@ -170,13 +180,13 @@ mod tests {
             b"mutated script\n"
         );
         assert_eq!(
-            std::fs::read(second.root().join("plugins/codexy-devtools/mcp/codexy-mcp-lsp"))?,
+            std::fs::read(second.root().join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"))?,
             b"second wrapper\n"
         );
         assert_eq!(
             super::run_git(
                 second.root(),
-                &["show", "HEAD:plugins/codexy-devtools/mcp/codexy-mcp-lsp"],
+                &["show", "HEAD:plugins/codexy-devtools/mcp/codexy-mcp-devtools"],
             )?,
             b"second wrapper\n"
         );

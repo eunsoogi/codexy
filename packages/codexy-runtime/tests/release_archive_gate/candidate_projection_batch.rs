@@ -9,10 +9,9 @@ use super::super::{
 };
 use crate::support::FixtureCommand;
 
-const RESET_PATHS: [&str; 5] = [
+const RESET_PATHS: [&str; 4] = [
     ".codex-plugin/plugin.json",
-    "mcp/codexy-mcp-codegraph",
-    "mcp/codexy-mcp-lsp",
+    "mcp/codexy-mcp-devtools",
     "runtime-candidate.json",
     "runtime-release.json",
 ];
@@ -114,7 +113,7 @@ fn assert_invalid_contracts() {
         );
     }
     let missing = BatchFixture::new();
-    std::fs::remove_file(missing.plugin.join(RESET_PATHS[4])).expect("remove reset material");
+    std::fs::remove_file(missing.plugin.join(RESET_PATHS[3])).expect("remove reset material");
     assert!(
         !missing.run_raw(cases_document(&CASES)).status.success(),
         "missing reset material unexpectedly passed"
@@ -230,7 +229,7 @@ fn assert_direct_cli_parity(
     for index in [rejected_index, accepted_index] {
         let (line, succeeds) = CASES[index];
         fixture.reset();
-        let wrapper = fixture.plugin.join("mcp/codexy-mcp-lsp");
+        let wrapper = fixture.plugin.join("mcp/codexy-mcp-devtools");
         let text = std::fs::read_to_string(&wrapper).expect("candidate wrapper");
         std::fs::write(&wrapper, format!("{text}\n{line}\n")).expect("wrapper mutation");
         let output = run_source_projection(&fixture.plugin);

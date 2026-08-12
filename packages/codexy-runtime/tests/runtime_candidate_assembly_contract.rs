@@ -24,18 +24,15 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
             "candidate assembly failed for {declaration:?}: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        for server in ["lsp", "codegraph"] {
-            let wrapper = fs::read_to_string(
-                fixture
-                    .root()
-                    .join("dist/candidate/plugins/codexy-devtools/mcp")
-                    .join(format!("codexy-mcp-{server}")),
-            )?;
-            assert_eq!(
-                wrapper.replace("\r\n", "\n"),
-                wrapper_platform_reads(&ACTIVATED_DECLARATION)
-            );
-        }
+        let wrapper = fs::read_to_string(
+            fixture
+                .root()
+                .join("dist/candidate/plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
+        )?;
+        assert_eq!(
+            wrapper.replace("\r\n", "\n"),
+            wrapper_platform_reads(&ACTIVATED_DECLARATION)
+        );
     }
     Ok(())
 }
@@ -86,17 +83,29 @@ fn candidate_assembly_preserves_wrapper_bytes_while_rewriting_declarations()
                 "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
                 1,
             );
-            for server in ["lsp", "codegraph"] {
-                let wrapper = fs::read(
-                    fixture
-                        .root()
-                        .join("dist/candidate/plugins/codexy-devtools/mcp")
-                        .join(format!("codexy-mcp-{server}")),
-                )?;
-                assert_eq!(wrapper, expected.as_bytes());
-            }
+            let wrapper = fs::read(
+                fixture
+                    .root()
+                    .join("dist/candidate/plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
+            )?;
+            assert_eq!(wrapper, expected.as_bytes());
         }
     }
+    Ok(())
+}
+
+#[test]
+fn candidate_assembly_requires_the_shared_windows_dispatcher()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new_without_dispatcher(FIRST_DECLARATION)?;
+    let output = fixture.assemble();
+    assert!(!output.status.success(), "candidate assembly accepted no dispatcher");
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("codexy-mcp-devtools-windows-x86_64.exe"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 

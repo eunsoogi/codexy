@@ -25,7 +25,7 @@ fn archive_gate_rejects_a_candidate_windows_entrypoint_with_wrong_identity() {
     let (root, plugin_root, archive) = complete_archive_fixture("candidate-entrypoint-identity");
     make_candidate_proven_windows_package(&plugin_root);
     std::fs::write(
-        plugin_root.join("mcp/codexy-mcp-lsp.exe"),
+        plugin_root.join("mcp/codexy-mcp-devtools.exe"),
         b"different entrypoint",
     )
     .expect("mutate entrypoint");
@@ -118,14 +118,12 @@ pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
         ),
     )
     .expect("candidate manifest");
-    for server in ["lsp", "codegraph"] {
-        let wrapper = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
-        let updated = std::fs::read_to_string(&wrapper).expect("wrapper").replace(
-            "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
-            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-        );
-        std::fs::write(wrapper, updated).expect("candidate wrapper");
-    }
+    let wrapper = plugin_root.join("mcp/codexy-mcp-devtools");
+    let updated = std::fs::read_to_string(&wrapper).expect("wrapper").replace(
+        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+    );
+    std::fs::write(wrapper, updated).expect("candidate wrapper");
     let mut windows = vec![0; 4096];
     windows[0..2].copy_from_slice(b"MZ");
     windows[0x3c..0x40].copy_from_slice(&0x80_u32.to_le_bytes());
@@ -135,15 +133,16 @@ pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
     windows[0x94..0x96].copy_from_slice(&0xf0_u16.to_le_bytes());
     windows[0x96..0x98].copy_from_slice(&0x0022_u16.to_le_bytes());
     windows[0x98..0x9a].copy_from_slice(&0x20b_u16.to_le_bytes());
-    for server in ["lsp", "codegraph"] {
+    for (server, marker) in [("lsp", 1), ("codegraph", 2)] {
         let runtime = plugin_root.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
-        std::fs::write(&runtime, &windows).expect("Windows runtime");
-        std::fs::write(
-            plugin_root.join(format!("mcp/codexy-mcp-{server}.exe")),
-            &windows,
-        )
-        .expect("Windows entrypoint");
+        let mut runtime_bytes = windows.clone();
+        runtime_bytes[0x100] = marker;
+        std::fs::write(runtime, runtime_bytes).expect("Windows runtime");
     }
+    let mut dispatcher = windows;
+    dispatcher[0x100] = 3;
+    std::fs::write(plugin_root.join("mcp/codexy-mcp-devtools.exe"), dispatcher)
+        .expect("Windows dispatcher");
     let mut release: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join("runtime-release.json")).expect("release contract"),
     )
