@@ -215,11 +215,7 @@ fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &
 }
 
 pub(super) fn executable(name: &str) -> TestResult<PathBuf> {
-    std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)
-        .map(|directory| directory.join(name))
-        .find(|path| path.is_file())
-        .ok_or_else(|| format!("{name} executable"))
-        .map_err(Into::into)
+    crate::support::executable_path(name).map_err(Into::into)
 }
 
 pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<PathBuf> {

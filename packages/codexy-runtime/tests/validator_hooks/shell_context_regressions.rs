@@ -1,6 +1,8 @@
 use super::admission_runtime::{
     TestResult, assert_case, assert_event_case, executable, plugin_root, repository,
 };
+use crate::support::fixture_hook_path::modeled_path_token;
+use std::path::{Path, PathBuf};
 
 #[test]
 fn git_aliases_keep_the_normalized_repository_context() -> TestResult {
@@ -9,14 +11,16 @@ fn git_aliases_keep_the_normalized_repository_context() -> TestResult {
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
     for (cwd, target, denied) in [(&foreign, &owned, true), (&owned, &foreign, false)] {
+        let git_dir = shell_path(&target.join(".git"))?;
+        let target = shell_path(target)?;
         assert_case(
             &root, cwd,
-            &format!("git -C {} -c alias.wipe='!git reset --hard' wipe", target.display()),
+            &format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
             denied, &[],
         )?;
         assert_case(
             &root, cwd,
-            &format!("git --git-dir={} -c alias.wipe='!git reset --hard' wipe", target.join(".git").display()),
+            &format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
             denied, &[],
         )?;
     }
@@ -33,10 +37,9 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     let printf = executable("printf")?;
     let renamed = workspace.path().join("renamed-tools");
     std::fs::create_dir(&renamed)?;
-    std::fs::copy(&git, renamed.join("git-copy"))?;
-    std::fs::copy(&gh, renamed.join("gh-copy"))?;
-    let copied_printf = renamed.join("printf-copy");
-    std::fs::copy(&printf, &copied_printf)?;
+    copy_tool(&git, &renamed, "git-copy")?;
+    copy_tool(&gh, &renamed, "gh-copy")?;
+    let copied_printf = copy_tool(&printf, &renamed, "printf-copy")?;
     let wrappers = [
         ("command", ""),
         ("env", ""),
@@ -79,4 +82,18 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", printf.display()), false, &[])?;
     }
     Ok(())
+}
+
+fn shell_path(path: &Path) -> TestResult<String> {
+    modeled_path_token(path.to_str().ok_or("path")?, &|value| Ok(value.to_owned()))?
+        .ok_or_else(|| "absolute shell path".into())
+}
+
+fn copy_tool(source: &Path, directory: &Path, name: &str) -> TestResult<PathBuf> {
+    let mut destination = directory.join(name);
+    if let Some(extension) = source.extension() {
+        destination.set_extension(extension);
+    }
+    std::fs::copy(source, &destination)?;
+    Ok(destination)
 }
