@@ -113,6 +113,7 @@ fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestResult {
     assert_sources(records, "hooks.policy-core", &[
         "plugins/codexy/hooks/codexy_policy/__init__.py",
         "plugins/codexy/hooks/codexy_policy/body.py",
+        "plugins/codexy/hooks/codexy_policy/connector.py",
         "plugins/codexy/hooks/codexy_policy/destructive_command.py",
         "plugins/codexy/hooks/codexy_policy/envelope.py",
         "plugins/codexy/hooks/codexy_policy/executable_identity.py",
