@@ -11,6 +11,8 @@ def fail(message: str) -> None:
 archive_path = sys.argv[1]
 max_bytes, max_entries, max_total_bytes = map(int, sys.argv[2:5])
 required_wrappers = set()
+input_root = ("plugins", "codexy-devtools")
+emit_input_root = False
 if len(sys.argv) == 6:
     with open(sys.argv[5], encoding="utf-8") as source:
         required_wrappers = {
@@ -18,9 +20,24 @@ if len(sys.argv) == 6:
             for line in source
             if line.strip()
         }
+elif len(sys.argv) == 7 and sys.argv[5] == "--input-plugin-root":
+    requested_root = tuple(sys.argv[6].split("/"))
+    if requested_root == ("auto",):
+        input_root = ()
+        emit_input_root = True
+    elif requested_root not in {
+        ("plugins", "codexy"),
+        ("plugins", "codexy-devtools"),
+    }:
+        fail(f"unsupported input plugin root: {sys.argv[6]}")
+    else:
+        input_root = requested_root
+elif len(sys.argv) != 5:
+    fail("invalid archive entry checker arguments")
 seen = set()
 seen_canonical = set()
 total_bytes = 0
+detected_root = None
 devices = {
     "con",
     "prn",
@@ -53,7 +70,17 @@ with tarfile.open(archive_path, "r:gz") as archive:
         if canonical_name in seen_canonical:
             fail(f"duplicate archive entries: {canonical_name}")
         seen_canonical.add(canonical_name)
-        if canonical_name != name or parts[:2] != ("plugins", "codexy-devtools"):
+        if canonical_name != name or len(parts) < 2:
+            fail(f"unsafe archive path: {name}")
+        member_root = parts[:2]
+        if input_root:
+            if member_root != input_root:
+                fail(f"unsafe archive path: {name}")
+        elif member_root not in {("plugins", "codexy"), ("plugins", "codexy-devtools")}:
+            fail(f"unsafe archive path: {name}")
+        elif detected_root is None:
+            detected_root = member_root
+        elif member_root != detected_root:
             fail(f"unsafe archive path: {name}")
         if canonical_name in required_wrappers:
             if member.mode & 0o111 == 0:
@@ -76,3 +103,7 @@ with tarfile.open(archive_path, "r:gz") as archive:
 if required_wrappers:
     missing = min(required_wrappers).removeprefix("plugins/codexy-devtools/")
     fail(f"packaged MCP wrapper missing from archive: {missing}")
+if emit_input_root:
+    if detected_root is None:
+        fail("archive lacks a plugin root")
+    print("/".join(detected_root))

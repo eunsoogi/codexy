@@ -20,6 +20,8 @@ mod final_archive;
 mod final_archive_fixture;
 #[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
 mod final_archive_lifecycle;
+#[path = "runtime_publication_activation/legacy_core_archive.rs"]
+mod legacy_core_archive;
 #[path = "runtime_publication_activation/shell_fixtures.rs"]
 mod shell_fixtures;
 #[path = "runtime_publication_activation/staging.rs"]
