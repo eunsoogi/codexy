@@ -29,12 +29,15 @@ codexy/
 |-- .github/workflows/            # repository automation
 |-- plugins/codexy/               # packaged Codexy plugin
 |   |-- .codex-plugin/plugin.json # plugin manifest and marketplace surface
-|   |-- .codex/lsp-client.json    # Codex LSP client config
-|   |-- .mcp.json                 # packaged MCP server registrations
 |   |-- agents/                   # specialist agent definitions
 |   |-- assets/                   # plugin-local visual assets
-|   |-- lsp/                      # LSP server catalog
 |   `-- skills/                   # Codexy skill instructions
+|-- plugins/codexy-devtools/      # optional packaged Codegraph and LSP tooling
+|   |-- .codex-plugin/plugin.json # plugin manifest and marketplace surface
+|   |-- .codex/lsp-client.json    # Codex LSP client config
+|   |-- .mcp.json                 # packaged MCP server registrations
+|   |-- lsp/                      # LSP server catalog
+|   `-- skills/                   # developer tooling instructions
 `-- scripts/                      # repository validators and release helpers
 ```
 
@@ -51,7 +54,7 @@ codexy/
 | Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
 | Orchestration behavior | `plugins/codexy/skills/orchestration/SKILL.md` | Classification, thread, goal, todo, multi-agent, worktree, and token-discipline policy. |
 | Review gate contract | `plugins/codexy/skills/orchestration/references/review-profiles.json` | Closed light/standard/strict reviewer selection; Sentinel is strict-only. |
-| MCP/LSP integration | `plugins/codexy/.mcp.json`, `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
+| MCP/LSP integration | `plugins/codexy-devtools/.mcp.json`, `plugins/codexy-devtools/.codex/lsp-client.json`, `plugins/codexy-devtools/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
 | User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
 | Repository-only skills | `.agents/skills/**/SKILL.md` | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy. |
 | Visual assets | `assets/`, `plugins/codexy/assets/` | MUST keep plugin-local assets available from the manifest. |

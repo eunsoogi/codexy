@@ -34,6 +34,9 @@ mod validator_github_agent_activation;
 #[path = "../validator_prompt_metadata.rs"]
 mod validator_prompt_metadata;
 
+#[path = "../validator_devtools_metadata.rs"]
+mod validator_devtools_metadata;
+
 #[path = "../validator_child_routing_policy.rs"]
 mod validator_child_routing_policy;
 

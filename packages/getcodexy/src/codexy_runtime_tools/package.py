@@ -221,10 +221,15 @@ def _runtime_archive_roots(archive: Path) -> set[str]:
 
 
 def unpack_runtime(*, archive: Path, work: Path, runtime_name: str,
-                   plugin_root: str = "codexy") -> tuple[Path, Path]:
+                   plugin_root: str | None = "codexy") -> tuple[Path, Path]:
+    roots = _runtime_archive_roots(archive)
+    if plugin_root is None:
+        if len(roots) != 1:
+            raise RuntimeError("runtime package contains mixed plugin roots")
+        plugin_root = next(iter(roots))
     if plugin_root not in RUNTIME_PLUGIN_ROOTS:
         raise ValueError(f"runtime package has unsupported plugin root: {plugin_root}")
-    if _runtime_archive_roots(archive) != {plugin_root}:
+    if roots != {plugin_root}:
         raise RuntimeError("runtime package contains mixed plugin roots")
     extracted = work / "package"
     extracted.mkdir()
