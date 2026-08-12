@@ -26,7 +26,8 @@ fn validator_cli_rejects_supported_platform_without_bundled_mcp_runtimes()
         "validator should reject advertised platforms without bundled runtimes"
     );
     assert!(
-        String::from_utf8_lossy(&output.stderr).contains("bundled platforms for lsp must match"),
+        String::from_utf8_lossy(&output.stderr)
+            .contains("codexy-mcp-devtools bundled platforms must match"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -45,14 +46,12 @@ fn validator_cli_rejects_candidate_platform_without_matching_publish_contract()
         serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]);
     std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest)?)?;
     add_windows_runtime_release(&plugin_root)?;
-    for server in ["lsp", "codegraph"] {
-        let wrapper_path = plugin_root.join(format!("mcp/codexy-mcp-{server}"));
-        let wrapper = std::fs::read_to_string(&wrapper_path)?.replace(
-            "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
-            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
-        );
-        std::fs::write(&wrapper_path, wrapper)?;
-    }
+    let wrapper_path = plugin_root.join("mcp/codexy-mcp-devtools");
+    let wrapper = std::fs::read_to_string(&wrapper_path)?.replace(
+        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+    );
+    std::fs::write(&wrapper_path, wrapper)?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([

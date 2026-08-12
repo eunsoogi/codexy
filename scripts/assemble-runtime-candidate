@@ -10,6 +10,9 @@ mkdir -p dist/candidate/plugins
 rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
+if [ -f "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" ]; then
+  mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
+fi
 for platform in darwin-arm64 linux-x86_64; do
   for server in lsp codegraph; do
     chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
@@ -17,10 +20,7 @@ for platform in darwin-arm64 linux-x86_64; do
 done
 
 SOURCE_COMMIT="$SOURCE_COMMIT" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" ROOT="$root" python3 - <<'PY'
-import hashlib
-import json
-import os
-import shutil
+import hashlib, json, os
 
 root = os.environ["ROOT"]
 platforms = {}
@@ -35,151 +35,15 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
 candidate = {
     "schema": "codexy-runtime-candidate/v1",
     "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": os.environ["SOURCE_COMMIT"]},
-    "artifact": {
-        "stagingRunId": int(os.environ["STAGING_RUN_ID"]),
-        "stagingRunAttempt": int(os.environ["STAGING_RUN_ATTEMPT"]),
-    },
+    "artifact": {"stagingRunId": int(os.environ["STAGING_RUN_ID"]), "stagingRunAttempt": int(os.environ["STAGING_RUN_ATTEMPT"])},
     "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
     "platforms": platforms,
 }
 open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
-
 manifest_path = f"{root}/.codex-plugin/plugin.json"
 manifest = json.load(open(manifest_path, encoding="utf-8"))
 manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
 open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) + "\n")
-for server in ("lsp", "codegraph"):
-    wrapper_path = f"{root}/mcp/codexy-mcp-{server}"
-    wrapper = open(wrapper_path, encoding="utf-8", newline="").read()
-    old = 'bundled_platforms="darwin-arm64 linux-x86_64"'
-    new = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
-    lines = wrapper.splitlines(keepends=True)
-    def heredoc_delimiters(line):
-        delimiters = []
-        index = 0
-        quote = None
-        word_start = True
-        while index < len(line):
-            character = line[index]
-            if quote:
-                if character == "\\" and quote == '"':
-                    index += 2
-                    continue
-                if character == quote:
-                    quote = None
-                index += 1
-                continue
-            if character in "'\"":
-                quote = character
-                word_start = False
-                index += 1
-                continue
-            if character == "\\":
-                word_start = False
-                index += 2
-                continue
-            if character == "#" and word_start:
-                break
-            if line[index:index + 2] != "<<":
-                if character.isspace() or character in ";|&()<>":
-                    word_start = True
-                else:
-                    word_start = False
-                index += 1
-                continue
-            index += 2
-            strip_tabs = line[index:index + 1] == "-"
-            index += int(strip_tabs)
-            while line[index:index + 1] in (" ", "\t"):
-                index += 1
-            delimiter_quote = line[index:index + 1]
-            if delimiter_quote in ("'", '"'):
-                index += 1
-                end = line.find(delimiter_quote, index)
-                if end < 0:
-                    raise ValueError("unterminated heredoc delimiter")
-                delimiter = line[index:end]
-                index = end + 1
-            else:
-                end = index
-                while end < len(line) and not line[end].isspace() and line[end] not in ";|&<>()":
-                    end += 1
-                delimiter = line[index:end]
-                index = end
-            if not delimiter:
-                raise ValueError("missing heredoc delimiter")
-            delimiters.append((delimiter, strip_tabs))
-            word_start = False
-        return delimiters
-
-    def continues_line(line):
-        quote = None
-        index = 0
-        while index < len(line):
-            character = line[index]
-            if quote:
-                if character == "\\" and quote == '"':
-                    if index + 1 == len(line):
-                        return True
-                    index += 2
-                    continue
-                if character == quote:
-                    quote = None
-                index += 1
-                continue
-            if character in "'\"":
-                quote = character
-                index += 1
-                continue
-            if character == "\\":
-                if index + 1 == len(line):
-                    return True
-                index += 2
-                continue
-            index += 1
-        return False
-
-    declarations = []
-    heredocs = []
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        source = line.removesuffix("\n").removesuffix("\r")
-        if heredocs:
-            delimiter, strip_tabs = heredocs[0]
-            if (source.lstrip("\t") if strip_tabs else source) == delimiter:
-                heredocs.pop(0)
-            index += 1
-            continue
-        while continues_line(source):
-            index += 1
-            if index == len(lines):
-                raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: unterminated continuation")
-            next_source = lines[index].removesuffix("\n").removesuffix("\r")
-            source = source[:-1] + next_source
-        try:
-            heredocs.extend(heredoc_delimiters(source))
-        except ValueError as error:
-            raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: {error}")
-        if "bundled_platforms" not in source:
-            index += 1
-            continue
-        if source in {old, new}:
-            declarations.append((index, source))
-            index += 1
-            continue
-        reads = source.replace("${bundled_platforms}", "").replace("$bundled_platforms", "")
-        if "bundled_platforms" in reads:
-            raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
-        index += 1
-    if heredocs:
-        raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}: unterminated heredoc")
-    if len(declarations) != 1 or declarations[0][1] not in {old, new}:
-        raise SystemExit(f"candidate wrapper platform declaration mismatch: {wrapper_path}")
-    index, declaration = declarations[0]
-    lines[index] = new + lines[index][len(declaration):]
-    open(wrapper_path, "w", encoding="utf-8", newline="").write("".join(lines))
-    shutil.copyfile(f"{root}/runtime/codexy-mcp-{server}-windows-x86_64.exe", f"{root}/mcp/codexy-mcp-{server}.exe")
 PY
 
 python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
@@ -188,17 +52,13 @@ tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
 SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" python3 - <<'PY'
-import json
-import os
+import json, os
 
 candidate = json.load(open("dist/candidate/plugins/codexy-devtools/runtime-candidate.json"))
 receipt = {
     "schema": "codexy-runtime-candidate-receipt/v1",
     "candidate": candidate,
-    "artifact": {
-        "sha256": os.environ["ARCHIVE_SHA"],
-        "payloadManifestSha256": os.environ["MANIFEST_SHA"],
-    },
+    "artifact": {"sha256": os.environ["ARCHIVE_SHA"], "payloadManifestSha256": os.environ["MANIFEST_SHA"]},
     "provenance": {
         "repositoryId": 1269350143,
         "workflowPath": ".github/workflows/runtime-candidate.yml",

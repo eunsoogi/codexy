@@ -20,6 +20,7 @@ fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::Pat
             std::path::Path::new("runtime-release.json"),
             std::path::Path::new("mcp/codexy-mcp-lsp"),
             std::path::Path::new("mcp/codexy-mcp-codegraph"),
+            std::path::Path::new("mcp/codexy-mcp-devtools"),
         ],
     )?;
     Ok(plugin_root)
@@ -78,16 +79,10 @@ fn write_runtime_fixture(
     std::fs::create_dir_all(runtime_path.parent().expect("runtime parent"))?;
     std::fs::write(&runtime_path, bytes)?;
     make_executable(&runtime_path)?;
-    if runtime_name.contains("windows-x86_64") {
-        let server = if runtime_name.contains("-lsp-") {
-            "lsp"
-        } else {
-            "codegraph"
-        };
-        std::fs::write(
-            plugin_root.join(format!("mcp/codexy-mcp-{server}.exe")),
-            bytes,
-        )?;
+    if runtime_name == "codexy-mcp-lsp-windows-x86_64.exe" {
+        let mut dispatcher = bytes.to_vec();
+        dispatcher[0x100] = 1;
+        std::fs::write(plugin_root.join("mcp/codexy-mcp-devtools.exe"), dispatcher)?;
     }
     Ok(())
 }

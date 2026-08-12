@@ -30,6 +30,9 @@ mod mcp_stdio;
 #[path = "../mcp_wrapper_bootstrap.rs"]
 mod mcp_wrapper_bootstrap;
 
+#[path = "../mcp_runtime_deduplication.rs"]
+mod mcp_runtime_deduplication;
+
 #[path = "../module_owned_package_roots.rs"]
 mod module_owned_package_roots;
 

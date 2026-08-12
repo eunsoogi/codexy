@@ -29,8 +29,8 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
                 |value| value["candidate"]["artifact"]["stagingRunId"] = json!(false),
             )?,
             "wrapper-drift" => fs::write(
-                root.join("plugins/codexy-devtools/mcp/codexy-mcp-lsp"),
-                "#!/bin/sh\nexec uvx --from getcodexy==1.2.1 codexy-mcp-runtime lsp -- \"$@\"\n",
+                root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
+                "#!/bin/sh\nexec uvx --from getcodexy==1.2.1 codexy-mcp-runtime \"$server\" -- \"$@\"\n",
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }

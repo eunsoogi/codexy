@@ -78,7 +78,7 @@ fn install_detected_runtime(runtime: &std::path::Path) -> Result<(), Box<dyn std
 }
 
 #[test]
-fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::error::Error>> {
+fn legacy_wrappers_delegate_to_one_platform_authority() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy-devtools/mcp");
     let authority = std::fs::read_to_string(root.join("runtime-platform.sh"))?;
     support::assert_structured_literals(
@@ -86,25 +86,18 @@ fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::err
         "production runtime platform authority retains real host detection",
         &["uname -s", "uname -m"],
     );
-    let mut normalized_wrappers = Vec::new();
+    let delegate = std::fs::read_to_string(root.join("codexy-mcp-devtools"))?;
+    support::assert_structured_literals(
+        &delegate,
+        "shared runtime platform authority",
+        &[". \"$self_dir/runtime-platform.sh\"", "platform=$(codexy_runtime_platform)"],
+    );
     for server in ["lsp", "codegraph"] {
         let wrapper = std::fs::read_to_string(root.join(format!("codexy-mcp-{server}")))?;
         support::assert_structured_literals(
             &wrapper,
-            "shared runtime platform authority",
-            &[
-                ". \"$self_dir/runtime-platform.sh\"",
-                "platform=$(codexy_runtime_platform)",
-            ],
-        );
-        support::assert_structured_literals(
-            &wrapper,
-            "server-specific runtime selection remains explicit",
-            &[
-                &format!("runtime_name=\"codexy-mcp-{server}-$platform.$runtime_extension\""),
-                &format!("exec uvx --from getcodexy==1.2.2 codexy-mcp-runtime {server}"),
-                &format!("codexy-mcp-{server} requires uvx"),
-            ],
+            "legacy compatibility delegate",
+            &[&format!("exec \"$self_dir/codexy-mcp-devtools\" {server} \"$@\"")],
         );
         support::assert_structured_absent_literals(
             &wrapper,
@@ -116,11 +109,6 @@ fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::err
                 "CODEXY_RUNTIME_ARTIFACTS",
             ],
         );
-        normalized_wrappers.push(wrapper.replace(server, "<server>"));
     }
-    assert_eq!(
-        normalized_wrappers[0], normalized_wrappers[1],
-        "the lsp and codegraph wrappers must keep one shared platform-selection implementation"
-    );
     Ok(())
 }

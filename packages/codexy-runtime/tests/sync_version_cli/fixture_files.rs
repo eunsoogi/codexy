@@ -4,6 +4,8 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     ".agents/plugins/release-publish-contract.json",
     ".agents/plugins/marketplace.json",
     "packages/getcodexy/pyproject.toml",
+    "plugins/codexy-devtools/.mcp.json",
+    "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
     "packages/codexy-runtime/src/version.rs",
     "packages/codexy-runtime/src/version/github_plugin.rs",
     "packages/codexy-runtime/src/version/admission.rs",

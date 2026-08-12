@@ -87,16 +87,18 @@ for platform, inventory in candidate["platforms"].items():
         path = staged / binary["path"]
         if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
             raise SystemExit(f"selected runtime digest mismatch: {binary['path']}")
-        if platform == "windows-x86_64":
-            entrypoint = staged / "mcp" / f"codexy-mcp-{server}.exe"
-            if hashlib.sha256(entrypoint.read_bytes()).hexdigest() != binary["sha256"]:
-                raise SystemExit(f"selected Windows entrypoint digest mismatch: {entrypoint}")
+dispatcher = staged / "mcp/codexy-mcp-devtools.exe"
+if not dispatcher.is_file():
+    raise SystemExit(f"selected Windows dispatcher missing: {dispatcher}")
+for server in ("lsp", "codegraph"):
+    legacy = staged / "mcp" / f"codexy-mcp-{server}.exe"
+    if legacy.exists():
+        raise SystemExit(f"duplicate Windows server entrypoint remains: {legacy}")
 protected = {}
 for path in sorted((staged / "runtime").rglob("*")):
     if path.is_file():
         protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
-for path in sorted((staged / "mcp").glob("*.exe")):
-    protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
+protected[str(dispatcher.relative_to(staged))] = hashlib.sha256(dispatcher.read_bytes()).hexdigest()
 Path(os.environ["PROTECTED"]).write_text(json.dumps(protected, sort_keys=True))
 PY
 
@@ -117,7 +119,7 @@ def excluded(relative: Path) -> bool:
     return relative.parts[0] == "runtime" or relative.name in {
         "runtime-release.json", "runtime-candidate.json",
     } or (
-        relative.parent == Path("mcp") and relative.suffix == ".exe"
+    relative == Path("mcp/codexy-mcp-devtools.exe")
     )
 
 def remove(path: Path) -> None:
@@ -166,13 +168,12 @@ manifest_path = staged / ".codex-plugin/plugin.json"
 manifest = json.loads(manifest_path.read_text())
 manifest["supportedPlatforms"] = platforms
 manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-for server in ("lsp", "codegraph"):
-    wrapper = staged / "mcp" / f"codexy-mcp-{server}"
-    text = wrapper.read_text()
-    bundled = " ".join(platforms)
-    text = text.replace('bundled_platforms="darwin-arm64 linux-x86_64"', f'bundled_platforms="{bundled}"')
-    text = re.sub(r'(?<=exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+', os.environ["RELEASE_TAG"].removeprefix("v"), text)
-    wrapper.write_text(text)
+wrapper = staged / "mcp/codexy-mcp-devtools"
+text = wrapper.read_text()
+bundled = " ".join(platforms)
+text = text.replace('bundled_platforms="darwin-arm64 linux-x86_64"', f'bundled_platforms="{bundled}"')
+text = re.sub(r'(?<=exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+', os.environ["RELEASE_TAG"].removeprefix("v"), text)
+wrapper.write_text(text)
 protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
 for relative, digest in protected.items():
     if hashlib.sha256((staged / relative).read_bytes()).hexdigest() != digest:
@@ -196,8 +197,7 @@ with (
         relative = path.relative_to(root)
         info = archive.gettarinfo(str(path), str(relative))
         if relative.as_posix() in {
-            "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
-            "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
+            "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
         }:
             info.mode = 0o755
         info.uid = info.gid = 0

@@ -27,17 +27,15 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
             display_relative(plugin_root)
         );
     }
-    for server in REQUIRED_RUNTIME_SERVERS {
-        let wrapper_path = plugin_root.join("mcp").join(format!("codexy-mcp-{server}"));
-        let wrapper_platforms = bundled_platforms(&wrapper_path)?;
-        if wrapper_platforms != platforms {
-            bail!(
-                "{} bundled platforms for {server} must match supportedPlatforms: expected {:?}, got {:?}",
-                display_relative(&wrapper_path),
-                platforms,
-                wrapper_platforms
-            );
-        }
+    let wrapper_path = plugin_root.join("mcp/codexy-mcp-devtools");
+    let wrapper_platforms = bundled_platforms(&wrapper_path)?;
+    if wrapper_platforms != platforms {
+        bail!(
+            "{} bundled platforms must match supportedPlatforms: expected {:?}, got {:?}",
+            display_relative(&wrapper_path),
+            platforms,
+            wrapper_platforms
+        );
     }
     check_runtime_build_matrix(&platforms)?;
     crate::validation::release_publish_contract::check_snapshot_contract(&platforms)
@@ -73,10 +71,13 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
                 );
             }
             runtime_binary::check(&runtime_path, platform)?;
-            if platform == "windows-x86_64" {
-                runtime_binary::check_windows_entrypoint_copy(plugin_root, server, &runtime_path)?;
-            }
         }
+    }
+    if platforms
+        .iter()
+        .any(|platform| platform == "windows-x86_64")
+    {
+        runtime_binary::check_windows_dispatcher(plugin_root)?;
     }
     Ok(())
 }

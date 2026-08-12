@@ -43,6 +43,10 @@ impl FinalArchiveFixture {
         fs::write(staged.join("hooks/current-policy.txt"), b"stale policy\n")?;
         let mcp = source.join("mcp");
         fs::create_dir_all(&mcp)?;
+        fs::write(
+            mcp.join("codexy-mcp-devtools"),
+            "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime \"$server\" -- \"$@\"\n",
+        )?;
         for server in ["lsp", "codegraph"] {
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
@@ -64,12 +68,7 @@ impl FinalArchiveFixture {
             }
         }
         fs::create_dir_all(staged.join("mcp"))?;
-        for server in ["lsp", "codegraph"] {
-            fs::copy(
-                staged.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe")),
-                staged.join(format!("mcp/codexy-mcp-{server}.exe")),
-            )?;
-        }
+        fs::write(staged.join("mcp/codexy-mcp-devtools.exe"), b"dispatcher-windows\n")?;
         let candidate = candidate(&staged)?;
         let candidate_bytes = serde_json::to_vec(&candidate)?;
         fs::write(staged.join("runtime-candidate.json"), &candidate_bytes)?;
@@ -195,6 +194,7 @@ impl FinalArchiveFixture {
         Ok(output.stdout)
     }
 
+    #[allow(dead_code)]
     pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("python3")
             .args(["-c", r#"import os, pathlib, re, stat, sys, tarfile

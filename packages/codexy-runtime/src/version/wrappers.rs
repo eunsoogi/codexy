@@ -4,13 +4,7 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::{display_relative, repo_root};
 
-const WRAPPERS: [(&str, &str); 2] = [
-    ("plugins/codexy-devtools/mcp/codexy-mcp-lsp", "lsp"),
-    (
-        "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
-        "codegraph",
-    ),
-];
+const WRAPPER: &str = "plugins/codexy-devtools/mcp/codexy-mcp-devtools";
 const PACKAGE_PREFIX: &str = "getcodexy==";
 
 pub(super) fn check_version(expected: &str) -> Result<()> {
@@ -18,25 +12,28 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
 }
 
 pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
-    for (relative, server) in WRAPPERS {
-        let path = root.join(relative);
-        let actual = wrapper_pin(&path, server)?;
-        if actual != expected {
-            bail!(
-                "version mismatch: {} {PACKAGE_PREFIX}{actual}, public bootstrap={expected}",
-                display_relative(&path)
-            );
-        }
+    let path = root.join(WRAPPER);
+    let path = if path.exists() {
+        path
+    } else {
+        root.join("plugins/codexy-devtools/mcp/codexy-mcp-lsp")
+    };
+    let actual = wrapper_pin(&path)?;
+    if actual != expected {
+        bail!(
+            "version mismatch: {} {PACKAGE_PREFIX}{actual}, public bootstrap={expected}",
+            display_relative(&path)
+        );
     }
     Ok(())
 }
 
-fn wrapper_pin(path: &Path, server: &str) -> Result<String> {
-    let (text, range) = wrapper_pin_with_range(path, server)?;
+fn wrapper_pin(path: &Path) -> Result<String> {
+    let (text, range) = wrapper_pin_with_range(path)?;
     Ok(text[range].to_owned())
 }
 
-fn wrapper_pin_with_range(path: &Path, server: &str) -> Result<(String, Range<usize>)> {
+fn wrapper_pin_with_range(path: &Path) -> Result<(String, Range<usize>)> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
     let dispatch = format!("exec uvx --from {PACKAGE_PREFIX}");
@@ -53,10 +50,11 @@ fn wrapper_pin_with_range(path: &Path, server: &str) -> Result<(String, Range<us
         .map_or(text.len(), |offset| start + offset);
     let version = &text[start..end];
     super::require_semver(version)?;
-    let runtime = format!(" codexy-mcp-runtime {server}");
-    if !text[end..].starts_with(&runtime) {
+    if !text[end..].starts_with(" codexy-mcp-runtime \"$server\"")
+        && !text[end..].starts_with(" codexy-mcp-runtime lsp")
+    {
         bail!(
-            "{} pin must dispatch codexy-mcp-runtime {server}",
+            "{} pin must dispatch the selected codexy-mcp-runtime server",
             display_relative(path)
         );
     }

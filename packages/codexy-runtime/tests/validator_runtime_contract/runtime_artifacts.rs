@@ -60,7 +60,7 @@ fn validator_cli_accepts_packaged_plugin_with_generated_runtime_artifacts()
 }
 
 #[test]
-fn validator_cli_rejects_package_without_native_windows_mcp_entrypoint()
+fn validator_cli_rejects_package_without_native_windows_mcp_dispatcher()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
@@ -72,7 +72,7 @@ fn validator_cli_rejects_package_without_native_windows_mcp_entrypoint()
             &runtime_binary_fixture(runtime_name),
         )?;
     }
-    std::fs::remove_file(plugin_root.join("mcp/codexy-mcp-lsp.exe"))?;
+    std::fs::remove_file(plugin_root.join("mcp/codexy-mcp-devtools.exe"))?;
 
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
@@ -85,7 +85,7 @@ fn validator_cli_rejects_package_without_native_windows_mcp_entrypoint()
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("native Windows MCP entrypoint missing for lsp"),
+            .contains("native Windows MCP dispatcher missing"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );

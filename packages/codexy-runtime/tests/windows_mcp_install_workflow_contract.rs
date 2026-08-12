@@ -18,8 +18,8 @@ fn windows_selected_candidate_proof_preserves_legacy_public_boundary() {
             "Get-FileHash -Algorithm SHA256 $archive",
             "System32/tar.exe",
             "codexy-mcp-$server-windows-x86_64.exe",
-            "codexy-mcp-$server.exe",
-            "$server entrypoint differs from its runtime",
+            "codexy-mcp-devtools.exe",
+            "$server runtime duplicates the shared dispatcher",
         ],
     );
 }

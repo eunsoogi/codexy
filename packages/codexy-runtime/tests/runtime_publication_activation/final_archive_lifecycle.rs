@@ -30,7 +30,7 @@ fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
     let wrapper = Command::new("tar")
         .args(["-xOzf"])
         .arg(&fixture.final_archive)
-        .arg("plugins/codexy-devtools/mcp/codexy-mcp-lsp")
+        .arg("plugins/codexy-devtools/mcp/codexy-mcp-devtools")
         .output()?;
     assert!(wrapper.status.success());
     support::assert_structured_literals(
@@ -78,6 +78,10 @@ impl LifecycleFixture {
         fs::write(plugin.join("runtime-release.json"), b"{\"state\":\"legacy-public\"}\n")?;
         let mcp = plugin.join("mcp");
         fs::create_dir_all(&mcp)?;
+        fs::write(
+            mcp.join("codexy-mcp-devtools"),
+            "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime \"$server\" -- \"$@\"\n",
+        )?;
         for server in ["lsp", "codegraph"] {
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
@@ -93,6 +97,8 @@ impl LifecycleFixture {
         fs::write(staged.join("runtime-candidate.json"), &bytes)?;
         let runtime = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
         fs::write(&runtime, b"#!/bin/sh\nexit 0\n")?;
+        fs::create_dir_all(staged.join("mcp"))?;
+        fs::write(staged.join("mcp/codexy-mcp-devtools.exe"), b"dispatcher\n")?;
         let archive = root.join("staging.tar.gz");
         assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy-devtools").status()?.success());
         let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));

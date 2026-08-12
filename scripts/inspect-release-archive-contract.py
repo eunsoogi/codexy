@@ -13,18 +13,24 @@ CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64
 BATCH_INPUT = "source-projection-batch.json"
 BATCH_RESET_PATHS = (
     ".codex-plugin/plugin.json",
-    "mcp/codexy-mcp-codegraph",
-    "mcp/codexy-mcp-lsp",
+    "mcp/codexy-mcp-devtools",
     "runtime-candidate.json",
     "runtime-release.json",
 )
+
+
+def wrapper_paths(root: Path) -> tuple[Path, ...]:
+    shared = root / "mcp/codexy-mcp-devtools"
+    if shared.is_file():
+        return (shared,)
+    return tuple(root / "mcp" / f"codexy-mcp-{server}" for server in ("lsp", "codegraph"))
 
 
 def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> str:
     lines = text.splitlines(keepends=True)
     declarations = wrapper_declarations(lines, allowed)
     if len(declarations) != 1:
-        raise SystemExit("candidate source projection requires three-platform wrappers")
+        raise SystemExit("candidate wrapper platform declaration mismatch")
     index = declarations[0]
     lines[index] = lines[index].replace(lines[index].rstrip("\r\n"), replacement)
     return "".join(lines)
@@ -39,14 +45,14 @@ def source_projection(root: Path) -> None:
     if manifest.get("supportedPlatforms") != [*PUBLIC_PLATFORMS, "windows-x86_64"]:
         raise SystemExit("candidate source projection requires three-platform manifest")
     wrappers = []
-    for server in ("lsp", "codegraph"):
-        path = root / "mcp" / f"codexy-mcp-{server}"
+    for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
         wrappers.append((path, rewritten_wrapper(text, (CANDIDATE_WRAPPER,), SOURCE_WRAPPER)))
     for path in contracts: path.unlink()
     manifest["supportedPlatforms"] = PUBLIC_PLATFORMS
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    for path, text in wrappers: open(path, "w", encoding="utf-8", newline="").write(text)
+    for path, wrapper in wrappers:
+        open(path, "w", encoding="utf-8", newline="").write(wrapper)
 
 
 def source_projection_batch(root: Path) -> None:
@@ -55,7 +61,7 @@ def source_projection_batch(root: Path) -> None:
     results = []
     for case in document["cases"]:
         restore_batch_snapshot(root, snapshots)
-        wrapper = root / "mcp" / "codexy-mcp-lsp"
+        wrapper = wrapper_paths(root)[0]
         text = open(wrapper, encoding="utf-8", newline="").read()
         open(wrapper, "w", encoding="utf-8", newline="").write(
             f"{text}\n{case['append']}\n"
@@ -115,8 +121,7 @@ def restore_batch_snapshot(root: Path, snapshots: dict[str, bytes]) -> None:
 
 
 def candidate_assembly(root: Path) -> None:
-    for server in ("lsp", "codegraph"):
-        path = root / "mcp" / f"codexy-mcp-{server}"
+    for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
         open(path, "w", encoding="utf-8", newline="").write(rewritten_wrapper(text, (SOURCE_WRAPPER, CANDIDATE_WRAPPER), CANDIDATE_WRAPPER))
 

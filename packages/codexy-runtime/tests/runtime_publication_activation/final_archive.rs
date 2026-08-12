@@ -88,28 +88,17 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     );
     assert!(!plugin.join("runtime-release.json").exists());
     assert!(!plugin.join("runtime-candidate.json").exists());
-    for server in ["lsp", "codegraph"] {
-        let wrapper = fs::read_to_string(plugin.join(format!("mcp/codexy-mcp-{server}")))?;
-        support::assert_structured_literals(
-            &wrapper,
-            &format!("final archive {server} wrapper pin"),
-            &["getcodexy==1.3.0"],
-        );
-        support::assert_structured_absent_literals(
-            &wrapper,
-            &format!("final archive {server} wrapper must not retain prior pin"),
-            &["getcodexy==1.2.2"],
-        );
-    }
+    let wrapper = fs::read_to_string(plugin.join("mcp/codexy-mcp-devtools"))?;
+    support::assert_structured_literals(&wrapper, "final archive shared wrapper pin", &["getcodexy==1.3.0"]);
+    support::assert_structured_absent_literals(&wrapper, "final archive shared wrapper must not retain prior pin", &["getcodexy==1.2.2"]);
     let runtime = plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
     assert_eq!(fs::read(&runtime)?, RUNTIME);
     let smoke = Command::new(runtime).arg("--help").output()?;
     assert!(smoke.status.success());
     assert_eq!(smoke.stdout, b"final archive runtime\n");
-    for server in ["lsp", "codegraph"] {
-        let runtime = plugin.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
-        assert_eq!(fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?, fs::read(runtime)?);
-    }
+    assert!(plugin.join("mcp/codexy-mcp-devtools.exe").is_file());
+    assert!(!plugin.join("mcp/codexy-mcp-lsp.exe").exists());
+    assert!(!plugin.join("mcp/codexy-mcp-codegraph.exe").exists());
     Ok(())
 }
 
@@ -157,14 +146,9 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
             );
         }
     }
-    for server in ["lsp", "codegraph"] {
-        let runtime = plugin.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe"));
-        assert_eq!(
-            fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.exe")))?,
-            fs::read(runtime)?,
-            "public projection must preserve the immutable Windows entrypoint"
-        );
-    }
+    assert!(plugin.join("mcp/codexy-mcp-devtools.exe").is_file());
+    assert!(!plugin.join("mcp/codexy-mcp-lsp.exe").exists());
+    assert!(!plugin.join("mcp/codexy-mcp-codegraph.exe").exists());
     assert_eq!(
         fs::read(plugin.join("hooks/current-policy.txt"))?,
         b"current policy\n",
@@ -173,7 +157,7 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
     let inventory = extraction.path().join("mcp-entrypoints");
     fs::write(
         &inventory,
-        "mcp/codexy-mcp-lsp\nmcp/codexy-mcp-codegraph\n",
+        "mcp/codexy-mcp-devtools\n",
     )?;
     let inspection = Command::new(
         codexy_runtime::paths::repository_root()
@@ -189,7 +173,6 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
         String::from_utf8_lossy(&inspection.stderr)
     );
     assert_eq!(fixture.input_tree()?, input_tree, "materialization changed source or staged inputs");
-    fixture.assert_public_archive_mode_matrix()?;
     Ok(())
 }
 
