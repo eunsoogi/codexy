@@ -1,7 +1,7 @@
 """Owned repository pull-request mutation admission."""
 
 from .envelope import Request
-from .github import connector_admitted
+from .connector import connector_admitted
 
 
 def forbidden(request: Request) -> bool:

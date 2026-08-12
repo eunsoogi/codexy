@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 from .body import has_sections
 from .github_api import forbidden as api_forbidden
@@ -73,21 +72,6 @@ def admitted(mutation: Mutation) -> bool:
     return False if mutation.kind == MutationKind.PR_MERGE else mutation.merge_method == "squash" and message_valid(mutation.number, mutation.title, body)
 
 
-def connector_admitted(tool: str, data: dict[str, Any]) -> bool:
-    operation = tool.rsplit("github_", 1)[-1]
-    if operation == "create_issue":
-        mutation = _connector(MutationKind.ISSUE_CREATE, data, require_title=True, require_body=True)
-    elif operation == "update_issue":
-        mutation = _connector(MutationKind.ISSUE_UPDATE, data, number="issue_number")
-    elif operation == "create_pull_request":
-        mutation = _connector(MutationKind.PR_CREATE, data, require_title=True, require_body=True, issue=True)
-    elif operation == "update_pull_request":
-        mutation = _connector(MutationKind.PR_UPDATE, data, number="pr_number")
-    else:
-        return False
-    return mutation is not None and admitted(mutation)
-
-
 def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: bool | None) -> bool:
     target = _target(args, cwd_owned if gh_repo_owned is None else gh_repo_owned)
     if target is None:
@@ -120,22 +104,6 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
     if not owned:
         return False
     return not admitted(mutation)
-
-
-def _connector(kind: MutationKind, data: dict[str, Any], *, number: str | None = None, require_title: bool = False, require_body: bool = False, issue: bool = False) -> Mutation | None:
-    value = data.get(number) if number is not None else None
-    if number is not None and not positive_int(value):
-        return None
-    title = data.get("title")
-    body = data.get("body")
-    if (require_title or "title" in data) and not isinstance(title, str):
-        return None
-    if (require_body or "body" in data) and not isinstance(body, str):
-        return None
-    linked = data.get("issue") if issue else None
-    if linked is not None and not positive_int(linked):
-        return None
-    return Mutation(kind, True, int(value) if positive_int(value) else None, title, BodyEvidence(body, BodySource.INLINE) if isinstance(body, str) else None, int(linked) if positive_int(linked) else None)
 
 
 def _target(args: list[str], default: bool | None) -> tuple[list[str], bool, str | None] | None:

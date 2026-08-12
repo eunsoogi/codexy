@@ -1,5 +1,4 @@
 use super::{Command, Stdio, copy};
-#[cfg(windows)]
 use super::LAUNCHERS;
 #[cfg(windows)]
 use std::io::Write as _;
@@ -60,6 +59,22 @@ fn assert_runtime_denial(
     Ok(())
 }
 
+#[test]
+fn cmd_launchers_stage_stdout_before_evaluating_child_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    let hooks = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
+    for launcher in LAUNCHERS {
+        let source = std::fs::read_to_string(hooks.join(format!("{launcher}.cmd")))?;
+        let captured = source.find(" > \"%output%\" 2>nul").ok_or("captured stdout")?;
+        let status = source.find("set \"status=%errorlevel%\"").ok_or("captured status")?;
+        let emitted = source.find("type \"%output%\"").ok_or("success-only output")?;
+        let discarded = source.find("del \"%output%\"").ok_or("discarded output")?;
+        let fallback = source.find("goto permission_deny").ok_or("fallback")?;
+        assert!(captured < status && status < emitted && emitted < discarded && discarded < fallback);
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 #[test]
 fn native_windows_launchers_execute_the_packaged_cmd_entrypoints()
@@ -90,4 +105,57 @@ fn native_windows_launchers_execute_the_packaged_cmd_entrypoints()
         }
     }
     Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn native_windows_launchers_discard_partial_child_stdout_before_fallback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = copy(temp.path())?;
+    for launcher in LAUNCHERS {
+        std::fs::write(
+            root.join(format!("hooks/{launcher}.py")),
+            "import sys\nsys.stdout.write('{\\\"partial\\\":')\nsys.exit(1)\n",
+        )?;
+        for event in ["PermissionRequest", "PreToolUse"] {
+            let input = serde_json::json!({
+                "hook_event_name": event,
+                "tool_name": "Bash",
+                "tool_input": null,
+                "cwd": temp.path(),
+            });
+            let mut child = std::process::Command::new("cmd");
+            child.arg("/d").arg("/c")
+                .arg(root.join(format!("hooks/{launcher}.cmd"))).arg(event)
+                .env("PLUGIN_ROOT", &root).stdin(Stdio::piped())
+                .stdout(Stdio::piped()).stderr(Stdio::piped());
+            let mut child = child.spawn()?;
+            child.stdin.take().ok_or("launcher stdin")?
+                .write_all(&serde_json::to_vec(&input)?)?;
+            let output = child.wait_with_output()?;
+            assert!(output.status.success(), "{event} {launcher}");
+            assert!(output.stderr.is_empty(), "{event} {launcher}");
+            let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+            assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
+            assert!(
+                String::from_utf8(output.stdout)?.contains(diagnostic(launcher)),
+                "{event} {launcher}"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn diagnostic(launcher: &str) -> &'static str {
+    match launcher {
+        "codexy-thread-delivery" => "CODEXY_THREAD_DELIVERY_RUNTIME",
+        "codexy-repository-issue" => "CODEXY_REPOSITORY_ISSUE_RUNTIME",
+        "codexy-repository-pull-request" => "CODEXY_REPOSITORY_PULL_REQUEST_RUNTIME",
+        "codexy-repository-merge" => "CODEXY_REPOSITORY_MERGE_RUNTIME",
+        "codexy-repository-github-command" => "CODEXY_REPOSITORY_GITHUB_COMMAND_RUNTIME",
+        "codexy-destructive-command" => "CODEXY_DESTRUCTIVE_COMMAND_RUNTIME",
+        _ => unreachable!("known launcher"),
+    }
 }

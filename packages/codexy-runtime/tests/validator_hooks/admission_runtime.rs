@@ -7,6 +7,8 @@ pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[path = "admission_runtime/concern_launchers.rs"]
 mod concern_launchers;
+#[path = "admission_runtime/connector_inputs.rs"]
+mod connector_inputs;
 
 #[test]
 fn opaque_graphql_mutations_fail_closed_without_blocking_queries() -> TestResult {

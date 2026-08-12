@@ -5,7 +5,9 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
+mod import_parser;
 mod sources;
+use import_parser::imports;
 use sources::{LAUNCHERS, POLICY_SOURCES, Source};
 
 pub(super) fn is_launcher(path: &Path) -> bool {
@@ -133,48 +135,6 @@ fn visit(
     visiting.remove(path);
     closure.insert(path.to_owned());
     Ok(())
-}
-
-fn imports(path: &str, source: &str) -> Result<Vec<String>> {
-    if source.lines().map(str::trim_start).any(|line| {
-        line.starts_with("importlib.")
-            || line.starts_with("__import__(")
-            || line.starts_with("exec(")
-    }) {
-        bail!("packaged admission runtime rejects dynamic imports: {path}");
-    }
-    let mut result = Vec::new();
-    for line in source.lines() {
-        let line = line.trim();
-        let Some((prefix, _)) = line.split_once(" import ") else {
-            continue;
-        };
-        let Some(module) = prefix.strip_prefix("from ") else {
-            continue;
-        };
-        if let Some(module) = module.strip_prefix('.') {
-            if module.is_empty()
-                || !module
-                    .chars()
-                    .all(|value| value.is_ascii_alphanumeric() || value == '_')
-            {
-                bail!("packaged admission runtime rejects ambiguous relative import in {path}");
-            }
-            result.push(format!("codexy_policy/{module}.py"));
-        } else if let Some(module) = module.strip_prefix("codexy_policy.") {
-            if !module
-                .chars()
-                .all(|value| value.is_ascii_alphanumeric() || value == '_' || value == '.')
-            {
-                bail!("packaged admission runtime rejects ambiguous policy import in {path}");
-            }
-            result.push(format!("codexy_policy/{}.py", module.replace('.', "/")));
-        }
-    }
-    if path.starts_with("codexy_policy/") && path != "codexy_policy/__init__.py" {
-        result.push("codexy_policy/__init__.py".to_owned());
-    }
-    Ok(result)
 }
 
 fn check_pinned(hooks: &Path, source: &Source) -> Result<()> {
