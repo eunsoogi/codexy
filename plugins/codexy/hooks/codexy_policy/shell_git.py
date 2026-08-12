@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from .execution_context import ExecutionContext, git_config
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
-from .repository import OWNED, UrlRewrite, identity, rewrite_url
+from .repository import UrlRewrite, identity, rewrite_url
 from .shell_context import flag
 
 REMOTE_URL_CONFIG = re.compile(r"remote\.([A-Za-z0-9._-]+)\.(url|pushurl)", re.IGNORECASE)
@@ -26,8 +26,13 @@ def evaluate(
     environment_config = git_config(context)
     if environment_config is None:
         return True, None, None
+    policy_status = context.policy_status
+    if policy_status is None:
+        return True, None, None
+    owned_identity = context.policy_identity
     invocation = normalize_git(
-        args, context.cwd, context.cwd_owned, context.git_dir, _config_owned,
+        args, context.cwd, context.cwd_owned, context.git_dir,
+        lambda config: _config_owned(config, owned_identity),
         environment_config, context.remote_urls,
     )
     if invocation is None:
@@ -55,7 +60,7 @@ def evaluate(
             return True, None, None
         return False, (invocation.arguments[1], "url", invocation.arguments[2]), None
     push_like = invocation.operation in {"push", "send-pack"}
-    target_owned = explicit_owned(invocation.arguments, list(invocation.rewrites), push_like)
+    target_owned = explicit_owned(invocation.arguments, owned_identity, list(invocation.rewrites), push_like)
     applies = target_owned is True or (
         target_owned is None
         and (context.opaque_repository_state or invocation.cwd_owned is not False)
@@ -81,12 +86,12 @@ def evaluate(
 
 
 def explicit_owned(
-    args: list[str], rewrites: list[UrlRewrite] | None = None, push: bool = False,
+    args: list[str], owned: tuple[str, str, str] | None, rewrites: list[UrlRewrite] | None = None, push: bool = False,
 ) -> bool | None:
     rewritten = [identity(rewrite_url(arg, rewrites or [], push)) for arg in args]
     identities = [item for item in rewritten if item is not None]
-    return None if not identities else OWNED in identities
+    return None if not identities or owned is None else owned in identities
 
 
-def _config_owned(config: str) -> bool:
-    return "=" in config and identity(config.split("=", 1)[1]) == OWNED
+def _config_owned(config: str, owned: tuple[str, str, str] | None) -> bool:
+    return owned is not None and "=" in config and identity(config.split("=", 1)[1]) == owned

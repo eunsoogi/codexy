@@ -68,7 +68,7 @@ set -euo pipefail
 
 pr_number=<explicit-pr-number>
 issue_number=<linked-issue-number>
-repo=eunsoogi/codexy
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 merge_subject="<conventional subject> (#${pr_number})"
 pr_json_file=$(mktemp)
 pr_body_file=$(mktemp)

@@ -98,6 +98,12 @@ fn bash_concerns_have_independent_positive_and_negative_owners() -> TestResult {
         owned.join(".git/config"),
         "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n",
     )?;
+    let policy = owned.join(".codex/repository-github-policy.json");
+    std::fs::create_dir_all(policy.parent().ok_or("policy parent")?)?;
+    std::fs::write(
+        policy,
+        "{\"schema\":\"codexy.repository-github-policy/v1\",\"repository\":\"eunsoogi/codexy\"}",
+    )?;
     for (launcher, command, denied) in [
         ("codexy-repository-github-command", "gh issue create --title invalid", true),
         ("codexy-destructive-command", "gh issue create --title invalid", false),

@@ -65,6 +65,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/merge.py"),
     source!("codexy_policy/pull_request.py"),
     source!("codexy_policy/repository.py"),
+    source!("codexy_policy/repository_policy.py"),
     source!("codexy_policy/shell_destructive.py"),
     source!("codexy_policy/shell_destructive_opaque.py"),
     source!("codexy_policy/shell_destructive_policy.py"),

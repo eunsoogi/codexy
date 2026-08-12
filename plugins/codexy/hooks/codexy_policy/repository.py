@@ -13,9 +13,9 @@ from urllib.parse import urlsplit
 
 from .git_runtime_config import apply_remote_urls, remote_config
 
-OWNED = ("github.com", "eunsoogi", "codexy")
 REMOTE = re.compile(r'^remote "[^"\r\n]+"$')
 SCP = re.compile(r"^(?:[A-Za-z0-9._-]+@)?(?P<host>[A-Za-z0-9.-]+):(?P<path>[^\s?#]+)$")
+from .repository_policy import policy_identity, policy_path_status, read_text_file, worktree_root
 
 
 @dataclass(frozen=True)
@@ -23,23 +23,6 @@ class UrlRewrite:
     prefix: str
     replacement: str
     push_only: bool = False
-
-
-def _text(path: Path) -> str | None:
-    try:
-        info = os.lstat(path)
-        if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-            return None
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-        try:
-            data = os.read(descriptor, 65537)
-        finally:
-            os.close(descriptor)
-        return data.decode("utf-8", "strict") if len(data) <= 65536 else None
-    except (OSError, UnicodeError):
-        return None
-
-
 def identity(url: str) -> tuple[str, str, str] | None:
     match = None if "://" in url else SCP.fullmatch(url)
     if match:
@@ -54,36 +37,52 @@ def identity(url: str) -> tuple[str, str, str] | None:
         return (host, "", "")
     parts = path.removesuffix(".git").split("/")
     return (host, parts[0].lower(), parts[1].lower()) if len(parts) == 2 and all(parts) else None
-
-
 def github_identity(value: str) -> tuple[str, str, str] | None:
     if "://" not in value:
         value = "https://" + value if value.count("/") == 2 else "https://github.com/" + value
     return identity(value)
-
-
+def repository_identity(cwd: str | None = None) -> tuple[str, str, str] | None:
+    """Read the opt-in identity only from this worktree's root policy."""
+    return policy_identity(cwd)
+def repository_policy_status(cwd: str) -> bool | None:
+    """Return valid, absent, or invalid for the single worktree-root policy."""
+    root = worktree_root(Path(cwd))
+    if root is None:
+        return False
+    policy = policy_path_status(root)
+    if policy is False:
+        return False
+    if policy is None:
+        return None
+    owned = repository_identity(cwd)
+    if owned is None:
+        return None
+    return True
 def repository_owned(cwd: str) -> bool | None:
-    return _config_owned(_find_config(Path(cwd)))
-
-
+    if repository_policy_status(cwd) is None:
+        return None
+    owned = repository_identity(cwd)
+    return False if owned is None else _config_owned(_find_config(Path(cwd)), owned)
 def repository_owned_with_rewrites(
     cwd: str, git_dir: str | None, rewrites: list[UrlRewrite], push: bool,
     remote_urls: tuple[tuple[str, str, str], ...] = (),
 ) -> bool | None:
     """Classify repository remotes after command-scoped Git URL rewriting."""
     config = remote_config(cwd, git_dir, push, remote_urls)
+    if repository_policy_status(cwd) is None:
+        return None
+    owned = repository_identity(cwd)
+    if owned is None:
+        return False
     if config:
-        return _config_owned(config, rewrites, push)
-    return _config_owned(_git_config(cwd, git_dir), rewrites, push, remote_urls)
-
-
+        return _config_owned(config, owned, rewrites, push)
+    return _config_owned(_git_config(cwd, git_dir), owned, rewrites, push, remote_urls)
 def git_directory_owned(cwd: str, target: str) -> bool | None:
     path = Path(target)
     if not path.is_absolute():
         path = Path(cwd) / path
-    return _config_owned(_text(path / "config"))
-
-
+    owned = repository_identity(str(path.parent))
+    return False if owned is None else _config_owned(read_text_file(path / "config"), owned)
 def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
     """Return Git's effective aliases across active configuration scopes."""
     command = ["git", "-C", cwd]
@@ -116,8 +115,6 @@ def git_aliases(cwd: str, git_dir: str | None = None) -> dict[str, str] | None:
         return None
     aliases.update(local)
     return aliases
-
-
 def git_url_rewrites(cwd: str, git_dir: str | None = None) -> list[UrlRewrite] | None:
     """Return URL rewrites across every active Git configuration scope."""
     command = ["git", "-C", cwd]
@@ -142,8 +139,6 @@ def git_url_rewrites(cwd: str, git_dir: str | None = None) -> list[UrlRewrite] |
     except UnicodeError:
         return None
     return rewrites
-
-
 def _aliases_from_config(config: str | None) -> dict[str, str] | None:
     if config is None:
         return None
@@ -155,15 +150,11 @@ def _aliases_from_config(config: str | None) -> dict[str, str] | None:
     sections = [section for section in parser.sections() if section.casefold() == "alias"]
     aliases = {key.casefold(): value for section in sections for key, value in parser[section].items()}
     return aliases if all(key and "=" not in key and "\n" not in value and "\r" not in value for key, value in aliases.items()) else None
-
-
 def read_text(cwd: str, target: str) -> str | None:
     path = Path(target)
-    return None if target == "-" else _text(path if path.is_absolute() else Path(cwd) / path)
-
-
+    return None if target == "-" else read_text_file(path if path.is_absolute() else Path(cwd) / path)
 def _config_owned(
-    config: str | None, inline_rewrites: list[UrlRewrite] | None = None, push: bool = False,
+    config: str | None, owned: tuple[str, str, str], inline_rewrites: list[UrlRewrite] | None = None, push: bool = False,
     remote_urls: tuple[tuple[str, str, str], ...] = (),
 ) -> bool | None:
     config = apply_remote_urls(config, remote_urls)
@@ -191,17 +182,13 @@ def _config_owned(
         return None
     if not identities or any(item is None for item in identities):
         return None
-    return OWNED in identities
-
-
+    return owned in identities
 def rewrite_url(value: str, rewrites: list[UrlRewrite], push: bool) -> str:
     matches = [item for item in rewrites if (push or not item.push_only) and value.startswith(item.prefix)]
     if not matches:
         return value
     selected = max(matches, key=lambda item: len(item.prefix))
     return selected.replacement + value[len(selected.prefix):]
-
-
 def _config_rewrites(parser: configparser.ConfigParser) -> list[UrlRewrite]:
     result: list[UrlRewrite] = []
     for section in parser.sections():
@@ -213,15 +200,11 @@ def _config_rewrites(parser: configparser.ConfigParser) -> list[UrlRewrite]:
             if prefix:
                 result.append(UrlRewrite(prefix, match.group(1), push_only))
     return result
-
-
 def _git_config(cwd: str, git_dir: str | None) -> str | None:
     if git_dir is None:
         return _find_config(Path(cwd))
     path = Path(git_dir)
-    return _text((path if path.is_absolute() else Path(cwd) / path) / "config")
-
-
+    return read_text_file((path if path.is_absolute() else Path(cwd) / path) / "config")
 def _find_config(cwd: Path) -> str | None:
     if not cwd.is_absolute():
         return None
@@ -236,14 +219,14 @@ def _find_config(cwd: Path) -> str | None:
         if stat.S_ISLNK(info.st_mode):
             return None
         if stat.S_ISDIR(info.st_mode):
-            return _text(dot_git / "config")
-        marker = _text(dot_git)
+            return read_text_file(dot_git / "config")
+        marker = read_text_file(dot_git)
         if marker is None or len(marker.splitlines()) != 1 or not marker.startswith("gitdir: "):
             return None
         gitdir = Path(marker.splitlines()[0][8:])
         if not gitdir.is_absolute():
             gitdir = dot_git.parent / gitdir
-        common = _text(gitdir.resolve() / "commondir")
+        common = read_text_file(gitdir.resolve() / "commondir")
         target = gitdir.resolve() if common is None else (gitdir.resolve() / common.strip()).resolve()
-        return _text(target / "config")
+        return read_text_file(target / "config")
     return None

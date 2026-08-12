@@ -51,6 +51,13 @@ const CONCERNS: &[Concern] = &[
     },
 ];
 
+const INSTALLED_CONCERNS: &[Concern] = &[Concern {
+    id: "thread-delivery",
+    matcher: "^codex_app__send_message_to_thread$",
+    launcher: "codexy-thread-delivery",
+    diagnostic: "CODEXY_THREAD_DELIVERY_",
+}];
+
 #[test]
 fn packaged_hooks_have_one_ordered_binding_per_concern_and_event()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -61,8 +68,8 @@ fn packaged_hooks_have_one_ordered_binding_per_concern_and_event()
     assert_eq!(events.len(), EVENTS.len(), "only preventive events are retained");
     for event in EVENTS {
         let groups = events[*event].as_array().ok_or("event groups")?;
-        assert_eq!(groups.len(), CONCERNS.len(), "{event} concern coverage");
-        for (group, concern) in groups.iter().zip(CONCERNS) {
+        assert_eq!(groups.len(), INSTALLED_CONCERNS.len(), "{event} concern coverage");
+        for (group, concern) in groups.iter().zip(INSTALLED_CONCERNS) {
             assert_eq!(group["matcher"], concern.matcher, "{} matcher", concern.id);
             let handlers = group["hooks"].as_array().ok_or("handlers")?;
             assert_eq!(handlers.len(), 1, "{} owns one hook", concern.id);
@@ -97,8 +104,8 @@ fn capability_contract_accounts_for_every_concern_once()
     )?)?;
     assert_eq!(contract["schema"], "codexy.hooks.capability-contract.v2");
     let concerns = contract["concerns"].as_array().ok_or("concerns")?;
-    assert_eq!(concerns.len(), CONCERNS.len());
-    for (actual, expected) in concerns.iter().zip(CONCERNS) {
+    assert_eq!(concerns.len(), INSTALLED_CONCERNS.len());
+    for (actual, expected) in concerns.iter().zip(INSTALLED_CONCERNS) {
         assert_eq!(actual["concernId"], expected.id);
         assert_eq!(actual["trigger"], expected.matcher);
         assert_eq!(actual["diagnosticFamily"], expected.diagnostic);

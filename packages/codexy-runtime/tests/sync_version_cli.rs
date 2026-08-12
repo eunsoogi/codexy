@@ -11,6 +11,8 @@ use crate::support::FixtureCommand;
 mod isolation;
 #[path = "sync_version_cli/admission.rs"]
 mod admission;
+#[path = "sync_version_cli/fixture_files.rs"]
+mod fixture_files;
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
@@ -174,38 +176,7 @@ pub(super) fn archive_repository(
         &codexy_runtime::paths::repository_root().join("plugins/codexy/agents"),
         &agents_root,
     )?;
-    for relative in [
-        "packages/codexy-runtime/Cargo.toml",
-        "packages/codexy-runtime/Cargo.lock",
-        ".agents/plugins/release-publish-contract.json",
-        "packages/getcodexy/pyproject.toml",
-        "packages/codexy-runtime/src/version.rs",
-        "packages/codexy-runtime/src/version/admission.rs",
-        "packages/codexy-runtime/src/version/activation.rs",
-        "packages/codexy-runtime/src/version/activation/receipt.rs",
-        "packages/codexy-runtime/src/version/activation/receipt/fields.rs",
-        "packages/codexy-runtime/src/version/bootstrap.rs",
-        "packages/codexy-runtime/src/version/mutation.rs",
-        "packages/codexy-runtime/src/version/wrappers.rs",
-        "packages/codexy-runtime/tests/suites/all.rs",
-        "plugins/codexy/hooks/capability-contract.json",
-        "plugins/codexy/hooks/codexy-thread-delivery.cmd",
-        "plugins/codexy/hooks/codexy-repository-issue.cmd",
-        "plugins/codexy/hooks/codexy-repository-pull-request.cmd",
-        "plugins/codexy/hooks/codexy-repository-merge.cmd",
-        "plugins/codexy/hooks/codexy-repository-github-command.cmd",
-        "plugins/codexy/hooks/codexy-destructive-command.cmd",
-        "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
-        "plugins/codexy/skills/orchestration/references/workflow-profiles.json",
-        "plugins/codexy/skills/orchestration/references/review-profiles.json",
-        "plugins/codexy/skills/orchestration/references/workflow-review-classification.json",
-        "plugins/codexy/skills/orchestration/references/child-routing-policy.json",
-        "plugins/codexy/skills/orchestration/references/routing-evaluation-corpus.json",
-        "plugins/codexy/skills/orchestration/references/routing-evaluation-results.schema.json",
-        "plugins/codexy/skills/orchestration/references/routing-evaluation-results.json",
-        "plugins/codexy/skills/orchestration/SKILL.md",
-        "plugins/codexy/skills/orchestration/agents/openai.yaml",
-    ] {
+    for relative in fixture_files::REPLACED_FILES {
         let destination = repo.join(relative);
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent)?;

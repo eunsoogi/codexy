@@ -4,52 +4,12 @@
       {
         "matcher": "^codex_app__send_message_to_thread$",
         "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PermissionRequest", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(create|update)_issue$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-issue.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-issue.cmd\" PermissionRequest", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(create|update)_pull_request$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-pull-request.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-pull-request.cmd\" PermissionRequest", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.cmd\" PermissionRequest", "timeout": 5}]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd\" PermissionRequest", "timeout": 5}]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd\" PermissionRequest", "timeout": 5}]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "^codex_app__send_message_to_thread$",
         "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PreToolUse", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(create|update)_issue$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-issue.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-issue.cmd\" PreToolUse", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(create|update)_pull_request$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-pull-request.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-pull-request.cmd\" PreToolUse", "timeout": 5}]
-      },
-      {
-        "matcher": "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.cmd\" PreToolUse", "timeout": 5}]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd\" PreToolUse", "timeout": 5}]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd\" PreToolUse", "timeout": 5}]
       }
     ]
   }

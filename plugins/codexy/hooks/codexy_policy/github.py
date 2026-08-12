@@ -10,7 +10,7 @@ from .github_api import forbidden as api_forbidden
 from .github_target import PullRequestSelector, pull_request
 from .merge import cli as cli_merge, positive_int
 from .pull_request import create as pr_create, shell_update
-from .repository import OWNED, github_identity, read_text
+from .repository import github_identity, read_text, repository_identity, repository_policy_status
 from .titles import issue_title
 
 ISSUE_SECTIONS = {"## Problem", "## Scope", "## Acceptance Criteria", "## Verification"}
@@ -72,15 +72,28 @@ def admitted(mutation: Mutation) -> bool:
     return False if mutation.kind == MutationKind.PR_MERGE else mutation.merge_method == "squash" and message_valid(mutation.number, mutation.title, body)
 
 
-def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: bool | None) -> bool:
+def forbidden(
+    args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: bool | None,
+    owned_identity: tuple[str, str, str] | None = None, policy_status: bool | None = None,
+    policy_bound: bool = False,
+) -> bool:
+    if not policy_bound and owned_identity is None:
+        owned_identity = repository_identity(cwd)
+    if not policy_bound:
+        policy_status = repository_policy_status(cwd)
+    if policy_status is None:
+        return True
     target = _target(args, cwd_owned if gh_repo_owned is None else gh_repo_owned)
     if target is None:
         return True
     filtered, default_owned, repository = target
     operation = filtered[:2]
     if filtered[:1] == ["api"]:
-        api_owned = default_owned if repository is None else github_identity(repository) == OWNED
-        return api_forbidden(filtered[1:], api_owned, cwd)
+        api_owned = default_owned if repository is None else github_identity(repository) == owned_identity
+        return api_forbidden(
+            filtered[1:], api_owned, cwd, owned_identity, policy_status,
+            policy_bound=True,
+        )
     if operation == ["pr", "merge"]:
         mutation = _merge(filtered[2:], cwd)
     elif operation == ["pr", "create"]:
@@ -100,7 +113,7 @@ def forbidden(args: list[str], cwd: str, cwd_owned: bool | None, gh_repo_owned: 
         if github_identity(repository) != github_identity(selector_repository):
             return True
     selected_repository = selector_repository or repository
-    owned = default_owned if selected_repository is None else github_identity(selected_repository) == OWNED
+    owned = default_owned if selected_repository is None else github_identity(selected_repository) == owned_identity
     if not owned:
         return False
     return not admitted(mutation)

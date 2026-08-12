@@ -1,0 +1,93 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+case "${1:-}" in
+  "") ;;
+  --root)
+    [ "$#" -eq 2 ] || { printf '%s\n' 'usage: validate-repository-github-policy [--root <repository>]' >&2; exit 2; }
+    REPO_ROOT=$2
+    ;;
+  *)
+    printf '%s\n' 'usage: validate-repository-github-policy [--root <repository>]' >&2
+    exit 2
+    ;;
+esac
+
+python3 -I -B - "$REPO_ROOT" <<'PY'
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+policy = root / ".codex" / "repository-github-policy.json"
+hooks = root / ".codex" / "hooks.json"
+
+try:
+    directory = os.lstat(root / ".codex")
+    if stat.S_ISLNK(directory.st_mode) or not stat.S_ISDIR(directory.st_mode):
+        raise ValueError("must be a regular directory")
+except (OSError, ValueError) as error:
+    raise SystemExit(f"error: .codex invalid: {error}")
+
+def load(path):
+    try:
+        info = os.lstat(path)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode) or info.st_size > 65536:
+            raise ValueError("must be a bounded regular file")
+        with open(path, "rb") as source:
+            text = source.read().decode("utf-8", "strict")
+        def pairs(items):
+            result = {}
+            for key, value in items:
+                if key in result:
+                    raise ValueError("duplicate key")
+                result[key] = value
+            return result
+        return json.loads(text, object_pairs_hook=pairs)
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        raise SystemExit(f"error: {path.relative_to(root)} invalid: {error}")
+
+value = load(policy)
+if set(value) != {"schema", "repository"} or value.get("schema") != "codexy.repository-github-policy/v1":
+    raise SystemExit("error: .codex/repository-github-policy.json schema is invalid")
+repository = value.get("repository")
+if not isinstance(repository, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+", repository) is None:
+    raise SystemExit("error: .codex/repository-github-policy.json repository must be canonical owner/repository")
+
+value = load(hooks)
+if set(value) != {"description", "hooks"} or not isinstance(value["description"], str) or not value["description"]:
+    raise SystemExit("error: .codex/hooks.json top-level contract is invalid")
+launchers = [
+    (r"^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue"),
+    (r"^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request"),
+    (r"^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge"),
+    (r"^Bash$", "codexy-repository-github-command"),
+    (r"^Bash$", "codexy-destructive-command"),
+]
+events = value["hooks"]
+if set(events) != {"PermissionRequest", "PreToolUse"}:
+    raise SystemExit("error: .codex/hooks.json must configure only repository mutation events")
+for event in events:
+    groups = events[event]
+    if not isinstance(groups, list) or len(groups) != len(launchers):
+        raise SystemExit(f"error: .codex/hooks.json {event} must activate every repository concern exactly once")
+    for group, (matcher, launcher) in zip(groups, launchers):
+        expected = f'"$(git rev-parse --show-toplevel)/plugins/codexy/hooks/{launcher}.sh" {event}'
+        expected_windows = (
+            'powershell -NoLogo -NoProfile -NonInteractive -Command '
+            f'"$root = & git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) {{ exit 1 }}; '
+            f"& (Join-Path $root 'plugins/codexy/hooks/{launcher}.cmd') {event}; exit $LASTEXITCODE\""
+        )
+        handlers = group.get("hooks") if isinstance(group, dict) else None
+        if group.get("matcher") != matcher or not isinstance(handlers, list) or len(handlers) != 1:
+            raise SystemExit(f"error: .codex/hooks.json {event} topology is invalid")
+        handler = handlers[0]
+        if not isinstance(handler, dict) or set(handler) != {"type", "command", "commandWindows", "timeout"} or handler.get("type") != "command" or handler.get("command") != expected or handler.get("commandWindows") != expected_windows or handler.get("timeout") != 5:
+            raise SystemExit(f"error: .codex/hooks.json {event} {launcher} contract is invalid")
+print("repository GitHub policy validation ok")
+PY

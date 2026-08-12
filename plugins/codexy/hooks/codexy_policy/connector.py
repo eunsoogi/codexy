@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from .github import BodyEvidence, BodySource, Mutation, MutationKind, admitted
 from .merge import positive_int
-from .repository import OWNED
+from .repository import repository_identity, repository_policy_status
 
 FIELDS = {
     "create_issue": {"assignees", "body", "labels", "milestone", "repository_full_name", "title"},
@@ -18,9 +19,13 @@ FIELDS = {
 }
 
 
-def connector_admitted(tool: str, data: dict[str, Any]) -> bool:
+def connector_admitted(tool: str, data: dict[str, Any], cwd: object) -> bool:
+    if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+        return False
+    if repository_policy_status(cwd) is None:
+        return False
     operation = tool.rsplit("github_", 1)[-1]
-    owned = _owned(operation, data)
+    owned = _owned(operation, data, cwd)
     if owned is None:
         return False
     if not owned:
@@ -40,13 +45,16 @@ def connector_admitted(tool: str, data: dict[str, Any]) -> bool:
     return mutation is not None and admitted(mutation)
 
 
-def _owned(operation: str, data: dict[str, Any]) -> bool | None:
+def _owned(operation: str, data: dict[str, Any], cwd: str) -> bool | None:
     fields = FIELDS.get(operation)
     repository = data.get("repository_full_name")
     if fields is None or set(data).difference(fields) or not isinstance(repository, str):
         return None
     identity = _repository_identity(repository)
-    return identity == OWNED if identity is not None else None
+    if identity is None:
+        return None
+    owned = repository_identity(cwd)
+    return identity == owned if owned is not None else False
 
 
 def _repository_identity(value: str) -> tuple[str, str, str] | None:

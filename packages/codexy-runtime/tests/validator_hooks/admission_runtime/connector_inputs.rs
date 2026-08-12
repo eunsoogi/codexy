@@ -1,4 +1,4 @@
-use super::{TestResult, assert_tool_case, plugin_root};
+use super::{TestResult, assert_input, assert_tool_case, plugin_root};
 use serde_json::{Value, json};
 
 #[test]
@@ -33,6 +33,15 @@ fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> Test
             noncanonical["repository_full_name"] = json!(repository);
             assert_tool_case(&root, tool, noncanonical, true)?;
         }
+    }
+    let missing_cwd = cases()[0].1.clone();
+    for cwd in [Value::Null, json!("relative"), json!({"not":"a path"})] {
+        assert_input(
+            &root,
+            json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codex_apps__github_create_issue","tool_input":missing_cwd.clone(),"cwd":cwd}),
+            true,
+            &[],
+        )?;
     }
     Ok(())
 }

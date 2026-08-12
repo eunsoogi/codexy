@@ -32,15 +32,14 @@ fn discovery_resolves_pathext_candidates_and_rejects_missing_or_ambiguous_inputs
 
 #[test]
 fn modeled_path_projection_touches_only_declared_operands() {
-    let command =
-        "sudo -D /c/work/foreign git status && ln -s /usr/bin/printf left && printf C:unrelated";
+    let command = "printf cd C:\\unrelated && cd C:\\work\\foreign || exit 1 && sudo -D /c/work/foreign git status && ln -s /usr/bin/printf left && printf C:unrelated";
     assert_eq!(
         project_modeled_paths(command, |path| match path {
             "/c/work/foreign" => Ok(r"C:\work\foreign".into()),
             "/usr/bin/printf" => Ok(r"C:\Git\usr\bin\printf".into()),
             other => Err(other.into()),
         }),
-        Ok("sudo -D 'C:\\work\\foreign' git status && ln -s 'C:\\Git\\usr\\bin\\printf' left && printf C:unrelated".into()),
+        Ok("printf cd C:\\unrelated && cd 'C:\\work\\foreign' || exit 1 && sudo -D 'C:\\work\\foreign' git status && ln -s 'C:\\Git\\usr\\bin\\printf' left && printf C:unrelated".into()),
     );
 }
 

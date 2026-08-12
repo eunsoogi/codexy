@@ -1,14 +1,13 @@
-use std::path::{Path, PathBuf};
 use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
-
 use serde_json::{Value, json};
-
 pub(super) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
+use std::path::{Path, PathBuf};
 #[path = "admission_runtime/concern_launchers.rs"]
 mod concern_launchers;
 #[path = "admission_runtime/connector_inputs.rs"]
 mod connector_inputs;
+#[path = "admission_runtime/repository_policy_runtime.rs"]
+mod repository_policy_runtime;
 
 #[test]
 fn opaque_graphql_mutations_fail_closed_without_blocking_queries() -> TestResult {
@@ -50,6 +49,19 @@ fn hash_path_aliases_cannot_disguise_git_mutations() -> TestResult {
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     assert_case(&root, &owned, "hash -p /usr/bin/git safe; safe push --force origin topic", true, &[])?;
     assert_case(&root, &owned, "hash -t git; git status --short", false, &[])
+}
+
+#[test]
+fn repository_governance_requires_project_policy_configuration() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let unconfigured = workspace.path().join("unconfigured");
+    std::fs::create_dir_all(unconfigured.join(".git"))?;
+    std::fs::write(
+        unconfigured.join(".git/config"),
+        "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n",
+    )?;
+    assert_case(&root, &unconfigured, "gh issue create --title invalid", false, &[])
 }
 
 #[test]
@@ -202,9 +214,11 @@ pub(super) fn assert_event_case(root: &Path, event: &str, cwd: &Path, command: &
 }
 
 pub(super) fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, denied: bool) -> TestResult {
+    let workspace = tempfile::tempdir()?;
+    let cwd = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     assert_input(
         root,
-        json!({"hook_event_name":"PreToolUse","tool_name":tool_name,"tool_input":tool_input}),
+        json!({"hook_event_name":"PreToolUse","tool_name":tool_name,"tool_input":tool_input,"cwd":cwd}),
         denied,
         &[],
     )
@@ -222,6 +236,14 @@ pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<Pa
     let path = root.join(name);
     std::fs::create_dir_all(path.join(".git"))?;
     std::fs::write(path.join(".git/config"), format!("[remote \"origin\"]\n\turl = {remote}\n"))?;
+    if remote.contains("eunsoogi/codexy") {
+        let policy = path.join(".codex/repository-github-policy.json");
+        std::fs::create_dir_all(policy.parent().ok_or("policy parent")?)?;
+        std::fs::write(
+            policy,
+            "{\"schema\":\"codexy.repository-github-policy/v1\",\"repository\":\"eunsoogi/codexy\"}",
+        )?;
+    }
     Ok(path)
 }
 

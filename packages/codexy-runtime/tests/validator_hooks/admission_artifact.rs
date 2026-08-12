@@ -12,6 +12,8 @@ const LAUNCHERS: &[&str] = &[
     "codexy-destructive-command",
 ];
 
+const INSTALLED_LAUNCHERS: &[&str] = &["codexy-thread-delivery"];
+
 #[path = "admission_artifact/runtime_failures.rs"]
 mod runtime_failures;
 
@@ -61,14 +63,14 @@ fn validator_rejects_dynamic_cross_concern_policy_imports() -> Result<(), Box<dy
 }
 
 #[test]
-fn packaged_concern_hooks_are_reachable() -> Result<(), Box<dyn std::error::Error>> {
+fn installed_plugin_activates_only_the_generic_core_hook() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     let hooks = read(&root.join("hooks/hooks.json"))?;
     for event in ["PermissionRequest", "PreToolUse"] {
         let groups = hooks["hooks"][event].as_array().ok_or("groups")?;
-        assert_eq!(groups.len(), LAUNCHERS.len());
-        for (group, launcher) in groups.iter().zip(LAUNCHERS) {
+        assert_eq!(groups.len(), INSTALLED_LAUNCHERS.len());
+        for (group, launcher) in groups.iter().zip(INSTALLED_LAUNCHERS) {
             let handler = &group["hooks"][0];
             assert_eq!(handler["type"], "command", "{event} {launcher}");
             assert_eq!(handler["timeout"], 5, "{event} {launcher}");
