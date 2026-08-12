@@ -6,6 +6,7 @@ import re
 import shlex
 
 from .execution_context import ExecutionContext, SINGLE_QUOTED_DOLLAR, assignment
+from .executable_identity import available
 from .invocation import resolve as resolve_invocation
 
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
@@ -82,9 +83,23 @@ def contains_policy_executable(
                 invocation = resolve_invocation(tokens[segment_start:end], context)
                 if invocation is not None and invocation.executable == expected:
                     return True
+                if invocation is not None and (invocation.opaque or invocation.context.opaque_environment):
+                    prefix_free = _without_prefix(tokens[segment_start:end])
+                    fallback = resolve_invocation(prefix_free, context)
+                    if fallback is None or fallback.opaque or fallback.executable == expected:
+                        return True
+                    path = dict(context.environment).get("PATH")
+                    if not prefix_free or not available(prefix_free[0], context.cwd, path):
+                        return True
                 command_start = False
                 index = end - 1
             index += 1
         return False
     except ValueError:
         return True
+
+
+def _without_prefix(tokens: list[str]) -> list[str]:
+    while tokens and (tokens[0] == "!" or assignment(tokens[0])):
+        tokens = tokens[1:]
+    return tokens

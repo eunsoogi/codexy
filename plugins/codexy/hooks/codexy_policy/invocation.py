@@ -40,6 +40,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
             return Invocation(None, [], context, opaque=context.opaque_environment)
         while tokens[:1] == ["!"]:
             tokens = tokens[1:]
+            tokens, context = leading_assignments(tokens, context)
         if not tokens:
             return None
         expanded = expand_tokens(tokens, context)
