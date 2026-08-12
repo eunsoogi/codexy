@@ -92,6 +92,8 @@ fn materializer_projects_an_immutable_legacy_core_candidate_into_devtools()
     assert!(entries.lines().all(|path| !path.ends_with("mcp/codexy-mcp-lsp.exe")));
     assert!(entries.lines().all(|path| !path.ends_with("mcp/codexy-mcp-codegraph.exe")));
     assert!(entries.lines().all(|path| !path.ends_with("mcp/codexy-mcp-devtools.exe")));
+    assert!(entries.lines().all(|path| !path.ends_with("mcp/codexy-mcp-lsp.cmd")));
+    assert!(entries.lines().all(|path| !path.ends_with("mcp/codexy-mcp-codegraph.cmd")));
     let extracted = fixture.root.join("legacy output");
     fs::create_dir(&extracted)?;
     assert!(Command::new("tar")

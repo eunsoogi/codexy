@@ -143,8 +143,19 @@ def main() -> None:
         dispatcher = root / "mcp/codexy-mcp-devtools.exe"
         if platforms == full and not dispatcher.is_file():
             raise SystemExit("public Windows package requires the shared native dispatcher")
+        for server in ("lsp", "codegraph"):
+            delegate = root / "mcp" / f"codexy-mcp-{server}.cmd"
+            expected = (
+                f'@echo off\n"%~dp0codexy-mcp-devtools.exe" {server} %*\n'
+                "exit /b %ERRORLEVEL%\n"
+            ).encode()
+            if platforms == full and (
+                not delegate.is_file() or delegate.read_bytes() != expected
+            ):
+                raise SystemExit(f"public Windows package requires the thin {server} delegate")
         if platforms == legacy:
-            if dispatcher.exists() or any((root / "runtime").glob("*-windows-x86_64.exe")):
+            if (dispatcher.exists() or any((root / "runtime").glob("*-windows-x86_64.exe"))
+                or any((root / "mcp" / f"codexy-mcp-{server}.cmd").exists() for server in ("lsp", "codegraph"))):
                 raise SystemExit("dispatcher-free legacy projection must not package Windows runtime files")
         for platform in platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"

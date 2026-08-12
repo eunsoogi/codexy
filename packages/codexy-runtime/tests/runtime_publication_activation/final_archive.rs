@@ -99,6 +99,16 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
     assert!(plugin.join("mcp/codexy-mcp-devtools.exe").is_file());
     assert!(!plugin.join("mcp/codexy-mcp-lsp.exe").exists());
     assert!(!plugin.join("mcp/codexy-mcp-codegraph.exe").exists());
+    for server in ["lsp", "codegraph"] {
+        assert_eq!(
+            fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.cmd")))?,
+            format!(
+                "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
+            )
+            .as_bytes(),
+            "public archive must retain the non-native {server} Windows delegate"
+        );
+    }
     Ok(())
 }
 
@@ -149,6 +159,9 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
     assert!(plugin.join("mcp/codexy-mcp-devtools.exe").is_file());
     assert!(!plugin.join("mcp/codexy-mcp-lsp.exe").exists());
     assert!(!plugin.join("mcp/codexy-mcp-codegraph.exe").exists());
+    for server in ["lsp", "codegraph"] {
+        assert!(plugin.join(format!("mcp/codexy-mcp-{server}.cmd")).is_file());
+    }
     assert_eq!(
         fs::read(plugin.join("hooks/current-policy.txt"))?,
         b"current policy\n",

@@ -24,6 +24,12 @@ fn public_mcp_servers_share_one_runtime_delegate_without_windows_server_copies()
             legacy.contains(&format!("exec \"$self_dir/codexy-mcp-devtools\" {server} \"$@\"")),
             "{server} legacy entrypoint must remain a transparent delegate"
         );
+        let windows = std::fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.cmd")))?;
+        let expected = format!(
+            "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
+        );
+        assert_eq!(windows, expected.as_bytes(), "{server} Windows entrypoint must be a thin delegate");
+        assert!(!windows.starts_with(b"MZ"), "{server} Windows entrypoint must not contain native bytes");
     }
 
     let delegate = std::fs::read_to_string(plugin.join("mcp/codexy-mcp-devtools"))?;

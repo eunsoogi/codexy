@@ -21,6 +21,8 @@ fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::Pat
             std::path::Path::new("mcp/codexy-mcp-lsp"),
             std::path::Path::new("mcp/codexy-mcp-codegraph"),
             std::path::Path::new("mcp/codexy-mcp-devtools"),
+            std::path::Path::new("mcp/codexy-mcp-lsp.cmd"),
+            std::path::Path::new("mcp/codexy-mcp-codegraph.cmd"),
         ],
     )?;
     Ok(plugin_root)

@@ -4,6 +4,9 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
+#[path = "runtime_binary/windows_delegates.rs"]
+mod windows_delegates;
+
 pub(super) fn artifact_name(server: &str, platform: &str) -> String {
     let extension = if platform == "windows-x86_64" {
         "exe"
@@ -70,6 +73,7 @@ pub(super) fn check_windows_dispatcher(plugin_root: &Path) -> Result<()> {
                 display_relative(&runtime)
             );
         }
+        windows_delegates::check(plugin_root, server)?;
     }
     Ok(())
 }

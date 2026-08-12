@@ -93,6 +93,75 @@ fn validator_cli_rejects_package_without_native_windows_mcp_dispatcher()
 }
 
 #[test]
+fn validator_cli_rejects_package_without_thin_legacy_windows_delegate()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
+    for runtime_name in packaged_runtime_names() {
+        write_runtime_fixture(
+            &plugin_root,
+            runtime_name,
+            &runtime_binary_fixture(runtime_name),
+        )?;
+    }
+    std::fs::remove_file(plugin_root.join("mcp/codexy-mcp-lsp.cmd"))?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-runtime-artifacts",
+        ])
+        .output()?;
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("thin Windows MCP delegate missing"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn validator_cli_rejects_native_windows_legacy_delegate()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = copy_plugin_to(temp.path())?;
+    select_candidate_platforms(&plugin_root)?;
+    for runtime_name in packaged_runtime_names() {
+        write_runtime_fixture(
+            &plugin_root,
+            runtime_name,
+            &runtime_binary_fixture(runtime_name),
+        )?;
+    }
+    std::fs::write(
+        plugin_root.join("mcp/codexy-mcp-lsp.cmd"),
+        runtime_binary_fixture("codexy-mcp-lsp-windows-x86_64.exe"),
+    )?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args([
+            "--plugin-root",
+            plugin_root.to_str().ok_or("plugin root path")?,
+            "--check-runtime-artifacts",
+        ])
+        .output()?;
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("must be the exact thin Windows MCP delegate for lsp"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_cli_rejects_duplicate_server_runtime_bytes() -> Result<(), Box<dyn std::error::Error>> {
     for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
         let temp = tempfile::tempdir()?;
