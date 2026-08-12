@@ -1,6 +1,8 @@
 use anyhow::{Result, bail};
+
 mod lexical;
 use lexical::{Token, dynamic, symbol, tokens, word};
+
 pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
     let tokens = tokens(source);
     if dynamic(&tokens) {
