@@ -1,6 +1,7 @@
+use crate::support::FixtureCommand as Command;
 use serde_json::Value;
 use std::io::Write as _;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
