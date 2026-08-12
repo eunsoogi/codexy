@@ -73,13 +73,13 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable == "env":
             result = wrapper_environment(args, context)
             if result is None:
-                return None
+                return Invocation(None, [], context, opaque=True)
             tokens, context = result
             continue
         if executable in {"nice", "time", "sudo"}:
             result = wrapper_options(executable, args)
             if result is None:
-                return None
+                return Invocation(None, [], context, opaque=True)
             tokens, values = result
             if executable == "sudo" and (directory := values.get("-D") or values.get("--chdir")) is not None:
                 context = at(context, resolve_cwd(context.cwd, directory))
@@ -87,19 +87,19 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable == "timeout":
             result = wrapper_options(executable, args)
             if result is None or len(result[0]) < 2:
-                return None
+                return Invocation(None, [], context, opaque=True)
             tokens = result[0][1:]
             continue
         if executable == "command":
             result = _command(args)
             if result is None:
-                return None
+                return Invocation(None, [], context, opaque=True)
             tokens = result
             continue
         if executable == "exec":
             result = _exec(args)
             if result is None:
-                return None
+                return Invocation(None, [], context, opaque=True)
             tokens = result
             continue
         if executable == "nohup":
@@ -113,7 +113,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable == "xargs":
             result = _xargs(args)
             if result is None:
-                return None
+                return Invocation(None, [], context, opaque=True)
             if not result:
                 return Invocation(None, [], context)
             return Invocation(name(result[0]), result[1:], context, opaque=True)

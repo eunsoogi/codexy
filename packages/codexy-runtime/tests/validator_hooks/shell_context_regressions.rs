@@ -58,6 +58,9 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi", true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi", true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi", false, &[])?;
+        assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' reset --hard; fi", git.display()), true, &[])?;
+        assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' pr merge 551; fi", gh.display()), true, &[])?;
+        assert_event_case(&root, event, &owned, "if true; then command -v printf; fi", false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then {supported}'{}' '%s\\n' safe; fi", copied_printf.display()), false, &[])?;
         for nested in [&exhausted, &beyond] {
             assert_event_case(&root, event, &owned, &format!("if true; then {nested}'{}' reset --hard; fi", git.display()), true, &[])?;
