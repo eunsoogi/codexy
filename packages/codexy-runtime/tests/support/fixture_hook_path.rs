@@ -37,6 +37,30 @@ pub(crate) fn project_modeled_paths(
     convert: impl Fn(&str) -> Result<String, String>,
 ) -> Result<String, String> {
     let mut command = command.to_owned();
+    for prefix in ["cd ", "pushd "] {
+        let mut start = 0;
+        while let Some(found) = command[start..].find(prefix) {
+            let found = start + found;
+            if !shell_command_boundary(&command, found) {
+                start = found + prefix.len();
+                continue;
+            }
+            let begin = found + prefix.len();
+            let tail = &command[begin..];
+            let end = begin
+                + tail
+                    .find(" && ")
+                    .or_else(|| tail.find(" || "))
+                    .or_else(|| tail.find(';'))
+                    .unwrap_or(tail.len());
+            if let Some(replacement) = modeled_path_token(&command[begin..end], &convert)? {
+                command.replace_range(begin..end, &replacement);
+                start = begin + replacement.len();
+            } else {
+                start = end;
+            }
+        }
+    }
     for prefix in ["sudo -D ", "sudo --chdir="] {
         let mut start = 0;
         while let Some(found) = command[start..].find(prefix) {
