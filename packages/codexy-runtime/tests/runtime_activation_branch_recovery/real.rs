@@ -20,6 +20,7 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     metadata::assert_canonical_default_prompt(&fixture.repo)?;
+    metadata::assert_canonical_wrapper_eol(&fixture.repo)?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
     assert_eq!(
         fixture.cargo_invocations()?,

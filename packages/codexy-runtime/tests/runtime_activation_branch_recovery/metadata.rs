@@ -12,6 +12,7 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
+    fs::copy(root.join(".gitattributes"), repo.join(".gitattributes"))?;
     let core_plugin = repo.join("plugins/codexy");
     let plugin = repo.join("plugins/codexy-devtools");
     let mut manifest: Value = serde_json::from_slice(&fs::read(
@@ -87,6 +88,20 @@ pub(super) fn assert_canonical_default_prompt(
             .any(|item| item.as_str().is_some_and(|text| text.contains(retired)))
         {
             return Err(format!("candidate manifest retains retired route {retired}").into());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn assert_canonical_wrapper_eol(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    for wrapper in ["plugins/codexy-devtools/mcp/codexy-mcp-lsp", "plugins/codexy-devtools/mcp/codexy-mcp-codegraph"] {
+        let output = Command::new("git")
+            .args(["check-attr", "text", "eol", "--", wrapper])
+            .current_dir(repo)
+            .output()?;
+        let expected = format!("{wrapper}: text: set\n{wrapper}: eol: lf\n");
+        if !output.status.success() || output.stdout != expected.as_bytes() {
+            return Err(format!("fixture wrapper EOL contract mismatch: {wrapper}").into());
         }
     }
     Ok(())
