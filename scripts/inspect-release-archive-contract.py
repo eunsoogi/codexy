@@ -136,9 +136,16 @@ def main() -> None:
                 raise SystemExit(f"public release archive must not contain {name}")
         manifest = json.loads((root / ".codex-plugin/plugin.json").read_text())
         platforms = manifest.get("supportedPlatforms")
-        expected = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
-        if platforms != expected:
-            raise SystemExit("public release archive must declare darwin/linux/windows")
+        full = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+        legacy = ["darwin-arm64", "linux-x86_64"]
+        if platforms not in (full, legacy):
+            raise SystemExit("public release archive must declare supported runtime platforms")
+        dispatcher = root / "mcp/codexy-mcp-devtools.exe"
+        if platforms == full and not dispatcher.is_file():
+            raise SystemExit("public Windows package requires the shared native dispatcher")
+        if platforms == legacy:
+            if dispatcher.exists() or any((root / "runtime").glob("*-windows-x86_64.exe")):
+                raise SystemExit("dispatcher-free legacy projection must not package Windows runtime files")
         for platform in platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):
