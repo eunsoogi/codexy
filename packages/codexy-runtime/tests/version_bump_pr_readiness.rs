@@ -108,10 +108,10 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "- `scripts/validate-plugin-config --check`",
             "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
             "- `git diff --check`",
-            "- `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title <title>`",
-            "- `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`",
+            "- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`",
+            "- `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`",
             "- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`",
-            "- `plugins/codexy/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`",
+            "- `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`",
         ]
     );
     assert!(body.ends_with("Fixes #301\n"));
@@ -129,7 +129,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "area/release", "area/workflow", "priority/medium", "status/review", "type/ci"
         ]})
     );
-    let hook = Command::new(root.join("plugins/codexy/hooks/codexy-pr-title-check.sh"))
+    let hook = Command::new(root.join("plugins/codexy-github/hooks/codexy-pr-title-check.sh"))
         .args(["--pr-title", title.trim_end()])
         .output()?;
     assert!(
@@ -194,7 +194,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         }))?,
     )?;
     command_passes(
-        Command::new(root.join("plugins/codexy/hooks/codexy-pr-label-check.sh"))
+        Command::new(root.join("plugins/codexy-github/hooks/codexy-pr-label-check.sh"))
             .args(["--pr-state-file", path_text(&pr_state)?]),
         "label hook",
     )?;
@@ -210,7 +210,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     let merge_message = temp.path().join("merge-message.txt");
     fs::write(&merge_message, format!("{} (#999)\n\n{}", title.trim_end(), body))?;
     command_passes(
-        Command::new(root.join("plugins/codexy/hooks/codexy-merge-message-check.sh"))
+        Command::new(root.join("plugins/codexy-github/hooks/codexy-merge-message-check.sh"))
             .args(["--expected-pr", "999", "--expected-issue", "301", "--merge-message-file", path_text(&merge_message)?]),
         "merge-message hook",
     )?;

@@ -56,7 +56,7 @@ fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
     let mut unknown_root = contract.clone(); product(&mut unknown_root, "codexy")["packageRoot"] = serde_json::json!("other"); assert_invalid(root, &unknown_root);
     let mut parallel = contract.clone(); parallel["currentSourceInventory"] = serde_json::json!({"all":"codexy"}); assert_invalid(root, &parallel);
     let mut github_agent = contract.clone(); record(&mut github_agent, "agents.github")["target"] = serde_json::json!("codexy"); assert_invalid(root, &github_agent);
-    assert!(agent_requires_github_skill(root, "plugins/codexy/agents/codexy-weaver.toml")?);
+    assert!(agent_requires_github_skill(root, "plugins/codexy-github/agents/codexy-weaver.toml")?);
     let owned = BTreeMap::from([("plugins/codexy/hooks/codexy_policy/admission.py", "codexy"), ("plugins/codexy/hooks/codexy_policy/github.py", "codexy-github")]);
     assert!(validate_import("plugins/codexy/hooks/codexy_policy/admission.py", "codexy", "from .github import connector_admitted as admitted", &owned).is_err());
     assert!(validate_import("plugins/codexy/hooks/codexy_policy/admission.py", "codexy", "from . import github", &owned).is_err());
@@ -112,49 +112,8 @@ fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestResult {
     let matrix = record_matrix(); if ids != matrix.keys().copied().collect() { return Err("surface-record matrix changed".into()); } for (id, (target, disposition)) in matrix { let record = records.iter().find(|record| record.id == id).ok_or("missing record")?; if (record.target.as_str(), record.disposition.as_str()) != (target, disposition) { return Err(format!("record matrix mismatch: {id}").into()); } }
     assert_sources(records, "hooks.policy-core", &[
         "plugins/codexy/hooks/codexy_policy/__init__.py",
-        "plugins/codexy/hooks/codexy_policy/body.py",
-        "plugins/codexy/hooks/codexy_policy/connector.py",
-        "plugins/codexy/hooks/codexy_policy/destructive_command.py",
         "plugins/codexy/hooks/codexy_policy/envelope.py",
-        "plugins/codexy/hooks/codexy_policy/executable_identity.py",
-        "plugins/codexy/hooks/codexy_policy/execution_context.py",
-        "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
-        "plugins/codexy/hooks/codexy_policy/git_command.py",
-        "plugins/codexy/hooks/codexy_policy/git_options.py",
-        "plugins/codexy/hooks/codexy_policy/git_runtime_config.py",
-        "plugins/codexy/hooks/codexy_policy/github.py",
-        "plugins/codexy/hooks/codexy_policy/github_alias.py",
-        "plugins/codexy/hooks/codexy_policy/github_api.py",
-        "plugins/codexy/hooks/codexy_policy/github_target.py",
-        "plugins/codexy/hooks/codexy_policy/graphql.py",
-        "plugins/codexy/hooks/codexy_policy/graphql_parser.py",
-        "plugins/codexy/hooks/codexy_policy/invocation.py",
-        "plugins/codexy/hooks/codexy_policy/invocation_wrappers.py",
-        "plugins/codexy/hooks/codexy_policy/merge.py",
-        "plugins/codexy/hooks/codexy_policy/pull_request.py",
-        "plugins/codexy/hooks/codexy_policy/repository.py",
-        "plugins/codexy/hooks/codexy_policy/repository_policy.py",
-        "plugins/codexy/hooks/codexy_policy/repository_github_command.py",
-        "plugins/codexy/hooks/codexy_policy/repository_issue.py",
-        "plugins/codexy/hooks/codexy_policy/repository_merge.py",
-        "plugins/codexy/hooks/codexy_policy/repository_pull_request.py",
-        "plugins/codexy/hooks/codexy_policy/shell_builtins.py",
-        "plugins/codexy/hooks/codexy_policy/shell_context.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive_policy.py",
-        "plugins/codexy/hooks/codexy_policy/shell_entry.py",
-        "plugins/codexy/hooks/codexy_policy/shell_evaluator.py",
-        "plugins/codexy/hooks/codexy_policy/shell_git.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github_policy.py",
-        "plugins/codexy/hooks/codexy_policy/shell_groups.py",
-        "plugins/codexy/hooks/codexy_policy/shell_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_sequence.py",
         "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
-        "plugins/codexy/hooks/codexy_policy/titles.py",
-        "plugins/codexy/hooks/codexy_policy/wrappers.py",
     ])?;
     let expected_selectors = registration_selectors(root)?; let actual_selectors: BTreeSet<String> = selector_paths.into_iter().flat_map(|(path, selectors)| selectors.into_iter().map(move |selector| format!("{path}#{selector}"))).collect();
     if actual_selectors != expected_selectors { return Err("MCP registration coverage changed".into()); }
@@ -176,7 +135,7 @@ fn record<'a>(value: &'a mut serde_json::Value, id: &str) -> &'a mut serde_json:
 fn assert_invalid(root: &Path, value: &serde_json::Value) { assert!(validate_contract(root, value).is_err(), "invalid contract was accepted: {value}"); }
 fn assert_sources(records: &[SurfaceRecord], id: &str, expected: &[&str]) -> TestResult { let actual = records.iter().find(|record| record.id == id).ok_or("missing surface record")?.sources.iter().map(String::as_str).collect::<BTreeSet<_>>(); if actual != expected.iter().copied().collect() { return Err(format!("source mismatch for {id}").into()); } Ok(()) }
 fn validate_python_file(root: &Path, source: &str, target: &str, owned: &BTreeMap<&str, &str>) -> TestResult { for line in std::fs::read_to_string(root.join(source))?.lines() { validate_import(source, target, line, owned)?; } Ok(()) }
-fn validate_import(source: &str, target: &str, line: &str, owned: &BTreeMap<&str, &str>) -> TestResult { if let Some(module) = policy_import_module(line) { let dependency = format!("plugins/codexy/hooks/codexy_policy/{module}.py"); let dependency_target = owned.get(dependency.as_str()).ok_or("missing Python import")?; if target == "codexy" && matches!(*dependency_target, "codexy-github" | "codexy-devtools") { return Err(format!("forbidden import {source} -> {dependency}").into()); } } Ok(()) }
+fn validate_import(source: &str, target: &str, line: &str, owned: &BTreeMap<&str, &str>) -> TestResult { if let Some(module) = policy_import_module(line) { let package = source.split_once("/codexy_policy/").map(|(prefix, _)| prefix).or_else(|| source.rsplit_once('/').map(|(prefix, _)| prefix)).ok_or("policy source root")?; let dependency = format!("{package}/codexy_policy/{module}.py"); let dependency_target = owned.get(dependency.as_str()).ok_or("missing Python import")?; if target == "codexy" && matches!(*dependency_target, "codexy-github" | "codexy-devtools") { return Err(format!("forbidden import {source} -> {dependency}").into()); } } Ok(()) }
 fn policy_import_module(line: &str) -> Option<&str> { let line = line.trim(); let tail = line.strip_prefix("from codexy_policy import ").or_else(|| line.strip_prefix("import codexy_policy.")).or_else(|| line.strip_prefix("from codexy_policy.")).or_else(|| line.strip_prefix("from ."))?; let tail = tail.trim_start(); let tail = tail.strip_prefix("import ").unwrap_or(tail); tail.split(|character: char| character == '.' || character == ',' || character.is_whitespace()).find(|part| !part.is_empty()) }
 fn agent_requires_github_skill(root: &Path, source: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let agent: toml::Value = toml::from_str(&std::fs::read_to_string(root.join(source))?)?;
@@ -185,6 +144,6 @@ fn agent_requires_github_skill(root: &Path, source: &str) -> Result<bool, Box<dy
 fn validate_selector(root: &Path, path: &str, selector: &str) -> TestResult { let registrations: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(path))?)?; if selector.is_empty() || path != "plugins/codexy/.mcp.json" || registrations[selector].is_null() { return Err(format!("stale selector: {path}#{selector}").into()); } Ok(()) }
 fn registration_selectors(root: &Path) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> { let registrations: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy/.mcp.json"))?)?; Ok(registrations.as_object().ok_or("MCP registrations must be an object")?.keys().map(|key| format!("plugins/codexy/.mcp.json#{key}")).collect()) }
 fn record_matrix() -> BTreeMap<&'static str, (&'static str, &'static str)> { BTreeMap::from([("hooks.instruction",("codexy","retain")),("hooks.github",("codexy-github","move")),("hooks.policy-core",("codexy","retain")),("skills.core",("codexy","retain")),("skills.github",("codexy-github","move")),("skills.repository",("repository-only","move")),("agents.specialists",("codexy","retain")),("agents.github",("codexy-github","move")),("mcp.codegraph",("codexy-devtools","move")),("mcp.lsp",("codexy-devtools","move")),("mcp.runtimes",("codexy-devtools","move")),("lsp.integration",("codexy-devtools","move")),("runtime.codegraph",("codexy-devtools","move")),("runtime.lsp",("codexy-devtools","move")),("runtime.entrypoints",("codexy-devtools","move")),("runtime.repository",("repository-only","split")),("assets.repository",("repository-only","retain")),("assets.plugin",("codexy","retain")),("repository.governance",("repository-only","retain")),("repository.workflows",("repository-only","retain")),("repository.packaging",("repository-only","split")),("public.core",("codexy","retain")),("public.repository",("repository-only","retain"))]) }
-fn governed_universe(root: &Path) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> { let mut governed = BTreeSet::new(); for path in [".agents/skills",".codex","plugins/codexy/hooks","plugins/codexy/skills","plugins/codexy/agents","plugins/codexy/mcp","plugins/codexy/lsp","assets","plugins/codexy/assets","scripts","packages/codexy-runtime/src/validation","packages/codexy-runtime/tests",".github/workflows","packages/codexy-runtime/src/codegraph","packages/codexy-runtime/src/lsp","packages/codexy-runtime/src/version","packages/codexy-runtime/src/bin","packages/getcodexy"] { governed.extend(files(root.join(path))?); } for path in ["packages/codexy-runtime/src/mcp.rs","packages/codexy-runtime/Cargo.toml","packages/codexy-runtime/Cargo.lock","packages/codexy-runtime/rust-toolchain.toml","packages/codexy-runtime/rustfmt.toml","packages/codexy-runtime/clippy.toml","plugins/codexy/bootstrap-codexy-agents","plugins/codexy/check-codexy-agents","plugins/codexy/runtime-release.json",".agents/plugins/marketplace.json",".agents/plugins/release-publish-contract.json",".agents/plugins/runtime-activation.json","plugins/codexy/.codex/lsp-client.json","plugins/codexy/.codex-plugin/plugin.json","plugins/codexy/agents/openai.yaml","README.md","README.ko.md"] { governed.extend(files(root.join(path))?); } Ok(governed) }
+fn governed_universe(root: &Path) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> { let mut governed = BTreeSet::new(); for path in [".agents/skills",".codex","plugins/codexy/hooks","plugins/codexy/skills","plugins/codexy/agents","plugins/codexy/mcp","plugins/codexy/lsp","plugins/codexy-github/hooks","plugins/codexy-github/skills","plugins/codexy-github/agents","assets","plugins/codexy/assets","scripts","packages/codexy-runtime/src/validation","packages/codexy-runtime/tests",".github/workflows","packages/codexy-runtime/src/codegraph","packages/codexy-runtime/src/lsp","packages/codexy-runtime/src/version","packages/codexy-runtime/src/bin","packages/getcodexy"] { governed.extend(files(root.join(path))?); } for path in ["packages/codexy-runtime/src/mcp.rs","packages/codexy-runtime/Cargo.toml","packages/codexy-runtime/Cargo.lock","packages/codexy-runtime/rust-toolchain.toml","packages/codexy-runtime/rustfmt.toml","packages/codexy-runtime/clippy.toml","plugins/codexy/bootstrap-codexy-agents","plugins/codexy/check-codexy-agents","plugins/codexy/runtime-release.json",".agents/plugins/marketplace.json",".agents/plugins/release-publish-contract.json",".agents/plugins/runtime-activation.json","plugins/codexy/.codex/lsp-client.json","plugins/codexy/.codex-plugin/plugin.json","plugins/codexy/agents/openai.yaml","plugins/codexy-github/.codex-plugin/plugin.json","plugins/codexy-github/agents/openai.yaml","README.md","README.ko.md"] { governed.extend(files(root.join(path))?); } Ok(governed) }
 fn files(path: PathBuf) -> Result<Vec<String>, Box<dyn std::error::Error>> { if path.is_file() { return Ok(vec![repository_identity(codexy_runtime::paths::repository_root(), &path)?]); } let mut found = Vec::new(); for entry in std::fs::read_dir(path)? { found.extend(files(entry?.path())?); } Ok(found) }
 fn repository_identity(root: &Path, path: &Path) -> Result<String, Box<dyn std::error::Error>> { let relative = path.strip_prefix(root)?; let mut components = Vec::new(); for component in relative.components() { match component { std::path::Component::Normal(part) => components.push(part.to_string_lossy().into_owned()), std::path::Component::CurDir => {}, std::path::Component::ParentDir | std::path::Component::RootDir | std::path::Component::Prefix(_) => return Err("unsafe repository-relative path".into()), } } if components.is_empty() { return Err("empty repository-relative path".into()); } Ok(components.join("/")) }

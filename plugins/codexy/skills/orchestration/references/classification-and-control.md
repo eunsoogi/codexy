@@ -76,7 +76,8 @@ edits.
   surfaces; `codexy-weaver` for reconciling parallel lanes, conflict checks,
   main updates, or merge sequencing;
   `codexy-shipwright` for release, packaging, version, marketplace, manifest,
-  tag, or rollback work; and the reviewer selected only by
+  tag, or rollback work; the optional `codexy-github` plugin's `codexy-weaver`
+  for GitHub integration when installed; and the reviewer selected only by
   `review-profiles.json` for the final reviewer gate.
   Orchestration owns planning; generic owning children use the engineering
   workflow for diagnosis, TDD, QA, and refactoring and directly own scoped

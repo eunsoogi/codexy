@@ -1,10 +1,22 @@
 # getcodexy component installation contract
 
 This is the target public contract for the 1.4.0 component-installation CLI.
-It is not implemented by the current 1.3.0 `getcodexy` distribution. The
-normative machine-readable source is
+Its complete component lifecycle is not implemented by the current 1.3.0
+`getcodexy` distribution. The normative machine-readable source is
 `packages/getcodexy/contracts/component-installation-contract.json`; executable
 examples live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
+
+`codexy-github-install` is an optional 1.3.0 getcodexy transaction helper. A
+trusted host may call it with its absolute executable path to install and verify
+`codexy` before `codexy-github` and to project the optional Weaver registration.
+It MUST NOT be required for direct Codex plugin installation: the installed
+GitHub plugin's manifest, skill, agent file, and host-resolved hooks are its
+native activation surface.
+
+`codexy-github-check` is an optional public package command for generic issue
+titles, PR titles, PR label evidence, and merge-message checks. Its inputs are
+captured title, PR-state, and merge-message data; it MUST NOT be given a plugin
+cache or repository-relative executable path.
 
 ## Components and source of truth
 

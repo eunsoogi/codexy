@@ -46,7 +46,7 @@ fi
 if ! gh api graphql --paginate --slurp -f owner="$owner" -f name="$name" -F number="$expected_pr" -f query='
 query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
   repository(owner:$owner, name:$name) { nameWithOwner pullRequest(number:$number) {
-    number baseRefName headRefOid comments(first:100, after:$endCursor) {
+    number baseRefName headRefOid title body comments(first:100, after:$endCursor) {
       nodes { id url body author { login } authorAssociation }
       pageInfo { hasNextPage endCursor }
     }
@@ -57,6 +57,7 @@ query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
 fi
 python3 -I -B "$script_dir/codexy-github-merge-authorization.py" \
   --repo "$repo" --expected-pr "$expected_pr" --expected-head "$head_oid" \
+  --expected-subject "$subject" --body-file "$merge_body_file" \
   --pr-state-file "$pr_state_file" --authorization-file "$authorization_file"
 
 set -- --expected-pr "$expected_pr" --merge-message-file "$merge_payload_file"

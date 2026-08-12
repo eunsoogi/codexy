@@ -71,14 +71,14 @@ MUST read these relative references before acting on the matching surface:
 
 - `references/task-classification.md` and `references/classification-and-control.md` for classification, goal, plan, child execution, multi-agent, codegraph, LSP, and Sentinel discipline.
 - `references/goal-transition-reporting.md` for delegated parent goal-report receipts.
+- `references/plugin-public-contracts.md` when an installed extension invokes `$orchestration` across the Codex plugin boundary.
 - `references/thread-and-worktree-routing.md` for parent/child boundaries, thread discovery, Codex app worktree preflights, and worktree rules.
 - `references/orchestration-loop.md` for intake, plan, dispatch, integration, verification, finish, failure modes, and handoffs.
 - `references/runtime-heartbeats.md` for external waits.
 - `references/parent-stop-preflight.md` for ownership checks before implementation edits.
 - `references/execution-budget.md` for finite child execution and termination.
 - `references/token-efficient.md` for compact event deltas and token discipline.
-- `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
-- `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
+- `references/plain-language-user-replies.md` and `references/natural-korean-responses.md` for user-facing replies and separate machine-readable evidence.
 - `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
 - `references/review-profiles.json` and `references/workflow-review-classification.json` for structured review budgets and exhaustive typed profile selection.
 
@@ -173,8 +173,8 @@ insufficient. Situational routing is:
 - MUST use `codexy-auditor` after implementation for acceptance-criteria,
   readiness, and observable verification passes across CLI, config, GitHub,
   browser, app, plugin, documentation, or workflow surfaces.
-- MUST use `codexy-weaver` for reconciling parallel lanes, conflict checks,
-  main updates, or merge sequencing.
+- When optional `codexy-github` is installed, MUST use its `codexy-weaver` for GitHub integration, conflict checks, main updates, or merge sequencing.
+  Core-only installations MUST report GitHub integration unavailable instead of depending on an extension-private role.
 - MUST use `codexy-shipwright` for release, packaging, version, marketplace,
   manifest, tag, or rollback work.
 - MUST select exactly the reviewer prescribed by machine-owned

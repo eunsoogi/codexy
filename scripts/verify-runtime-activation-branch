@@ -13,6 +13,7 @@ verify_case() {
     .agents/plugins/release-publish-contract.json \
     .agents/plugins/runtime-activation.json \
     plugins/codexy/.codex-plugin/plugin.json \
+    plugins/codexy-github/.codex-plugin/plugin.json \
     packages/codexy-runtime/src/version/bootstrap.rs | LC_ALL=C sort)"
   preserved="$(printf '%s\n' \
     plugins/codexy/mcp/codexy-mcp-codegraph \

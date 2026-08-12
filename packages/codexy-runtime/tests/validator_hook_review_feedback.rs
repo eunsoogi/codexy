@@ -12,7 +12,7 @@ fn validator_rejects_quoted_entrypoint_shell_syntax() -> Result<(), Box<dyn std:
         let temp = tempfile::tempdir()?;
         let root = fixture(temp.path())?;
         std::fs::copy(
-            root.join("hooks/codexy-issue-title-check.sh"),
+            root.join("hooks/codexy-thread-delivery.sh"),
             root.join("hooks").join(name),
         )?;
         set_command(
@@ -56,7 +56,7 @@ fn fixture(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::er
     )?;
     let path = root.join("hooks/hooks.json");
     let mut hooks = read(&path)?;
-    hooks["hooks"]["PostToolUse"] = serde_json::json!([{"hooks":[{"type":"command","command":"\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid","timeout":3}]}]);
+    hooks["hooks"]["PostToolUse"] = serde_json::json!([{"hooks":[{"type":"command","command":"\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PostToolUse","timeout":3}]}]);
     std::fs::write(path, serde_json::to_string_pretty(&hooks)?)?;
     Ok(root)
 }

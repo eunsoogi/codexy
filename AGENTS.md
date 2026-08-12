@@ -42,7 +42,7 @@ codexy/
 
 | Task | Location | Notes |
 | --- | --- | --- |
-| Git, issue, PR, review, merge, labels | `plugins/codexy/skills/git-workflow/SKILL.md` | Executable workflow source of truth. |
+| Git, issue, PR, review, merge, labels | `plugins/codexy-github/skills/git-workflow/SKILL.md` | Optional executable workflow source of truth. |
 | Plugin identity and install surface | `plugins/codexy/.codex-plugin/plugin.json` | MUST keep metadata current. |
 | Marketplace registration | `.agents/plugins/marketplace.json` | Version MUST stay synced with the plugin manifest. |
 | Version bump automation | `.github/workflows/plugin-version-bump.yml` | Uses `scripts/sync-plugin-version`. |
@@ -63,7 +63,7 @@ codexy/
 - MUST keep both README files scoped to the current implemented state of the project.
 - `LICENSE` MUST remain the standard English MIT license text.
 - MUST put executable Git, issue, PR, review, and merge rules in
-  `plugins/codexy/skills/git-workflow/SKILL.md`, not in this file.
+  `plugins/codexy-github/skills/git-workflow/SKILL.md`, not in this file.
 - Codex connector automatic review MUST remain disabled. Before merge, the parent/orchestrator
   MUST request one explicit `@codex review` after the owning child returns the
   profile-selected reviewer PASS on a frozen head;

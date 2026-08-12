@@ -26,7 +26,9 @@ fn validator_rejects_a_missing_retained_capability_contract(
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     std::fs::remove_file(root.join("hooks/capability-contract.json"))?;
-    assert_rejected(&root, "hooks/capability-contract.json")
+    let output = validate(&root)?;
+    assert!(!output.status.success(), "{}", text(&output));
+    Ok(())
 }
 
 #[test]
@@ -95,7 +97,7 @@ fn validator_rejects_missing_reordered_or_cross_platform_concern_bindings(
             }
             "windows" => {
                 groups[0]["hooks"][0]["commandWindows"] = serde_json::json!(
-                    "\"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd\" PreToolUse"
+                    "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PermissionRequest"
                 );
             }
             _ => unreachable!(),

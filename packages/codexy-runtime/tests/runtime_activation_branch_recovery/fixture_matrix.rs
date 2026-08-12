@@ -7,14 +7,14 @@ use std::{
 };
 
 use crate::support::{self, FixtureCommand, make_executable};
-
-const AUTHORIZED: [&str; 7] = [
+const AUTHORIZED: [&str; 8] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
     ".agents/plugins/runtime-activation.json",
     "plugins/codexy/.codex-plugin/plugin.json",
+    "plugins/codexy-github/.codex-plugin/plugin.json",
     "packages/codexy-runtime/src/version/bootstrap.rs",
 ];
 const PRESERVED: [&str; 3] = [
@@ -219,6 +219,7 @@ for path in \
   .agents/plugins/release-publish-contract.json \
   .agents/plugins/runtime-activation.json \
   plugins/codexy/.codex-plugin/plugin.json \
+  plugins/codexy-github/.codex-plugin/plugin.json \
   plugins/codexy/mcp/codexy-mcp-codegraph \
   plugins/codexy/mcp/codexy-mcp-lsp \
   packages/codexy-runtime/src/version/bootstrap.rs

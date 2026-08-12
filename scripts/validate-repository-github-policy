@@ -77,11 +77,15 @@ for event in events:
     if not isinstance(groups, list) or len(groups) != len(launchers):
         raise SystemExit(f"error: .codex/hooks.json {event} must activate every repository concern exactly once")
     for group, (matcher, launcher) in zip(groups, launchers):
-        expected = f'"$(git rev-parse --show-toplevel)/plugins/codexy/hooks/{launcher}.sh" {event}'
+        expected = f'"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/{launcher}.sh" {event}'
         expected_windows = (
-            'powershell -NoLogo -NoProfile -NonInteractive -Command '
-            f'"$root = & git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) {{ exit 1 }}; '
-            f"& (Join-Path $root 'plugins/codexy/hooks/{launcher}.cmd') {event}; exit $LASTEXITCODE\""
+            '"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" '
+            '-NoLogo -NoProfile -NonInteractive -Command '
+            f'"$git = Join-Path $env:ProgramFiles \'Git\\cmd\\git.exe\'; '
+            'if (-not (Test-Path -LiteralPath $git)) { exit 1 }; '
+            '$root = & $git rev-parse --show-toplevel; '
+            'if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; '
+            f"& (Join-Path $root 'plugins/codexy-github/hooks/{launcher}.cmd') {event}; exit $LASTEXITCODE\""
         )
         handlers = group.get("hooks") if isinstance(group, dict) else None
         if group.get("matcher") != matcher or not isinstance(handlers, list) or len(handlers) != 1:

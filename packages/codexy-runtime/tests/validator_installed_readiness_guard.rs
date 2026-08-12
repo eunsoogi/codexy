@@ -6,9 +6,9 @@ use crate::support;
 #[test]
 fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-github");
     support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &plugin_root,
     )?;
     assert!(!plugin_root.join("scripts/validate-plugin-config").exists());
@@ -57,7 +57,7 @@ fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std:
     let state = write_pr_state(
         temp.path(),
         "state.json",
-        r#"{"repository":"eunsoogi/codexy","number":204,"baseRefName":"main","headRefOid":"abc123","comments":[{"id":"IC_204","url":"https://github.com/eunsoogi/codexy/pull/204#issuecomment-204","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #204 BASE main HEAD abc123","author":{"login":"maintainer"},"authorAssociation":"OWNER"}]}"#,
+        r#"{"repository":"eunsoogi/codexy","number":204,"baseRefName":"main","headRefOid":"abc123","title":"fix(workflow): x","body":"Fixes #206\n","comments":[{"id":"IC_204","url":"https://github.com/eunsoogi/codexy/pull/204#issuecomment-204","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #204 BASE main HEAD abc123","author":{"login":"maintainer"},"authorAssociation":"OWNER"}]}"#,
     )?;
     let bin = temp.path().join("bin");
     std::fs::create_dir(&bin)?;
@@ -69,7 +69,7 @@ fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std:
     let run = |valid: bool| -> Result<std::process::Output, Box<dyn std::error::Error>> {
         std::fs::remove_file(&record).ok();
         if !valid {
-            std::fs::write(&state, "{\"repository\":\"eunsoogi/codexy\",\"number\":204,\"baseRefName\":\"main\",\"headRefOid\":\"abc123\",\"comments\":[]}")?;
+            std::fs::write(&state, "{\"repository\":\"eunsoogi/codexy\",\"number\":204,\"baseRefName\":\"main\",\"headRefOid\":\"abc123\",\"title\":\"fix(workflow): x\",\"body\":\"Fixes #206\\n\",\"comments\":[]}")?;
         }
         Ok(Command::new(&wrapper)
             .env("PATH", format!("{}:{}", bin.display(), std::env::var("PATH")?))
@@ -93,9 +93,9 @@ fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std:
 #[test]
 fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-github");
     support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &plugin_root,
     )?;
     assert!(!plugin_root.join("scripts/validate-plugin-config").exists());
@@ -160,7 +160,10 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
             unlabeled.to_str().ok_or("unlabeled state path")?,
         ])
         .output()?;
-    assert!(unconfigured.status.success(), "{}", output_text(&unconfigured));
+    assert!(
+        !unconfigured.status.success(),
+        "generic GitHub labels must not depend on repository-local policy"
+    );
 
     Ok(())
 }

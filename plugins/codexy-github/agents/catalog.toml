@@ -1,0 +1,3 @@
+version = "0.1.0"
+catalog_kind = "plugin-packaged-specialist-agent-files"
+agent_files = ["codexy-weaver.toml"]

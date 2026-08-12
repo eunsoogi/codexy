@@ -62,12 +62,6 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
         model: "gpt-5.6-sol",
         effort: "xhigh",
     },
-    ExpectedAgent {
-        name: "codexy-weaver",
-        filename: "codexy-weaver.toml",
-        model: "gpt-5.6-terra",
-        effort: "medium",
-    },
 ];
 
 #[test]

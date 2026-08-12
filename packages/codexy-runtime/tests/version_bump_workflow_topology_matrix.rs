@@ -88,11 +88,11 @@ refresh_version_pr_snapshot
 publish_version_pr_metadata "$publication_phase"
 scripts/build-version-pr-state \
   --output "$state_dir/pr-state.json"
-plugins/codexy/hooks/codexy-pr-label-check.sh \
+plugins/codexy-github/hooks/codexy-pr-label-check.sh \
   --pr-state-file "$state_dir/pr-state.json"
 scripts/validate-plugin-config --check-completion-handoff \
   --pr-state-file "$state_dir/pr-state.json"
-plugins/codexy/hooks/codexy-merge-message-check.sh \
+plugins/codexy-github/hooks/codexy-merge-message-check.sh \
   --merge-message-file "$state_dir/merge-message.txt"
 publication_phase=$(scripts/plan-version-pr-reconciliation \
   --merge-message-checked true)

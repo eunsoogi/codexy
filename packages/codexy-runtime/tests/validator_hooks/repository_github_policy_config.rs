@@ -37,7 +37,7 @@ fn write_config(root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>
         ("^Bash$", "codexy-repository-github-command"),
         ("^Bash$", "codexy-destructive-command"),
     ];
-    let event = |name: &str| groups.iter().map(|(matcher, launcher)| serde_json::json!({"matcher":matcher,"hooks":[{"type":"command","command":format!("\"$(git rev-parse --show-toplevel)/plugins/codexy/hooks/{launcher}.sh\" {name}"),"commandWindows":format!("powershell -NoLogo -NoProfile -NonInteractive -Command \"$root = & git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) {{ exit 1 }}; & (Join-Path $root 'plugins/codexy/hooks/{launcher}.cmd') {name}; exit $LASTEXITCODE\""),"timeout":5}]})).collect::<Vec<_>>();
+    let event = |name: &str| groups.iter().map(|(matcher, launcher)| serde_json::json!({"matcher":matcher,"hooks":[{"type":"command","command":format!("\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/{launcher}.sh\" {name}"),"commandWindows":format!("\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) {{ exit 1 }}; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) {{ exit 1 }}; & (Join-Path $root 'plugins/codexy-github/hooks/{launcher}.cmd') {name}; exit $LASTEXITCODE\""),"timeout":5}]})).collect::<Vec<_>>();
     let hooks = serde_json::json!({"description":"Codexy repository GitHub governance hooks.","hooks":{"PermissionRequest":event("PermissionRequest"),"PreToolUse":event("PreToolUse")}});
     std::fs::write(codex.join("hooks.json"), serde_json::to_vec(&hooks)?)?;
     Ok(())

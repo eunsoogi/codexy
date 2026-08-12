@@ -90,7 +90,7 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
 
 #[test]
 fn bash_concerns_have_independent_positive_and_negative_owners() -> TestResult {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
     let workspace = tempfile::tempdir()?;
     let owned = workspace.path().join("owned");
     std::fs::create_dir_all(owned.join(".git"))?;

@@ -216,7 +216,22 @@ fn archive_repository(temp: &tempfile::TempDir) -> Result<PathBuf, Box<dyn std::
             .status()?
             .success()
     );
+    copy_current_github_version_inputs(&repo)?;
     Ok(repo)
+}
+
+fn copy_current_github_version_inputs(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    for relative in [
+        ".agents/plugins/marketplace.json",
+        "plugins/codexy-github/.codex-plugin/plugin.json",
+        "plugins/codexy-github/skills/git-workflow/SKILL.md",
+    ] {
+        let destination = repo.join(relative);
+        fs::create_dir_all(destination.parent().ok_or("GitHub fixture parent")?)?;
+        fs::copy(root.join(relative), destination)?;
+    }
+    Ok(())
 }
 
 fn fixture_tree() -> Result<String, Box<dyn std::error::Error>> {

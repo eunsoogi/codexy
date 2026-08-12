@@ -112,10 +112,10 @@ def render(
     readiness_checks = ""
     readiness_evidence = "- Post-creation readiness gates are pending.\n"
     if publication_phase == "proven":
-        readiness_checks = """- `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title <title>`
-- `plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
+        readiness_checks = """- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`
+- `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
 - `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
-- `plugins/codexy/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`
+- `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`
 """
         readiness_evidence = "- Post-creation readiness gates passed before final body publication.\n"
     body = f"""## Summary

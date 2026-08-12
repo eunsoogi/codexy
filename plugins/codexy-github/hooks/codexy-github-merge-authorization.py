@@ -33,7 +33,7 @@ def combine_pages(pages):
     states = [page_state(page) for page in pages]
     first = states[0]
     for state in states[1:]:
-        if any(state[key] != first[key] for key in ("repository", "number", "baseRefName", "headRefOid")):
+        if any(state[key] != first[key] for key in ("repository", "number", "baseRefName", "headRefOid", "title", "body")):
             fail("GitHub comment pages disagree about the target PR")
     for index, state in enumerate(states):
         next_page = state.pop("next")
@@ -55,6 +55,7 @@ def page_state(page):
         state = {
             "repository": repository["nameWithOwner"], "number": pull_request["number"],
             "baseRefName": pull_request["baseRefName"], "headRefOid": pull_request["headRefOid"],
+            "title": pull_request["title"], "body": pull_request["body"],
             "comments": comments["nodes"], "next": (page_info["hasNextPage"], page_info["endCursor"]),
         }
     except (KeyError, TypeError):
@@ -88,6 +89,8 @@ def main():
     parser.add_argument("--repo", required=True)
     parser.add_argument("--expected-pr", type=int, required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--expected-subject", required=True)
+    parser.add_argument("--body-file", required=True)
     parser.add_argument("--pr-state-file", required=True)
     parser.add_argument("--authorization-file", required=True)
     args = parser.parse_args()
@@ -100,6 +103,16 @@ def main():
         fail("PR head does not match the requested merge target")
     if not string(state, "baseRefName"):
         fail("PR base is missing")
+    title = string(state, "title")
+    if not title or args.expected_subject != f"{title} (#{args.expected_pr})":
+        fail("merge subject does not match the current PR title and number")
+    try:
+        with open(args.body_file, encoding="utf-8") as source:
+            body = source.read()
+    except OSError as error:
+        fail(f"could not read merge body: {error}")
+    if body != state.get("body"):
+        fail("merge body does not match the current PR body")
     comments = state.get("comments")
     if not isinstance(comments, list):
         fail("PR comments are missing")

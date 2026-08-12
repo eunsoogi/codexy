@@ -56,22 +56,7 @@
         "plugins/codexy/hooks/codexy-hook-runtime.sh",
         "plugins/codexy/hooks/codexy-thread-delivery.cmd",
         "plugins/codexy/hooks/codexy-thread-delivery.py",
-        "plugins/codexy/hooks/codexy-thread-delivery.sh",
-        "plugins/codexy/hooks/codexy-repository-issue.cmd",
-        "plugins/codexy/hooks/codexy-repository-issue.py",
-        "plugins/codexy/hooks/codexy-repository-issue.sh",
-        "plugins/codexy/hooks/codexy-repository-pull-request.cmd",
-        "plugins/codexy/hooks/codexy-repository-pull-request.py",
-        "plugins/codexy/hooks/codexy-repository-pull-request.sh",
-        "plugins/codexy/hooks/codexy-repository-merge.cmd",
-        "plugins/codexy/hooks/codexy-repository-merge.py",
-        "plugins/codexy/hooks/codexy-repository-merge.sh",
-        "plugins/codexy/hooks/codexy-repository-github-command.cmd",
-        "plugins/codexy/hooks/codexy-repository-github-command.py",
-        "plugins/codexy/hooks/codexy-repository-github-command.sh",
-        "plugins/codexy/hooks/codexy-destructive-command.cmd",
-        "plugins/codexy/hooks/codexy-destructive-command.py",
-        "plugins/codexy/hooks/codexy-destructive-command.sh"
+        "plugins/codexy/hooks/codexy-thread-delivery.sh"
       ],
       "target": "codexy",
       "disposition": "retain"
@@ -80,17 +65,7 @@
       "id": "hooks.github",
       "category": "hooks",
       "sources": [
-        "plugins/codexy/hooks/codexy-authorized-squash-merge.sh",
-        "plugins/codexy/hooks/codexy-github-merge-authorization.py",
-        "plugins/codexy/hooks/codexy-issue-title-check.sh",
-        "plugins/codexy/hooks/codexy-merge-admission-check.sh",
-        "plugins/codexy/hooks/codexy-merge-authorization-check.py",
-        "plugins/codexy/hooks/codexy-merge-message-check.sh",
-        "plugins/codexy/hooks/codexy-pr-label-check.sh",
-        "plugins/codexy/hooks/codexy-pr-title-check.sh",
-        "plugins/codexy/hooks/codexy-readiness-guard-json.sh",
-        "plugins/codexy/hooks/codexy-readiness-guard-pr-labels.sh",
-        "plugins/codexy/hooks/codexy-readiness-guard.sh"
+        "plugins/codexy-github/hooks"
       ],
       "target": "codexy-github",
       "disposition": "move"
@@ -100,49 +75,8 @@
       "category": "hooks",
       "sources": [
         "plugins/codexy/hooks/codexy_policy/__init__.py",
-        "plugins/codexy/hooks/codexy_policy/body.py",
-        "plugins/codexy/hooks/codexy_policy/connector.py",
-        "plugins/codexy/hooks/codexy_policy/destructive_command.py",
         "plugins/codexy/hooks/codexy_policy/envelope.py",
-        "plugins/codexy/hooks/codexy_policy/executable_identity.py",
-        "plugins/codexy/hooks/codexy_policy/execution_context.py",
-        "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
-        "plugins/codexy/hooks/codexy_policy/git_command.py",
-        "plugins/codexy/hooks/codexy_policy/git_options.py",
-        "plugins/codexy/hooks/codexy_policy/git_runtime_config.py",
-        "plugins/codexy/hooks/codexy_policy/github.py",
-        "plugins/codexy/hooks/codexy_policy/github_alias.py",
-        "plugins/codexy/hooks/codexy_policy/github_api.py",
-        "plugins/codexy/hooks/codexy_policy/github_target.py",
-        "plugins/codexy/hooks/codexy_policy/graphql.py",
-        "plugins/codexy/hooks/codexy_policy/graphql_parser.py",
-        "plugins/codexy/hooks/codexy_policy/invocation.py",
-        "plugins/codexy/hooks/codexy_policy/invocation_wrappers.py",
-        "plugins/codexy/hooks/codexy_policy/merge.py",
-        "plugins/codexy/hooks/codexy_policy/pull_request.py",
-        "plugins/codexy/hooks/codexy_policy/repository.py",
-        "plugins/codexy/hooks/codexy_policy/repository_policy.py",
-        "plugins/codexy/hooks/codexy_policy/repository_github_command.py",
-        "plugins/codexy/hooks/codexy_policy/repository_issue.py",
-        "plugins/codexy/hooks/codexy_policy/repository_merge.py",
-        "plugins/codexy/hooks/codexy_policy/repository_pull_request.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_entry.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_builtins.py",
-        "plugins/codexy/hooks/codexy_policy/shell_context.py",
-        "plugins/codexy/hooks/codexy_policy/shell_destructive_policy.py",
-        "plugins/codexy/hooks/codexy_policy/shell_evaluator.py",
-        "plugins/codexy/hooks/codexy_policy/shell_git.py",
-        "plugins/codexy/hooks/codexy_policy/shell_github_policy.py",
-        "plugins/codexy/hooks/codexy_policy/shell_groups.py",
-        "plugins/codexy/hooks/codexy_policy/shell_opaque.py",
-        "plugins/codexy/hooks/codexy_policy/shell_sequence.py",
-        "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
-        "plugins/codexy/hooks/codexy_policy/titles.py",
-        "plugins/codexy/hooks/codexy_policy/wrappers.py"
+        "plugins/codexy/hooks/codexy_policy/thread_delivery.py"
       ],
       "target": "codexy",
       "disposition": "retain"
@@ -165,7 +99,7 @@
       "id": "skills.github",
       "category": "skills",
       "sources": [
-        "plugins/codexy/skills/git-workflow"
+        "plugins/codexy-github/skills/git-workflow"
       ],
       "target": "codexy-github",
       "disposition": "move"
@@ -200,7 +134,10 @@
       "id": "agents.github",
       "category": "agents",
       "sources": [
-        "plugins/codexy/agents/codexy-weaver.toml"
+        "plugins/codexy-github/agents/codexy-weaver.toml",
+        "plugins/codexy-github/agents/catalog.toml",
+        "plugins/codexy-github/agents/openai.yaml",
+        "plugins/codexy-github/.codex-plugin/plugin.json"
       ],
       "target": "codexy-github",
       "disposition": "move"

@@ -2,13 +2,15 @@
 
 ## Worktrees And Branches
 
-MUST create task worktrees from an up-to-date `main`:
+MUST discover the repository default branch and create task worktrees from its
+up-to-date remote-tracking branch:
 
 ```sh
-git fetch origin main
-git switch main
-git pull --ff-only origin main
-git worktree add -b codexy/<issue-or-scope> ../<repo>-worktrees/<issue-or-scope> main
+default_branch=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)
+git fetch origin "$default_branch"
+git switch "$default_branch"
+git pull --ff-only origin "$default_branch"
+git worktree add -b <policy-prefix><issue-or-scope> ../<repo>-worktrees/<issue-or-scope> "$default_branch"
 ```
 
 MUST NOT force-push task branches. If push is rejected because the remote branch
@@ -37,7 +39,7 @@ MUST use Conventional Commit style:
 ```
 
 Common types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, and
-`revert`. Project-local skill changes under `plugins/codexy/skills/**` change
+`revert`. Installed plugin skill changes change
 agent behavior, so prefer non-`docs` types. MUST NOT use vague messages such as
 `update`, `fix`, `WIP`, or `misc`.
 

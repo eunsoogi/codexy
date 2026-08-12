@@ -68,11 +68,11 @@ fn validator_cli_rejects_skill_frontmatter_identity_mismatch() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
-        skill.replacen("name: git-workflow", "name: wrong-identity", 1),
+        skill.replacen("name: engineering", "name: wrong-identity", 1),
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
@@ -86,7 +86,7 @@ fn validator_cli_accepts_valid_skill_frontmatter() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
@@ -107,7 +107,7 @@ fn validator_cli_rejects_missing_skill_frontmatter() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(&skill_path, skill.trim_start_matches("---\n"))?;
 
@@ -122,11 +122,11 @@ fn validator_cli_rejects_malformed_skill_frontmatter() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(
         &skill_path,
-        skill.replacen("name: git-workflow", "name: 'git-workflow", 1),
+        skill.replacen("name: engineering", "name: 'engineering", 1),
     )?;
 
     let output = validator(&plugin_root, "--check-roles")?;
@@ -140,7 +140,7 @@ fn validator_cli_rejects_skill_frontmatter_without_closing_delimiter() -> TestRe
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+    let skill_path = plugin_root.join("skills/engineering/SKILL.md");
     let skill = std::fs::read_to_string(&skill_path)?;
     std::fs::write(&skill_path, skill.replacen("\n---\n", "\n...\n", 1))?;
 
@@ -153,13 +153,13 @@ fn validator_cli_rejects_skill_frontmatter_without_closing_delimiter() -> TestRe
 #[test]
 fn validator_cli_rejects_empty_skill_frontmatter_fields() -> TestResult {
     for (field, replacement, expected) in [
-        ("name: git-workflow", "name: ", "frontmatter.name must be a non-empty string"),
+        ("name: engineering", "name: ", "frontmatter.name must be a non-empty string"),
         ("description:", "description: #", "frontmatter.description must be a non-empty string"),
     ] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");
         copy_fixture(&plugin_root)?;
-        let skill_path = plugin_root.join("skills/git-workflow/SKILL.md");
+        let skill_path = plugin_root.join("skills/engineering/SKILL.md");
         let skill = std::fs::read_to_string(&skill_path)?;
         std::fs::write(&skill_path, skill.replacen(field, replacement, 1))?;
         let output = validator(&plugin_root, "--check-roles")?;
@@ -174,7 +174,7 @@ fn validator_cli_rejects_missing_skill_document() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
-    std::fs::remove_file(plugin_root.join("skills/git-workflow/SKILL.md"))?;
+    std::fs::remove_file(plugin_root.join("skills/engineering/SKILL.md"))?;
 
     let output = validator(&plugin_root, "--check-roles")?;
     assert!(!output.status.success());

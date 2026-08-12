@@ -109,13 +109,9 @@ jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
   --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
   '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   "$state_dir/pr-state.base.json" > "$state_dir/pr-state.unreviewed.json"
-scripts/build-pr-state \
-  --base-pr-state-file "$state_dir/pr-state.unreviewed.json" \
-  --review-control-state-file "$review_control_state" \
-  --output pr-state.json
-scripts/validate-plugin-config --check-completion-handoff \
-  --handoff-file <report> \
-  --pr-state-file pr-state.json
+mv "$state_dir/pr-state.unreviewed.json" pr-state.json
+Ask the installed `$orchestration` skill to apply its **completion-handoff**
+contract to the captured report and PR state.
 ```
 
 For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
@@ -145,29 +141,17 @@ For child handoffs that claim parent acceptance, merge evaluation, or PR
 readiness, the PR state file MUST include captured local `HEAD` as
 `localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
 
-Before PR readiness, the owning lane MUST run the hard PR title hook with the
-exact GitHub PR title:
-
-```sh
-plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view "$pr" --json title --jq .title)"
-```
-
-Before PR readiness, the owning lane MUST run the hard PR label hook against
-captured PR state with `repositoryLabels`:
-
-```sh
-plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json
-```
+The installed GitHub plugin's host-resolved generic admission hooks handle their
+matching lifecycle checks. Preserve the exact GitHub PR title and captured state
+with `repositoryLabels`; skill-authored commands MUST NOT resolve repository,
+source-checkout, cache, or ambient executable paths.
 
 Completion-handoff validation MUST run in the same readiness path. Linked issue
 labels and repository label evidence MUST NOT be skipped after the label hook
 passes:
 
-```sh
-scripts/validate-plugin-config --check-completion-handoff \
-  --handoff-file <report> \
-  --pr-state-file pr-state.json
-```
+Ask `$orchestration` to apply its named `completion-handoff` public contract
+to the captured report and PR state.
 
 ## Child-Owned Review Feedback
 

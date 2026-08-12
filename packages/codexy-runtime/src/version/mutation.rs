@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde_json::Value;
 
 use super::{
-    MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, load_json,
+    MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, github_plugin, load_json,
     marketplace_plugin_mut, package_manifests, repo_path, write_json,
 };
 
@@ -27,6 +27,7 @@ pub fn set_version(version: &str) -> Result<String> {
     write_json(&manifest_path, &manifest)?;
     write_json(&market_path, &marketplace)?;
     write_json(&publish_path, &publish)?;
+    github_plugin::set_version(version)?;
     cargo::set_version(&root, version)?;
     for path in package_manifests()? {
         let mut package = load_json(&path)?;

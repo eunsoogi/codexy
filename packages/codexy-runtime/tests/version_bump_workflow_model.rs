@@ -134,13 +134,13 @@ fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
             command.starts_with("scripts/build-version-pr-state ")
         })?),
         ("label gate", command_position(&commands, |command| {
-            command.starts_with("plugins/codexy/hooks/codexy-pr-label-check.sh ")
+            command.starts_with("plugins/codexy-github/hooks/codexy-pr-label-check.sh ")
         })?),
         ("completion gate", command_position(&commands, |command| {
             command.starts_with("scripts/validate-plugin-config --check-completion-handoff ")
         })?),
         ("merge-message gate", command_position(&commands, |command| {
-            command.starts_with("plugins/codexy/hooks/codexy-merge-message-check.sh ")
+            command.starts_with("plugins/codexy-github/hooks/codexy-merge-message-check.sh ")
         })?),
         ("proven planner", command_position(&commands, |command| {
             command.starts_with("publication_phase=$(scripts/plan-version-pr-reconciliation ")

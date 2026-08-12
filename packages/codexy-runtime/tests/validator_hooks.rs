@@ -91,10 +91,37 @@ fn validator_rejects_non_boolean_generic_hook_async() -> Result<(), Box<dyn std:
     Ok(())
 }
 
+#[test]
+fn validator_does_not_apply_github_topology_to_an_unrelated_extension()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().join("unrelated");
+    std::fs::create_dir_all(root.join(".codex-plugin"))?;
+    std::fs::create_dir_all(root.join("hooks"))?;
+    std::fs::write(root.join(".codex-plugin/plugin.json"), r#"{"name":"unrelated","version":"1.0.0"}"#)?;
+    std::fs::write(root.join("hooks/hooks.json"), r#"{"hooks":{"UserPromptSubmit":[{"hooks":[{"type":"command","command":"\"${PLUGIN_ROOT}/hooks/context.sh\"","commandWindows":"\"${PLUGIN_ROOT}/hooks/context.cmd\"","timeout":1}]}]}}"#)?;
+    std::fs::write(root.join("hooks/context.sh"), "#!/bin/sh\nexit 0\n")?;
+    std::fs::write(root.join("hooks/context.cmd"), "@echo off\nexit /b 0\n")?;
+    let output = validate(&root)?;
+    assert!(output.status.success(), "{}", text(&output));
+    Ok(())
+}
+
 pub(super) fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let root = base.join("codexy");
     support::copy_dir(
         codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &root,
+    )?;
+    let admission_suite = base.join("packages/codexy-runtime/tests/suites/all.rs");
+    std::fs::create_dir_all(admission_suite.parent().ok_or("admission suite parent")?)?;
+    std::fs::write(admission_suite, "// admission runtime suite\n")?;
+    Ok(root)
+}
+pub(super) fn copy_github(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let root = base.join("codexy-github");
+    support::copy_dir(
+        codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &root,
     )?;
     let admission_suite = base.join("packages/codexy-runtime/tests/suites/all.rs");

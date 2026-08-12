@@ -1,11 +1,11 @@
 ---
 name: git-workflow
-description: Codexy plugin GitHub issue, branch, worktree, push, pull request, verification, repository-settings, branch-protection, review-thread resolution, and squash-merge workflow. MUST use before Git, issue, PR, label, review, protection, merge, or post-merge sync work in this repository.
+description: Use for GitHub issue, branch, worktree, pull request, review, merge, CI, and release workflow with the public Codexy orchestration contract.
 ---
 
 # Git Workflow
 
-MUST use this skill before Codexy Git, GitHub issue, branch, worktree, commit, push,
+MUST use this skill with the public `$orchestration` contract before GitHub issue, branch, worktree, commit, push,
 PR, review, repository-settings, branch-protection, merge, or
 post-merge sync work.
 
@@ -30,9 +30,9 @@ MUST read these relative references before acting on the matching surface:
 
 ## Authority
 
-`AGENTS.md` is the repository policy source. Direct user instructions and
-GitHub issue scope define the active task. If this skill conflicts with
-`AGENTS.md`, follow `AGENTS.md`.
+The active repository's `AGENTS.md`, direct user instructions, and GitHub issue
+scope define local policy. This plugin supplies generic workflow only; it MUST
+NOT package or override repository-specific GitHub policy or workflow files.
 
 MUST use GitHub and `gh` for issue, pull request, review, check, label,
 branch-protection, repository-settings, and merge state when connector tools
@@ -50,28 +50,36 @@ pulling, and ordinary push.
 3. MUST create or confirm a GitHub issue before implementation. If the user
    provided an issue, treat that issue as the source of truth.
 4. For non-trivial work, MUST keep a short plan and update it as evidence changes.
-5. MUST keep `main` as the protected integration branch. MUST NOT implement directly
-   on `main`.
+5. MUST discover the repository's configured default and protected integration
+   branch. MUST NOT implement directly on that branch.
 6. MUST create a branch only after the issue or explicit issue-sized scope exists.
 7. MUST use an isolated git worktree for the task branch.
-8. MUST use the `codexy/` branch prefix unless the user requests another naming
-   scheme.
+8. MUST use the repository's configured branch naming convention, or a user
+   requested naming scheme when no repository policy applies.
 9. MUST keep the branch scope aligned with the issue.
+
+When this plugin is directly installed, Codex discovers its `git-workflow`
+skill, Weaver agent, and host-resolved `hooks/hooks.json` package. The generic
+admission hooks are activated by Codex with `${PLUGIN_ROOT}`; skill-authored
+commands MUST NOT derive a source-checkout, cache, or ambient executable path.
+The optional `codexy-github-install` tool MAY coordinate a getcodexy component
+transaction, but MUST NOT be required to use this installed plugin.
 
 Issue titles MUST summarize the user-visible problem or needed work in plain
 prose. They MUST start with an uppercase letter and MUST NOT use Conventional
 Commit prefixes such as `feat(...)`.
-Before creating or updating an issue title, MUST validate the exact title with
-`plugins/codexy/hooks/codexy-issue-title-check.sh --issue-title "<title>"` or
-`scripts/validate-plugin-config --check-issue-title --issue-title "<title>"`.
+The installed generic admission hooks enforce issue-title and related workflow
+requirements on their matching host lifecycle events. Capture the exact remote
+title and treat hook context as advisory only; MUST NOT construct a repository,
+source-checkout, cache, or ambient executable path to bypass the package.
 
 Issue bodies MUST include `## Problem`, `## Scope`,
 `## Acceptance Criteria`, and `## Verification`.
 
-Before any Codexy-created issue mutation, child lanes MUST submit one canonical
-JSON receipt to the parent and receive explicit approval. Validate it with
-`scripts/validate-plugin-config --check-issue-intake --issue-intake-file
-<receipt.json>`. The receipt MUST follow `references/issue-intake.md`.
+Before any Codexy-created issue mutation, child lanes MUST ask the installed
+`$orchestration` skill to apply its **issue-intake receipt** contract, submit
+that canonical JSON receipt to the parent, and receive explicit approval. The
+receipt MUST follow `references/issue-intake.md`.
 Unsupported synthetic wording and same-class phrase variants are handoff-only.
 
 When labels are available, MUST inspect the repository's current taxonomy before
@@ -81,9 +89,9 @@ those concepts exist.
 ## Worktrees And Branches
 
 Before branch, worktree, local commit, push, or conflict work, MUST read
-`references/local-git-and-branches.md`. MUST start task branches from current
-`main`/`origin/main`, MUST NOT work directly on `main`, and MUST NOT force-push
-task branches.
+`references/local-git-and-branches.md`. MUST start task branches from the
+current configured default branch, MUST NOT work directly on it, and MUST NOT
+force-push task branches.
 
 ## Child Worktree Thread Titles
 
@@ -119,7 +127,6 @@ git diff --check
 test -f README.md
 test -f LICENSE
 test -f AGENTS.md
-test -f plugins/codexy/skills/git-workflow/SKILL.md
 git check-ignore .omo/ulw-loop/example
 ```
 
@@ -127,7 +134,7 @@ For non-trivial code, validator, harness, workflow-rule, or skill instruction
 changes, MUST run:
 
 ```sh
-scripts/validate-plugin-config --check-touched-loc --base-ref origin/main
+the active repository's public touched-file LOC validation command
 ```
 
 MUST treat every governed file over the 250 LOC target as review-blocking. Every
@@ -152,8 +159,8 @@ missing or risk is intentionally unresolved. MUST create or confirm a GitHub iss
 before opening a PR unless a maintainer explicitly scopes an exception.
 
 PR titles MUST use Conventional Commit style, such as
-`chore(repo): repository governance`. Before PR readiness, MUST validate the
-exact PR title with `plugins/codexy/hooks/codexy-pr-title-check.sh --pr-title "$(gh pr view --json title --jq .title)"`.
+`chore(repo): repository governance`. Capture the GitHub API value and let the
+installed generic admission hooks enforce their matching lifecycle checks.
 MUST NOT treat `UserPromptSubmit` advisory context as PR title, PR label, or
 merge-message enforcement.
 
@@ -169,8 +176,8 @@ When labels are available, MUST inspect the current taxonomy before opening or
 updating a PR. MUST apply repository-appropriate labels before or immediately after
 PR creation without hard-coding a fixed list. PR-readiness handoff is valid only
 when captured PR state shows labels, or repository label taxonomy proves none exist.
-Before PR readiness, MUST run
-`plugins/codexy/hooks/codexy-pr-label-check.sh --pr-state-file pr-state.json`.
+Before PR readiness, MUST preserve the captured PR state for the installed
+generic admission hooks and evidence handoff.
 
 Before merge, the parent/orchestrator MUST follow the manual Codex connector
 review procedure in `references/codex-connector-review.md`.
@@ -195,7 +202,7 @@ worker for that lane.
   rationale, codegraph evidence, LSP status evidence, and unavailable-tool
   fallbacks.
 - Before returning a non-trivial atomic lane as ready, the owning thread MUST
-  follow `orchestration/references/review-profiles.json`: light has no LLM
+  follow the public `$orchestration` review-profile contract: light has no LLM
   reviewer, standard has Inspector, and strict has Sentinel.
 - If human or automated review feedback flags a child-owned PR, the
   parent MUST route the feedback back to the owning child thread instead of
@@ -205,15 +212,14 @@ worker for that lane.
   contact, and required next evidence. The parent MUST NOT patch the child-owned
   branch as recovery unless there is explicit maintainer reassignment.
 - Before accepting evidence that mentions parent-authored implementation or
-  review-response commits, MUST run
-  `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>`.
+  review-response commits, MUST ask `$orchestration` to apply its
+  **child-lane-ownership** contract.
 
 ## Repository Settings And Main Protection
 
-Repository settings MUST keep `main` as the default branch, squash merge
-enabled, merge/rebase commits disabled, delete branch on merge enabled, and PRs
-required before direct updates. If GitHub rejects protection because the
-private repository lacks the required plan, report the exact platform blocker.
+Repository settings and merge policy are repository-owned. MUST inspect active
+repository policy, obtain explicit authority before a settings mutation, and
+report any platform limitation without attempting a policy substitution.
 
 ## Conflict Resolution
 
@@ -221,24 +227,5 @@ Before resolving conflicts, MUST read `references/local-git-and-branches.md`.
 MUST preserve both sides' intended behavior when possible, MUST stop and ask
 when domain intent is unclear, and MUST stage only resolved files.
 
-## Quick Checklist
-
-- Issue exists or a maintainer provided an explicit issue-sized scope.
-- `$orchestration` classified the lane and records type, owner, scope, skills,
-  tools/evidence, and first allowed action.
-- Branch is not `main`, uses the requested prefix, and lives in an isolated worktree.
-- No unrelated files are staged; no force push or force-with-lease is used.
-- Issue title has been validated with `--check-issue-title` before issue
-  creation or title updates.
-- Verification covers touched surfaces, including `--check-touched-loc` when
-  applicable.
-- Code-touching changes include Codexy `codegraph` findings and Codexy `lsp`
-  status evidence, or fallback evidence.
-- Non-trivial atomic work includes findings or approval from the reviewer
-  selected by `orchestration/references/review-profiles.json`.
-- PR body has structured sections and ends with exactly one `Fixes #<issue-number>` line when a matching issue exists.
-- PR title has been validated with `--check-pr-title`.
-- No unresolved actionable review feedback or review threads remain.
-- Squash merge bodies preserve the PR body exactly; branch deletion and main sync are verified after merge.
-
-A checked contract is the sole merge authorization; generic finish, completion, silence, clean gates, and a ready PR are non-authoritative signals.
+MUST read [`references/quick-checklist.md`](references/quick-checklist.md)
+before declaring GitHub workflow readiness.

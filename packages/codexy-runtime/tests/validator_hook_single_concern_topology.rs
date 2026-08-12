@@ -145,7 +145,7 @@ fn removed_generic_and_dead_policy_artifacts_stay_absent() {
 
 #[test]
 fn bash_concern_adapters_do_not_import_each_others_policy() -> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks/codexy_policy");
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks/codexy_policy");
     let destructive = std::fs::read_to_string(root.join("shell_destructive.py"))?;
     let github = std::fs::read_to_string(root.join("shell_github.py"))?;
     assert!(!destructive.contains("shell_github"));
@@ -162,7 +162,6 @@ fn bash_concern_adapters_do_not_import_each_others_policy() -> Result<(), Box<dy
 #[test]
 fn each_concern_emits_only_its_event_native_diagnostic_family()
 -> Result<(), Box<dyn std::error::Error>> {
-    let hooks = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let tools = [
         "codex_app__send_message_to_thread",
         "mcp__codex_apps__github_create_issue",
@@ -179,6 +178,11 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
                 "tool_input": null,
                 "cwd": "/tmp",
             });
+            let hooks = if concern.id == "thread-delivery" {
+                codexy_runtime::paths::repository_root().join("plugins/codexy/hooks")
+            } else {
+                codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks")
+            };
             let mut child = Command::new(hooks.join(format!("{}.sh", concern.launcher)))
                 .arg(event)
                 .env("PLUGIN_ROOT", hooks.parent().ok_or("plugin root")?)

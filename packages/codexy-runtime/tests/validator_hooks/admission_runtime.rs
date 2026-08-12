@@ -78,7 +78,7 @@ fn inherited_git_common_dir_fails_closed_for_mutations_only() -> TestResult {
 
 #[test]
 fn thread_delivery_requires_nonempty_model_and_thinking() -> TestResult {
-    let root = plugin_root();
+    let root = core_plugin_root();
     assert_tool_case(
         &root,
         "codex_app__send_message_to_thread",
@@ -223,7 +223,6 @@ pub(super) fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, 
         &[],
     )
 }
-
 fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
     concern_launchers::assert_input(root, input, denied, environment)
 }
@@ -247,4 +246,5 @@ pub(super) fn repository(root: &Path, name: &str, remote: &str) -> TestResult<Pa
     Ok(path)
 }
 
-pub(super) fn plugin_root() -> PathBuf { codexy_runtime::paths::repository_root().join("plugins/codexy") }
+pub(super) fn plugin_root() -> PathBuf { codexy_runtime::paths::repository_root().join("plugins/codexy-github") }
+fn core_plugin_root() -> PathBuf { codexy_runtime::paths::repository_root().join("plugins/codexy") }
