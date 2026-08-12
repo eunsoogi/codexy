@@ -31,9 +31,21 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     let git = executable("git")?;
     let gh = executable("gh")?;
     let printf = executable("printf")?;
+    let wrappers = [
+        ("command", ""),
+        ("env", ""),
+        ("exec", ""),
+        ("sudo", ""),
+        ("timeout", "1"),
+        ("nohup", ""),
+    ];
     for event in ["PermissionRequest", "PreToolUse"] {
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", git.display()), true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' pr merge 551; fi", gh.display()), true, &[])?;
+        for (wrapper, option) in wrappers {
+            assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
+            assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
+        }
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", printf.display()), false, &[])?;

@@ -6,7 +6,7 @@ import re
 import shlex
 
 from .execution_context import ExecutionContext, SINGLE_QUOTED_DOLLAR, assignment
-from .executable_identity import resolve as executable_identity
+from .invocation import resolve as resolve_invocation
 
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
 CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
@@ -60,21 +60,29 @@ def dynamic_control_executable(command: str) -> bool:
 def contains_policy_executable(
     command: str, context: ExecutionContext, expected: str,
 ) -> bool:
-    """Recognize a resolved policy executable in opaque shell syntax."""
+    """Recognize a policy executable at an opaque command boundary."""
     try:
         lexer = shlex.shlex(separate_lines(command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
-        path = dict(context.environment).get("PATH")
+        tokens = list(lexer)
         command_start = True
-        for token in lexer:
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
             if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
                 command_start = True
             elif command_start and (token == "!" or assignment(token)):
-                continue
+                pass
             elif command_start:
-                if executable_identity(token, context.cwd, context.executable_aliases, path) == expected:
+                end = index + 1
+                while end < len(tokens) and tokens[end] not in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}:
+                    end += 1
+                invocation = resolve_invocation(tokens[index:end], context)
+                if invocation is not None and invocation.executable == expected:
                     return True
                 command_start = False
+                index = end - 1
+            index += 1
         return False
     except ValueError:
         return True
