@@ -3,6 +3,10 @@ use super::LAUNCHERS;
 #[cfg(windows)]
 use std::io::Write as _;
 
+#[cfg(windows)]
+#[path = "runtime_failures/windows_concurrency.rs"]
+mod windows_concurrency;
+
 #[test]
 fn real_launchers_fail_closed_when_a_policy_module_is_missing()
 -> Result<(), Box<dyn std::error::Error>> {

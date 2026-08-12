@@ -47,6 +47,9 @@ pub(super) fn dynamic(tokens: &[Token]) -> bool {
         matches!(values, [Token::Word(name), Token::Symbol('.')] if name == "importlib")
     }) || tokens.windows(2).any(|values| {
         matches!(values, [Token::Word(name), Token::Symbol('(')] if name == "__import__" || name == "exec")
+    }) || tokens.windows(4).any(|values| {
+        matches!(values, [Token::Word(from), Token::Word(module), Token::Word(import), Token::Word(name)]
+            if from == "from" && module == "importlib" && import == "import" && name == "import_module")
     })
 }
 

@@ -1,8 +1,6 @@
 use anyhow::{Result, bail};
-
 mod lexical;
 use lexical::{Token, dynamic, symbol, tokens, word};
-
 pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
     let tokens = tokens(source);
     if dynamic(&tokens) {
@@ -168,6 +166,9 @@ fn identifier(value: &str) -> bool {
             .chars()
             .all(|value| value.is_ascii_alphanumeric() || value == '_')
 }
+#[cfg(test)]
+#[path = "import_parser/dynamic_tests.rs"]
+mod dynamic_tests;
 
 #[cfg(test)]
 mod tests {
