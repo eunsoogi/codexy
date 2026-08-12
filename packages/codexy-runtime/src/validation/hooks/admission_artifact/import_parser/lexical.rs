@@ -47,10 +47,74 @@ pub(super) fn dynamic(tokens: &[Token]) -> bool {
         matches!(values, [Token::Word(name), Token::Symbol('.')] if name == "importlib")
     }) || tokens.windows(2).any(|values| {
         matches!(values, [Token::Word(name), Token::Symbol('(')] if name == "__import__" || name == "exec")
-    }) || tokens.windows(4).any(|values| {
-        matches!(values, [Token::Word(from), Token::Word(module), Token::Word(import), Token::Word(name)]
-            if from == "from" && module == "importlib" && import == "import" && name == "import_module")
+    }) || imports_module(tokens, "importlib") || imports_from_importlib_loader(tokens)
+}
+
+fn imports_module(tokens: &[Token], expected: &str) -> bool {
+    for (index, token) in tokens.iter().enumerate() {
+        if !matches!(token, Token::Word(name) if name == "import") {
+            continue;
+        }
+        let mut index = index + 1;
+        loop {
+            if word(tokens, index) == Some(expected) {
+                return true;
+            }
+            let Some(next) = module_end(tokens, index) else {
+                break;
+            };
+            index = next;
+            if word(tokens, index) == Some("as") {
+                index += 2;
+            }
+            if !symbol(tokens, index, ',') {
+                break;
+            }
+            index += 1;
+        }
+    }
+    false
+}
+
+fn imports_from_importlib_loader(tokens: &[Token]) -> bool {
+    tokens.windows(3).enumerate().any(|(index, values)| {
+        matches!(values, [Token::Word(from), Token::Word(module), Token::Word(import)]
+            if from == "from" && module == "importlib" && import == "import")
+            && imported_name(tokens, index + 3, "import_module")
     })
+}
+
+fn imported_name(tokens: &[Token], mut index: usize, expected: &str) -> bool {
+    if symbol(tokens, index, '(') {
+        index += 1;
+    }
+    loop {
+        if word(tokens, index) == Some(expected) || symbol(tokens, index, '*') {
+            return true;
+        }
+        if word(tokens, index).is_none() {
+            return false;
+        }
+        index += 1;
+        if word(tokens, index) == Some("as") {
+            index += 2;
+        }
+        if symbol(tokens, index, ',') {
+            index += 1;
+            continue;
+        }
+        return false;
+    }
+}
+
+fn module_end(tokens: &[Token], mut index: usize) -> Option<usize> {
+    word(tokens, index)?;
+    index += 1;
+    while symbol(tokens, index, '.') {
+        word(tokens, index + 1)?;
+        index += 2;
+    }
+    Some(index)
 }
 
 pub(super) fn word(tokens: &[Token], index: usize) -> Option<&str> {

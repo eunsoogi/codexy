@@ -40,23 +40,23 @@ fn validator_rejects_static_cross_concern_policy_imports() -> Result<(), Box<dyn
 
 #[test]
 fn validator_rejects_dynamic_cross_concern_policy_imports() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let root = copy(temp.path())?;
-    let policy = root.join("hooks/codexy_policy/shell_destructive.py");
-    let source = std::fs::read_to_string(&policy)?;
-    std::fs::write(
-        &policy,
-        format!(
-            "from importlib import import_module as load\nload('codexy_policy.shell_github_policy')\n{source}"
-        ),
-    )?;
-    let output = validate(&root)?;
-    assert!(!output.status.success());
-    assert!(
-        text(&output).contains("rejects dynamic imports"),
-        "{}",
-        text(&output)
-    );
+    for injection in [
+        "import importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
+        "from importlib import (import_module as load,)\nload('codexy_policy.shell_github_policy')\n",
+    ] {
+        let temp = tempfile::tempdir()?;
+        let root = copy(temp.path())?;
+        let policy = root.join("hooks/codexy_policy/shell_destructive.py");
+        let source = std::fs::read_to_string(&policy)?;
+        std::fs::write(&policy, format!("{injection}{source}"))?;
+        let output = validate(&root)?;
+        assert!(!output.status.success());
+        assert!(
+            text(&output).contains("rejects dynamic imports"),
+            "{injection}: {}",
+            text(&output)
+        );
+    }
     Ok(())
 }
 

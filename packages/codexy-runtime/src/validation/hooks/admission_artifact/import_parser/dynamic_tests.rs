@@ -12,6 +12,20 @@ fn imports_reject_dynamic_import_module_aliases() {
 }
 
 #[test]
+fn imports_reject_importlib_module_aliases_and_parenthesized_loaders() {
+    for source in [
+        "import importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
+        "import json, importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
+        "from importlib import (\n    import_module as load,\n)\nload('codexy_policy.shell_github_policy')\n",
+    ] {
+        assert!(
+            imports("codexy_policy/shell_destructive.py", source).is_err(),
+            "{source}"
+        );
+    }
+}
+
+#[test]
 fn imports_allow_neutral_importlib_symbols() {
     let imports = imports(
         "codexy_policy/shell_destructive.py",
