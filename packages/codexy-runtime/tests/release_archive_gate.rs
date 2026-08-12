@@ -228,6 +228,8 @@ mod candidate;
 mod candidate_projection;
 #[path = "release_archive_gate/content_compare.rs"]
 mod content_compare;
+#[path = "release_archive_gate/public_release_contract.rs"]
+mod public_release_contract;
 #[path = "release_archive_gate/safety.rs"]
 mod safety;
 #[path = "release_archive_gate/workflow.rs"]
