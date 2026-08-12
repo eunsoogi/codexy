@@ -160,8 +160,16 @@ fn run_capture(base: &std::path::Path, control: &std::path::Path, output: &std::
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
     );
     command
-        .args(["--base-pr-state-file", base.to_str().ok_or("base path")?, "--review-control-state-file", control.to_str().ok_or("review path")?, "--output", output.to_str().ok_or("output path")?])
-        .env("CODEXY_REVIEW_CONTROL_BIN", env!("CARGO_BIN_EXE_codexy-review-control"));
+        .arg("--base-pr-state-file")
+        .arg_path(base)
+        .arg("--review-control-state-file")
+        .arg_path(control)
+        .arg("--output")
+        .arg_path(output)
+        .env_path(
+            "CODEXY_REVIEW_CONTROL_BIN",
+            env!("CARGO_BIN_EXE_codexy-review-control"),
+        );
     Ok(command.output()?)
 }
 
