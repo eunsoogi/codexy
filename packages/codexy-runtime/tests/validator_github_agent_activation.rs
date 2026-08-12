@@ -1,4 +1,4 @@
-use crate::support::{self, FixtureCommand as Command};
+use crate::support::{self, normalize_fixture_text, FixtureCommand as Command};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -39,11 +39,13 @@ fn github_bootstrap_requires_core_and_projects_only_its_managed_role() -> TestRe
         .output()?;
     assert!(diagnose.status.success(), "{}", stderr(&diagnose));
     assert_eq!(
-        std::fs::read_to_string(home.join("agents/codexy-github/codexy-weaver.toml"))?,
-        format!(
+        normalize_fixture_text(&std::fs::read_to_string(
+            home.join("agents/codexy-github/codexy-weaver.toml"),
+        )?),
+        normalize_fixture_text(&format!(
             "# Managed by Codexy GitHub.\n{}",
             std::fs::read_to_string(github.join("agents/codexy-weaver.toml"))?
-        )
+        ))
     );
     Ok(())
 }

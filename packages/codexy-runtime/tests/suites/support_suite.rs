@@ -5,6 +5,8 @@ mod support;
 mod fixture_command_binding_tests;
 #[path = "../support/fixture_command_controls.rs"]
 mod fixture_command_controls;
+#[path = "../support/fixture_command_static_python_tests.rs"]
+mod fixture_command_static_python_tests;
 #[path = "../support_shared_fixture_tests.rs"]
 mod support_shared_fixture_tests;
 #[path = "../support_shared_path_tests.rs"]

@@ -27,7 +27,15 @@ pub(crate) struct FixtureCommand {
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
-        // A `.sh` fixture always models its POSIX entrypoint; native `.cmd` tests name it.
+        #[cfg(windows)]
+        if let Some(python) = windows_static_python_fixture(std::path::Path::new(program)) {
+            let interpreter =
+                discover_windows_interpreter("python").unwrap_or_else(|error| panic!("{error}"));
+            let mut command = Command::new(interpreter);
+            command.args(["-I", "-B"]).arg(python).arg("--event");
+            return Self::from_command(command, false, program);
+        }
+        // Native `.cmd` tests name their entrypoint; paired policy fixtures use Python directly.
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let (command, uses_posix_paths) =
                 dispatch::materialized_script_command(program, &source)
