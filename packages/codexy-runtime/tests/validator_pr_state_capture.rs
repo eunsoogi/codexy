@@ -43,6 +43,31 @@ fn canonical_capture_rejects_invalid_typed_terminal_contracts() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn canonical_capture_rejects_invalid_nonterminal_ledger_history() -> TestResult {
+    for mutate in [
+        |control: &mut Value| control["ledger"]["events"][0]["head_oid"] = json!("stale"),
+        |control: &mut Value| control["ledger"]["events"][0]["base_oid"] = json!("stale"),
+        |control: &mut Value| control["ledger"]["events"][1]["predecessor_event_id"] = json!("other"),
+        |control: &mut Value| control["ledger"]["events"].as_array_mut().expect("events").reverse(),
+        |control: &mut Value| control["ledger"]["events"][0]["full_used"] = json!(0),
+        |control: &mut Value| control["ledger"]["events"][1]["delta_used"] = json!(1),
+        |control: &mut Value| control["ledger"]["events"][0]["full_used"] = json!("one"),
+        |control: &mut Value| control["ledger"]["events"][0]["boundaries"] = json!([]),
+        |control: &mut Value| control["ledger"]["events"][0]["blockers"] = json!({}),
+        |control: &mut Value| control["ledger"]["events"][0]["id"] = json!("e-passed"),
+        |control: &mut Value| control["ledger"]["events"][0]["extra"] = json!(true),
+    ] {
+        let mut control = standard_control();
+        mutate(&mut control);
+        assert!(
+            !capture_output(control)?.status.success(),
+            "capture must reject malformed nonterminal review history"
+        );
+    }
+    Ok(())
+}
+
 fn capture(review: Value) -> TestResult<Value> {
     let temp = tempfile::tempdir()?;
     let (base, control, state) = state_files(temp.path(), &review)?;
@@ -69,6 +94,7 @@ fn state_files(root: &std::path::Path, review: &Value) -> TestResult<(std::path:
 fn run_capture(base: &std::path::Path, control: &std::path::Path, output: &std::path::Path) -> TestResult<std::process::Output> {
     Ok(Command::new(codexy_runtime::paths::repository_root().join("scripts/build-pr-state"))
         .args(["--base-pr-state-file", base.to_str().ok_or("base path")?, "--review-control-state-file", control.to_str().ok_or("review path")?, "--output", output.to_str().ok_or("output path")?])
+        .env("CODEXY_REVIEW_CONTROL_BIN", env!("CARGO_BIN_EXE_codexy-review-control"))
         .output()?)
 }
 

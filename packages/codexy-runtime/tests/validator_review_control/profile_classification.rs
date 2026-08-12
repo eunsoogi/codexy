@@ -52,10 +52,32 @@ fn classification_rejects_omission_partial_unknown_and_downgrade_inputs() -> Tes
             "schema":"codexy.workflow-profile-classification.v2","work_class":"middle","low_risk_eligible":true,
             "strict_triggers":trigger_decisions(None)
         }}),
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":"yes",
+            "strict_triggers":trigger_decisions(Some("security"))
+        }}),
     ] {
         assert!(
             !resolve_profile(fixture.root(), request)?.status.success(),
             "incomplete or contradictory classification must fail closed"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn classification_validates_the_base_record_before_strict_escalation() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let mut unknown_class = classified("unknown", false, Some("security"));
+    let mut duplicate_trigger = classified("middle", false, Some("release"));
+    duplicate_trigger["classification"]["strict_triggers"]
+        .as_array_mut()
+        .expect("trigger decisions")
+        .push(json!({"kind":"release","applies":true}));
+    for request in [&mut unknown_class, &mut duplicate_trigger] {
+        assert!(
+            !resolve_profile(fixture.root(), request.take())?.status.success(),
+            "an invalid classification must fail before strict escalation"
         );
     }
     Ok(())

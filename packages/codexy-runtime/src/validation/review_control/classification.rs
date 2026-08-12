@@ -67,14 +67,16 @@ pub(super) fn select(plugin_root: &Path, input: Input) -> Result<String> {
     if decisions.keys().cloned().collect::<BTreeSet<_>>() != expected {
         bail!("workflow classification must decide every closed strict trigger");
     }
-    if decisions.values().any(|applies| *applies) {
-        return Ok("strict".into());
-    }
-    match (input.work_class.as_str(), input.low_risk_eligible) {
-        ("low_risk", true) => Ok("light".into()),
-        ("middle", false) => Ok("standard".into()),
+    let non_strict = match (input.work_class.as_str(), input.low_risk_eligible) {
+        ("low_risk", true) => "light",
+        ("middle", false) => "standard",
         _ => bail!("workflow classification has no eligible non-strict review route"),
-    }
+    };
+    Ok(if decisions.values().any(|applies| *applies) {
+        "strict".into()
+    } else {
+        non_strict.into()
+    })
 }
 
 fn load(plugin_root: &Path) -> Result<Policy> {

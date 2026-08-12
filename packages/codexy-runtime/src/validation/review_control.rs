@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
+mod capture;
 mod classification;
 mod economics;
 mod history;
@@ -40,6 +41,14 @@ pub(super) fn check_economics(
 
 pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {
     terminal::check_handoff(plugin_root, pr_state)
+}
+
+pub(super) fn build_pr_state(
+    plugin_root: &Path,
+    base: &str,
+    control: &str,
+) -> Result<serde_json::Value> {
+    capture::build_pr_state(plugin_root, base, control)
 }
 
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
