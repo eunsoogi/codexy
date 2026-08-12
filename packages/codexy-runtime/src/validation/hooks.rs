@@ -64,6 +64,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
+    capability_contract::check_topology(&path, events)?;
     capability_contract::check(plugin_root)?;
     admission_artifact::check(plugin_root)?;
     Ok(())
@@ -137,6 +138,17 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             )
         })?;
     command::check_command(path, plugin_root, event, command)?;
+    let command_windows = object
+        .get("commandWindows")
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .with_context(|| {
+            format!(
+                "{} {event} hook commandWindows must be a non-empty string",
+                display_relative(path)
+            )
+        })?;
+    command::check_command(path, plugin_root, event, command_windows)?;
     check_timeout(path, event, object)?;
     if object.get("statusMessage").is_some_and(|status| {
         !status

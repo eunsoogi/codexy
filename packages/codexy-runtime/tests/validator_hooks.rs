@@ -73,6 +73,10 @@ fn validator_rejects_unsafe_generic_commands() -> Result<(), Box<dyn std::error:
 fn validator_rejects_non_boolean_generic_hook_async() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
+    set_command(
+        &root,
+        "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
+    )?;
     let path = root.join("hooks/hooks.json");
     let mut hooks = read(&path)?;
     hooks["hooks"]["PostToolUse"][0]["hooks"][0]["async"] = serde_json::json!("false");
@@ -88,10 +92,6 @@ pub(super) fn copy(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn
     support::copy_dir(
         codexy_runtime::paths::repository_root().join("plugins/codexy"),
         &root,
-    )?;
-    set_command(
-        &root,
-        "\"${PLUGIN_ROOT}/hooks/codexy-issue-title-check.sh\" --issue-title Valid",
     )?;
     let admission_suite = base.join("packages/codexy-runtime/tests/suites/all.rs");
     std::fs::create_dir_all(admission_suite.parent().ok_or("admission suite parent")?)?;

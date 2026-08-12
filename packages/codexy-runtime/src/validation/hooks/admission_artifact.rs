@@ -11,7 +11,20 @@ use sources::{LAUNCHERS, POLICY_SOURCES, Source};
 pub(super) fn is_launcher(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
-        Some("codexy-admission.sh" | "codexy-admission.cmd")
+        Some(
+            "codexy-thread-delivery.sh"
+                | "codexy-thread-delivery.cmd"
+                | "codexy-repository-issue.sh"
+                | "codexy-repository-issue.cmd"
+                | "codexy-repository-pull-request.sh"
+                | "codexy-repository-pull-request.cmd"
+                | "codexy-repository-merge.sh"
+                | "codexy-repository-merge.cmd"
+                | "codexy-repository-github-command.sh"
+                | "codexy-repository-github-command.cmd"
+                | "codexy-destructive-command.sh"
+                | "codexy-destructive-command.cmd"
+        )
     )
 }
 
@@ -43,13 +56,16 @@ fn source_map() -> BTreeMap<&'static str, &'static Source> {
 fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BTreeSet<String>> {
     let mut closure = BTreeSet::new();
     let mut visiting = BTreeSet::new();
-    visit(
-        "codexy-admission.py",
-        hooks,
-        sources,
-        &mut closure,
-        &mut visiting,
-    )?;
+    for root in [
+        "codexy-thread-delivery.py",
+        "codexy-repository-issue.py",
+        "codexy-repository-pull-request.py",
+        "codexy-repository-merge.py",
+        "codexy-repository-github-command.py",
+        "codexy-destructive-command.py",
+    ] {
+        visit(root, hooks, sources, &mut closure, &mut visiting)?;
+    }
     Ok(closure)
 }
 
@@ -107,7 +123,7 @@ fn imports(path: &str, source: &str) -> Result<Vec<String>> {
         } else if let Some(module) = module.strip_prefix("codexy_policy.") {
             if !module
                 .chars()
-                .all(|value| value.is_ascii_alphanumeric() || value == '.')
+                .all(|value| value.is_ascii_alphanumeric() || value == '_' || value == '.')
             {
                 bail!("packaged admission runtime rejects ambiguous policy import in {path}");
             }

@@ -14,22 +14,38 @@ macro_rules! source {
 }
 
 pub(super) const LAUNCHERS: &[Source] = &[
-    Source {
-        path: "codexy-admission.sh",
-        contents: include_str!("../../../../../../plugins/codexy/hooks/codexy-admission.sh"),
-    },
-    Source {
-        path: "codexy-admission.cmd",
-        contents: include_str!("../../../../../../plugins/codexy/hooks/codexy-admission.cmd"),
-    },
+    source!("codexy-hook-runtime.sh"),
+    source!("codexy-thread-delivery.sh"),
+    source!("codexy-thread-delivery.cmd"),
+    source!("codexy-repository-issue.sh"),
+    source!("codexy-repository-issue.cmd"),
+    source!("codexy-repository-pull-request.sh"),
+    source!("codexy-repository-pull-request.cmd"),
+    source!("codexy-repository-merge.sh"),
+    source!("codexy-repository-merge.cmd"),
+    source!("codexy-repository-github-command.sh"),
+    source!("codexy-repository-github-command.cmd"),
+    source!("codexy-destructive-command.sh"),
+    source!("codexy-destructive-command.cmd"),
 ];
 
 // This is the one compile-time source map. The runtime closure derives which
 // pinned files the shipped entrypoint actually imports.
 pub(super) const POLICY_SOURCES: &[Source] = &[
-    source!("codexy-admission.py"),
+    source!("codexy-thread-delivery.py"),
+    source!("codexy-repository-issue.py"),
+    source!("codexy-repository-pull-request.py"),
+    source!("codexy-repository-merge.py"),
+    source!("codexy-repository-github-command.py"),
+    source!("codexy-destructive-command.py"),
     source!("codexy_policy/__init__.py"),
-    source!("codexy_policy/admission.py"),
+    source!("codexy_policy/envelope.py"),
+    source!("codexy_policy/thread_delivery.py"),
+    source!("codexy_policy/repository_issue.py"),
+    source!("codexy_policy/repository_pull_request.py"),
+    source!("codexy_policy/repository_merge.py"),
+    source!("codexy_policy/repository_github_command.py"),
+    source!("codexy_policy/destructive_command.py"),
     source!("codexy_policy/body.py"),
     source!("codexy_policy/execution_context.py"),
     source!("codexy_policy/executable_identity.py"),
@@ -49,6 +65,8 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/pull_request.py"),
     source!("codexy_policy/repository.py"),
     source!("codexy_policy/shell.py"),
+    source!("codexy_policy/shell_evaluator.py"),
+    source!("codexy_policy/shell_opaque.py"),
     source!("codexy_policy/shell_builtins.py"),
     source!("codexy_policy/shell_context.py"),
     source!("codexy_policy/shell_groups.py"),
