@@ -12,14 +12,14 @@ fn public_release_contract_accepts_exact_windows_delegates() {
         "exact Windows delegates must pass: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(
-        String::from_utf8(output.stdout).expect("contract stdout"),
+    assert_runtime_inventory(
+        output.stdout,
         "runtime/codexy-mcp-lsp-darwin-arm64.bin\n\
 runtime/codexy-mcp-codegraph-darwin-arm64.bin\n\
 runtime/codexy-mcp-lsp-linux-x86_64.bin\n\
 runtime/codexy-mcp-codegraph-linux-x86_64.bin\n\
 runtime/codexy-mcp-lsp-windows-x86_64.exe\n\
-runtime/codexy-mcp-codegraph-windows-x86_64.exe\n"
+runtime/codexy-mcp-codegraph-windows-x86_64.exe\n",
     );
 }
 
@@ -89,12 +89,12 @@ fn legacy_public_release_contract_accepts_absence_and_rejects_retained_delegate(
         "legacy archive without Windows delegates must pass: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(
-        String::from_utf8(output.stdout).expect("contract stdout"),
+    assert_runtime_inventory(
+        output.stdout,
         "runtime/codexy-mcp-lsp-darwin-arm64.bin\n\
 runtime/codexy-mcp-codegraph-darwin-arm64.bin\n\
 runtime/codexy-mcp-lsp-linux-x86_64.bin\n\
-runtime/codexy-mcp-codegraph-linux-x86_64.bin\n"
+runtime/codexy-mcp-codegraph-linux-x86_64.bin\n",
     );
     for server in ["lsp", "codegraph"] {
         fs::write(
@@ -150,6 +150,27 @@ fn contract(plugin: &Path) -> std::process::Output {
         .arg(plugin)
         .output()
         .expect("archive contract should start")
+}
+
+#[test]
+fn runtime_inventory_normalizes_platform_newlines_before_exact_comparison() {
+    let expected = "runtime/lsp\nruntime/codegraph\n";
+    assert_eq!(
+        normalize_runtime_inventory("runtime/lsp\r\nruntime/codegraph\r\n"),
+        expected
+    );
+    assert_eq!(normalize_runtime_inventory(expected), expected);
+}
+
+fn assert_runtime_inventory(stdout: Vec<u8>, expected: &str) {
+    assert_eq!(
+        normalize_runtime_inventory(&String::from_utf8(stdout).expect("contract stdout")),
+        expected
+    );
+}
+
+fn normalize_runtime_inventory(stdout: &str) -> String {
+    stdout.replace("\r\n", "\n")
 }
 
 fn assert_rejected(plugin: &Path, label: &str, expected: &str) {
