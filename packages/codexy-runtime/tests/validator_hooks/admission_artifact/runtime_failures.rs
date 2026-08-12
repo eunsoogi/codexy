@@ -75,6 +75,19 @@ fn cmd_launchers_stage_stdout_before_evaluating_child_failure()
     Ok(())
 }
 
+#[test]
+fn cmd_launchers_allocate_exclusive_output_files()
+-> Result<(), Box<dyn std::error::Error>> {
+    let hooks = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
+    for launcher in LAUNCHERS {
+        let source = std::fs::read_to_string(hooks.join(format!("{launcher}.cmd")))?;
+        assert!(source.contains("tempfile.mkstemp"), "{launcher}");
+        assert!(source.contains("os.close"), "{launcher}");
+        assert!(!source.contains("%RANDOM%"), "{launcher}");
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 #[test]
 fn native_windows_launchers_execute_the_packaged_cmd_entrypoints()

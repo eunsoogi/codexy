@@ -5,7 +5,9 @@ if /I "%event%"=="PreToolUse" goto evaluate
 if /I "%event%"=="PermissionRequest" goto evaluate
 set "event=PreToolUse"
 :evaluate
-set "output=%TEMP%\codexy-hook-%RANDOM%-%RANDOM%.out"
+set "output="
+for /f "usebackq delims=" %%I in (`py -3 -I -B -c "import os,tempfile; fd,path=tempfile.mkstemp(prefix='codexy-hook-',suffix='.out'); os.close(fd); print(path)" 2^>nul`) do set "output=%%I"
+if not defined output goto discard
 py -3 -I -B "%~dp0codexy-repository-issue.py" --event "%event%" > "%output%" 2>nul
 set "status=%errorlevel%"
 if not "%status%"=="0" goto discard
