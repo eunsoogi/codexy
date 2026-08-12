@@ -93,15 +93,34 @@ pub(super) fn assert_canonical_default_prompt(
     Ok(())
 }
 
-pub(super) fn assert_canonical_wrapper_eol(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    for wrapper in ["plugins/codexy-devtools/mcp/codexy-mcp-lsp", "plugins/codexy-devtools/mcp/codexy-mcp-codegraph"] {
+pub(super) fn assert_canonical_preserved_eol(
+    repo: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for path in [
+        "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
+        "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
+        "plugins/codexy-devtools/runtime-release.json",
+    ] {
         let output = Command::new("git")
-            .args(["check-attr", "text", "eol", "--", wrapper])
+            .args(["check-attr", "text", "eol", "--", path])
             .current_dir(repo)
             .output()?;
-        let expected = format!("{wrapper}: text: set\n{wrapper}: eol: lf\n");
+        let expected = format!("{path}: text: set\n{path}: eol: lf\n");
         if !output.status.success() || output.stdout != expected.as_bytes() {
-            return Err(format!("fixture wrapper EOL contract mismatch: {wrapper}").into());
+            return Err(format!("fixture preserved EOL contract mismatch: {path}").into());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn enable_autocrlf(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    for args in [
+        &["config", "core.autocrlf", "true"][..],
+        &["reset", "--hard", "HEAD"][..],
+    ] {
+        let status = Command::new("git").args(args).current_dir(repo).status()?;
+        if !status.success() {
+            return Err("unable to configure fixture autocrlf".into());
         }
     }
     Ok(())
