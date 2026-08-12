@@ -16,8 +16,8 @@ fn archive_gate_workflow_rejects_duplicate_branches_and_suffixed_runtime_paths()
     for invalid in [
         workflow.replacen("case \"$state\" in", decoy, 1),
         workflow.replace(
-            "plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin",
-            "plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin-extra",
+            "plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin",
+            "plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin-extra",
         ),
     ] {
         assert!(

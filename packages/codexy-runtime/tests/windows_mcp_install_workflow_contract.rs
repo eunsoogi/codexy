@@ -18,8 +18,10 @@ fn windows_selected_candidate_proof_preserves_legacy_public_boundary() {
             "Get-FileHash -Algorithm SHA256 $archive",
             "System32/tar.exe",
             "codexy-mcp-$server-windows-x86_64.exe",
-            "codexy-mcp-$server.exe",
-            "$server entrypoint differs from its runtime",
+            "codexy-mcp-devtools.exe",
+            "$server runtime duplicates the shared dispatcher",
+            "legacy selected archive has no native Windows dispatcher; Windows projection is intentionally unavailable",
+            "selected Windows dispatcher missing: $dispatcher",
         ],
     );
 }
@@ -39,12 +41,14 @@ fn windows_candidate_verifier_creates_its_fresh_extraction_directory() {
         .expect("native Windows verifier step");
     let lines = verifier.lines().map(str::trim).collect::<Vec<_>>();
     let legacy_exit = lines.iter().position(|line| *line == "exit 0").expect("legacy public exit");
+    let dispatcher_boundary = lines.iter().position(|line| *line == "$dispatcher = \"plugins/codexy-devtools/mcp/codexy-mcp-devtools.exe\"").expect("dispatcher compatibility boundary");
     let root = lines.iter().position(|line| *line == "$root = Join-Path $env:RUNNER_TEMP \"selected-candidate\"").expect("candidate extraction root");
     let reject_ambient = lines.iter().position(|line| *line == "if (Test-Path -LiteralPath $root) { throw \"candidate extraction root must be fresh: $root\" }").expect("ambient extraction root rejection");
     let create = lines.iter().position(|line| *line == "New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null").expect("candidate extraction directory");
     let extract = lines.iter().position(|line| *line == "& $windowsTar -xzf $archive -C $root").expect("candidate archive extraction");
 
     assert!(legacy_exit < root, "legacy-public must not create or extract a Windows candidate");
+    assert!(dispatcher_boundary < root, "legacy dispatcher-free archives must stop before extraction");
     assert!(root < reject_ambient && reject_ambient < create && create < extract, "candidate extraction root must be fresh before tar -C");
 }
 
@@ -93,7 +97,7 @@ fn windows_candidate_verifier_rejects_an_ambient_extraction_root() {
     let root_setup = verifier
         .lines()
         .skip_while(|line| line.trim() != "$root = Join-Path $env:RUNNER_TEMP \"selected-candidate\"")
-        .take_while(|line| line.trim() != "$windowsTar = Join-Path $env:SystemRoot \"System32/tar.exe\"")
+        .take_while(|line| line.trim() != "& $windowsTar -xzf $archive -C $root")
         .collect::<Vec<_>>()
         .join("\n");
     let runner_temp = tempfile::tempdir().expect("runner temp");

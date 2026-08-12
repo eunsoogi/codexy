@@ -97,7 +97,19 @@ fn windows_selected_runtime_verification_exercises_the_public_release_branch()
     fs::create_dir_all(root.join("bin"))?;
     let archive = root.join("public.tar.gz");
     let receipt = root.join("public-receipt.json");
-    fs::write(&archive, b"public release archive\n")?;
+    let archive_root = root.join("public archive/plugins/codexy-devtools/mcp");
+    fs::create_dir_all(&archive_root)?;
+    fs::write(archive_root.join("codexy-mcp-devtools.exe"), b"dispatcher\n")?;
+    assert!(
+        Command::new("tar")
+            .current_dir(root.join("public archive"))
+            .args(["-czf"])
+            .arg(&archive)
+            .arg("plugins/codexy-devtools")
+            .status()?
+            .success(),
+        "fixture public archive creation failed"
+    );
     fs::write(
         root.join(".agents/plugins/runtime-activation.json"),
         r#"{"candidate":{"source":{"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"artifact":{"stagingRunId":42,"stagingRunAttempt":3}},"provenance":{"runId":42}}"#,

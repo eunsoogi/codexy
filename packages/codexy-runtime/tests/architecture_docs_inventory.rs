@@ -47,7 +47,7 @@ fn architecture_inventory_rejects_omissions_duplicates_and_stale_fields() -> Tes
     assert!(validate_guide(root, &guide.replacen(&agent_row, &format!("{agent_row}\n{agent_row}"), 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("`gpt-5.6-sol`", "`stale-model`", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("`xhigh`", "`stale-effort`", 1)).is_err());
-    assert!(validate_guide(root, &guide.replacen("./mcp/codexy-mcp-codegraph", "./mcp/stale-codegraph", 1)).is_err());
+    assert!(validate_guide(root, &guide.replacen("./mcp/codexy-mcp-devtools", "./mcp/stale-devtools", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("--stdio", "--stale-stdio", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("\"cwd\":\".\"", "\"cwd\":\"stale-cwd\"", 1)).is_err());
     Ok(())

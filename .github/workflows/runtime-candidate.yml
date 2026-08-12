@@ -61,7 +61,7 @@ jobs:
           }
       - name: Build candidate MCP runtimes
         working-directory: packages/codexy-runtime
-        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph
+        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools
       - name: Smoke platform-local MCP protocols
         if: matrix.platform != 'windows-x86_64'
         run: |
@@ -164,6 +164,11 @@ jobs:
             $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
             if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
           }
+          $dispatcher = "packages/codexy-runtime/target/release/codexy-mcp-devtools.exe"
+          $destination = "runtime/codexy-mcp-devtools-$env:PLATFORM.exe"
+          Copy-Item -LiteralPath $dispatcher -Destination $destination
+          $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
+          if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
       - uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ matrix.platform }}

@@ -180,8 +180,8 @@ fn candidate_keeps_windows_native_until_verified_activation()
             "windows-x86_64",
             "extension = \"exe\" if platform == \"windows-x86_64\" else \"bin\"",
             "manifest[\"supportedPlatforms\"] = [\"darwin-arm64\", \"linux-x86_64\", \"windows-x86_64\"]",
-            "candidate wrapper platform declaration mismatch",
-            "codexy-mcp-{server}.exe",
+            "codexy-mcp-devtools-windows-x86_64.exe",
+            "codexy-mcp-devtools.exe",
         ],
     );
 

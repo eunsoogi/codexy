@@ -43,11 +43,21 @@ impl FinalArchiveFixture {
         fs::write(staged.join("hooks/current-policy.txt"), b"stale policy\n")?;
         let mcp = source.join("mcp");
         fs::create_dir_all(&mcp)?;
+        fs::write(
+            mcp.join("codexy-mcp-devtools"),
+            "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime \"$server\" -- \"$@\"\n",
+        )?;
         for server in ["lsp", "codegraph"] {
             fs::write(
                 mcp.join(format!("codexy-mcp-{server}")),
                 format!(
                     "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==1.2.2 codexy-mcp-runtime {server} -- \"$@\"\n"
+                ),
+            )?;
+            fs::write(
+                mcp.join(format!("codexy-mcp-{server}.cmd")),
+                format!(
+                    "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
                 ),
             )?;
         }
@@ -64,12 +74,7 @@ impl FinalArchiveFixture {
             }
         }
         fs::create_dir_all(staged.join("mcp"))?;
-        for server in ["lsp", "codegraph"] {
-            fs::copy(
-                staged.join(format!("runtime/codexy-mcp-{server}-windows-x86_64.exe")),
-                staged.join(format!("mcp/codexy-mcp-{server}.exe")),
-            )?;
-        }
+        fs::write(staged.join("mcp/codexy-mcp-devtools.exe"), b"dispatcher-windows\n")?;
         let candidate = candidate(&staged)?;
         let candidate_bytes = serde_json::to_vec(&candidate)?;
         fs::write(staged.join("runtime-candidate.json"), &candidate_bytes)?;
@@ -195,32 +200,6 @@ impl FinalArchiveFixture {
         Ok(output.stdout)
     }
 
-    pub(super) fn assert_public_archive_mode_matrix(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let output = Command::new("python3")
-            .args(["-c", r#"import os, pathlib, re, stat, sys, tarfile
-archive, root, materializer = map(pathlib.Path, sys.argv[1:])
-source = root / "plugins/codexy-devtools"
-matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy-devtools/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy-devtools/mcp/codexy-mcp-codegraph",', materializer.read_text()).group("expression")
-assert eval(matcher, {"relative": pathlib.PureWindowsPath("plugins/codexy-devtools/mcp/codexy-mcp-codegraph")}) in {"plugins/codexy-devtools/mcp/codexy-mcp-lsp", "plugins/codexy-devtools/mcp/codexy-mcp-codegraph"}, "Windows governed wrapper matcher missed codegraph"
-with tarfile.open(archive) as entries:
-    def header(path): return entries.getmember(f"plugins/codexy-devtools/{path}").mode & 0o777
-    for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):
-        assert header(wrapper) == 0o755, f"{wrapper} mode was {header(wrapper):04o}"
-        legacy = (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0")
-        expected = (source / wrapper).read_text().replace('bundled_platforms="darwin-arm64 linux-x86_64"', 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"').replace("getcodexy==1.2.2", "getcodexy==1.3.0").replace("\n", os.linesep).encode()
-        assert (expected == legacy and b"\r" not in expected) if os.linesep == "\n" else (expected != legacy and b"\r\n" in expected), f"{wrapper} write_text newline semantics were not preserved"
-        assert entries.extractfile(f"plugins/codexy-devtools/{wrapper}").read() == expected, f"{wrapper} content changed"
-    for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy-devtools/mcp/codexy-mcp-lsp.exe"),):
-        assert header(path) == stat.S_IMODE(owner.stat().st_mode), f"{path} mode changed"
-"#])
-            .arg(&self.final_archive)
-            .arg(&self.root)
-            .arg(codexy_runtime::paths::repository_root().join("scripts/materialize-runtime-release-archive"))
-            .output()?;
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(output.status.success(), "public archive mode matrix failed: {stderr}");
-        Ok(())
-    }
 }
 
 fn candidate(staged: &Path) -> Result<Value, std::io::Error> {

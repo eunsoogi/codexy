@@ -125,11 +125,11 @@ jobs:
             staged=final/plugins/codexy-devtools
             rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy-devtools/ "$staged/"
             for path in \
-              plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
-              plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
-              plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
-              plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do test -f "legacy/$path"; done
-            cp -R legacy/plugins/codexy/runtime "$staged/"
+              plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin \
+              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
+              plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin \
+              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do test -f "legacy/$path"; done
+            cp -R legacy/plugins/codexy-devtools/runtime "$staged/"
             tar -C final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
             scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
             ;;
@@ -192,10 +192,20 @@ jobs:
             if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $record.artifact.sha256) { throw "candidate archive digest mismatch" }
             $publicArchive = $false
           }
+          $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
+          $entries = & $windowsTar -tzf $archive
+          if ($LASTEXITCODE -ne 0) { throw "native Windows archive listing failed" }
+          $dispatcher = "plugins/codexy-devtools/mcp/codexy-mcp-devtools.exe"
+          if (-not ($entries -contains $dispatcher)) {
+            if ($entries -contains "plugins/codexy/") {
+              Write-Output "legacy selected archive has no native Windows dispatcher; Windows projection is intentionally unavailable"
+              exit 0
+            }
+            throw "selected Windows dispatcher missing: $dispatcher"
+          }
           $root = Join-Path $env:RUNNER_TEMP "selected-candidate"
           if (Test-Path -LiteralPath $root) { throw "candidate extraction root must be fresh: $root" }
           New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
-          $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
           New-Item -ItemType Directory -Path dist -ErrorAction Stop | Out-Null
@@ -209,10 +219,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "native Windows public archive extraction failed" }
           bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$public/plugins/codexy-devtools" public-release
           if ($LASTEXITCODE -ne 0) { throw "public archive inspection failed" }
+          $entrypoint = Join-Path $public "plugins/codexy-devtools/mcp/codexy-mcp-devtools.exe"
           foreach ($server in @("lsp", "codegraph")) {
             $runtime = Join-Path $public "plugins/codexy-devtools/runtime/codexy-mcp-$server-windows-x86_64.exe"
-            $entrypoint = Join-Path $public "plugins/codexy-devtools/mcp/codexy-mcp-$server.exe"
-            if ((Get-FileHash $runtime).Hash -ne (Get-FileHash $entrypoint).Hash) { throw "$server entrypoint differs from its runtime" }
-            & $entrypoint --help
-            if ($LASTEXITCODE -ne 0) { throw "native Windows projected entrypoint failed: $server" }
+            if ((Get-FileHash $runtime).Hash -eq (Get-FileHash $entrypoint).Hash) { throw "$server runtime duplicates the shared dispatcher" }
+            & $entrypoint $server --help
+            if ($LASTEXITCODE -ne 0) { throw "native Windows projected dispatcher failed: $server" }
           }

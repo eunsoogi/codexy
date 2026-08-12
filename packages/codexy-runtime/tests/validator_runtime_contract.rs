@@ -20,6 +20,9 @@ fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::Pat
             std::path::Path::new("runtime-release.json"),
             std::path::Path::new("mcp/codexy-mcp-lsp"),
             std::path::Path::new("mcp/codexy-mcp-codegraph"),
+            std::path::Path::new("mcp/codexy-mcp-devtools"),
+            std::path::Path::new("mcp/codexy-mcp-lsp.cmd"),
+            std::path::Path::new("mcp/codexy-mcp-codegraph.cmd"),
         ],
     )?;
     Ok(plugin_root)
@@ -47,13 +50,16 @@ fn runtime_binary_fixture(runtime_name: &str) -> Vec<u8> {
         bytes[0x94..0x96].copy_from_slice(&0xf0_u16.to_le_bytes());
         bytes[0x96..0x98].copy_from_slice(&0x0022_u16.to_le_bytes());
         bytes[0x98..0x9a].copy_from_slice(&0x20b_u16.to_le_bytes());
-        return bytes;
+        bytes
     } else if runtime_name.contains("darwin-arm64") {
         vec![0xcf, 0xfa, 0xed, 0xfe]
     } else {
         vec![0x7f, b'E', b'L', b'F']
     };
     bytes.resize(4096, 0);
+    if runtime_name.contains("codegraph") {
+        bytes[0x100] = 1;
+    }
     bytes
 }
 
@@ -78,16 +84,10 @@ fn write_runtime_fixture(
     std::fs::create_dir_all(runtime_path.parent().expect("runtime parent"))?;
     std::fs::write(&runtime_path, bytes)?;
     make_executable(&runtime_path)?;
-    if runtime_name.contains("windows-x86_64") {
-        let server = if runtime_name.contains("-lsp-") {
-            "lsp"
-        } else {
-            "codegraph"
-        };
-        std::fs::write(
-            plugin_root.join(format!("mcp/codexy-mcp-{server}.exe")),
-            bytes,
-        )?;
+    if runtime_name == "codexy-mcp-lsp-windows-x86_64.exe" {
+        let mut dispatcher = bytes.to_vec();
+        dispatcher[0x100] = 2;
+        std::fs::write(plugin_root.join("mcp/codexy-mcp-devtools.exe"), dispatcher)?;
     }
     Ok(())
 }

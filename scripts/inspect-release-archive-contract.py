@@ -13,18 +13,24 @@ CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64
 BATCH_INPUT = "source-projection-batch.json"
 BATCH_RESET_PATHS = (
     ".codex-plugin/plugin.json",
-    "mcp/codexy-mcp-codegraph",
-    "mcp/codexy-mcp-lsp",
+    "mcp/codexy-mcp-devtools",
     "runtime-candidate.json",
     "runtime-release.json",
 )
+
+
+def wrapper_paths(root: Path) -> tuple[Path, ...]:
+    shared = root / "mcp/codexy-mcp-devtools"
+    if shared.is_file():
+        return (shared,)
+    return tuple(root / "mcp" / f"codexy-mcp-{server}" for server in ("lsp", "codegraph"))
 
 
 def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> str:
     lines = text.splitlines(keepends=True)
     declarations = wrapper_declarations(lines, allowed)
     if len(declarations) != 1:
-        raise SystemExit("candidate source projection requires three-platform wrappers")
+        raise SystemExit("candidate wrapper platform declaration mismatch")
     index = declarations[0]
     lines[index] = lines[index].replace(lines[index].rstrip("\r\n"), replacement)
     return "".join(lines)
@@ -39,14 +45,14 @@ def source_projection(root: Path) -> None:
     if manifest.get("supportedPlatforms") != [*PUBLIC_PLATFORMS, "windows-x86_64"]:
         raise SystemExit("candidate source projection requires three-platform manifest")
     wrappers = []
-    for server in ("lsp", "codegraph"):
-        path = root / "mcp" / f"codexy-mcp-{server}"
+    for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
         wrappers.append((path, rewritten_wrapper(text, (CANDIDATE_WRAPPER,), SOURCE_WRAPPER)))
     for path in contracts: path.unlink()
     manifest["supportedPlatforms"] = PUBLIC_PLATFORMS
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    for path, text in wrappers: open(path, "w", encoding="utf-8", newline="").write(text)
+    for path, wrapper in wrappers:
+        open(path, "w", encoding="utf-8", newline="").write(wrapper)
 
 
 def source_projection_batch(root: Path) -> None:
@@ -55,7 +61,7 @@ def source_projection_batch(root: Path) -> None:
     results = []
     for case in document["cases"]:
         restore_batch_snapshot(root, snapshots)
-        wrapper = root / "mcp" / "codexy-mcp-lsp"
+        wrapper = wrapper_paths(root)[0]
         text = open(wrapper, encoding="utf-8", newline="").read()
         open(wrapper, "w", encoding="utf-8", newline="").write(
             f"{text}\n{case['append']}\n"
@@ -115,8 +121,7 @@ def restore_batch_snapshot(root: Path, snapshots: dict[str, bytes]) -> None:
 
 
 def candidate_assembly(root: Path) -> None:
-    for server in ("lsp", "codegraph"):
-        path = root / "mcp" / f"codexy-mcp-{server}"
+    for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
         open(path, "w", encoding="utf-8", newline="").write(rewritten_wrapper(text, (SOURCE_WRAPPER, CANDIDATE_WRAPPER), CANDIDATE_WRAPPER))
 
@@ -131,9 +136,33 @@ def main() -> None:
                 raise SystemExit(f"public release archive must not contain {name}")
         manifest = json.loads((root / ".codex-plugin/plugin.json").read_text())
         platforms = manifest.get("supportedPlatforms")
-        expected = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
-        if platforms != expected:
-            raise SystemExit("public release archive must declare darwin/linux/windows")
+        full = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+        legacy = ["darwin-arm64", "linux-x86_64"]
+        if platforms not in (full, legacy):
+            raise SystemExit("public release archive must declare supported runtime platforms")
+        dispatcher = root / "mcp/codexy-mcp-devtools.exe"
+        if platforms == full and not dispatcher.is_file():
+            raise SystemExit("public Windows package requires the shared native dispatcher")
+        for server in ("lsp", "codegraph"):
+            legacy_native = root / "mcp" / f"codexy-mcp-{server}.exe"
+            if legacy_native.exists():
+                raise SystemExit(
+                    f"public package must not contain the legacy native {server} entrypoint"
+                )
+            delegate = root / "mcp" / f"codexy-mcp-{server}.cmd"
+            expected = (
+                f'@echo off\n"%~dp0codexy-mcp-devtools.exe" {server} %*\n'
+                "exit /b %ERRORLEVEL%\n"
+            ).encode()
+            if platforms == full and (
+                not delegate.is_file() or delegate.read_bytes() != expected
+            ):
+                raise SystemExit(f"public Windows package requires the thin {server} delegate")
+        if platforms == legacy:
+            if (dispatcher.exists() or any((root / "runtime").glob("*-windows-x86_64.exe"))
+                or any((root / "mcp" / f"codexy-mcp-{server}.{extension}").exists()
+                       for server in ("lsp", "codegraph") for extension in ("cmd", "exe"))):
+                raise SystemExit("dispatcher-free legacy projection must not package Windows runtime files")
         for platform in platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):

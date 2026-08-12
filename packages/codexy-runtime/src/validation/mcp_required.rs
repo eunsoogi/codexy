@@ -14,7 +14,11 @@ pub(super) fn check(
     if !matches!(name, "lsp" | "codegraph") {
         return Ok(());
     }
-    let expected = [format!("./mcp/codexy-mcp-{name}"), "--stdio".to_string()];
+    let expected = [
+        "./mcp/codexy-mcp-devtools".to_string(),
+        name.to_string(),
+        "--stdio".to_string(),
+    ];
     if command != expected {
         bail!(
             "{} {name}.command must use the exact cross-platform plugin entrypoint {:?}",
@@ -46,7 +50,7 @@ mod tests {
         object.insert("cwd".to_owned(), Value::String(".".to_owned()));
         let expected = format!(
             ".mcp.json lsp.command must use the exact cross-platform plugin entrypoint {:?}",
-            ["./mcp/codexy-mcp-lsp", "--stdio"]
+            ["./mcp/codexy-mcp-devtools", "lsp", "--stdio"]
         );
 
         for command in [

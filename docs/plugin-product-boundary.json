@@ -221,6 +221,7 @@
       "sources": [
         "packages/codexy-runtime/src/mcp.rs",
         "packages/codexy-runtime/src/bin/codexy-mcp-codegraph.rs",
+        "packages/codexy-runtime/src/bin/codexy-mcp-devtools.rs",
         "packages/codexy-runtime/src/bin/codexy-mcp-lsp.rs"
       ],
       "target": "codexy-devtools",

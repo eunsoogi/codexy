@@ -4,6 +4,9 @@ use anyhow::{Context as _, Result, bail};
 
 use crate::paths::display_relative;
 
+#[path = "runtime_binary/windows_delegates.rs"]
+mod windows_delegates;
+
 pub(super) fn artifact_name(server: &str, platform: &str) -> String {
     let extension = if platform == "windows-x86_64" {
         "exe"
@@ -34,29 +37,59 @@ pub(super) fn check(runtime_path: &Path, platform: &str) -> Result<()> {
     check_executable(runtime_path, platform)
 }
 
-pub(super) fn check_windows_entrypoint_copy(
-    plugin_root: &Path,
-    server: &str,
-    runtime_path: &Path,
-) -> Result<()> {
-    let entrypoint = plugin_root
-        .join("mcp")
-        .join(format!("codexy-mcp-{server}.exe"));
+pub(super) fn check_windows_dispatcher(plugin_root: &Path) -> Result<()> {
+    let entrypoint = plugin_root.join("mcp/codexy-mcp-devtools.exe");
     if !entrypoint.is_file() {
         bail!(
-            "{} native Windows MCP entrypoint missing for {server}",
+            "{} native Windows MCP dispatcher missing",
             display_relative(&entrypoint)
         );
     }
-    reject_link_or_reparse_point(plugin_root, runtime_path)?;
     reject_link_or_reparse_point(plugin_root, &entrypoint)?;
-    let runtime = std::fs::read(runtime_path)?;
     let launcher = std::fs::read(&entrypoint)?;
-    if launcher != runtime {
+    if !is_x86_64_pe(&launcher) {
         bail!(
-            "{} native Windows MCP entrypoint must match {}",
+            "{} native Windows MCP dispatcher has invalid binary format",
             display_relative(&entrypoint),
-            display_relative(runtime_path)
+        );
+    }
+    for server in ["lsp", "codegraph"] {
+        let legacy = plugin_root
+            .join("mcp")
+            .join(format!("codexy-mcp-{server}.exe"));
+        if legacy.exists() {
+            bail!(
+                "{} duplicate native Windows MCP entrypoint must not be packaged",
+                display_relative(&legacy)
+            );
+        }
+        let runtime = plugin_root
+            .join("runtime")
+            .join(artifact_name(server, "windows-x86_64"));
+        if launcher == std::fs::read(&runtime)? {
+            bail!(
+                "{} native Windows MCP dispatcher must not duplicate {}",
+                display_relative(&entrypoint),
+                display_relative(&runtime)
+            );
+        }
+        windows_delegates::check(plugin_root, server)?;
+    }
+    Ok(())
+}
+
+pub(super) fn check_distinct_server_runtimes(plugin_root: &Path, platform: &str) -> Result<()> {
+    let lsp = plugin_root
+        .join("runtime")
+        .join(artifact_name("lsp", platform));
+    let codegraph = plugin_root
+        .join("runtime")
+        .join(artifact_name("codegraph", platform));
+    if std::fs::read(&lsp)? == std::fs::read(&codegraph)? {
+        bail!(
+            "{} and {} must not contain duplicate native MCP runtime bytes",
+            display_relative(&lsp),
+            display_relative(&codegraph)
         );
     }
     Ok(())

@@ -85,6 +85,7 @@ fn bootstrap_surface_contents(
         root,
         [
             "packages/getcodexy/pyproject.toml",
+            "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
             "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
             "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
         ],

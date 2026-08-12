@@ -12,7 +12,7 @@ fn projection(appended: &str) -> std::process::Output {
     let root = tempdir().expect("candidate projection root");
     let plugin = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
     make_candidate_proven_windows_package(&plugin);
-    let wrapper = plugin.join("mcp/codexy-mcp-lsp");
+    let wrapper = plugin.join("mcp/codexy-mcp-devtools");
     let text = std::fs::read_to_string(&wrapper).expect("candidate wrapper");
     std::fs::write(&wrapper, format!("{text}\n{appended}\n")).expect("wrapper mutation");
     run_source_projection(&plugin)
