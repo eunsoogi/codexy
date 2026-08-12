@@ -110,7 +110,43 @@ fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestResult {
     if whole.iter().any(|path| selector_paths.contains_key(path)) { return Err("selector/file overlap".into()); }
     for (id, target) in [("hooks.github", "codexy-github"), ("hooks.policy-core", "codexy"), ("skills.github", "codexy-github"), ("mcp.codegraph", "codexy-devtools"), ("mcp.lsp", "codexy-devtools"), ("runtime.codegraph", "codexy-devtools"), ("runtime.lsp", "codexy-devtools"), ("runtime.entrypoints", "codexy-devtools"), ("assets.repository", "repository-only"), ("assets.plugin", "codexy")] { if records.iter().find(|record| record.id == id).map(|record| record.target.as_str()) != Some(target) { return Err(format!("target mismatch for {id}").into()); } }
     let matrix = record_matrix(); if ids != matrix.keys().copied().collect() { return Err("surface-record matrix changed".into()); } for (id, (target, disposition)) in matrix { let record = records.iter().find(|record| record.id == id).ok_or("missing record")?; if (record.target.as_str(), record.disposition.as_str()) != (target, disposition) { return Err(format!("record matrix mismatch: {id}").into()); } }
-    assert_sources(records, "hooks.policy-core", &["plugins/codexy/hooks/codexy_policy/__init__.py","plugins/codexy/hooks/codexy_policy/admission.py","plugins/codexy/hooks/codexy_policy/body.py","plugins/codexy/hooks/codexy_policy/executable_identity.py","plugins/codexy/hooks/codexy_policy/execution_context.py","plugins/codexy/hooks/codexy_policy/filesystem_state.py","plugins/codexy/hooks/codexy_policy/git_command.py","plugins/codexy/hooks/codexy_policy/git_options.py","plugins/codexy/hooks/codexy_policy/git_runtime_config.py","plugins/codexy/hooks/codexy_policy/github.py","plugins/codexy/hooks/codexy_policy/github_alias.py","plugins/codexy/hooks/codexy_policy/github_api.py","plugins/codexy/hooks/codexy_policy/github_target.py","plugins/codexy/hooks/codexy_policy/graphql.py","plugins/codexy/hooks/codexy_policy/graphql_parser.py","plugins/codexy/hooks/codexy_policy/invocation.py","plugins/codexy/hooks/codexy_policy/invocation_wrappers.py","plugins/codexy/hooks/codexy_policy/merge.py","plugins/codexy/hooks/codexy_policy/pull_request.py","plugins/codexy/hooks/codexy_policy/repository.py","plugins/codexy/hooks/codexy_policy/shell.py","plugins/codexy/hooks/codexy_policy/shell_builtins.py","plugins/codexy/hooks/codexy_policy/shell_context.py","plugins/codexy/hooks/codexy_policy/shell_groups.py","plugins/codexy/hooks/codexy_policy/shell_sequence.py","plugins/codexy/hooks/codexy_policy/titles.py","plugins/codexy/hooks/codexy_policy/wrappers.py"])?;
+    assert_sources(records, "hooks.policy-core", &[
+        "plugins/codexy/hooks/codexy_policy/__init__.py",
+        "plugins/codexy/hooks/codexy_policy/body.py",
+        "plugins/codexy/hooks/codexy_policy/destructive_command.py",
+        "plugins/codexy/hooks/codexy_policy/envelope.py",
+        "plugins/codexy/hooks/codexy_policy/executable_identity.py",
+        "plugins/codexy/hooks/codexy_policy/execution_context.py",
+        "plugins/codexy/hooks/codexy_policy/filesystem_state.py",
+        "plugins/codexy/hooks/codexy_policy/git_command.py",
+        "plugins/codexy/hooks/codexy_policy/git_options.py",
+        "plugins/codexy/hooks/codexy_policy/git_runtime_config.py",
+        "plugins/codexy/hooks/codexy_policy/github.py",
+        "plugins/codexy/hooks/codexy_policy/github_alias.py",
+        "plugins/codexy/hooks/codexy_policy/github_api.py",
+        "plugins/codexy/hooks/codexy_policy/github_target.py",
+        "plugins/codexy/hooks/codexy_policy/graphql.py",
+        "plugins/codexy/hooks/codexy_policy/graphql_parser.py",
+        "plugins/codexy/hooks/codexy_policy/invocation.py",
+        "plugins/codexy/hooks/codexy_policy/invocation_wrappers.py",
+        "plugins/codexy/hooks/codexy_policy/merge.py",
+        "plugins/codexy/hooks/codexy_policy/pull_request.py",
+        "plugins/codexy/hooks/codexy_policy/repository.py",
+        "plugins/codexy/hooks/codexy_policy/repository_github_command.py",
+        "plugins/codexy/hooks/codexy_policy/repository_issue.py",
+        "plugins/codexy/hooks/codexy_policy/repository_merge.py",
+        "plugins/codexy/hooks/codexy_policy/repository_pull_request.py",
+        "plugins/codexy/hooks/codexy_policy/shell.py",
+        "plugins/codexy/hooks/codexy_policy/shell_builtins.py",
+        "plugins/codexy/hooks/codexy_policy/shell_context.py",
+        "plugins/codexy/hooks/codexy_policy/shell_evaluator.py",
+        "plugins/codexy/hooks/codexy_policy/shell_groups.py",
+        "plugins/codexy/hooks/codexy_policy/shell_opaque.py",
+        "plugins/codexy/hooks/codexy_policy/shell_sequence.py",
+        "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
+        "plugins/codexy/hooks/codexy_policy/titles.py",
+        "plugins/codexy/hooks/codexy_policy/wrappers.py",
+    ])?;
     let expected_selectors = registration_selectors(root)?; let actual_selectors: BTreeSet<String> = selector_paths.into_iter().flat_map(|(path, selectors)| selectors.into_iter().map(move |selector| format!("{path}#{selector}"))).collect();
     if actual_selectors != expected_selectors { return Err("MCP registration coverage changed".into()); }
     let governed = governed_universe(root)?;
