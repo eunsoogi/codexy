@@ -1,4 +1,4 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path, process::Command, sync::OnceLock};
 
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
@@ -38,7 +38,8 @@ fn packet_binds_real_git_state_and_durable_full_delta_budget() -> TestResult {
     unresolved_pass["predecessor_event_id"] = json!("e-full");
     assert!(!check_packet(fixture.root(), &ledger, &unresolved_pass)?.status.success());
     let mut stale = packet("e-stale", "full");
-    stale["identity"]["head_oid"] = json!(git(["rev-parse", "origin/main"]));
+    stale["identity"]["head_oid"] =
+        json!(git_at(packet_repository(), ["rev-parse", "HEAD^"])?);
     assert!(!check_packet(fixture.root(), &temp.path().join("stale.json"), &stale)?.status.success());
     let mut wrong_diff = packet("e-wrong-diff", "full");
     wrong_diff["identity"]["diff_sha256"] = json!("0".repeat(64));
@@ -167,8 +168,9 @@ fn repository_economics_result_is_readable_and_fails_closed_when_unobserved() ->
 }
 
 fn packet(event: &str, state: &str) -> Value {
-    let base = git(["rev-parse", "origin/main"]);
-    packet_for(repository_root(), &base, event, state).unwrap()
+    let root = packet_repository();
+    let base = git_at(root, ["rev-parse", "HEAD^"]).unwrap();
+    packet_for(root, &base, event, state).unwrap()
 }
 
 fn packet_for(root: &Path, base: &str, event: &str, state: &str) -> TestResult<Value> {
@@ -183,7 +185,7 @@ fn packet_for(root: &Path, base: &str, event: &str, state: &str) -> TestResult<V
 }
 
 fn assert_profile(root: &Path, profile: &str, expected: Value) -> TestResult { let triggers = ["destructive","security","permission","secret","release","high_consequence_external_state","high_risk_guardrail","merge_sensitive","durable_delegation","multi_lane_ownership","explicit_audit_evidence"].into_iter().map(|kind| json!({"kind":kind,"applies":profile == "strict" && kind == "security"})).collect::<Vec<_>>(); let classification = if profile == "light" { json!({"schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":true,"strict_triggers":triggers}) } else { json!({"schema":"codexy.workflow-profile-classification.v2","work_class":"middle","low_risk_eligible":false,"strict_triggers":triggers}) }; let request = if expected.get("discarded_lower_profile").is_some() { json!({"schema":"codexy.review-profile-request.v1","classification":classification,"prior_profile":"standard"}) } else { json!({"schema":"codexy.review-profile-request.v1","classification":classification}) }; let output = resolve_profile(root, request)?; assert!(output.status.success()); assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected); Ok(()) }
-fn check_packet(root: &Path, ledger: &Path, value: &Value) -> TestResult<std::process::Output> { run(root, &["--repository-root", repository_root().to_str().ok_or("root")?, "--ledger", ledger.to_str().ok_or("ledger")?, "--check-packet"], value.clone()) }
+fn check_packet(root: &Path, ledger: &Path, value: &Value) -> TestResult<std::process::Output> { run(root, &["--repository-root", packet_repository().to_str().ok_or("root")?, "--ledger", ledger.to_str().ok_or("ledger")?, "--check-packet"], value.clone()) }
 fn check_packet_at(plugin_root: &Path, repository_root: &Path, ledger: &Path, value: &Value) -> TestResult<std::process::Output> { run(plugin_root, &["--repository-root", repository_root.to_str().ok_or("root")?, "--ledger", ledger.to_str().ok_or("ledger")?, "--check-packet"], value.clone()) }
 fn resolve_profile(root: &Path, value: Value) -> TestResult<std::process::Output> { run(root, &["--resolve-profile"], value) }
 fn check_economics(root: &Path, value: &Value) -> TestResult<std::process::Output> { run(root, &["--check-economics"], value.clone()) }
@@ -195,5 +197,6 @@ fn git_at<const N: usize>(root: &Path, args: [&str; N]) -> TestResult<String> { 
 fn git_bytes_at<const N: usize>(root: &Path, args: [&str; N]) -> TestResult<Vec<u8>> { let output = Command::new("git").current_dir(root).args(args).output()?; if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).into_owned().into()); } Ok(output.stdout) }
 fn init_repository(root: &Path) -> TestResult { git_at(root, ["init"])?; git_at(root, ["config", "user.email", "test@example.invalid"])?; git_at(root, ["config", "user.name", "Test"])?; fs::write(root.join("evidence.json"), "{\"state\":\"base\"}\n")?; commit(root, "base") }
 fn commit(root: &Path, message: &str) -> TestResult { git_at(root, ["add", "."])?; git_at(root, ["commit", "-m", message])?; Ok(()) }
+fn packet_repository() -> &'static Path { static REPOSITORY: OnceLock<tempfile::TempDir> = OnceLock::new(); REPOSITORY.get_or_init(|| { let repo = tempfile::tempdir().unwrap(); init_repository(repo.path()).unwrap(); fs::write(repo.path().join("evidence.json"), "{\"state\":\"review\"}\n").unwrap(); commit(repo.path(), "review").unwrap(); repo }).path() }
 fn repository_root() -> &'static Path { codexy_runtime::paths::repository_root() }
 fn too_many_blockers(value: &mut Value) { for number in 2..=4 { let mut finding = value["findings"][0].clone(); finding["id"] = json!(format!("f-{number}")); value["findings"].as_array_mut().unwrap().push(finding); } }
