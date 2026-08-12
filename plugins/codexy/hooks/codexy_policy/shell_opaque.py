@@ -7,7 +7,6 @@ import shlex
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
 
-POLICY_STATE = re.compile(r"(?:^|[;&|()\s])(?:git|gh|cd|source|\.|rm|export|unset|pushd|popd)(?=$|[;&|()\s])|\b(?:GIT_DIR|GIT_COMMON_DIR|GH_REPO)\s*=")
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
 CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
 
@@ -57,13 +56,15 @@ def dynamic_control_executable(command: str) -> bool:
     return False
 
 
-def owns_opaque(command: str, mode: str) -> bool:
-    if mode == "github":
-        return re.search(r"(?:^|[;&|()\s])gh(?=$|[;&|()\s])|\bGH_REPO\s*=", command) is not None
-    if mode == "destructive":
-        return re.search(
-            r"(?:^|[;&|()\s])(?:git|cd|source|\.|rm|pushd|popd)(?=$|[;&|()\s])"
-            r"|\b(?:GIT_DIR|GIT_COMMON_DIR)\s*=",
-            command,
-        ) is not None
-    return POLICY_STATE.search(command) is not None
+def github_opaque(command: str) -> bool:
+    return re.search(
+        r"(?:^|[;&|()\s])gh(?=$|[;&|()\s])|\bGH_REPO\s*=", command
+    ) is not None
+
+
+def destructive_opaque(command: str) -> bool:
+    return re.search(
+        r"(?:^|[;&|()\s])(?:git|cd|source|\.|rm|pushd|popd)(?=$|[;&|()\s])"
+        r"|\b(?:GIT_DIR|GIT_COMMON_DIR)\s*=",
+        command,
+    ) is not None

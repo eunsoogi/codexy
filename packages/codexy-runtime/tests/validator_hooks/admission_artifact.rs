@@ -104,6 +104,30 @@ fn materialized_launchers_fail_closed_when_shared_runtime_is_unavailable()
 }
 
 #[test]
+fn real_launchers_hide_interpreter_failures_behind_one_denial()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = copy(temp.path())?;
+    std::fs::write(
+        root.join("hooks/codexy-thread-delivery.py"),
+        "raise RuntimeError('must not leak')\n",
+    )?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        let output = Command::new(root.join("hooks/codexy-thread-delivery.sh"))
+            .arg(event)
+            .env("PLUGIN_ROOT", &root)
+            .stdin(Stdio::null())
+            .output()?;
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty(), "interpreter stderr leaked");
+        let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
+        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_THREAD_DELIVERY_RUNTIME"));
+    }
+    Ok(())
+}
+
+#[test]
 fn shared_envelope_fails_closed_at_every_input_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");

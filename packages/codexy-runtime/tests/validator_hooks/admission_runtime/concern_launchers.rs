@@ -87,3 +87,57 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
         _ => Err(format!("no concern launcher for {tool}").into()),
     }
 }
+
+#[test]
+fn bash_concerns_have_independent_positive_and_negative_owners() -> TestResult {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let workspace = tempfile::tempdir()?;
+    let owned = workspace.path().join("owned");
+    std::fs::create_dir_all(owned.join(".git"))?;
+    std::fs::write(
+        owned.join(".git/config"),
+        "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n",
+    )?;
+    for (launcher, command, denied) in [
+        ("codexy-repository-github-command", "gh issue create --title invalid", true),
+        ("codexy-destructive-command", "gh issue create --title invalid", false),
+        ("codexy-repository-github-command", "git push --force origin topic", false),
+        ("codexy-destructive-command", "git push --force origin topic", true),
+    ] {
+        let input = serde_json::json!({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+            "cwd": owned,
+        });
+        let output = run_launcher(&root, launcher, "PreToolUse", &input, &[])?;
+        assert_eq!(!output.is_empty(), denied, "{launcher}: {command}");
+    }
+    Ok(())
+}
+
+fn run_launcher(
+    root: &Path,
+    launcher: &str,
+    event: &str,
+    input: &Value,
+    environment: &[(&str, &std::ffi::OsStr)],
+) -> TestResult<Vec<u8>> {
+    let mut child = Command::new(root.join("hooks").join(format!("{launcher}.sh")));
+    child.arg(event).env_path("PLUGIN_ROOT", root);
+    child.envs(environment.iter().copied());
+    child
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = child.spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("stdin")?
+        .write_all(&serde_json::to_vec(input)?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    Ok(output.stdout)
+}

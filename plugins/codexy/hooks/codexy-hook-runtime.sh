@@ -42,6 +42,6 @@ if [ "${GIT_CONFIG_COUNT+x}" = x ]; then
 fi
 
 env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" USER="$runtime_user" python3 -I -B -c \
-  'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' || exit 1
-output=$("$@" python3 -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event") || exit 1
+  'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null || exit 1
+output=$("$@" python3 -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" 2>/dev/null) || exit 1
 [ -z "$output" ] || printf '%s\n' "$output"

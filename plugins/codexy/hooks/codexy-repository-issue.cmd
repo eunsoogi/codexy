@@ -5,7 +5,7 @@ if /I "%event%"=="PreToolUse" goto evaluate
 if /I "%event%"=="PermissionRequest" goto evaluate
 set "event=PreToolUse"
 :evaluate
-py -3 -I -B "%~dp0codexy-repository-issue.py" --event "%event%"
+py -3 -I -B "%~dp0codexy-repository-issue.py" --event "%event%" 2>nul
 if not errorlevel 1 exit /b 0
 if /I "%event%"=="PermissionRequest" goto permission_deny
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_REPOSITORY_ISSUE_RUNTIME: Codexy policy MUST NOT execute this operation."}}
