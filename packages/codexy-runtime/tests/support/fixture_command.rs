@@ -6,6 +6,8 @@ mod archive_inspection_receipt;
 mod dispatch;
 #[path = "fixture_command_metrics.rs"]
 mod metrics;
+#[cfg(windows)]
+use super::fixture_command_windows::discover_windows_interpreter;
 pub(crate) use super::fixture_command_windows::{
     fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
 };
