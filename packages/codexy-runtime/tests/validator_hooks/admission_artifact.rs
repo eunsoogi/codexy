@@ -12,6 +12,9 @@ const LAUNCHERS: &[&str] = &[
     "codexy-destructive-command",
 ];
 
+#[path = "admission_artifact/runtime_failures.rs"]
+mod runtime_failures;
+
 #[test]
 fn packaged_concern_hooks_are_reachable() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

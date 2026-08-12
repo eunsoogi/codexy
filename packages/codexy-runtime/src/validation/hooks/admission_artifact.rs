@@ -55,7 +55,6 @@ fn source_map() -> BTreeMap<&'static str, &'static Source> {
 
 fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BTreeSet<String>> {
     let mut closure = BTreeSet::new();
-    let mut visiting = BTreeSet::new();
     for root in [
         "codexy-thread-delivery.py",
         "codexy-repository-issue.py",
@@ -64,9 +63,51 @@ fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BT
         "codexy-repository-github-command.py",
         "codexy-destructive-command.py",
     ] {
-        visit(root, hooks, sources, &mut closure, &mut visiting)?;
+        let concern = closure_from(root, hooks, sources)?;
+        check_concern_boundary(root, &concern)?;
+        closure.extend(concern);
     }
     Ok(closure)
+}
+
+fn closure_from(
+    root: &str,
+    hooks: &Path,
+    sources: &BTreeMap<&str, &Source>,
+) -> Result<BTreeSet<String>> {
+    let mut closure = BTreeSet::new();
+    visit(root, hooks, sources, &mut closure, &mut BTreeSet::new())?;
+    Ok(closure)
+}
+
+fn check_concern_boundary(root: &str, closure: &BTreeSet<String>) -> Result<()> {
+    let forbidden = match root {
+        "codexy-destructive-command.py" => &[
+            "codexy_policy/body.py",
+            "codexy_policy/github.py",
+            "codexy_policy/github_alias.py",
+            "codexy_policy/github_api.py",
+            "codexy_policy/github_target.py",
+            "codexy_policy/graphql.py",
+            "codexy_policy/graphql_parser.py",
+            "codexy_policy/merge.py",
+            "codexy_policy/pull_request.py",
+            "codexy_policy/shell_github.py",
+            "codexy_policy/shell_github_opaque.py",
+            "codexy_policy/shell_github_policy.py",
+            "codexy_policy/titles.py",
+        ][..],
+        "codexy-repository-github-command.py" => &[
+            "codexy_policy/shell_destructive.py",
+            "codexy_policy/shell_destructive_opaque.py",
+            "codexy_policy/shell_destructive_policy.py",
+        ][..],
+        _ => return Ok(()),
+    };
+    if let Some(path) = forbidden.iter().find(|path| closure.contains(**path)) {
+        bail!("packaged {root} import closure crosses concern boundary through {path}");
+    }
+    Ok(())
 }
 
 fn visit(

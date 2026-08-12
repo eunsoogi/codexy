@@ -1,4 +1,4 @@
-"""Conservative handling for opaque shell syntax and policy selectors."""
+"""Concern-neutral handling for opaque shell syntax."""
 
 from __future__ import annotations
 
@@ -54,17 +54,3 @@ def dynamic_control_executable(command: str) -> bool:
                 return True
             command_start = False
     return False
-
-
-def github_opaque(command: str) -> bool:
-    return re.search(
-        r"(?:^|[;&|()\s])gh(?=$|[;&|()\s])|\bGH_REPO\s*=", command
-    ) is not None
-
-
-def destructive_opaque(command: str) -> bool:
-    return re.search(
-        r"(?:^|[;&|()\s])(?:git|cd|source|\.|rm|pushd|popd)(?=$|[;&|()\s])"
-        r"|\b(?:GIT_DIR|GIT_COMMON_DIR)\s*=",
-        command,
-    ) is not None

@@ -126,12 +126,29 @@ fn removed_generic_and_dead_policy_artifacts_stay_absent() {
         "plugins/codexy/hooks/codexy-admission.cmd",
         "plugins/codexy/hooks/codexy-admission.py",
         "plugins/codexy/hooks/codexy_policy/admission.py",
+        "plugins/codexy/hooks/codexy_policy/shell.py",
         "plugins/codexy/hooks/postcompact-capability.json",
         "packages/codexy-runtime/src/validation/hooks/model.rs",
         "packages/codexy-runtime/src/validation/hooks/post_compact.rs",
     ] {
         assert!(!root.join(path).exists(), "removed policy remains: {path}");
     }
+}
+
+#[test]
+fn bash_concern_adapters_do_not_import_each_others_policy() -> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks/codexy_policy");
+    let destructive = std::fs::read_to_string(root.join("shell_destructive.py"))?;
+    let github = std::fs::read_to_string(root.join("shell_github.py"))?;
+    assert!(!destructive.contains("shell_github"));
+    assert!(!github.contains("shell_destructive"));
+    assert!(destructive.contains("shell_destructive_policy"));
+    assert!(github.contains("shell_github_policy"));
+    let destructive_policy = std::fs::read_to_string(root.join("shell_destructive_policy.py"))?;
+    let github_policy = std::fs::read_to_string(root.join("shell_github_policy.py"))?;
+    assert!(!destructive_policy.contains("shell_github"));
+    assert!(!github_policy.contains("shell_destructive"));
+    Ok(())
 }
 
 #[test]

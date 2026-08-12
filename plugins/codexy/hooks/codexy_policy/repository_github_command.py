@@ -3,7 +3,7 @@
 import os
 
 from .envelope import Request
-from .shell import github_forbidden
+from .shell_github import forbidden as shell_forbidden
 
 
 def forbidden(request: Request) -> bool:
@@ -14,7 +14,7 @@ def forbidden(request: Request) -> bool:
         or not isinstance(request.cwd, str)
     ):
         return True
-    return github_forbidden(
+    return shell_forbidden(
         data["command"],
         request.cwd,
         os.environ.get("GH_REPO") or None,

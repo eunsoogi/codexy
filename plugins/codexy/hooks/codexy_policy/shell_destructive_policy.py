@@ -2,8 +2,8 @@
 
 from .execution_context import CommandEffect, ExecutionContext, remote_url
 from .shell_builtins import hash_path_alias, rm_forbidden
+from .shell_destructive_opaque import owns as destructive_opaque
 from .shell_git import evaluate as evaluate_git
-from .shell_opaque import destructive_opaque
 
 
 class DestructivePolicy:

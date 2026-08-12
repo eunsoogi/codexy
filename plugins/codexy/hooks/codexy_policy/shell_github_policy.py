@@ -5,7 +5,7 @@ from .github import forbidden as gh_forbidden
 from .github_alias import expand as expand_gh_alias
 from .repository import OWNED, github_identity
 from .shell_git import evaluate as evaluate_git
-from .shell_opaque import github_opaque
+from .shell_github_opaque import owns as github_opaque
 
 
 class GithubPolicy:
