@@ -58,7 +58,10 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:
             return Invocation(executable, args, context, available=executable_available(tokens[0], context.cwd, path))
         if executable == "builtin":
-            return None
+            if not args or args[0] != "command":
+                return Invocation(None, [], context, opaque=True)
+            tokens = args
+            continue
         if executable == "export" or executable == "printf" and args[:1] == ["-v"]:
             state = export_variables(args, context) if executable == "export" else printf_assignment(args, context)
             return None if state is None else Invocation(None, [], state)
