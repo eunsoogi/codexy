@@ -6,7 +6,6 @@ import re
 import shlex
 
 from .execution_context import ExecutionContext, SINGLE_QUOTED_DOLLAR, assignment
-from .executable_identity import available
 from .invocation import resolve as resolve_invocation
 
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
@@ -88,8 +87,7 @@ def contains_policy_executable(
                     fallback = resolve_invocation(prefix_free, context)
                     if fallback is None or fallback.opaque or fallback.executable == expected:
                         return True
-                    path = dict(context.environment).get("PATH")
-                    if fallback.executable is None or not available(fallback.executable, context.cwd, path):
+                    if not fallback.available:
                         return True
                 command_start = False
                 index = end - 1

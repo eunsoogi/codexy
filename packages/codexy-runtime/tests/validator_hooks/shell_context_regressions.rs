@@ -35,6 +35,8 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     std::fs::create_dir(&renamed)?;
     std::fs::copy(&git, renamed.join("git-copy"))?;
     std::fs::copy(&gh, renamed.join("gh-copy"))?;
+    let copied_printf = renamed.join("printf-copy");
+    std::fs::copy(&printf, &copied_printf)?;
     let wrappers = [
         ("command", ""),
         ("env", ""),
@@ -56,7 +58,7 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         for (wrapper, option) in wrappers {
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
-            assert_event_case(&root, event, &owned, &format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", printf.display()), false, &[])?;
+            assert_event_case(&root, event, &owned, &format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), false, &[])?;
         }
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false, &[])?;

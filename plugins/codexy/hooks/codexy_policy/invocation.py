@@ -8,7 +8,7 @@ from .execution_context import (
     ExecutionContext, assigned_variables, assignment, at, expand_tokens, export_variables,
     leading_assignments, printf_assignment, unset_variables,
 )
-from .executable_identity import resolve as executable_identity
+from .executable_identity import available as executable_available, resolve as executable_identity
 from .invocation_wrappers import environment as wrapper_environment, options as wrapper_options
 from .shell_context import command_option, name, resolve_cwd
 
@@ -24,6 +24,7 @@ class Invocation:
     context: ExecutionContext
     script: str | None = None
     opaque: bool = False
+    available: bool = False
 
 
 def resolve(tokens: list[str], context: ExecutionContext, depth: int = 0) -> Invocation | None:
@@ -49,12 +50,13 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         tokens = expanded
         if not tokens:
             return Invocation(None, [], context)
-        executable = executable_identity(tokens[0], context.cwd, context.executable_aliases, dict(context.environment).get("PATH"))
+        path = dict(context.environment).get("PATH")
+        executable = executable_identity(tokens[0], context.cwd, context.executable_aliases, path)
         if executable is None:
             return Invocation(None, [], context, opaque=True)
         args = tokens[1:]
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == ["--version"]:
-            return Invocation(executable, args, context)
+            return Invocation(executable, args, context, available=executable_available(tokens[0], context.cwd, path))
         if executable == "builtin":
             return None
         if executable == "export" or executable == "printf" and args[:1] == ["-v"]:
@@ -122,7 +124,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
             return Invocation(executable, args, context, opaque=True)
         if executable in OPAQUE_INTERPRETERS:
             return Invocation(executable, args, context, opaque=True)
-        return Invocation(executable, args, context)
+        return Invocation(executable, args, context, available=executable_available(tokens[0], context.cwd, path))
     return None
 
 
