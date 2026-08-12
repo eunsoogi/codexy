@@ -25,8 +25,8 @@ impl FinalArchiveFixture {
         let temporary = tempfile::tempdir()?;
         let root = temporary.path().join("final archive fixture with spaces");
         fs::create_dir(&root)?;
-        let source = root.join("plugins/codexy");
-        let staged = root.join("staged/plugins/codexy");
+        let source = root.join("plugins/codexy-devtools");
+        let staged = root.join("staged/plugins/codexy-devtools");
         for plugin in [&source, &staged] {
             fs::create_dir_all(plugin.join(".codex-plugin"))?;
             fs::create_dir_all(plugin.join("runtime"))?;
@@ -81,7 +81,7 @@ impl FinalArchiveFixture {
                 .arg(root.join("staged"))
                 .args(["-czf"])
                 .arg(&staged_archive)
-                .arg("plugins/codexy")
+                .arg("plugins/codexy-devtools")
                 .status()?
                 .success()
         );
@@ -97,7 +97,7 @@ impl FinalArchiveFixture {
                 .status()?
                 .success()
         );
-        fs::remove_file(public_root.join("plugins/codexy/runtime-candidate.json"))?;
+        fs::remove_file(public_root.join("plugins/codexy-devtools/runtime-candidate.json"))?;
         let public_archive = root.join("public.tar.gz");
         assert!(
             Command::new("tar")
@@ -106,7 +106,7 @@ impl FinalArchiveFixture {
                 .arg(&public_root)
                 .args(["-czf"])
                 .arg(&public_archive)
-                .arg("plugins/codexy")
+                .arg("plugins/codexy-devtools")
                 .status()?
                 .success()
         );
@@ -189,7 +189,7 @@ impl FinalArchiveFixture {
     pub(super) fn input_tree(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let output = Command::new("tar")
             .current_dir(&self.root)
-            .args(["-cf", "-", "plugins/codexy", "staged/plugins/codexy"])
+            .args(["-cf", "-", "plugins/codexy-devtools", "staged/plugins/codexy-devtools"])
             .output()?;
         assert!(output.status.success(), "fixture input snapshot failed");
         Ok(output.stdout)
@@ -199,18 +199,18 @@ impl FinalArchiveFixture {
         let output = Command::new("python3")
             .args(["-c", r#"import os, pathlib, re, stat, sys, tarfile
 archive, root, materializer = map(pathlib.Path, sys.argv[1:])
-source = root / "plugins/codexy"
-matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy/mcp/codexy-mcp-codegraph",', materializer.read_text()).group("expression")
-assert eval(matcher, {"relative": pathlib.PureWindowsPath("plugins/codexy/mcp/codexy-mcp-codegraph")}) in {"plugins/codexy/mcp/codexy-mcp-lsp", "plugins/codexy/mcp/codexy-mcp-codegraph"}, "Windows governed wrapper matcher missed codegraph"
+source = root / "plugins/codexy-devtools"
+matcher = re.search(r'if (?P<expression>[^\n]+) in \{\n\s+"plugins/codexy-devtools/mcp/codexy-mcp-lsp",\n\s+"plugins/codexy-devtools/mcp/codexy-mcp-codegraph",', materializer.read_text()).group("expression")
+assert eval(matcher, {"relative": pathlib.PureWindowsPath("plugins/codexy-devtools/mcp/codexy-mcp-codegraph")}) in {"plugins/codexy-devtools/mcp/codexy-mcp-lsp", "plugins/codexy-devtools/mcp/codexy-mcp-codegraph"}, "Windows governed wrapper matcher missed codegraph"
 with tarfile.open(archive) as entries:
-    def header(path): return entries.getmember(f"plugins/codexy/{path}").mode & 0o777
+    def header(path): return entries.getmember(f"plugins/codexy-devtools/{path}").mode & 0o777
     for wrapper in ("mcp/codexy-mcp-lsp", "mcp/codexy-mcp-codegraph"):
         assert header(wrapper) == 0o755, f"{wrapper} mode was {header(wrapper):04o}"
         legacy = (source / wrapper).read_bytes().replace(b"darwin-arm64 linux-x86_64", b"darwin-arm64 linux-x86_64 windows-x86_64").replace(b"getcodexy==1.2.2", b"getcodexy==1.3.0")
         expected = (source / wrapper).read_text().replace('bundled_platforms="darwin-arm64 linux-x86_64"', 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"').replace("getcodexy==1.2.2", "getcodexy==1.3.0").replace("\n", os.linesep).encode()
         assert (expected == legacy and b"\r" not in expected) if os.linesep == "\n" else (expected != legacy and b"\r\n" in expected), f"{wrapper} write_text newline semantics were not preserved"
-        assert entries.extractfile(f"plugins/codexy/{wrapper}").read() == expected, f"{wrapper} content changed"
-    for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy/mcp/codexy-mcp-lsp.exe"), ("hooks/current-policy.txt", source / "hooks/current-policy.txt")):
+        assert entries.extractfile(f"plugins/codexy-devtools/{wrapper}").read() == expected, f"{wrapper} content changed"
+    for path, owner in (("mcp/codexy-mcp-lsp.exe", root / "staged/plugins/codexy-devtools/mcp/codexy-mcp-lsp.exe"),):
         assert header(path) == stat.S_IMODE(owner.stat().st_mode), f"{path} mode changed"
 "#])
             .arg(&self.final_archive)

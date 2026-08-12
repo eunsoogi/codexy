@@ -28,7 +28,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "scripts/materialize-runtime-release-archive",
             "codexy-runtime-package.tar.gz",
             "runtime-release-receipt.json",
-            "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy",
+            "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
             "gh attestation verify public-runtime.tar.gz",
             "gh release view v1.3.0",
             "gh release upload v1.3.0",
@@ -36,7 +36,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "gh release edit v1.3.0 --draft=false",
             "gh release download v1.3.0",
             "release asset differs from verified bytes",
-            "--plugin-root \"$PWD/plugins/codexy\"",
+            "--plugin-root \"$PWD/plugins/codexy-devtools\"",
         ],
     );
     support::assert_structured_absent_literals(
@@ -78,7 +78,7 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
             .status()?
             .success()
     );
-    let plugin = extracted.join("plugins/codexy");
+    let plugin = extracted.join("plugins/codexy-devtools");
     let manifest: Value =
         serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
     assert_eq!(manifest["version"], "1.3.0");
@@ -134,7 +134,7 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
             .status()?
             .success()
     );
-    let plugin = extraction.path().join("plugins/codexy");
+    let plugin = extraction.path().join("plugins/codexy-devtools");
     let public_extraction = tempfile::tempdir()?;
     assert!(
         Command::new("tar")
@@ -145,7 +145,7 @@ fn materializer_projects_current_source_onto_an_immutable_public_runtime()
             .status()?
             .success()
     );
-    let public_plugin = public_extraction.path().join("plugins/codexy");
+    let public_plugin = public_extraction.path().join("plugins/codexy-devtools");
     for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
         let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
         for server in ["lsp", "codegraph"] {
@@ -225,10 +225,10 @@ fn reject_public(fixture: &FinalArchiveFixture, label: &str, output: std::proces
 
 fn replace_public_entry(fixture: &FinalArchiveFixture, relative: &str) -> Result<(), Box<dyn std::error::Error>> {
     let root = fixture.root.join("public");
-    let path = root.join("plugins/codexy").join(relative);
+    let path = root.join("plugins/codexy-devtools").join(relative);
     fs::create_dir_all(path.parent().ok_or("public mutation parent")?)?;
     fs::write(path, b"mutated public archive\n")?;
-    assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root).args(["-czf"]).arg(&fixture.public_archive).arg("plugins/codexy").status()?.success());
+    assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root).args(["-czf"]).arg(&fixture.public_archive).arg("plugins/codexy-devtools").status()?.success());
     Ok(())
 }
 

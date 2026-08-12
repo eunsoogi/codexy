@@ -56,7 +56,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         &[
             "export PUBLIC_RELEASE=1",
             "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
-            "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+            "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
         ],
     );
     support::assert_structured_absent_literals(
@@ -80,7 +80,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
             "$env:PUBLIC_RELEASE = \"1\"",
             "bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz",
-            "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy\" public-release",
+            "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy-devtools\" public-release",
             "$releaseOutput -notmatch \"HTTP 404|release not found\"",
         ],
     );

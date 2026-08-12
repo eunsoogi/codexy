@@ -121,6 +121,7 @@ fn copy_fixture(
     mutable_files: &[&str],
 ) -> std::io::Result<()> {
     let repository = codexy_runtime::paths::repository_root();
+    support::copy_dir(&repository.join("plugins/codexy"), plugin_root)?;
     for relative in mutable_files {
         let relative = std::path::Path::new(relative);
         let devtools = repository.join("plugins/codexy-devtools").join(relative);
