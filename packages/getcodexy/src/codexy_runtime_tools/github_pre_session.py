@@ -14,11 +14,10 @@ from typing import Callable
 from .component_integrity import frozen_component
 from .activation_transaction import ActivationSnapshot
 from .plugin_resolution import (
-    official_marketplace,
     official_named_install,
     preflight_named_install,
 )
-from .pre_session import _json, _run
+from .pre_session import _json, _run, official_marketplace_root
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
 
 
@@ -49,10 +48,7 @@ def run_github_pre_session(
     executable = trusted_codex(codex)
     invoke = runner or (lambda command: _run(command, home))
     release = package_version or distribution_version("getcodexy")
-    marketplace_root = official_marketplace(_json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    ))
+    marketplace_root = official_marketplace_root(executable, invoke)
     before = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
     for name in ("codexy", "codexy-github"):
         preflight_named_install(before, marketplace_root, name)
