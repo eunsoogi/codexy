@@ -73,6 +73,9 @@ mod validator_roles;
 #[path = "../validator_review_handoff.rs"]
 mod validator_review_handoff;
 
+#[path = "../validator_pr_state_capture.rs"]
+mod validator_pr_state_capture;
+
 
 #[path = "../validator_sentinel_loc_remediation.rs"]
 mod validator_sentinel_loc_remediation;

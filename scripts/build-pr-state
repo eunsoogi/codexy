@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Merge the selected typed review contract into captured GitHub PR state."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import tempfile
+from pathlib import Path
+from typing import NoReturn
+
+
+REVIEW_FIELDS = ("reviewProfile", "reviewDecision", "reviewEvidence", "reviewLedger")
+REVIEW_KEYS = set(REVIEW_FIELDS)
+
+
+def fail(message: str) -> NoReturn:
+    raise ValueError(message)
+
+
+def read_object(path: Path, label: str) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"cannot read {label} from {path}: {error}")
+    if not isinstance(value, dict):
+        fail(f"{label} must be an object")
+    return value
+
+
+def review_contract(base: dict[str, object], value: dict[str, object]) -> dict[str, object]:
+    if set(value) - REVIEW_KEYS:
+        fail("review control state contains unsupported fields")
+    profile = value.get("reviewProfile")
+    decision = value.get("reviewDecision")
+    if not isinstance(profile, str) or profile not in {"light", "standard", "strict"}:
+        fail("review control state requires a closed reviewProfile")
+    if not isinstance(decision, str) or not decision:
+        fail("review control state requires reviewDecision")
+    if profile == "light":
+        if set(value) != {"reviewProfile", "reviewDecision"}:
+            fail("light review control state must not attach reviewer evidence")
+        return {"reviewProfile": profile, "reviewDecision": decision}
+    if set(value) != REVIEW_KEYS:
+        fail("non-light review control state requires terminal evidence and ledger")
+    if not isinstance(value["reviewEvidence"], dict) or not isinstance(value["reviewLedger"], dict):
+        fail("non-light review control state requires object evidence and ledger")
+    head = base.get("headRefOid")
+    evidence = value["reviewEvidence"]
+    if not isinstance(head, str) or not head:
+        fail("base PR state requires headRefOid for non-light review evidence")
+    if evidence.get("profile") != profile or evidence.get("head_oid") != head:
+        fail("review evidence must bind the selected profile and PR head")
+    return {key: value[key] for key in REVIEW_FIELDS}
+
+
+def write_json(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, separators=(",", ":"), ensure_ascii=False)
+            handle.write("\n")
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-pr-state-file", required=True, type=Path)
+    parser.add_argument("--review-control-state-file", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args()
+    try:
+        state = read_object(args.base_pr_state_file, "base PR state")
+        if REVIEW_KEYS & set(state):
+            fail("base PR state must not already contain review control fields")
+        state.update(review_contract(state, read_object(args.review_control_state_file, "review control state")))
+        write_json(args.output, state)
+        return 0
+    except ValueError as error:
+        print(f"build-pr-state: {error}", file=os.sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

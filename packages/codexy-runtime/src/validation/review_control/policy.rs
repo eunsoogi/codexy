@@ -6,6 +6,14 @@ use serde_json::{Value, json};
 
 const PATH: &str = "skills/orchestration/references/review-profiles.json";
 const REQUEST_SCHEMA: &str = "codexy.review-profile-request.v1";
+const CLASSIFICATION_SCHEMA: &str = "codexy.workflow-profile-classification.v1";
+const STRICT_TRIGGERS: [&str; 5] = [
+    "security",
+    "release",
+    "durable_delegation",
+    "multi_lane_ownership",
+    "explicit_audit_evidence",
+];
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -35,9 +43,17 @@ pub(super) struct Reviewer {
 #[serde(deny_unknown_fields)]
 struct Request {
     schema: String,
-    profile: String,
+    classification: Classification,
     #[serde(default)]
     prior_profile: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Classification {
+    schema: String,
+    profile: String,
+    strict_triggers: Vec<String>,
 }
 
 pub(super) fn load(plugin_root: &Path) -> Result<BTreeMap<String, Profile>> {
@@ -53,11 +69,12 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
         bail!("review-profile request has an unsupported schema");
     }
     let profiles = load(plugin_root)?;
+    validate_classification(&request.classification)?;
     let profile = profiles
-        .get(&request.profile)
+        .get(&request.classification.profile)
         .ok_or_else(|| anyhow::anyhow!("review-profile request names an unknown profile"))?;
     let mut route = json!({
-        "profile": request.profile,
+        "profile": request.classification.profile,
         "reviewer": profile.reviewer,
         "full_review_limit": profile.full_review_limit,
         "delta_recheck_limit": profile.delta_recheck_limit,
@@ -69,6 +86,35 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
         route["discarded_lower_profile"] = Value::String(prior);
     }
     Ok(route)
+}
+
+fn validate_classification(classification: &Classification) -> Result<()> {
+    if classification.schema != CLASSIFICATION_SCHEMA {
+        bail!("review-profile classification has an unsupported schema");
+    }
+    if rank(&classification.profile) == u8::MAX {
+        bail!("review-profile classification names an unknown profile");
+    }
+    if classification
+        .strict_triggers
+        .iter()
+        .any(|trigger| !STRICT_TRIGGERS.contains(&trigger.as_str()))
+    {
+        bail!("review-profile classification names an unknown strict trigger");
+    }
+    if classification.strict_triggers.len()
+        != classification
+            .strict_triggers
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+    {
+        bail!("review-profile classification duplicates a strict trigger");
+    }
+    if !classification.strict_triggers.is_empty() && classification.profile != "strict" {
+        bail!("strict workflow classification cannot select a lower review profile");
+    }
+    Ok(())
 }
 
 pub(super) fn is_strictly_higher(previous: &str, next: &str) -> bool {

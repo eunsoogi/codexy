@@ -12,6 +12,7 @@ owner=<owner>
 repo=<repo>
 state_dir=$(mktemp -d)
 trap 'rm -rf "$state_dir"' EXIT
+review_control_state="${REVIEW_CONTROL_STATE_FILE:?set the closed typed review-control state file}"
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
 head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
 git fetch origin "$head_ref"
@@ -105,7 +106,11 @@ jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
   --rawfile localHeadOid "$state_dir/localHeadOid.txt" \
   --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
   '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
-  "$state_dir/pr-state.base.json" > pr-state.json
+  "$state_dir/pr-state.base.json" > "$state_dir/pr-state.unreviewed.json"
+scripts/build-pr-state \
+  --base-pr-state-file "$state_dir/pr-state.unreviewed.json" \
+  --review-control-state-file "$review_control_state" \
+  --output pr-state.json
 scripts/validate-plugin-config --check-completion-handoff \
   --handoff-file <report> \
   --pr-state-file pr-state.json

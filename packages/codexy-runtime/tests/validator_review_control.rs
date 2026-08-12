@@ -15,6 +15,8 @@ mod review_escalation;
 mod terminal_scope;
 #[path = "validator_review_control/handoff_decision.rs"]
 mod handoff_decision;
+#[path = "validator_review_control/profile_classification.rs"]
+mod profile_classification;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {
@@ -180,7 +182,7 @@ fn packet_for(root: &Path, base: &str, event: &str, state: &str) -> TestResult<V
     Ok(json!({"schema":"codexy.review-packet.v2","event_id":event,"predecessor_event_id":null,"profile":"standard","state":state,"reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":format!("{:x}",Sha256::digest(diff))},"acceptance_criteria":[{"id":"ac-1"}],"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":format!("{:x}",Sha256::digest(evidence))}],"findings":[{"id":"f-1","defect_class":"bounds","criterion_id":"ac-1","counterexample":"repro","head_oid":head,"kind":"blocker","reopen_count":0,"resolved":false}],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"unresolved_blocker_ids":["f-1"],"budget_exhausted":false,"parent_decision_required":false}}))
 }
 
-fn assert_profile(root: &Path, profile: &str, expected: Value) -> TestResult { let request = if expected.get("discarded_lower_profile").is_some() { json!({"schema":"codexy.review-profile-request.v1","profile":profile,"prior_profile":"standard"}) } else { json!({"schema":"codexy.review-profile-request.v1","profile":profile}) }; let output = resolve_profile(root, request)?; assert!(output.status.success()); assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected); Ok(()) }
+fn assert_profile(root: &Path, profile: &str, expected: Value) -> TestResult { let request = if expected.get("discarded_lower_profile").is_some() { json!({"schema":"codexy.review-profile-request.v1","classification":{"schema":"codexy.workflow-profile-classification.v1","profile":profile,"strict_triggers":[]},"prior_profile":"standard"}) } else { json!({"schema":"codexy.review-profile-request.v1","classification":{"schema":"codexy.workflow-profile-classification.v1","profile":profile,"strict_triggers":[]}}) }; let output = resolve_profile(root, request)?; assert!(output.status.success()); assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected); Ok(()) }
 fn check_packet(root: &Path, ledger: &Path, value: &Value) -> TestResult<std::process::Output> { run(root, &["--repository-root", repository_root().to_str().ok_or("root")?, "--ledger", ledger.to_str().ok_or("ledger")?, "--check-packet"], value.clone()) }
 fn check_packet_at(plugin_root: &Path, repository_root: &Path, ledger: &Path, value: &Value) -> TestResult<std::process::Output> { run(plugin_root, &["--repository-root", repository_root.to_str().ok_or("root")?, "--ledger", ledger.to_str().ok_or("ledger")?, "--check-packet"], value.clone()) }
 fn resolve_profile(root: &Path, value: Value) -> TestResult<std::process::Output> { run(root, &["--resolve-profile"], value) }
