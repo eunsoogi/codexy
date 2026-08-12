@@ -24,7 +24,7 @@ pub(crate) struct WrapperFixture<'a> {
 impl<'a> WrapperFixture<'a> {
     pub(crate) fn new(home: &'a std::path::Path) -> Result<Self, Box<dyn std::error::Error>> {
         let plugin_root = home.join("codexy");
-        let source_root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+        let source_root = codexy_runtime::paths::repository_root().join("plugins/codexy-devtools");
         copy_wrapper_surface(&source_root, &plugin_root)?;
         let cargo_bin = home.join("fake-bin");
         std::fs::create_dir_all(&cargo_bin)?;

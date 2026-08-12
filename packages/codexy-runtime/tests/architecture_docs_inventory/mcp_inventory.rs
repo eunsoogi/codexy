@@ -7,7 +7,7 @@ pub(super) struct Registration {
 }
 
 pub(super) fn packaged(root: &Path) -> Result<BTreeMap<String, Registration>, String> {
-    let source = std::fs::read_to_string(root.join("plugins/codexy/.mcp.json"))
+    let source = std::fs::read_to_string(root.join("plugins/codexy-devtools/.mcp.json"))
         .map_err(|error| error.to_string())?;
     let value: serde_json::Value =
         serde_json::from_str(&source).map_err(|error| error.to_string())?;
@@ -73,7 +73,7 @@ fn packaged_registrations_preserve_url_and_local_fields_together() -> Result<(),
 
 fn fixture(config: serde_json::Value) -> Result<BTreeMap<String, Registration>, String> {
     let root = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let plugin = root.path().join("plugins/codexy");
+    let plugin = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin).map_err(|error| error.to_string())?;
     let source = serde_json::to_string(&serde_json::json!({"fixture": config}))
         .map_err(|error| error.to_string())?;

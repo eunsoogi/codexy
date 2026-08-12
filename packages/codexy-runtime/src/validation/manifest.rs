@@ -67,10 +67,13 @@ pub(super) fn load_manifest(plugin_root: &Path) -> Result<Value> {
         item.as_str()
             .is_some_and(|text| text.contains("$orchestration"))
     }) {
-        bail!(
-            "{} interface.defaultPrompt must route through $orchestration",
-            display_relative(&path)
-        );
+        let name = manifest.get("name").and_then(Value::as_str).unwrap_or_default();
+        if name != "codexy-devtools" {
+            bail!(
+                "{} interface.defaultPrompt must route through $orchestration",
+                display_relative(&path)
+            );
+        }
     }
     supported_platforms(&manifest, &path)?;
     Ok(manifest)
@@ -120,14 +123,31 @@ pub(super) fn mcp_config_path(plugin_root: &Path, manifest: &Value) -> Result<Pa
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     match load_manifest(plugin_root).and_then(|manifest| {
-        let mcp_path = mcp_config_path(plugin_root, &manifest)?;
-        if !mcp_path.exists() {
-            bail!(
-                "manifest mcpServers target does not exist: {}",
-                display_relative(&mcp_path)
-            );
+        match manifest.get("name").and_then(Value::as_str) {
+            Some("codexy") => {
+                if manifest.get("mcpServers").is_some() {
+                    bail!("{} core manifest must not register devtools MCP servers", display_relative(&manifest_path(plugin_root)));
+                }
+                for stale in [".mcp.json", ".codex/lsp-client.json", "lsp", "mcp", "runtime-release.json"] {
+                    if plugin_root.join(stale).exists() {
+                        bail!("{} core package must not retain devtools surface {stale}", display_relative(plugin_root));
+                    }
+                }
+            }
+            Some("codexy-devtools") => {
+                let mcp_path = mcp_config_path(plugin_root, &manifest)?;
+                if !mcp_path.exists() {
+                    bail!("manifest mcpServers target does not exist: {}", display_relative(&mcp_path));
+                }
+                crate::validation::runtime::check_source_contract(plugin_root, &manifest)?;
+            }
+            _ => {
+                let mcp_path = mcp_config_path(plugin_root, &manifest)?;
+                if !mcp_path.exists() {
+                    bail!("manifest mcpServers target does not exist: {}", display_relative(&mcp_path));
+                }
+            }
         }
-        crate::validation::runtime::check_source_contract(plugin_root, &manifest)?;
         Ok(())
     }) {
         Ok(()) => Vec::new(),

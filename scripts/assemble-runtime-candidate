@@ -5,9 +5,9 @@ case "${STAGING_RUN_ID:?}" in *[!0-9]*|'') exit 1;; esac
 case "${STAGING_RUN_ATTEMPT:?}" in *[!0-9]*|'') exit 1;; esac
 test "$(git rev-parse HEAD)" = "${SOURCE_COMMIT:?}"
 
-root=dist/candidate/plugins/codexy
+root=dist/candidate/plugins/codexy-devtools
 mkdir -p dist/candidate/plugins
-rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ "$root/"
+rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
 for platform in darwin-arm64 linux-x86_64; do
@@ -184,14 +184,14 @@ PY
 
 python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 
-tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
 SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" python3 - <<'PY'
 import json
 import os
 
-candidate = json.load(open("dist/candidate/plugins/codexy/runtime-candidate.json"))
+candidate = json.load(open("dist/candidate/plugins/codexy-devtools/runtime-candidate.json"))
 receipt = {
     "schema": "codexy-runtime-candidate-receipt/v1",
     "candidate": candidate,

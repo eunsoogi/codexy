@@ -105,6 +105,15 @@
       "disposition": "move"
     },
     {
+      "id": "skills.devtools",
+      "category": "skills",
+      "sources": [
+        "plugins/codexy-devtools/skills"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
       "id": "skills.repository",
       "category": "skills",
       "sources": [
@@ -143,10 +152,19 @@
       "disposition": "move"
     },
     {
+      "id": "agents.devtools",
+      "category": "agents",
+      "sources": [
+        "plugins/codexy-devtools/agents/openai.yaml"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
       "id": "mcp.codegraph",
       "category": "mcp",
       "sources": [
-        "plugins/codexy/.mcp.json#codegraph"
+        "plugins/codexy-devtools/.mcp.json#codegraph"
       ],
       "target": "codexy-devtools",
       "disposition": "move"
@@ -155,7 +173,7 @@
       "id": "mcp.lsp",
       "category": "mcp",
       "sources": [
-        "plugins/codexy/.mcp.json#lsp"
+        "plugins/codexy-devtools/.mcp.json#lsp"
       ],
       "target": "codexy-devtools",
       "disposition": "move"
@@ -164,7 +182,7 @@
       "id": "mcp.runtimes",
       "category": "mcp",
       "sources": [
-        "plugins/codexy/mcp"
+        "plugins/codexy-devtools/mcp"
       ],
       "target": "codexy-devtools",
       "disposition": "move"
@@ -173,8 +191,8 @@
       "id": "lsp.integration",
       "category": "lsp",
       "sources": [
-        "plugins/codexy/.codex/lsp-client.json",
-        "plugins/codexy/lsp"
+        "plugins/codexy-devtools/.codex/lsp-client.json",
+        "plugins/codexy-devtools/lsp"
       ],
       "target": "codexy-devtools",
       "disposition": "move"
@@ -275,7 +293,6 @@
         "packages/codexy-runtime/rustfmt.toml",
         "packages/codexy-runtime/clippy.toml",
         "packages/getcodexy",
-        "plugins/codexy/runtime-release.json",
         ".agents/plugins/marketplace.json",
         ".agents/plugins/release-publish-contract.json",
         ".agents/plugins/runtime-activation.json"
@@ -293,6 +310,24 @@
         "plugins/codexy/check-codexy-agents"
       ],
       "target": "codexy",
+      "disposition": "retain"
+    },
+    {
+      "id": "runtime.release",
+      "category": "packaging",
+      "sources": [
+        "plugins/codexy-devtools/runtime-release.json"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
+      "id": "public.devtools",
+      "category": "public-entrypoints",
+      "sources": [
+        "plugins/codexy-devtools/.codex-plugin/plugin.json"
+      ],
+      "target": "codexy-devtools",
       "disposition": "retain"
     },
     {

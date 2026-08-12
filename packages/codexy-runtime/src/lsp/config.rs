@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use crate::lsp::command::{resolve_command, resolve_executable};
 use crate::lsp::pathing::normalize_ext;
-use crate::paths::plugin_root;
+use crate::paths::devtools_plugin_root;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(super) struct LspEntry {
@@ -53,7 +53,7 @@ struct LspClientConfig {
 }
 
 pub(super) fn read_config() -> Result<BTreeMap<String, LspEntry>> {
-    let text = fs::read_to_string(plugin_root().join(".codex/lsp-client.json"))?;
+    let text = fs::read_to_string(devtools_plugin_root().join(".codex/lsp-client.json"))?;
     Ok(serde_json::from_str::<LspClientConfig>(&text)?.lsp)
 }
 
@@ -105,7 +105,7 @@ pub(super) fn select_server(args: &Value, file_path: &str, root: Option<&str>) -
 }
 
 fn read_catalog() -> Result<BTreeMap<String, CatalogServer>> {
-    let text = fs::read_to_string(plugin_root().join("lsp/server-catalog.toml"))?;
+    let text = fs::read_to_string(devtools_plugin_root().join("lsp/server-catalog.toml"))?;
     let catalog = toml::from_str::<Catalog>(&text)?;
     Ok(catalog
         .servers

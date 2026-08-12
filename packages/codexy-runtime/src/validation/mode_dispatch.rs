@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 
@@ -21,19 +21,28 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::All => {
             let mut all = Vec::new();
             all.extend(manifest::check(plugin_root));
+            if is_devtools(plugin_root) {
+                all.extend(lsp::check(plugin_root));
+                all.extend(mcp::check(plugin_root));
+                return all;
+            }
             all.extend(hooks::check(plugin_root));
-            all.extend(lsp::check(plugin_root));
-            all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
             all.extend(routing_policy::check(plugin_root));
             all.extend(tdd_classification::check(plugin_root));
             all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
+            let devtools = devtools_root(plugin_root);
+            if devtools.is_dir() {
+                all.extend(manifest::check(&devtools));
+                all.extend(lsp::check(&devtools));
+                all.extend(mcp::check(&devtools));
+            }
             all
         }
-        Mode::Lsp => lsp::check(plugin_root),
-        Mode::RustLspReadiness => lsp::check_rust_readiness(plugin_root),
+        Mode::Lsp => lsp::check(&tooling_root(plugin_root)),
+        Mode::RustLspReadiness => lsp::check_rust_readiness(&tooling_root(plugin_root)),
         Mode::MergeMessage {
             expected_issue,
             expected_pr,
@@ -68,6 +77,28 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
     }
+}
+
+fn is_devtools(plugin_root: &Path) -> bool {
+    std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|manifest| manifest.get("name").and_then(serde_json::Value::as_str).map(str::to_owned))
+        .as_deref()
+        == Some("codexy-devtools")
+}
+
+fn devtools_root(plugin_root: &Path) -> PathBuf {
+    plugin_root
+        .parent()
+        .map_or_else(|| PathBuf::from("plugins/codexy-devtools"), |parent| parent.join("codexy-devtools"))
+}
+
+fn tooling_root(plugin_root: &Path) -> PathBuf {
+    if !is_devtools(plugin_root) {
+        return devtools_root(plugin_root);
+    }
+    plugin_root.to_path_buf()
 }
 
 /// Runs plugin contract validation for the selected mode.

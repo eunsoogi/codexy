@@ -5,8 +5,8 @@ use anyhow::{Context as _, Result, bail};
 use crate::paths::{display_relative, repo_root};
 
 const WRAPPERS: [(&str, &str); 2] = [
-    ("plugins/codexy/mcp/codexy-mcp-lsp", "lsp"),
-    ("plugins/codexy/mcp/codexy-mcp-codegraph", "codegraph"),
+    ("plugins/codexy-devtools/mcp/codexy-mcp-lsp", "lsp"),
+    ("plugins/codexy-devtools/mcp/codexy-mcp-codegraph", "codegraph"),
 ];
 const PACKAGE_PREFIX: &str = "getcodexy==";
 

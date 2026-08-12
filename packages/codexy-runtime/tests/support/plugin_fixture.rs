@@ -141,8 +141,7 @@ pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {
     }
     #[cfg(not(windows))]
     {
-        plugin_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")])
-            .map_err(Into::into)
+        core_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")]).map_err(Into::into)
     }
 }
 
@@ -176,7 +175,20 @@ pub(crate) fn fixture_mutable_files(root: &Path) -> Option<Vec<PathBuf>> {
 }
 
 fn source_root() -> PathBuf {
-    codexy_runtime::paths::repository_root().join("plugins/codexy")
+    codexy_runtime::paths::repository_root().join("plugins/codexy-devtools")
+}
+
+fn core_fixture_with_mutable_files(mutable_files: &[&Path]) -> std::io::Result<PluginFixture> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().join("codexy");
+    super::plugin_fixture_copy::materialize(
+        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &root,
+        mutable_files,
+        "full:core-roles",
+    )?;
+    super::plugin_fixture_mutable::record(&root, mutable_files);
+    Ok(PluginFixture::from_parts(temp, root, mutable_files))
 }
 
 pub(crate) fn materialize_admission_runtime_suite(plugin_root: &Path) -> std::io::Result<()> {
