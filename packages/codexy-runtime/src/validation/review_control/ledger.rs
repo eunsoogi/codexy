@@ -17,7 +17,9 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
     history.validate()?;
     history.events.push(Event {
         id: packet.event_id.clone(),
-        predecessor_event_id: packet.predecessor_event_id.clone(),
+        predecessor_event_id: super::presence::RequiredNullable::new(
+            packet.predecessor_event_id.clone(),
+        ),
         profile: packet.profile.clone(),
         base_oid: packet.identity_base().to_owned(),
         head_oid: packet.identity_head().to_owned(),
@@ -36,7 +38,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
             })
             .collect(),
         boundaries: packet.boundaries().to_vec(),
-        escalation: packet.escalation().cloned(),
+        escalation: super::presence::RequiredNullable::new(packet.escalation().cloned()),
     });
     history.validate()?;
     let event = history

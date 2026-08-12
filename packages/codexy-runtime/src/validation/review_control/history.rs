@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
-use super::{packet::Escalation, policy};
+use super::{packet::Escalation, policy, presence::RequiredNullable};
 
 const SCHEMA: &str = "codexy.review-ledger.v1";
 
@@ -18,7 +18,7 @@ pub(super) struct History {
 #[serde(deny_unknown_fields)]
 pub(super) struct Event {
     pub(super) id: String,
-    pub(super) predecessor_event_id: Option<String>,
+    pub(super) predecessor_event_id: RequiredNullable<String>,
     pub(super) profile: String,
     pub(super) base_oid: String,
     pub(super) head_oid: String,
@@ -27,7 +27,7 @@ pub(super) struct Event {
     pub(super) delta_used: u8,
     pub(super) blockers: Vec<Blocker>,
     pub(super) boundaries: Vec<String>,
-    pub(super) escalation: Option<Escalation>,
+    pub(super) escalation: RequiredNullable<Escalation>,
 }
 
 #[derive(Deserialize, PartialEq, Eq, Serialize)]

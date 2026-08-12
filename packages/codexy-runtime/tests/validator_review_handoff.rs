@@ -7,7 +7,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 #[test]
 fn completion_handoff_requires_typed_selected_profile_evidence() -> TestResult {
     assert!(!validate(None)?.status.success());
-    assert!(validate_light()?.status.success());
+    assert!(validate(Some("light"))?.status.success());
     assert!(!validate(Some("standard"))?.status.success());
     assert!(!validate(Some("strict"))?.status.success());
     for evidence in [
@@ -143,19 +143,16 @@ fn validate_evidence(evidence: &str) -> TestResult<std::process::Output> {
     crate::support::validator_completion_handoff_files(&handoff, &state)
 }
 
-fn validate_light() -> TestResult<std::process::Output> {
-    let temp = tempfile::tempdir()?;
-    let handoff = temp.path().join("handoff.md");
-    let state = temp.path().join("state.json");
-    fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
-    fs::write(&state, state_json("null", Some("light")))?;
-    crate::support::validator_completion_handoff_files(&handoff, &state)
-}
-
 fn state_json(evidence: &str, profile: Option<&str>) -> String {
     let decision = if profile == Some("light") { "NOT_REQUIRED" } else { "APPROVED" };
     let profile = profile.map_or("null".to_owned(), |value| format!("\"{value}\""));
     let mut state: Value = serde_json::from_str(&format!(r#"{{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"{decision}","reviewProfile":{profile},"reviewEvidence":{evidence}}}"#)).expect("state");
+    if decision == "NOT_REQUIRED" {
+        state
+            .as_object_mut()
+            .expect("state")
+            .remove("reviewEvidence");
+    }
     crate::support::review_control_state::namespace_review_control(&mut state);
     serde_json::to_string(&state).expect("state JSON")
 }

@@ -6,6 +6,7 @@ use serde_json::Value;
 use super::{
     history::{Blocker, History},
     policy::{self, Profile, Reviewer},
+    presence::OptionalField,
 };
 
 const LIFECYCLE_SCHEMA: &str = "codexy.review-terminal-record.v1";
@@ -43,9 +44,9 @@ struct Control {
     profile: String,
     decision: String,
     #[serde(default)]
-    evidence: Option<Value>,
+    evidence: OptionalField<Value>,
     #[serde(default)]
-    ledger: Option<Value>,
+    ledger: OptionalField<Value>,
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
@@ -101,17 +102,18 @@ fn check_state(plugin_root: &Path, state: &Value) -> Result<(), String> {
         .ok_or_else(|| "profile-routed review evidence must bind the current head".to_owned())?;
     if profile.reviewer.is_none() {
         return (control.decision == "NOT_REQUIRED"
-            && control.evidence.is_none()
-            && control.ledger.is_none())
+            && control.evidence.is_absent()
+            && control.ledger.is_absent())
         .then_some(())
         .ok_or_else(|| "light review selection must not attach reviewer evidence".to_owned());
     }
     let evidence = control
         .evidence
+        .into_present()
         .ok_or_else(|| "profile-routed review evidence must be present".to_owned())?;
     let evidence = serde_json::from_value::<Evidence>(evidence)
         .map_err(|_| "profile-routed review evidence must be typed and closed".to_owned())?;
-    let history = control.ledger.ok_or_else(|| {
+    let history = control.ledger.into_present().ok_or_else(|| {
         "profile-routed review evidence must bind a typed terminal ledger event".to_owned()
     })?;
     let history = serde_json::from_value::<History>(history)

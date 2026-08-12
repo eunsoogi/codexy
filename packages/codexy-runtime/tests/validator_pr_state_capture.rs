@@ -36,6 +36,7 @@ fn canonical_capture_rejects_invalid_typed_terminal_contracts() -> TestResult {
         json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"INVALID","evidence":{},"ledger":{}}),
         json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":{"profile":"strict","head_oid":"head"},"ledger":{}}),
         json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":{"profile":"standard","head_oid":"stale"},"ledger":{}}),
+        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":null,"ledger":null}),
         json!({"schema":"codexy.review-control-state.v1","profile":"unknown","decision":"APPROVED"}),
     ] {
         assert!(!capture_output(review)?.status.success());
@@ -64,6 +65,69 @@ fn canonical_capture_rejects_invalid_nonterminal_ledger_history() -> TestResult 
             !capture_output(control)?.status.success(),
             "capture must reject malformed nonterminal review history"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn canonical_capture_requires_nullable_field_presence() -> TestResult {
+    for mutate in [
+        |control: &mut Value| {
+            control["ledger"]["events"][0]
+                .as_object_mut()
+                .expect("full event")
+                .remove("predecessor_event_id");
+        },
+        |control: &mut Value| {
+            control["ledger"]["events"][1]
+                .as_object_mut()
+                .expect("terminal event")
+                .remove("predecessor_event_id");
+        },
+        |control: &mut Value| {
+            control["ledger"]["events"][0]
+                .as_object_mut()
+                .expect("full event")
+                .remove("escalation");
+        },
+        |control: &mut Value| {
+            control["ledger"]["events"][1]
+                .as_object_mut()
+                .expect("terminal event")
+                .remove("escalation");
+        },
+    ] {
+        let mut control = standard_control();
+        mutate(&mut control);
+        assert!(
+            !capture_output(control)?.status.success(),
+            "every required nullable ledger field must be present"
+        );
+    }
+    for field in ["evidence", "ledger"] {
+        let mut light = json!({
+            "schema":"codexy.review-control-state.v1",
+            "profile":"light",
+            "decision":"NOT_REQUIRED"
+        });
+        light[field] = Value::Null;
+        assert!(
+            !capture_output(light)?.status.success(),
+            "light review control must omit {field}, not attach null"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn canonical_capture_accepts_explicit_nullable_ledger_values() -> TestResult {
+    for control in [standard_control(), strict_control()] {
+        let state = capture(control)?;
+        let events = state["reviewControl"]["ledger"]["events"]
+            .as_array()
+            .expect("events");
+        assert!(events.iter().all(|event| event["escalation"].is_null()));
+        assert!(events[0]["predecessor_event_id"].is_null());
     }
     Ok(())
 }

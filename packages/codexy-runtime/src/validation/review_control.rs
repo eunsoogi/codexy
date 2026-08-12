@@ -9,6 +9,7 @@ mod history;
 mod ledger;
 mod packet;
 mod policy;
+mod presence;
 mod repository;
 mod terminal;
 
