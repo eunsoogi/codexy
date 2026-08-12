@@ -97,7 +97,7 @@ fn windows_candidate_verifier_rejects_an_ambient_extraction_root() {
     let root_setup = verifier
         .lines()
         .skip_while(|line| line.trim() != "$root = Join-Path $env:RUNNER_TEMP \"selected-candidate\"")
-        .take_while(|line| line.trim() != "$windowsTar = Join-Path $env:SystemRoot \"System32/tar.exe\"")
+        .take_while(|line| line.trim() != "& $windowsTar -xzf $archive -C $root")
         .collect::<Vec<_>>()
         .join("\n");
     let runner_temp = tempfile::tempdir().expect("runner temp");
