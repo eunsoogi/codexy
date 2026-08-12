@@ -184,6 +184,7 @@ fn write_version_files(repo: &Path) -> std::io::Result<()> {
         (".agents/plugins/marketplace.json", "{}\n"),
         (".agents/plugins/release-publish-contract.json", "{}\n"),
         ("plugins/codexy/.codex-plugin/plugin.json", "{}\n"),
+        ("plugins/codexy-devtools/.codex-plugin/plugin.json", "{}\n"),
         ("plugins/codexy-github/.codex-plugin/plugin.json", "{}\n"),
         ("packages/getcodexy/pyproject.toml", "[project]\nname='fixture'\n"),
     ] {

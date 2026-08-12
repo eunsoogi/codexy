@@ -21,7 +21,9 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         .as_str()
         .ok_or("fixture core manifest version")?
         .to_owned();
-    fs::remove_dir_all(&plugin)?;
+    if plugin.exists() {
+        fs::remove_dir_all(&plugin)?;
+    }
     copy_dir(root.join("plugins/codexy-devtools"), &plugin)?;
     let core_candidate: Value = serde_json::from_slice(&fs::read(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
