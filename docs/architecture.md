@@ -97,9 +97,9 @@ user-facing prompts.
 
 ## MCP servers
 
-The plugin manifest points `mcpServers` at
-[`plugins/codexy/.mcp.json`](../plugins/codexy/.mcp.json). That file registers
-two plugin-local stdio servers. Registration tells a
+The optional Codexy Devtools manifest points `mcpServers` at
+[`plugins/codexy-devtools/.mcp.json`](../plugins/codexy-devtools/.mcp.json). That file registers
+two plugin-local stdio servers; core Codexy registers none. Registration tells a
 host how to resolve a server; runtime startup and tool exposure still belong to
 the host and the current session.
 
@@ -112,9 +112,9 @@ Registration cells reproduce the complete JSON object so argument boundaries and
 simultaneously configured fields remain source-verifiable rather than being
 flattened into command-line prose.
 
-For LSP, [`lsp-client.json`](../plugins/codexy/.codex/lsp-client.json) is the
+For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json) is the
 machine-readable client registration and
-[`server-catalog.toml`](../plugins/codexy/lsp/server-catalog.toml) carries the
+[`server-catalog.toml`](../plugins/codexy-devtools/lsp/server-catalog.toml) carries the
 validated language, extension, command, and install-hint catalog. A matching
 entry does not claim that the executable is installed.
 

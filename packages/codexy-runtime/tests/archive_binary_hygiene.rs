@@ -81,6 +81,7 @@ fn assert_binary_asset_scan(grep_backend: bool, secret: bool) {
     }
     .expect("complete plugin fixture");
     let asset = plugin_root.join("assets/binary-asset.png");
+    std::fs::create_dir_all(asset.parent().expect("asset parent")).expect("asset directory");
     let source_gate =
         codexy_runtime::paths::repository_root().join("scripts/inspect-release-archive");
     let grep_gate = grep_backend.then(|| grep_backend_gate(root.path()));

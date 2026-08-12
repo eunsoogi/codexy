@@ -31,7 +31,7 @@ pub fn admit(target: &str) -> Result<VersionAdvanceAdmission> {
     if bootstrap_version(&root)? != target {
         bail!("version advance target does not match selected bootstrap source");
     }
-    let plugin = root.join("plugins/codexy");
+    let plugin = root.join("plugins/codexy-devtools");
     let prior_release = super::load_json(&plugin.join("runtime-release.json"))?;
     let prior_tag = nested_string(&prior_release, &["artifact", "tag"])?;
     let prior_version = prior_tag
@@ -63,7 +63,7 @@ pub fn admit(target: &str) -> Result<VersionAdvanceAdmission> {
     if selected_tag != format!("v{target}") {
         bail!("version advance runtime selection does not match the public bootstrap tag");
     }
-    crate::validation::run(&root.join("plugins/codexy"), crate::validation::Mode::All)?;
+    crate::validation::run(&plugin, crate::validation::Mode::All)?;
     Ok(VersionAdvanceAdmission::ActivatedSelection)
 }
 

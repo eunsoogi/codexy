@@ -141,7 +141,7 @@ pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {
     }
     #[cfg(not(windows))]
     {
-        plugin_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")])
+        core_fixture_with_mutable_files(&[Path::new("agents/codexy-sentinel.toml")])
             .map_err(Into::into)
     }
 }
@@ -179,6 +179,19 @@ fn source_root() -> PathBuf {
     codexy_runtime::paths::repository_root().join("plugins/codexy")
 }
 
+fn core_fixture_with_mutable_files(mutable_files: &[&Path]) -> std::io::Result<PluginFixture> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().join("codexy");
+    super::plugin_fixture_copy::materialize(
+        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &root,
+        mutable_files,
+        "full:core-roles",
+    )?;
+    super::plugin_fixture_mutable::record(&root, mutable_files);
+    Ok(PluginFixture::from_parts(temp, root, mutable_files))
+}
+
 pub(crate) fn materialize_admission_runtime_suite(plugin_root: &Path) -> std::io::Result<()> {
     let repository = fixture_repository(plugin_root)?;
     let suite = repository.join("packages/codexy-runtime/tests/suites/all.rs");
@@ -206,6 +219,10 @@ fn fixture_repository(plugin_root: &Path) -> std::io::Result<&Path> {
 }
 
 fn validate_relative_file(relative: &Path) -> std::io::Result<()> {
+    validate_relative_file_at(relative, &source_root())
+}
+
+fn validate_relative_file_at(relative: &Path, source_root: &Path) -> std::io::Result<()> {
     if !relative.is_relative()
         || relative.as_os_str().is_empty()
         || relative
@@ -217,7 +234,7 @@ fn validate_relative_file(relative: &Path) -> std::io::Result<()> {
             "fixture mutable path must be a relative regular file",
         ));
     }
-    let source = source_root().join(relative);
+    let source = source_root.join(relative);
     if !source.is_file() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,

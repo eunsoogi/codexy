@@ -115,7 +115,7 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
     let candidate = workflow_branch(assembly, "candidate-proven)");
     for line in [
         "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
-        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
     ] {
         assert!(workflow_lines(candidate).any(|current| current == line));
     }
@@ -206,9 +206,9 @@ fn complete_plugin_fixture_with_runtime(
     root: &std::path::Path,
     native_host_runtime: bool,
 ) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = root.join("plugins/codexy");
+    let plugin_root = root.join("plugins/codexy-devtools");
     copy_tree(
-        &codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
         &plugin_root,
     )?;
     crate::support::materialize_admission_runtime_suite(&plugin_root)?;

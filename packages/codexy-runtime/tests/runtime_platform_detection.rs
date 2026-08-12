@@ -79,7 +79,7 @@ fn install_detected_runtime(runtime: &std::path::Path) -> Result<(), Box<dyn std
 
 #[test]
 fn both_wrappers_consume_one_platform_authority() -> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/mcp");
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy-devtools/mcp");
     let authority = std::fs::read_to_string(root.join("runtime-platform.sh"))?;
     support::assert_structured_literals(
         &authority,

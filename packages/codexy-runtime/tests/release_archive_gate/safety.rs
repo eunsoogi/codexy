@@ -4,7 +4,7 @@ fn archive_gate_rejects_symlink_entries() {
     use std::os::unix::fs::symlink;
 
     let root = tempfile::tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     symlink("/etc/passwd", plugin_root.join("bad-link")).expect("symlink fixture");
     let archive = root.path().join("symlink.tar.gz");
@@ -17,6 +17,7 @@ fn archive_gate_rejects_symlink_entries() {
 #[test]
 fn archive_gate_rejects_local_paths_in_json() {
     let (root, plugin_root, archive) = super::complete_archive_fixture("json-local-path");
+    std::fs::create_dir_all(plugin_root.join("assets")).expect("asset directory");
     std::fs::write(
         plugin_root.join("assets/local-state.json"),
         r#"{"path":"/Users/example/private-state"}"#,

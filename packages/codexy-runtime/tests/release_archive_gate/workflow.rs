@@ -12,7 +12,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
         .expect("archive inspector");
     let workflow: Value = serde_yaml::from_str(&workflow).expect("runtime workflow YAML");
     for path in [
-        "plugins/codexy/**",
+        "plugins/codexy-devtools/**",
         "scripts/inspect-release-archive",
         "scripts/check-release-archive-content",
         "scripts/check-release-archive-entries",
@@ -110,7 +110,7 @@ fn candidate_selected_package_materializes_and_inspects_the_public_projection() 
         "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
         "mkdir -p final-inspect",
         "tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect",
-        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release",
+        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
     ] {
         assert!(
             candidate
@@ -130,7 +130,7 @@ fn candidate_selected_package_materializes_and_inspects_the_public_projection() 
         .expect("public projection extraction");
     let inspected = lines
         .iter()
-        .position(|line| *line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release")
+        .position(|line| *line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release")
         .expect("public projection inspection");
 
     assert!(

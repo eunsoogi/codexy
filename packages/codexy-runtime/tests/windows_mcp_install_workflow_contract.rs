@@ -69,7 +69,7 @@ fn windows_candidate_verifier_uses_powershell_loop_syntax() {
         .expect("PowerShell server loop");
     let runtime = lines
         .iter()
-        .position(|line| *line == "$runtime = Join-Path $public \"plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe\"")
+        .position(|line| *line == "$runtime = Join-Path $public \"plugins/codexy-devtools/runtime/codexy-mcp-$server-windows-x86_64.exe\"")
         .expect("loop runtime path");
 
     assert_eq!(bash_loop, None, "native verifier must not use Bash loop syntax");

@@ -91,7 +91,10 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
         elif release_contract is not None:
             release_contract.verify_archive(archive, platform=config.platform)
         packaged_runtime, package_manifest = unpack_runtime(
-            archive=archive, work=work, runtime_name=config.runtime_name
+            archive=archive, work=work, runtime_name=config.runtime_name,
+            plugin_root=(source_identity.package_plugin_root() if source_identity is not None
+                         else release_contract.package_plugin_root()
+                         if release_contract is not None else "codexy"),
         )
         if not config.package_override and release_contract is None:
             matches, message = releases_match(config.manifest, package_manifest)

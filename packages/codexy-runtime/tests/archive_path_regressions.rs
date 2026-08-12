@@ -29,12 +29,12 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
 #[test]
 fn rejects_canonical_duplicate_members() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     let archive = root.path().join("duplicate.tar.gz");
     let script = r#"import io, sys, tarfile
 with tarfile.open(sys.argv[1], "w:gz") as archive:
-    for name in ("plugins/codexy/value", "plugins/codexy/./value"):
+    for name in ("plugins/codexy-devtools/value", "plugins/codexy-devtools/./value"):
         info = tarfile.TarInfo(name)
         payload = b"same"
         info.size = len(payload)
@@ -55,12 +55,12 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
 #[test]
 fn rejects_embedded_double_slash_member() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
     let archive = root.path().join("double-slash.tar.gz");
     let script = r#"import io, sys, tarfile
 with tarfile.open(sys.argv[1], "w:gz") as archive:
-    info = tarfile.TarInfo("plugins/codexy//hooks/foo")
+    info = tarfile.TarInfo("plugins/codexy-devtools//hooks/foo")
     payload = b"unsafe"
     info.size = len(payload)
     archive.addfile(info, io.BytesIO(payload))
@@ -80,13 +80,13 @@ with tarfile.open(sys.argv[1], "w:gz") as archive:
 #[test]
 fn rejects_repeated_dot_segment_alias_without_rejecting_canonical_member() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin directory");
 
     let canonical_archive = root.path().join("canonical.tar.gz");
     write_single_member_archive(
         &canonical_archive,
-        "plugins/codexy/.codex-plugin/plugin.json",
+        "plugins/codexy-devtools/.codex-plugin/plugin.json",
     );
     let canonical_output = run_gate(&canonical_archive, &plugin_root);
     assert!(
@@ -102,7 +102,7 @@ fn rejects_repeated_dot_segment_alias_without_rejecting_canonical_member() {
     let alias_archive = root.path().join("repeated-dot-segment.tar.gz");
     write_single_member_archive(
         &alias_archive,
-        "plugins/codexy/././.codex-plugin/plugin.json",
+        "plugins/codexy-devtools/././.codex-plugin/plugin.json",
     );
     let alias_output = run_gate(&alias_archive, &plugin_root);
     assert!(!alias_output.status.success());

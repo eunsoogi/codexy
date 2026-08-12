@@ -85,11 +85,11 @@ fn codegraph_wrapper_in_source_checkout_prefers_runtime_dir_over_cargo()
     )?;
     let mut command = Command::new(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/mcp/codexy-mcp-codegraph"),
+            .join("plugins/codexy-devtools/mcp/codexy-mcp-codegraph"),
     );
     command.env_path("CODEXY_RUNTIME_DIR", &runtime_dir.path);
     command
-        .current_dir(codexy_runtime::paths::repository_root().join("plugins/codexy"))
+        .current_dir(codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"))
         .env("PATH", "/usr/bin:/bin")
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
         .stdin(Stdio::piped())

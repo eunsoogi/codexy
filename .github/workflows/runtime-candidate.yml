@@ -200,7 +200,7 @@ jobs:
       - name: Verify staged archive and receipt digests
         run: |
           sha256sum dist/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 dist/runtime-staging-receipt.json)"
-          tar -xOf dist/codexy-marketplace-plugin.tar.gz plugins/codexy/runtime-candidate.json > staged-candidate.json
+          tar -xOf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/runtime-candidate.json > staged-candidate.json
           sha256sum staged-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 dist/runtime-staging-receipt.json)"
       - name: Upload authenticated staging bundle
         uses: actions/upload-artifact@v7

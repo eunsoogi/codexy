@@ -37,7 +37,7 @@ COMPONENT_FILES = {
 }
 
 MANIFEST_CONTENT_DIGESTS = {
-    "codexy": "d82c1adb0ae2804c10b5a9688671302b02f9a42798f0ec6eb7d17b6302e534ac",
+    "codexy": "7f1cfa40bc4fda532de26d396d9cbe41aa5966a3549951f124da8a481160b8dd",
     "codexy-github": "626de0d0be97ea6241d0353a92f94799b73b654b8469d0d6b7ae80a88e41b197",
 }
 

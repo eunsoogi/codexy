@@ -7,7 +7,7 @@ pub(super) fn installed_plugin_copy() -> Result<InstalledPlugin, Box<dyn std::er
     let installed_plugin = temp.path().join("codexy");
     copy_dir(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy")
+            .join("plugins/codexy-devtools")
             .as_path(),
         &installed_plugin,
     )?;
@@ -33,7 +33,7 @@ pub(super) fn installed_plugin_under_rust_host()
 -> Result<InstalledPlugin, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let host = temp.path().join("host");
-    let installed_plugin = host.join("plugins/codexy");
+    let installed_plugin = host.join("plugins/codexy-devtools");
     std::fs::create_dir_all(host.join("src"))?;
     std::fs::write(
         host.join("Cargo.toml"),
@@ -41,7 +41,7 @@ pub(super) fn installed_plugin_under_rust_host()
     )?;
     copy_dir(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy")
+            .join("plugins/codexy-devtools")
             .as_path(),
         &installed_plugin,
     )?;

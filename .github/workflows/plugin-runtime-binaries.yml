@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "plugins/codexy/**"
+      - "plugins/codexy-devtools/**"
       - ".codex/**"
       - ".agents/plugins/**"
       - "scripts/**"
@@ -12,6 +13,7 @@ on:
     branches: [main]
     paths:
       - "plugins/codexy/**"
+      - "plugins/codexy-devtools/**"
       - ".codex/**"
       - ".agents/plugins/**"
       - "scripts/**"
@@ -84,8 +86,8 @@ jobs:
             fi
             rm -f release-view-error
           else
-            url="$(jq -r .artifact.url plugins/codexy/runtime-release.json)"
-            digest="$(jq -r .artifact.sha256 plugins/codexy/runtime-release.json)"
+            url="$(jq -r .artifact.url plugins/codexy-devtools/runtime-release.json)"
+            digest="$(jq -r .artifact.sha256 plugins/codexy-devtools/runtime-release.json)"
             curl --fail --location "$url" -o dist/selected.tar.gz
             test "$(digest_file dist/selected.tar.gz)" = "$digest"
           fi
@@ -105,7 +107,7 @@ jobs:
             scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
             mkdir -p final-inspect
             tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
-            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release
+            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
             ;;
           candidate-proven)
             export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)"
@@ -115,20 +117,20 @@ jobs:
             scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
             mkdir -p final-inspect
             tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
-            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release
+            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
             ;;
           legacy-public)
             mkdir -p legacy final/plugins
             tar -xzf dist/selected.tar.gz -C legacy
-            staged=final/plugins/codexy
-            rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy/ "$staged/"
+            staged=final/plugins/codexy-devtools
+            rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy-devtools/ "$staged/"
             for path in \
               plugins/codexy/runtime/codexy-mcp-lsp-darwin-arm64.bin \
               plugins/codexy/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
               plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin \
               plugins/codexy/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do test -f "legacy/$path"; done
             cp -R legacy/plugins/codexy/runtime "$staged/"
-            tar -C final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy
+            tar -C final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
             scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
             ;;
           esac
@@ -205,11 +207,11 @@ jobs:
           New-Item -ItemType Directory -Path $public -ErrorAction Stop | Out-Null
           & $windowsTar -xzf dist/codexy-marketplace-plugin.tar.gz -C $public
           if ($LASTEXITCODE -ne 0) { throw "native Windows public archive extraction failed" }
-          bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$public/plugins/codexy" public-release
+          bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$public/plugins/codexy-devtools" public-release
           if ($LASTEXITCODE -ne 0) { throw "public archive inspection failed" }
           foreach ($server in @("lsp", "codegraph")) {
-            $runtime = Join-Path $public "plugins/codexy/runtime/codexy-mcp-$server-windows-x86_64.exe"
-            $entrypoint = Join-Path $public "plugins/codexy/mcp/codexy-mcp-$server.exe"
+            $runtime = Join-Path $public "plugins/codexy-devtools/runtime/codexy-mcp-$server-windows-x86_64.exe"
+            $entrypoint = Join-Path $public "plugins/codexy-devtools/mcp/codexy-mcp-$server.exe"
             if ((Get-FileHash $runtime).Hash -ne (Get-FileHash $entrypoint).Hash) { throw "$server entrypoint differs from its runtime" }
             & $entrypoint --help
             if ($LASTEXITCODE -ne 0) { throw "native Windows projected entrypoint failed: $server" }

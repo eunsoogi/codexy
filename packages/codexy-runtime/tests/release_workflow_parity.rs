@@ -17,7 +17,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     let staging_assembly = run(&staging, "stage-runtime", "Assemble canonical staged archive and receipt")?;
     assert_eq!(staging_assembly, "scripts/assemble-runtime-candidate");
     let staging_assembly = script("assemble-runtime-candidate")?;
-    assert!(lines(&staging_assembly).any(|line| line == "rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy/ \"$root/\""));
+    assert!(lines(&staging_assembly).any(|line| line == "rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ \"$root/\""));
     let copied = lines(&staging_assembly).position(|line| line == "cp -R staged-runtime \"$root/runtime\"").ok_or("staging copy")?;
     let executable = lines(&staging_assembly).position(|line| line == "chmod 755 \"$root/runtime/codexy-mcp-${server}-${platform}.bin\"").ok_or("staging mode")?;
     assert!(copied < executable);
@@ -29,7 +29,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     assert!(lines(activation_proof).any(|line| line == "scripts/download-runtime-staging-artifact staging"));
     assert!(command_present(activation_proof, &["gh", "attestation", "verify"]));
     let activation_pr = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
-    assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "plugins/codexy")));
+    assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "plugins/codexy-devtools")));
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == ".agents/plugins")));
     support::assert_structured_literals(
         activation_pr,
@@ -110,7 +110,7 @@ fn activated_bootstrap_identity_preserves_the_selected_runtime_release() -> Resu
     assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
     assert_eq!(contract["runtime"]["selectedTag"], "v1.3.0");
-    let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy/runtime-release.json"))?)?;
+    let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy-devtools/runtime-release.json"))?)?;
     assert_eq!(runtime_release["artifact"]["tag"], "v1.2.2");
     Ok(())
 }

@@ -32,8 +32,8 @@ Codexy bundles:
   current;
 - specialist role definitions for focused implementation, investigation,
   documentation, and current-diff review;
-- codegraph and language-server registrations for repository discovery and
-  language-aware checks; and
+- an optional `codexy-devtools` companion for codegraph and language-server
+  registrations used in repository discovery and language-aware checks; and
 - validators and GitHub-oriented evidence gates for plugin configuration,
   pull-request readiness, and release work.
 
@@ -47,9 +47,11 @@ Register this repository as a Codex plugin marketplace, then install Codexy:
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref main
 codex plugin add codexy@codexy
+# Optional repository-navigation and language tools:
+codex plugin add codexy-devtools@codexy
 ```
 
-Verify that Codex can see the installed plugin and its MCP servers:
+Verify that Codex can see the installed plugins and optional devtools MCP servers:
 
 ```sh
 codex plugin list

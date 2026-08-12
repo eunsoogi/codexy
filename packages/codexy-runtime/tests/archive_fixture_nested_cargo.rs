@@ -63,7 +63,11 @@ fn validator_fixture_uses_cargo_built_binary_when_cargo_is_a_failing_shim()
         let output = FixtureCommand::new(&wrapper).arg("--check").output()?;
         assert!(output.status.success(), "{output:?}");
 
-        let plugin_root = complete_plugin_fixture(temp.path())?;
+        let plugin_root = temp.path().join("codexy");
+        release_archive_support::copy_tree(
+            &codexy_runtime::paths::repository_root().join("plugins/codexy"),
+            &plugin_root,
+        )?;
         std::fs::remove_file(plugin_root.join("hooks/hooks.json"))?;
         let mut command = FixtureCommand::new(&wrapper);
         command.arg("--plugin-root");

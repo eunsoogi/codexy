@@ -15,18 +15,18 @@ fn create_archive(archive: &std::path::Path, scenario: &str) {
 archive_path, scenario = sys.argv[1:]
 with tarfile.open(archive_path, "w:gz") as archive:
     names = {
-        "backslash": [r"plugins/codexy/C:\escape"],
-        "casefold": ["plugins/codexy/MCP/Server.exe", "plugins/codexy/mcp/server.exe"],
-        "control": ["plugins/codexy/bad\nname"],
-        "device": ["plugins/codexy/NUL.txt"],
-        "drive-relative": ["plugins/codexy/C:escape"],
-        "trailing": ["plugins/codexy/bad. "],
-        "total-size": ["plugins/codexy/one", "plugins/codexy/two"],
+        "backslash": [r"plugins/codexy-devtools/C:\escape"],
+        "casefold": ["plugins/codexy-devtools/MCP/Server.exe", "plugins/codexy-devtools/mcp/server.exe"],
+        "control": ["plugins/codexy-devtools/bad\nname"],
+        "device": ["plugins/codexy-devtools/NUL.txt"],
+        "drive-relative": ["plugins/codexy-devtools/C:escape"],
+        "trailing": ["plugins/codexy-devtools/bad. "],
+        "total-size": ["plugins/codexy-devtools/one", "plugins/codexy-devtools/two"],
     }
     if scenario == "hardlink":
-        info = tarfile.TarInfo("plugins/codexy/hardlink")
+        info = tarfile.TarInfo("plugins/codexy-devtools/hardlink")
         info.type = tarfile.LNKTYPE
-        info.linkname = "plugins/codexy/target"
+        info.linkname = "plugins/codexy-devtools/target"
         archive.addfile(info)
     else:
         for name in names[scenario]:
@@ -59,7 +59,7 @@ fn archive_gate_rejects_windows_aliases_collisions_and_hardlinks_before_extracti
         ("hardlink", "unsupported archive entry type"),
     ] {
         let root = tempdir().expect("tempdir");
-        let plugin_root = root.path().join("plugins/codexy");
+        let plugin_root = root.path().join("plugins/codexy-devtools");
         std::fs::create_dir_all(&plugin_root).expect("plugin fixture root");
         let archive = root.path().join(format!("{scenario}.tar.gz"));
         create_archive(&archive, scenario);
@@ -77,7 +77,7 @@ fn archive_gate_rejects_windows_aliases_collisions_and_hardlinks_before_extracti
 #[test]
 fn archive_gate_rejects_cumulative_uncompressed_size_before_extraction() {
     let root = tempdir().expect("tempdir");
-    let plugin_root = root.path().join("plugins/codexy");
+    let plugin_root = root.path().join("plugins/codexy-devtools");
     std::fs::create_dir_all(&plugin_root).expect("plugin fixture root");
     let archive = root.path().join("total-size.tar.gz");
     create_archive(&archive, "total-size");

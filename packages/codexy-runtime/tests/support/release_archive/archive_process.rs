@@ -35,7 +35,7 @@ pub(crate) fn create_archive_with_commands(
         .env("COPYFILE_DISABLE", "1")
         .args(["-C"])
         .arg(root)
-        .args(["-cf", "-", "plugins/codexy"])
+        .args(["-cf", "-", "plugins/codexy-devtools"])
         .stdout(Stdio::piped())
         .spawn()?;
     let tar_stdout = match tar.stdout.take() {
@@ -96,7 +96,7 @@ fn create_windows_archive_with_commands(
         .arg(root)
         .arg("-cf");
     tar.arg(&temporary_path);
-    tar.arg("plugins/codexy");
+    tar.arg("plugins/codexy-devtools");
     let mut tar = tar.spawn()?;
     let tar_status = wait_for_archive_process(&mut tar, "tar", timeout)?;
     if !tar_status.success() {
@@ -136,7 +136,7 @@ fn create_windows_archive_with_commands(
 
 #[cfg(windows)]
 fn governed_wrapper_paths(root: &std::path::Path) -> std::io::Result<Vec<String>> {
-    let directory = root.join("plugins/codexy/mcp");
+    let directory = root.join("plugins/codexy-devtools/mcp");
     if !directory.is_dir() {
         return Ok(Vec::new());
     }
@@ -150,7 +150,7 @@ fn governed_wrapper_paths(root: &std::path::Path) -> std::io::Result<Vec<String>
             && path.is_file()
             && std::fs::read(&path)?.starts_with(b"#!")
         {
-            wrappers.push(format!("plugins/codexy/mcp/{name}"));
+            wrappers.push(format!("plugins/codexy-devtools/mcp/{name}"));
         }
     }
     wrappers.sort();

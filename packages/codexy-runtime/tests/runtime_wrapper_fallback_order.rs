@@ -8,7 +8,7 @@ fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
 -> Result<(), Box<dyn std::error::Error>> {
     for server in ["lsp", "codegraph"] {
         let path = codexy_runtime::paths::repository_root()
-            .join(format!("plugins/codexy/mcp/codexy-mcp-{server}"));
+            .join(format!("plugins/codexy-devtools/mcp/codexy-mcp-{server}"));
         let wrapper = std::fs::read_to_string(&path)?;
         let override_index = required(&wrapper, "CODEXY_RUNTIME_DIR", &path)?;
         let bundled_index = required(&wrapper, "if [ -x \"$bundled_runtime\" ]; then", &path)?;

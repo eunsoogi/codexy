@@ -38,6 +38,14 @@ pub fn plugin_root() -> PathBuf {
     repository_root().join("plugins/codexy")
 }
 
+#[must_use]
+pub fn devtools_plugin_root() -> PathBuf {
+    if std::env::var_os("CODEXY_PLUGIN_ROOT").is_some_and(|value| !value.is_empty()) {
+        return plugin_root();
+    }
+    repository_root().join("plugins/codexy-devtools")
+}
+
 /// Returns the repository root that contains the packaged plugin.
 ///
 /// # Errors

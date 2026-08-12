@@ -25,14 +25,14 @@ impl CandidateFixture {
         let root = temp.path();
         let seed_root = candidate_fixture_seed()?;
         crate::support::copy_dir(seed_root, root)?;
-        let plugin = root.join("plugins/codexy");
+        let plugin = root.join("plugins/codexy-devtools");
         for server in ["lsp", "codegraph"] {
             fs::write(
                 plugin.join("mcp").join(format!("codexy-mcp-{server}")),
                 wrapper,
             )?;
         }
-        run_git(root, &["add", "plugins/codexy/mcp"])?;
+        run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
         run_git(root, &["commit", "-qm", "fixture wrapper"])?;
         let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])? )
             .map_err(|error| error.to_string())?;
@@ -76,7 +76,7 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
     if seed.is_none() {
         let temporary = tempdir()?;
         let root = temporary.path().join("repository");
-        let plugin = root.join("plugins/codexy");
+        let plugin = root.join("plugins/codexy-devtools");
         fs::create_dir_all(plugin.join(".codex-plugin"))?;
         fs::create_dir_all(plugin.join("mcp"))?;
         fs::create_dir_all(root.join("staged-runtime"))?;
@@ -157,7 +157,7 @@ mod tests {
             "mutated script\n",
         )?;
         std::fs::write(
-            first.root().join("plugins/codexy/mcp/codexy-mcp-lsp"),
+            first.root().join("plugins/codexy-devtools/mcp/codexy-mcp-lsp"),
             "mutated wrapper\n",
         )?;
 
@@ -166,13 +166,13 @@ mod tests {
             b"mutated script\n"
         );
         assert_eq!(
-            std::fs::read(second.root().join("plugins/codexy/mcp/codexy-mcp-lsp"))?,
+            std::fs::read(second.root().join("plugins/codexy-devtools/mcp/codexy-mcp-lsp"))?,
             b"second wrapper\n"
         );
         assert_eq!(
             super::run_git(
                 second.root(),
-                &["show", "HEAD:plugins/codexy/mcp/codexy-mcp-lsp"],
+                &["show", "HEAD:plugins/codexy-devtools/mcp/codexy-mcp-lsp"],
             )?,
             b"second wrapper\n"
         );

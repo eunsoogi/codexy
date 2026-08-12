@@ -128,7 +128,17 @@ pub(super) use value_arrays::{json_array_strings, toml_array_strings};
 
 /// Returns the LSP file extensions covered by Codexy validation metadata.
 pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
-    lsp::covered_extensions(plugin_root)
+    lsp::covered_extensions(&devtools_root(plugin_root))
+}
+
+fn devtools_root(plugin_root: &Path) -> std::path::PathBuf {
+    if plugin_root.file_name().is_some_and(|name| name == "codexy") {
+        return plugin_root.parent().map_or_else(
+            || std::path::PathBuf::from("plugins/codexy-devtools"),
+            |parent| parent.join("codexy-devtools"),
+        );
+    }
+    plugin_root.to_path_buf()
 }
 
 /// Returns touched-LOC diagnostics for an explicit repository root.

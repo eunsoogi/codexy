@@ -18,8 +18,8 @@ fn validator_cli_rejects_removed_packaged_mcp_names_and_endpoints()
         ),
     ] {
         let temp = tempfile::tempdir()?;
-        let plugin_root = temp.path().join("codexy");
-        copy_fixture(&plugin_root, &[".mcp.json"])?;
+        let plugin_root = temp.path().join("codexy-devtools");
+        copy_devtools_fixture(&plugin_root)?;
         let path = plugin_root.join(".mcp.json");
         let mut config: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
         config[name] = entry;
@@ -101,7 +101,7 @@ fn validator_cli_preserves_unrelated_mcp_command_and_url_identities()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
-    copy_fixture(&plugin_root, &[".mcp.json", "agents/codexy-architect.toml"])?;
+    copy_fixture(&plugin_root, &["agents/codexy-architect.toml"])?;
     let agent_path = plugin_root.join("agents/codexy-architect.toml");
     std::fs::write(
         &agent_path,
@@ -111,7 +111,9 @@ fn validator_cli_preserves_unrelated_mcp_command_and_url_identities()
         ),
     )?;
 
-    assert!(validate(&plugin_root, "--check-mcp")?.status.success());
+    let devtools_root = temp.path().join("codexy-devtools");
+    copy_devtools_fixture(&devtools_root)?;
+    assert!(validate(&devtools_root, "--check-mcp")?.status.success());
     assert!(validate(&plugin_root, "--check-roles")?.status.success());
     Ok(())
 }
@@ -120,11 +122,28 @@ fn copy_fixture(
     plugin_root: &std::path::Path,
     mutable_files: &[&str],
 ) -> std::io::Result<()> {
-    let files = mutable_files
-        .iter()
-        .map(std::path::Path::new)
-        .collect::<Vec<_>>();
-    support::copy_plugin_fixture_into_with_mutable_files(plugin_root, &files)
+    let repository = codexy_runtime::paths::repository_root();
+    support::copy_dir(&repository.join("plugins/codexy"), plugin_root)?;
+    for relative in mutable_files {
+        let relative = std::path::Path::new(relative);
+        let devtools = repository.join("plugins/codexy-devtools").join(relative);
+        let source = if devtools.is_file() {
+            devtools
+        } else {
+            repository.join("plugins/codexy").join(relative)
+        };
+        let target = plugin_root.join(relative);
+        std::fs::create_dir_all(target.parent().expect("fixture parent"))?;
+        std::fs::copy(source, target)?;
+    }
+    Ok(())
+}
+
+fn copy_devtools_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
+    support::copy_dir(
+        &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
+        plugin_root,
+    )
 }
 
 fn validate(

@@ -30,7 +30,7 @@ fn materializer_binds_staging_source_to_later_activation_with_space_safe_paths()
     let wrapper = Command::new("tar")
         .args(["-xOzf"])
         .arg(&fixture.final_archive)
-        .arg("plugins/codexy/mcp/codexy-mcp-lsp")
+        .arg("plugins/codexy-devtools/mcp/codexy-mcp-lsp")
         .output()?;
     assert!(wrapper.status.success());
     support::assert_structured_literals(
@@ -68,8 +68,8 @@ impl LifecycleFixture {
         git(&root, &["config", "user.name", "fixture"])?;
         let remote = remote.to_string_lossy().into_owned();
         git(&root, &["remote", "add", "origin", &remote])?;
-        let plugin = root.join("plugins/codexy");
-        let staged = root.join("staged/plugins/codexy");
+        let plugin = root.join("plugins/codexy-devtools");
+        let staged = root.join("staged/plugins/codexy-devtools");
         for path in [&plugin, &staged] {
             fs::create_dir_all(path.join(".codex-plugin"))?;
             fs::create_dir_all(path.join("runtime"))?;
@@ -94,7 +94,7 @@ impl LifecycleFixture {
         let runtime = staged.join("runtime/codexy-mcp-lsp-darwin-arm64.bin");
         fs::write(&runtime, b"#!/bin/sh\nexit 0\n")?;
         let archive = root.join("staging.tar.gz");
-        assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy").status()?.success());
+        assert!(Command::new("tar").env("COPYFILE_DISABLE", "1").args(["-C"]).arg(root.join("staged")).args(["-czf"]).arg(&archive).arg("plugins/codexy-devtools").status()?.success());
         let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));
         fs::write(plugin.join(".codex-plugin/plugin.json"), b"{\"version\":\"1.3.0\"}\n")?;
         fs::create_dir_all(root.join(".agents/plugins"))?;

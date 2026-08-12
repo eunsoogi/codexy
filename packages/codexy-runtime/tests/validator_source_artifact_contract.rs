@@ -20,7 +20,7 @@ fn validator_cli_rejects_source_plugin_with_generated_bin_directory()
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("plugins/codexy/bin must not be tracked in the source plugin tree")
+            .contains("plugins/codexy-devtools/bin must not be tracked in the source plugin tree")
             || String::from_utf8_lossy(&output.stderr)
                 .contains("bin must not be tracked in the source plugin tree"),
         "unexpected stderr: {}",
@@ -63,10 +63,10 @@ fn validate_source_plugin(
 }
 
 fn copy_plugin_to(temp_root: &std::path::Path) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = temp_root.join("codexy");
+    let plugin_root = temp_root.join("codexy-devtools");
     copy_dir(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy")
+            .join("plugins/codexy-devtools")
             .as_path(),
         &plugin_root,
     )?;

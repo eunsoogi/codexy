@@ -7,8 +7,8 @@ use sha2::{Digest as _, Sha256};
 use super::{activate, apply_with, canonical, prepare};
 
 const WRAPPERS: [&str; 2] = [
-    "plugins/codexy/mcp/codexy-mcp-lsp",
-    "plugins/codexy/mcp/codexy-mcp-codegraph",
+    "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
+    "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
 ];
 
 #[test]
@@ -131,17 +131,17 @@ impl Fixture {
     fn new() -> Result<Self> {
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("repo");
-        let mcp = root.join("plugins/codexy/mcp");
+        let mcp = root.join("plugins/codexy-devtools/mcp");
         fs::create_dir_all(root.join("packages/codexy-runtime/src/version"))?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
-        fs::create_dir_all(root.join("plugins/codexy/.codex-plugin"))?;
+        fs::create_dir_all(root.join("plugins/codexy-devtools/.codex-plugin"))?;
         fs::create_dir_all(&mcp)?;
         fs::write(
             root.join("packages/codexy-runtime/src/version/bootstrap.rs"),
             "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
         )?;
         fs::write(
-            root.join("plugins/codexy/runtime-release.json"),
+            root.join("plugins/codexy-devtools/runtime-release.json"),
             r#"{"artifact":{"tag":"v1.2.2"}}"#,
         )?;
         fs::write(
@@ -149,7 +149,7 @@ impl Fixture {
             r#"{"bootstrap":{"selectedVersion":"1.3.0"},"runtime":{"selectedTag":"v1.2.2","platforms":["darwin-arm64","linux-x86_64"]},"package":{"platforms":["darwin-arm64","linux-x86_64"]}}"#,
         )?;
         fs::write(
-            root.join("plugins/codexy/.codex-plugin/plugin.json"),
+            root.join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
             r#"{"supportedPlatforms":["darwin-arm64","linux-x86_64"]}"#,
         )?;
         fs::write(
@@ -174,14 +174,16 @@ impl Fixture {
     }
 
     fn release(&self) -> PathBuf {
-        self.root.join("plugins/codexy/runtime-release.json")
+        self.root
+            .join("plugins/codexy-devtools/runtime-release.json")
     }
     fn publish(&self) -> PathBuf {
         self.root
             .join(".agents/plugins/release-publish-contract.json")
     }
     fn candidate(&self) -> PathBuf {
-        self.root.join("plugins/codexy/runtime-candidate.json")
+        self.root
+            .join("plugins/codexy-devtools/runtime-candidate.json")
     }
     fn record(&self) -> PathBuf {
         self.root.join(".agents/plugins/runtime-activation.json")
@@ -191,7 +193,8 @@ impl Fixture {
             .join("packages/codexy-runtime/src/version/bootstrap.rs")
     }
     fn manifest(&self) -> PathBuf {
-        self.root.join("plugins/codexy/.codex-plugin/plugin.json")
+        self.root
+            .join("plugins/codexy-devtools/.codex-plugin/plugin.json")
     }
     fn wrappers(&self) -> impl Iterator<Item = PathBuf> + '_ {
         WRAPPERS.into_iter().map(|path| self.root.join(path))

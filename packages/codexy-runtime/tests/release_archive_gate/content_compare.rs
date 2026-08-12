@@ -190,8 +190,8 @@ fn archive_inspector_uses_one_content_comparison_helper() {
         |line| *line == "contract_checker=\"$script_dir/inspect-release-archive-contract.py\""
     ));
     for command in [
-        "python3 \"$contract_checker\" public-release \"$extract_root/plugins/codexy\" >\"$tmp_dir/expected-runtime\"",
-        "python3 \"$contract_checker\" staged \"$extract_root/plugins/codexy\" >\"$tmp_dir/expected-runtime\"",
+        "python3 \"$contract_checker\" public-release \"$extract_root/plugins/codexy-devtools\" >\"$tmp_dir/expected-runtime\"",
+        "python3 \"$contract_checker\" staged \"$extract_root/plugins/codexy-devtools\" >\"$tmp_dir/expected-runtime\"",
     ] {
         assert!(script_lines.iter().any(|line| *line == command));
     }
@@ -200,16 +200,16 @@ fn archive_inspector_uses_one_content_comparison_helper() {
             .iter()
             .filter(|line| {
                 **line
-                    == "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy\""
+                    == "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy-devtools\""
             })
             .copied()
             .collect::<Vec<_>>(),
         [
-            "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy\"",
+            "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy-devtools\"",
         ]
     );
     for retired_command in [
-        "cmp -s \"$plugin_root/$relative\" \"$extract_root/plugins/codexy/$relative\" || {",
+        "cmp -s \"$plugin_root/$relative\" \"$extract_root/plugins/codexy-devtools/$relative\" || {",
         "expected_digest=$(digest_file \"$plugin_root/$relative\")",
     ] {
         assert!(!script_lines.iter().any(|line| *line == retired_command));

@@ -20,6 +20,8 @@ mod final_archive;
 mod final_archive_fixture;
 #[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
 mod final_archive_lifecycle;
+#[path = "runtime_publication_activation/legacy_core_archive.rs"]
+mod legacy_core_archive;
 #[path = "runtime_publication_activation/shell_fixtures.rs"]
 mod shell_fixtures;
 #[path = "runtime_publication_activation/staging.rs"]
@@ -79,15 +81,15 @@ fn already_selected_version_sync_preserves_runtime_pointers()
     let repo = archive_repository(&temp)?;
     let preserved = [
         (
-            "plugins/codexy/runtime-release.json",
+            "plugins/codexy-devtools/runtime-release.json",
             "{\"runtime\":\"immutable\"}\n",
         ),
         (
-            "plugins/codexy/mcp/codexy-mcp-lsp",
+            "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
             "#!/bin/sh\necho pinned\n",
         ),
         (
-            "plugins/codexy/mcp/codexy-mcp-codegraph",
+            "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
             "#!/bin/sh\necho pinned\n",
         ),
     ];
@@ -104,7 +106,7 @@ fn already_selected_version_sync_preserves_runtime_pointers()
     let bootstrap = "packages/getcodexy/pyproject.toml";
     before.insert(bootstrap.into(), fs::read(repo.join(bootstrap))?);
     let manifest: Json = serde_json::from_slice(&fs::read(
-        repo.join("plugins/codexy/.codex-plugin/plugin.json"),
+        repo.join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
     )?)?;
     let selected = manifest["version"].as_str().ok_or("selected version")?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
@@ -131,7 +133,7 @@ fn runtime_contract_requires_authenticated_windows_staging_identity()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let contract: Json = serde_json::from_str(&fs::read_to_string(
-        root.join("plugins/codexy/runtime-release.json"),
+        root.join("plugins/codexy-devtools/runtime-release.json"),
     )?)?;
     let artifact = contract["artifact"]
         .as_object()
@@ -147,7 +149,7 @@ fn runtime_contract_requires_authenticated_windows_staging_identity()
         .ok_or("runtime-release platforms must be an object")?;
     if platforms.contains_key("windows-x86_64") {
         let candidate: Json = serde_json::from_str(&fs::read_to_string(
-            root.join("plugins/codexy/runtime-candidate.json"),
+            root.join("plugins/codexy-devtools/runtime-candidate.json"),
         )?)?;
         assert_eq!(candidate["schema"], CANDIDATE_SCHEMA);
         assert!(candidate["artifact"]["stagingRunId"].as_u64().is_some_and(|value| value > 0));
@@ -183,11 +185,11 @@ pub(super) fn activation_bytes(
 ) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>, Box<dyn std::error::Error>> {
     let mut bytes = BTreeMap::new();
     for relative in [
-        "plugins/codexy/.codex-plugin/plugin.json",
-        "plugins/codexy/runtime-release.json",
-        "plugins/codexy/runtime-candidate.json",
-        "plugins/codexy/mcp/codexy-mcp-lsp",
-        "plugins/codexy/mcp/codexy-mcp-codegraph",
+        "plugins/codexy-devtools/.codex-plugin/plugin.json",
+        "plugins/codexy-devtools/runtime-release.json",
+        "plugins/codexy-devtools/runtime-candidate.json",
+        "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
+        "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
     ] {
         let path = root.join(&relative);
         bytes.insert(PathBuf::from(relative), fs::read(path).ok());

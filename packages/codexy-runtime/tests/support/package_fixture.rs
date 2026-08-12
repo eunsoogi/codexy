@@ -12,12 +12,13 @@ pub(super) fn create_runtime_package(
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let runtime = format!("codexy-mcp-{server}");
     let package_root = root.join("package-root");
-    let runtime_dir = package_root.join("plugins/codexy/runtime");
-    let manifest_dir = package_root.join("plugins/codexy/.codex-plugin");
+    let runtime_dir = package_root.join("plugins/codexy-devtools/runtime");
+    let manifest_dir = package_root.join("plugins/codexy-devtools/.codex-plugin");
     std::fs::create_dir_all(&runtime_dir)?;
     std::fs::create_dir_all(&manifest_dir)?;
     std::fs::copy(
-        codexy_runtime::paths::repository_root().join("plugins/codexy/.codex-plugin/plugin.json"),
+        codexy_runtime::paths::repository_root()
+            .join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
         manifest_dir.join("plugin.json"),
     )?;
     let runtime_path = runtime_dir.join(format!("{runtime}-{platform}.bin"));
@@ -32,7 +33,7 @@ pub(super) fn create_runtime_package(
         .arg(&package_root)
         .arg("-czf")
         .arg(&package_path)
-        .arg("plugins/codexy")
+        .arg("plugins/codexy-devtools")
         .status()?;
     if !status.success() {
         return Err("creating runtime package archive failed".into());
@@ -121,7 +122,7 @@ pub(super) fn create_source_layout_plugin(
     root: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let repo_root = root.join("source-install");
-    let plugin_root = repo_root.join("plugins/codexy");
+    let plugin_root = repo_root.join("plugins/codexy-devtools");
     std::fs::create_dir_all(repo_root.join("src/bin"))?;
     std::fs::write(
         repo_root.join("Cargo.toml"),
@@ -136,7 +137,7 @@ pub(super) fn create_source_layout_plugin(
         "fn main() {}\n",
     )?;
     copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
         &plugin_root,
     )?;
     Ok(plugin_root)

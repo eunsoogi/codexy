@@ -44,9 +44,9 @@ fi
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
-release_contract="$extract_root/plugins/codexy/runtime-release.json"
+release_contract="$extract_root/plugins/codexy-devtools/runtime-release.json"
 if [ "$archive_mode" = public-release ]; then
-  python3 "$contract_checker" public-release "$extract_root/plugins/codexy" >"$tmp_dir/expected-runtime"
+  python3 "$contract_checker" public-release "$extract_root/plugins/codexy-devtools" >"$tmp_dir/expected-runtime"
 else
 [ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
 release_state=$(python3 - "$release_contract" <<'PY'
@@ -59,7 +59,7 @@ PY
 case "$release_state" in
   legacy-public) ;;
   candidate-proven)
-    candidate_contract="$extract_root/plugins/codexy/runtime-candidate.json"
+    candidate_contract="$extract_root/plugins/codexy-devtools/runtime-candidate.json"
     [ -f "$candidate_contract" ] || { echo "candidate-proven package lacks runtime-candidate.json" >&2; exit 1; }
     expected_candidate_sha=$(python3 - "$release_contract" <<'PY'
 import json, sys
@@ -73,7 +73,7 @@ PY
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
 fi
-"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-runtime-artifacts
+"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy-devtools" --check-runtime-artifacts
 "$script_dir/require-regular-file" "$canonical_admission_suite" "canonical checkout admission suite"
 "$script_dir/require-regular-file" "$admission_suite" "checkout admission suite"
 cmp -s "$canonical_admission_suite" "$admission_suite" || {
@@ -82,10 +82,9 @@ cmp -s "$canonical_admission_suite" "$admission_suite" || {
 }
 mkdir -p "$extract_root/packages/codexy-runtime/tests/suites"
 cp "$admission_suite" "$extract_root/packages/codexy-runtime/tests/suites/all.rs"
-"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy" --check-hooks
-(cd "$extract_root/plugins/codexy" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
+(cd "$extract_root/plugins/codexy-devtools" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/actual"
 if [ "$archive_mode" != public-release ]; then
-  python3 "$contract_checker" staged "$extract_root/plugins/codexy" >"$tmp_dir/expected-runtime"
+  python3 "$contract_checker" staged "$extract_root/plugins/codexy-devtools" >"$tmp_dir/expected-runtime"
 fi
 while IFS= read -r relative; do
   case "$relative" in runtime/*)
@@ -95,12 +94,12 @@ while IFS= read -r relative; do
     }
   esac
 done <"$tmp_dir/actual"
-source_check_root="$tmp_dir/source-check/plugins/codexy"
+source_check_root="$tmp_dir/source-check/plugins/codexy-devtools"
 if [ "$archive_mode" != public-release ]; then
 mkdir -p "$source_check_root"
 mkdir -p "$tmp_dir/source-check/packages/codexy-runtime/tests/suites"
 cp "$admission_suite" "$tmp_dir/source-check/packages/codexy-runtime/tests/suites/all.rs"
-tar -C "$extract_root/plugins/codexy" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
+tar -C "$extract_root/plugins/codexy-devtools" --exclude=runtime -cf - . | tar -C "$source_check_root" -xf -
 if [ "$release_state" = candidate-proven ]; then
   python3 "$contract_checker" source-projection "$source_check_root"
 fi
@@ -110,13 +109,13 @@ hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 # A leading slash is an MSYS path-conversion candidate when this reaches native
 # rg.exe through Git Bash. The character class still matches only a slash.
 local_path_pattern='[\/](Users|home|tmp|private/var)/'
-if find "$extract_root/plugins/codexy" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
+if find "$extract_root/plugins/codexy-devtools" \( -name .git -o -name target -o -name '*.dSYM' -o -name '*.debug' \) -print -quit | grep -q .; then
   echo "archive contains a debug artifact" >&2
   exit 1
 fi
 (cd "$plugin_root" && find . -type f | sed 's#^./##' | sort) >"$tmp_dir/expected"
 diff -u "$tmp_dir/expected" "$tmp_dir/actual"
-(cd "$extract_root/plugins/codexy" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
+(cd "$extract_root/plugins/codexy-devtools" && find . -type d | sed 's#^./##') >"$tmp_dir/directories"
 while IFS= read -r relative; do
   case "$relative" in
     runtime) ;;
@@ -124,9 +123,9 @@ while IFS= read -r relative; do
   esac
 done <"$tmp_dir/directories"
 
-python3 "$script_dir/check-release-archive-content" "$tmp_dir/expected" "$plugin_root" "$extract_root/plugins/codexy"
+python3 "$script_dir/check-release-archive-content" "$tmp_dir/expected" "$plugin_root" "$extract_root/plugins/codexy-devtools"
 
-if find "$extract_root/plugins/codexy" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
+if find "$extract_root/plugins/codexy-devtools" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
   echo "archive contains an oversized file" >&2
   exit 1
 fi
@@ -137,15 +136,15 @@ scan_archive_content() {
 scan_grep_content() {
   pattern=$1
   shift
-  find "$extract_root/plugins/codexy" -type f ! -path "$extract_root/plugins/codexy/runtime/*.bin" "$@" \
+  find "$extract_root/plugins/codexy-devtools" -type f ! -path "$extract_root/plugins/codexy-devtools/runtime/*.bin" "$@" \
     -exec grep -a -Hn -E "$pattern" {} +
 }
 if command -v rg >/dev/null 2>&1; then
   archive_inspection_receipt_marker "backend=rg" 2>/dev/null || :
   set +e
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy-devtools"
   hygiene_status=$?
-  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy"
+  scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' --glob '!*.md' --glob '!*.txt' "$local_path_pattern" "$extract_root/plugins/codexy-devtools"
   local_path_status=$?
   set -e
 else
@@ -174,7 +173,7 @@ digest_file "$archive"
 
 platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/;s/amd64/x86_64/')
 for server in lsp codegraph; do
-  runtime="$extract_root/plugins/codexy/runtime/codexy-mcp-$server-$platform.bin"
+  runtime="$extract_root/plugins/codexy-devtools/runtime/codexy-mcp-$server-$platform.bin"
   if [ -x "$runtime" ]; then
     response_file="$tmp_dir/${server}-response"
     set +e

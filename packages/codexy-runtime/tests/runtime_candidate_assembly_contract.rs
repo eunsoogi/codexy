@@ -28,7 +28,7 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
             let wrapper = fs::read_to_string(
                 fixture
                     .root()
-                    .join("dist/candidate/plugins/codexy/mcp")
+                    .join("dist/candidate/plugins/codexy-devtools/mcp")
                     .join(format!("codexy-mcp-{server}")),
             )?;
             assert_eq!(
@@ -45,7 +45,7 @@ fn candidate_assembly_accepts_each_real_wrapper_body()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     for server in ["lsp", "codegraph"] {
-        let wrapper = fs::read_to_string(root.join("plugins/codexy/mcp").join(format!("codexy-mcp-{server}")))?;
+        let wrapper = fs::read_to_string(root.join("plugins/codexy-devtools/mcp").join(format!("codexy-mcp-{server}")))?;
         let fixture = CandidateFixture::new(&wrapper)?;
         let output = fixture.assemble();
         assert!(
@@ -59,7 +59,7 @@ fn candidate_assembly_accepts_each_real_wrapper_body()
                 fs::read(
                     fixture
                         .root()
-                        .join("dist/candidate/plugins/codexy/mcp")
+                        .join("dist/candidate/plugins/codexy-devtools/mcp")
                         .join(format!("codexy-mcp-{output_server}")),
                 )?,
                 expected.as_bytes()
@@ -73,7 +73,7 @@ fn candidate_assembly_accepts_each_real_wrapper_body()
 fn candidate_assembly_removes_stale_repository_only_skills() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
     let stale = ["plugin-marketplace-prep", "release-engineering"]
-        .map(|skill| fixture.root().join(format!("dist/candidate/plugins/codexy/skills/{skill}/SKILL.md")));
+        .map(|skill| fixture.root().join(format!("dist/candidate/plugins/codexy-devtools/skills/{skill}/SKILL.md")));
     for path in &stale {
         fs::create_dir_all(path.parent().ok_or("stale skill parent missing")?)?;
         fs::write(path, "stale packaged skill\n")?;
@@ -119,7 +119,7 @@ fn candidate_assembly_preserves_wrapper_bytes_while_rewriting_declarations()
                 let wrapper = fs::read(
                     fixture
                         .root()
-                        .join("dist/candidate/plugins/codexy/mcp")
+                        .join("dist/candidate/plugins/codexy-devtools/mcp")
                         .join(format!("codexy-mcp-{server}")),
                 )?;
                 assert_eq!(wrapper, expected.as_bytes());

@@ -4,6 +4,7 @@
 mod agent_model_assignments;
 mod cache_fixture;
 mod child_thread_ledger_skill;
+mod devtools_fixture;
 mod digest;
 pub(crate) mod executable_path;
 mod fixture_command;
@@ -55,6 +56,7 @@ pub(crate) use child_thread_ledger_skill::{
     validator_completion_handoff, validator_completion_handoff_files, validator_in_process,
     validator_pr_labels,
 };
+pub(crate) use devtools_fixture::copy_into_with_mutable_files as copy_devtools_fixture_into_with_mutable_files;
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
 pub(crate) use fixture_command::{

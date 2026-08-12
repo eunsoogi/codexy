@@ -12,24 +12,25 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
-    let plugin = repo.join("plugins/codexy");
+    fs::copy(root.join(".gitattributes"), repo.join(".gitattributes"))?;
+    let core_plugin = repo.join("plugins/codexy");
+    let plugin = repo.join("plugins/codexy-devtools");
     let mut manifest: Value = serde_json::from_slice(&fs::read(
-        plugin.join(".codex-plugin/plugin.json"),
+        core_plugin.join(".codex-plugin/plugin.json"),
     )?)?;
     let baseline_version = manifest["version"]
         .as_str()
         .ok_or("fixture core manifest version")?
         .to_owned();
-    fs::remove_dir_all(&plugin)?;
-    copy_dir(root.join("plugins/codexy"), &plugin)?;
-    let candidate: Value = serde_json::from_slice(&fs::read(
-        plugin.join(".codex-plugin/plugin.json"),
+    if plugin.exists() {
+        fs::remove_dir_all(&plugin)?;
+    }
+    copy_dir(root.join("plugins/codexy-devtools"), &plugin)?;
+    let core_candidate: Value = serde_json::from_slice(&fs::read(
+        root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
-    manifest["interface"]["defaultPrompt"] = candidate["interface"]["defaultPrompt"].clone();
-    fs::write(
-        plugin.join(".codex-plugin/plugin.json"),
-        format!("{}\n", serde_json::to_string_pretty(&manifest)?),
-    )?;
+    manifest["interface"]["defaultPrompt"] = core_candidate["interface"]["defaultPrompt"].clone();
+    fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
         ".agents/plugins/marketplace.json",
@@ -87,6 +88,39 @@ pub(super) fn assert_canonical_default_prompt(
             .any(|item| item.as_str().is_some_and(|text| text.contains(retired)))
         {
             return Err(format!("candidate manifest retains retired route {retired}").into());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn assert_canonical_preserved_eol(
+    repo: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for path in [
+        "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
+        "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
+        "plugins/codexy-devtools/runtime-release.json",
+    ] {
+        let output = Command::new("git")
+            .args(["check-attr", "text", "eol", "--", path])
+            .current_dir(repo)
+            .output()?;
+        let expected = format!("{path}: text: set\n{path}: eol: lf\n");
+        if !output.status.success() || output.stdout != expected.as_bytes() {
+            return Err(format!("fixture preserved EOL contract mismatch: {path}").into());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn enable_autocrlf(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    for args in [
+        &["config", "core.autocrlf", "true"][..],
+        &["reset", "--hard", "HEAD"][..],
+    ] {
+        let status = Command::new("git").args(args).current_dir(repo).status()?;
+        if !status.success() {
+            return Err("unable to configure fixture autocrlf".into());
         }
     }
     Ok(())

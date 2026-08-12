@@ -16,7 +16,7 @@ non-overlapping coverage by these records.
 | --- | --- | --- | --- |
 | `codexy` | Codexy | `plugins/codexy` | Core orchestration, evidence, shared specialist and skill contracts, instruction enforcement, engineering, dreaming, and Wiki. |
 | `codexy-github` | Codexy GitHub | `plugins/codexy-github` | GitHub issues, pull requests, reviews, and repository integration using published core contracts. |
-| `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` (reserved) | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts. |
+| `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts. |
 
 `codexy` remains the approved core identity: its manifest name, current package
 root, public documentation, and installation identity MUST NOT be renamed as
@@ -52,7 +52,7 @@ than importing a private path across product roots.
 | --- | --- | --- |
 | Orchestration, specialists, instruction hooks, dreaming, engineering, and Wiki | `codexy` | Retain in core. |
 | Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow | `codexy-github` | Extracted. |
-| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extract in the downstream devtools issue. |
+| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extracted into the devtools package. |
 | `release-engineering` and `plugin-marketplace-prep` skills | Repository-only Codex skills | Move out of the installed plugin. |
 
 Each row is one destination decision for its current logical surface. A later
@@ -72,8 +72,8 @@ paths; they do not imply that every future extension already has files.
 | Hooks | `plugins/codexy/hooks/**`, `plugins/codexy-github/hooks/**` | Core retains only thread-delivery and its non-GitHub envelope; every generic GitHub, repository-GitHub, merge, review, and related policy-runtime closure is in `codexy-github`. Repository-specific `.codex` policy configuration remains at the repository root. |
 | Skills | `plugins/codexy/skills/**`, `plugins/codexy-github/skills/**` | Core keeps orchestration/dreaming/engineering/Wiki; GitHub workflow is in `codexy-github`; release/marketplace remain repository-only. |
 | Agents | `plugins/codexy/agents/**`, `plugins/codexy-github/agents/**` | Core specialists remain `codexy`; `codexy-weaver`, which requires `git-workflow`, is in `codexy-github`. |
-| MCP and runtime | `plugins/codexy/.mcp.json`, `plugins/codexy/mcp/**`, `packages/codexy-runtime/src/codegraph/**`, `packages/codexy-runtime/src/lsp/**`, `packages/codexy-runtime/src/mcp.rs`, `packages/codexy-runtime/src/bin/**`, `packages/codexy-runtime/src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints move to `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision. |
-| LSP | `plugins/codexy/.codex/lsp-client.json`, `plugins/codexy/lsp/**`, `packages/codexy-runtime/src/lsp/**` | `codexy-devtools` |
+| MCP and runtime | `plugins/codexy-devtools/.mcp.json`, `plugins/codexy-devtools/mcp/**`, `packages/codexy-runtime/src/codegraph/**`, `packages/codexy-runtime/src/lsp/**`, `packages/codexy-runtime/src/mcp.rs`, `packages/codexy-runtime/src/bin/**`, `packages/codexy-runtime/src/version/**` | Codegraph/LSP and their wrappers/runtime entrypoints are owned by `codexy-devtools`; all other current runtime binaries and version modules remain repository-owned for their downstream module-owned packaging decision. |
+| LSP | `plugins/codexy-devtools/.codex/lsp-client.json`, `plugins/codexy-devtools/lsp/**`, `packages/codexy-runtime/src/lsp/**` | `codexy-devtools` |
 | Assets | `assets/**`, `plugins/codexy/assets/**` | Repository assets remain repository-only; plugin-local assets remain `codexy`. |
 | Validators and tests | `scripts/sync-plugin-version`, `scripts/validate-plugin-config`, `packages/codexy-runtime/src/validation/**`, `packages/codexy-runtime/tests/**` | Repository-owned validation; later product validators follow the target boundary. |
 | Public entrypoints and packaging metadata | `README.md`, `README.ko.md`, `packages/getcodexy/{pyproject.toml,src/**,tests/**}`, `plugins/codexy/{bootstrap-codexy-agents,check-codexy-agents,.codex-plugin/plugin.json}`, `plugins/codexy/agents/openai.yaml`, `.agents/plugins/{marketplace,release-publish-contract,runtime-activation}.json` | Core identity and repository distribution surface; no layout migration here. |

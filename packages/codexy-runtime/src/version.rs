@@ -10,6 +10,7 @@ pub mod activation;
 mod admission;
 mod bootstrap;
 mod cargo;
+mod devtools_plugin;
 mod fields;
 mod github_plugin;
 mod mutation;
@@ -150,6 +151,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         &display_relative(&manifest_path),
     )?;
     github_plugin::check(manifest_version)?;
+    devtools_plugin::check(manifest_version)?;
     let manifest_platforms = fields::string_array(
         &manifest,
         "supportedPlatforms",
@@ -232,6 +234,6 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
         }
     }
     Ok(format!(
-        "plugin version sync ok: codexy={manifest_version}, codexy-github={manifest_version}"
+        "plugin version sync ok: codexy={manifest_version}, codexy-github={manifest_version}, codexy-devtools={manifest_version}"
     ))
 }

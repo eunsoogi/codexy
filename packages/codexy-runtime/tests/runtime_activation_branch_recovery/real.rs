@@ -20,6 +20,7 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     metadata::assert_canonical_default_prompt(&fixture.repo)?;
+    metadata::assert_canonical_preserved_eol(&fixture.repo)?;
     assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
     assert_eq!(
         fixture.cargo_invocations()?,
@@ -31,6 +32,16 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
         1,
         "real matrix must retain only the successful verifier activation process",
     );
+    Ok(())
+}
+
+#[test]
+fn real_base_activator_preserves_candidate_bytes_with_autocrlf()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    metadata::enable_autocrlf(&fixture.repo)?;
+    metadata::assert_canonical_preserved_eol(&fixture.repo)?;
+    assert_result(fixture.verify("main", "1.3.0")?, true, "autocrlf retry");
     Ok(())
 }
 
@@ -143,6 +154,7 @@ impl Fixture {
                 "add",
                 ".agents/plugins",
                 "plugins/codexy",
+                "plugins/codexy-devtools",
                 "plugins/codexy-github",
                 "packages/codexy-runtime/src/version/bootstrap.rs",
             ],
@@ -221,7 +233,6 @@ impl Fixture {
         self.external_activation_process_invocations
             .set(self.external_activation_process_invocations.get() + 1);
     }
-
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {

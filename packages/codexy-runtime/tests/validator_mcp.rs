@@ -7,7 +7,7 @@ use crate::support;
 #[test]
 fn validator_cli_rejects_mixed_type_string_arrays() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
@@ -26,7 +26,7 @@ fn validator_cli_rejects_mixed_type_string_arrays() -> Result<(), Box<dyn std::e
 fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     std::fs::write(temp.path().join("outside.txt"), "outside\n")?;
     let mcp_path = plugin_root.join(".mcp.json");
@@ -46,7 +46,7 @@ fn validator_cli_rejects_mcp_entrypoints_outside_plugin_root()
 fn validator_cli_rejects_script_runtime_mcp_entrypoints() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let script_name = ["server", &["j", "s"].join("")].join(".");
     std::fs::write(
@@ -74,7 +74,7 @@ fn validator_cli_rejects_script_runtime_mcp_entrypoints() -> Result<(), Box<dyn 
 fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dyn std::error::Error>>
 {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mcp_config: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(mcp_path)?)?;
@@ -108,7 +108,7 @@ fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dy
 fn validator_cli_rejects_hook_only_windows_override_in_mcp_config()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
@@ -132,7 +132,7 @@ fn validator_cli_rejects_noncanonical_required_mcp_commands_cross_host()
 -> Result<(), Box<dyn std::error::Error>> {
     let command = r"C:\tools\codexy-mcp-lsp.exe";
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
@@ -155,7 +155,7 @@ fn validator_cli_rejects_windows_suffixed_script_runtimes() -> Result<(), Box<dy
 {
     let command = "PY.EXE";
     let temp = tempfile::tempdir()?;
-    let plugin_root = temp.path().join("codexy");
+    let plugin_root = temp.path().join("codexy-devtools");
     copy_fixture(&plugin_root)?;
     let mcp_path = plugin_root.join(".mcp.json");
     let mut mcp_config: serde_json::Value =
@@ -170,7 +170,7 @@ fn validator_cli_rejects_windows_suffixed_script_runtimes() -> Result<(), Box<dy
 }
 
 fn copy_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
-    support::copy_plugin_fixture_into_with_mutable_files(
+    support::copy_devtools_fixture_into_with_mutable_files(
         plugin_root,
         &[std::path::Path::new(".mcp.json")],
     )

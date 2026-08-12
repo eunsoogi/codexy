@@ -81,6 +81,35 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
                     execute.assert_not_called()
 
+    def test_all_explicit_sources_install_canonical_devtools_archives(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self._write_selected_release(root)
+            archive = root / "devtools-override.tar.gz"
+            self._write_devtools_override(archive)
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+            for source_name, source_key, source in (
+                ("path", "CODEXY_RUNTIME_PACKAGE_PATH", str(archive)),
+                ("url", "CODEXY_RUNTIME_PACKAGE_URL", "https://example.test/override.tar.gz"),
+                ("artifacts", "CODEXY_RUNTIME_ARTIFACTS_API_URL", "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+            ):
+                with self.subTest(source=source_name):
+                    environment = {
+                        "CODEXY_RUNTIME_CACHE_DIR": str(root / f"cache-{source_name}"),
+                        source_key: source,
+                        "CODEXY_RUNTIME_PACKAGE_SHA256": digest,
+                        "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
+                    }
+                    download = lambda _url, destination, _token="": shutil.copyfile(archive, destination)
+                    with mock.patch.dict(os.environ, environment, clear=True), \
+                         mock.patch.object(package, "_download", side_effect=download), \
+                         mock.patch.object(package, "_artifact_package", return_value=archive), \
+                         mock.patch.object(runtime, "_execute", side_effect=Executed), \
+                         self.assertRaises(Executed):
+                        runtime.run(runtime.Configuration.load("lsp", root, []))
+                    installed = next((root / f"cache-{source_name}").rglob("bin/codexy-mcp-lsp"))
+                    self.assertEqual(installed.read_bytes(), b"devtools override runtime")
+
     def test_override_admission_failures_do_not_install_a_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -93,6 +122,12 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                     "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1"}',
                     "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"one",
                     "PLUGINS/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"two",
+                },
+                "mixed-roots": {
+                    "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1"}',
+                    "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"core",
+                    "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"version":"1"}',
+                    "plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"devtools",
                 },
             }
             for name, files in cases.items():
@@ -159,6 +194,13 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
             "plugins/codexy/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"authorized override runtime",
         }
         RuntimeSourceIdentityTests._write_archive(archive, files)
+
+    @staticmethod
+    def _write_devtools_override(archive: Path) -> None:
+        RuntimeSourceIdentityTests._write_archive(archive, {
+            "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"name":"codexy-devtools","version":"77.0.0"}',
+            "plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"devtools override runtime",
+        })
 
     @staticmethod
     def _write_archive(archive: Path, files: dict[str, bytes]) -> None:

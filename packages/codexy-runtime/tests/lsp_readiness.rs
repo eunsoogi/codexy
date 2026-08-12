@@ -159,13 +159,13 @@ fn lsp_validator_rejects_missing_required_web_extension() -> Result<(), Box<dyn 
     std::fs::create_dir_all(root.path().join("lsp"))?;
     std::fs::copy(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/lsp/server-catalog.toml"),
+            .join("plugins/codexy-devtools/lsp/server-catalog.toml"),
         root.path().join("lsp/server-catalog.toml"),
     )?;
     let config_path = root.path().join(".codex/lsp-client.json");
     let mut config: Value = serde_json::from_str(&std::fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/.codex/lsp-client.json"),
+            .join("plugins/codexy-devtools/.codex/lsp-client.json"),
     )?)?;
     let graphql_extensions = config["lsp"]["graphql-language-service"]["extensions"]
         .as_array_mut()

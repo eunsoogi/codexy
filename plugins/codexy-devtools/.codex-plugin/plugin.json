@@ -1,0 +1,27 @@
+{
+  "name": "codexy-devtools",
+  "version": "1.3.0",
+  "description": "Optional Codegraph and LSP developer-tool integrations for Codexy.",
+  "author": {"name": "Eunsoo Lee", "url": "https://github.com/eunsoogi"},
+  "homepage": "https://github.com/eunsoogi/codexy#readme",
+  "repository": "https://github.com/eunsoogi/codexy",
+  "license": "MIT",
+  "keywords": ["codex", "developer-tools", "mcp", "lsp", "codegraph"],
+  "supportedPlatforms": ["darwin-arm64", "linux-x86_64"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codexy Devtools",
+    "shortDescription": "Add optional Codegraph and LSP developer tools to Codexy.",
+    "longDescription": "Codexy Devtools provides optional local Codegraph and language-server integrations for a separately installed Codexy core.",
+    "developerName": "Eunsoo Lee",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://github.com/eunsoogi/codexy",
+    "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
+    "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
+    "defaultPrompt": ["Use $developer-tools for optional local Codegraph and LSP work when Codexy Devtools is installed."],
+    "brandColor": "#2F6F5E",
+    "screenshots": []
+  }
+}

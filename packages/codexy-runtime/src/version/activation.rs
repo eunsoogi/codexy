@@ -61,7 +61,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
             delete: false,
         },
         Update {
-            path: repo_root.join("plugins/codexy/runtime-candidate.json"),
+            path: repo_root.join("plugins/codexy-devtools/runtime-candidate.json"),
             bytes: Vec::new(),
             delete: true,
         },
@@ -73,7 +73,7 @@ fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Res
     let path = root.join(".agents/plugins/release-publish-contract.json");
     let mut contract = read_json(&path, "release publish contract")?;
     let current_release = read_json(
-        &root.join("plugins/codexy/runtime-release.json"),
+        &root.join("plugins/codexy-devtools/runtime-release.json"),
         "selected runtime release",
     )?;
     let current_tag = current_release["artifact"]["tag"]

@@ -12,7 +12,7 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
 #[test]
 fn archive_gate_workflow_rejects_duplicate_branches_and_suffixed_runtime_paths() {
     let (workflow, archive_inspector) = workflow_sources();
-    let decoy = "case \"$state\" in\n          candidate-proven)\n            scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz\n            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release\n            ;;";
+    let decoy = "case \"$state\" in\n          candidate-proven)\n            scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz\n            scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release\n            ;;";
     for invalid in [
         workflow.replacen("case \"$state\" in", decoy, 1),
         workflow.replace(

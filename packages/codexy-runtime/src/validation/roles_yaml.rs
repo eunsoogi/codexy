@@ -185,7 +185,7 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
             ));
         }
     }
-    if path == plugin_root.join("agents/openai.yaml")
+    if requires_orchestration_route(plugin_root, path)
         && !matches!(
             prompt_yaml::get_path(&parsed, &["interface", "default_prompt"]),
             Some(prompt_yaml::Scalar::Text(text)) if text.contains("$orchestration")
@@ -206,4 +206,19 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
         ));
     }
     Ok(errors)
+}
+
+fn requires_orchestration_route(plugin_root: &Path, path: &Path) -> bool {
+    path == plugin_root.join("agents/openai.yaml")
+        && std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .and_then(|manifest| {
+                manifest
+                    .get("name")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_owned)
+            })
+            .as_deref()
+            != Some("codexy-devtools")
 }

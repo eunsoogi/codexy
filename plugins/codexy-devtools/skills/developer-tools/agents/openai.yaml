@@ -1,0 +1,6 @@
+interface:
+  display_name: "Developer Tools"
+  short_description: "Use optional Codegraph and LSP developer tooling."
+  default_prompt: "Use $developer-tools to inspect optional Codegraph and LSP tooling before relying on it."
+policy:
+  allow_implicit_invocation: true

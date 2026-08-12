@@ -5,24 +5,23 @@ use std::{
     process::{Command as StdCommand, Output},
     rc::Rc,
 };
-
 use crate::support::{self, FixtureCommand, make_executable};
-const AUTHORIZED: [&str; 8] = [
+const AUTHORIZED: [&str; 9] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
     ".agents/plugins/runtime-activation.json",
     "plugins/codexy/.codex-plugin/plugin.json",
+    "plugins/codexy-devtools/.codex-plugin/plugin.json",
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "packages/codexy-runtime/src/version/bootstrap.rs",
 ];
 const PRESERVED: [&str; 3] = [
-    "plugins/codexy/mcp/codexy-mcp-codegraph",
-    "plugins/codexy/mcp/codexy-mcp-lsp",
-    "plugins/codexy/runtime-release.json",
+    "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
+    "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
+    "plugins/codexy-devtools/runtime-release.json",
 ];
-
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Change {
     Exact,
@@ -102,7 +101,7 @@ impl FixtureMatrix {
         support::copy_dir(&self.seed_repo, &repo)?;
         match change {
             Change::Exact => {}
-            Change::WrapperDrift => write(&repo, "plugins/codexy/mcp/codexy-mcp-codegraph", b"drift\n")?,
+            Change::WrapperDrift => write(&repo, "plugins/codexy-devtools/mcp/codexy-mcp-codegraph", b"drift\n")?,
             Change::BootstrapDrift => write(
                 &repo,
                 "packages/codexy-runtime/src/version/bootstrap.rs",
@@ -219,9 +218,10 @@ for path in \
   .agents/plugins/release-publish-contract.json \
   .agents/plugins/runtime-activation.json \
   plugins/codexy/.codex-plugin/plugin.json \
+  plugins/codexy-devtools/.codex-plugin/plugin.json \
   plugins/codexy-github/.codex-plugin/plugin.json \
-  plugins/codexy/mcp/codexy-mcp-codegraph \
-  plugins/codexy/mcp/codexy-mcp-lsp \
+  plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
+  plugins/codexy-devtools/mcp/codexy-mcp-lsp \
   packages/codexy-runtime/src/version/bootstrap.rs
 do
   mkdir -p "$root/$(dirname "$path")"
