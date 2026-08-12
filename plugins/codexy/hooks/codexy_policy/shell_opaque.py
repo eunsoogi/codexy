@@ -89,7 +89,7 @@ def contains_policy_executable(
                     if fallback is None or fallback.opaque or fallback.executable == expected:
                         return True
                     path = dict(context.environment).get("PATH")
-                    if not prefix_free or not available(prefix_free[0], context.cwd, path):
+                    if fallback.executable is None or not available(fallback.executable, context.cwd, path):
                         return True
                 command_start = False
                 index = end - 1
