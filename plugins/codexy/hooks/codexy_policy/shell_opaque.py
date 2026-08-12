@@ -65,9 +65,16 @@ def contains_policy_executable(
         lexer = shlex.shlex(separate_lines(command), posix=True, punctuation_chars=";&|(){}")
         lexer.whitespace_split, lexer.commenters = True, ""
         path = dict(context.environment).get("PATH")
-        return any(
-            executable_identity(token, context.cwd, context.executable_aliases, path) == expected
-            for token in lexer
-        )
+        command_start = True
+        for token in lexer:
+            if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
+                command_start = True
+            elif command_start and (token == "!" or assignment(token)):
+                continue
+            elif command_start:
+                if executable_identity(token, context.cwd, context.executable_aliases, path) == expected:
+                    return True
+                command_start = False
+        return False
     except ValueError:
         return True
