@@ -125,7 +125,7 @@ def _unwrap(tokens: list[str], context: ExecutionContext, depth: int) -> Invocat
         if executable in OPAQUE_INTERPRETERS:
             return Invocation(executable, args, context, opaque=True)
         return Invocation(executable, args, context, available=executable_available(tokens[0], context.cwd, path))
-    return None
+    return Invocation(None, [], context, opaque=True)
 
 
 def _command(args: list[str]) -> list[str] | None:

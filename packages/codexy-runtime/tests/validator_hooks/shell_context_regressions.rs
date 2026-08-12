@@ -45,6 +45,9 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         ("timeout", "1"),
         ("nohup", ""),
     ];
+    let supported = "command ".repeat(7);
+    let exhausted = "command ".repeat(8);
+    let beyond = "command ".repeat(9);
     for event in ["PermissionRequest", "PreToolUse"] {
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", git.display()), true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' pr merge 551; fi", gh.display()), true, &[])?;
@@ -55,6 +58,11 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi", true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi", true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi", false, &[])?;
+        assert_event_case(&root, event, &owned, &format!("if true; then {supported}'{}' '%s\\n' safe; fi", copied_printf.display()), false, &[])?;
+        for nested in [&exhausted, &beyond] {
+            assert_event_case(&root, event, &owned, &format!("if true; then {nested}'{}' reset --hard; fi", git.display()), true, &[])?;
+            assert_event_case(&root, event, &owned, &format!("if true; then {nested}'{}' pr merge 551; fi", gh.display()), true, &[])?;
+        }
         for (wrapper, option) in wrappers {
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
