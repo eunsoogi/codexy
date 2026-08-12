@@ -10,9 +10,7 @@ mkdir -p dist/candidate/plugins
 rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
-if [ -f "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" ]; then
-  mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
-fi
+mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
 for platform in darwin-arm64 linux-x86_64; do
   for server in lsp codegraph; do
     chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"

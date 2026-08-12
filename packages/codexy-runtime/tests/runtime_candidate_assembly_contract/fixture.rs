@@ -32,6 +32,10 @@ impl CandidateFixture {
                 wrapper,
             )?;
         }
+        fs::write(
+            root.join("staged-runtime/codexy-mcp-devtools-windows-x86_64.exe"),
+            "dispatcher-windows\n",
+        )?;
         run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
         run_git(root, &["commit", "-qm", "fixture wrapper"])?;
         let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])? )

@@ -74,6 +74,23 @@ pub(super) fn check_windows_dispatcher(plugin_root: &Path) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn check_distinct_server_runtimes(plugin_root: &Path, platform: &str) -> Result<()> {
+    let lsp = plugin_root
+        .join("runtime")
+        .join(artifact_name("lsp", platform));
+    let codegraph = plugin_root
+        .join("runtime")
+        .join(artifact_name("codegraph", platform));
+    if std::fs::read(&lsp)? == std::fs::read(&codegraph)? {
+        bail!(
+            "{} and {} must not contain duplicate native MCP runtime bytes",
+            display_relative(&lsp),
+            display_relative(&codegraph)
+        );
+    }
+    Ok(())
+}
+
 fn is_x86_64_pe(bytes: &[u8]) -> bool {
     if bytes.len() < 0x40 || !bytes.starts_with(b"MZ") {
         return false;

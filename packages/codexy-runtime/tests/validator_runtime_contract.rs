@@ -48,13 +48,16 @@ fn runtime_binary_fixture(runtime_name: &str) -> Vec<u8> {
         bytes[0x94..0x96].copy_from_slice(&0xf0_u16.to_le_bytes());
         bytes[0x96..0x98].copy_from_slice(&0x0022_u16.to_le_bytes());
         bytes[0x98..0x9a].copy_from_slice(&0x20b_u16.to_le_bytes());
-        return bytes;
+        bytes
     } else if runtime_name.contains("darwin-arm64") {
         vec![0xcf, 0xfa, 0xed, 0xfe]
     } else {
         vec![0x7f, b'E', b'L', b'F']
     };
     bytes.resize(4096, 0);
+    if runtime_name.contains("codegraph") {
+        bytes[0x100] = 1;
+    }
     bytes
 }
 
@@ -81,7 +84,7 @@ fn write_runtime_fixture(
     make_executable(&runtime_path)?;
     if runtime_name == "codexy-mcp-lsp-windows-x86_64.exe" {
         let mut dispatcher = bytes.to_vec();
-        dispatcher[0x100] = 1;
+        dispatcher[0x100] = 2;
         std::fs::write(plugin_root.join("mcp/codexy-mcp-devtools.exe"), dispatcher)?;
     }
     Ok(())

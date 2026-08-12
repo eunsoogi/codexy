@@ -73,6 +73,9 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
             runtime_binary::check(&runtime_path, platform)?;
         }
     }
+    for platform in &platforms {
+        runtime_binary::check_distinct_server_runtimes(plugin_root, platform)?;
+    }
     if platforms
         .iter()
         .any(|platform| platform == "windows-x86_64")
