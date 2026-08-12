@@ -16,7 +16,7 @@ non-overlapping coverage by these records.
 | --- | --- | --- | --- |
 | `codexy` | Codexy | `plugins/codexy` | Core orchestration, evidence, shared specialist and skill contracts, instruction enforcement, engineering, dreaming, and Wiki. |
 | `codexy-github` | Codexy GitHub | `plugins/codexy-github` | GitHub issues, pull requests, reviews, and repository integration using published core contracts. |
-| `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` (reserved) | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts. |
+| `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts. |
 
 `codexy` remains the approved core identity: its manifest name, current package
 root, public documentation, and installation identity MUST NOT be renamed as
@@ -52,7 +52,7 @@ than importing a private path across product roots.
 | --- | --- | --- |
 | Orchestration, specialists, instruction hooks, dreaming, engineering, and Wiki | `codexy` | Retain in core. |
 | Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow | `codexy-github` | Extracted. |
-| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extract in the downstream devtools issue. |
+| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions | `codexy-devtools` | Extracted into the devtools package. |
 | `release-engineering` and `plugin-marketplace-prep` skills | Repository-only Codex skills | Move out of the installed plugin. |
 
 Each row is one destination decision for its current logical surface. A later
