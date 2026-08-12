@@ -118,7 +118,7 @@ class RuntimeContractTests(unittest.TestCase):
             lambda value: value["platforms"]["linux-x86_64"].update({"other": {}}),
             lambda value: value["compatibility"].update({"transport": "stdio"}),
             lambda value: value["compatibility"].update({"mcpProtocol": "wrong"}),
-            lambda value: value["platforms"]["linux-x86_64"]["lsp"].update({"path": "plugins/codexy/runtime/../bad"}),
+            lambda value: value["platforms"]["linux-x86_64"]["lsp"].update({"path": "plugins/codexy-devtools/runtime/../bad"}),
         ):
             bad = release()
             change(bad)
@@ -226,9 +226,9 @@ class RuntimeContractTests(unittest.TestCase):
     def archive(path: Path, embedded: dict[str, object]) -> None:
         with tarfile.open(path, "w:gz") as packaged:
             files = {
-                "plugins/codexy/runtime-candidate.json": encoded(embedded),
-                "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
-                **{f"plugins/codexy/runtime/codexy-mcp-{server}-linux-x86_64.bin": data for server, data in BINARIES.items()},
+                "plugins/codexy-devtools/runtime-candidate.json": encoded(embedded),
+                "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
+                **{f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-linux-x86_64.bin": data for server, data in BINARIES.items()},
             }
             for name, data in files.items():
                 info = tarfile.TarInfo(name)
