@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v2",
-  "contentDigest": "75e5b2ffac52218b",
+  "contentDigest": "6ece032b19def154",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -11,56 +11,6 @@
       "entrypoints": ["codexy-thread-delivery.sh", "codexy-thread-delivery.cmd", "codexy-thread-delivery.py"],
       "diagnosticFamily": "CODEXY_THREAD_DELIVERY_",
       "contentDigest": "103d7a8ebac72ebe"
-    },
-    {
-      "concernId": "repository-issue",
-      "trigger": "^mcp__codex_apps__github_(create|update)_issue$",
-      "events": ["PermissionRequest", "PreToolUse"],
-      "inputContract": "codexy.hooks.repository-issue.v1",
-      "preventive": true,
-      "entrypoints": ["codexy-repository-issue.sh", "codexy-repository-issue.cmd", "codexy-repository-issue.py"],
-      "diagnosticFamily": "CODEXY_REPOSITORY_ISSUE_",
-      "contentDigest": "435ce6a19d6a8d30"
-    },
-    {
-      "concernId": "repository-pull-request",
-      "trigger": "^mcp__codex_apps__github_(create|update)_pull_request$",
-      "events": ["PermissionRequest", "PreToolUse"],
-      "inputContract": "codexy.hooks.repository-pull-request.v1",
-      "preventive": true,
-      "entrypoints": ["codexy-repository-pull-request.sh", "codexy-repository-pull-request.cmd", "codexy-repository-pull-request.py"],
-      "diagnosticFamily": "CODEXY_REPOSITORY_PULL_REQUEST_",
-      "contentDigest": "aed334440191f43a"
-    },
-    {
-      "concernId": "repository-merge",
-      "trigger": "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
-      "events": ["PermissionRequest", "PreToolUse"],
-      "inputContract": "codexy.hooks.repository-merge.v1",
-      "preventive": true,
-      "entrypoints": ["codexy-repository-merge.sh", "codexy-repository-merge.cmd", "codexy-repository-merge.py"],
-      "diagnosticFamily": "CODEXY_REPOSITORY_MERGE_",
-      "contentDigest": "1c74f968a341bbaf"
-    },
-    {
-      "concernId": "repository-github-command",
-      "trigger": "^Bash$",
-      "events": ["PermissionRequest", "PreToolUse"],
-      "inputContract": "codexy.hooks.repository-github-command.v1",
-      "preventive": true,
-      "entrypoints": ["codexy-repository-github-command.sh", "codexy-repository-github-command.cmd", "codexy-repository-github-command.py"],
-      "diagnosticFamily": "CODEXY_REPOSITORY_GITHUB_COMMAND_",
-      "contentDigest": "78453a73a3c23f40"
-    },
-    {
-      "concernId": "destructive-command",
-      "trigger": "^Bash$",
-      "events": ["PermissionRequest", "PreToolUse"],
-      "inputContract": "codexy.hooks.destructive-command.v1",
-      "preventive": true,
-      "entrypoints": ["codexy-destructive-command.sh", "codexy-destructive-command.cmd", "codexy-destructive-command.py"],
-      "diagnosticFamily": "CODEXY_DESTRUCTIVE_COMMAND_",
-      "contentDigest": "424ad5c69fd8d5ce"
     }
   ]
 }

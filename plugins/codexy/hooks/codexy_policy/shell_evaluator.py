@@ -48,7 +48,7 @@ def evaluate(
                     evaluated = evaluated[1:]
                 if evaluate(" ".join(evaluated), context, depth + 1, policy):
                     return True
-            elif explicit_owned(opaque_tokens) is True:
+            elif explicit_owned(opaque_tokens, context.policy_identity) is True:
                 return True
         except ValueError:
             return True

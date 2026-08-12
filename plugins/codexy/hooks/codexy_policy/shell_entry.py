@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from .execution_context import ExecutionContext
-from .repository import git_directory_owned, repository_owned
+from .repository import (
+    git_directory_owned, repository_identity, repository_owned,
+    repository_policy_status,
+)
 
 
 def context(
@@ -23,6 +26,6 @@ def context(
     ) + git_config_environment
     owned = git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
     return ExecutionContext(
-        cwd, owned, git_dir, gh_repo, environment,
+        cwd, owned, repository_policy_status(cwd), repository_identity(cwd), git_dir, gh_repo, environment,
         opaque_repository_state=git_common_dir is not None,
     )

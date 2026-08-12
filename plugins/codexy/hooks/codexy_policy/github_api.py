@@ -6,7 +6,7 @@ import json
 import re
 
 from .graphql import mutation
-from .repository import OWNED, github_identity, read_text
+from .repository import github_identity, read_text, repository_identity, repository_policy_status
 
 TYPED_FIELD_OPTIONS = {"-F", "--field"}
 FIELD_OPTIONS = {"-f", "--raw-field"} | TYPED_FIELD_OPTIONS
@@ -20,7 +20,17 @@ class _UnsafeQueryFile(Exception):
     pass
 
 
-def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
+def forbidden(
+    args: list[str], default_owned: bool, cwd: str,
+    owned_identity: tuple[str, str, str] | None = None, policy_status: bool | None = None,
+    policy_bound: bool = False,
+) -> bool:
+    if not policy_bound and owned_identity is None:
+        owned_identity = repository_identity(cwd)
+    if not policy_bound:
+        policy_status = repository_policy_status(cwd)
+    if policy_status is None:
+        return True
     try:
         parsed = _parse(args, cwd)
     except _UnsafeQueryFile:
@@ -41,7 +51,7 @@ def forbidden(args: list[str], default_owned: bool, cwd: str) -> bool:
         return False
     if tuple(part.casefold() for part in match.groups()) == ("{owner}", "{repo}"):
         return default_owned
-    return github_identity(f"{match.group(1)}/{match.group(2)}") == OWNED
+    return github_identity(f"{match.group(1)}/{match.group(2)}") == owned_identity
 
 
 def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str], str | None] | None:

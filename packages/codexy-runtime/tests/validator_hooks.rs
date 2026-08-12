@@ -19,6 +19,8 @@ mod filesystem_aliases;
 mod graphql_admission;
 #[path = "validator_hooks/shell_context_regressions.rs"]
 mod shell_context_regressions;
+#[path = "validator_hooks/repository_github_policy_config.rs"]
+mod repository_github_policy_config;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "plugins/codexy/**"
+      - ".codex/**"
       - ".agents/plugins/**"
       - "scripts/**"
       - ".github/workflows/plugin-runtime-binaries.yml"
@@ -11,6 +12,7 @@ on:
     branches: [main]
     paths:
       - "plugins/codexy/**"
+      - ".codex/**"
       - ".agents/plugins/**"
       - "scripts/**"
       - ".github/workflows/plugin-runtime-binaries.yml"

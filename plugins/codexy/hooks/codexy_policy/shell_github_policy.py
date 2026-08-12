@@ -3,7 +3,7 @@
 from .execution_context import CommandEffect, ExecutionContext, remote_url
 from .github import forbidden as gh_forbidden
 from .github_alias import expand as expand_gh_alias
-from .repository import OWNED, github_identity
+from .repository import github_identity
 from .shell_git import evaluate as evaluate_git
 from .shell_github_opaque import owns as github_opaque
 
@@ -29,13 +29,15 @@ class GithubPolicy:
             return False, CommandEffect(remote_url(outer, *remote))
         if invocation.executable == "gh":
             gh_owned = (
-                github_identity(invocation.context.gh_repo) == OWNED
+                github_identity(invocation.context.gh_repo) == invocation.context.policy_identity
                 if invocation.context.gh_repo is not None else None
             )
             arguments = expand_gh_alias(invocation.arguments)
             denied = arguments is None or gh_forbidden(
                 arguments, invocation.context.cwd,
                 invocation.context.cwd_owned, gh_owned,
+                invocation.context.policy_identity, invocation.context.policy_status,
+                policy_bound=True,
             )
             return denied, CommandEffect(outer)
         if invocation.executable in {"hash", "rm"}:

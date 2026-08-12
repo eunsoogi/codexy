@@ -19,50 +19,13 @@ struct Expected {
     diagnostic: &'static str,
 }
 
-const CONCERNS: &[Expected] = &[
-    Expected {
-        id: "thread-delivery",
-        trigger: "^codex_app__send_message_to_thread$",
-        input: "codexy.hooks.thread-delivery.v1",
-        launcher: "codexy-thread-delivery",
-        diagnostic: "CODEXY_THREAD_DELIVERY_",
-    },
-    Expected {
-        id: "repository-issue",
-        trigger: "^mcp__codex_apps__github_(create|update)_issue$",
-        input: "codexy.hooks.repository-issue.v1",
-        launcher: "codexy-repository-issue",
-        diagnostic: "CODEXY_REPOSITORY_ISSUE_",
-    },
-    Expected {
-        id: "repository-pull-request",
-        trigger: "^mcp__codex_apps__github_(create|update)_pull_request$",
-        input: "codexy.hooks.repository-pull-request.v1",
-        launcher: "codexy-repository-pull-request",
-        diagnostic: "CODEXY_REPOSITORY_PULL_REQUEST_",
-    },
-    Expected {
-        id: "repository-merge",
-        trigger: "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
-        input: "codexy.hooks.repository-merge.v1",
-        launcher: "codexy-repository-merge",
-        diagnostic: "CODEXY_REPOSITORY_MERGE_",
-    },
-    Expected {
-        id: "repository-github-command",
-        trigger: "^Bash$",
-        input: "codexy.hooks.repository-github-command.v1",
-        launcher: "codexy-repository-github-command",
-        diagnostic: "CODEXY_REPOSITORY_GITHUB_COMMAND_",
-    },
-    Expected {
-        id: "destructive-command",
-        trigger: "^Bash$",
-        input: "codexy.hooks.destructive-command.v1",
-        launcher: "codexy-destructive-command",
-        diagnostic: "CODEXY_DESTRUCTIVE_COMMAND_",
-    },
-];
+const CONCERNS: &[Expected] = &[Expected {
+    id: "thread-delivery",
+    trigger: "^codex_app__send_message_to_thread$",
+    input: "codexy.hooks.thread-delivery.v1",
+    launcher: "codexy-thread-delivery",
+    diagnostic: "CODEXY_THREAD_DELIVERY_",
+}];
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

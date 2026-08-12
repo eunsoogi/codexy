@@ -100,6 +100,12 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
     )?;
     assert!(!plugin_root.join("scripts/validate-plugin-config").exists());
     let script = plugin_root.join("hooks/codexy-readiness-guard.sh");
+    let configured = temp.path().join("configured");
+    std::fs::create_dir_all(configured.join(".git"))?;
+    std::fs::write(configured.join(".git/config"), "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n")?;
+    let policy = configured.join(".codex/repository-github-policy.json");
+    std::fs::create_dir_all(policy.parent().ok_or("policy parent")?)?;
+    std::fs::write(policy, "{\"schema\":\"codexy.repository-github-policy/v1\",\"repository\":\"eunsoogi/codexy\"}")?;
 
     let labeled = write_pr_state(
         temp.path(),
@@ -107,6 +113,7 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         r#"{"number":216,"state":"OPEN","repository":"eunsoogi/codexy","labels":{"nodes":[{"name":"type/fix"},{"name":"area/workflow"}]},"repositoryLabels":{"nodes":[{"name":"type/fix"},{"name":"area/workflow"},{"name":"status/review"}]}}"#,
     )?;
     let good = Command::new(&script)
+        .current_dir(&configured)
         .args([
             "--check-pr-labels",
             "--pr-state-file",
@@ -126,6 +133,7 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         r#"{"number":216,"state":"OPEN","repository":"eunsoogi/codexy","labels":[],"repositoryLabels":{"nodes":[{"name":"type/fix"},{"name":"status/review"}]}}"#,
     )?;
     let bad = Command::new(&script)
+        .current_dir(&configured)
         .args([
             "--check-pr-labels",
             "--pr-state-file",
@@ -141,6 +149,18 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         "unexpected output: {}",
         output_text(&bad)
     );
+
+    let unconfigured = temp.path().join("unconfigured");
+    std::fs::create_dir_all(unconfigured.join(".git"))?;
+    let unconfigured = Command::new(&script)
+        .current_dir(unconfigured)
+        .args([
+            "--check-pr-labels",
+            "--pr-state-file",
+            unlabeled.to_str().ok_or("unlabeled state path")?,
+        ])
+        .output()?;
+    assert!(unconfigured.status.success(), "{}", output_text(&unconfigured));
 
     Ok(())
 }
