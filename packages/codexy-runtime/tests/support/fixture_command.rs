@@ -6,8 +6,6 @@ mod archive_inspection_receipt;
 mod dispatch;
 #[path = "fixture_command_metrics.rs"]
 mod metrics;
-#[cfg(windows)]
-use super::fixture_command_windows::discover_windows_interpreter;
 pub(crate) use super::fixture_command_windows::{
     fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
 };
@@ -27,10 +25,7 @@ pub(crate) struct FixtureCommand {
 impl FixtureCommand {
     pub(crate) fn new(program: impl AsRef<std::ffi::OsStr>) -> Self {
         let program = program.as_ref();
-        #[cfg(windows)]
-        if let Some(companion) = windows_fixture_companion(std::path::Path::new(program)) {
-            return Self::from_command(Command::new(companion), false, program);
-        }
+        // A `.sh` fixture always models its POSIX entrypoint; native `.cmd` tests name it.
         if let Some(source) = materialized_script_source(std::path::Path::new(program)) {
             let (command, uses_posix_paths) =
                 dispatch::materialized_script_command(program, &source)

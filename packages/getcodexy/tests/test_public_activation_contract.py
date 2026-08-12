@@ -34,6 +34,8 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertIn("github-activation-windows", workflow)
         self.assertIn("codexy-github-install.exe --help", workflow)
         self.assertIn("codexy-github-check.exe --check-pr-labels", workflow)
+        self.assertIn("& (Join-Path $hookRoot", workflow)
+        self.assertNotIn("cmd /d /s /c", workflow)
         self.assertIn('"plugins/codexy-github/**"', workflow)
 
     def test_source_only_updater_remains_unpublished(self) -> None:

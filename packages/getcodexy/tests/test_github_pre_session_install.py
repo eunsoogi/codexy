@@ -38,7 +38,9 @@ class GithubPreSessionInstallTests(unittest.TestCase):
             moved = component / "trusted-agents"
             agents.rename(moved)
             agents.symlink_to(moved, target_is_directory=True)
-            with self.assertRaisesRegex(OSError, "Too many levels|Not a directory"):
+            with self.assertRaisesRegex(
+                (OSError, ValueError), "Too many levels|Not a directory|link|reparse"
+            ):
                 with frozen_component(component, "codexy-github"):
                     pass
 

@@ -79,7 +79,7 @@ jobs:
           .package-venv\Scripts\codexy-github-check.exe --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message "refactor(github): extract workflow (#553)`n`nFixes #552"
           $hookRoot = Join-Path $env:RUNNER_TEMP "codexy github hook"
           Copy-Item -Recurse -Force plugins/codexy-github/hooks $hookRoot
-          $context = '{"prompt":"Open a GitHub issue"}' | cmd /d /s /c "`"$hookRoot\codexy-github-workflow-context.cmd`""
+          $context = '{"prompt":"Open a GitHub issue"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")
           if ($context -notmatch '\$git-workflow') { throw "installed GitHub hook did not add workflow context" }
-          $admission = '{"tool_input":{"title":"Extract GitHub workflow"}}' | cmd /d /s /c "`"$hookRoot\codexy-github-admission-issue.cmd`""
+          $admission = '{"tool_input":{"title":"Extract GitHub workflow"}}' | & (Join-Path $hookRoot "codexy-github-admission-issue.cmd")
           if ($admission -notmatch '"permissionDecision":"deny"') { throw "installed GitHub admission hook did not deny an invalid title" }

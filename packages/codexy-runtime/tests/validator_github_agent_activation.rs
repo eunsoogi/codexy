@@ -1,6 +1,4 @@
-use std::process::Command;
-
-use crate::support;
+use crate::support::{self, FixtureCommand as Command};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -10,7 +8,7 @@ fn github_bootstrap_fails_closed_without_an_activated_core() -> TestResult {
     let github = copy_plugin(temp.path(), "codexy-github")?;
     let home = temp.path().join("home/.codex");
 
-    let output = Command::new(bootstrap(&github))
+    let output = bootstrap(&github)
         .args(["--codex-home", path(&home)?])
         .output()?;
 
@@ -27,16 +25,16 @@ fn github_bootstrap_requires_core_and_projects_only_its_managed_role() -> TestRe
     let github = copy_plugin(temp.path(), "codexy-github")?;
     let home = temp.path().join("home/.codex");
 
-    let core_output = Command::new(core.join("skills/orchestration/scripts/register-codexy-agents"))
+    let core_output = core_bootstrap(&core)
         .args(["--codex-home", path(&home)?])
         .output()?;
     assert!(core_output.status.success(), "{}", stderr(&core_output));
 
-    let output = Command::new(bootstrap(&github))
+    let output = bootstrap(&github)
         .args(["--codex-home", path(&home)?])
         .output()?;
     assert!(output.status.success(), "{}", stderr(&output));
-    let diagnose = Command::new(bootstrap(&github))
+    let diagnose = bootstrap(&github)
         .args(["--codex-home", path(&home)?, "--diagnose"])
         .output()?;
     assert!(diagnose.status.success(), "{}", stderr(&diagnose));
@@ -54,7 +52,7 @@ fn github_bootstrap_requires_core_and_projects_only_its_managed_role() -> TestRe
 fn github_bootstrap_rejects_an_untrusted_plugin_root_option() -> TestResult {
     let temp = tempfile::tempdir()?;
     let github = copy_plugin(temp.path(), "codexy-github")?;
-    let output = Command::new(bootstrap(&github))
+    let output = bootstrap(&github)
         .args(["--plugin-root", path(temp.path())?])
         .output()?;
 
@@ -69,8 +67,12 @@ fn copy_plugin(base: &std::path::Path, name: &str) -> TestResult<std::path::Path
     Ok(root)
 }
 
-fn bootstrap(plugin: &std::path::Path) -> std::path::PathBuf {
-    plugin.join("skills/git-workflow/scripts/bootstrap-codexy-github-agent")
+fn bootstrap(plugin: &std::path::Path) -> Command {
+    Command::new(plugin.join("skills/git-workflow/scripts/bootstrap-codexy-github-agent"))
+}
+
+fn core_bootstrap(plugin: &std::path::Path) -> Command {
+    Command::new(plugin.join("skills/orchestration/scripts/register-codexy-agents"))
 }
 
 fn path(path: &std::path::Path) -> Result<&str, Box<dyn std::error::Error>> {

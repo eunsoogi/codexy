@@ -107,6 +107,16 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def _read_regular(root: Path, relative: Path) -> bytes:
+    if _uses_windows_directory_fallback():
+        return _read_regular_windows(root, relative)
+    return _read_regular_posix(root, relative)
+
+
+def _uses_windows_directory_fallback() -> bool:
+    return os.name == "nt"
+
+
+def _read_regular_posix(root: Path, relative: Path) -> bytes:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     directory_flags = flags | getattr(os, "O_DIRECTORY", 0)
     descriptor = os.open(root, directory_flags)
@@ -122,3 +132,46 @@ def _read_regular(root: Path, relative: Path) -> bytes:
             return source.read()
     finally:
         os.close(descriptor)
+
+
+def _read_regular_windows(root: Path, relative: Path) -> bytes:
+    target, _ = _windows_safe_path(root, relative)
+    descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_BINARY", 0))
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise ValueError(f"component integrity requires regular files: {target}")
+        _, final = _windows_safe_path(root, relative)
+        if (opened.st_dev, opened.st_ino) != (final.st_dev, final.st_ino):
+            raise ValueError(f"component integrity path changed while reading: {target}")
+        with os.fdopen(descriptor, "rb", closefd=False) as source:
+            return source.read()
+    finally:
+        os.close(descriptor)
+
+
+def _windows_safe_path(root: Path, relative: Path) -> tuple[Path, os.stat_result]:
+    if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+        raise ValueError(f"component integrity path is invalid: {relative}")
+    current = root
+    _windows_regular_path(current, directory=True)
+    for part in relative.parts[:-1]:
+        current /= part
+        _windows_regular_path(current, directory=True)
+    target = current / relative.name
+    return target, _windows_regular_path(target, directory=False)
+
+
+def _windows_regular_path(path: Path, directory: bool) -> os.stat_result:
+    metadata = path.lstat()
+    if stat.S_ISLNK(metadata.st_mode) or _has_windows_reparse_point(metadata):
+        raise ValueError(f"component integrity path must not traverse link or reparse point: {path}")
+    if stat.S_ISDIR(metadata.st_mode) != directory:
+        kind = "directory" if directory else "regular file"
+        raise ValueError(f"component integrity requires {kind}: {path}")
+    return metadata
+
+
+def _has_windows_reparse_point(metadata: os.stat_result) -> bool:
+    attribute = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return bool(getattr(metadata, "st_file_attributes", 0) & attribute)
