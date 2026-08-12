@@ -120,11 +120,20 @@ fn copy_fixture(
     plugin_root: &std::path::Path,
     mutable_files: &[&str],
 ) -> std::io::Result<()> {
-    let files = mutable_files
-        .iter()
-        .map(std::path::Path::new)
-        .collect::<Vec<_>>();
-    support::copy_plugin_fixture_into_with_mutable_files(plugin_root, &files)
+    let repository = codexy_runtime::paths::repository_root();
+    for relative in mutable_files {
+        let relative = std::path::Path::new(relative);
+        let devtools = repository.join("plugins/codexy-devtools").join(relative);
+        let source = if devtools.is_file() {
+            devtools
+        } else {
+            repository.join("plugins/codexy").join(relative)
+        };
+        let target = plugin_root.join(relative);
+        std::fs::create_dir_all(target.parent().expect("fixture parent"))?;
+        std::fs::copy(source, target)?;
+    }
+    Ok(())
 }
 
 fn validate(

@@ -14,7 +14,7 @@ required_wrappers = set()
 if len(sys.argv) == 6:
     with open(sys.argv[5], encoding="utf-8") as source:
         required_wrappers = {
-            f"plugins/codexy/{line.strip()}"
+            f"plugins/codexy-devtools/{line.strip()}"
             for line in source
             if line.strip()
         }
@@ -53,13 +53,13 @@ with tarfile.open(archive_path, "r:gz") as archive:
         if canonical_name in seen_canonical:
             fail(f"duplicate archive entries: {canonical_name}")
         seen_canonical.add(canonical_name)
-        if canonical_name != name or parts[:2] != ("plugins", "codexy"):
+        if canonical_name != name or parts[:2] != ("plugins", "codexy-devtools"):
             fail(f"unsafe archive path: {name}")
         if canonical_name in required_wrappers:
             if member.mode & 0o111 == 0:
                 fail(
                     "packaged MCP wrapper is not executable: "
-                    + canonical_name.removeprefix("plugins/codexy/")
+                    + canonical_name.removeprefix("plugins/codexy-devtools/")
                 )
             required_wrappers.remove(canonical_name)
         for part in parts:
@@ -74,5 +74,5 @@ with tarfile.open(archive_path, "r:gz") as archive:
         seen.add(identity)
 
 if required_wrappers:
-    missing = min(required_wrappers).removeprefix("plugins/codexy/")
+    missing = min(required_wrappers).removeprefix("plugins/codexy-devtools/")
     fail(f"packaged MCP wrapper missing from archive: {missing}")

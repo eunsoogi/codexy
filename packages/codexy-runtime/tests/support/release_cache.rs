@@ -161,13 +161,13 @@ pub(super) fn create_runtime_package_with_release(
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let runtime = format!("codexy-mcp-{server}");
     let package_root = root.join("package-root");
-    let runtime_dir = package_root.join("plugins/codexy/runtime");
-    let manifest_dir = package_root.join("plugins/codexy/.codex-plugin");
+    let runtime_dir = package_root.join("plugins/codexy-devtools/runtime");
+    let manifest_dir = package_root.join("plugins/codexy-devtools/.codex-plugin");
     std::fs::create_dir_all(&runtime_dir)?;
     std::fs::create_dir_all(&manifest_dir)?;
     std::fs::write(
         manifest_dir.join("plugin.json"),
-        format!(r#"{{"name":"codexy","version":"{package_release}"}}"#),
+        format!(r#"{{"name":"codexy-devtools","version":"{package_release}"}}"#),
     )?;
     let binary = runtime_dir.join(format!("{runtime}-darwin-arm64.bin"));
     std::fs::write(
@@ -185,7 +185,7 @@ pub(super) fn create_runtime_package_with_release(
             "-czf",
         ])
         .arg(&package)
-        .arg("plugins/codexy")
+        .arg("plugins/codexy-devtools")
         .status()?;
     if !status.success() {
         return Err("creating runtime package archive failed".into());

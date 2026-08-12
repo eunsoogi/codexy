@@ -7,7 +7,7 @@ use super::{Update, receipt::PLATFORMS};
 
 pub(super) fn platform_updates(root: &Path) -> Result<Vec<Update>> {
     Ok(vec![
-        set_platforms(root.join("plugins/codexy/.codex-plugin/plugin.json"), &[])?,
+        set_platforms(root.join("plugins/codexy-devtools/.codex-plugin/plugin.json"), &[])?,
         set_platforms(
             root.join(".agents/plugins/marketplace.json"),
             &["plugins", "0"],

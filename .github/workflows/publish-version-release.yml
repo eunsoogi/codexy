@@ -78,7 +78,7 @@ jobs:
           test "$(jq -r .candidate.artifact.stagingRunId "$record")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.source.commit "$record")" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .artifact.sha256 "$record")" = "$(jq -r .artifact.sha256 "$receipt")"
-          test ! -e plugins/codexy/runtime-candidate.json
+          test ! -e plugins/codexy-devtools/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
         env:
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
@@ -90,7 +90,7 @@ jobs:
           RELEASE_TAG=v1.3.0 scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
           mkdir -p final-inspect
           tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
-          scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy public-release
+          scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
           final_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
           runtime_sha="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
           run_attempt="$(jq -r .run_attempt staging/runtime-staging-run.json)"
@@ -228,10 +228,10 @@ jobs:
           cmp activated-provenance.json public-provenance.json
           mkdir -p public-inspect
           tar --no-same-owner --no-same-permissions -xzf public.tar.gz -C public-inspect
-          scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy public-release
-          test "$(jq -r .version public-inspect/plugins/codexy/.codex-plugin/plugin.json)" = 1.3.0
-          test ! -e public-inspect/plugins/codexy/runtime-release.json
-          test ! -e public-inspect/plugins/codexy/runtime-candidate.json
+          scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools public-release
+          test "$(jq -r .version public-inspect/plugins/codexy-devtools/.codex-plugin/plugin.json)" = 1.3.0
+          test ! -e public-inspect/plugins/codexy-devtools/runtime-release.json
+          test ! -e public-inspect/plugins/codexy-devtools/runtime-candidate.json
       - name: Verify public release attestations with a read-only token
         env:
           GH_TOKEN: ${{ github.token }}
@@ -246,5 +246,5 @@ jobs:
         run: |
           python -m venv public-bootstrap
           public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple getcodexy==1.3.0
-          CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/plugins/codexy" -- --help
-          CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/public-inspect/plugins/codexy" -- --help
+          CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/plugins/codexy-devtools" -- --help
+          CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/public-inspect/plugins/codexy-devtools" -- --help

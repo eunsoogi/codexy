@@ -12,24 +12,22 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
-    let plugin = repo.join("plugins/codexy");
+    let core_plugin = repo.join("plugins/codexy");
+    let plugin = repo.join("plugins/codexy-devtools");
     let mut manifest: Value = serde_json::from_slice(&fs::read(
-        plugin.join(".codex-plugin/plugin.json"),
+        core_plugin.join(".codex-plugin/plugin.json"),
     )?)?;
     let baseline_version = manifest["version"]
         .as_str()
         .ok_or("fixture core manifest version")?
         .to_owned();
     fs::remove_dir_all(&plugin)?;
-    copy_dir(root.join("plugins/codexy"), &plugin)?;
-    let candidate: Value = serde_json::from_slice(&fs::read(
-        plugin.join(".codex-plugin/plugin.json"),
+    copy_dir(root.join("plugins/codexy-devtools"), &plugin)?;
+    let core_candidate: Value = serde_json::from_slice(&fs::read(
+        root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
-    manifest["interface"]["defaultPrompt"] = candidate["interface"]["defaultPrompt"].clone();
-    fs::write(
-        plugin.join(".codex-plugin/plugin.json"),
-        format!("{}\n", serde_json::to_string_pretty(&manifest)?),
-    )?;
+    manifest["interface"]["defaultPrompt"] = core_candidate["interface"]["defaultPrompt"].clone();
+    fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
         ".agents/plugins/marketplace.json",

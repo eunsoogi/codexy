@@ -80,8 +80,8 @@ class RuntimeRelease:
                 names = [member.name for member in package.getmembers()]
                 if len({name.casefold() for name in names}) != len(names):
                     raise ValueError("runtime archive has duplicate or casefold paths")
-                package.getmember("plugins/codexy/.codex-plugin/plugin.json")
-                candidate = document(package.extractfile("plugins/codexy/runtime-candidate.json").read())
+                package.getmember("plugins/codexy-devtools/.codex-plugin/plugin.json")
+                candidate = document(package.extractfile("plugins/codexy-devtools/runtime-candidate.json").read())
                 if _canonical(candidate) != self.artifact.payload_manifest_sha256:
                     raise ValueError("runtime candidate digest does not match release")
                 _validate_candidate(candidate, self, package, platform)
@@ -152,6 +152,6 @@ def _validate_candidate(candidate: Any, release: RuntimeRelease, package: tarfil
     if inventory != release.platforms or platform not in inventory:
         raise ValueError("runtime candidate inventory does not match release")
     for binary in inventory[platform].values():
-        member = package.extractfile(f"plugins/codexy/{binary['path']}")
+        member = package.extractfile(f"plugins/codexy-devtools/{binary['path']}")
         if member is None or hashlib.sha256(member.read()).hexdigest() != binary["sha256"]:
             raise ValueError("runtime candidate binary digest does not match")

@@ -95,7 +95,7 @@ fn devtools_root(plugin_root: &Path) -> PathBuf {
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {
-    if !is_devtools(plugin_root) {
+    if !is_devtools(plugin_root) && !plugin_root.join(".codex/lsp-client.json").is_file() {
         return devtools_root(plugin_root);
     }
     plugin_root.to_path_buf()

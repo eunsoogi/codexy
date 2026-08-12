@@ -206,9 +206,9 @@ fn complete_plugin_fixture_with_runtime(
     root: &std::path::Path,
     native_host_runtime: bool,
 ) -> std::io::Result<std::path::PathBuf> {
-    let plugin_root = root.join("plugins/codexy");
+    let plugin_root = root.join("plugins/codexy-devtools");
     copy_tree(
-        &codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
         &plugin_root,
     )?;
     crate::support::materialize_admission_runtime_suite(&plugin_root)?;

@@ -30,8 +30,8 @@ Codexy에는 다음이 포함됩니다.
 
 - 작업을 분류하고 목표와 계획을 최신 상태로 관리하는 절차 지침
 - 구현, 조사, 문서화, 현재 변경 사항 검토를 맡는 전문 역할 정의
-- 저장소 탐색과 언어 특성을 반영한 검사를 위한 codegraph와 언어 서버(language
-  server) 등록
+- 저장소 탐색과 언어 특성을 반영한 검사를 위한 선택형 `codexy-devtools` 동반
+  플러그인의 codegraph와 언어 서버(language server) 등록
 - 플러그인 설정, pull request 준비 상태, 릴리스 작업을 확인하는 검증기와 GitHub
   기반 검증 절차
 
@@ -45,6 +45,8 @@ Codexy에는 다음이 포함됩니다.
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref main
 codex plugin add codexy@codexy
+# 선택형 저장소 탐색 및 언어 도구:
+codex plugin add codexy-devtools@codexy
 ```
 
 Codex에서 설치된 플러그인과 MCP 서버를 확인합니다.
