@@ -66,18 +66,20 @@ def contains_policy_executable(
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
         command_start = True
+        segment_start = 0
         index = 0
         while index < len(tokens):
             token = tokens[index]
             if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
                 command_start = True
+                segment_start = index + 1
             elif command_start and (token == "!" or assignment(token)):
                 pass
             elif command_start:
                 end = index + 1
                 while end < len(tokens) and tokens[end] not in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}:
                     end += 1
-                invocation = resolve_invocation(tokens[index:end], context)
+                invocation = resolve_invocation(tokens[segment_start:end], context)
                 if invocation is not None and invocation.executable == expected:
                     return True
                 command_start = False

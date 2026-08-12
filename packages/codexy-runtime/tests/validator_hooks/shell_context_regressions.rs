@@ -31,6 +31,10 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     let git = executable("git")?;
     let gh = executable("gh")?;
     let printf = executable("printf")?;
+    let renamed = workspace.path().join("renamed-tools");
+    std::fs::create_dir(&renamed)?;
+    std::fs::copy(&git, renamed.join("git-copy"))?;
+    std::fs::copy(&gh, renamed.join("gh-copy"))?;
     let wrappers = [
         ("command", ""),
         ("env", ""),
@@ -42,6 +46,8 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", git.display()), true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' pr merge 551; fi", gh.display()), true, &[])?;
+        assert_event_case(&root, event, &owned, &format!("if true; then PATH='{}' git-copy reset --hard; fi", renamed.display()), true, &[])?;
+        assert_event_case(&root, event, &owned, &format!("if true; then PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true, &[])?;
         for (wrapper, option) in wrappers {
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
