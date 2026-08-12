@@ -13,6 +13,8 @@ repo=<repo>
 state_dir=$(mktemp -d)
 trap 'rm -rf "$state_dir"' EXIT
 review_control_state="${REVIEW_CONTROL_STATE_FILE:?set the closed typed review-control state file}"
+# The control file is `codexy.review-control-state.v1`. It becomes the namespaced
+# `reviewControl` object; GitHub's top-level `reviewDecision` remains untouched.
 gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
 head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
 git fetch origin "$head_ref"

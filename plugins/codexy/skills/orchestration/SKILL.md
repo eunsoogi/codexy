@@ -21,8 +21,9 @@ is `references/routing-evaluation-results.json`. This matrix is the human-readab
 workflow projection and MUST NOT be parsed as policy.
 
 Bounded review selection is separately owned by the closed
-`references/review-profiles.json` contract. It is not generic child routing and
-MUST NOT be inferred from this prose projection.
+`references/review-profiles.json` and `references/workflow-review-classification.json`
+contracts. The selected profile derives from the exhaustive typed classification
+record, not generic child routing or this prose projection.
 
 - Root/orchestrator: MUST use `gpt-5.6-sol` for decomposition, risk decisions,
   integration, and completion.
@@ -79,7 +80,7 @@ MUST read these relative references before acting on the matching surface:
 - `references/plain-language-user-replies.md` for English and Korean user-facing progress, blocker, completion, and next-action summaries.
 - `references/natural-korean-responses.md` for Korean user-facing replies and separate machine-readable evidence.
 - `references/child-routing-policy.json`, `references/routing-evaluation-corpus.json`, `references/routing-evaluation-results.schema.json`, and `references/routing-evaluation-results.json` for structured child-routing selection and frozen paired measurement.
-- `references/review-profiles.json` for structured light, standard, and strict review selection and bounded review budgets.
+- `references/review-profiles.json` and `references/workflow-review-classification.json` for structured review budgets and exhaustive typed profile selection.
 
 ## Classification Gate
 

@@ -148,16 +148,16 @@ fn validate_light() -> TestResult<std::process::Output> {
     let handoff = temp.path().join("handoff.md");
     let state = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
-    fs::write(
-        &state,
-        r#"{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"NOT_REQUIRED","reviewProfile":"light"}"#,
-    )?;
+    fs::write(&state, state_json("null", Some("light")))?;
     crate::support::validator_completion_handoff_files(&handoff, &state)
 }
 
 fn state_json(evidence: &str, profile: Option<&str>) -> String {
+    let decision = if profile == Some("light") { "NOT_REQUIRED" } else { "APPROVED" };
     let profile = profile.map_or("null".to_owned(), |value| format!("\"{value}\""));
-    format!(r#"{{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"APPROVED","reviewProfile":{profile},"reviewEvidence":{evidence}}}"#)
+    let mut state: Value = serde_json::from_str(&format!(r#"{{"state":"OPEN","isDraft":true,"mergeStateStatus":"CLEAN","headRefOid":"h","reviewDecision":"{decision}","reviewProfile":{profile},"reviewEvidence":{evidence}}}"#)).expect("state");
+    crate::support::review_control_state::namespace_review_control(&mut state);
+    serde_json::to_string(&state).expect("state JSON")
 }
 
 fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::Output> {
@@ -172,6 +172,7 @@ fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::O
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"h","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","base_oid":"base","head_oid":"h","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}
     });
     mutate(&mut state);
+    crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
     crate::support::validator_completion_handoff_files(&handoff, &state_path)
 }
@@ -195,6 +196,7 @@ fn validate_escalated_delta(
         ]}
     });
     mutate(&mut state);
+    crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
     crate::support::validator_completion_handoff_files(&handoff, &state_path)
 }
@@ -218,6 +220,7 @@ fn validate_escalated_parent_decision(
         ]}
     });
     mutate(&mut state);
+    crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
     crate::support::validator_completion_handoff_files(&handoff, &state_path)
 }
@@ -238,6 +241,7 @@ fn validate_delta_base(mutate: impl FnOnce(&mut Value)) -> TestResult<std::proce
         ]}
     });
     mutate(&mut state);
+    crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
     crate::support::validator_completion_handoff_files(&handoff, &state_path)
 }

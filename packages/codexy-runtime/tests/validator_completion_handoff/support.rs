@@ -38,7 +38,10 @@ pub(super) fn validate_handoff_with_pr_state(handoff: &str, pr_state: &str) -> O
 }
 
 fn validate_completion_handoff(handoff: &str, pr_state: &str) -> OutputResult {
-    crate::support::validator_completion_handoff(handoff, pr_state)
+    crate::support::validator_completion_handoff(
+        handoff,
+        &crate::support::review_control_state::namespaced_pr_state(pr_state)?,
+    )
 }
 
 fn validate_open_pr_handoff(handoff: &str) -> OutputResult {

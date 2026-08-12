@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
+mod classification;
 mod economics;
 mod history;
 mod ledger;
@@ -11,7 +12,9 @@ mod repository;
 mod terminal;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
-    policy::load(plugin_root).map_or_else(|error| vec![error.to_string()], |_| Vec::new())
+    policy::load(plugin_root)
+        .and_then(|_| classification::check(plugin_root))
+        .map_or_else(|error| vec![error.to_string()], |_| Vec::new())
 }
 
 pub(super) fn resolve_profile(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {

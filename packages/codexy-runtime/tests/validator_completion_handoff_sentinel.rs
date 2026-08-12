@@ -86,12 +86,11 @@ fn validate_open_pr_handoff(handoff: &str) -> OutputResult {
     let handoff_path = temp.path().join("handoff.md");
     let pr_state_path = temp.path().join("pr-state.json");
     std::fs::write(&handoff_path, handoff)?;
-    std::fs::write(
-        &pr_state_path,
-        format!(
+    let mut state: serde_json::Value = serde_json::from_str(&format!(
             r###"{{"number":128,"state":"OPEN","isDraft":false,"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED","headRefName":"codexy/221-sentinel-bounded-wait-status","headRefOid":"{HEAD}","localHeadOid":"{HEAD}","remoteHeadOid":"{HEAD}","reviewProfile":"strict","reviewEvidence":{{"schema":"codexy.review-readiness.v1","head_oid":"{HEAD}","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"state":"passed","event_id":"e-passed","blockers":[]}},"reviewLedger":{{"schema":"codexy.review-ledger.v1","events":[{{"id":"e-full","predecessor_event_id":null,"profile":"strict","base_oid":"base","head_oid":"{HEAD}","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}},{{"id":"e-passed","predecessor_event_id":"e-full","profile":"strict","base_oid":"base","head_oid":"{HEAD}","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}}]}},"worktreeStatus":"## codexy/221-sentinel-bounded-wait-status...origin/codexy/221-sentinel-bounded-wait-status","latestReviews":[{{"body":"Didn't find any major issues.\n\nReviewed commit: `{HEAD}`","author":{{"login":"automated-review"}},"submittedAt":"2026-07-03T00:00:00Z","commit":{{"oid":"{HEAD}"}}}}],"reviewThreads":{{"pageInfo":{{"hasNextPage":false}},"nodes":[]}}}}"###
-        ),
-    )?;
+    ))?;
+    crate::support::review_control_state::namespace_review_control(&mut state);
+    std::fs::write(&pr_state_path, serde_json::to_vec(&state)?)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }
 
@@ -114,6 +113,7 @@ fn validate_readiness_handoff(handoff: &str, review: serde_json::Value) -> Outpu
             .iter()
             .map(|(key, value)| (key.clone(), value.clone())),
     );
+    crate::support::review_control_state::namespace_review_control(&mut state);
     std::fs::write(&pr_state_path, serde_json::to_vec(&state)?)?;
     validate_completion_handoff(&handoff_path, &pr_state_path)
 }

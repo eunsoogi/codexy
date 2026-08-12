@@ -11,8 +11,15 @@ from pathlib import Path
 from typing import NoReturn
 
 
-REVIEW_FIELDS = ("reviewProfile", "reviewDecision", "reviewEvidence", "reviewLedger")
-REVIEW_KEYS = set(REVIEW_FIELDS)
+CONTROL_FIELDS = ("schema", "profile", "decision", "evidence", "ledger")
+CONTROL_SCHEMA = "codexy.review-control-state.v1"
+EVIDENCE_FIELDS = {"schema", "head_oid", "profile", "reviewer", "state", "event_id", "blockers"}
+LEDGER_FIELDS = {"schema", "events"}
+EVENT_FIELDS = {"id", "predecessor_event_id", "profile", "base_oid", "head_oid", "state", "full_used", "delta_used", "blockers", "boundaries", "escalation"}
+REVIEWERS = {
+    "standard": {"name": "codexy-inspector", "model": "gpt-5.6-terra", "reasoning_effort": "max"},
+    "strict": {"name": "codexy-sentinel", "model": "gpt-5.6-sol", "reasoning_effort": "xhigh"},
+}
 
 
 def fail(message: str) -> NoReturn:
@@ -30,29 +37,48 @@ def read_object(path: Path, label: str) -> dict[str, object]:
 
 
 def review_contract(base: dict[str, object], value: dict[str, object]) -> dict[str, object]:
-    if set(value) - REVIEW_KEYS:
+    if set(value) - set(CONTROL_FIELDS):
         fail("review control state contains unsupported fields")
-    profile = value.get("reviewProfile")
-    decision = value.get("reviewDecision")
+    if value.get("schema") != CONTROL_SCHEMA:
+        fail("review control state requires its closed schema")
+    profile = value.get("profile")
+    decision = value.get("decision")
     if not isinstance(profile, str) or profile not in {"light", "standard", "strict"}:
-        fail("review control state requires a closed reviewProfile")
+        fail("review control state requires a closed profile")
     if not isinstance(decision, str) or not decision:
-        fail("review control state requires reviewDecision")
+        fail("review control state requires a typed decision")
     if profile == "light":
-        if set(value) != {"reviewProfile", "reviewDecision"}:
+        if set(value) != {"schema", "profile", "decision"} or decision != "NOT_REQUIRED":
             fail("light review control state must not attach reviewer evidence")
-        return {"reviewProfile": profile, "reviewDecision": decision}
-    if set(value) != REVIEW_KEYS:
+        return {"reviewControl": value}
+    if set(value) != set(CONTROL_FIELDS):
         fail("non-light review control state requires terminal evidence and ledger")
-    if not isinstance(value["reviewEvidence"], dict) or not isinstance(value["reviewLedger"], dict):
+    evidence = value["evidence"]
+    ledger = value["ledger"]
+    if not isinstance(evidence, dict) or not isinstance(ledger, dict):
         fail("non-light review control state requires object evidence and ledger")
     head = base.get("headRefOid")
-    evidence = value["reviewEvidence"]
     if not isinstance(head, str) or not head:
         fail("base PR state requires headRefOid for non-light review evidence")
-    if evidence.get("profile") != profile or evidence.get("head_oid") != head:
+    if set(evidence) != EVIDENCE_FIELDS or evidence.get("schema") != "codexy.review-readiness.v1":
+        fail("review evidence must be typed and closed")
+    if evidence.get("profile") != profile or evidence.get("head_oid") != head or evidence.get("reviewer") != REVIEWERS[profile]:
         fail("review evidence must bind the selected profile and PR head")
-    return {key: value[key] for key in REVIEW_FIELDS}
+    if not all(isinstance(evidence.get(key), str) and evidence[key] for key in ("head_oid", "profile", "state", "event_id")) or not isinstance(evidence.get("blockers"), list):
+        fail("review evidence has an invalid terminal identity")
+    if set(ledger) != LEDGER_FIELDS or ledger.get("schema") != "codexy.review-ledger.v1" or not isinstance(ledger.get("events"), list) or not ledger["events"]:
+        fail("review ledger must be typed and nonempty")
+    terminal = ledger["events"][-1]
+    if not isinstance(terminal, dict) or set(terminal) != EVENT_FIELDS:
+        fail("review ledger terminal event must be typed and closed")
+    if terminal.get("id") != evidence.get("event_id") or any(
+        terminal.get(key) != evidence.get(key) for key in ("profile", "head_oid", "state", "blockers")
+    ):
+        fail("review ledger terminal event must bind the terminal evidence")
+    expected_decision = {"passed": "APPROVED", "parent_decision": "PARENT_DECISION"}.get(evidence["state"])
+    if decision != expected_decision:
+        fail("review control decision must bind the terminal disposition")
+    return {"reviewControl": value}
 
 
 def write_json(path: Path, value: object) -> None:
@@ -79,7 +105,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         state = read_object(args.base_pr_state_file, "base PR state")
-        if REVIEW_KEYS & set(state):
+        if "reviewControl" in state:
             fail("base PR state must not already contain review control fields")
         state.update(review_contract(state, read_object(args.review_control_state_file, "review control state")))
         write_json(args.output, state)

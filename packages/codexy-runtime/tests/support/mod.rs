@@ -31,6 +31,7 @@ mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
 mod release_version;
+pub(crate) mod review_control_state;
 pub(crate) mod touched_loc;
 pub(crate) mod wiki_core_article;
 pub(crate) mod wiki_core_raw_ingestion;

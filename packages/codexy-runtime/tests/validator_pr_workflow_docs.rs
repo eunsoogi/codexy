@@ -50,8 +50,8 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
             "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "localHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "remoteHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
-            "reviewProfile": "light",
             "reviewDecision": "NOT_REQUIRED",
+            "reviewControl": {"schema":"codexy.review-control-state.v1","profile":"light","decision":"NOT_REQUIRED"},
             "worktreeStatus": status_text,
             "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
         })

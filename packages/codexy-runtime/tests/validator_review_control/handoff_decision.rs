@@ -16,8 +16,9 @@ fn pr_ready_handoff_requires_an_explicit_review_decision() -> TestResult {
         fs::write(&handoff, handoff_text)?;
         for decision in [None, Some("CHANGES_REQUESTED")] {
             let mut state_json = valid_standard_state();
-            if let Some(decision) = decision {
-                state_json["reviewDecision"] = json!(decision);
+            match decision {
+                Some(decision) => state_json["reviewControl"]["decision"] = json!(decision),
+                None => { state_json["reviewControl"].as_object_mut().expect("control").remove("decision"); }
             }
             fs::write(&state, serde_json::to_vec(&state_json)?)?;
             let output = crate::support::validator_completion_handoff_files(&handoff, &state)?;
@@ -51,12 +52,10 @@ fn negated_readiness_labels_do_not_require_review_decision() -> TestResult {
 
 fn valid_standard_state() -> serde_json::Value {
     let mut state = valid_pr_state();
-    state["reviewProfile"] = json!("standard");
-    state["reviewEvidence"] = json!({"schema":"codexy.review-readiness.v1","head_oid":HEAD,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]});
-    state["reviewLedger"] = json!({"schema":"codexy.review-ledger.v1","events":[
+    state["reviewControl"] = json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":{"schema":"codexy.review-readiness.v1","head_oid":HEAD,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},"ledger":{"schema":"codexy.review-ledger.v1","events":[
         {"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":BASE,"head_oid":HEAD,"state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
         {"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","base_oid":BASE,"head_oid":HEAD,"state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}
-    ]});
+    ]}});
     state
 }
 

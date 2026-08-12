@@ -4,57 +4,85 @@ use crate::support::TestResult;
 
 use super::resolve_profile;
 
+const STRICT_TRIGGERS: [&str; 11] = [
+    "destructive",
+    "security",
+    "permission",
+    "secret",
+    "release",
+    "high_consequence_external_state",
+    "high_risk_guardrail",
+    "merge_sensitive",
+    "durable_delegation",
+    "multi_lane_ownership",
+    "explicit_audit_evidence",
+];
+
 #[test]
-fn review_profile_requires_a_typed_validated_classification() -> TestResult {
+fn review_profile_is_derived_from_exhaustive_typed_classification() -> TestResult {
     let fixture = crate::support::plugin_fixture()?;
-    for profile in ["light", "standard", "strict"] {
-        let output = resolve_profile(fixture.root(), classified(profile, &[]))?;
-        assert!(
-            output.status.success(),
-            "typed {profile} classification must resolve: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let route: Value = serde_json::from_slice(&output.stdout)?;
-        assert_eq!(route["profile"], profile);
+    assert_profile(fixture.root(), classified("low_risk", true, None), "light")?;
+    assert_profile(fixture.root(), classified("middle", false, None), "standard")?;
+    for trigger in STRICT_TRIGGERS {
+        assert_profile(fixture.root(), classified("low_risk", true, Some(trigger)), "strict")?;
     }
-    assert!(
-        !resolve_profile(
-            fixture.root(),
-            json!({"schema":"codexy.review-profile-request.v1","profile":"light"})
-        )?
-        .status
-        .success(),
-        "a bare caller profile must not select a review route"
-    );
     Ok(())
 }
 
 #[test]
-fn strict_triggered_classification_cannot_downgrade_to_light_or_standard() -> TestResult {
+fn classification_rejects_omission_partial_unknown_and_downgrade_inputs() -> TestResult {
     let fixture = crate::support::plugin_fixture()?;
-    for profile in ["light", "standard"] {
-        let output = resolve_profile(fixture.root(), classified(profile, &["durable_delegation"]))?;
+    for request in [
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":true,"strict_triggers":[]
+        }}),
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":true,
+            "strict_triggers":[{"kind":"security","applies":false}]
+        }}),
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":true,
+            "strict_triggers":[{"kind":"unknown","applies":false}]
+        }}),
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":false,
+            "strict_triggers":trigger_decisions(None)
+        }}),
+        json!({"schema":"codexy.review-profile-request.v1","classification":{
+            "schema":"codexy.workflow-profile-classification.v2","work_class":"middle","low_risk_eligible":true,
+            "strict_triggers":trigger_decisions(None)
+        }}),
+    ] {
         assert!(
-            !output.status.success(),
-            "strict trigger must reject a {profile} route: {}",
-            String::from_utf8_lossy(&output.stderr)
+            !resolve_profile(fixture.root(), request)?.status.success(),
+            "incomplete or contradictory classification must fail closed"
         );
     }
-    assert!(
-        resolve_profile(fixture.root(), classified("strict", &["durable_delegation"]))?
-            .status
-            .success()
-    );
     Ok(())
 }
 
-fn classified(profile: &str, strict_triggers: &[&str]) -> Value {
+fn assert_profile(root: &std::path::Path, request: Value, expected: &str) -> TestResult {
+    let output = resolve_profile(root, request)?;
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?["profile"], expected);
+    Ok(())
+}
+
+fn classified(work_class: &str, low_risk_eligible: bool, applies: Option<&str>) -> Value {
     json!({
         "schema":"codexy.review-profile-request.v1",
         "classification": {
-            "schema":"codexy.workflow-profile-classification.v1",
-            "profile":profile,
-            "strict_triggers":strict_triggers
+            "schema":"codexy.workflow-profile-classification.v2",
+            "work_class":work_class,
+            "low_risk_eligible":low_risk_eligible,
+            "strict_triggers":trigger_decisions(applies)
         }
     })
+}
+
+fn trigger_decisions(applies: Option<&str>) -> Vec<Value> {
+    STRICT_TRIGGERS
+        .iter()
+        .map(|kind| json!({"kind":kind,"applies":Some(*kind) == applies}))
+        .collect()
 }
