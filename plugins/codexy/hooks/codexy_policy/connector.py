@@ -6,7 +6,7 @@ from typing import Any
 
 from .github import BodyEvidence, BodySource, Mutation, MutationKind, admitted
 from .merge import positive_int
-from .repository import OWNED, github_identity
+from .repository import OWNED
 
 FIELDS = {
     "create_issue": {"assignees", "body", "labels", "milestone", "repository_full_name", "title"},
@@ -45,8 +45,35 @@ def _owned(operation: str, data: dict[str, Any]) -> bool | None:
     repository = data.get("repository_full_name")
     if fields is None or set(data).difference(fields) or not isinstance(repository, str):
         return None
-    identity = github_identity(repository)
+    identity = _repository_identity(repository)
     return identity == OWNED if identity is not None else None
+
+
+def _repository_identity(value: str) -> tuple[str, str, str] | None:
+    owner, separator, repository = value.partition("/")
+    if (
+        separator != "/"
+        or "/" in repository
+        or not _owner(owner)
+        or not _repository(repository)
+    ):
+        return None
+    return "github.com", owner.casefold(), repository.casefold()
+
+
+def _owner(value: str) -> bool:
+    return bool(value) and value[0].isascii() and value[0].isalnum() and all(
+        character.isascii() and (character.isalnum() or character == "-")
+        for character in value
+    )
+
+
+def _repository(value: str) -> bool:
+    return bool(value) and all(
+        character.isascii()
+        and (character.isalnum() or character in "._-")
+        for character in value
+    )
 
 
 def _connector(kind: MutationKind, data: dict[str, Any], *, number: str | None = None, require_title: bool = False, require_body: bool = False, issue: bool = False) -> Mutation | None:

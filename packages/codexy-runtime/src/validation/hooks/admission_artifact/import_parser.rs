@@ -1,20 +1,19 @@
 use anyhow::{Result, bail};
 
+mod lexical;
+use lexical::{Token, dynamic, symbol, tokens, word};
+
 pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
-    if source.lines().map(str::trim_start).any(|line| {
-        line.starts_with("importlib.")
-            || line.starts_with("__import__(")
-            || line.starts_with("exec(")
-    }) {
+    let tokens = tokens(source);
+    if dynamic(&tokens) {
         bail!("packaged admission runtime rejects dynamic imports: {path}");
     }
     let mut result = Vec::new();
-    for line in source
-        .lines()
-        .map(|line| line.split('#').next().unwrap_or("").trim())
-    {
-        if let Some(rest) = line.strip_prefix("import ") {
-            for module in modules(rest, path)? {
+    let mut index = 0;
+    while index < tokens.len() {
+        if word(&tokens, index) == Some("import") {
+            let (modules, next) = modules(&tokens, index + 1, path)?;
+            for module in modules {
                 if module == "codexy_policy" {
                     bail!("packaged admission runtime rejects ambiguous policy import in {path}");
                 }
@@ -22,25 +21,11 @@ pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
                     result.push(policy_path(module, path)?);
                 }
             }
-        } else if let Some((module, values)) = line
-            .strip_prefix("from ")
-            .and_then(|line| line.split_once(" import "))
-        {
-            if module == "codexy_policy" {
-                for value in names(values, path)? {
-                    result.push(policy_path(&value, path)?);
-                }
-            } else if let Some(module) = module.strip_prefix("codexy_policy.") {
-                result.push(policy_path(module, path)?);
-            } else if let Some(module) = module.strip_prefix('.') {
-                if module.is_empty() {
-                    for value in names(values, path)? {
-                        result.push(policy_path(&value, path)?);
-                    }
-                } else {
-                    result.push(policy_path(module, path)?);
-                }
-            }
+            index = next;
+        } else if word(&tokens, index) == Some("from") {
+            index = from_import(&tokens, index + 1, path, &mut result)?;
+        } else {
+            index += 1;
         }
     }
     if path.starts_with("codexy_policy/") && path != "codexy_policy/__init__.py" {
@@ -49,36 +34,124 @@ pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
     Ok(result)
 }
 
-fn names(values: &str, path: &str) -> Result<Vec<String>> {
-    values
-        .split(',')
-        .map(|value| {
-            let words = value.split_whitespace().collect::<Vec<_>>();
-            match words.as_slice() {
-                [name] if *name != "*" && identifier(name) => Ok((*name).to_owned()),
-                [name, "as", alias] if identifier(name) && identifier(alias) => {
-                    Ok((*name).to_owned())
-                }
-                _ => bail!("packaged admission runtime rejects ambiguous policy import in {path}"),
+fn from_import(
+    tokens: &[Token],
+    mut index: usize,
+    path: &str,
+    result: &mut Vec<String>,
+) -> Result<usize> {
+    let relative = symbol(tokens, index, '.');
+    if relative {
+        index += 1;
+        if symbol(tokens, index, '.') {
+            bail!("packaged admission runtime rejects ambiguous relative import in {path}");
+        }
+    }
+    let (module, next) = if relative && word(tokens, index) == Some("import") {
+        (None, index)
+    } else {
+        module(tokens, index)
+    };
+    index = next;
+    if word(tokens, index) != Some("import") {
+        return Ok(index.max(1));
+    }
+    match (relative, module.as_deref()) {
+        (_, Some("codexy_policy")) => {
+            let (names, next) = names(tokens, index + 1, path)?;
+            for name in names {
+                result.push(policy_path(&name, path)?);
             }
-        })
-        .collect()
+            Ok(next)
+        }
+        (_, Some(module)) if module.starts_with("codexy_policy.") => {
+            result.push(policy_path(
+                module.trim_start_matches("codexy_policy."),
+                path,
+            )?);
+            Ok(index + 1)
+        }
+        (true, Some(module)) => {
+            result.push(policy_path(module, path)?);
+            Ok(index + 1)
+        }
+        (true, None) => {
+            let (names, next) = names(tokens, index + 1, path)?;
+            for name in names {
+                result.push(policy_path(&name, path)?);
+            }
+            Ok(next)
+        }
+        _ => Ok(index + 1),
+    }
 }
 
-fn modules(values: &str, path: &str) -> Result<Vec<String>> {
-    values
-        .split(',')
-        .map(|value| {
-            let words = value.split_whitespace().collect::<Vec<_>>();
-            match words.as_slice() {
-                [module] if module_path(module) => Ok((*module).to_owned()),
-                [module, "as", alias] if module_path(module) && identifier(alias) => {
-                    Ok((*module).to_owned())
-                }
-                _ => bail!("packaged admission runtime rejects ambiguous policy import in {path}"),
+fn modules(tokens: &[Token], mut index: usize, path: &str) -> Result<(Vec<String>, usize)> {
+    let mut result = Vec::new();
+    loop {
+        let (module, next) = module(tokens, index);
+        let Some(module) = module else {
+            bail!("packaged admission runtime rejects ambiguous policy import in {path}");
+        };
+        index = next;
+        if word(tokens, index) == Some("as") {
+            if word(tokens, index + 1)
+                .filter(|value| identifier(value))
+                .is_none()
+            {
+                bail!("packaged admission runtime rejects ambiguous policy import in {path}");
             }
-        })
-        .collect()
+            index += 2;
+        }
+        result.push(module);
+        if !symbol(tokens, index, ',') {
+            return Ok((result, index));
+        }
+        index += 1;
+    }
+}
+
+fn names(tokens: &[Token], mut index: usize, path: &str) -> Result<(Vec<String>, usize)> {
+    let mut result = Vec::new();
+    loop {
+        if symbol(tokens, index, '*') {
+            bail!("packaged admission runtime rejects ambiguous policy import in {path}");
+        }
+        let Some(name) = word(tokens, index).filter(|value| identifier(value)) else {
+            bail!("packaged admission runtime rejects ambiguous policy import in {path}");
+        };
+        result.push(name.to_owned());
+        index += 1;
+        if word(tokens, index) == Some("as") {
+            if word(tokens, index + 1)
+                .filter(|value| identifier(value))
+                .is_none()
+            {
+                bail!("packaged admission runtime rejects ambiguous policy import in {path}");
+            }
+            index += 2;
+        }
+        if !symbol(tokens, index, ',') {
+            return Ok((result, index));
+        }
+        index += 1;
+    }
+}
+
+fn module(tokens: &[Token], mut index: usize) -> (Option<String>, usize) {
+    let Some(first) = word(tokens, index).filter(|value| identifier(value)) else {
+        return (None, index);
+    };
+    let mut parts = vec![first.to_owned()];
+    index += 1;
+    while symbol(tokens, index, '.') {
+        let Some(part) = word(tokens, index + 1).filter(|value| identifier(value)) else {
+            return (None, index);
+        };
+        parts.push(part.to_owned());
+        index += 2;
+    }
+    (Some(parts.join(".")), index)
 }
 
 fn policy_path(module: &str, path: &str) -> Result<String> {
@@ -94,10 +167,6 @@ fn identifier(value: &str) -> bool {
         && value
             .chars()
             .all(|value| value.is_ascii_alphanumeric() || value == '_')
-}
-
-fn module_path(value: &str) -> bool {
-    value.split('.').all(identifier)
 }
 
 #[cfg(test)]
@@ -146,5 +215,35 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn imports_track_static_policy_forms_across_logical_statements() {
+        let imports = imports(
+            "codexy_policy/shell_destructive.py",
+            "marker = 1; import codexy_policy.shell_github_policy\n\
+             if marker:\timport codexy_policy.shell_github as github\n\
+             from codexy_policy \\\n             import shell_github_opaque\n",
+        )
+        .expect("logical statements");
+        assert_eq!(
+            imports,
+            vec![
+                "codexy_policy/shell_github_policy.py",
+                "codexy_policy/shell_github.py",
+                "codexy_policy/shell_github_opaque.py",
+                "codexy_policy/__init__.py",
+            ]
+        );
+    }
+
+    #[test]
+    fn imports_ignore_policy_words_inside_triple_quoted_strings() {
+        let imports = imports(
+            "codexy_policy/shell_destructive.py",
+            "\"\"\"\nfrom codexy_policy import shell_github_policy\n\"\"\"\nfrom dataclasses import dataclass\n",
+        )
+        .expect("string literal");
+        assert_eq!(imports, vec!["codexy_policy/__init__.py"]);
     }
 }

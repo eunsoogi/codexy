@@ -20,6 +20,19 @@ fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> Test
         let mut unknown = owned;
         unknown["unexpected"] = json!(true);
         assert_tool_case(&root, tool, unknown, true)?;
+
+        for repository in [
+            "https://github.com/eunsoogi/codexy",
+            "github.com/eunsoogi/codexy",
+            "https://github.com/openai/codex",
+            "github.com/openai/codex",
+        ] {
+            let mut noncanonical = cases().into_iter()
+                .find_map(|(candidate, input, _)| (candidate == tool).then_some(input))
+                .ok_or("connector case")?;
+            noncanonical["repository_full_name"] = json!(repository);
+            assert_tool_case(&root, tool, noncanonical, true)?;
+        }
     }
     Ok(())
 }
