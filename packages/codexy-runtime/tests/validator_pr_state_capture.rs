@@ -1,8 +1,8 @@
-use std::{fs, process::Command};
+use std::fs;
 
 use serde_json::{Value, json};
 
-use crate::support::TestResult;
+use crate::support::{FixtureCommand, TestResult};
 
 #[test]
 fn canonical_capture_preserves_github_and_typed_terminal_decisions() -> TestResult {
@@ -156,10 +156,13 @@ fn state_files(root: &std::path::Path, review: &Value) -> TestResult<(std::path:
 }
 
 fn run_capture(base: &std::path::Path, control: &std::path::Path, output: &std::path::Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(codexy_runtime::paths::repository_root().join("scripts/build-pr-state"))
+    let mut command = FixtureCommand::new(
+        codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
+    );
+    command
         .args(["--base-pr-state-file", base.to_str().ok_or("base path")?, "--review-control-state-file", control.to_str().ok_or("review path")?, "--output", output.to_str().ok_or("output path")?])
-        .env("CODEXY_REVIEW_CONTROL_BIN", env!("CARGO_BIN_EXE_codexy-review-control"))
-        .output()?)
+        .env("CODEXY_REVIEW_CONTROL_BIN", env!("CARGO_BIN_EXE_codexy-review-control"));
+    Ok(command.output()?)
 }
 
 fn standard_control() -> Value { control("standard", "APPROVED", "passed", "codexy-inspector", "gpt-5.6-terra", "max") }
