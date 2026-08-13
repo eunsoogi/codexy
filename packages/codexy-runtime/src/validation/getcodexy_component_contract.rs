@@ -15,13 +15,13 @@ use schema::{
 };
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
-    match contract_and_fixtures(plugin_root) {
+    match validate(plugin_root) {
         Ok(()) => Vec::new(),
         Err(error) => vec![error],
     }
 }
 
-fn contract_and_fixtures(plugin_root: &Path) -> Result<(), String> {
+pub(crate) fn validate(plugin_root: &Path) -> Result<(), String> {
     let Some(root) = source_contract_root(plugin_root)? else {
         return Ok(());
     };

@@ -68,7 +68,10 @@ fn version_admission_accepts_the_semver_component_upper_bound()
     Ok(())
 }
 
-fn select_version_advance(root: &Path, target: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn select_version_advance(
+    root: &Path,
+    target: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let contract = root.join(".agents/plugins/release-publish-contract.json");
     let mut data: Value = serde_json::from_str(&fs::read_to_string(&contract)?)?;
     data["bootstrap"]["selectedVersion"] = json!(target);

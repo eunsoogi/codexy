@@ -11,6 +11,26 @@ const MANIFEST: &str = "plugins/codexy-github/.codex-plugin/plugin.json";
 const SOURCE: &str = "./plugins/codexy-github";
 
 pub(super) fn check(core_version: &str) -> Result<()> {
+    let (manifest_version, marketplace_version) = validated_versions()?;
+    require_matching_version(
+        &manifest_version,
+        MANIFEST,
+        core_version,
+        "core plugin manifest",
+    )?;
+    require_matching_version(
+        &marketplace_version,
+        MARKETPLACE,
+        core_version,
+        "core plugin manifest",
+    )
+}
+
+pub(super) fn validate_mutation_inputs() -> Result<()> {
+    validated_versions().map(|_| ())
+}
+
+fn validated_versions() -> Result<(String, String)> {
     let manifest_path = repo_path(MANIFEST)?;
     let marketplace_path = repo_path(MARKETPLACE)?;
     let manifest = load_json(&manifest_path)?;
@@ -18,22 +38,15 @@ pub(super) fn check(core_version: &str) -> Result<()> {
     if string_field(&manifest, "name", "GitHub plugin manifest")? != NAME {
         bail!("GitHub plugin manifest name must be {NAME:?}");
     }
-    require_matching_version(
-        string_field(&manifest, "version", "GitHub plugin manifest")?,
-        MANIFEST,
-        core_version,
-        "core plugin manifest",
-    )?;
+    let manifest_version = string_field(&manifest, "version", "GitHub plugin manifest")?.to_owned();
+    super::require_semver(&manifest_version)?;
     if string_field(&manifest, "skills", "GitHub plugin manifest")? != "./skills/" {
         bail!("GitHub plugin manifest skills must be ./skills/");
     }
     let entry = marketplace_plugin_mut_named(&mut marketplace, NAME)?;
-    require_matching_version(
-        string_field(entry, "version", "GitHub marketplace entry")?,
-        MARKETPLACE,
-        core_version,
-        "core plugin manifest",
-    )?;
+    let marketplace_version =
+        string_field(entry, "version", "GitHub marketplace entry")?.to_owned();
+    super::require_semver(&marketplace_version)?;
     if entry.pointer("/source/path").and_then(Value::as_str) != Some(SOURCE) {
         bail!("GitHub marketplace source must be {SOURCE:?}");
     }
@@ -52,7 +65,7 @@ pub(super) fn check(core_version: &str) -> Result<()> {
     {
         bail!("GitHub plugin skill is missing");
     }
-    Ok(())
+    Ok((manifest_version, marketplace_version))
 }
 
 pub(super) fn set_version(version: &str) -> Result<()> {

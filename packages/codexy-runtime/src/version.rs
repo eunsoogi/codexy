@@ -18,6 +18,7 @@ mod devtools_plugin;
 mod fields;
 mod github_plugin;
 mod mutation;
+mod mutation_inputs;
 mod runtime_selection;
 mod semver;
 mod wrappers;
@@ -39,7 +40,7 @@ fn runtime_package_path(root: &std::path::Path, relative: &str) -> PathBuf {
     root.join("packages/codexy-runtime").join(relative)
 }
 
-fn package_manifests() -> Result<Vec<PathBuf>> {
+pub(super) fn package_manifests() -> Result<Vec<PathBuf>> {
     let path = repo_path("package.json")?;
     Ok(if path.exists() {
         vec![path]
@@ -105,7 +106,7 @@ pub(super) fn marketplace_plugin_mut_named<'a>(
         .context("marketplace plugin index disappeared")
 }
 
-fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
+pub(super) fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
     marketplace_plugin_mut_named(marketplace, PLUGIN_NAME)
 }
 
@@ -116,10 +117,14 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
 /// Returns an error when required files are missing, JSON is invalid, versions
 /// are malformed, or version values differ.
 pub fn check_versions() -> Result<String> {
-    check_versions_for_tag(None)
+    check_versions_inner(None, true)
 }
 
 pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
+    check_versions_inner(tag, true)
+}
+
+fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Result<String> {
     let manifest_path = repo_path(PLUGIN_MANIFEST)?;
     let market_path = repo_path(MARKETPLACE)?;
     let publish_path = repo_path(PUBLISH_CONTRACT)?;
@@ -215,8 +220,10 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             &display_relative(&manifest_path),
         )?;
     }
-    wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     cargo::check_version(&repo_root()?, manifest_version)?;
+    if check_runtime_selection {
+        wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
+    }
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
         if tag != expected_tag {

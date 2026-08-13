@@ -8,12 +8,21 @@ const SCHEMA: &str = "getcodexy.component-manifest.v1";
 
 pub(super) fn check(expected_version: &str) -> Result<()> {
     let manifest = load_json(&repo_path(MANIFEST)?)?;
+    validate_manifest(&manifest, Some(expected_version))
+}
+
+pub(super) fn validate_inputs() -> Result<()> {
+    let manifest = load_json(&repo_path(MANIFEST)?)?;
+    validate_manifest(&manifest, None)
+}
+
+fn validate_manifest(manifest: &Value, expected_version: Option<&str>) -> Result<()> {
     if manifest.get("schema").and_then(Value::as_str) != Some(SCHEMA) {
         bail!("component manifest schema must be {SCHEMA:?}");
     }
-    versions(&manifest, "components", "version", expected_version)?;
+    versions(manifest, "components", "version", expected_version)?;
     versions(
-        &manifest,
+        manifest,
         "compatibleCombinations",
         "version",
         expected_version,
@@ -35,19 +44,23 @@ pub(super) fn set_version(version: &str) -> Result<()> {
     write_json(&path, &manifest)
 }
 
-fn versions(manifest: &Value, field: &str, key: &str, expected: &str) -> Result<()> {
+fn versions(manifest: &Value, field: &str, key: &str, expected: Option<&str>) -> Result<()> {
     let entries = manifest
         .get(field)
         .and_then(Value::as_array)
         .filter(|entries| !entries.is_empty())
         .with_context(|| format!("component manifest {field} must be a non-empty array"))?;
     for entry in entries {
-        require_matching_version(
-            entry.get(key).and_then(Value::as_str).unwrap_or_default(),
-            &format!("component manifest {field}"),
-            expected,
-            "core plugin manifest",
-        )?;
+        let version = entry.get(key).and_then(Value::as_str).unwrap_or_default();
+        super::require_semver(version)?;
+        if let Some(expected) = expected {
+            require_matching_version(
+                version,
+                &format!("component manifest {field}"),
+                expected,
+                "core plugin manifest",
+            )?;
+        }
     }
     Ok(())
 }

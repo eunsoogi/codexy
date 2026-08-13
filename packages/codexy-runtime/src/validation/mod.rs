@@ -126,6 +126,10 @@ pub use mode::Mode;
 pub use mode_dispatch::{errors, run};
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
 
+pub(crate) fn validate_getcodexy_component_contract(plugin_root: &Path) -> Result<()> {
+    getcodexy_component_contract::validate(plugin_root).map_err(anyhow::Error::msg)
+}
+
 /// Returns the LSP file extensions covered by Codexy validation metadata.
 pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
     lsp::covered_extensions(&devtools_root(plugin_root))

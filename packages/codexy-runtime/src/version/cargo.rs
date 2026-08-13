@@ -39,6 +39,16 @@ pub(super) fn check_version(root: &Path, manifest_version: &str) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn validate_inputs(root: &Path) -> Result<()> {
+    for version in [
+        cargo_package_version(&cargo_manifest_path(root))?,
+        cargo_lock_package_version(&cargo_lock_path(root))?,
+    ] {
+        super::require_semver(&version)?;
+    }
+    Ok(())
+}
+
 pub(super) fn set_version(root: &Path, version: &str) -> Result<()> {
     replace_toml_package_version(&cargo_manifest_path(root), version)?;
     replace_cargo_lock_package_version(&cargo_lock_path(root), version)

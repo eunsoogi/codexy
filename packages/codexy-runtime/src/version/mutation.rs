@@ -14,8 +14,7 @@ use super::{
 /// Returns an error when the requested version is invalid, admission fails,
 /// required files cannot be read, JSON is invalid, or writes fail.
 pub fn set_version(version: &str) -> Result<String> {
-    admit(version)?;
-    let root = crate::paths::repo_root()?;
+    let root = preflight(version)?;
     let manifest_path = repo_path(PLUGIN_MANIFEST)?;
     let market_path = repo_path(MARKETPLACE)?;
     let publish_path = repo_path(PUBLISH_CONTRACT)?;
@@ -38,4 +37,12 @@ pub fn set_version(version: &str) -> Result<String> {
         write_json(&path, &package)?;
     }
     Ok(format!("plugin version synchronized to {version}"))
+}
+
+fn preflight(version: &str) -> Result<std::path::PathBuf> {
+    let root = crate::paths::repo_root()?;
+    crate::validation::validate_getcodexy_component_contract(&root.join("plugins/codexy"))?;
+    super::mutation_inputs::validate()?;
+    admit(version)?;
+    Ok(root)
 }
