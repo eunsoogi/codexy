@@ -53,7 +53,7 @@ def _validate_receipt(manifest: ComponentManifest, receipt: dict[str, object]) -
     if before not in manifest.compatible_combinations or after not in manifest.compatible_combinations:
         raise ValueError("operation receipt has invalid component selections")
     if outcome == "rejected":
-        if resolved or after != before or not _single_domain_error(manifest, errors):
+        if resolved or after != before or not _single_domain_error(manifest, str(receipt["command"]), requested, errors):
             raise ValueError("operation receipt has invalid rejection semantics")
         return
     try:
@@ -75,8 +75,19 @@ def _components(receipt: dict[str, object], field: str) -> tuple[str, ...]:
     return tuple(value)
 
 
-def _single_domain_error(manifest: ComponentManifest, errors: object) -> bool:
-    return isinstance(errors, list) and len(errors) == 1 and isinstance(errors[0], dict) and errors[0].get("code") in manifest.domain_errors
+def _single_domain_error(manifest: ComponentManifest, command: str, requested: tuple[str, ...], errors: object) -> bool:
+    if not isinstance(errors, list) or len(errors) != 1 or not isinstance(errors[0], dict):
+        return False
+    code = errors[0].get("code")
+    if code not in manifest.domain_errors or code == "operation-failed":
+        return False
+    if code == "missing-removal-target":
+        return command == "remove" and not requested
+    if code == "no-recorded-selection":
+        return command == "update"
+    if code == "dependency-protected-removal":
+        return command == "remove" and bool(requested)
+    return True
 
 
 def _operation_plan(manifest: ComponentManifest, command: str, requested: tuple[str, ...], before: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:

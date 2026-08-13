@@ -61,7 +61,8 @@ def _valid_receipt(value: object) -> bool:
     identifier = value.get("operation_id")
     errors = value.get("errors")
     return (
-        isinstance(identifier, str)
+        value.get("schema") == RECEIPT_SCHEMA
+        and isinstance(identifier, str)
         and operation_id(identifier) == identifier
         and value.get("command") in {"install", "update", "remove"}
         and value.get("outcome") in {"completed", "rejected", "rolled-back"}

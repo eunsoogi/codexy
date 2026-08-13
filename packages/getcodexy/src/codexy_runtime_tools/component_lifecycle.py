@@ -57,7 +57,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             return _terminal(home, operation_receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
         if pending is not None:
             if pending.phase == "rolling-back" and pending_receipt is not None:
-                if before != pending.before or recorded != pending.before:
+                if before != pending.before or (pending.snapshot.contents is None) != (recorded is None) or recorded not in {None, pending.before}:
                     raise ValueError("pending transaction receipt does not match restored state")
                 clear_journal(home)
                 if replay is not None:
@@ -227,10 +227,7 @@ def _validate_journal(journal: Journal, manifest: ComponentManifest) -> None:
     ) or journal.before not in manifest.compatible_combinations or journal.target not in manifest.compatible_combinations:
         raise ValueError("component transaction journal is inconsistent")
     snapshot = journal.snapshot.contents
-    if snapshot is None:
-        if journal.before:
-            raise ValueError("component transaction journal is missing its inventory snapshot")
-    else:
+    if snapshot is not None:
         if decode_inventory(snapshot) != journal.before:
             raise ValueError("component transaction journal does not match its inventory snapshot")
     recorded = journal.before

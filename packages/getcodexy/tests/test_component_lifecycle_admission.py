@@ -74,8 +74,10 @@ class LifecycleAdmissionTests(unittest.TestCase):
             original = json.loads(receipt.read_text())
             for mutation in (
                 lambda value: value.update({"unknown": True}),
+                lambda value: value.update({"schema": "getcodexy.operation-receipt.v0"}),
                 lambda value: value.update({"selection_after": [], "installed_components": []}),
                 lambda value: value.update({"errors": [{"code": "operation-failed", "detail": "unexpected"}]}),
+                lambda value: value.update({"outcome": "rejected", "resolved_components": [], "errors": [{"code": "missing-removal-target"}]}),
             ):
                 with self.subTest(mutation=mutation):
                     payload = dict(original)
@@ -102,6 +104,23 @@ class LifecycleAdmissionTests(unittest.TestCase):
                 run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-distinct-caller")
             self.assertEqual(state.mutations, [])
             self.assertEqual(read_journal(state.home), journal)
+
+    def test_absent_snapshot_recovery_uses_durable_host_selection_not_an_empty_inventory(self) -> None:
+        with fixture({"core"}) as state:
+            journal = Journal("op-no-snapshot", "update", (), ("core",), ("core",), ("core",), InventorySnapshot.capture(state.home), "started")
+            write_journal(state.home, journal)
+            receipt = run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-no-snapshot")
+            self.assertEqual(receipt["selection_after"], ["core", "devtools"])
+
+    def test_rolling_back_empty_snapshot_receipt_cleans_up_without_inventory_file(self) -> None:
+        with fixture() as state:
+            journal = Journal("op-empty-snapshot", "update", (), (), (), (), InventorySnapshot.capture(state.home), "rolling-back")
+            write_journal(state.home, journal)
+            receipt = inventory_path(state.home).parent / "receipts" / "op-empty-snapshot.json"
+            receipt.parent.mkdir(parents=True)
+            payload = _receipt("op-empty-snapshot", "update", (), (), (), (), "rolled-back", [{"code": "operation-failed"}])
+            receipt.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+            self.assertEqual(run_operation("update", (), state.home, state.codex, state.run, operation_id="op-empty-snapshot"), payload)
 
     def test_pending_receipt_table_handles_malformed_and_exact_rollback_recovery(self) -> None:
         with fixture({"core"}) as state:
