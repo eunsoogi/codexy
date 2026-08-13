@@ -9,6 +9,8 @@ from pathlib import Path
 from codexy_runtime_tools.component_manifest import _parse_manifest, load_component_manifest, parse_component_manifest
 from codexy_runtime_tools.component_resolver import (
     ComponentResolutionError,
+    classify_unregistered_inventory,
+    preflight_unregistered_inventory,
     reconcile_installed_inventory,
     resolve_components,
     verify_post_operation_inventory,
@@ -174,6 +176,26 @@ class ComponentManifestResolverTests(unittest.TestCase):
         for inventory, root, code in cases:
             with self.subTest(code=code), self.assertRaisesRegex(ComponentResolutionError, code):
                 reconcile_installed_inventory(self.manifest, inventory, root)
+
+    def test_unregistered_inventory_uses_exact_manifest_identity_grammar(self) -> None:
+        canonical = self._installed("codexy")
+        cases = [
+            ([{"name": "codexylophone", "pluginId": "codexylophone@other", "marketplaceName": "other"}], None),
+            ([{"name": "codexy", "pluginId": "codexy@other", "marketplaceName": "other"}], "conflicting-installed-state"),
+            ([{"pluginId": "codexy@other", "marketplaceName": "other"}], "conflicting-installed-state"),
+            ([{"name": "codexy", "pluginId": "malformed", "marketplaceName": "other"}], "conflicting-installed-state"),
+            ([canonical], "conflicting-installed-state"),
+            ([{"name": "future", "pluginId": "future@codexy", "marketplaceName": "other"}], "unknown-installed-component"),
+            ([canonical, canonical], "conflicting-installed-state"),
+        ]
+        for records, code in cases:
+            with self.subTest(records=records):
+                classified = classify_unregistered_inventory(self.manifest, {"installed": records})
+                if code is None:
+                    preflight_unregistered_inventory(classified)
+                else:
+                    with self.assertRaisesRegex(ComponentResolutionError, code):
+                        preflight_unregistered_inventory(classified)
 
     @staticmethod
     def _installed(plugin: str, version: str = "1.3.0") -> dict[str, object]:

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest, valid_semver
@@ -18,6 +20,25 @@ class ComponentResolutionError(ValueError):
         super().__init__(code)
         self.code = code
         self.components = components
+
+
+@dataclass(frozen=True)
+class UnregisteredInventoryRecord:
+    """A manifest-derived classification of one record before marketplace bootstrap."""
+
+    component: Component | None
+    identity: "UnregisteredIdentity"
+
+
+class UnregisteredIdentity(str, Enum):
+    IRRELEVANT = "irrelevant"
+    KNOWN = "known"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class UnregisteredInventory:
+    records: tuple[UnregisteredInventoryRecord, ...]
 
 
 def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] | list[str]) -> tuple[str, ...]:
@@ -61,28 +82,43 @@ def verify_post_operation_inventory(manifest: ComponentManifest, inventory: obje
     return selected
 
 
-def preflight_unregistered_inventory(manifest: ComponentManifest, inventory: object) -> None:
-    """Reject any Codexy-related installed record without its registered marketplace."""
+def classify_unregistered_inventory(manifest: ComponentManifest, inventory: object) -> UnregisteredInventory:
+    """Classify host records through exact manifest identities before bootstrap."""
     if not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):
         raise ComponentResolutionError("invalid-installed-inventory")
-    plugins = {component.plugin: component for component in manifest.components}
+    by_plugin = {component.plugin: component for component in manifest.components}
+    records = []
     for entry in inventory["installed"]:
         if not isinstance(entry, dict):
             raise ComponentResolutionError("invalid-installed-inventory")
         plugin, plugin_id, marketplace = entry.get("name"), entry.get("pluginId"), entry.get("marketplaceName")
-        codexy_identity = (
-            marketplace == manifest.marketplace.name
-            or isinstance(plugin, str) and plugin.startswith("codexy")
-            or isinstance(plugin_id, str) and plugin_id.endswith("@codexy")
-        )
-        if not codexy_identity:
-            continue
-        if plugin not in plugins:
-            raise ComponentResolutionError("unknown-installed-component")
-        component = plugins[plugin]
-        if marketplace != manifest.marketplace.name or plugin_id != component.asset.plugin_id:
+        identifier_plugin, identifier_marketplace = _plugin_id_parts(plugin_id)
+        named = by_plugin.get(plugin) if isinstance(plugin, str) else None
+        identified = by_plugin.get(identifier_plugin)
+        if named is not None or identified is not None:
+            component = named or identified
+            records.append(UnregisteredInventoryRecord(component, UnregisteredIdentity.KNOWN))
+        elif marketplace == manifest.marketplace.name or identifier_marketplace == manifest.marketplace.name:
+            records.append(UnregisteredInventoryRecord(None, UnregisteredIdentity.UNKNOWN))
+        else:
+            records.append(UnregisteredInventoryRecord(None, UnregisteredIdentity.IRRELEVANT))
+    return UnregisteredInventory(tuple(records))
+
+
+def preflight_unregistered_inventory(inventory: UnregisteredInventory) -> None:
+    """Reject manifest-relevant records while the marketplace is not registered."""
+    for record in inventory.records:
+        if record.identity is UnregisteredIdentity.KNOWN:
             raise ComponentResolutionError("conflicting-installed-state")
-        raise ComponentResolutionError("conflicting-installed-state")
+        if record.identity is UnregisteredIdentity.UNKNOWN:
+            raise ComponentResolutionError("unknown-installed-component")
+
+
+def _plugin_id_parts(value: object) -> tuple[str | None, str | None]:
+    if not isinstance(value, str) or value.count("@") != 1:
+        return None, None
+    plugin, marketplace = value.split("@")
+    return plugin or None, marketplace or None
 
 
 def _component_records(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> dict[str, dict[str, object]]:

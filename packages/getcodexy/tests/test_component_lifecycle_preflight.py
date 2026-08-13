@@ -44,11 +44,19 @@ class LifecyclePreflightTests(unittest.TestCase):
             self.assertEqual(receipt["outcome"], "completed")
             self.assertTrue(state.marketplace_present)
 
+    def test_absent_marketplace_ignores_an_unrelated_prefix_record(self) -> None:
+        unrelated = {"installed": [{"name": "codexylophone", "pluginId": "codexylophone@other", "marketplaceName": "other"}]}
+        with fixture(marketplace_present=False, inventory_responses=[unrelated]) as state:
+            receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-unrelated-no-market")
+            self.assertEqual(receipt["outcome"], "completed")
+            self.assertTrue(state.marketplace_present)
+
     def test_absent_marketplace_rejects_conflicting_orphaned_unknown_malformed_and_mixed_records(self) -> None:
         cases = (
             ("conflict", "conflicting-installed-state"),
             ("orphan", "conflicting-installed-state"),
             ("unknown", "unknown-installed-component"),
+            ("missing-name", "conflicting-installed-state"),
             ("malformed", "conflicting-installed-state"),
             ("mixed", "conflicting-installed-state"),
         )
@@ -57,8 +65,11 @@ class LifecyclePreflightTests(unittest.TestCase):
                 record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "marketplaceName": "codexy"}
                 if case == "conflict":
                     record["marketplaceName"] = "other-marketplace"
-                if case == "malformed":
+                if case == "missing-name":
                     record["pluginId"] = "codexy@other-marketplace"
+                    record.pop("name")
+                if case == "malformed":
+                    record["pluginId"] = "malformed"
                 records = [record]
                 if case == "mixed":
                     records.append(installed(state.marketplace, "github"))

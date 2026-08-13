@@ -9,7 +9,7 @@ from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
-from .component_resolver import ComponentResolutionError, preflight_unregistered_inventory, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
+from .component_resolver import ComponentResolutionError, classify_unregistered_inventory, preflight_unregistered_inventory, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
 from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal, write_receipt
 from .github_pre_session import trusted_codex
@@ -45,7 +45,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
             if root is None:
-                preflight_unregistered_inventory(manifest, inventory)
+                preflight_unregistered_inventory(classify_unregistered_inventory(manifest, inventory))
         except ComponentResolutionError as error:
             return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
@@ -55,7 +55,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
             if root is None:
-                preflight_unregistered_inventory(manifest, inventory)
+                preflight_unregistered_inventory(classify_unregistered_inventory(manifest, inventory))
             recorded = recorded_selection(home, manifest)
         before: tuple[str, ...] = ()
         try:
