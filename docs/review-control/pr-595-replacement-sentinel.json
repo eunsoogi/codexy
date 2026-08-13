@@ -161,6 +161,58 @@
     ],
     "ledger_transition": "This tracked ledger advances the implementation head. An external final-head receipt will bind its own clean commit and repeat current source invariants before the newly authorized full Sentinel review."
   },
+  "markerless_semver_coverage_repair": {
+    "starting_head_oid": "1a85fb24eae194bad5733286afce5e428f5d359c",
+    "implementation_head_oid": "db75cd4b377b0dc0a07ff5d9c7abd3e74f0634f0",
+    "commit": "test(runtime): cover malformed markerless semver",
+    "goal_receipts": {
+      "get_goal": {"status": "null"},
+      "create_goal": {
+        "objective": "Close the #555 markerless SemVer coverage gap in the actual no-mutation producer matrix, prove the exact final head, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
+        "createdAt": 1786602039
+      },
+      "plan": {
+        "in_progress": "Add malformed and prerelease/build markerless --version snapshot cases, run RED/GREEN and full current-head proof, commit, and obtain one fresh Sentinel verdict"
+      }
+    },
+    "coverage_gap_and_green": {
+      "pre_edit_gap": "The same real markerless --version no-mutation snapshot matrix covered duplicate, oversized, leading-zero, and dependency-invalid inputs but did not independently exercise malformed 1.3 or prerelease 1.3.0-beta component-manifest versions. This was a coverage gap, not a known production failure.",
+      "green": "The existing actual executable matrix now rejects both forms before any write and preserves byte-identical snapshots of every mutation-managed file. It retains duplicate top-level and nested keys, oversized and leading-zero SemVer, dependency-invalid compatibility, valid 2147483647.0.0 producer readback, and archive activation controls.",
+      "production_change": "None. The expanded executable controls passed without requiring a production change."
+    },
+    "artifact_backed_commands": [
+      {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system",
+        "result": "PASS: 316 system tests",
+        "sha256": "65fc7edaeaa9df799735e418b6382610f24cf089702dca3203d8797a5d601875"
+      },
+      {
+        "command": "PATH=<temporary python shim> PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/getcodexy/src python3 -m unittest discover -s packages/getcodexy/tests -p test_*.py",
+        "result": "PASS: 107 tests; the shim provides the legacy python executable expected by two tests",
+        "sha256": "2ae8c0bf2f7e934ad2b36e0719dd5e80d1d7813443f2fbaf6901cabef24a949e"
+      },
+      {
+        "command": "cargo fmt --check; scripts/validate-plugin-config --check; scripts/sync-plugin-version --check; scripts/validate-plugin-config --check-touched-loc --base-ref fbe5174214f9aa36f672126c963bd540bea51d34; git diff --check",
+        "result": "PASS: formatting, plugin and repository policy, 1.3.0 version sync, touched LOC, and diff checks",
+        "sha256": "893660da63268c3fd02dad4b0b77846098b65a31092d1372d8eb9d19a51a14a7"
+      },
+      {
+        "command": "uv build --wheel; uv venv; uv pip install; installed-wheel importlib.resources manifest readback; codex plugin marketplace list --json; codex plugin list --json; installed-wheel reconcile_installed_inventory",
+        "result": "PASS: the wheel contains the readable core/github/devtools manifest and real canonical inventory reconciles to [core]",
+        "hashes": {
+          "wheel": "7a99bc791ba021ae83fc80071ef40b2670d3992cec042a8ad00934e18a7bb60f",
+          "build_log": "721b3429b608572a1f57fcf648d332f2986c3fee9dd80ee70bcb51db91a9ba9d",
+          "install_log": "8eb7ce3297ac2128dd24f4617fb0e5be9e5d39050761e1a81f2decaabd9206f4",
+          "resource_readback": "667e9347270fa3b0e55d4f416a1e0dc9366cde6951a0f32da48293005085b0d4",
+          "marketplace_inventory": "a36095459f099830eadbb8e817d4b504a5731e285656227e1c8a749ebb3edb5f",
+          "plugin_inventory": "127463d74f4fd965cd6a2d78fe8c53f9e1bd55d820d0ae830fcbfd3ea372efa0",
+          "reconciliation": "d739732838d8c1a2c775d699e39c482bd6162e1dd12d303331b59bc31b330f5d"
+        }
+      }
+    ],
+    "specialist_rationale": "No helper was assigned: this small test-only matrix, its source-local proof, and its ledger update are inseparable from the one child-owned review-response responsibility. Earlier mapping and architecture helpers remain recorded above; the independent packaged Sentinel is the authorized reviewer.",
+    "ledger_transition": "This tracked evidence commit advances the test implementation head. A separate external final-head receipt will bind its own clean commit and repeat focused source-invariant checks before the fresh authorized full Sentinel review."
+  },
   "pr_and_connector_evidence": {
     "source": "parent-supplied read-only authoritative evidence, 2026-08-13",
     "pr": {
@@ -222,9 +274,17 @@
         "reviewer_task": "/root/sentinel_pr595_mutation_preflight_full_review",
         "verdict": "BLOCK",
         "finding": "closed compatibility validation was incorrectly gated on .git in markerless activation archives"
+      },
+      {
+        "id": "pr595-authorized-full-1a85fb24",
+        "head_oid": "1a85fb24eae194bad5733286afce5e428f5d359c",
+        "kind": "maintainer-authorized packaged Sentinel",
+        "reviewer_task": "/root/sentinel_pr595_markerless_compatibility_full_review",
+        "verdict": "BLOCK",
+        "finding": "the real markerless no-mutation SemVer matrix lacked independently malformed and prerelease/build coverage"
       }
     ],
-    "current_disposition": "The maintainer explicitly authorized one fresh packaged Sentinel full review after this markerless repair's final clean-head proof; no reviewer is live yet.",
+    "current_disposition": "The user explicitly authorized one fresh packaged Sentinel full review after this markerless SemVer coverage repair's final clean-head proof; no reviewer is live yet.",
     "routing_exception": "Connector review followed an earlier pre-connector Sentinel PASS; its finding changed the head after ordinary review budget exhaustion. The parent-spawned reviewer was interrupted before verdict and is invalid evidence. This is a maintainer-authorized dogfood/review-routing exception, not normal order."
   },
   "truthfulness": {
