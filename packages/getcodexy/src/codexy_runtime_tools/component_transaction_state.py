@@ -43,17 +43,6 @@ def write_inventory(home: Path, components: tuple[str, ...]) -> None:
     _atomic_write(inventory_path(home), json.dumps({"schema": INVENTORY_SCHEMA, "components": list(components)}, sort_keys=True).encode())
 
 
-def write_receipt(home: Path, receipt: dict[str, object]) -> None:
-    identifier = operation_id(receipt.get("operation_id") if isinstance(receipt.get("operation_id"), str) else None)
-    target = inventory_path(home).parent / "receipts" / f"{identifier}.json"
-    contents = json.dumps(receipt, sort_keys=True).encode()
-    if os.path.lexists(target):
-        if _read_regular(target) != contents:
-            raise ValueError(f"operation receipt already exists: {identifier}")
-        return
-    _atomic_write(target, contents)
-
-
 @dataclass(frozen=True)
 class InventorySnapshot:
     contents: bytes | None

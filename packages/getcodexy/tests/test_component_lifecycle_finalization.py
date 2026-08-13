@@ -41,6 +41,10 @@ class LifecycleFinalizationTests(unittest.TestCase):
             self.assertEqual(json.loads(receipt.read_text())["outcome"], "completed")
             self.assertEqual(read_journal(state.home).phase, "committed")
 
+            next_receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-cleanup")
+            self.assertEqual(next_receipt, json.loads(receipt.read_text()))
+            self.assertFalse((inventory_path(state.home).parent / "inflight.json").exists())
+
             next_receipt = run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-cleanup")
             self.assertEqual(next_receipt["selection_after"], ["core", "devtools"])
             self.assertFalse((inventory_path(state.home).parent / "inflight.json").exists())
@@ -56,6 +60,23 @@ class LifecycleFinalizationTests(unittest.TestCase):
             next_receipt = run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-collision")
             self.assertEqual(json.loads(receipt.read_text())["outcome"], "completed")
             self.assertEqual(next_receipt["selection_after"], ["core", "devtools"])
+
+    def test_committed_recovery_rejects_a_conflicting_existing_receipt_before_local_rewrite(self) -> None:
+        with fixture() as state:
+            import codexy_runtime_tools.component_lifecycle as lifecycle
+
+            with patch.object(lifecycle, "clear_journal", side_effect=OSError("cleanup failed")), self.assertRaisesRegex(OSError, "cleanup failed"):
+                run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-committed-conflict")
+            receipt = inventory_path(state.home).parent / "receipts" / "op-committed-conflict.json"
+            payload = json.loads(receipt.read_text())
+            payload["selection_after"] = []
+            receipt.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+            with patch.object(lifecycle, "write_inventory") as inventory, self.assertRaisesRegex(ValueError, "committed transaction"):
+                run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-committed-conflict")
+            inventory.assert_not_called()
+            self.assertEqual(state.mutations, [("plugin", "add", "codexy@codexy", "--json")])
+            self.assertEqual(read_journal(state.home).phase, "committed")
 
     def test_journal_deletion_syncs_its_parent_directory(self) -> None:
         with fixture() as state:

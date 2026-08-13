@@ -26,6 +26,7 @@ class InstalledIdentity(str, Enum):
     IRRELEVANT = "irrelevant"
     KNOWN = "known"
     UNKNOWN = "unknown"
+    MALFORMED = "malformed"
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,20 @@ def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] |
 
 
 def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> tuple[str, ...]:
-    records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
+    return _reconcile_classified_inventory(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
+
+
+def admit_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
+    """Complete host inventory admission before lifecycle mutation or recovery."""
+    classified = classify_installed_inventory(manifest, inventory)
+    if marketplace_root is None:
+        preflight_unregistered_inventory(classified)
+        return ()
+    return _reconcile_classified_inventory(manifest, classified, marketplace_root)
+
+
+def _reconcile_classified_inventory(manifest: ComponentManifest, classified: ClassifiedInstalledInventory, marketplace_root: Path) -> tuple[str, ...]:
+    records = _component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}
     if len(versions) > 1:
         raise ComponentResolutionError("mixed-version-state")
@@ -101,6 +115,8 @@ def classify_installed_inventory(manifest: ComponentManifest, inventory: object)
             records.append(ClassifiedInstalledRecord(entry, component, InstalledIdentity.KNOWN, canonical))
         elif marketplace == manifest.marketplace.name or identifier_marketplace == manifest.marketplace.name:
             records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.UNKNOWN, False))
+        elif not isinstance(plugin, str) or identifier_plugin is None or not isinstance(marketplace, str):
+            records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.MALFORMED, False))
         else:
             records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.IRRELEVANT, False))
     return ClassifiedInstalledInventory(tuple(records))
@@ -109,6 +125,8 @@ def classify_installed_inventory(manifest: ComponentManifest, inventory: object)
 def preflight_unregistered_inventory(inventory: ClassifiedInstalledInventory) -> None:
     """Reject manifest-relevant records while the marketplace is not registered."""
     for record in inventory.records:
+        if record.identity is InstalledIdentity.MALFORMED:
+            raise ComponentResolutionError("invalid-installed-inventory")
         if record.identity is InstalledIdentity.KNOWN:
             raise ComponentResolutionError("conflicting-installed-state")
         if record.identity is InstalledIdentity.UNKNOWN:
@@ -127,6 +145,8 @@ def _component_records(manifest: ComponentManifest, inventory: ClassifiedInstall
         raise ComponentResolutionError("invalid-installed-inventory")
     records = {}
     for record in inventory.records:
+        if record.identity is InstalledIdentity.MALFORMED:
+            raise ComponentResolutionError("invalid-installed-inventory")
         if record.identity is InstalledIdentity.IRRELEVANT:
             continue
         if record.identity is InstalledIdentity.UNKNOWN:

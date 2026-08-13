@@ -7,11 +7,13 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
+from .component_lifecycle_admission import admitted_selection, matching_receipt, replay_receipt
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
-from .component_resolver import ComponentResolutionError, classify_installed_inventory, preflight_unregistered_inventory, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
+from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
-from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal, write_receipt
+from .component_transaction_receipts import write_receipt
+from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
 from .github_pre_session import trusted_codex
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
 from .updater import _absolute, _validate_real_path
@@ -34,6 +36,9 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         pending = read_journal(home)
         if pending is not None:
             _validate_journal(pending, manifest)
+        replay = replay_receipt(home, identifier, command, requested)
+        if replay is not None and pending is None:
+            return replay
         try:
             validate_request(command, requested, manifest)
             recorded = recorded_selection(home, manifest)
@@ -44,8 +49,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            if root is None:
-                preflight_unregistered_inventory(classify_installed_inventory(manifest, inventory))
+            before = admitted_selection(manifest, inventory, root)
         except ComponentResolutionError as error:
             return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
@@ -54,12 +58,11 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             _recover_if_needed(home, executable, invoke, manifest, root or official_marketplace_root(executable, invoke))
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            if root is None:
-                preflight_unregistered_inventory(classify_installed_inventory(manifest, inventory))
+            before = admitted_selection(manifest, inventory, root)
             recorded = recorded_selection(home, manifest)
-        before: tuple[str, ...] = ()
+            if replay is not None:
+                return replay
         try:
-            before = () if root is None else _selection(manifest, inventory, root)
             if recorded is not None and recorded != before:
                 raise ComponentResolutionError("inconsistent-installed-state")
             resolved, target, adds, removes = _plan(command, requested, before, recorded, manifest)
@@ -141,8 +144,14 @@ def _write_completed(home: Path, executable: Path, invoke: Runner, manifest: Com
 
 def _finish_committed(home: Path, executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, journal: Journal) -> dict[str, object]:
     installed = verify_post_operation_inventory(manifest, _list(executable, invoke), journal.target, root)
+    receipt = _receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, installed, "completed")
+    if matching_receipt(home, receipt):
+        clear_journal(home)
+        return receipt
+    if replay_receipt(home, journal.identifier, journal.command, journal.requested) is not None:
+        raise ValueError(f"operation receipt conflicts with committed transaction: {journal.identifier}")
     write_inventory(home, installed)
-    receipt = _terminal(home, _receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, installed, "completed"))
+    receipt = _terminal(home, receipt)
     clear_journal(home)
     return receipt
 
