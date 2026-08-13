@@ -275,6 +275,62 @@
     ],
     "ledger_transition": "This tracked ledger advances the implementation head. A separate external final-head receipt will bind the ledger commit's clean exact head and repeat source-invariant checks before the newly authorized full Sentinel review."
   },
+  "windows_crlf_fixture_repair": {
+    "starting_head_oid": "c99b64d82c9faf2c105f7e35e915f57e68deb3bc",
+    "implementation_head_oid": "005d6e63017f40cb63febd3979b2a8b93a847dd5",
+    "commit": "test(runtime): cover CRLF mutation fixtures",
+    "goal_receipts": {
+      "get_goal": {"status": "null"},
+      "create_goal": {
+        "objective": "Diagnose and repair the exact #555 Windows CI Cargo.lock fixture portability failure, establish exact-current-head local proof and one fresh packaged Sentinel PASS, commit cleanly, and return to the parent without GitHub mutation.",
+        "createdAt": 1786604781
+      },
+      "plan": {
+        "in_progress": "Diagnose the Windows fixture mismatch, add a line-ending-portable no-mutation control, run focused/full proof, commit, and obtain one fresh Sentinel PASS"
+      }
+    },
+    "diagnosis": {
+      "source": "parent-supplied downloaded Windows job log for Rust run 31675917871, job 94370347162",
+      "result": "230 passed, 1 failed at mutation_preflight.rs:101 because the LF-only Cargo.lock field-order needle did not match the job's CRLF bytes. The production no-mutation assertion was never reached.",
+      "scope": "branch-owned test portability only; no production behavior changed."
+    },
+    "structural_remediation": "The real markerless producer-path matrix now derives each fixture's requested LF or CRLF representation, derives the multi-line Cargo.lock needle and replacement from that representation, and runs both line-ending variants for Cargo.toml spacing and Cargo.lock field ordering. The existing command-failure and all-managed-file byte snapshot assertion is unchanged.",
+    "red_green": {
+      "red": "Exact frozen Windows CI failed before the no-mutation assertion because the CRLF Cargo.lock fixture remained unchanged.",
+      "green": "The focused executable matrix passes its explicit LF and CRLF controls; both semantically valid late-rewriter inputs reject and every managed file is byte-identical."
+    },
+    "artifact_backed_commands": [
+      {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system",
+        "result": "PASS: 317 system tests",
+        "sha256": "09dbb4a9260b5006c5c9efd274b47a7b9c5703d1d59b830521e202087d4297ec"
+      },
+      {
+        "command": "PATH=<temporary python shim> PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/getcodexy/src python3 -m unittest discover -s packages/getcodexy/tests -p test_*.py",
+        "result": "PASS: 107 tests",
+        "sha256": "98fb85e73ac3e8a7472e19848cb64444411a02aa88885616f32fb6bb7e423b3b"
+      },
+      {
+        "command": "cargo fmt --check; scripts/validate-plugin-config --check; scripts/sync-plugin-version --check; scripts/validate-plugin-config --check-touched-loc --base-ref fbe5174214f9aa36f672126c963bd540bea51d34; git diff --check",
+        "result": "PASS: formatting, plugin/repository policy, 1.3.0 version sync, touched LOC, and diff checks",
+        "sha256": "893660da63268c3fd02dad4b0b77846098b65a31092d1372d8eb9d19a51a14a7"
+      },
+      {
+        "command": "uv build --wheel; uv venv; uv pip install; installed-wheel resource manifest readback; codex plugin marketplace list --json; codex plugin list --json; installed-wheel reconcile_installed_inventory",
+        "result": "PASS: wheel package contains the core/github/devtools manifest and real canonical inventory reconciles to [core]",
+        "hashes": {
+          "wheel": "7a99bc791ba021ae83fc80071ef40b2670d3992cec042a8ad00934e18a7bb60f",
+          "build_log": "dd8e2abaf90f5b8cbfc6786096879141d2a0409e1d80e9a280c53fc68f3d348c",
+          "install_log": "ff5f74a9fd278c0c88b9bf94dc88d709dbb114a84f758a7f39c8fd6a7ae44f3e",
+          "resource_readback": "667e9347270fa3b0e55d4f416a1e0dc9366cde6951a0f32da48293005085b0d4",
+          "marketplace_inventory": "a36095459f099830eadbb8e817d4b504a5731e285656227e1c8a749ebb3edb5f",
+          "plugin_inventory": "127463d74f4fd965cd6a2d78fe8c53f9e1bd55d820d0ae830fcbfd3ea372efa0",
+          "reconciliation": "d739732838d8c1a2c775d699e39c482bd6162e1dd12d303331b59bc31b330f5d"
+        }
+      }
+    ],
+    "ledger_transition": "This tracked ledger advances the portable-fixture implementation head. A separate external final-head receipt will bind the ledger commit's clean exact head and repeat focused source-invariant checks before the newly authorized full Sentinel review."
+  },
   "pr_and_connector_evidence": {
     "source": "parent-supplied read-only authoritative evidence, 2026-08-13",
     "pr": {
@@ -352,9 +408,16 @@
         "reviewer_task": "/root/sentinel_pr595_markerless_semver_coverage_full_review",
         "verdict": "BLOCK",
         "finding": "Cargo semantic input validation and later textual rewriters diverged, allowing late failure after earlier writes"
+      },
+      {
+        "id": "pr595-authorized-full-c99b64d8",
+        "head_oid": "c99b64d82c9faf2c105f7e35e915f57e68deb3bc",
+        "kind": "user-authorized packaged Sentinel",
+        "reviewer_task": "/root/sentinel_pr595_prepared_mutation_full_review",
+        "verdict": "PASS"
       }
     ],
-    "current_disposition": "The user explicitly authorized one fresh packaged Sentinel full review after this prepared version-transformation repair's final clean-head proof; no reviewer is live yet.",
+    "current_disposition": "The user explicitly authorized one fresh packaged Sentinel full review after this Windows CRLF fixture repair's final clean-head proof; no reviewer is live yet.",
     "routing_exception": "Connector review followed an earlier pre-connector Sentinel PASS; its finding changed the head after ordinary review budget exhaustion. The parent-spawned reviewer was interrupted before verdict and is invalid evidence. This is a maintainer-authorized dogfood/review-routing exception, not normal order."
   },
   "truthfulness": {
