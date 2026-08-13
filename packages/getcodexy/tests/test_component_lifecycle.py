@@ -219,14 +219,6 @@ class ComponentLifecycleTests(unittest.TestCase):
                 run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-bad")
             self.assertEqual(state.mutations, [])
 
-    def test_coherent_older_component_version_can_update(self) -> None:
-        with fixture({"core"}, versions={"core": "1.2.0"}) as state:
-            record(state.home, ["core"])
-            receipt = run_operation("update", (), state.home, state.codex, state.run, operation_id="op-old")
-            self.assertEqual(receipt["outcome"], "completed")
-            self.assertIn(("plugin", "marketplace", "upgrade", "codexy", "--json"), state.calls)
-
-
 def record(home: Path, components: list[str]) -> None:
     target = inventory_path(home)
     target.parent.mkdir(parents=True)

@@ -77,6 +77,19 @@ def admit_installed_inventory(manifest: ComponentManifest, inventory: object, ma
     return _reconcile_classified_inventory(manifest, classified, marketplace_root)
 
 
+def admit_operation_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, command: str) -> tuple[str, ...]:
+    """Require current retained components unless this operation will upgrade them."""
+    if command not in {"install", "update", "remove"}:
+        raise ValueError(f"unsupported component operation: {command}")
+    selected = admit_installed_inventory(manifest, inventory, marketplace_root)
+    if command == "update" or marketplace_root is None:
+        return selected
+    records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
+    if any(record["version"] != manifest.version for record in records.values()):
+        raise ComponentResolutionError("component-version-mismatch")
+    return selected
+
+
 def admit_recovery_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, expected: tuple[str, ...]) -> tuple[str, ...]:
     """Admit a pending transaction's host state without rejecting its own mixed-version update."""
     if expected not in manifest.compatible_combinations:

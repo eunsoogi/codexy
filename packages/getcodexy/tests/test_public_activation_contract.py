@@ -36,6 +36,7 @@ class PublicActivationContractTests(unittest.TestCase):
         for test in (
             "test_component_cli.py",
             "test_component_lifecycle.py",
+            "test_component_lifecycle_version_admission.py",
             "test_component_lifecycle_interrupt.py",
             "test_component_lifecycle_journal.py",
             "test_component_transition_model.py",

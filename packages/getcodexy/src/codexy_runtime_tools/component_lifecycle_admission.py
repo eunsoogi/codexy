@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from .component_manifest import ComponentManifest
-from .component_resolver import admit_installed_inventory, admit_recovery_inventory
+from .component_resolver import admit_operation_inventory, admit_recovery_inventory
 from .component_transaction_receipts import read_receipt
 from .component_transaction_state import Journal
 from .component_transition_model import OperationReceipt
 
 
-def admitted_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
-    return admit_installed_inventory(manifest, inventory, marketplace_root)
+def admitted_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, command: str) -> tuple[str, ...]:
+    return admit_operation_inventory(manifest, inventory, marketplace_root, command)
 
 
 def admitted_recovery_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, expected: tuple[str, ...]) -> tuple[str, ...]:
