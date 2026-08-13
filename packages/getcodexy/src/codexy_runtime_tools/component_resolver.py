@@ -22,23 +22,23 @@ class ComponentResolutionError(ValueError):
         self.components = components
 
 
-@dataclass(frozen=True)
-class UnregisteredInventoryRecord:
-    """A manifest-derived classification of one record before marketplace bootstrap."""
-
-    component: Component | None
-    identity: "UnregisteredIdentity"
-
-
-class UnregisteredIdentity(str, Enum):
+class InstalledIdentity(str, Enum):
     IRRELEVANT = "irrelevant"
     KNOWN = "known"
     UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True)
-class UnregisteredInventory:
-    records: tuple[UnregisteredInventoryRecord, ...]
+class ClassifiedInstalledRecord:
+    entry: dict[str, object]
+    component: Component | None
+    identity: InstalledIdentity
+    canonical: bool
+
+
+@dataclass(frozen=True)
+class ClassifiedInstalledInventory:
+    records: tuple[ClassifiedInstalledRecord, ...]
 
 
 def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] | list[str]) -> tuple[str, ...]:
@@ -60,7 +60,7 @@ def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] |
 
 
 def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> tuple[str, ...]:
-    records = _component_records(manifest, inventory, marketplace_root)
+    records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
     versions = {record["version"] for record in records.values()}
     if len(versions) > 1:
         raise ComponentResolutionError("mixed-version-state")
@@ -74,7 +74,7 @@ def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object
 
 def verify_post_operation_inventory(manifest: ComponentManifest, inventory: object, expected: tuple[str, ...], marketplace_root: Path) -> tuple[str, ...]:
     selected = reconcile_installed_inventory(manifest, inventory, marketplace_root)
-    records = _component_records(manifest, inventory, marketplace_root)
+    records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
     if selected != expected:
         raise ComponentResolutionError("installed-state-mismatch")
     if any(record["version"] != manifest.version for record in records.values()):
@@ -82,8 +82,8 @@ def verify_post_operation_inventory(manifest: ComponentManifest, inventory: obje
     return selected
 
 
-def classify_unregistered_inventory(manifest: ComponentManifest, inventory: object) -> UnregisteredInventory:
-    """Classify host records through exact manifest identities before bootstrap."""
+def classify_installed_inventory(manifest: ComponentManifest, inventory: object) -> ClassifiedInstalledInventory:
+    """Classify all host records once through exact manifest identities."""
     if not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):
         raise ComponentResolutionError("invalid-installed-inventory")
     by_plugin = {component.plugin: component for component in manifest.components}
@@ -97,20 +97,21 @@ def classify_unregistered_inventory(manifest: ComponentManifest, inventory: obje
         identified = by_plugin.get(identifier_plugin)
         if named is not None or identified is not None:
             component = named or identified
-            records.append(UnregisteredInventoryRecord(component, UnregisteredIdentity.KNOWN))
+            canonical = named is component and identified is component and plugin == component.plugin and plugin_id == component.asset.plugin_id and marketplace == manifest.marketplace.name
+            records.append(ClassifiedInstalledRecord(entry, component, InstalledIdentity.KNOWN, canonical))
         elif marketplace == manifest.marketplace.name or identifier_marketplace == manifest.marketplace.name:
-            records.append(UnregisteredInventoryRecord(None, UnregisteredIdentity.UNKNOWN))
+            records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.UNKNOWN, False))
         else:
-            records.append(UnregisteredInventoryRecord(None, UnregisteredIdentity.IRRELEVANT))
-    return UnregisteredInventory(tuple(records))
+            records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.IRRELEVANT, False))
+    return ClassifiedInstalledInventory(tuple(records))
 
 
-def preflight_unregistered_inventory(inventory: UnregisteredInventory) -> None:
+def preflight_unregistered_inventory(inventory: ClassifiedInstalledInventory) -> None:
     """Reject manifest-relevant records while the marketplace is not registered."""
     for record in inventory.records:
-        if record.identity is UnregisteredIdentity.KNOWN:
+        if record.identity is InstalledIdentity.KNOWN:
             raise ComponentResolutionError("conflicting-installed-state")
-        if record.identity is UnregisteredIdentity.UNKNOWN:
+        if record.identity is InstalledIdentity.UNKNOWN:
             raise ComponentResolutionError("unknown-installed-component")
 
 
@@ -121,24 +122,19 @@ def _plugin_id_parts(value: object) -> tuple[str | None, str | None]:
     return plugin or None, marketplace or None
 
 
-def _component_records(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> dict[str, dict[str, object]]:
-    if not marketplace_root.is_absolute() or not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):
+def _component_records(manifest: ComponentManifest, inventory: ClassifiedInstalledInventory, marketplace_root: Path) -> dict[str, dict[str, object]]:
+    if not marketplace_root.is_absolute():
         raise ComponentResolutionError("invalid-installed-inventory")
-    by_plugin, records = {component.plugin: component for component in manifest.components}, {}
-    for entry in inventory["installed"]:
-        if not isinstance(entry, dict):
-            raise ComponentResolutionError("invalid-installed-inventory")
-        plugin = entry.get("name")
-        if plugin in by_plugin and entry.get("marketplaceName") != manifest.marketplace.name:
-            raise ComponentResolutionError("conflicting-installed-state")
-        if entry.get("marketplaceName") != manifest.marketplace.name:
+    records = {}
+    for record in inventory.records:
+        if record.identity is InstalledIdentity.IRRELEVANT:
             continue
-        if plugin not in by_plugin:
+        if record.identity is InstalledIdentity.UNKNOWN:
             raise ComponentResolutionError("unknown-installed-component")
-        component = by_plugin[plugin]
-        if not _valid_record(entry, component, manifest, marketplace_root) or component.id in records:
+        component = record.component
+        if component is None or not record.canonical or not _valid_record(record.entry, component, manifest, marketplace_root) or component.id in records:
             raise ComponentResolutionError("conflicting-installed-state")
-        records[component.id] = entry
+        records[component.id] = record.entry
     return records
 
 

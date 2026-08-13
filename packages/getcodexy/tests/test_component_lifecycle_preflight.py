@@ -4,6 +4,7 @@ import json
 import unittest
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
+from codexy_runtime_tools.component_transaction_state import read_journal
 from packages.getcodexy.tests.component_lifecycle_support import fixture, installed
 
 
@@ -51,33 +52,37 @@ class LifecyclePreflightTests(unittest.TestCase):
             self.assertEqual(receipt["outcome"], "completed")
             self.assertTrue(state.marketplace_present)
 
-    def test_absent_marketplace_rejects_conflicting_orphaned_unknown_malformed_and_mixed_records(self) -> None:
+    def test_both_marketplace_paths_reject_invalid_identity_records_before_mutation(self) -> None:
         cases = (
-            ("conflict", "conflicting-installed-state"),
-            ("orphan", "conflicting-installed-state"),
-            ("unknown", "unknown-installed-component"),
-            ("missing-name", "conflicting-installed-state"),
-            ("malformed", "conflicting-installed-state"),
-            ("mixed", "conflicting-installed-state"),
+            ("conflict", "conflicting-installed-state", "conflicting-installed-state"),
+            ("orphan", "conflicting-installed-state", None),
+            ("unknown", "unknown-installed-component", "unknown-installed-component"),
+            ("missing-name", "conflicting-installed-state", "conflicting-installed-state"),
+            ("malformed", "conflicting-installed-state", "conflicting-installed-state"),
+            ("duplicate", "conflicting-installed-state", "conflicting-installed-state"),
         )
-        for case, error in cases:
-            with self.subTest(case=case), fixture(marketplace_present=False) as state:
-                record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "marketplaceName": "codexy"}
-                if case == "conflict":
-                    record["marketplaceName"] = "other-marketplace"
-                if case == "missing-name":
-                    record["pluginId"] = "codexy@other-marketplace"
-                    record.pop("name")
-                if case == "malformed":
-                    record["pluginId"] = "malformed"
-                records = [record]
-                if case == "mixed":
-                    records.append(installed(state.marketplace, "github"))
-                state.inventory_override = {"installed": records}
-                receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id=f"op-{case}-no-market")
-                self.assertEqual(receipt["errors"], [{"code": error}])
-                self.assertFalse(state.marketplace_present)
-                self.assertEqual(state.mutations, [])
+        for marketplace_present in (False, True):
+            for case, unregistered_error, registered_error in cases:
+                with self.subTest(marketplace_present=marketplace_present, case=case), fixture(marketplace_present=marketplace_present) as state:
+                    record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "marketplaceName": "codexy"}
+                    if case == "conflict":
+                        record["marketplaceName"] = "other-marketplace"
+                    if case == "missing-name":
+                        record["pluginId"] = "codexy@other-marketplace"
+                        record.pop("name")
+                    if case == "malformed":
+                        record["pluginId"] = "malformed"
+                    records = [record]
+                    if case == "duplicate":
+                        records.append(record.copy())
+                    state.inventory_override = {"installed": records}
+                    receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id=f"op-{marketplace_present}-{case}")
+                    error = registered_error if marketplace_present else unregistered_error
+                    self.assertEqual(receipt["errors"], [] if error is None else [{"code": error}])
+                    self.assertEqual(state.marketplace_present, marketplace_present)
+                    if error is not None:
+                        self.assertEqual(state.mutations, [])
+                        self.assertIsNone(read_journal(state.home))
 
 
 if __name__ == "__main__":
