@@ -6,7 +6,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-from codexy_runtime_tools.component_manifest import _parse_manifest, load_component_manifest
+from codexy_runtime_tools.component_manifest import _parse_manifest, load_component_manifest, parse_component_manifest
 from codexy_runtime_tools.component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
@@ -140,6 +140,25 @@ class ComponentManifestResolverTests(unittest.TestCase):
         unknown["domainErrors"]["unrecognized-error"] = "not public"
         for invalid in (incomplete, unknown):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                _parse_manifest(invalid)
+
+    def test_manifest_parser_rejects_duplicate_top_level_and_nested_keys(self) -> None:
+        canonical = (Path(__file__).parents[1] / "src/codexy_runtime_tools/component-manifest.json").read_text()
+        cases = [
+            canonical.replace('"schema": "getcodexy.component-manifest.v1",', '"schema": "getcodexy.component-manifest.v1", "schema": "getcodexy.component-manifest.v1",', 1),
+            canonical.replace('"name": "codexy",', '"name": "codexy", "name": "codexy",', 1),
+        ]
+        for text in cases:
+            with self.assertRaisesRegex(ValueError, "duplicate key"):
+                parse_component_manifest(text)
+
+    def test_manifest_rejects_semver_components_outside_the_canonical_bound(self) -> None:
+        canonical = json.loads((Path(__file__).parents[1] / "src/codexy_runtime_tools/component-manifest.json").read_text())
+        for version in ("2147483648.0.0", "999999999999999999999.0.0", "01.0.0"):
+            invalid = deepcopy(canonical)
+            for component in invalid["components"]:
+                component["version"] = version
+            with self.subTest(version=version), self.assertRaises(ValueError):
                 _parse_manifest(invalid)
 
     def test_reconciliation_rejects_malformed_official_unknown_future_versions_and_untrusted_roots(self) -> None:

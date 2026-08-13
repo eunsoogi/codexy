@@ -18,6 +18,20 @@
     "child": "#555 implementation and review response",
     "source_thread_id": "019fbcd8-172b-7d60-81b9-33164a2cec65"
   },
+  "child_repair_phase": {
+    "classification": {
+      "workflow_profile": "strict",
+      "lane_type": "review response",
+      "owner": "child-owned",
+      "scope": "duplicate-key, bounded-SemVer, and current-head proof repair without reviewer launch"
+    },
+    "goal_receipts": [
+      {"operation": "get_goal", "result": {"goal": null}},
+      {"operation": "create_goal", "status": "active", "objective": "Repair the three latest Codexy #555 Sentinel findings from clean head 781b8563 by unifying duplicate-key and bounded-SemVer manifest validation across Python and Rust, refreshing durable exact-current-head proof, and committing locally without launching a reviewer or mutating GitHub."},
+      {"operation": "update_plan", "status": "recorded", "phase": "review-free repair"}
+    ],
+    "reviewer_activity": "prohibited for this phase"
+  },
   "parent_goal_readback": {
     "threadId": "019fbcd8-172b-7d60-81b9-33164a2cec65",
     "objective": "Merge all remaining Wave 5 work: complete current-head review and merge #555, then resume and merge #557 and #558 with full verification, cleanup, and post-merge closure.",

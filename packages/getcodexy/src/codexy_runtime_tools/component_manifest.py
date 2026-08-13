@@ -15,6 +15,7 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 MARKETPLACE = "codexy"
 COMPONENT_IDS = ("core", "github", "devtools")
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
+MAX_SEMVER_COMPONENT = 2_147_483_647
 DOMAIN_ERRORS = frozenset(
     {
         "component-version-mismatch",
@@ -75,11 +76,17 @@ class ComponentManifest:
 
 
 def load_component_manifest() -> ComponentManifest:
-    data = json.loads(
-        files("codexy_runtime_tools").joinpath("component-manifest.json").read_text(),
-        object_pairs_hook=_unique_object,
+    return parse_component_manifest(files("codexy_runtime_tools").joinpath("component-manifest.json").read_text())
+
+
+def parse_component_manifest(text: str) -> ComponentManifest:
+    return _parse_manifest(json.loads(text, object_pairs_hook=_unique_object))
+
+
+def valid_semver(value: object) -> bool:
+    return isinstance(value, str) and SEMVER.fullmatch(value) is not None and all(
+        int(component) <= MAX_SEMVER_COMPONENT for component in value.split(".")
     )
-    return _parse_manifest(data)
 
 
 def _parse_manifest(data: object) -> ComponentManifest:
@@ -127,7 +134,7 @@ def _component(value: object, marketplace: Marketplace) -> Component:
     required = {"id", "plugin", "version", "dependencies", "asset"}
     if not isinstance(value, dict) or set(value) != required:
         raise ValueError("component manifest component has an invalid shape")
-    if any(not isinstance(value[key], str) or not value[key] for key in ("id", "plugin", "version")) or not SEMVER.fullmatch(value["version"]):
+    if any(not isinstance(value[key], str) or not value[key] for key in ("id", "plugin", "version")) or not valid_semver(value["version"]):
         raise ValueError("component manifest component has invalid text")
     return Component(value["id"], value["plugin"], value["version"], _strings(value["dependencies"], "dependencies"), _asset(value["asset"], value["plugin"], marketplace))
 

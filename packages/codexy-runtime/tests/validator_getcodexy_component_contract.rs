@@ -147,6 +147,23 @@ fn public_validator_rejects_manifest_validation_contract_drift() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn public_validator_rejects_duplicate_keys_and_out_of_range_semver() -> TestResult {
+    let fixture = CanonicalSourceFixture::new()?;
+    let manifest_path = fixture.root().join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
+    let canonical = fs::read_to_string(&manifest_path)?;
+    for invalid in [
+        canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1),
+        canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1),
+        canonical.replace("\"version\": \"1.3.0\"", "\"version\": \"2147483648.0.0\""),
+    ] {
+        fs::write(&manifest_path, invalid)?;
+        assert!(!validate(&fixture.plugin_root())?.status.success());
+        fs::write(&manifest_path, &canonical)?;
+    }
+    Ok(())
+}
+
 struct CanonicalSourceFixture {
     temp: tempfile::TempDir,
 }

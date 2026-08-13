@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest
+from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest, valid_semver
 
 
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -89,7 +89,7 @@ def _valid_record(entry: dict[str, object], component: Component, manifest: Comp
         return False
     if Path(source["path"]) != marketplace_root / asset.package_root:
         return False
-    return entry.get("pluginId") == asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and isinstance(entry.get("version"), str) and SEMVER.fullmatch(entry["version"]) is not None
+    return entry.get("pluginId") == asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and valid_semver(entry.get("version"))
 
 
 def _version_tuple(version: str) -> tuple[int, int, int]:
