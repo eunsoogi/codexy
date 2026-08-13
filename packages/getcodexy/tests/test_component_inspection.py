@@ -112,10 +112,10 @@ class ComponentInspectionTests(unittest.TestCase):
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
         health = {entry["component"]: entry for entry in result["component_health"]}
-        self.assertEqual(health["core"]["state"], "stale")
+        self.assertEqual(health["core"]["state"], "incompatible")
         self.assertEqual(health["github"]["state"], "incompatible")
-        self.assertEqual(health["devtools"]["state"], "missing")
-        self.assertEqual(health["devtools"]["repair"], "getcodexy bootstrap")
+        self.assertEqual(health["devtools"]["state"], "incompatible")
+        self.assertTrue(all(entry["repair"] == "repair the Codexy registration, then rerun getcodexy doctor" for entry in health.values()))
         self.assertEqual(result["outcome"], "completed")
 
     def test_doctor_accepts_the_supported_devtools_dispatcher_without_executing_it(self) -> None:

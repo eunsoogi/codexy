@@ -161,15 +161,13 @@ def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tupl
     for component in manifest.component_ids:
         if component not in expected:
             continue
-        if component not in actual:
-            result.append(_entry(component, "missing"))
-        elif host_error == ProbeStage.MARKETPLACE_LIST.value:
+        if admission_error or host_error == ProbeStage.MARKETPLACE_LIST.value:
             result.append(_entry(component, "incompatible"))
+        elif component not in actual:
+            result.append(_entry(component, "missing"))
         elif _version_relation(manifest, records.get(component)) < 0:
             result.append(_entry(component, "stale"))
         elif _version_relation(manifest, records.get(component)) > 0:
-            result.append(_entry(component, "incompatible"))
-        elif admission_error and component in actual:
             result.append(_entry(component, "incompatible"))
         elif _stale(manifest, component, records.get(component)):
             result.append(_entry(component, "stale"))

@@ -85,6 +85,50 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
                     self.assertEqual(result["errors"], [{"code": "codex-marketplace-list"}, {"code": code}])
                     self.assertEqual(result["component_health"][0]["repair"], "repair the Codexy registration, then rerun getcodexy doctor")
 
+    def test_successful_marketplace_admission_precedes_every_version_repair(self) -> None:
+        cases = {
+            "disabled": ("core", [self._changed], "conflicting-installed-state"),
+            "not-installed": ("core", [self._changed], "conflicting-installed-state"),
+            "identity": ("core", [self._changed], "conflicting-installed-state"),
+            "foreign": ("core", [self._changed], "conflicting-installed-state"),
+            "duplicate": ("core", [lambda entry: [entry, deepcopy(entry)]], "conflicting-installed-state"),
+            "unknown": ("core", [lambda entry: [self._changed(entry, name="unknown", pluginId="unknown@codexy")]], "unknown-installed-component"),
+            "dependency": ("github", [lambda entry: [installed_path(entry, "github")]], "inconsistent-installed-state"),
+            "mixed": ("github", [lambda entry: [installed_path(entry, "github"), installed_path(self._changed(entry, version="1.2.0"), "core")]], "mixed-version-state"),
+            "future": ("core", [lambda entry: self._changed(entry, version="9.0.0")], "component-version-mismatch"),
+            "malformed": ("core", [lambda _entry: [{"name": 123}]], "invalid-installed-inventory"),
+        }
+        changes = {
+            "disabled": {"enabled": False, "version": "1.2.0"},
+            "not-installed": {"installed": False, "version": "1.2.0"},
+            "identity": {"pluginId": "codexy-github@codexy", "version": "1.2.0"},
+            "foreign": {"marketplaceSource": {"sourceType": "git", "source": "https://example.invalid/foreign.git"}, "version": "1.2.0"},
+        }
+        for name, (component, transforms, code) in cases.items():
+            with self.subTest(name=name), fixture({component}) as state:
+                materialize(state, component)
+                seed = installed(state.marketplace, component)
+                records = self._changed(seed, **changes[name]) if name in changes else transforms[0](seed)
+                state.inventory_override = {"installed": records if isinstance(records, list) else [records]}
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+                observed = status(state.home, codex=state.codex, runner=state.run)
+
+            self.assertEqual(observed["errors"], [{"code": code}])
+            self.assertNotIn("getcodexy bootstrap", [entry.get("repair") for entry in result["component_health"]])
+            self.assertTrue(all(entry["state"] == "incompatible" for entry in result["component_health"]))
+
+    def test_successful_marketplace_canonical_versions_remain_stale_or_healthy(self) -> None:
+        for version, state_name, repair in (("1.2.0", "stale", "getcodexy bootstrap"), ("1.3.0", "healthy", None)):
+            with self.subTest(version=version), fixture({"core"}, versions={"core": version}) as state:
+                materialize(state, "core")
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+
+            expected = {"component": "core", "state": state_name}
+            if repair is not None:
+                expected["repair"] = repair
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["component_health"], [expected])
+
     @staticmethod
     def _changed(entry: dict[str, object], **changes: object) -> dict[str, object]:
         result = deepcopy(entry)
