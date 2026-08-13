@@ -77,6 +77,26 @@ def admit_installed_inventory(manifest: ComponentManifest, inventory: object, ma
     return _reconcile_classified_inventory(manifest, classified, marketplace_root)
 
 
+def admit_recovery_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, expected: tuple[str, ...]) -> tuple[str, ...]:
+    """Admit a pending transaction's host state without rejecting its own mixed-version update."""
+    if expected not in manifest.compatible_combinations:
+        raise ComponentResolutionError("inconsistent-installed-state")
+    classified = classify_installed_inventory(manifest, inventory)
+    if marketplace_root is None:
+        selected = admit_installed_inventory(manifest, inventory, None)
+    else:
+        records = _component_records(manifest, classified, marketplace_root)
+        versions = {record["version"] for record in records.values()}
+        if any(_version_tuple(version) > _version_tuple(manifest.version) for version in versions):
+            raise ComponentResolutionError("component-version-mismatch")
+        if len(versions - {manifest.version}) > 1:
+            raise ComponentResolutionError("mixed-version-state")
+        selected = canonical_components(manifest, set(records))
+    if selected != expected:
+        raise ComponentResolutionError("inconsistent-installed-state")
+    return selected
+
+
 def _reconcile_classified_inventory(manifest: ComponentManifest, classified: ClassifiedInstalledInventory, marketplace_root: Path) -> tuple[str, ...]:
     records = _component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}

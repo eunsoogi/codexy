@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from .component_lifecycle_admission import admit_pending_receipt, admitted_selection, matching_receipt, replay_receipt
+from .component_lifecycle_admission import admit_pending_receipt, admitted_recovery_selection, admitted_selection, matching_receipt, replay_receipt
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
 from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, verify_post_operation_inventory
@@ -51,7 +51,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            before = admitted_selection(manifest, inventory, root)
+            before = admitted_recovery_selection(manifest, inventory, root, pending.target) if pending is not None and pending.command == "update" else admitted_selection(manifest, inventory, root)
         except ComponentResolutionError as error:
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, error)
         except (OSError, ValueError, RuntimeError):

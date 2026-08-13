@@ -4,13 +4,13 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from codexy_runtime_tools import component_transaction_receipts as receipt_storage
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_resolver import ComponentResolutionError
 from codexy_runtime_tools.component_transaction_state import decode_inventory
-from codexy_runtime_tools.component_transaction_identity import operation_id, valid_operation_id
+from codexy_runtime_tools.component_transaction_identity import operation_id
 from codexy_runtime_tools.component_transition_model import InventorySnapshot, Journal, OperationReceipt, plan_transition
 from codexy_runtime_tools.component_transition_rejections import Rejection, RejectionStage, variants as rejection_variants
 
@@ -164,14 +164,18 @@ class TransitionModelTests(unittest.TestCase):
     def test_operation_identifier_boundaries_fail_closed(self) -> None:
         manifest = load_component_manifest()
         plan = plan_transition(manifest, "install", ("core",), (), ())
-        self.assertTrue(valid_operation_id(operation_id(None)))
         invalid = ("", "bad", "op-", "op-../escape", "op-" + "x" * 129)
 
-        with patch("codexy_runtime_tools.component_transaction_identity.uuid.uuid4", side_effect=AssertionError("invalid IDs must not generate")):
+        generated = Mock(hex="generated")
+        with patch("codexy_runtime_tools.component_transaction_identity.uuid.uuid4", return_value=generated) as uuid4:
+            self.assertEqual(operation_id(None), "op-generated")
+            self.assertEqual(operation_id("op-valid"), "op-valid")
+            self.assertEqual(operation_id("op-" + "x" * 128), "op-" + "x" * 128)
             for identifier in invalid:
                 with self.subTest(boundary="generator", identifier=identifier):
                     with self.assertRaises(ValueError):
                         operation_id(identifier)
+            uuid4.assert_called_once_with()
 
         journal = plan.journal("op-identity-boundaries", InventorySnapshot(None))
         receipt = journal.receipt("completed").encode()
