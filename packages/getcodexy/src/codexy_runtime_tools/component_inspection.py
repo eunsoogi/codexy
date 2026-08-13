@@ -11,7 +11,8 @@ from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_diagnostic_surfaces import valid_surface
-from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, classify_installed_inventory, compare_versions
+from .component_observed_inventory import observe_installed_inventory
+from .component_resolver import ComponentResolutionError, admit_installed_inventory, compare_versions
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
 from .plugin_resolution import named_marketplace, official_marketplace
@@ -90,10 +91,7 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
             else:
                 actual, records, admission_error = _actual(manifest, installed, root)
                 host_error = None
-    errors = []
-    error = host_error or admission_error or inventory_error
-    if error:
-        errors.append({"code": error})
+    errors = [{"code": code} for code in (host_error, admission_error, inventory_error) if code]
     if host_error or admission_error or inventory_error or (recorded is not None and recorded != actual):
         consistency = "inconsistent"
         if not errors:
@@ -155,11 +153,8 @@ def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -
 
 
 def _observed(manifest: ComponentManifest, installed: object) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
-    try:
-        records = {record.component.id: record.entry for record in classify_installed_inventory(manifest, installed).records if record.component is not None}
-        return canonical_components(manifest, set(records)), records, None
-    except ComponentResolutionError as error:
-        return (), {}, error.code
+    observed = observe_installed_inventory(manifest, installed)
+    return observed.selection, observed.records, observed.error
 
 
 def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple[str, ...] | None, records: dict[str, dict[str, object]], admission_error: str | None) -> list[dict[str, str]]:

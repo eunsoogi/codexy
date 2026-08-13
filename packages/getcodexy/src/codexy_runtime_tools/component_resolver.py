@@ -207,13 +207,19 @@ def _component_records(manifest: ComponentManifest, inventory: ClassifiedInstall
 
 
 def _valid_record(entry: dict[str, object], component: Component, manifest: ComponentManifest, marketplace_root: Path) -> bool:
-    asset = component.asset
+    if not valid_observed_record(entry, component, manifest):
+        return False
     source = entry.get("source")
-    if not isinstance(source, dict) or source.get("source") != "local" or not isinstance(source.get("path"), str) or not Path(source["path"]).is_absolute():
+    return isinstance(source, dict) and isinstance(source.get("path"), str) and Path(source["path"]) == marketplace_root / component.asset.package_root
+
+
+def valid_observed_record(entry: dict[str, object], component: Component, manifest: ComponentManifest) -> bool:
+    """Validate the identity a failed marketplace probe can still establish."""
+    source = entry.get("source")
+    if not isinstance(source, dict) or source.get("source") != "local" or not isinstance(source.get("path"), str):
         return False
-    if Path(source["path"]) != marketplace_root / asset.package_root:
-        return False
-    return entry.get("pluginId") == asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and valid_semver(entry.get("version"))
+    path, expected = Path(source["path"]), Path(component.asset.package_root)
+    return path.is_absolute() and path.parts[-len(expected.parts):] == expected.parts and entry.get("pluginId") == component.asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and valid_semver(entry.get("version"))
 
 
 def _version_tuple(version: str) -> tuple[int, int, int]:
