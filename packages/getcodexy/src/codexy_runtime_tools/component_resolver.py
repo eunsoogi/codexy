@@ -60,6 +60,10 @@ def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] |
     return resolved
 
 
+def canonical_components(manifest: ComponentManifest, components: set[str]) -> tuple[str, ...]:
+    return tuple(component for component in manifest.component_ids if component in components)
+
+
 def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> tuple[str, ...]:
     return _reconcile_classified_inventory(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
 
@@ -113,9 +117,9 @@ def classify_installed_inventory(manifest: ComponentManifest, inventory: object)
             component = named or identified
             canonical = named is component and identified is component and plugin == component.plugin and plugin_id == component.asset.plugin_id and marketplace == manifest.marketplace.name
             records.append(ClassifiedInstalledRecord(entry, component, InstalledIdentity.KNOWN, canonical))
-        elif marketplace == manifest.marketplace.name or identifier_marketplace == manifest.marketplace.name:
+        elif _valid_identity_triple(plugin, identifier_plugin, marketplace, identifier_marketplace) and marketplace == manifest.marketplace.name:
             records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.UNKNOWN, False))
-        elif not isinstance(plugin, str) or identifier_plugin is None or not isinstance(marketplace, str):
+        elif not _valid_identity_triple(plugin, identifier_plugin, marketplace, identifier_marketplace):
             records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.MALFORMED, False))
         else:
             records.append(ClassifiedInstalledRecord(entry, None, InstalledIdentity.IRRELEVANT, False))
@@ -138,6 +142,10 @@ def _plugin_id_parts(value: object) -> tuple[str | None, str | None]:
         return None, None
     plugin, marketplace = value.split("@")
     return plugin or None, marketplace or None
+
+
+def _valid_identity_triple(plugin: object, identifier_plugin: str | None, marketplace: object, identifier_marketplace: str | None) -> bool:
+    return isinstance(plugin, str) and bool(plugin) and isinstance(marketplace, str) and bool(marketplace) and identifier_plugin == plugin and identifier_marketplace == marketplace
 
 
 def _component_records(manifest: ComponentManifest, inventory: ClassifiedInstalledInventory, marketplace_root: Path) -> dict[str, dict[str, object]]:

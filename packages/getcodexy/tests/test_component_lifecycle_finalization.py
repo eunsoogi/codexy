@@ -72,7 +72,7 @@ class LifecycleFinalizationTests(unittest.TestCase):
             payload["selection_after"] = []
             receipt.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
 
-            with patch.object(lifecycle, "write_inventory") as inventory, self.assertRaisesRegex(ValueError, "committed transaction"):
+            with patch.object(lifecycle, "write_inventory") as inventory, self.assertRaisesRegex(ValueError, "operation receipt"):
                 run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-committed-conflict")
             inventory.assert_not_called()
             self.assertEqual(state.mutations, [("plugin", "add", "codexy@codexy", "--json")])

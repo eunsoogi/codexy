@@ -64,7 +64,7 @@ class LifecyclePreflightTests(unittest.TestCase):
         for marketplace_present in (False, True):
             for case, unregistered_error, registered_error in cases:
                 with self.subTest(marketplace_present=marketplace_present, case=case), fixture(marketplace_present=marketplace_present) as state:
-                    record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "marketplaceName": "codexy"}
+                    record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "pluginId": "codexy-future@codexy", "marketplaceName": "codexy"}
                     if case == "conflict":
                         record["marketplaceName"] = "other-marketplace"
                     if case == "missing-name":

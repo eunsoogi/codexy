@@ -8,7 +8,8 @@ import os
 import sys
 from pathlib import Path
 
-from .component_lifecycle import RECEIPT_SCHEMA, run_operation
+from .component_lifecycle import run_operation
+from .component_transaction_receipts import RECEIPT_SCHEMA
 
 
 def main(argv: list[str] | None = None) -> int:

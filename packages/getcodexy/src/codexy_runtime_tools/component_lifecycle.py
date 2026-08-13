@@ -7,20 +7,18 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from .component_lifecycle_admission import admitted_selection, matching_receipt, replay_receipt
+from .component_lifecycle_admission import admit_pending_receipt, admitted_selection, matching_receipt, replay_receipt
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
-from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
+from .component_resolver import ComponentResolutionError, canonical_components, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
-from .component_transaction_receipts import write_receipt
+from .component_transaction_receipts import operation_receipt, write_receipt
 from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
 from .github_pre_session import trusted_codex
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
 from .updater import _absolute, _validate_real_path
 
 
-RECEIPT_SCHEMA = "getcodexy.operation-receipt.v1"
-SOURCE = "installed-component-inventory"
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
@@ -36,26 +34,37 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         pending = read_journal(home)
         if pending is not None:
             _validate_journal(pending, manifest)
-        replay = replay_receipt(home, identifier, command, requested)
+            pending_receipt = admit_pending_receipt(home, manifest, pending)
+        else:
+            pending_receipt = None
+        replay = replay_receipt(home, manifest, identifier, command, requested)
         if replay is not None and pending is None:
             return replay
         try:
             validate_request(command, requested, manifest)
             recorded = recorded_selection(home, manifest)
         except ComponentResolutionError as error:
-            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), (), (), "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
-            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root)
         except ComponentResolutionError as error:
-            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), (), (), "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
-            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
         if pending is not None:
-            _recover_if_needed(home, executable, invoke, manifest, root or official_marketplace_root(executable, invoke))
+            if pending.phase == "rolling-back" and pending_receipt is not None:
+                if before != pending.before or recorded != pending.before:
+                    raise ValueError("pending transaction receipt does not match restored state")
+                clear_journal(home)
+                if replay is not None:
+                    return replay
+                pending = None
+            if pending is not None:
+                _recover_if_needed(home, executable, invoke, manifest, root or official_marketplace_root(executable, invoke))
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root)
@@ -67,9 +76,9 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
                 raise ComponentResolutionError("inconsistent-installed-state")
             resolved, target, adds, removes = _plan(command, requested, before, recorded, manifest)
         except ComponentResolutionError as error:
-            return _terminal(home, _receipt(identifier, command, requested, (), before, before, "rejected", error.code))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), before, before, "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
-            return _terminal(home, _receipt(identifier, command, requested, (), before, before, "rejected", "inconsistent-installed-state"))
+            return _terminal(home, operation_receipt(identifier, command, requested, (), before, before, "rejected", "inconsistent-installed-state"))
 
         journal = Journal(identifier, command, requested, resolved, before, target, InventorySnapshot.capture(home), "started")
         write_journal(home, journal)
@@ -80,7 +89,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             if root is None:
                 raise RuntimeError("component operation failed; durable recovery is required") from error
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
-            receipt = _terminal(home, _receipt(identifier, command, requested, resolved, before, before, "rolled-back", "operation-failed"))
+            receipt = _terminal(home, operation_receipt(identifier, command, requested, resolved, before, before, "rolled-back", "operation-failed"))
             clear_journal(home)
             return receipt
         return _write_completed(home, executable, invoke, manifest, root, journal, installed)
@@ -106,7 +115,7 @@ def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: C
             installed = _apply_forward(executable, invoke, manifest, root, journal, journal.resolved, ())
         except BaseException as error:
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
-            _terminal(home, _receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, journal.before, "rolled-back", "operation-failed"))
+            _terminal(home, operation_receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, journal.before, "rolled-back", "operation-failed"))
             clear_journal(home)
             return
         _write_completed(home, executable, invoke, manifest, root, journal, installed)
@@ -120,7 +129,7 @@ def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: C
             _write_completed(home, executable, invoke, manifest, root, journal, installed)
             return
     _rollback_or_raise(home, executable, invoke, manifest, root, journal, RuntimeError("interrupted component operation"))
-    _terminal(home, _receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, journal.before, "rolled-back", "operation-failed"))
+    _terminal(home, operation_receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, journal.before, "rolled-back", "operation-failed"))
     clear_journal(home)
 
 
@@ -144,11 +153,11 @@ def _write_completed(home: Path, executable: Path, invoke: Runner, manifest: Com
 
 def _finish_committed(home: Path, executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, journal: Journal) -> dict[str, object]:
     installed = verify_post_operation_inventory(manifest, _list(executable, invoke), journal.target, root)
-    receipt = _receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, installed, "completed")
-    if matching_receipt(home, receipt):
+    receipt = operation_receipt(journal.identifier, journal.command, journal.requested, journal.resolved, journal.before, installed, "completed")
+    if matching_receipt(home, manifest, receipt):
         clear_journal(home)
         return receipt
-    if replay_receipt(home, journal.identifier, journal.command, journal.requested) is not None:
+    if replay_receipt(home, manifest, journal.identifier, journal.command, journal.requested) is not None:
         raise ValueError(f"operation receipt conflicts with committed transaction: {journal.identifier}")
     write_inventory(home, installed)
     receipt = _terminal(home, receipt)
@@ -159,8 +168,8 @@ def _finish_committed(home: Path, executable: Path, invoke: Runner, manifest: Co
 def _plan(command: str, requested: tuple[str, ...], before: tuple[str, ...], recorded: tuple[str, ...] | None, manifest: ComponentManifest) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
     if command == "install":
         resolved = resolve_components(manifest, requested)
-        target = _canonical(manifest, set(before) | set(resolved))
-        return resolved, target, _canonical(manifest, set(target) - set(before)), ()
+        target = canonical_components(manifest, set(before) | set(resolved))
+        return resolved, target, canonical_components(manifest, set(target) - set(before)), ()
     if command == "update":
         if recorded is None:
             raise ComponentResolutionError("no-recorded-selection")
@@ -171,8 +180,8 @@ def _plan(command: str, requested: tuple[str, ...], before: tuple[str, ...], rec
     if not requested:
         raise ComponentResolutionError("missing-removal-target")
     resolve_components(manifest, requested)
-    resolved = _canonical(manifest, set(requested))
-    target = _canonical(manifest, set(before) - set(resolved))
+    resolved = canonical_components(manifest, set(requested))
+    target = canonical_components(manifest, set(before) - set(resolved))
     if target not in manifest.compatible_combinations:
         raise ComponentResolutionError("dependency-protected-removal")
     return resolved, target, (), tuple(reversed(resolved))
@@ -214,7 +223,7 @@ def _selection(manifest: ComponentManifest, payload: object, root: Path) -> tupl
 
 def _validate_journal(journal: Journal, manifest: ComponentManifest) -> None:
     if journal.command not in {"install", "update", "remove"} or any(
-        value != _canonical(manifest, set(value)) for value in (journal.before, journal.target, journal.resolved)
+        value != canonical_components(manifest, set(value)) for value in (journal.before, journal.target, journal.resolved)
     ) or journal.before not in manifest.compatible_combinations or journal.target not in manifest.compatible_combinations:
         raise ValueError("component transaction journal is inconsistent")
     snapshot = journal.snapshot.contents
@@ -236,11 +245,3 @@ def _validate_journal(journal: Journal, manifest: ComponentManifest) -> None:
 def _terminal(home: Path, receipt: dict[str, object]) -> dict[str, object]:
     write_receipt(home, receipt)
     return receipt
-
-
-def _canonical(manifest: ComponentManifest, components: set[str]) -> tuple[str, ...]:
-    return tuple(component for component in manifest.component_ids if component in components)
-
-
-def _receipt(operation_id: str, command: str, requested: tuple[str, ...], resolved: tuple[str, ...], before: tuple[str, ...], after: tuple[str, ...], outcome: str, error: str | None = None) -> dict[str, object]:
-    return {"schema": RECEIPT_SCHEMA, "operation_id": operation_id, "command": command, "outcome": outcome, "requested_components": list(requested), "resolved_components": list(resolved), "selection_before": list(before), "selection_after": list(after), "installed_components": list(after), "source_of_truth": SOURCE, "errors": [] if error is None else [{"code": error}]}

@@ -169,7 +169,7 @@ class ComponentManifestResolverTests(unittest.TestCase):
         future = {"installed": [self._installed("codexy", "9.0.0")]}
         core = {"installed": [self._installed("codexy")]}
         cases = [
-            ({"installed": [malformed_unknown]}, self.marketplace_root, "unknown-installed-component"),
+            ({"installed": [malformed_unknown]}, self.marketplace_root, "invalid-installed-inventory"),
             (future, self.marketplace_root, "component-version-mismatch"),
             (core, Path("/wrong-marketplace"), "conflicting-installed-state"),
         ]
@@ -186,7 +186,8 @@ class ComponentManifestResolverTests(unittest.TestCase):
             ([{"name": "codexy", "pluginId": "malformed", "marketplaceName": "other"}], "conflicting-installed-state", "conflicting-installed-state"),
             ([canonical], "conflicting-installed-state", ("core",)),
             ([canonical, self._installed("codexy-github")], "conflicting-installed-state", ("core", "github")),
-            ([{"name": "future", "pluginId": "future@codexy", "marketplaceName": "other"}], "unknown-installed-component", "unknown-installed-component"),
+            ([{"name": "future", "pluginId": "future@codexy", "marketplaceName": "codexy"}], "unknown-installed-component", "unknown-installed-component"),
+            ([{"name": "alpha", "pluginId": "beta@other", "marketplaceName": "other"}], "invalid-installed-inventory", "invalid-installed-inventory"),
             ([canonical, canonical], "conflicting-installed-state", "conflicting-installed-state"),
         ]
         for records, unregistered, registered in cases:
