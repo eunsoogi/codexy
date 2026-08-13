@@ -12,6 +12,7 @@ from .component_resolver import ComponentResolutionError, reconcile_installed_in
 from .component_transaction_identity import operation_id
 from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_inventory, read_journal, transaction_lock, write_inventory, write_journal, write_receipt
 from .github_pre_session import trusted_codex
+from .plugin_resolution import named_marketplace, official_marketplace
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
 from .updater import _absolute, _validate_real_path
 
@@ -30,12 +31,24 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
     executable, invoke = trusted_codex(codex or _find_codex()), runner or (lambda args: _run(args, home))
     manifest, identifier = load_component_manifest(), _operation_id(operation_id)
     with transaction_lock(home):
-        root = official_marketplace_root(executable, invoke)
-        _recover_if_needed(home, executable, invoke, manifest, root)
+        pending = read_journal(home)
+        if pending is not None:
+            _validate_journal(pending, manifest)
+        try:
+            _validate_request(command, requested, manifest)
+            recorded = _recorded_selection(home, manifest)
+        except ComponentResolutionError as error:
+            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
+        except (OSError, ValueError, RuntimeError):
+            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
+        root = _existing_marketplace_root(executable, invoke)
+        if pending is not None:
+            _recover_if_needed(home, executable, invoke, manifest, root or official_marketplace_root(executable, invoke))
+            root = _existing_marketplace_root(executable, invoke)
+            recorded = _recorded_selection(home, manifest)
         before: tuple[str, ...] = ()
         try:
-            before = _selection(manifest, _list(executable, invoke), root)
-            recorded = _recorded_selection(home, manifest)
+            before = () if root is None else _selection(manifest, _list(executable, invoke), root)
             if recorded is not None and recorded != before:
                 raise ComponentResolutionError("inconsistent-installed-state")
             resolved, target, adds, removes = _plan(command, requested, before, recorded, manifest)
@@ -47,8 +60,11 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         journal = Journal(identifier, command, requested, resolved, before, target, InventorySnapshot.capture(home), "started")
         write_journal(home, journal)
         try:
+            root = root or official_marketplace_root(executable, invoke)
             installed = _apply_forward(executable, invoke, manifest, root, journal, adds, removes)
         except BaseException as error:
+            if root is None:
+                raise RuntimeError("component operation failed; durable recovery is required") from error
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(home, _receipt(identifier, command, requested, resolved, before, before, "rolled-back", "operation-failed"))
             clear_journal(home)
@@ -97,8 +113,8 @@ def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: C
 def _rollback_or_raise(home: Path, executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, journal: Journal, cause: BaseException) -> None:
     try:
         write_journal(home, journal.with_phase("rolling-back"))
-        _restore_selection(executable, invoke, manifest, journal.before)
-        restored = verify_post_operation_inventory(manifest, _list(executable, invoke), journal.before, root)
+        _restore_selection(executable, invoke, manifest, root, journal.before)
+        restored = _selection(manifest, _list(executable, invoke), root)
         if restored != journal.before:
             raise RuntimeError("restored selection did not match the operation snapshot")
         journal.snapshot.restore(home)
@@ -142,12 +158,21 @@ def _plan(command: str, requested: tuple[str, ...], before: tuple[str, ...], rec
     return resolved, target, (), tuple(reversed(resolved))
 
 
-def _restore_selection(executable: Path, invoke: Runner, manifest: ComponentManifest, before: tuple[str, ...]) -> None:
-    """Re-add the snapshot to restore versions, then remove every non-snapshot component."""
+def _validate_request(command: str, requested: tuple[str, ...], manifest: ComponentManifest) -> None:
+    if command == "remove" and not requested:
+        raise ComponentResolutionError("missing-removal-target")
+    if command == "install" or requested:
+        resolve_components(manifest, requested)
+
+
+def _restore_selection(executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, before: tuple[str, ...]) -> None:
+    """Restore the selection without replacing a coherent prior-version component."""
+    current = _selection(manifest, _list(executable, invoke), root)
     for component in before:
-        _mutate(executable, invoke, "add", manifest, component)
+        if component not in current:
+            _mutate(executable, invoke, "add", manifest, component)
     for component in reversed(manifest.component_ids):
-        if component not in before:
+        if component in current and component not in before:
             _mutate(executable, invoke, "remove", manifest, component)
 
 
@@ -168,6 +193,11 @@ def _mutate(executable: Path, invoke: Runner, action: str, manifest: ComponentMa
 
 def _list(executable: Path, invoke: Runner) -> object:
     return _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
+
+
+def _existing_marketplace_root(executable: Path, invoke: Runner) -> Path | None:
+    payload = _json(invoke([str(executable), "plugin", "marketplace", "list", "--json"]), "plugin marketplace list")
+    return official_marketplace(payload) if named_marketplace(payload) else None
 
 
 def _selection(manifest: ComponentManifest, payload: object, root: Path) -> tuple[str, ...]:

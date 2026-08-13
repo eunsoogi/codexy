@@ -10,8 +10,8 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 
 class fixture:
-    def __init__(self, selection: set[str] | None = None, *, fail_add: str | None = None, fail_remove: str | None = None, interrupt_add: str | None = None, marketplace_present: bool = True, versions: dict[str, str] | None = None) -> None:
-        self.selection, self.fail_add, self.fail_remove, self.interrupt_add, self.marketplace_present, self.versions = selection or set(), fail_add, fail_remove, interrupt_add, marketplace_present, versions or {}
+    def __init__(self, selection: set[str] | None = None, *, fail_add: str | None = None, fail_remove: str | None = None, fail_upgrade: bool = False, interrupt_add: str | None = None, marketplace_present: bool = True, versions: dict[str, str] | None = None) -> None:
+        self.selection, self.fail_add, self.fail_remove, self.fail_upgrade, self.interrupt_add, self.marketplace_present, self.versions = selection or set(), fail_add, fail_remove, fail_upgrade, interrupt_add, marketplace_present, versions or {}
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
         self.home, self.marketplace, self.calls, self.mutations = self.root / "home", self.root / "marketplace", [], []
@@ -38,8 +38,11 @@ class fixture:
             self.mutations.append(tail)
             payload = {"ok": True}
         elif tail[:3] == ("plugin", "marketplace", "upgrade"):
-            self.versions = {component: "1.3.0" for component in self.selection}
             self.mutations.append(tail)
+            if self.fail_upgrade:
+                self.fail_upgrade = False
+                return subprocess.CompletedProcess(command, 1, "", "failed")
+            self.versions = {component: "1.3.0" for component in self.selection}
             payload = {"ok": True}
         elif tail == ("plugin", "list", "--json"):
             payload = {"installed": [installed(self.marketplace, component, self.versions.get(component, "1.3.0")) for component in ("core", "github", "devtools") if component in self.selection]}

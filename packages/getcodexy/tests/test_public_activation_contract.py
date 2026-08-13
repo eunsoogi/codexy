@@ -39,6 +39,7 @@ class PublicActivationContractTests(unittest.TestCase):
             "test_component_lifecycle_interrupt.py",
             "test_component_lifecycle_journal.py",
             "test_component_lifecycle_finalization.py",
+            "test_component_lifecycle_preflight.py",
             "test_component_lifecycle_update_recovery.py",
             "test_component_transaction_durability.py",
         ):
