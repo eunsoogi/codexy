@@ -5,8 +5,12 @@ use std::{
     process::{Command as StdCommand, Output},
     rc::Rc,
 };
-use crate::support::{self, FixtureCommand, make_executable};
-const AUTHORIZED: [&str; 9] = [
+#[path = "fixture_matrix_commands.rs"]
+mod fixture_matrix_commands;
+
+use crate::support::{self, FixtureCommand};
+use fixture_matrix_commands::{fake_activator, fake_gh, fake_sync_version};
+const AUTHORIZED: [&str; 10] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
@@ -15,6 +19,7 @@ const AUTHORIZED: [&str; 9] = [
     "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy-devtools/.codex-plugin/plugin.json",
     "plugins/codexy-github/.codex-plugin/plugin.json",
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/codexy-runtime/src/version/bootstrap.rs",
 ];
 const PRESERVED: [&str; 3] = [
@@ -196,55 +201,4 @@ fn git(root: &Path, arguments: &[&str], starts: &Cell<usize>) -> Result<(), Box<
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
-}
-
-fn fake_gh(path: &Path) -> std::io::Result<()> {
-    executable(path, "#!/bin/sh\nif test -n \"${FAKE_PR_STATE_FILE:-}\"; then cat \"$FAKE_PR_STATE_FILE\"; else printf '%s\\n' \"$FAKE_PR_STATE\"; fi\n")
-}
-
-fn fake_activator(path: &Path) -> std::io::Result<()> {
-    executable(
-        path,
-        r##"#!/bin/sh
-set -eu
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --repo-root) root="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-for path in \
-  .agents/plugins/marketplace.json \
-  .agents/plugins/release-publish-contract.json \
-  .agents/plugins/runtime-activation.json \
-  plugins/codexy/.codex-plugin/plugin.json \
-  plugins/codexy-devtools/.codex-plugin/plugin.json \
-  plugins/codexy-github/.codex-plugin/plugin.json \
-  plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
-  plugins/codexy-devtools/mcp/codexy-mcp-lsp \
-  packages/codexy-runtime/src/version/bootstrap.rs
-do
-  mkdir -p "$root/$(dirname "$path")"
-  cp "$EXPECTED_ROOT/$path" "$root/$path"
-done
-"##,
-    )
-}
-
-fn fake_sync_version(path: &Path) -> std::io::Result<()> {
-    executable(
-        path,
-        r##"#!/bin/sh
-set -eu
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-for path in packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock; do
-  cp "$EXPECTED_ROOT/$path" "$root/$path"
-done
-"##,
-    )
-}
-
-fn executable(path: &Path, source: &str) -> std::io::Result<()> {
-    fs::write(path, source)?;
-    make_executable(path)
 }

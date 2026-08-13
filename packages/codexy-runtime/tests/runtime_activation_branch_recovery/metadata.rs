@@ -36,6 +36,7 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         ".agents/plugins/marketplace.json",
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",
+        "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
         "packages/getcodexy/tests/fixtures/component-installation-cases.json",
     ] {
         let target = repo.join(relative);

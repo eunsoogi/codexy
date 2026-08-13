@@ -6,6 +6,9 @@ use sha2::{Digest as _, Sha256};
 
 use super::{activate, apply_with, canonical, prepare};
 
+#[path = "strict_json_tests.rs"]
+mod strict_json_tests;
+
 const WRAPPERS: [&str; 2] = [
     "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
     "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",

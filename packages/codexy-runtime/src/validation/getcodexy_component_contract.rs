@@ -1,25 +1,27 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use serde_json::Value;
 
 #[path = "getcodexy_component_contract_cases.rs"]
 mod cases;
+#[path = "getcodexy_component_manifest.rs"]
+mod component_manifest;
 #[path = "getcodexy_component_contract_schema.rs"]
 mod schema;
 
 use schema::{
-    COMPONENTS, exact_array, exact_array_value, exact_map_string, exact_string, object,
-    object_value,
+    COMPONENTS, DOMAIN_ERRORS, exact_array, exact_array_value, exact_map_string, exact_string,
+    object, object_value,
 };
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
-    match contract_and_fixtures(plugin_root) {
+    match validate(plugin_root) {
         Ok(()) => Vec::new(),
         Err(error) => vec![error],
     }
 }
 
-fn contract_and_fixtures(plugin_root: &Path) -> Result<(), String> {
+pub(crate) fn validate(plugin_root: &Path) -> Result<(), String> {
     let Some(root) = source_contract_root(plugin_root)? else {
         return Ok(());
     };
@@ -31,7 +33,10 @@ fn validate_contract_root(root: &Path) -> Result<(), String> {
         load(&root.join("packages/getcodexy/contracts/component-installation-contract.json"))?;
     let fixtures =
         load(&root.join("packages/getcodexy/tests/fixtures/component-installation-cases.json"))?;
+    let manifest =
+        load(&root.join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"))?;
     check_contract(&contract)?;
+    component_manifest::check(&manifest, &contract)?;
     cases::check(&fixtures)?;
     let documentation =
         std::fs::read_to_string(root.join("docs/getcodexy-component-installation.md"))
@@ -69,8 +74,7 @@ fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
 }
 
 fn repository_markers(root: &Path) -> bool {
-    root.join(".git").exists()
-        && root.join("AGENTS.md").is_file()
+    root.join("AGENTS.md").is_file()
         && root.join(".agents/plugins/marketplace.json").is_file()
         && root.join("packages/getcodexy/pyproject.toml").is_file()
 }
@@ -79,7 +83,7 @@ fn load(path: &Path) -> Result<Value, String> {
     std::fs::read_to_string(path)
         .map_err(|error| format!("{}: {error}", crate::paths::display_relative(path)))
         .and_then(|text| {
-            serde_json::from_str(&text)
+            crate::strict_json::parse(&text)
                 .map_err(|error| format!("{}: {error}", crate::paths::display_relative(path)))
         })
 }
@@ -89,6 +93,17 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         contract,
         "schema",
         "getcodexy.component-installation-contract.v1",
+    )?;
+    let component_manifest = object(contract, "component_manifest")?;
+    exact_map_string(
+        component_manifest,
+        "schema",
+        "getcodexy.component-manifest.v1",
+    )?;
+    exact_map_string(
+        component_manifest,
+        "package_resource",
+        "codexy_runtime_tools/component-manifest.json",
     )?;
     exact_array(contract, "components", COMPONENTS)?;
     let products = object(contract, "component_products")?;
@@ -212,6 +227,15 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         ],
         "required_doctor_fields",
     )?;
+    let errors = object(contract, "domain_errors")?;
+    if errors.keys().map(String::as_str).collect::<BTreeSet<_>>()
+        != DOMAIN_ERRORS.iter().copied().collect()
+        || errors
+            .values()
+            .any(|value| value.as_str().is_none_or(str::is_empty))
+    {
+        return Err("domain_errors must be the closed public component error contract".to_owned());
+    }
     Ok(())
 }
 

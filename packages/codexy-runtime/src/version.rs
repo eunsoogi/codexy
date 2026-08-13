@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
@@ -10,11 +13,14 @@ pub mod activation;
 mod admission;
 mod bootstrap;
 mod cargo;
+mod component_manifest;
 mod devtools_plugin;
 mod fields;
 mod github_plugin;
 mod mutation;
+mod mutation_inputs;
 mod runtime_selection;
+mod semver;
 mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -24,6 +30,7 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::set_version;
+pub(crate) use semver::require as require_semver;
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
@@ -33,7 +40,7 @@ fn runtime_package_path(root: &std::path::Path, relative: &str) -> PathBuf {
     root.join("packages/codexy-runtime").join(relative)
 }
 
-fn package_manifests() -> Result<Vec<PathBuf>> {
+pub(super) fn package_manifests() -> Result<Vec<PathBuf>> {
     let path = repo_path("package.json")?;
     Ok(if path.exists() {
         vec![path]
@@ -42,33 +49,11 @@ fn package_manifests() -> Result<Vec<PathBuf>> {
     })
 }
 
-pub(super) fn load_json(path: &PathBuf) -> Result<Value> {
+pub(super) fn load_json(path: &Path) -> Result<Value> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
-    serde_json::from_str(&text)
+    crate::strict_json::parse(&text)
         .with_context(|| format!("invalid JSON in {}", display_relative(path)))
-}
-
-pub(super) fn write_json(path: &PathBuf, data: &Value) -> Result<()> {
-    let text = format!("{}\n", serde_json::to_string_pretty(data)?);
-    fs::write(path, text).with_context(|| format!("writing {}", display_relative(path)))
-}
-
-fn require_semver(version: &str) -> Result<()> {
-    let mut parts = version.split('.');
-    let valid = (0..3).all(|_| {
-        let Some(part) = parts.next() else {
-            return false;
-        };
-        !part.is_empty()
-            && part.chars().all(|ch| ch.is_ascii_digit())
-            && (part == "0" || !part.starts_with('0'))
-    }) && parts.next().is_none();
-    if valid {
-        Ok(())
-    } else {
-        bail!("version must be semver-like MAJOR.MINOR.PATCH: {version:?}")
-    }
 }
 
 pub(super) fn require_matching_version(
@@ -116,7 +101,7 @@ pub(super) fn marketplace_plugin_mut_named<'a>(
         .context("marketplace plugin index disappeared")
 }
 
-fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
+pub(super) fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
     marketplace_plugin_mut_named(marketplace, PLUGIN_NAME)
 }
 
@@ -127,10 +112,14 @@ fn marketplace_plugin_mut(marketplace: &mut Value) -> Result<&mut Value> {
 /// Returns an error when required files are missing, JSON is invalid, versions
 /// are malformed, or version values differ.
 pub fn check_versions() -> Result<String> {
-    check_versions_for_tag(None)
+    check_versions_inner(None, true)
 }
 
 pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
+    check_versions_inner(tag, true)
+}
+
+fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Result<String> {
     let manifest_path = repo_path(PLUGIN_MANIFEST)?;
     let market_path = repo_path(MARKETPLACE)?;
     let publish_path = repo_path(PUBLISH_CONTRACT)?;
@@ -152,6 +141,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     )?;
     github_plugin::check(manifest_version)?;
     devtools_plugin::check(manifest_version)?;
+    component_manifest::check(manifest_version)?;
     let manifest_platforms = fields::string_array(
         &manifest,
         "supportedPlatforms",
@@ -225,8 +215,10 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
             &display_relative(&manifest_path),
         )?;
     }
-    wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     cargo::check_version(&repo_root()?, manifest_version)?;
+    if check_runtime_selection {
+        wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
+    }
     if let Some(tag) = tag {
         let expected_tag = format!("v{manifest_version}");
         if tag != expected_tag {

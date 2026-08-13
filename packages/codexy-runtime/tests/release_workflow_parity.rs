@@ -31,6 +31,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     let activation_pr = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "plugins/codexy-devtools")));
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == ".agents/plugins")));
+    assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json")));
     support::assert_structured_literals(
         activation_pr,
         "activation pull request metadata",

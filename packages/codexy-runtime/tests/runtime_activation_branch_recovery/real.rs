@@ -156,6 +156,7 @@ impl Fixture {
                 "plugins/codexy",
                 "plugins/codexy-devtools",
                 "plugins/codexy-github",
+                "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
                 "packages/codexy-runtime/src/version/bootstrap.rs",
             ],
         )?;

@@ -1,6 +1,10 @@
 {
   "schema": "getcodexy.component-installation-contract.v1",
   "contract_version": 1,
+  "component_manifest": {
+    "schema": "getcodexy.component-manifest.v1",
+    "package_resource": "codexy_runtime_tools/component-manifest.json"
+  },
   "components": ["core", "github", "devtools"],
   "component_products": {
     "core": "codexy",
@@ -106,6 +110,14 @@
     "dependency-protected-removal": "A requested removal is still required by a retained component.",
     "no-recorded-selection": "update requires a recorded installed component inventory.",
     "inconsistent-installed-state": "The installed inventory violates the dependency graph.",
+    "unknown-installed-component": "The official Codexy marketplace inventory contains an unrecognized product.",
+    "conflicting-installed-state": "An installed record does not match the selected official marketplace asset.",
+    "mixed-version-state": "Installed Codexy components do not share one lockstep version.",
+    "component-version-mismatch": "An installed component version is newer than the manifest target or differs from the required post-operation version.",
+    "invalid-installed-inventory": "The host plugin inventory has an invalid shape.",
+    "conflicting-component-request": "A component request contains a duplicate or conflicting operand.",
+    "incompatible-component-selection": "A component selection is not in the manifest compatibility set.",
+    "installed-state-mismatch": "The fresh installed inventory differs from the expected selection.",
     "operation-failed": "A mutation did not complete and the pre-operation selection was restored."
   }
 }

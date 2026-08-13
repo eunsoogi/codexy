@@ -4,11 +4,19 @@ use crate::support::copy_dir;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const CONTRACT_ARTIFACTS: [&str; 3] = [
+const CONTRACT_ARTIFACTS: [&str; 4] = [
     "docs/getcodexy-component-installation.md",
     "packages/getcodexy/contracts/component-installation-contract.json",
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/getcodexy/tests/fixtures/component-installation-cases.json",
 ];
+
+#[test]
+fn public_validator_accepts_all_canonical_source_contract_artifacts() -> TestResult {
+    let fixture = CanonicalSourceFixture::new()?;
+    assert_success(validate(&fixture.plugin_root())?, "canonical source contract artifacts");
+    Ok(())
+}
 
 #[test]
 fn public_validator_fails_closed_for_each_missing_source_contract_artifact() -> TestResult {
@@ -17,7 +25,10 @@ fn public_validator_fails_closed_for_each_missing_source_contract_artifact() -> 
         fs::remove_file(fixture.root().join(missing))?;
 
         let output = validate(&fixture.plugin_root())?;
-        assert!(!output.status.success(), "{missing} unexpectedly passed");
+        assert!(
+            !output.status.success(),
+            "{missing} unexpectedly passed"
+        );
     }
     Ok(())
 }
@@ -101,6 +112,55 @@ fn public_validator_rejects_doctor_and_status_inventory_semantic_drift() -> Test
     absent["stdout"]["inventory_consistency"] = serde_json::json!("consistent");
     fs::write(&cases_path, serde_json::to_string(&cases)?)?;
     assert!(!validate(&fixture.plugin_root())?.status.success());
+    Ok(())
+}
+
+#[test]
+fn public_validator_rejects_manifest_validation_contract_drift() -> TestResult {
+    for (label, mutate) in [
+        ("asset-root", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][1]["asset"]["packageRoot"] = serde_json::json!("plugins/elsewhere");
+        }) as Box<dyn Fn(&mut serde_json::Value)>),
+        ("component-version", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][2]["version"] = serde_json::json!("1.2.0");
+        })),
+        ("required-path", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][0]["asset"]["requiredPaths"] = serde_json::json!(["../unsafe"]);
+        })),
+        ("compatible-combinations", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["compatibleCombinations"] = serde_json::json!([{"components": [], "version": "1.3.0"}]);
+        })),
+        ("domain-errors", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["domainErrors"].as_object_mut().expect("domain errors").remove("unknown-component");
+        })),
+    ] {
+        let fixture = CanonicalSourceFixture::new()?;
+        let manifest_path = fixture
+            .root()
+            .join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
+        let mut manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(&manifest_path)?)?;
+        mutate(&mut manifest);
+        fs::write(&manifest_path, serde_json::to_string(&manifest)?)?;
+
+        assert!(!validate(&fixture.plugin_root())?.status.success(), "{label} drift unexpectedly passed");
+    }
+    Ok(())
+}
+
+#[test]
+fn public_validator_rejects_duplicate_keys_and_out_of_range_semver() -> TestResult {
+    let fixture = CanonicalSourceFixture::new()?;
+    let manifest_path = fixture.root().join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
+    let canonical = fs::read_to_string(&manifest_path)?;
+    for invalid in [
+        canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1),
+        canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1),
+        canonical.replace("\"version\": \"1.3.0\"", "\"version\": \"2147483648.0.0\""),
+    ] {
+        fs::write(&manifest_path, invalid)?;
+        assert!(!validate(&fixture.plugin_root())?.status.success());
+        fs::write(&manifest_path, &canonical)?;
+    }
     Ok(())
 }
 
