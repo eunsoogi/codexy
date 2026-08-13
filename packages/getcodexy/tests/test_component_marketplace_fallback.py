@@ -129,6 +129,20 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             self.assertEqual(result["errors"], [])
             self.assertEqual(result["component_health"], [expected])
 
+    def test_successful_marketplace_rejects_symlinked_component_root_before_health_probe(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            plugin = state.marketplace / "plugins/codexy"
+            external = state.root / "external-codexy"
+            plugin.rename(external)
+            plugin.symlink_to(external, target_is_directory=True)
+            with patch("codexy_runtime_tools.component_inspection._stale") as stale:
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+            stale.assert_not_called()
+
+        self.assertEqual(result["errors"], [{"code": "conflicting-installed-state"}])
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
+
     @staticmethod
     def _changed(entry: dict[str, object], **changes: object) -> dict[str, object]:
         result = deepcopy(entry)

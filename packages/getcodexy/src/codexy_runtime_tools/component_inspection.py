@@ -12,7 +12,7 @@ from typing import Callable
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_diagnostic_surfaces import valid_surface
 from .component_observed_inventory import observe_installed_inventory
-from .component_resolver import ComponentResolutionError, admit_installed_inventory, compare_versions
+from .component_resolver import ComponentResolutionError, admit_inspected_inventory, compare_versions
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
 from .plugin_resolution import named_marketplace, official_marketplace
@@ -138,7 +138,7 @@ def _marketplace_root(executable: Path, invoke: Runner) -> Path | None:
 def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
     actual, records, _ = _observed(manifest, installed)
     try:
-        admitted = admit_installed_inventory(manifest, installed, root)
+        admitted = admit_inspected_inventory(manifest, installed, root)
         if root is None:
             return admitted, {}, None
         if actual != admitted:

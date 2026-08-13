@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 
 from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest, valid_semver
+from .component_source_admission import trusted_component_root
 
 
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -66,6 +67,14 @@ def canonical_components(manifest: ComponentManifest, components: set[str]) -> t
 
 def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> tuple[str, ...]:
     return _reconcile_classified_inventory(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
+
+
+def admit_inspected_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
+    """Admit an inventory before read-only diagnostics dereference component roots."""
+    selected = admit_installed_inventory(manifest, inventory, marketplace_root)
+    if marketplace_root is not None and any(not trusted_component_root(marketplace_root, manifest.component(component)) for component in selected):
+        raise ComponentResolutionError("conflicting-installed-state")
+    return selected
 
 
 def admit_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:

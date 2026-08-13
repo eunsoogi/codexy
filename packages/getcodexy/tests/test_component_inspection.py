@@ -66,6 +66,7 @@ class ComponentInspectionTests(unittest.TestCase):
 
     def test_status_uses_actual_plugins_not_recorded_selection(self) -> None:
         with fixture({"core"}) as state:
+            materialize(state, "core")
             (state.home / "getcodexy").mkdir(parents=True)
             (state.home / "getcodexy" / "installed-components.json").write_text(
                 json.dumps({"schema": "getcodexy.installed-component-inventory.v1", "components": ["core", "github"]}),
