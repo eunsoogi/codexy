@@ -8,8 +8,6 @@ mod cases;
 mod component_manifest;
 #[path = "getcodexy_component_contract_schema.rs"]
 mod schema;
-#[path = "getcodexy_strict_json.rs"]
-mod strict_json;
 
 use schema::{
     COMPONENTS, DOMAIN_ERRORS, exact_array, exact_array_value, exact_map_string, exact_string,
@@ -86,7 +84,7 @@ fn load(path: &Path) -> Result<Value, String> {
     std::fs::read_to_string(path)
         .map_err(|error| format!("{}: {error}", crate::paths::display_relative(path)))
         .and_then(|text| {
-            strict_json::parse(&text)
+            crate::strict_json::parse(&text)
                 .map_err(|error| format!("{}: {error}", crate::paths::display_relative(path)))
         })
 }

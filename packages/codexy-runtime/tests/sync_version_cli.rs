@@ -13,6 +13,8 @@ mod isolation;
 mod admission;
 #[path = "sync_version_cli/fixture_files.rs"]
 mod fixture_files;
+#[path = "sync_version_cli/strict_manifest.rs"]
+mod strict_manifest;
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {

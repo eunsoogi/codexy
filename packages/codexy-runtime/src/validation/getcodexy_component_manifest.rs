@@ -13,7 +13,6 @@ const MANIFEST_FIELDS: &[&str] = &[
 ];
 const COMPONENT_FIELDS: &[&str] = &["id", "plugin", "version", "dependencies", "asset"];
 const ASSET_FIELDS: &[&str] = &["pluginId", "packageRoot", "requiredPaths"];
-const MAX_SEMVER_COMPONENT: u32 = 2_147_483_647;
 
 pub(super) fn check(manifest: &Value, contract: &Value) -> Result<(), String> {
     exact_fields(manifest.as_object(), MANIFEST_FIELDS, "component manifest")?;
@@ -198,13 +197,5 @@ fn exact_fields(
 }
 
 fn semver(value: &str) -> bool {
-    value.split('.').count() == 3
-        && value.split('.').all(|part| {
-            !part.is_empty()
-                && (part == "0" || !part.starts_with('0'))
-                && part.bytes().all(|byte| byte.is_ascii_digit())
-                && part
-                    .parse::<u32>()
-                    .is_ok_and(|number| number <= MAX_SEMVER_COMPONENT)
-        })
+    crate::version::require_semver(value).is_ok()
 }

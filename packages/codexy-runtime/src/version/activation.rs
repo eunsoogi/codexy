@@ -35,6 +35,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     if !repo_root.is_absolute() {
         bail!("repo root must be absolute: {}", repo_root.display());
     }
+    super::require_semver(bootstrap_version)?;
     if bootstrap_version != super::bootstrap::CANDIDATE_VERSION {
         bail!(
             "bootstrap version must be verified public candidate {}",
@@ -176,9 +177,7 @@ fn canonical(value: Value) -> Value {
 }
 
 fn read_json(path: &Path, label: &str) -> Result<Value> {
-    let text =
-        fs::read_to_string(path).with_context(|| format!("reading {label}: {}", path.display()))?;
-    serde_json::from_str(&text).with_context(|| format!("invalid {label} JSON: {}", path.display()))
+    super::load_json(path).with_context(|| format!("invalid {label} JSON: {}", path.display()))
 }
 
 #[cfg(test)]

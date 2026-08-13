@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
@@ -16,6 +19,7 @@ mod fields;
 mod github_plugin;
 mod mutation;
 mod runtime_selection;
+mod semver;
 mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -25,6 +29,7 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::set_version;
+pub(crate) use semver::require as require_semver;
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
@@ -43,33 +48,16 @@ fn package_manifests() -> Result<Vec<PathBuf>> {
     })
 }
 
-pub(super) fn load_json(path: &PathBuf) -> Result<Value> {
+pub(super) fn load_json(path: &Path) -> Result<Value> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
-    serde_json::from_str(&text)
+    crate::strict_json::parse(&text)
         .with_context(|| format!("invalid JSON in {}", display_relative(path)))
 }
 
 pub(super) fn write_json(path: &PathBuf, data: &Value) -> Result<()> {
     let text = format!("{}\n", serde_json::to_string_pretty(data)?);
     fs::write(path, text).with_context(|| format!("writing {}", display_relative(path)))
-}
-
-fn require_semver(version: &str) -> Result<()> {
-    let mut parts = version.split('.');
-    let valid = (0..3).all(|_| {
-        let Some(part) = parts.next() else {
-            return false;
-        };
-        !part.is_empty()
-            && part.chars().all(|ch| ch.is_ascii_digit())
-            && (part == "0" || !part.starts_with('0'))
-    }) && parts.next().is_none();
-    if valid {
-        Ok(())
-    } else {
-        bail!("version must be semver-like MAJOR.MINOR.PATCH: {version:?}")
-    }
 }
 
 pub(super) fn require_matching_version(
