@@ -97,5 +97,19 @@
     "initial_goal": "completed as a finite phase before a fresh execution goal was created",
     "fresh_goal": "active: commit repair, finish proof, obtain Warden/Auditor, then one authorized Sentinel",
     "plan": "mapping, implementation, and test-matrix steps completed; commit/proof in progress"
+  },
+  "current_head_review_receipts": {
+    "warden": {
+      "head": "77c9b1369740385d2e1be8dc280e3c155832fb0d",
+      "verdict": "PASS",
+      "constraints": "source packet inspection only; no command, test, network, GitHub, mutation, or delegation",
+      "finding": "DiagnosticTree centralizes no-follow admission and reads; all diagnostic consumers use admitted trees; #555 admission and #557 lifecycle boundaries remain intact."
+    },
+    "auditor": {
+      "head": "77c9b1369740385d2e1be8dc280e3c155832fb0d",
+      "verdict": "PASS",
+      "constraints": "source and evidence packet inspection only; no command, test, network, GitHub, mutation, or delegation",
+      "finding": "Acceptance satisfied: hostile descendants fail closed to incompatible/manual repair, diagnostics stay read-only, and bootstrap remains the separate transaction command."
+    }
   }
 }
