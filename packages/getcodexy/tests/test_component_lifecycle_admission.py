@@ -141,6 +141,23 @@ class LifecycleAdmissionTests(unittest.TestCase):
             self.assertEqual(state.mutations, [])
             self.assertIsNone(read_journal(state.home))
 
+    def test_terminal_update_rollback_does_not_admit_mixed_version_host_state(self) -> None:
+        with fixture({"core", "github"}, versions={"core": "1.3.0", "github": "1.2.0"}) as state:
+            target = inventory_path(state.home)
+            target.parent.mkdir(parents=True)
+            target.write_text(json.dumps({"schema": "getcodexy.installed-component-inventory.v1", "components": ["core", "github"]}), encoding="utf-8")
+            journal = Journal("op-terminal-mixed", "update", ("github",), ("core", "github"), ("core", "github"), ("core", "github"), InventorySnapshot.capture(state.home), "rolling-back")
+            write_journal(state.home, journal)
+            receipt = target.parent / "receipts" / "op-terminal-mixed.json"
+            receipt.parent.mkdir(parents=True)
+            receipt.write_text(json.dumps(_receipt("op-terminal-mixed", "update", ("github",), ("core", "github"), ("core", "github"), ("core", "github"), "rolled-back", [{"code": "operation-failed"}]), sort_keys=True), encoding="utf-8")
+
+            rejected = run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-terminal-mixed")
+
+            self.assertEqual(rejected["errors"], [{"code": "mixed-version-state"}])
+            self.assertEqual(state.mutations, [])
+            self.assertEqual(read_journal(state.home), journal)
+
         with fixture({"core"}) as state:
             target = inventory_path(state.home)
             target.parent.mkdir(parents=True)

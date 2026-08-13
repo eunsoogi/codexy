@@ -51,7 +51,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            before = admitted_recovery_selection(manifest, inventory, root, pending.target) if pending is not None and pending.command == "update" else admitted_selection(manifest, inventory, root)
+            before = admitted_recovery_selection(manifest, inventory, root, pending.target) if pending is not None and (pending.command, pending.phase) == ("update", "started") else admitted_selection(manifest, inventory, root)
         except ComponentResolutionError as error:
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, error)
         except (OSError, ValueError, RuntimeError):
