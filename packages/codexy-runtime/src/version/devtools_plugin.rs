@@ -2,8 +2,8 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 use super::{
-    MARKETPLACE, fields, load_json, marketplace_plugin_mut_named, repo_path,
-    require_matching_version, string_field, write_json,
+    MARKETPLACE, fields, load_json, marketplace_plugin_mut_named, mutation::Update, repo_path,
+    require_matching_version, string_field,
 };
 
 const NAME: &str = "codexy-devtools";
@@ -82,17 +82,13 @@ fn validated_versions() -> Result<Option<(String, String)>> {
     Ok(Some((manifest_version, marketplace_version)))
 }
 
-pub(super) fn set_version(version: &str) -> Result<()> {
+pub(super) fn prepare_version(version: &str, marketplace: &mut Value) -> Result<Option<Update>> {
     let manifest_path = repo_path(MANIFEST)?;
     if !manifest_path.is_file() {
-        return Ok(());
+        return Ok(None);
     }
-    let marketplace_path = repo_path(MARKETPLACE)?;
     let mut manifest = load_json(&manifest_path)?;
-    let mut marketplace = load_json(&marketplace_path)?;
     manifest["version"] = Value::String(version.to_owned());
-    marketplace_plugin_mut_named(&mut marketplace, NAME)?["version"] =
-        Value::String(version.to_owned());
-    write_json(&manifest_path, &manifest)?;
-    write_json(&marketplace_path, &marketplace)
+    marketplace_plugin_mut_named(marketplace, NAME)?["version"] = Value::String(version.to_owned());
+    Ok(Some(Update::json(manifest_path, &manifest)?))
 }

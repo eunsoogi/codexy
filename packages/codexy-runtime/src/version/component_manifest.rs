@@ -1,7 +1,7 @@
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
-use super::{load_json, repo_path, require_matching_version, write_json};
+use super::{load_json, mutation::Update, repo_path, require_matching_version};
 
 const MANIFEST: &str = "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 const SCHEMA: &str = "getcodexy.component-manifest.v1";
@@ -29,7 +29,7 @@ fn validate_manifest(manifest: &Value, expected_version: Option<&str>) -> Result
     )
 }
 
-pub(super) fn set_version(version: &str) -> Result<()> {
+pub(super) fn prepare_version(version: &str) -> Result<Update> {
     let path = repo_path(MANIFEST)?;
     let mut manifest = load_json(&path)?;
     for field in ["components", "compatibleCombinations"] {
@@ -41,7 +41,7 @@ pub(super) fn set_version(version: &str) -> Result<()> {
             entry["version"] = Value::String(version.to_owned());
         }
     }
-    write_json(&path, &manifest)
+    Update::json(path, &manifest)
 }
 
 fn versions(manifest: &Value, field: &str, key: &str, expected: Option<&str>) -> Result<()> {

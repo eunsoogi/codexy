@@ -56,11 +56,6 @@ pub(super) fn load_json(path: &Path) -> Result<Value> {
         .with_context(|| format!("invalid JSON in {}", display_relative(path)))
 }
 
-pub(super) fn write_json(path: &PathBuf, data: &Value) -> Result<()> {
-    let text = format!("{}\n", serde_json::to_string_pretty(data)?);
-    fs::write(path, text).with_context(|| format!("writing {}", display_relative(path)))
-}
-
 pub(super) fn require_matching_version(
     version: &str,
     label: &str,

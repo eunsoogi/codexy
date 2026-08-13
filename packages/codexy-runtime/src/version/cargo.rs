@@ -49,9 +49,19 @@ pub(super) fn validate_inputs(root: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn set_version(root: &Path, version: &str) -> Result<()> {
-    replace_toml_package_version(&cargo_manifest_path(root), version)?;
-    replace_cargo_lock_package_version(&cargo_lock_path(root), version)
+pub(super) fn prepare_version(root: &Path, version: &str) -> Result<Vec<super::mutation::Update>> {
+    let manifest = cargo_manifest_path(root);
+    let lock = cargo_lock_path(root);
+    Ok(vec![
+        super::mutation::Update::bytes(
+            manifest.clone(),
+            replace_toml_package_version(&manifest, version)?,
+        ),
+        super::mutation::Update::bytes(
+            lock.clone(),
+            replace_cargo_lock_package_version(&lock, version)?,
+        ),
+    ])
 }
 
 fn cargo_package_version(path: &PathBuf) -> Result<String> {
@@ -113,7 +123,7 @@ fn cargo_lock_package_version(path: &PathBuf) -> Result<String> {
         })
 }
 
-fn replace_toml_package_version(path: &PathBuf, version: &str) -> Result<()> {
+fn replace_toml_package_version(path: &PathBuf, version: &str) -> Result<Vec<u8>> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
     let mut in_package = false;
@@ -134,11 +144,10 @@ fn replace_toml_package_version(path: &PathBuf, version: &str) -> Result<()> {
     if !replaced {
         bail!("{} package.version line not found", display_relative(path));
     }
-    fs::write(path, format!("{}\n", lines.join("\n")))
-        .with_context(|| format!("writing {}", display_relative(path)))
+    Ok(format!("{}\n", lines.join("\n")).into_bytes())
 }
 
-fn replace_cargo_lock_package_version(path: &PathBuf, version: &str) -> Result<()> {
+fn replace_cargo_lock_package_version(path: &PathBuf, version: &str) -> Result<Vec<u8>> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
     let mut in_matching_package = false;
@@ -165,6 +174,5 @@ fn replace_cargo_lock_package_version(path: &PathBuf, version: &str) -> Result<(
             display_relative(path)
         );
     }
-    fs::write(path, format!("{}\n", lines.join("\n")))
-        .with_context(|| format!("writing {}", display_relative(path)))
+    Ok(format!("{}\n", lines.join("\n")).into_bytes())
 }
