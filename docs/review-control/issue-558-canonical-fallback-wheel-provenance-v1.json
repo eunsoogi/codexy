@@ -1,0 +1,77 @@
+{
+  "schema": "codexy.review-repair-proof.v1",
+  "issue": 558,
+  "repair": "canonical-fallback-wheel-provenance-v1",
+  "classification": {
+    "level": "strict",
+    "boundary": "#558 owns read-only status/doctor/bootstrap integration; #555 owns component identity, compatibility, and dependency admission; #557 owns lifecycle mutation and recovery.",
+    "tdd": "Historical RED was replayed against 5939b115 before current GREEN. The repair adds independent executable negatives before the resolver/inspection production change."
+  },
+  "ownership": {
+    "widened_ledger": "Parent authorized the minimum #555 resolver-owned, read-only observed-inventory admission abstraction. No lifecycle mutation authority moved from #557.",
+    "non_goals": ["No GitHub mutation", "No marketplace or plugin mutation from status/doctor", "No #557 transaction rewrite", "No release/version change"]
+  },
+  "anchors": {
+    "base": "0655cff6a084494905bee3b9b47f0cf50d8cba00",
+    "review_block_head": "5939b115dd10c56266bca118f2f3beeb3124c897",
+    "fallback_admission_head": "b5bf8029aa2f39a656ed2ef62d733336ef5d8abc",
+    "proof_head": "92a7999295e4cb77b2572434c7688b8c6a7cf1fd",
+    "branch": "eunsoogi/558-component-status-doctor-bootstrap",
+    "proof_tree": "clean before this evidence-only commit"
+  },
+  "findings_to_repairs": [
+    {
+      "finding": "5939b115 Sentinel P1: marketplace-list fallback accepted disabled, noncanonical, duplicate, source-invalid, unknown, or dependency-invalid managed records as healthy.",
+      "repair": "component_observed_inventory.py is a resolver-owned read-only admission boundary; it uses exact manifest classification plus shared record validation, semantic version direction, uniqueness, official source metadata, and dependency closure. component_inspection.py calls it only after marketplace-list failure.",
+      "proof": "test_component_marketplace_fallback.py direct admission matrix and doctor/status marketplace-stage matrix."
+    },
+    {
+      "finding": "Warden P1 at b5bf8029: a suffix-only source path could be dereferenced and falsely attested while marketplace provenance was unavailable.",
+      "repair": "marketplace-stage doctor health now marks populated observations incompatible before version or filesystem checks, retaining live selection plus the distinct host error without probing the unverified source path.",
+      "proof": "test_marketplace_failure_does_not_probe_a_canonical_but_unverified_plugin_path patches _stale and asserts it is never called."
+    },
+    {
+      "finding": "Warden P2: conflicting old or malformed records could suggest bootstrap; oversized numeric semver could escape the typed report.",
+      "repair": "marketplace-stage incompatibility precedes stale/version repairs, and valid_semver performs bounded lexical range validation rather than converting untrusted numeric text.",
+      "proof": "test_rejected_fallback_records_never_offer_bootstrap_even_when_old_or_malformed plus the resolver direct cases."
+    },
+    {
+      "finding": "5939b115 Sentinel P1: no issue-specific installed-wheel public CLI proof.",
+      "repair": "fresh isolated exact-head wheel proof installs getcodexy into a new venv and drives its console entrypoint against a controlled Codex host through empty status/doctor, bootstrap JSON plus idempotent human invocation, and full healthy status/doctor human+JSON readback."
+    }
+  ],
+  "red_green": {
+    "red": {
+      "command": "PYTHONPATH=packages/getcodexy/src:packages/getcodexy/tests python3 - < historical 5939b115 component_inspection module >",
+      "result": "FAIL expected: disabled core after marketplace-list failure was reported healthy instead of incompatible.",
+      "sha256": "b918d9b05220e6192b35532e43a0efc3100113bad4aee309dbcd516080398738"
+    },
+    "green": {
+      "command": "PYTHONPATH=packages/getcodexy/src:packages/getcodexy/tests python3 -m unittest discover -s packages/getcodexy/tests -p 'test_component_*.py'",
+      "result": "PASS: 120 tests",
+      "head": "92a7999295e4cb77b2572434c7688b8c6a7cf1fd"
+    }
+  },
+  "current_proof": [
+    {"command": "uv run --project packages/getcodexy --no-sync python -m unittest discover -s packages/getcodexy/tests", "result": "PASS: 209 tests", "sha256": "f1003989dee70ea6acd48fa2ec64c9477530676b1660dbee2c511b60666069d4"},
+    {"command": "cargo test --manifest-path packages/codexy-runtime/Cargo.toml getcodexy_component_contract --lib", "result": "PASS: 26 tests", "sha256": "223bd81f578a868f2ac40227e4dcb75735cd78cacd3638eec33589fc8765fc8d"},
+    {"command": "scripts/validate-plugin-config --check; scripts/sync-plugin-version --check; scripts/validate-plugin-config --check-touched-loc --base-ref origin/main", "result": "PASS", "hashes": {"plugin": "61a27078ebe2c4abf5b4286d2a5804199e83f0d6cfd4457ce5f3e1d15057a9e9", "version": "e91ccd93e8a7d7ceee0302f3439b3cb3da74ea1445346fc897325256f5cbf8d8", "loc": "3655634ab1eb52545817921d9a8b717783adef5d4cabe53cb840564973181a06"}},
+    {"command": "Ruby YAML parser for .github/workflows/python-package.yml; git diff --check origin/main...HEAD", "result": "PASS", "hashes": {"workflow": "286c5e6e50c7bc437304c8c7416daadf369b2edd85b193db7e9824cb0409f6e3", "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}
+  ],
+  "wheel_console": {
+    "head": "92a7999295e4cb77b2572434c7688b8c6a7cf1fd",
+    "command": "uv build --wheel; uv venv; uv pip install --python <isolated>/bin/python --no-index --find-links <wheelhouse> getcodexy==1.3.0; <isolated>/bin/getcodexy --codex <controlled regular-file host> --codex-home <controlled home> status|doctor|bootstrap [--json]",
+    "result": "PASS: every console exit was 0; one-object JSON schema/command assertions passed; full readback selected core, github, devtools and doctor reported all healthy.",
+    "hashes": {"wheel": "b0275f1fffb163ae8e09a51534f9b50d501dba6a2f82d6c9ff2a48f8e355983e", "schema_log": "a7523f2e372a8919ae27b3da18525bcb3f1735061d143350580500f1ed8c6cda", "bootstrap_json": "be2f0a56bd06cdeeacc5add1c855d10c1fe4ce83c929a7e1f5ab61640e9a4858", "status_full_json": "3fe70837ff9e057bf2a1bbff17b2f44dca30b1ac2fd2ca995e310d60fc3d7123", "doctor_full_json": "b344212214451827cf81263c8dd5105c8bb64e58552d63585db811dd57d545bb"}
+  },
+  "specialists": {
+    "architect": {"identity": "/root/architecture_review", "availability": "terminal historical BLOCK receipt remains in the lane transcript; no separately tracked original artifact exists", "coverage_rationale": "current repair preserved its prescribed distinct #555 resolver and #557 lifecycle ownership boundaries."},
+    "warden": {"identity": "/root/warden_fallback_boundary", "head": "b5bf8029aa2f39a656ed2ef62d733336ef5d8abc", "verdict": "BLOCK", "constraints": "read-only; MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread", "repairs_mapped": ["unverified path non-dereference", "manual repair precedence", "bounded semver"]}
+  },
+  "goal_plan_receipts": {
+    "get_goal": {"status": "active", "objective": "Repair #558 marketplace-failure fallback through a resolver-owned read-only admission abstraction, add independent fallback negatives and exact-head installed-wheel console proof, persist provenance, obtain Auditor acceptance where behavior changes and the one authorized same-Sentinel delta recheck, then request publication authorization on PASS.", "tokensUsed": 254633, "timeUsedSeconds": 936},
+    "update_plan": {"result": {}, "in_progress": "Commit, produce exact-head test/static/wheel proof and durable packet"}
+  },
+  "exposure": {"codegraph_lsp": "Unavailable: codex mcp list --json contains no Codexy registrations or callable Codegraph/LSP tools; direct reads used.", "sha256": "feaecfcfdcae5611a74c8357ed4629bbd506c3aea454bc7f8dbf4080b08b41c2"},
+  "governed_loc": {"base_to_proof_additions": 1182, "base_to_proof_deletions": 43, "new_files": {"component_observed_inventory.py": 73, "test_component_marketplace_fallback.py": 113}, "largest_touched_file": "packages/getcodexy/tests/test_component_inspection.py:249"}
+}
