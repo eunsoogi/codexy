@@ -59,10 +59,10 @@
     {"command": "Ruby YAML parser for .github/workflows/python-package.yml; git diff --check origin/main...HEAD", "result": "PASS", "hashes": {"workflow": "286c5e6e50c7bc437304c8c7416daadf369b2edd85b193db7e9824cb0409f6e3", "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}
   ],
   "wheel_console": {
-    "head": "92a7999295e4cb77b2572434c7688b8c6a7cf1fd",
+    "head": "dce0008abf614af6b422ef9d17316fc9207c1d96",
     "command": "uv build --wheel; uv venv; uv pip install --python <isolated>/bin/python --no-index --find-links <wheelhouse> getcodexy==1.3.0; <isolated>/bin/getcodexy --codex <controlled regular-file host> --codex-home <controlled home> status|doctor|bootstrap [--json]",
     "result": "PASS: every console exit was 0; one-object JSON schema/command assertions passed; full readback selected core, github, devtools and doctor reported all healthy.",
-    "hashes": {"wheel": "b0275f1fffb163ae8e09a51534f9b50d501dba6a2f82d6c9ff2a48f8e355983e", "schema_log": "a7523f2e372a8919ae27b3da18525bcb3f1735061d143350580500f1ed8c6cda", "bootstrap_json": "be2f0a56bd06cdeeacc5add1c855d10c1fe4ce83c929a7e1f5ab61640e9a4858", "status_full_json": "3fe70837ff9e057bf2a1bbff17b2f44dca30b1ac2fd2ca995e310d60fc3d7123", "doctor_full_json": "b344212214451827cf81263c8dd5105c8bb64e58552d63585db811dd57d545bb"}
+    "hashes": {"wheel": "b0275f1fffb163ae8e09a51534f9b50d501dba6a2f82d6c9ff2a48f8e355983e", "schema_log": "a7523f2e372a8919ae27b3da18525bcb3f1735061d143350580500f1ed8c6cda", "bootstrap_json": "988551017ff66e81571d95901dda23c2e6697405f19fc333781313c6c78c42b8", "status_full_json": "3fe70837ff9e057bf2a1bbff17b2f44dca30b1ac2fd2ca995e310d60fc3d7123", "doctor_full_json": "b344212214451827cf81263c8dd5105c8bb64e58552d63585db811dd57d545bb"}
   },
   "specialists": {
     "architect": {"identity": "/root/architecture_review", "availability": "terminal historical BLOCK receipt remains in the lane transcript; no separately tracked original artifact exists", "coverage_rationale": "current repair preserved its prescribed distinct #555 resolver and #557 lifecycle ownership boundaries."},
