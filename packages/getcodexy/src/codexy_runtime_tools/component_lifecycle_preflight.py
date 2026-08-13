@@ -17,6 +17,8 @@ Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
 def validate_request(command: str, requested: tuple[str, ...], manifest: ComponentManifest) -> None:
+    if command == "bootstrap" and requested:
+        raise ComponentResolutionError("components-not-accepted")
     if command == "remove" and not requested:
         raise ComponentResolutionError("missing-removal-target")
     if command == "install" or requested:

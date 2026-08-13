@@ -10,7 +10,7 @@ from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, resolve_components
 
 
-Command = Literal["install", "update", "remove"]
+Command = Literal["install", "update", "remove", "bootstrap"]
 Planner = Callable[[ComponentManifest, Command, tuple[str, ...], tuple[str, ...], tuple[str, ...] | None], object]
 
 
@@ -26,6 +26,7 @@ class RejectionStage(str, Enum):
 
 
 class RejectionKind(str, Enum):
+    COMPONENTS_NOT_ACCEPTED = "components-not-accepted"
     MISSING_REMOVAL_TARGET = "missing-removal-target"
     UNKNOWN_COMPONENT = "unknown-component"
     CONFLICTING_COMPONENT_REQUEST = "conflicting-component-request"
@@ -92,6 +93,8 @@ _HOST_KINDS = (
 
 
 def _request_rejection(manifest: ComponentManifest, command: Command, requested: tuple[str, ...]) -> RejectionKind | None:
+    if command == "bootstrap" and requested:
+        return RejectionKind.COMPONENTS_NOT_ACCEPTED
     if command == "remove" and not requested:
         return RejectionKind.MISSING_REMOVAL_TARGET
     if command == "install" or requested:

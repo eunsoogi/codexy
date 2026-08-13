@@ -25,7 +25,7 @@ Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os.PathLike[str], codex: Path | None = None, runner: Runner | None = None, *, operation_id: str | None = None) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
-    if command not in {"install", "update", "remove"}:
+    if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
     home = _absolute(codex_home)
     _validate_real_path(home, require_exists=False)
@@ -72,7 +72,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             recorded = recorded_selection(home, manifest)
             if replay is not None:
                 return replay
-        if recorded is not None and recorded != before:
+        if recorded is not None and recorded != before and command != "bootstrap":
             return _reject(home, manifest, identifier, command, requested, before, RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE)
         try:
             plan = plan_transition(manifest, command, requested, before, recorded)

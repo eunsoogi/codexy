@@ -102,7 +102,7 @@ class TransitionModelTests(unittest.TestCase):
         )
         invalid = (
             OperationReceipt("op-pending-encode", "install", "pending", (), (), (), (), ()),  # type: ignore[arg-type]
-            OperationReceipt("op-unknown-command", "bootstrap", "completed", (), (), (), (), ()),  # type: ignore[arg-type]
+            OperationReceipt("op-unknown-command", "unknown", "completed", (), (), (), (), ()),  # type: ignore[arg-type]
             OperationReceipt("op-unknown-outcome", "install", "unknown", (), (), (), (), ()),  # type: ignore[arg-type]
         )
 

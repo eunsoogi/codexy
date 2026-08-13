@@ -79,10 +79,10 @@ def admit_installed_inventory(manifest: ComponentManifest, inventory: object, ma
 
 def admit_operation_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, command: str) -> tuple[str, ...]:
     """Require current retained components unless this operation will upgrade them."""
-    if command not in {"install", "update", "remove"}:
+    if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
     selected = admit_installed_inventory(manifest, inventory, marketplace_root)
-    if command == "update" or marketplace_root is None:
+    if command in {"update", "bootstrap"} or marketplace_root is None:
         return selected
     records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
     if any(record["version"] != manifest.version for record in records.values()):
