@@ -35,6 +35,32 @@ class ComponentManifestResolverTests(unittest.TestCase):
             for asset in component.asset.required_paths:
                 self.assertTrue((plugin_root / asset).is_file())
 
+    def test_manifest_carries_the_closed_public_domain_error_contract(self) -> None:
+        self.assertEqual(
+            set(self.manifest.domain_errors),
+            {
+                "component-version-mismatch",
+                "components-not-accepted",
+                "conflicting-component-request",
+                "conflicting-installed-state",
+                "dependency-protected-removal",
+                "incompatible-component-selection",
+                "inconsistent-installed-state",
+                "installed-state-mismatch",
+                "invalid-installed-inventory",
+                "missing-removal-target",
+                "mixed-version-state",
+                "no-recorded-selection",
+                "operation-failed",
+                "unknown-component",
+                "unknown-installed-component",
+            },
+        )
+
+    def test_resolver_cannot_emit_an_error_outside_the_manifest_contract(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown getcodexy component domain error"):
+            ComponentResolutionError("not-a-public-error")
+
     def test_every_subset_and_operand_order_resolves_canonically(self) -> None:
         components = self.manifest.component_ids
         for size in range(len(components) + 1):
@@ -103,6 +129,18 @@ class ComponentManifestResolverTests(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(ValueError):
                     _parse_manifest(invalid)
+
+    def test_manifest_rejects_incomplete_or_unknown_domain_error_projections(self) -> None:
+        canonical = json.loads(
+            (Path(__file__).parents[1] / "src/codexy_runtime_tools/component-manifest.json").read_text()
+        )
+        incomplete = deepcopy(canonical)
+        incomplete["domainErrors"].pop("unknown-component")
+        unknown = deepcopy(canonical)
+        unknown["domainErrors"]["unrecognized-error"] = "not public"
+        for invalid in (incomplete, unknown):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                _parse_manifest(invalid)
 
     def test_reconciliation_rejects_malformed_official_unknown_future_versions_and_untrusted_roots(self) -> None:
         malformed_unknown = self._installed("unrelated")

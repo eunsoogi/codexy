@@ -15,6 +15,25 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 MARKETPLACE = "codexy"
 COMPONENT_IDS = ("core", "github", "devtools")
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
+DOMAIN_ERRORS = frozenset(
+    {
+        "component-version-mismatch",
+        "components-not-accepted",
+        "conflicting-component-request",
+        "conflicting-installed-state",
+        "dependency-protected-removal",
+        "incompatible-component-selection",
+        "inconsistent-installed-state",
+        "installed-state-mismatch",
+        "invalid-installed-inventory",
+        "missing-removal-target",
+        "mixed-version-state",
+        "no-recorded-selection",
+        "operation-failed",
+        "unknown-component",
+        "unknown-installed-component",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -45,6 +64,7 @@ class ComponentManifest:
     version: str
     components: tuple[Component, ...]
     compatible_combinations: tuple[tuple[str, ...], ...]
+    domain_errors: frozenset[str]
 
     @property
     def component_ids(self) -> tuple[str, ...]:
@@ -63,10 +83,11 @@ def load_component_manifest() -> ComponentManifest:
 
 
 def _parse_manifest(data: object) -> ComponentManifest:
-    fields = {"schema", "marketplace", "components", "compatibleCombinations"}
+    fields = {"schema", "marketplace", "domainErrors", "components", "compatibleCombinations"}
     if not isinstance(data, dict) or set(data) != fields or data["schema"] != SCHEMA:
         raise ValueError("invalid getcodexy component manifest")
     marketplace = _marketplace(data["marketplace"])
+    domain_errors = _domain_errors(data["domainErrors"])
     if not isinstance(data["components"], list) or not isinstance(data["compatibleCombinations"], list):
         raise ValueError("component manifest is missing components or compatibility")
     components = tuple(_component(item, marketplace) for item in data["components"])
@@ -84,13 +105,22 @@ def _parse_manifest(data: object) -> ComponentManifest:
     expected = _compatible_combinations(components)
     if set(compatible) != expected or len(compatible) != len(expected):
         raise ValueError("component manifest compatible combinations are incomplete")
-    return ComponentManifest(marketplace, version, components, compatible)
+    return ComponentManifest(marketplace, version, components, compatible, domain_errors)
 
 
 def _marketplace(value: object) -> Marketplace:
     if not isinstance(value, dict) or set(value) != {"name", "source"} or not all(isinstance(value[key], str) and value[key] for key in value) or value["name"] != MARKETPLACE or value["source"] != OFFICIAL:
         raise ValueError("component manifest marketplace has an invalid shape")
     return Marketplace(value["name"], value["source"])
+
+
+def _domain_errors(value: object) -> frozenset[str]:
+    if not isinstance(value, dict) or set(value) != DOMAIN_ERRORS or any(
+        not isinstance(description, str) or not description
+        for description in value.values()
+    ):
+        raise ValueError("component manifest domain errors are not closed")
+    return frozenset(value)
 
 
 def _component(value: object, marketplace: Marketplace) -> Component:

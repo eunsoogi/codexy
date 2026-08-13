@@ -1,6 +1,23 @@
 use serde_json::Value;
 
 pub(super) const COMPONENTS: &[&str] = &["core", "github", "devtools"];
+pub(super) const DOMAIN_ERRORS: &[&str] = &[
+    "component-version-mismatch",
+    "components-not-accepted",
+    "conflicting-component-request",
+    "conflicting-installed-state",
+    "dependency-protected-removal",
+    "incompatible-component-selection",
+    "inconsistent-installed-state",
+    "installed-state-mismatch",
+    "invalid-installed-inventory",
+    "missing-removal-target",
+    "mixed-version-state",
+    "no-recorded-selection",
+    "operation-failed",
+    "unknown-component",
+    "unknown-installed-component",
+];
 
 pub(super) fn component_selection(
     value: Option<&Value>,

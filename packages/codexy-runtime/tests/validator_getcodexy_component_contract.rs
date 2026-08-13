@@ -115,6 +115,38 @@ fn public_validator_rejects_doctor_and_status_inventory_semantic_drift() -> Test
     Ok(())
 }
 
+#[test]
+fn public_validator_rejects_manifest_validation_contract_drift() -> TestResult {
+    for (label, mutate) in [
+        ("asset-root", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][1]["asset"]["packageRoot"] = serde_json::json!("plugins/elsewhere");
+        }) as Box<dyn Fn(&mut serde_json::Value)>),
+        ("component-version", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][2]["version"] = serde_json::json!("1.2.0");
+        })),
+        ("required-path", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["components"][0]["asset"]["requiredPaths"] = serde_json::json!(["../unsafe"]);
+        })),
+        ("compatible-combinations", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["compatibleCombinations"] = serde_json::json!([{"components": [], "version": "1.3.0"}]);
+        })),
+        ("domain-errors", Box::new(|manifest: &mut serde_json::Value| {
+            manifest["domainErrors"].as_object_mut().expect("domain errors").remove("unknown-component");
+        })),
+    ] {
+        let fixture = CanonicalSourceFixture::new()?;
+        let manifest_path = fixture
+            .root()
+            .join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
+        let mut manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(&manifest_path)?)?;
+        mutate(&mut manifest);
+        fs::write(&manifest_path, serde_json::to_string(&manifest)?)?;
+
+        assert!(!validate(&fixture.plugin_root())?.status.success(), "{label} drift unexpectedly passed");
+    }
+    Ok(())
+}
+
 struct CanonicalSourceFixture {
     temp: tempfile::TempDir,
 }

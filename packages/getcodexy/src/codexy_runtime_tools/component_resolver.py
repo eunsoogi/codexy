@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .component_manifest import Component, ComponentManifest
+from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest
 
 
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -13,6 +13,8 @@ SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z"
 
 class ComponentResolutionError(ValueError):
     def __init__(self, code: str, components: tuple[str, ...] = ()) -> None:
+        if code not in DOMAIN_ERRORS:
+            raise ValueError(f"unknown getcodexy component domain error: {code}")
         super().__init__(code)
         self.code = code
         self.components = components

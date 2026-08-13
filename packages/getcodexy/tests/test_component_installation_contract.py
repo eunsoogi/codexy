@@ -14,6 +14,9 @@ FIXTURES_PATH = Path(__file__).parent / "fixtures" / "component-installation-cas
 class ComponentInstallationContractTests(unittest.TestCase):
     def test_public_contract_freezes_component_dependencies_and_cli_semantics(self) -> None:
         contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (Path(__file__).parents[1] / "src/codexy_runtime_tools/component-manifest.json").read_text(encoding="utf-8")
+        )
 
         self.assertEqual(
             contract["schema"], "getcodexy.component-installation-contract.v1"
@@ -56,6 +59,7 @@ class ComponentInstallationContractTests(unittest.TestCase):
             contract["machine_readable_output"]["doctor_schema"],
             "getcodexy.doctor.v1",
         )
+        self.assertEqual(set(contract["domain_errors"]), set(manifest["domainErrors"]))
 
     def test_contract_fixtures_cover_happy_risky_regression_and_external_paths(self) -> None:
         fixtures = {

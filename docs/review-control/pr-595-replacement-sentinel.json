@@ -1,0 +1,95 @@
+{
+  "schema": "codexy.review-repair-proof.v1",
+  "issue": 555,
+  "pr": {
+    "number": 595,
+    "url": "https://github.com/eunsoogi/codexy/pull/595",
+    "base": "main",
+    "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
+    "reviewed_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+    "state": "OPEN",
+    "draft": true,
+    "merge_state": "CLEAN",
+    "metadata_state": "title, body, labels, assignee, Wave5, and Fixes #555 current",
+    "ci": {"passed": 21, "total": 21}
+  },
+  "ownership": {
+    "parent": "strict GitHub and merge orchestration",
+    "child": "#555 implementation and review response",
+    "source_thread_id": "019fbcd8-172b-7d60-81b9-33164a2cec65"
+  },
+  "parent_goal_readback": {
+    "threadId": "019fbcd8-172b-7d60-81b9-33164a2cec65",
+    "objective": "Merge all remaining Wave 5 work: complete current-head review and merge #555, then resume and merge #557 and #558 with full verification, cleanup, and post-merge closure.",
+    "status": "active",
+    "tokensUsed": 12902,
+    "timeUsedSeconds": 71,
+    "createdAt": 1786589503,
+    "updatedAt": 1786589574
+  },
+  "review_control": {
+    "profile": "strict",
+    "reviewer": {
+      "name": "codexy-sentinel",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "task_id": "/root/sentinel_pr595_review_gate"
+    },
+    "disposition": "BLOCK",
+    "ledger": {
+      "schema": "codexy.review-ledger.v1",
+      "events": [
+        {
+          "id": "pr595-replacement-full-6838f7a7",
+          "predecessor_event_id": null,
+          "profile": "strict",
+          "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
+          "head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+          "state": "full",
+          "full_used": 1,
+          "delta_used": 0,
+          "blockers": [
+            {"id": "manifest-validation-parity", "defect_class": "structural-contract", "resolved": false, "reopen_count": 0},
+            {"id": "fixture-matrix-structural-loc", "defect_class": "structural-readability", "resolved": false, "reopen_count": 0},
+            {"id": "review-routing-evidence", "defect_class": "proof-order", "resolved": false, "reopen_count": 0}
+          ],
+          "boundaries": [
+            "getcodexy-component-manifest",
+            "public-runtime-validator",
+            "activation-workflow-fixture",
+            "review-control-evidence"
+          ],
+          "escalation": null
+        }
+      ]
+    },
+    "budget": {"full_used": 1, "delta_used": 0, "full_limit": 1, "delta_limit": 1},
+    "next_action": "one retained same-Sentinel delta recheck after the local repair commit"
+  },
+  "connector_review": {
+    "count": 1,
+    "thread_id": "PRRT_kwDOS6i-_86Yxaxy",
+    "status": "replied and resolved",
+    "finding": "runtime activation staging omitted the component manifest",
+    "repair_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245"
+  },
+  "review_routing_exception": {
+    "kind": "maintainer-authorized dogfood/review-routing exception",
+    "normal_order": "connector review follows the pre-connector Sentinel PASS",
+    "actual_order": "the connector finding changed the head after the normal one-full-plus-one-delta review budget was exhausted",
+    "authorization": "maintainer authorized one replacement current-head Sentinel",
+    "invalid_evidence": "the parent-spawned reviewer was interrupted before a verdict and is not review evidence",
+    "current_replacement": "the retained child-launched Sentinel returned this BLOCK"
+  },
+  "specialist_and_tooling_evidence": {
+    "initial_mapping": "generic helpers were used only for separable component mapping and resolver architecture",
+    "reviewer": "packaged codexy-sentinel",
+    "codegraph": "not exposed in the callable MCP surface; codex mcp list has no Codexy codegraph entry",
+    "lsp": "not exposed in the callable surface; codex lsp has no status subcommand",
+    "fallback": "direct source reads confirmed the touched files"
+  },
+  "truthfulness": {
+    "pre_repair_ci_claim_applies_to": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+    "post_repair_ci": "requires parent-owned push and GitHub observation; not claimed by this local ledger"
+  }
+}

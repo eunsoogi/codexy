@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use serde_json::Value;
 
@@ -10,8 +10,8 @@ mod component_manifest;
 mod schema;
 
 use schema::{
-    COMPONENTS, exact_array, exact_array_value, exact_map_string, exact_string, object,
-    object_value,
+    COMPONENTS, DOMAIN_ERRORS, exact_array, exact_array_value, exact_map_string, exact_string,
+    object, object_value,
 };
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -228,6 +228,15 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         ],
         "required_doctor_fields",
     )?;
+    let errors = object(contract, "domain_errors")?;
+    if errors.keys().map(String::as_str).collect::<BTreeSet<_>>()
+        != DOMAIN_ERRORS.iter().copied().collect()
+        || errors
+            .values()
+            .any(|value| value.as_str().is_none_or(str::is_empty))
+    {
+        return Err("domain_errors must be the closed public component error contract".to_owned());
+    }
     Ok(())
 }
 

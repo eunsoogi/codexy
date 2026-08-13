@@ -79,6 +79,17 @@ fn rejects_receipt_field_declaration_drift() {
 }
 
 #[test]
+fn rejects_domain_error_contract_drift() {
+    let mut contract = contract();
+    contract["domain_errors"]
+        .as_object_mut()
+        .expect("domain errors")
+        .remove("unknown-component");
+
+    assert!(check_contract(&contract).is_err());
+}
+
+#[test]
 fn source_contract_root_fails_closed_for_each_missing_artifact() {
     for missing in ["documentation", "contract", "fixtures"] {
         let root = tempfile::tempdir().expect("source root");

@@ -24,7 +24,10 @@ cache or repository-relative executable path.
 The logical component names, in canonical output order, are `core`, `github`,
 and `devtools`. The packaged component manifest owns their public plugin
 identities, lockstep version, plugin roots, plugin-local assets, dependencies,
-and compatible selections. `github` and `devtools` each depend on `core`.
+compatible selections, and a packaged projection of the closed public
+`domain_errors` set. The installation contract is authoritative for those stable
+error codes; the Python loader and public Rust validator reject a manifest
+projection that differs from it. `github` and `devtools` each depend on `core`.
 
 The successful installed component inventory is the source of truth. A command
 request expresses intent and a receipt records the result, but neither replaces
