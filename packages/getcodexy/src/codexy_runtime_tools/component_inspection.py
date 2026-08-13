@@ -52,7 +52,7 @@ def doctor(codex_home: str | os.PathLike[str], *, codex: Path | None = None, run
     report = _inspect(codex_home, codex, runner)
     manifest = report["manifest"]
     actual, recorded = report["actual"], report["recorded"]
-    health = _health(manifest, actual, recorded, report["records"], report["admission_error"])
+    health = _health(manifest, actual, recorded, report["records"], report["admission_error"], report["host_error"])
     readiness = {"state": "ready", "missing_requirements": []}
     if report["host_error"]:
         readiness = {"state": "error", "missing_requirements": [report["host_error"]]}
@@ -136,9 +136,7 @@ def _marketplace_root(executable: Path, invoke: Runner) -> Path | None:
 
 
 def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
-    actual, records, error = _observed(manifest, installed)
-    if error:
-        return actual, records, error
+    actual, records, _ = _observed(manifest, installed)
     try:
         admitted = admit_installed_inventory(manifest, installed, root)
         if root is None:
@@ -157,7 +155,7 @@ def _observed(manifest: ComponentManifest, installed: object) -> tuple[tuple[str
     return observed.selection, observed.records, observed.error
 
 
-def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple[str, ...] | None, records: dict[str, dict[str, object]], admission_error: str | None) -> list[dict[str, str]]:
+def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple[str, ...] | None, records: dict[str, dict[str, object]], admission_error: str | None, host_error: str | None) -> list[dict[str, str]]:
     expected = set(recorded or ()) | set(actual)
     result = []
     for component in manifest.component_ids:
@@ -165,6 +163,8 @@ def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tupl
             continue
         if component not in actual:
             result.append(_entry(component, "missing"))
+        elif host_error == ProbeStage.MARKETPLACE_LIST.value:
+            result.append(_entry(component, "incompatible"))
         elif _version_relation(manifest, records.get(component)) < 0:
             result.append(_entry(component, "stale"))
         elif _version_relation(manifest, records.get(component)) > 0:

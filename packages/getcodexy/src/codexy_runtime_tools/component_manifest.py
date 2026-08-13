@@ -85,7 +85,8 @@ def parse_component_manifest(text: str) -> ComponentManifest:
 
 def valid_semver(value: object) -> bool:
     return isinstance(value, str) and SEMVER.fullmatch(value) is not None and all(
-        int(component) <= MAX_SEMVER_COMPONENT for component in value.split(".")
+        len(component) < len(str(MAX_SEMVER_COMPONENT)) or len(component) == len(str(MAX_SEMVER_COMPONENT)) and component <= str(MAX_SEMVER_COMPONENT)
+        for component in value.split(".")
     )
 
 

@@ -202,7 +202,7 @@ class ComponentInspectionTests(unittest.TestCase):
 
         self.assertEqual(observed["installed_components"], ["core"])
         self.assertEqual(observed["errors"], [{"code": "codex-marketplace-list"}])
-        self.assertEqual(result["component_health"], [{"component": "core", "state": "healthy"}])
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
         self.assertEqual(result["host_readiness"], {"state": "error", "missing_requirements": ["codex-marketplace-list"]})
 
     def test_doctor_requires_canonical_catalog_hooks_and_mcp_bindings(self) -> None:

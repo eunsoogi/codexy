@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import unittest
 from copy import deepcopy
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
@@ -61,6 +62,28 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
                 self.assertEqual(result["component_health"], [])
             else:
                 self.assertEqual(result["component_health"], [{"component": component, "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
+
+    def test_marketplace_failure_does_not_probe_a_canonical_but_unverified_plugin_path(self) -> None:
+        with fixture({"core"}) as state:
+            unsafe = installed(state.marketplace, "core")
+            unsafe["source"] = {"source": "local", "path": "/unverified/plugins/codexy"}
+            state.inventory_override = {"installed": [unsafe]}
+            with patch("codexy_runtime_tools.component_inspection._stale") as stale:
+                result = doctor(state.home, codex=state.codex, runner=self._marketplace_failure(state))
+            stale.assert_not_called()
+
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
+
+    def test_rejected_fallback_records_never_offer_bootstrap_even_when_old_or_malformed(self) -> None:
+        with fixture({"core"}) as state:
+            old_disabled = self._changed(installed(state.marketplace, "core", "1.2.0"), enabled=False)
+            malformed = self._changed(installed(state.marketplace, "core"), version="9" * 5000 + ".0.0")
+            for record, code in ((old_disabled, "conflicting-installed-state"), (malformed, "conflicting-installed-state")):
+                with self.subTest(code=code):
+                    state.inventory_override = {"installed": [record]}
+                    result = doctor(state.home, codex=state.codex, runner=self._marketplace_failure(state))
+                    self.assertEqual(result["errors"], [{"code": "codex-marketplace-list"}, {"code": code}])
+                    self.assertEqual(result["component_health"][0]["repair"], "repair the Codexy registration, then rerun getcodexy doctor")
 
     @staticmethod
     def _changed(entry: dict[str, object], **changes: object) -> dict[str, object]:
