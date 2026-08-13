@@ -150,11 +150,11 @@ def _tree_identity(root: Path, relative: Path, anchor: Path | None) -> tuple[tup
 
 
 def _tree_metadata(root: Path, relative: Path, anchor: Path | None) -> tuple[os.stat_result, ...]:
-    ancestors = _ancestry_to_anchor(anchor) if anchor is not None else ()
-    result = []
-    for path in ancestors:
-        result.append(_safe_directory(path))
-    result.append(_safe_directory(root))
+    result = [_safe_directory(path) for path in _ancestry_to_anchor(anchor)] if anchor is not None else []
+    if anchor is not None:
+        result.extend(_safe_directory(path) for path in reversed(_ancestry(anchor, root)) if path != anchor)
+    else:
+        result.append(_safe_directory(root))
     current = root
     for part in relative.parts[:-1]:
         current /= part
