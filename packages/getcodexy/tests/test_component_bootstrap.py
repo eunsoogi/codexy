@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import unittest
 import json
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_transaction_receipts import write_receipt
-from codexy_runtime_tools.component_transaction_state import read_journal
+from codexy_runtime_tools.component_transaction_state import read_journal, write_inventory
 from codexy_runtime_tools.component_transition_model import OperationReceipt
 from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, write_journal
 from packages.getcodexy.tests.component_lifecycle_support import fixture
@@ -71,6 +72,16 @@ class BootstrapTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "restored state"):
                 run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id=journal.identifier)
+            self.assertIsNotNone(read_journal(state.home))
+
+    def test_rollback_fails_closed_when_durable_restore_does_not_restore_snapshot(self) -> None:
+        with fixture({"core"}, fail_add="codexy-github") as state:
+            def corrupt(home: object) -> None:
+                write_inventory(home, ("core",))
+
+            with patch.object(InventorySnapshot, "restore", corrupt), self.assertRaisesRegex(RuntimeError, "durable recovery"):
+                run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id="op-bootstrap-restore-fault")
+
             self.assertIsNotNone(read_journal(state.home))
 
 

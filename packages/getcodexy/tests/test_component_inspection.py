@@ -189,6 +189,22 @@ class ComponentInspectionTests(unittest.TestCase):
             self.assertEqual(result["host_readiness"]["missing_requirements"], [expected])
             self.assertEqual(result["errors"], [{"code": expected}])
 
+    def test_marketplace_probe_failure_preserves_populated_plugin_observation(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            def failing(command: list[str]) -> subprocess.CompletedProcess[str]:
+                if tuple(command[1:]) == ("plugin", "marketplace", "list", "--json"):
+                    return subprocess.CompletedProcess(command, 1, "", "unavailable")
+                return state.run(command)
+
+            observed = status(state.home, codex=state.codex, runner=failing)
+            result = doctor(state.home, codex=state.codex, runner=failing)
+
+        self.assertEqual(observed["installed_components"], ["core"])
+        self.assertEqual(observed["errors"], [{"code": "codex-marketplace-list"}])
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "healthy"}])
+        self.assertEqual(result["host_readiness"], {"state": "error", "missing_requirements": ["codex-marketplace-list"]})
+
     def test_doctor_requires_canonical_catalog_hooks_and_mcp_bindings(self) -> None:
         cases = (({"core"}, "core", "agents/catalog.toml", "# comments only\n"), ({"core"}, "core", "hooks/hooks.json", '{"hooks":{"Other":[]}}'), ({"core", "devtools"}, "devtools", ".mcp.json", '{"lsp":{"command":"./mcp/codexy-mcp-devtools","args":["lsp","--stdio"],"cwd":"."}}'))
         for selection, component, relative, contents in cases:

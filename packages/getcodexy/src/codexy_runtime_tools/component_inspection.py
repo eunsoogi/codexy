@@ -85,7 +85,8 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
             try:
                 root = _marketplace_root(executable, invoke)
             except (OSError, RuntimeError, ValueError):
-                actual, records, admission_error, host_error = (), {}, None, ProbeStage.MARKETPLACE_LIST.value
+                actual, records, admission_error = _observed(manifest, installed)
+                host_error = ProbeStage.MARKETPLACE_LIST.value
             else:
                 actual, records, admission_error = _actual(manifest, installed, root)
                 host_error = None
@@ -137,15 +138,10 @@ def _marketplace_root(executable: Path, invoke: Runner) -> Path | None:
 
 
 def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
-    actual: tuple[str, ...] = ()
-    records: dict[str, dict[str, object]] = {}
+    actual, records, error = _observed(manifest, installed)
+    if error:
+        return actual, records, error
     try:
-        classified = classify_installed_inventory(manifest, installed)
-        records = {}
-        for record in classified.records:
-            if record.component is not None:
-                records.setdefault(record.component.id, record.entry)
-        actual = canonical_components(manifest, set(records))
         admitted = admit_installed_inventory(manifest, installed, root)
         if root is None:
             return admitted, {}, None
@@ -156,6 +152,14 @@ def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -
         return actual, records, error.code
     except (OSError, ValueError):
         return actual, records, "invalid-installed-inventory"
+
+
+def _observed(manifest: ComponentManifest, installed: object) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
+    try:
+        records = {record.component.id: record.entry for record in classify_installed_inventory(manifest, installed).records if record.component is not None}
+        return canonical_components(manifest, set(records)), records, None
+    except ComponentResolutionError as error:
+        return (), {}, error.code
 
 
 def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple[str, ...] | None, records: dict[str, dict[str, object]], admission_error: str | None) -> list[dict[str, str]]:
@@ -226,10 +230,6 @@ def _has_legacy_core_monolith(plugin: Path, component: str) -> bool:
     return component == "core" and any(os.path.lexists(plugin / path) for path in (".mcp.json", ".codex/lsp-client.json", "lsp", "mcp", "runtime-release.json"))
 
 
-def _json_object(path: Path) -> bool:
-    return isinstance(_json_value(path), dict)
-
-
 def _json_value(path: Path) -> object | None:
     try:
         descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
@@ -242,7 +242,3 @@ def _json_value(path: Path) -> object | None:
         return None
     finally:
         os.close(descriptor)
-
-
-def _code(error: BaseException) -> str:
-    return error.code if isinstance(error, ComponentResolutionError) else "invalid-installed-inventory"
