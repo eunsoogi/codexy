@@ -34,6 +34,16 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             "\"version\": \"01.3.0\"",
         ),
         (
+            "malformed semver",
+            "\"version\": \"1.3.0\"",
+            "\"version\": \"1.3\"",
+        ),
+        (
+            "prerelease semver",
+            "\"version\": \"1.3.0\"",
+            "\"version\": \"1.3.0-beta\"",
+        ),
+        (
             "dependency-invalid compatible combination",
             "\"components\": [\"core\", \"github\"],",
             "\"components\": [\"github\"],",
