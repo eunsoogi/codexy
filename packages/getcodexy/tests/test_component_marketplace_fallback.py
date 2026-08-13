@@ -3,11 +3,14 @@ from __future__ import annotations
 import subprocess
 import unittest
 from copy import deepcopy
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_observed_inventory import observe_installed_inventory
+from codexy_runtime_tools.component_source_admission import _local_directory, _network_path
 
 from component_lifecycle_support import fixture, installed
 from test_component_inspection import materialize
@@ -142,6 +145,12 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
 
         self.assertEqual(result["errors"], [{"code": "conflicting-installed-state"}])
         self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
+
+    def test_supported_windows_reparse_and_unc_provenance_are_rejected_without_path_api_support(self) -> None:
+        reparse_directory = SimpleNamespace(st_mode=0o040000, st_file_attributes=0x0400)
+        with patch("codexy_runtime_tools.component_source_admission.os.lstat", return_value=reparse_directory):
+            self.assertFalse(_local_directory(Path("C:/marketplace/plugins/codexy")))
+        self.assertTrue(_network_path(Path("//server/share/codexy")))
 
     @staticmethod
     def _changed(entry: dict[str, object], **changes: object) -> dict[str, object]:

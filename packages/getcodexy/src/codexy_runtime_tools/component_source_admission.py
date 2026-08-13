@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import ctypes
+import os
+import stat
 from pathlib import Path
 
 from .component_manifest import Component
@@ -30,9 +33,18 @@ def _ancestry(marketplace_root: Path, root: Path) -> tuple[Path, ...]:
 
 
 def _local_directory(path: Path) -> bool:
-    junction = getattr(path, "is_junction", lambda: False)
-    return path.is_dir() and not path.is_symlink() and not junction()
+    try:
+        metadata = os.lstat(path)
+    except OSError:
+        return False
+    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+    attributes = getattr(metadata, "st_file_attributes", 0)
+    return stat.S_ISDIR(metadata.st_mode) and not attributes & reparse
 
 
 def _network_path(path: Path) -> bool:
-    return str(path).replace("\\", "/").startswith("//")
+    if str(path).replace("\\", "/").startswith("//"):
+        return True
+    if os.name != "nt" or not path.drive:
+        return False
+    return ctypes.windll.kernel32.GetDriveTypeW(f"{path.drive}\\") == 4  # type: ignore[attr-defined]
