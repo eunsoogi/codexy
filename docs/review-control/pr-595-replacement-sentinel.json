@@ -1,130 +1,186 @@
 {
-  "schema": "codexy.review-repair-proof.v1",
+  "schema": "codexy.review-repair-proof.v2",
   "issue": 555,
-  "pr": {
-    "number": 595,
-    "url": "https://github.com/eunsoogi/codexy/pull/595",
-    "base": "main",
-    "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
-    "reviewed_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
-    "state": "OPEN",
-    "draft": true,
-    "merge_state": "CLEAN",
-    "metadata_state": "title, body, labels, assignee, Wave5, and Fixes #555 current",
-    "ci": {"passed": 21, "total": 21}
-  },
   "ownership": {
-    "parent": "strict GitHub and merge orchestration",
-    "child": "#555 implementation and review response",
-    "source_thread_id": "019fbcd8-172b-7d60-81b9-33164a2cec65"
+    "classification_source": "parent delegation",
+    "lane": "child-owned review-response and implementation",
+    "child": "#555 repair, local commits, proof, and retained Sentinel delta recheck",
+    "parent": "push, PR metadata, connector thread, readiness, merge, and post-merge verification",
+    "branch": "codexy/555-component-manifest-resolver",
+    "worktree": "child-owned Codex worktree"
   },
-  "child_repair_phase": {
+  "current_repair_phase": {
+    "starting_head_oid": "d7d82e4ad22c72523eef9cfc11de89ddf11341ea",
+    "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
     "classification": {
       "workflow_profile": "strict",
       "lane_type": "review response",
       "owner": "child-owned",
-      "scope": "duplicate-key, bounded-SemVer, and current-head proof repair without reviewer launch"
+      "scope": "unify strict JSON and bounded SemVer validation across manifest consumers, version mutation, and activation; refresh proof; one retained Sentinel delta only"
     },
     "goal_receipts": [
-      {"operation": "get_goal", "result": {"goal": null}},
-      {"operation": "create_goal", "status": "active", "objective": "Repair the three latest Codexy #555 Sentinel findings from clean head 781b8563 by unifying duplicate-key and bounded-SemVer manifest validation across Python and Rust, refreshing durable exact-current-head proof, and committing locally without launching a reviewer or mutating GitHub."},
-      {"operation": "update_plan", "status": "recorded", "phase": "review-free repair"}
+      {
+        "operation": "get_goal",
+        "result": {
+          "status": "active",
+          "objective": "Repair the current #555 Sentinel findings at d7d82e4a by unifying strict duplicate-key and bounded-SemVer validation across producer and consumer paths, refreshing durable exact-head proof, obtaining the retained Sentinel's one delta verdict, and returning clean-head evidence to parent without GitHub mutation.",
+          "createdAt": 1786598010,
+          "updatedAt": 1786598780
+        }
+      },
+      {
+        "operation": "create_goal",
+        "result": "not called because the finite repair-and-delta goal was already active"
+      },
+      {
+        "operation": "update_plan",
+        "result": {
+          "exactly_one_in_progress_item": "Repair strict JSON/SemVer producer-consumer parity, refresh exact-head proof, verify, commit, and obtain the retained Sentinel delta verdict"
+        }
+      }
     ],
-    "reviewer_activity": "prohibited for this phase"
-    ,"current_head_proof": {
-      "head_oid": "aed66f4942e56e5aefe79c080d171a55921084d4",
-      "focused": {
-        "python_manifest_resolver": "PASS: duplicate top-level/nested keys and SemVer overflow/leading-zero controls reject",
-        "rust_public_validator": "PASS: duplicate top-level/nested keys and SemVer overflow reject"
+    "specialist_and_helper_receipts": {
+      "current_repair_helpers": "none; producer, consumer, activation, regression proof, and ledger changes are one tightly coupled atomic repair, so a helper would overlap the sole child owner",
+      "initial_mapping_helpers": [
+        {
+          "task": "/root/component_map",
+          "thread_id": "019ff858-43f2-7f40-a8eb-aed809d7be3e",
+          "role": "pre-implementation repository mapping only; not an owner or reviewer"
+        },
+        {
+          "task": "/root/resolver_architecture",
+          "thread_id": "019ff858-5ba0-7c32-bb64-0134ef793088",
+          "role": "pre-implementation resolver architecture only; not an owner or reviewer"
+        }
+      ],
+      "retained_reviewer": "/root/sentinel_pr595_authorized_review (packaged codexy-sentinel; only its authorized delta recheck remains)"
+    },
+    "red_green": {
+      "red": [
+        {
+          "command": "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --test suite_system system::sync_version_cli::sync_version_check_rejects_duplicate_component_manifest_keys_without_mutating -- --exact",
+          "result": "FAIL before repair: top-level duplicate unexpectedly passed"
+        },
+        {
+          "command": "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --lib version::tests::semver_components_use_the_component_manifest_ceiling -- --exact",
+          "result": "FAIL before repair: 2147483648.0.0 accepted"
+        }
+      ],
+      "green": [
+        "top-level and nested duplicate rejection: version check producer and activation receipt path",
+        "oversized and huge numeric SemVer rejection before mutation",
+        "2147483647.0.0 admission acceptance",
+        "public validator continues to use the same shared decoder and SemVer rule"
+      ]
+    },
+    "structural_remediation": {
+      "shared_contract": "packages/codexy-runtime/src/strict_json.rs is the sole Rust duplicate-key JSON boundary used by public component-contract validation and version/activation mutation paths; packages/codexy-runtime/src/version/semver.rs is the sole Rust bounded canonical SemVer rule used by both version and public component-manifest validation.",
+      "readability": "new activation and sync-version producer coverage lives in coherent dedicated test modules; version.rs is 229 lines, activation/tests.rs is 244 lines, sync_version_cli.rs is 222 lines, and every touched governed file is at or below 250 lines. This is extraction by responsibility, not blank-line deletion or multiline collapse."
+    },
+    "code_head_proof": {
+      "head_oid": "72107a22c749ca60b35d8ce40145dd1f3df0633d",
+      "commit": "fix(runtime): unify strict manifest validation",
+      "commands": [
+        {
+          "command": "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked",
+          "result": "PASS: 74 library tests; all integration suites including 314 system tests"
+        },
+        {
+          "command": "uv run --project packages/getcodexy python -m unittest discover -s packages/getcodexy/tests",
+          "result": "PASS: 107 tests"
+        },
+        {
+          "command": "scripts/validate-plugin-config --check && scripts/sync-plugin-version --check && cargo fmt --manifest-path packages/codexy-runtime/Cargo.toml -- --check && scripts/validate-plugin-config --check-touched-loc --base-ref fbe5174214f9aa36f672126c963bd540bea51d34 && git diff --check",
+          "result": "PASS"
+        },
+        {
+          "command": "uv build --wheel --out-dir <external-proof>/dist packages/getcodexy; uv pip install --python <external-proof>/venv/bin/python <wheel>",
+          "result": "PASS: getcodexy-1.3.0-py3-none-any.whl built and installed"
+        },
+        {
+          "command": "installed-wheel importlib.resources component-manifest readback",
+          "result": "PASS: packaged component-manifest.json exists and is readable"
+        },
+        {
+          "command": "codex plugin marketplace list --json; codex plugin list --json; installed-wheel reconcile_installed_inventory",
+          "result": "PASS: codexy marketplace source is canonical git; real installed inventory reconciles to [core]"
+        }
+      ],
+      "environment_note": "A direct python3 unittest run failed only because two legacy tests invoke a missing `python` executable. The project-runtime command above supplies that executable and is the authoritative full Python PASS.",
+      "external_artifact_hashes": {
+        "wheel": "7a99bc791ba021ae83fc80071ef40b2670d3992cec042a8ad00934e18a7bb60f",
+        "wheel_build_log": "67bd15b6e664e47f97158e64e0a98b7edbfb48ebd9caf1257f60e6f2aa873e3c",
+        "wheel_install_log": "009e8903ca31a62722cee0557dcba4076b2b41da4b2ab7840551e0565a172602",
+        "wheel_resource_readback": "dd733147d17b0320621669495aa4fdff82bb3d4f92af42f338eda1c238b41df1",
+        "marketplace_inventory": "a36095459f099830eadbb8e817d4b504a5731e285656227e1c8a749ebb3edb5f",
+        "plugin_inventory": "127463d74f4fd965cd6a2d78fe8c53f9e1bd55d820d0ae830fcbfd3ea372efa0",
+        "inventory_reconciliation": "00d0b30a6622d4e1fd2ba4e5651b980a683d01ff45c9df83dc373f51e2af0d76"
       },
-      "full": {
-        "python_unittest_discover": "PASS",
-        "rust_locked_cargo_test": "PASS",
-        "wheel_build": "PASS",
-        "real_inventory_reconciliation": "PASS: core"
-      },
-      "structural": {
-        "plugin_config": "PASS",
-        "version_sync": "PASS",
-        "touched_loc": "PASS",
-        "rust_format": "PASS",
-        "git_diff_check": "PASS"
-      },
-      "tool_exposure": "Codegraph and LSP unavailable; direct reads used"
+      "tool_exposure": {
+        "codegraph": "expected by the packaged devtools configuration but absent from `codex mcp list`; direct source reads used",
+        "lsp": "expected by the packaged devtools configuration but not callable; `codex lsp --help` has no lsp command/status surface; direct source reads used"
+      }
     }
   },
-  "parent_goal_readback": {
-    "threadId": "019fbcd8-172b-7d60-81b9-33164a2cec65",
-    "objective": "Merge all remaining Wave 5 work: complete current-head review and merge #555, then resume and merge #557 and #558 with full verification, cleanup, and post-merge closure.",
-    "status": "active",
-    "tokensUsed": 12902,
-    "timeUsedSeconds": 71,
-    "createdAt": 1786589503,
-    "updatedAt": 1786589574
+  "pr_and_connector_evidence": {
+    "source": "parent-supplied read-only authoritative evidence, 2026-08-13",
+    "pr": {
+      "number": 595,
+      "url": "https://github.com/eunsoogi/codexy/pull/595",
+      "state": "OPEN",
+      "draft": true,
+      "merge_state": "CLEAN",
+      "base": "main",
+      "remote_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+      "title": "feat(getcodexy): add component manifest resolver",
+      "body_final_line": "Fixes #555",
+      "labels": ["type/feature", "status/review", "priority/high", "area/plugin", "area/release"],
+      "milestone": "1.4.0 Wave 5",
+      "assignee": "eunsoogi",
+      "ci": "21/21 SUCCESS on remote 6838f7a7 only; historical and stale for local repair heads"
+    },
+    "connector": {
+      "count": 1,
+      "thread_id": "PRRT_kwDOS6i-_86Yxaxy",
+      "finding_comment_id": "PRRC_kwDOS6i-_87gy7Bb",
+      "repair_reply_id": "PRRC_kwDOS6i-_87gzMx6",
+      "resolved": true,
+      "outdated": false,
+      "finding": "runtime activation staging omitted the component manifest",
+      "repair_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+      "second_connector_review": "not requested"
+    }
   },
   "review_control": {
     "profile": "strict",
-    "reviewer": {
-      "name": "codexy-sentinel",
-      "model": "gpt-5.6-sol",
-      "reasoning_effort": "xhigh",
-      "task_id": "/root/sentinel_pr595_review_gate"
+    "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
+    "history": [
+      {
+        "id": "pr595-replacement-full-6838f7a7",
+        "head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
+        "kind": "maintainer-authorized replacement full Sentinel",
+        "verdict": "BLOCK"
+      },
+      {
+        "id": "pr595-authorized-full-d7d82e4a",
+        "head_oid": "d7d82e4ad22c72523eef9cfc11de89ddf11341ea",
+        "kind": "maintainer-authorized new packaged Sentinel",
+        "reviewer_task": "/root/sentinel_pr595_authorized_review",
+        "verdict": "BLOCK",
+        "findings": ["producer/consumer strict JSON and bounded SemVer divergence", "stale assertion-only current-head proof"]
+      }
+    ],
+    "current_disposition": "repair committed; exactly one retained same-Sentinel delta recheck is authorized on the final clean head",
+    "budget": {
+      "ordinary_full_and_delta": "previous cycle exhausted before connector repair",
+      "current_full": "maintainer-authorized exception at d7d82e4a",
+      "current_delta": "one retained same-Sentinel delta pending"
     },
-    "disposition": "BLOCK",
-    "ledger": {
-      "schema": "codexy.review-ledger.v1",
-      "events": [
-        {
-          "id": "pr595-replacement-full-6838f7a7",
-          "predecessor_event_id": null,
-          "profile": "strict",
-          "base_oid": "fbe5174214f9aa36f672126c963bd540bea51d34",
-          "head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
-          "state": "full",
-          "full_used": 1,
-          "delta_used": 0,
-          "blockers": [
-            {"id": "manifest-validation-parity", "defect_class": "structural-contract", "resolved": false, "reopen_count": 0},
-            {"id": "fixture-matrix-structural-loc", "defect_class": "structural-readability", "resolved": false, "reopen_count": 0},
-            {"id": "review-routing-evidence", "defect_class": "proof-order", "resolved": false, "reopen_count": 0}
-          ],
-          "boundaries": [
-            "getcodexy-component-manifest",
-            "public-runtime-validator",
-            "activation-workflow-fixture",
-            "review-control-evidence"
-          ],
-          "escalation": null
-        }
-      ]
-    },
-    "budget": {"full_used": 1, "delta_used": 0, "full_limit": 1, "delta_limit": 1},
-    "next_action": "one retained same-Sentinel delta recheck after the local repair commit"
-  },
-  "connector_review": {
-    "count": 1,
-    "thread_id": "PRRT_kwDOS6i-_86Yxaxy",
-    "status": "replied and resolved",
-    "finding": "runtime activation staging omitted the component manifest",
-    "repair_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245"
-  },
-  "review_routing_exception": {
-    "kind": "maintainer-authorized dogfood/review-routing exception",
-    "normal_order": "connector review follows the pre-connector Sentinel PASS",
-    "actual_order": "the connector finding changed the head after the normal one-full-plus-one-delta review budget was exhausted",
-    "authorization": "maintainer authorized one replacement current-head Sentinel",
-    "invalid_evidence": "the parent-spawned reviewer was interrupted before a verdict and is not review evidence",
-    "current_replacement": "the retained child-launched Sentinel returned this BLOCK"
-  },
-  "specialist_and_tooling_evidence": {
-    "initial_mapping": "generic helpers were used only for separable component mapping and resolver architecture",
-    "reviewer": "packaged codexy-sentinel",
-    "codegraph": "not exposed in the callable MCP surface; codex mcp list has no Codexy codegraph entry",
-    "lsp": "not exposed in the callable surface; codex lsp has no status subcommand",
-    "fallback": "direct source reads confirmed the touched files"
+    "routing_exception": "Connector review followed an earlier pre-connector Sentinel PASS; its finding changed the head after ordinary review budget exhaustion. The parent-spawned reviewer was interrupted before verdict and is invalid evidence. This is a maintainer-authorized dogfood/review-routing exception, not normal order."
   },
   "truthfulness": {
-    "pre_repair_ci_claim_applies_to": "6838f7a7028c583eb5744f7c162fbc31557cd245",
-    "post_repair_ci": "requires parent-owned push and GitHub observation; not claimed by this local ledger"
+    "local_head_is_not_pushed": "72107a22 and this forthcoming ledger commit are local-only; parent owns publication and GitHub observation",
+    "post_repair_ci": "not claimed until parent pushes a final reviewed head",
+    "tracked_ledger_limit": "local-machine artifact paths are deliberately excluded from this tracked file; exact final-head artifact path and hash are emitted in the child handoff after this ledger commit."
   }
 }
