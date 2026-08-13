@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor
+import codexy_runtime_tools.component_source_admission as source
 from codexy_runtime_tools.component_source_admission import DiagnosticFailure, DiagnosticTree
 
 from component_lifecycle_support import fixture
@@ -60,6 +61,84 @@ class IntermediatePluginsTests(unittest.TestCase):
 
         self.assertTrue(replaced)
         self.assertEqual(read.failure, DiagnosticFailure.UNSAFE)
+
+    def test_plugins_swap_and_restore_between_snapshots_discards_substituted_bytes(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            plugins = state.marketplace / "plugins"
+            saved, malicious = state.root / "saved-plugins", state.root / "malicious-plugins"
+            tree = DiagnosticTree(plugins / "codexy", state.marketplace)
+            original_metadata, original_open = source._tree_metadata, source._open_regular
+            original_lstat = os.lstat
+            stable = {
+                path: original_lstat(path)
+                for path in (
+                    state.marketplace,
+                    plugins,
+                    tree.root,
+                    tree.root / ".codex-plugin",
+                    tree.root / ".codex-plugin/plugin.json",
+                )
+            }
+            expected_identity = source._tree_identity(tree.root, Path(".codex-plugin/plugin.json"), tree.anchor)
+            calls, swapped, restored = 0, False, False
+
+            def swap_before_second_snapshot(*args: object):
+                nonlocal calls, swapped
+                calls += 1
+                if calls == 2:
+                    plugins.rename(saved)
+                    target = plugins / "codexy/.codex-plugin/plugin.json"
+                    target.parent.mkdir(parents=True)
+                    target.write_text('{"name":"substituted"}', encoding="utf-8")
+                    swapped = True
+                return original_metadata(*args)
+
+            def open_then_restore(*args: object) -> int:
+                nonlocal restored
+                descriptor = original_open(*args)
+                plugins.rename(malicious)
+                saved.rename(plugins)
+                restored = True
+                return descriptor
+
+            def stable_after_restore(path: str | Path):
+                candidate = Path(path)
+                return stable[candidate] if restored and candidate in stable else original_lstat(path)
+
+            def stable_identity(*args: object):
+                source._tree_metadata(*args)
+                return expected_identity
+
+            try:
+                with patch("codexy_runtime_tools.component_source_admission._tree_metadata", side_effect=swap_before_second_snapshot), patch("codexy_runtime_tools.component_source_admission._tree_identity", side_effect=stable_identity), patch("codexy_runtime_tools.component_source_admission._open_regular", side_effect=open_then_restore), patch("codexy_runtime_tools.component_source_admission.os.lstat", side_effect=stable_after_restore):
+                    read = tree.read(".codex-plugin/plugin.json")
+            finally:
+                if saved.exists():
+                    plugins.rename(malicious)
+                    saved.rename(plugins)
+
+        self.assertTrue(swapped)
+        self.assertEqual(read.failure, DiagnosticFailure.CHANGED)
+
+    @unittest.skipIf(os.name == "nt", "POSIX descriptor walk")
+    def test_production_read_opens_every_component_path_segment_from_marketplace_anchor(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            tree = DiagnosticTree(state.marketplace / "plugins/codexy", state.marketplace)
+            original_open, opened = os.open, []
+
+            def observe(path: str | bytes | os.PathLike[str], *args: object, **kwargs: object) -> int:
+                opened.append((Path(path), kwargs.get("dir_fd")))
+                return original_open(path, *args, **kwargs)
+
+            with patch("codexy_runtime_tools.component_source_admission.os.open", side_effect=observe):
+                read = tree.read(".codex-plugin/plugin.json")
+
+        self.assertIsNone(read.failure)
+        self.assertEqual(opened[0][0], state.marketplace)
+        self.assertEqual([path for path, _ in opened[1:]], [Path("plugins"), Path("codexy"), Path(".codex-plugin"), Path("plugin.json")])
+
 
     def test_windows_reparse_plugins_after_root_admission_fails_closed(self) -> None:
         with fixture({"core"}) as state:

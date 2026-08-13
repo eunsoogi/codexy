@@ -9,35 +9,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .component_diagnostic_paths import DIAGNOSTIC_PATHS
 from .component_manifest import Component
-
-
-DIAGNOSTIC_PATHS = {
-    "core": (
-        "agents/catalog.toml",
-        "agents/codexy-architect.toml",
-        "agents/codexy-cartographer.toml",
-        "agents/codexy-auditor.toml",
-        "agents/codexy-shipwright.toml",
-        "agents/codexy-inspector.toml",
-        "agents/codexy-sentinel.toml",
-        "agents/codexy-warden.toml",
-        "hooks/hooks.json",
-        "hooks/codexy-thread-delivery.sh",
-        "hooks/codexy-thread-delivery.cmd",
-    ),
-    "github": (
-        "agents/catalog.toml",
-        "agents/codexy-weaver.toml",
-        "hooks/hooks.json",
-        "hooks/codexy-github-workflow-context.sh",
-        "hooks/codexy-github-workflow-context.cmd",
-        "hooks/codexy-github-admission.sh",
-        "hooks/codexy-github-admission-issue.cmd",
-        "hooks/codexy-github-admission-pr.cmd",
-    ),
-    "devtools": (".mcp.json", "mcp/codexy-mcp-devtools"),
-}
 
 
 class DiagnosticFailure(str, Enum):
@@ -121,11 +94,14 @@ def trusted_component_root(marketplace_root: Path, component: Component) -> bool
 
 
 def _read_regular(root: Path, relative: Path, anchor: Path | None = None) -> tuple[bytes, bool]:
-    before = _tree_identity(root, relative, anchor)
-    target = _path_metadata(root, relative, anchor)
+    before_metadata = _tree_metadata(root, relative, anchor)
+    before = tuple(_identity(metadata) for metadata in before_metadata)
+    target = before_metadata[-1]
     if not stat.S_ISREG(target.st_mode):
         raise ValueError("diagnostic path is not a regular file")
-    descriptor = _open_regular(root, relative)
+    if _tree_identity(root, relative, anchor) != before:
+        raise _ChangedDiagnosticPath("diagnostic path changed before opening")
+    descriptor = _open_regular(root, relative, anchor)
     try:
         opened = os.fstat(descriptor)
         unchanged = _tree_identity(root, relative, anchor)
@@ -181,18 +157,20 @@ def _read_complete(descriptor: int, size: int) -> bytes:
     return b"".join(chunks)
 
 
-def _open_regular(root: Path, relative: Path) -> int:
+def _open_regular(root: Path, relative: Path, anchor: Path | None = None) -> int:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    base = anchor or root
+    parts = (*root.relative_to(anchor).parts, *relative.parts) if anchor is not None else relative.parts
     if os.name == "nt":
-        return os.open(root.joinpath(relative), flags | getattr(os, "O_BINARY", 0))
+        return os.open(base.joinpath(*parts), flags | getattr(os, "O_BINARY", 0))
     directory_flags = flags | getattr(os, "O_DIRECTORY", 0)
-    descriptor = os.open(root, directory_flags)
+    descriptor = os.open(base, directory_flags)
     try:
-        for part in relative.parts[:-1]:
+        for part in parts[:-1]:
             next_descriptor = os.open(part, directory_flags, dir_fd=descriptor)
             os.close(descriptor)
             descriptor = next_descriptor
-        target = os.open(relative.name, flags, dir_fd=descriptor)
+        target = os.open(parts[-1], flags, dir_fd=descriptor)
     finally:
         os.close(descriptor)
     return target
