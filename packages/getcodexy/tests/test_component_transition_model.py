@@ -9,6 +9,7 @@ from codexy_runtime_tools import component_transaction_receipts as receipt_stora
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_resolver import ComponentResolutionError
 from codexy_runtime_tools.component_transaction_state import decode_inventory
+from codexy_runtime_tools.component_transaction_identity import operation_id
 from codexy_runtime_tools.component_transition_model import InventorySnapshot, Journal, OperationReceipt, plan_transition
 from codexy_runtime_tools.component_transition_rejections import Rejection, RejectionStage, variants as rejection_variants
 
@@ -131,12 +132,13 @@ class TransitionModelTests(unittest.TestCase):
         manifest = load_component_manifest()
         plan = plan_transition(manifest, "install", ("core",), (), ())
         valid = plan.journal("op-" + "x" * 128, InventorySnapshot(None)).receipt("completed")
-        invalid = ("", "bad", "op-../escape", "op-" + "x" * 129)
+        invalid = ("", "bad", "op-", "op-../escape", "op-" + "x" * 129)
 
         with TemporaryDirectory() as temporary:
             home = Path(temporary)
             receipt_storage.write_receipt(home, manifest, valid)
-            self.assertTrue((home / "getcodexy" / "receipts" / f"{valid.identifier}.json").is_file())
+            saved = home / "getcodexy" / "receipts" / f"{valid.identifier}.json"
+            self.assertEqual(json.loads(saved.read_text(encoding="utf-8"))["operation_id"], valid.identifier)
             for identifier in invalid:
                 with self.subTest(identifier=identifier):
                     receipt = OperationReceipt(identifier, "install", "completed", ("core",), ("core",), (), ("core",), ())
@@ -144,7 +146,19 @@ class TransitionModelTests(unittest.TestCase):
                         receipt.encode()
                     with self.assertRaises(ValueError):
                         receipt_storage.write_receipt(home, manifest, receipt)
-                    self.assertEqual(list((home / "getcodexy" / "receipts").iterdir()), [home / "getcodexy" / "receipts" / f"{valid.identifier}.json"])
+                    self.assertEqual(list((home / "getcodexy" / "receipts").iterdir()), [saved])
+                    with self.assertRaises(ValueError):
+                        operation_id(identifier)
+
+        valid_journal = plan.journal("op-journal-id", InventorySnapshot(None))
+        invalid_journal = Journal("bad", valid_journal.command, valid_journal.requested, valid_journal.resolved, valid_journal.before, valid_journal.target, valid_journal.snapshot, valid_journal.phase)
+        with self.assertRaisesRegex(ValueError, "identifiers"):
+            invalid_journal.encode()
+        with self.assertRaisesRegex(ValueError, "identifiers"):
+            invalid_journal.validate(manifest, decode_inventory)
+        payload = valid_journal.encode() | {"operation_id": "op-"}
+        with self.assertRaisesRegex(ValueError, "identifiers"):
+            Journal.decode(payload)
 
 
 def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:

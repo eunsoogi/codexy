@@ -14,4 +14,8 @@ def valid_operation_id(value: object) -> bool:
 
 
 def operation_id(value: str | None) -> str:
-    return value if valid_operation_id(value) else f"op-{uuid.uuid4().hex}"
+    if value is None:
+        return f"op-{uuid.uuid4().hex}"
+    if valid_operation_id(value):
+        return value
+    raise ValueError("operation ID must be a safe op- identifier")

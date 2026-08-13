@@ -75,6 +75,8 @@ class Journal:
         return Journal(self.identifier, self.command, self.requested, self.resolved, self.before, self.target, self.snapshot, phase)
 
     def validate(self, manifest: ComponentManifest, decode_snapshot: Callable[[bytes], tuple[str, ...]]) -> None:
+        if not valid_operation_id(self.identifier):
+            raise ValueError("component transaction journal has invalid identifiers")
         self._require_snapshot()
         if any(value != canonical_components(manifest, set(value)) for value in (self.before, self.target, self.resolved)) or self.before not in manifest.compatible_combinations or self.target not in manifest.compatible_combinations:
             raise ValueError("component transaction journal is inconsistent")
