@@ -14,6 +14,7 @@ authors = [{ name = "Eunsoo Lee" }]
 Repository = "https://github.com/eunsoogi/codexy"
 
 [project.scripts]
+getcodexy = "codexy_runtime_tools.component_cli:main"
 codexy-mcp-runtime = "codexy_runtime_tools.runtime:main"
 codexy-github-install = "codexy_runtime_tools.github_pre_session:main"
 codexy-github-check = "codexy_runtime_tools.github_checks:main"
