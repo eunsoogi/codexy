@@ -74,8 +74,7 @@ fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
 }
 
 fn repository_markers(root: &Path) -> bool {
-    root.join(".git").exists()
-        && root.join("AGENTS.md").is_file()
+    root.join("AGENTS.md").is_file()
         && root.join(".agents/plugins/marketplace.json").is_file()
         && root.join("packages/getcodexy/pyproject.toml").is_file()
 }

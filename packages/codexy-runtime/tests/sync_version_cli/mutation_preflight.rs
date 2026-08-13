@@ -10,7 +10,7 @@ const COMPONENT_MANIFEST: &str = "packages/getcodexy/src/codexy_runtime_tools/co
 const TARGET: &str = "1.3.1";
 
 #[test]
-fn version_mutation_rejects_strict_component_manifest_inputs_without_writes()
+fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
     for (label, needle, replacement) in [
         (
@@ -41,7 +41,6 @@ fn version_mutation_rejects_strict_component_manifest_inputs_without_writes()
     ] {
         let temp = tempfile::tempdir()?;
         let repo = archive_repository(shared_repository_archive()?, &temp, label)?;
-        fs::create_dir(repo.join(".git"))?;
         select_version_advance(&repo, TARGET)?;
         let manifest = repo.join(COMPONENT_MANIFEST);
         let text = fs::read_to_string(&manifest)?;
@@ -67,11 +66,10 @@ fn version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 }
 
 #[test]
-fn version_mutation_accepts_the_component_semver_upper_bound_and_reads_back()
+fn markerless_version_mutation_accepts_the_component_semver_upper_bound_and_reads_back()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let repo = archive_repository(shared_repository_archive()?, &temp, "max-bound")?;
-    fs::create_dir(repo.join(".git"))?;
     let target = "2147483647.0.0";
     select_version_advance(&repo, target)?;
 
