@@ -4,11 +4,19 @@ use crate::support::copy_dir;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const CONTRACT_ARTIFACTS: [&str; 3] = [
+const CONTRACT_ARTIFACTS: [&str; 4] = [
     "docs/getcodexy-component-installation.md",
     "packages/getcodexy/contracts/component-installation-contract.json",
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/getcodexy/tests/fixtures/component-installation-cases.json",
 ];
+
+#[test]
+fn public_validator_accepts_all_canonical_source_contract_artifacts() -> TestResult {
+    let fixture = CanonicalSourceFixture::new()?;
+    assert_success(validate(&fixture.plugin_root())?, "canonical source contract artifacts");
+    Ok(())
+}
 
 #[test]
 fn public_validator_fails_closed_for_each_missing_source_contract_artifact() -> TestResult {
@@ -17,7 +25,10 @@ fn public_validator_fails_closed_for_each_missing_source_contract_artifact() -> 
         fs::remove_file(fixture.root().join(missing))?;
 
         let output = validate(&fixture.plugin_root())?;
-        assert!(!output.status.success(), "{missing} unexpectedly passed");
+        assert!(
+            !output.status.success(),
+            "{missing} unexpectedly passed"
+        );
     }
     Ok(())
 }

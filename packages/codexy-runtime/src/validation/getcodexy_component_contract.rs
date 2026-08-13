@@ -4,6 +4,8 @@ use serde_json::Value;
 
 #[path = "getcodexy_component_contract_cases.rs"]
 mod cases;
+#[path = "getcodexy_component_manifest.rs"]
+mod component_manifest;
 #[path = "getcodexy_component_contract_schema.rs"]
 mod schema;
 
@@ -31,7 +33,10 @@ fn validate_contract_root(root: &Path) -> Result<(), String> {
         load(&root.join("packages/getcodexy/contracts/component-installation-contract.json"))?;
     let fixtures =
         load(&root.join("packages/getcodexy/tests/fixtures/component-installation-cases.json"))?;
+    let manifest =
+        load(&root.join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"))?;
     check_contract(&contract)?;
+    component_manifest::check(&manifest, &contract)?;
     cases::check(&fixtures)?;
     let documentation =
         std::fs::read_to_string(root.join("docs/getcodexy-component-installation.md"))
@@ -89,6 +94,17 @@ fn check_contract(contract: &Value) -> Result<(), String> {
         contract,
         "schema",
         "getcodexy.component-installation-contract.v1",
+    )?;
+    let component_manifest = object(contract, "component_manifest")?;
+    exact_map_string(
+        component_manifest,
+        "schema",
+        "getcodexy.component-manifest.v1",
+    )?;
+    exact_map_string(
+        component_manifest,
+        "package_resource",
+        "codexy_runtime_tools/component-manifest.json",
     )?;
     exact_array(contract, "components", COMPONENTS)?;
     let products = object(contract, "component_products")?;

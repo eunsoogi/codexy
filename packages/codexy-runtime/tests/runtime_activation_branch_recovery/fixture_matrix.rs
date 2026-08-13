@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
 };
 use crate::support::{self, FixtureCommand, make_executable};
-const AUTHORIZED: [&str; 9] = [
+const AUTHORIZED: [&str; 10] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
@@ -15,6 +15,7 @@ const AUTHORIZED: [&str; 9] = [
     "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy-devtools/.codex-plugin/plugin.json",
     "plugins/codexy-github/.codex-plugin/plugin.json",
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/codexy-runtime/src/version/bootstrap.rs",
 ];
 const PRESERVED: [&str; 3] = [
@@ -220,6 +221,7 @@ for path in \
   plugins/codexy/.codex-plugin/plugin.json \
   plugins/codexy-devtools/.codex-plugin/plugin.json \
   plugins/codexy-github/.codex-plugin/plugin.json \
+  packages/getcodexy/src/codexy_runtime_tools/component-manifest.json \
   plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
   plugins/codexy-devtools/mcp/codexy-mcp-lsp \
   packages/codexy-runtime/src/version/bootstrap.rs
@@ -244,7 +246,4 @@ done
     )
 }
 
-fn executable(path: &Path, source: &str) -> std::io::Result<()> {
-    fs::write(path, source)?;
-    make_executable(path)
-}
+fn executable(path: &Path, source: &str) -> std::io::Result<()> { fs::write(path, source)?; make_executable(path) }

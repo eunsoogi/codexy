@@ -10,6 +10,7 @@ pub mod activation;
 mod admission;
 mod bootstrap;
 mod cargo;
+mod component_manifest;
 mod devtools_plugin;
 mod fields;
 mod github_plugin;
@@ -152,6 +153,7 @@ pub fn check_versions_for_tag(tag: Option<&str>) -> Result<String> {
     )?;
     github_plugin::check(manifest_version)?;
     devtools_plugin::check(manifest_version)?;
+    component_manifest::check(manifest_version)?;
     let manifest_platforms = fields::string_array(
         &manifest,
         "supportedPlatforms",

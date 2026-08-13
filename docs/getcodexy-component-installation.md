@@ -2,9 +2,10 @@
 
 This is the target public contract for the 1.4.0 component-installation CLI.
 Its complete component lifecycle is not implemented by the current 1.3.0
-`getcodexy` distribution. The normative machine-readable source is
-`packages/getcodexy/contracts/component-installation-contract.json`; executable
-examples live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
+`getcodexy` distribution. The executable component source is the packaged
+`codexy_runtime_tools/component-manifest.json`; the public contract references
+that resource from `packages/getcodexy/contracts/component-installation-contract.json`.
+Examples live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
 
 `codexy-github-install` is an optional 1.3.0 getcodexy transaction helper. A
 trusted host may call it with its absolute executable path to install and verify
@@ -21,9 +22,9 @@ cache or repository-relative executable path.
 ## Components and source of truth
 
 The logical component names, in canonical output order, are `core`, `github`,
-and `devtools`. They correspond to the public plugin identities `codexy`,
-`codexy-github`, and `codexy-devtools` respectively. `github` and `devtools`
-each depend on `core`.
+and `devtools`. The packaged component manifest owns their public plugin
+identities, lockstep version, plugin roots, plugin-local assets, dependencies,
+and compatible selections. `github` and `devtools` each depend on `core`.
 
 The successful installed component inventory is the source of truth. A command
 request expresses intent and a receipt records the result, but neither replaces
@@ -32,9 +33,22 @@ graph is inconsistent and commands report `inconsistent-installed-state` before 
 mutation. An absent inventory is distinct: `update` reports
 `no-recorded-selection` because there is no selection to preserve.
 
-This contract deliberately names only logical identities. It does not prescribe
-filesystem paths, package roots, manifests, resolver data, transaction storage,
-or release layout.
+The resolver validates requests and the manifest before any installer mutation.
+After a future operation, it reconciles only the fresh `codex plugin list --json`
+inventory; a requested selection or a pre-operation receipt is never substituted
+for that installed-state source of truth. Transaction storage and mutation
+execution remain owned by Issue #557.
+
+The resolver accepts a coherent earlier lockstep installed version for update
+planning, but a successful post-operation reconciliation requires the manifest's
+exact lockstep version. Mixed versions, duplicate component records, an unknown
+official Codexy component, or a known component from a different marketplace
+fail before any mutation is planned.
+
+Inventory reconciliation accepts only the official `codexy` marketplace root
+resolved by the host. Each component record must name that marketplace, its
+canonical plugin identity, and the matching absolute plugin path below that
+root. A stale or malformed record cannot be treated as an unrelated plugin.
 
 ## Commands
 
@@ -50,7 +64,10 @@ or release layout.
 Unknown components fail with `unknown-component`. `update` without any recorded
 inventory fails with `no-recorded-selection`; a present but dependency-invalid
 inventory fails with `inconsistent-installed-state`. A command that does not
-accept component operands returns `components-not-accepted`.
+accept component operands returns `components-not-accepted`. Resolver inventory
+validation additionally reports `unknown-installed-component`,
+`conflicting-installed-state`, `mixed-version-state`, or
+`component-version-mismatch` before an operation is allowed to mutate plugins.
 
 ## State transitions
 

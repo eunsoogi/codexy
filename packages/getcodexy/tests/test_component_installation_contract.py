@@ -20,6 +20,13 @@ class ComponentInstallationContractTests(unittest.TestCase):
         )
         self.assertEqual(contract["components"], ["core", "github", "devtools"])
         self.assertEqual(
+            contract["component_manifest"],
+            {
+                "schema": "getcodexy.component-manifest.v1",
+                "package_resource": "codexy_runtime_tools/component-manifest.json",
+            },
+        )
+        self.assertEqual(
             contract["dependencies"],
             {"core": [], "github": ["core"], "devtools": ["core"]},
         )
