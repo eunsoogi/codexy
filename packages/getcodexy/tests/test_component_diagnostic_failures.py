@@ -121,7 +121,7 @@ class DiagnosticFailureTests(unittest.TestCase):
         self.assertEqual(_health(unsafe), _incompatible("core"))
 
     def test_nonfinite_manifest_json_is_incompatible_not_healthy(self) -> None:
-        for constant in ("NaN", "Infinity", "-Infinity"):
+        for constant in ("NaN", "Infinity", "-Infinity", "1e999", "-1e999"):
             with self.subTest(constant=constant), fixture({"core"}) as state:
                 materialize(state, "core")
                 (state.marketplace / "plugins/codexy/.codex-plugin/plugin.json").write_text(
@@ -131,6 +131,17 @@ class DiagnosticFailureTests(unittest.TestCase):
                 result = doctor(state.home, codex=state.codex, runner=state.run)
 
             self.assertEqual(_health(result), _incompatible("core"))
+
+    def test_nonfinite_older_manifest_json_is_incompatible_not_bootstrap(self) -> None:
+        with fixture({"core"}, versions={"core": "1.2.0"}) as state:
+            materialize(state, "core", version="1.2.0")
+            (state.marketplace / "plugins/codexy/.codex-plugin/plugin.json").write_text(
+                '{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"1.2.0","extra":{"nested":1e999}}',
+                encoding="utf-8",
+            )
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+
+        self.assertEqual(_health(result), _incompatible("core"))
 
     def test_mutation_during_production_read_is_incompatible_not_healthy(self) -> None:
         with fixture({"core"}) as state:

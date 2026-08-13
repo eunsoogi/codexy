@@ -9,7 +9,7 @@ from codexy_runtime_tools.component_transaction_state import decode_inventory
 
 class StrictComponentJsonTests(unittest.TestCase):
     def test_rejects_nonfinite_constants_at_nested_and_top_level_positions(self) -> None:
-        for source in ('NaN', 'Infinity', '-Infinity', '{"outer":{"inner":NaN}}'):
+        for source in ('NaN', 'Infinity', '-Infinity', '1e999', '-1e999', '{"outer":{"inner":NaN}}', '{"outer":{"inner":-1e999}}'):
             with self.subTest(source=source):
                 with self.assertRaisesRegex(ValueError, "non-finite"):
                     loads(source)
