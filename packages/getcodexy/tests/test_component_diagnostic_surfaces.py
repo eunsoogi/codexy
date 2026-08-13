@@ -5,6 +5,7 @@ import unittest
 
 from codexy_runtime_tools.component_diagnostic_surfaces import valid_surface
 from codexy_runtime_tools.component_inspection import doctor
+from codexy_runtime_tools.component_source_admission import DiagnosticTree
 
 from component_lifecycle_support import fixture
 from test_component_inspection import materialize
@@ -48,10 +49,10 @@ class DiagnosticSurfaceTests(unittest.TestCase):
                     path.mkdir()
 
                 result = doctor(state.home, codex=state.codex, runner=state.run)
-                self.assertFalse(valid_surface(state.marketplace / "plugins" / plugins[component], component))
+                self.assertFalse(valid_surface(DiagnosticTree(state.marketplace / "plugins" / plugins[component]), component))
 
             health = {entry["component"]: entry for entry in result["component_health"]}
-            self.assertEqual(health[component], {"component": component, "state": "stale", "repair": "getcodexy bootstrap"})
+            self.assertEqual(health[component], {"component": component, "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"})
 
     def test_devtools_mcp_requires_exact_lsp_and_codegraph_bindings(self) -> None:
         bindings = (
@@ -65,7 +66,7 @@ class DiagnosticSurfaceTests(unittest.TestCase):
                 (plugin / ".mcp.json").write_text(json.dumps(binding), encoding="utf-8")
                 result = doctor(state.home, codex=state.codex, runner=state.run)
 
-                self.assertFalse(valid_surface(plugin, "devtools"))
+                self.assertFalse(valid_surface(DiagnosticTree(plugin), "devtools"))
             health = {entry["component"]: entry for entry in result["component_health"]}
             self.assertEqual(health["devtools"], {"component": "devtools", "state": "stale", "repair": "getcodexy bootstrap"})
 

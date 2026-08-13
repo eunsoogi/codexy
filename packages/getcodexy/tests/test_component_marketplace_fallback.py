@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import unittest
+import os
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -71,7 +72,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             unsafe = installed(state.marketplace, "core")
             unsafe["source"] = {"source": "local", "path": "/unverified/plugins/codexy"}
             state.inventory_override = {"installed": [unsafe]}
-            with patch("codexy_runtime_tools.component_inspection._stale") as stale:
+            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
                 result = doctor(state.home, codex=state.codex, runner=self._marketplace_failure(state))
             stale.assert_not_called()
 
@@ -139,7 +140,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             external = state.root / "external-codexy"
             plugin.rename(external)
             plugin.symlink_to(external, target_is_directory=True)
-            with patch("codexy_runtime_tools.component_inspection._stale") as stale:
+            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
                 result = doctor(state.home, codex=state.codex, runner=state.run)
             stale.assert_not_called()
 
@@ -151,6 +152,68 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
         with patch("codexy_runtime_tools.component_source_admission.os.lstat", return_value=reparse_directory):
             self.assertFalse(_local_directory(Path("C:/marketplace/plugins/codexy")))
         self.assertTrue(_network_path(Path("//server/share/codexy")))
+
+    def test_intermediate_diagnostic_links_are_rejected_before_health_reads(self) -> None:
+        cases = (
+            ("core", "agents"),
+            ("core", "hooks"),
+            ("core", ".codex-plugin"),
+            ("core", "assets"),
+            ("github", "agents"),
+            ("github", "hooks"),
+            ("github", ".codex-plugin"),
+            ("github", "skills"),
+            ("github", "skills/git-workflow"),
+            ("devtools", ".codex-plugin"),
+            ("devtools", "mcp"),
+        )
+        plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
+        for component, relative in cases:
+            selection = {"core", component}
+            with self.subTest(component=component, relative=relative), fixture(selection) as state:
+                materialize(state, *selection)
+                source = state.marketplace / "plugins" / plugins[component] / relative
+                external = state.root / f"external-{component}-{relative.replace('/', '-').replace('.', 'dot')}"
+                source.rename(external)
+                source.symlink_to(external, target_is_directory=True)
+                with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+                    result = doctor(state.home, codex=state.codex, runner=state.run)
+                stale.assert_not_called()
+
+            self.assertEqual(result["errors"], [{"code": "conflicting-installed-state"}])
+            self.assertEqual(result["component_health"], [{"component": item, "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"} for item in ("core", "github", "devtools") if item in selection])
+
+    def test_windows_reparse_and_remote_admission_fail_before_diagnostic_reads(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            original = __import__("os").lstat
+            def reparse(path):
+                metadata = original(path)
+                return SimpleNamespace(st_mode=metadata.st_mode, st_file_attributes=0x0400 if Path(path).name == "agents" else 0)
+            with patch("codexy_runtime_tools.component_source_admission.os.lstat", side_effect=reparse), patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+                reparse_result = doctor(state.home, codex=state.codex, runner=state.run)
+            stale.assert_not_called()
+            with patch("codexy_runtime_tools.component_source_admission._network_path", return_value=True), patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+                remote_result = doctor(state.home, codex=state.codex, runner=state.run)
+            stale.assert_not_called()
+
+        for result in (reparse_result, remote_result):
+            self.assertEqual(result["errors"], [{"code": "conflicting-installed-state"}])
+            self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
+
+    @unittest.skipIf(os.name == "nt" or not hasattr(os, "mkfifo"), "requires POSIX named pipes")
+    def test_terminal_special_node_is_rejected_before_health_reads(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            path = state.marketplace / "plugins/codexy/hooks/hooks.json"
+            path.unlink()
+            os.mkfifo(path)
+            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+            stale.assert_not_called()
+
+        self.assertEqual(result["errors"], [{"code": "conflicting-installed-state"}])
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
 
     @staticmethod
     def _changed(entry: dict[str, object], **changes: object) -> dict[str, object]:

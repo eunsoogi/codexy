@@ -7,6 +7,7 @@ from pathlib import Path
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_diagnostic_surfaces import CATALOGS, HOOKS, valid_surface
+from codexy_runtime_tools.component_source_admission import DiagnosticTree
 
 from component_lifecycle_support import fixture
 
@@ -51,7 +52,7 @@ class ComponentInspectionTests(unittest.TestCase):
         plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
         for component, plugin in plugins.items():
             with self.subTest(component=component):
-                self.assertTrue(valid_surface(repository / "plugins" / plugin, component))
+                self.assertTrue(valid_surface(DiagnosticTree(repository / "plugins" / plugin), component))
 
     def test_every_compatible_live_selection_is_reported_in_canonical_order(self) -> None:
         selections = (set(), {"core"}, {"core", "github"}, {"core", "devtools"}, {"core", "github", "devtools"})
@@ -234,8 +235,7 @@ class ComponentInspectionTests(unittest.TestCase):
 
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
-        self.assertEqual(result["component_health"], [{"component": "core", "state": "stale", "repair": "getcodexy bootstrap"}])
-
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"}])
 
 def _catalog(component: str) -> str:
     values = CATALOGS[component]

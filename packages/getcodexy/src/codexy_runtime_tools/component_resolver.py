@@ -8,8 +8,7 @@ from enum import Enum
 from pathlib import Path
 
 from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest, valid_semver
-from .component_source_admission import trusted_component_root
-
+from .component_source_admission import DiagnosticTree, diagnostic_paths, trusted_component_root
 
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 
@@ -43,6 +42,11 @@ class ClassifiedInstalledInventory:
     records: tuple[ClassifiedInstalledRecord, ...]
 
 
+@dataclass(frozen=True)
+class InspectedInstalledInventory:
+    selection: tuple[str, ...]
+    trees: dict[str, DiagnosticTree]
+
 def resolve_components(manifest: ComponentManifest, requested: tuple[str, ...] | list[str]) -> tuple[str, ...]:
     requested = tuple(requested)
     if unknown := tuple(component for component in requested if component not in manifest.component_ids):
@@ -69,12 +73,22 @@ def reconcile_installed_inventory(manifest: ComponentManifest, inventory: object
     return _reconcile_classified_inventory(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
 
 
-def admit_inspected_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
+def admit_inspected_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> InspectedInstalledInventory:
     """Admit an inventory before read-only diagnostics dereference component roots."""
     selected = admit_installed_inventory(manifest, inventory, marketplace_root)
-    if marketplace_root is not None and any(not trusted_component_root(marketplace_root, manifest.component(component)) for component in selected):
+    if marketplace_root is None:
+        trees = {}
+    else:
+        components = tuple(manifest.component(component) for component in selected)
+        if any(not trusted_component_root(marketplace_root, component) for component in components):
+            raise ComponentResolutionError("conflicting-installed-state")
+        trees = {component.id: DiagnosticTree(marketplace_root / component.asset.package_root) for component in components}
+    if any(
+        not trees[component].admits(diagnostic_paths(manifest.component(component)))
+        for component in selected
+    ):
         raise ComponentResolutionError("conflicting-installed-state")
-    return selected
+    return InspectedInstalledInventory(selected, trees)
 
 
 def admit_installed_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
@@ -219,7 +233,8 @@ def _valid_record(entry: dict[str, object], component: Component, manifest: Comp
     if not valid_observed_record(entry, component, manifest):
         return False
     source = entry.get("source")
-    return isinstance(source, dict) and isinstance(source.get("path"), str) and Path(source["path"]) == marketplace_root / component.asset.package_root
+    expected = marketplace_root / component.asset.package_root
+    return isinstance(source, dict) and isinstance(source.get("path"), str) and source["path"] == str(expected) and Path(source["path"]) == expected
 
 
 def valid_observed_record(entry: dict[str, object], component: Component, manifest: ComponentManifest) -> bool:
