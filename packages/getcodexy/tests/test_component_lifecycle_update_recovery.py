@@ -4,7 +4,7 @@ import json
 import unittest
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
-from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, write_journal
+from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, read_journal, write_journal
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 
 
@@ -35,7 +35,7 @@ class UpdateRecoveryTests(unittest.TestCase):
             receipt = run_operation("install", ("devtools",), state.home, state.codex, state.run, operation_id="op-after-older-update")
 
             self.assertIn(("plugin", "marketplace", "upgrade", "codexy", "--json"), state.calls)
-            self.assertFalse((target.parent / "transaction.json").exists())
+            self.assertIsNone(read_journal(state.home))
             self.assertEqual(json.loads((target.parent / "receipts" / "op-interrupted-older-update.json").read_text(encoding="utf-8"))["outcome"], "completed")
             self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
 
