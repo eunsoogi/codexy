@@ -4,6 +4,7 @@
   "repair": "descendant-no-follow-v1",
   "base": "0655cff6a084494905bee3b9b47f0cf50d8cba00",
   "review_block_head": "ee59a682918a950ef42797259f22fe3aa823b5c4",
+  "source_repair_commit": "5e2a10983d8ff956913fa17ec6ef732dbb82fae4",
   "classification": {
     "kind": "cross-boundary security repair",
     "tdd": "required-red-green",
@@ -59,25 +60,25 @@
     "component_suite": {
       "command": "PYTHONPATH=packages/getcodexy/src:packages/getcodexy/tests python3 -m unittest discover -s packages/getcodexy/tests -p test_component_*.py",
       "result": "127 passed",
-      "log_sha256": "76e94407a61740999d6d8e4c3c042f7efbe6cec5cbfb140ac53940a8d13065b4"
+      "log_sha256": "7e03d46bd8d877efc02647056d5c0e1f6a7706d8bd0e83835a583b65b3c76a1f"
     },
     "package_suite": {
       "command": "PATH=<isolated python-to-python3 shim> PYTHONPATH=packages/getcodexy/src:packages/getcodexy/tests python3 -m unittest discover -s packages/getcodexy/tests",
       "result": "216 passed",
-      "log_sha256": "3d4ed8dd4f98e219cb43e46f4b192c2fd41d885355bab5a49538888d837ded4b",
+      "log_sha256": "8e0e369444ec147154e9419d71f0c84991b00ae5762ce92ec8e7adba37c14642",
       "environment_note": "The unshimmed suite has two unrelated failures because two GitHub public-check tests invoke python while this host provides only python3."
     },
     "rust_contract": {
       "command": "cargo test --manifest-path packages/codexy-runtime/Cargo.toml getcodexy_component_contract --lib",
       "result": "26 passed",
-      "log_sha256": "9bc74db64c756325b49d8333728dae1d1c35a6680bbf7e8c7de6ba201fa4c315"
+      "log_sha256": "b30265f44e41145fde0d63c1025cc5ef7d0668378d98e45185d70ebd0c20368c"
     },
     "installed_wheel_console": {
       "command": "uv build wheel; isolated uv install; controlled Codex host; getcodexy status, doctor, bootstrap in human and JSON modes",
       "result": "schemas, commands, completed outcomes, full default selection, and healthy final doctor verified",
       "status_json_sha256": "63e73a842b21c2eb9defe1ba76c2aa93b358db274d300283c17b372cf9ed9a51",
       "doctor_json_sha256": "00eda0c1f09a5601d379573a7e2f585e658bb40fcb300a4732ffbff28a808574",
-      "bootstrap_json_sha256": "b5c380433db7be505643e9e40efc1aae9cb239267047a609b06f3756465c5ca3"
+      "bootstrap_json_sha256": "052807c7191fdcfaa7f8817047106c1bfc2c080f30215565216876d08983bc0c"
     },
     "static": [
       "git diff --check: PASS",
