@@ -61,6 +61,30 @@ def verify_post_operation_inventory(manifest: ComponentManifest, inventory: obje
     return selected
 
 
+def preflight_unregistered_inventory(manifest: ComponentManifest, inventory: object) -> None:
+    """Reject any Codexy-related installed record without its registered marketplace."""
+    if not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):
+        raise ComponentResolutionError("invalid-installed-inventory")
+    plugins = {component.plugin: component for component in manifest.components}
+    for entry in inventory["installed"]:
+        if not isinstance(entry, dict):
+            raise ComponentResolutionError("invalid-installed-inventory")
+        plugin, plugin_id, marketplace = entry.get("name"), entry.get("pluginId"), entry.get("marketplaceName")
+        codexy_identity = (
+            marketplace == manifest.marketplace.name
+            or isinstance(plugin, str) and plugin.startswith("codexy")
+            or isinstance(plugin_id, str) and plugin_id.endswith("@codexy")
+        )
+        if not codexy_identity:
+            continue
+        if plugin not in plugins:
+            raise ComponentResolutionError("unknown-installed-component")
+        component = plugins[plugin]
+        if marketplace != manifest.marketplace.name or plugin_id != component.asset.plugin_id:
+            raise ComponentResolutionError("conflicting-installed-state")
+        raise ComponentResolutionError("conflicting-installed-state")
+
+
 def _component_records(manifest: ComponentManifest, inventory: object, marketplace_root: Path) -> dict[str, dict[str, object]]:
     if not marketplace_root.is_absolute() or not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):
         raise ComponentResolutionError("invalid-installed-inventory")

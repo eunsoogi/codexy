@@ -4,7 +4,7 @@ import json
 import unittest
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import fixture, installed
 
 
 class LifecyclePreflightTests(unittest.TestCase):
@@ -37,6 +37,36 @@ class LifecyclePreflightTests(unittest.TestCase):
             self.assertEqual(json.loads(target.read_text())["components"], ["core"])
             saved = target.parent / "receipts" / "op-old-upgrade-fail.json"
             self.assertEqual(json.loads(saved.read_text())["outcome"], "rolled-back")
+
+    def test_absent_marketplace_bootstraps_only_after_a_proved_empty_inventory(self) -> None:
+        with fixture(marketplace_present=False) as state:
+            receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-clean-no-market")
+            self.assertEqual(receipt["outcome"], "completed")
+            self.assertTrue(state.marketplace_present)
+
+    def test_absent_marketplace_rejects_conflicting_orphaned_unknown_malformed_and_mixed_records(self) -> None:
+        cases = (
+            ("conflict", "conflicting-installed-state"),
+            ("orphan", "conflicting-installed-state"),
+            ("unknown", "unknown-installed-component"),
+            ("malformed", "conflicting-installed-state"),
+            ("mixed", "conflicting-installed-state"),
+        )
+        for case, error in cases:
+            with self.subTest(case=case), fixture(marketplace_present=False) as state:
+                record = installed(state.marketplace, "core") if case != "unknown" else {"name": "codexy-future", "marketplaceName": "codexy"}
+                if case == "conflict":
+                    record["marketplaceName"] = "other-marketplace"
+                if case == "malformed":
+                    record["pluginId"] = "codexy@other-marketplace"
+                records = [record]
+                if case == "mixed":
+                    records.append(installed(state.marketplace, "github"))
+                state.inventory_override = {"installed": records}
+                receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id=f"op-{case}-no-market")
+                self.assertEqual(receipt["errors"], [{"code": error}])
+                self.assertFalse(state.marketplace_present)
+                self.assertEqual(state.mutations, [])
 
 
 if __name__ == "__main__":

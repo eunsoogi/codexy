@@ -10,8 +10,8 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 
 class fixture:
-    def __init__(self, selection: set[str] | None = None, *, fail_add: str | None = None, fail_remove: str | None = None, fail_upgrade: bool = False, interrupt_add: str | None = None, marketplace_present: bool = True, versions: dict[str, str] | None = None) -> None:
-        self.selection, self.fail_add, self.fail_remove, self.fail_upgrade, self.interrupt_add, self.marketplace_present, self.versions = selection or set(), fail_add, fail_remove, fail_upgrade, interrupt_add, marketplace_present, versions or {}
+    def __init__(self, selection: set[str] | None = None, *, fail_add: str | None = None, fail_remove: str | None = None, fail_upgrade: bool = False, interrupt_add: str | None = None, marketplace_present: bool = True, inventory_override: object | None = None, versions: dict[str, str] | None = None) -> None:
+        self.selection, self.fail_add, self.fail_remove, self.fail_upgrade, self.interrupt_add, self.marketplace_present, self.inventory_override, self.versions = selection or set(), fail_add, fail_remove, fail_upgrade, interrupt_add, marketplace_present, inventory_override, versions or {}
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
         self.home, self.marketplace, self.calls, self.mutations = self.root / "home", self.root / "marketplace", [], []
@@ -45,7 +45,7 @@ class fixture:
             self.versions = {component: "1.3.0" for component in self.selection}
             payload = {"ok": True}
         elif tail == ("plugin", "list", "--json"):
-            payload = {"installed": [installed(self.marketplace, component, self.versions.get(component, "1.3.0")) for component in ("core", "github", "devtools") if component in self.selection]}
+            payload = self.inventory_override if self.inventory_override is not None else {"installed": [installed(self.marketplace, component, self.versions.get(component, "1.3.0")) for component in ("core", "github", "devtools") if component in self.selection]}
         elif tail[:2] == ("plugin", "add"):
             plugin = tail[2].split("@", 1)[0]
             self.selection.add(component_id(plugin))

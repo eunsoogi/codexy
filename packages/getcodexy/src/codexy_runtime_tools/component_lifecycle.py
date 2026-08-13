@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
-from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
+from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
+from .component_resolver import ComponentResolutionError, preflight_unregistered_inventory, reconcile_installed_inventory, resolve_components, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
-from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_inventory, read_journal, transaction_lock, write_inventory, write_journal, write_receipt
+from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal, write_receipt
 from .github_pre_session import trusted_codex
-from .plugin_resolution import named_marketplace, official_marketplace
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
 from .updater import _absolute, _validate_real_path
 
@@ -35,20 +35,31 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         if pending is not None:
             _validate_journal(pending, manifest)
         try:
-            _validate_request(command, requested, manifest)
-            recorded = _recorded_selection(home, manifest)
+            validate_request(command, requested, manifest)
+            recorded = recorded_selection(home, manifest)
         except ComponentResolutionError as error:
             return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
         except (OSError, ValueError, RuntimeError):
             return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
-        root = _existing_marketplace_root(executable, invoke)
+        try:
+            root = existing_marketplace_root(executable, invoke)
+            inventory = _list(executable, invoke)
+            if root is None:
+                preflight_unregistered_inventory(manifest, inventory)
+        except ComponentResolutionError as error:
+            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", error.code))
+        except (OSError, ValueError, RuntimeError):
+            return _terminal(home, _receipt(identifier, command, requested, (), (), (), "rejected", "inconsistent-installed-state"))
         if pending is not None:
             _recover_if_needed(home, executable, invoke, manifest, root or official_marketplace_root(executable, invoke))
-            root = _existing_marketplace_root(executable, invoke)
-            recorded = _recorded_selection(home, manifest)
+            root = existing_marketplace_root(executable, invoke)
+            inventory = _list(executable, invoke)
+            if root is None:
+                preflight_unregistered_inventory(manifest, inventory)
+            recorded = recorded_selection(home, manifest)
         before: tuple[str, ...] = ()
         try:
-            before = () if root is None else _selection(manifest, _list(executable, invoke), root)
+            before = () if root is None else _selection(manifest, inventory, root)
             if recorded is not None and recorded != before:
                 raise ComponentResolutionError("inconsistent-installed-state")
             resolved, target, adds, removes = _plan(command, requested, before, recorded, manifest)
@@ -158,13 +169,6 @@ def _plan(command: str, requested: tuple[str, ...], before: tuple[str, ...], rec
     return resolved, target, (), tuple(reversed(resolved))
 
 
-def _validate_request(command: str, requested: tuple[str, ...], manifest: ComponentManifest) -> None:
-    if command == "remove" and not requested:
-        raise ComponentResolutionError("missing-removal-target")
-    if command == "install" or requested:
-        resolve_components(manifest, requested)
-
-
 def _restore_selection(executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, before: tuple[str, ...]) -> None:
     """Restore the selection without replacing a coherent prior-version component."""
     current = _selection(manifest, _list(executable, invoke), root)
@@ -195,22 +199,8 @@ def _list(executable: Path, invoke: Runner) -> object:
     return _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
 
 
-def _existing_marketplace_root(executable: Path, invoke: Runner) -> Path | None:
-    payload = _json(invoke([str(executable), "plugin", "marketplace", "list", "--json"]), "plugin marketplace list")
-    return official_marketplace(payload) if named_marketplace(payload) else None
-
-
 def _selection(manifest: ComponentManifest, payload: object, root: Path) -> tuple[str, ...]:
     return reconcile_installed_inventory(manifest, payload, root)
-
-
-def _recorded_selection(home: Path, manifest: ComponentManifest) -> tuple[str, ...] | None:
-    selected = read_inventory(home)
-    if selected is None:
-        return None
-    if selected != _canonical(manifest, set(selected)) or selected not in manifest.compatible_combinations:
-        raise ValueError("installed component inventory is inconsistent")
-    return selected
 
 
 def _validate_journal(journal: Journal, manifest: ComponentManifest) -> None:
