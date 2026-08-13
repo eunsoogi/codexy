@@ -78,42 +78,49 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
 #[test]
 fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
-    for (label, relative, needle, replacement) in [
-        (
-            "Cargo.toml alternate version spacing",
-            "packages/codexy-runtime/Cargo.toml",
-            "version = \"1.3.0\"",
-            "version=\"1.3.0\"",
-        ),
-        (
-            "Cargo.lock package field ordering",
-            "packages/codexy-runtime/Cargo.lock",
-            "name = \"codexy-runtime\"\nversion = \"1.3.0\"",
-            "version = \"1.3.0\"\nname = \"codexy-runtime\"",
-        ),
-    ] {
-        let temp = tempfile::tempdir()?;
-        let repo = archive_repository(shared_repository_archive()?, &temp, label)?;
-        select_version_advance(&repo, TARGET)?;
-        let path = repo.join(relative);
-        let text = fs::read_to_string(&path)?;
-        let corrupted = text.replacen(needle, replacement, 1);
-        assert_ne!(corrupted, text, "{label} fixture did not change");
-        fs::write(&path, corrupted)?;
-        let before = version_surface_contents(&repo)?;
+    for (line_ending_label, line_ending) in [("LF", "\n"), ("CRLF", "\r\n")] {
+        for (label, relative, needle, replacement) in [
+            (
+                "Cargo.toml alternate version spacing",
+                "packages/codexy-runtime/Cargo.toml",
+                "version = \"1.3.0\"",
+                "version=\"1.3.0\"",
+            ),
+            (
+                "Cargo.lock package field ordering",
+                "packages/codexy-runtime/Cargo.lock",
+                "name = \"codexy-runtime\"\nversion = \"1.3.0\"",
+                "version = \"1.3.0\"\nname = \"codexy-runtime\"",
+            ),
+        ] {
+            let label = format!("{label} ({line_ending_label})");
+            let temp = tempfile::tempdir()?;
+            let repo = archive_repository(shared_repository_archive()?, &temp, &label)?;
+            select_version_advance(&repo, TARGET)?;
+            let path = repo.join(relative);
+            let text = with_line_endings(&fs::read_to_string(&path)?, line_ending);
+            let corrupted = text.replacen(
+                &needle.replace('\n', line_ending),
+                &replacement.replace('\n', line_ending),
+                1,
+            );
+            assert_ne!(corrupted, text, "{label} fixture did not change");
+            fs::write(&path, corrupted)?;
+            let before = version_surface_contents(&repo)?;
 
-        let output = sync_version(&repo, TARGET)?;
-        assert!(
-            !output.status.success(),
-            "{label} unexpectedly completed mutation\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert_eq!(
-            version_surface_contents(&repo)?,
-            before,
-            "{label} changed a managed version surface before rejection"
-        );
+            let output = sync_version(&repo, TARGET)?;
+            assert!(
+                !output.status.success(),
+                "{label} unexpectedly completed mutation\nstdout:\n{}\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert_eq!(
+                version_surface_contents(&repo)?,
+                before,
+                "{label} changed a managed version surface before rejection"
+            );
+        }
     }
     Ok(())
 }
@@ -160,4 +167,8 @@ fn sync_version(root: &std::path::Path, version: &str) -> Result<std::process::O
         .env("CODEXY_REPO_ROOT", root)
         .current_dir(root)
         .output()
+}
+
+fn with_line_endings(text: &str, line_ending: &str) -> String {
+    text.replace("\r\n", "\n").replace('\n', line_ending)
 }
