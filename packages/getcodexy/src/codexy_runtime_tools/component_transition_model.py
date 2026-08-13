@@ -150,6 +150,8 @@ class OperationReceipt:
         return cls(identifier, command, outcome, *parts, tuple(error["code"] for error in errors))
 
     def encode(self) -> dict[str, object]:
+        if self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
+            raise ValueError("operation receipt has invalid terminal state")
         return {"schema": RECEIPT_SCHEMA, "operation_id": self.identifier, "command": self.command, "outcome": self.outcome, "requested_components": list(self.requested), "resolved_components": list(self.resolved), "selection_before": list(self.before), "selection_after": list(self.after), "installed_components": list(self.after), "source_of_truth": SOURCE, "errors": [{"code": error} for error in self.errors]}
 
     def validate(self, manifest: ComponentManifest) -> None:

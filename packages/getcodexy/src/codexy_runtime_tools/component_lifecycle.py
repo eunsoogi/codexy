@@ -213,5 +213,5 @@ def _reject(home: Path, manifest: ComponentManifest, identifier: str, command: s
 def _terminal(home: Path, manifest: ComponentManifest, receipt: OperationReceipt) -> dict[str, object]:
     receipt.validate(manifest)
     encoded = receipt.encode()
-    write_receipt(home, encoded)
+    write_receipt(home, manifest, receipt)
     return encoded

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
+from codexy_runtime_tools import component_transaction_receipts as receipt_storage
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_resolver import ComponentResolutionError
 from codexy_runtime_tools.component_transaction_state import decode_inventory
@@ -87,6 +90,42 @@ class TransitionModelTests(unittest.TestCase):
             with self.subTest(receipt=receipt.identifier):
                 with self.assertRaises(ValueError):
                     receipt.validate(manifest)
+
+    def test_receipt_serialization_has_no_direct_builder_bypass(self) -> None:
+        manifest = load_component_manifest()
+        plan = plan_transition(manifest, "install", ("core",), (), ())
+        journal = plan.journal("op-typed-terminal", InventorySnapshot(None))
+        rejected = OperationReceipt.rejected(
+            "op-typed-rejected", "remove", (), (), Rejection.from_failure(RejectionStage.REQUEST, ComponentResolutionError("missing-removal-target"))
+        )
+        invalid = (
+            OperationReceipt("op-pending-encode", "install", "pending", (), (), (), (), ()),  # type: ignore[arg-type]
+            OperationReceipt("op-unknown-command", "bootstrap", "completed", (), (), (), (), ()),  # type: ignore[arg-type]
+            OperationReceipt("op-unknown-outcome", "install", "unknown", (), (), (), (), ()),  # type: ignore[arg-type]
+        )
+
+        self.assertFalse(hasattr(receipt_storage, "operation_receipt"))
+        for receipt in (journal.receipt("completed"), journal.receipt("rolled-back", journal.before), rejected):
+            receipt.validate(manifest)
+            self.assertIsInstance(receipt.encode(), dict)
+        for receipt in invalid:
+            with self.subTest(receipt=receipt.identifier):
+                with self.assertRaises(ValueError):
+                    receipt.encode()
+        with TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            receipt_storage.write_receipt(home, manifest, journal.receipt("completed"))
+            self.assertEqual(receipt_storage.read_receipt(home, "op-typed-terminal"), journal.receipt("completed").encode())
+            with self.assertRaises(TypeError):
+                receipt_storage.write_receipt(home, manifest, {})  # type: ignore[arg-type]
+        repository = Path(__file__).resolve().parents[3]
+        for path in (
+            repository / "packages/getcodexy/src/codexy_runtime_tools/component_lifecycle.py",
+            repository / "packages/getcodexy/src/codexy_runtime_tools/component_transaction_receipts.py",
+        ):
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn("operation_receipt(", source)
+            self.assertNotIn("OperationReceipt(", source)
 
 
 def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
