@@ -8,7 +8,8 @@ from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_resolver import ComponentResolutionError
 from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, inventory_path, write_journal
-from codexy_runtime_tools.component_transition_model import OperationReceipt, StateFailure, plan_transition
+from codexy_runtime_tools.component_transition_model import OperationReceipt, plan_transition
+from codexy_runtime_tools.component_transition_rejections import Rejection, RejectionStage, StateFailure
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 
 
@@ -31,8 +32,8 @@ class JournalValidationTests(unittest.TestCase):
         with self.assertRaises(ComponentResolutionError) as planned:
             plan_transition(manifest, "update", (), ("core",), None)
 
-        plan_rejection = OperationReceipt.rejected("op-plan-rejection", "update", (), ("core",), planned.exception)
-        state_rejection = OperationReceipt.rejected("op-state-rejection", "install", ("core",), (), StateFailure.INCONSISTENT_INSTALLED_STATE)
+        plan_rejection = OperationReceipt.rejected("op-plan-rejection", "update", (), ("core",), Rejection.from_failure(RejectionStage.PLAN, planned.exception))
+        state_rejection = OperationReceipt.rejected("op-state-rejection", "install", ("core",), (), Rejection.from_failure(RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE))
 
         self.assertEqual(plan_rejection.errors, ("no-recorded-selection",))
         self.assertEqual(state_rejection.errors, ("inconsistent-installed-state",))
@@ -40,10 +41,10 @@ class JournalValidationTests(unittest.TestCase):
     def test_rejected_receipts_must_match_a_reachable_prestate_transition(self) -> None:
         manifest = load_component_manifest()
         valid = OperationReceipt.rejected(
-            "op-protected-removal", "remove", ("core",), ("core", "devtools"), ComponentResolutionError("dependency-protected-removal")
+            "op-protected-removal", "remove", ("core",), ("core", "devtools"), Rejection.from_failure(RejectionStage.PLAN, ComponentResolutionError("dependency-protected-removal"))
         )
         impossible = OperationReceipt.rejected(
-            "op-impossible-removal", "remove", ("core",), (), ComponentResolutionError("dependency-protected-removal")
+            "op-impossible-removal", "remove", ("core",), (), Rejection.from_failure(RejectionStage.PLAN, ComponentResolutionError("dependency-protected-removal"))
         )
 
         valid.validate(manifest)
@@ -62,6 +63,8 @@ class JournalValidationTests(unittest.TestCase):
             journal.receipt("completed", journal.before)
         with self.assertRaisesRegex(ValueError, "rollback"):
             journal.receipt("rolled-back", journal.target)
+        with self.assertRaisesRegex(ValueError, "journal"):
+            journal.receipt("pending")  # type: ignore[arg-type]
 
     def test_update_journal_without_an_inventory_snapshot_is_rejected_before_host_mutation(self) -> None:
         with fixture({"core"}) as state:

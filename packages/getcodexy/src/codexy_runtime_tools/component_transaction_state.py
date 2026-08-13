@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Iterator
 
 from .component_transaction_durability import sync_parent_directory
-from .component_transition_model import InventorySnapshot, JOURNAL_SCHEMA, Journal
+from .component_transaction_snapshot import InventorySnapshot
+from .component_transition_model import JOURNAL_SCHEMA, Journal
 from .updater import _absolute, _validate_real_path
 
 

@@ -10,6 +10,8 @@ from typing import Callable, Literal
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, canonical_components, resolve_components
 from .component_transaction_identity import operation_id
+from .component_transaction_snapshot import InventorySnapshot
+from .component_transition_rejections import Rejection, RejectionKind, RejectionStage, StateFailure, valid_rejection
 
 
 Command = Literal["install", "update", "remove"]
@@ -20,36 +22,9 @@ RECEIPT_SCHEMA = "getcodexy.operation-receipt.v1"
 SOURCE = "installed-component-inventory"
 
 
-class StateFailure(str, Enum):
-    INCONSISTENT_INSTALLED_STATE = "inconsistent-installed-state"
-
-
 class PreStateSource(str, Enum):
     DURABLE_SNAPSHOT = "durable-snapshot"
     NO_SNAPSHOT = "no-snapshot"
-
-
-HOST_REJECTION_CODES = frozenset({
-    "component-version-mismatch", "components-not-accepted", "conflicting-installed-state",
-    "inconsistent-installed-state", "installed-state-mismatch", "invalid-installed-inventory",
-    "mixed-version-state", "unknown-installed-component",
-})
-
-
-@dataclass(frozen=True)
-class InventorySnapshot:
-    contents: bytes | None
-
-    @classmethod
-    def capture(cls, home: object) -> "InventorySnapshot":
-        from .component_transaction_state import capture_inventory_snapshot
-
-        return capture_inventory_snapshot(home)
-
-    def restore(self, home: object) -> None:
-        from .component_transaction_state import restore_inventory_snapshot
-
-        restore_inventory_snapshot(home, self)
 
 
 @dataclass(frozen=True)
@@ -146,12 +121,12 @@ class OperationReceipt:
     errors: tuple[str, ...]
 
     @classmethod
-    def rejected(cls, identifier: str, command: Command, requested: tuple[str, ...], before: tuple[str, ...], failure: ComponentResolutionError | StateFailure) -> "OperationReceipt":
-        return cls(identifier, command, "rejected", requested, (), before, before, (failure.code if isinstance(failure, ComponentResolutionError) else failure.value,))
+    def rejected(cls, identifier: str, command: Command, requested: tuple[str, ...], before: tuple[str, ...], rejection: Rejection) -> "OperationReceipt":
+        return cls(identifier, command, "rejected", requested, (), before, before, (rejection.kind.value,))
 
     @classmethod
     def from_journal(cls, journal: Journal, outcome: Outcome, after: tuple[str, ...]) -> "OperationReceipt":
-        if outcome == "rejected":
+        if outcome not in {"completed", "rolled-back"}:
             raise ValueError("a journal cannot produce a rejected receipt")
         if outcome == "completed" and after != journal.target:
             raise ValueError("a completion receipt must use the transition target")
@@ -178,10 +153,12 @@ class OperationReceipt:
         return {"schema": RECEIPT_SCHEMA, "operation_id": self.identifier, "command": self.command, "outcome": self.outcome, "requested_components": list(self.requested), "resolved_components": list(self.resolved), "selection_before": list(self.before), "selection_after": list(self.after), "installed_components": list(self.after), "source_of_truth": SOURCE, "errors": [{"code": error} for error in self.errors]}
 
     def validate(self, manifest: ComponentManifest) -> None:
+        if self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
+            raise ValueError("operation receipt has invalid terminal state")
         if self.before not in manifest.compatible_combinations or self.after not in manifest.compatible_combinations:
             raise ValueError("operation receipt has invalid component selections")
         if self.outcome == "rejected":
-            if self.resolved or self.after != self.before or not _valid_rejection(manifest, self.command, self.requested, self.before, self.errors):
+            if self.resolved or self.after != self.before or not valid_rejection(manifest, self.command, self.requested, self.before, self.errors, plan_transition):
                 raise ValueError("operation receipt has invalid rejection semantics")
             return
         try:
@@ -223,18 +200,3 @@ def _components(value: dict[str, object], field: str, subject: str) -> tuple[str
     if not isinstance(components, list) or any(not isinstance(component, str) for component in components):
         raise ValueError(f"{subject} has invalid components")
     return tuple(components)
-
-
-def _valid_rejection(manifest: ComponentManifest, command: Command, requested: tuple[str, ...], before: tuple[str, ...], errors: tuple[str, ...]) -> bool:
-    return len(errors) == 1 and errors[0] in _rejection_codes(manifest, command, requested, before)
-
-
-def _rejection_codes(manifest: ComponentManifest, command: Command, requested: tuple[str, ...], before: tuple[str, ...]) -> frozenset[str]:
-    """All rejected paths represent either host admission or a failed pure plan."""
-    codes = set(HOST_REJECTION_CODES)
-    for recorded in (None, before):
-        try:
-            plan_transition(manifest, command, requested, before, recorded)
-        except ComponentResolutionError as error:
-            codes.add(error.code)
-    return frozenset(codes)

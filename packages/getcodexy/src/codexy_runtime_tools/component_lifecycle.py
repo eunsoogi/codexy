@@ -14,7 +14,7 @@ from .component_resolver import ComponentResolutionError, reconcile_installed_in
 from .component_transaction_identity import operation_id
 from .component_transaction_receipts import write_receipt
 from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
-from .component_transition_model import OperationReceipt, StateFailure, plan_transition
+from .component_transition_model import OperationReceipt, Rejection, RejectionStage, StateFailure, plan_transition
 from .github_pre_session import trusted_codex
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
 from .updater import _absolute, _validate_real_path
@@ -45,17 +45,17 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             validate_request(command, requested, manifest)
             recorded = recorded_selection(home, manifest)
         except ComponentResolutionError as error:
-            return _reject(home, manifest, identifier, command, requested, (), error)
+            return _reject(home, manifest, identifier, command, requested, (), RejectionStage.REQUEST, error)
         except (OSError, ValueError, RuntimeError):
-            return _reject(home, manifest, identifier, command, requested, (), StateFailure.INCONSISTENT_INSTALLED_STATE)
+            return _reject(home, manifest, identifier, command, requested, (), RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE)
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root)
         except ComponentResolutionError as error:
-            return _reject(home, manifest, identifier, command, requested, (), error)
+            return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, error)
         except (OSError, ValueError, RuntimeError):
-            return _reject(home, manifest, identifier, command, requested, (), StateFailure.INCONSISTENT_INSTALLED_STATE)
+            return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE)
         if pending is not None:
             if pending.phase == "rolling-back" and pending_receipt is not None:
                 if before != pending.before or (pending.snapshot.contents is None) != (recorded is None) or recorded not in {None, pending.before}:
@@ -72,14 +72,14 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             recorded = recorded_selection(home, manifest)
             if replay is not None:
                 return replay
+        if recorded is not None and recorded != before:
+            return _reject(home, manifest, identifier, command, requested, before, RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE)
         try:
-            if recorded is not None and recorded != before:
-                raise ComponentResolutionError("inconsistent-installed-state")
             plan = plan_transition(manifest, command, requested, before, recorded)
         except ComponentResolutionError as error:
-            return _reject(home, manifest, identifier, command, requested, before, error)
+            return _reject(home, manifest, identifier, command, requested, before, RejectionStage.PLAN, error)
         except (OSError, ValueError, RuntimeError):
-            return _reject(home, manifest, identifier, command, requested, before, StateFailure.INCONSISTENT_INSTALLED_STATE)
+            return _reject(home, manifest, identifier, command, requested, before, RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE)
 
         journal = plan.journal(identifier, InventorySnapshot.capture(home))
         write_journal(home, journal)
@@ -204,8 +204,10 @@ def _validate_journal(journal: Journal, manifest: ComponentManifest) -> None:
     journal.validate(manifest, decode_inventory)
 
 
-def _reject(home: Path, manifest: ComponentManifest, identifier: str, command: str, requested: tuple[str, ...], before: tuple[str, ...], failure: ComponentResolutionError | StateFailure) -> dict[str, object]:
-    return _terminal(home, manifest, OperationReceipt.rejected(identifier, command, requested, before, failure))  # type: ignore[arg-type]
+def _reject(home: Path, manifest: ComponentManifest, identifier: str, command: str, requested: tuple[str, ...], before: tuple[str, ...], stage: RejectionStage, failure: ComponentResolutionError | StateFailure) -> dict[str, object]:
+    rejection = Rejection.from_failure(stage, failure)
+    rejection.validate(manifest, command, requested, before, plan_transition)
+    return _terminal(home, manifest, OperationReceipt.rejected(identifier, command, requested, before, rejection))  # type: ignore[arg-type]
 
 
 def _terminal(home: Path, manifest: ComponentManifest, receipt: OperationReceipt) -> dict[str, object]:

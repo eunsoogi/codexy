@@ -7,6 +7,7 @@ from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_resolver import ComponentResolutionError
 from codexy_runtime_tools.component_transaction_state import decode_inventory
 from codexy_runtime_tools.component_transition_model import InventorySnapshot, Journal, OperationReceipt, plan_transition
+from codexy_runtime_tools.component_transition_rejections import Rejection, RejectionStage, variants as rejection_variants
 
 
 class TransitionModelTests(unittest.TestCase):
@@ -27,16 +28,13 @@ class TransitionModelTests(unittest.TestCase):
                             receipt = OperationReceipt.decode(journal.receipt(outcome, after).encode())
                             receipt.validate(manifest)
 
-    def test_every_model_rejection_has_a_valid_receipt(self) -> None:
+    def test_every_closed_rejection_variant_has_a_valid_receipt(self) -> None:
         manifest = load_component_manifest()
         for before in manifest.compatible_combinations:
             for command, requested in _requests():
-                for recorded in (None, before):
-                    with self.subTest(before=before, command=command, requested=requested, recorded=recorded):
-                        try:
-                            plan_transition(manifest, command, requested, before, recorded)
-                        except ComponentResolutionError as error:
-                            OperationReceipt.rejected(_identifier(command, before, requested, recorded), command, requested, before, error).validate(manifest)
+                for variant in rejection_variants(manifest, command, requested, before, plan_transition):
+                    with self.subTest(before=before, command=command, requested=requested, variant=variant):
+                        OperationReceipt.rejected(_identifier(command, before, requested, None), command, requested, before, variant).validate(manifest)
 
     def test_decoded_receipts_reject_single_field_mutations_and_unknown_values(self) -> None:
         manifest = load_component_manifest()
@@ -62,6 +60,33 @@ class TransitionModelTests(unittest.TestCase):
                     OperationReceipt.decode(payload).validate(manifest)
         with self.assertRaises(ValueError):
             OperationReceipt.decode(receipt | {"unknown": True})
+
+    def test_rejected_receipts_accept_only_reachable_stage_variants(self) -> None:
+        manifest = load_component_manifest()
+        valid_host = OperationReceipt.rejected(
+            "op-host-failure", "install", ("core",), (), Rejection.from_failure(RejectionStage.HOST, ComponentResolutionError("invalid-installed-inventory"))
+        )
+        valid_plan = OperationReceipt.rejected(
+            "op-plan-failure", "remove", ("core",), ("core", "github"), Rejection.from_failure(RejectionStage.PLAN, ComponentResolutionError("dependency-protected-removal"))
+        )
+        invalid = (
+            OperationReceipt("op-not-a-command-error", "install", "rejected", ("core",), (), (), (), ("components-not-accepted",)),
+            OperationReceipt("op-post-mutation-error", "install", "rejected", ("core",), (), (), (), ("installed-state-mismatch",)),
+            OperationReceipt.rejected("op-request-after-host", "install", ("unknown",), ("core",), Rejection.from_failure(RejectionStage.REQUEST, ComponentResolutionError("unknown-component"))),
+            OperationReceipt("op-pending", "install", "pending", ("core",), ("core",), (), ("core",), ()),  # type: ignore[arg-type]
+            OperationReceipt("op-free-text", "install", "rejected", ("core",), (), (), (), ("host said no",)),
+        )
+
+        valid_host.validate(manifest)
+        valid_plan.validate(manifest)
+        with self.assertRaisesRegex(ValueError, "stage"):
+            Rejection.from_failure(RejectionStage.HOST, ComponentResolutionError("unknown-component")).validate(
+                manifest, "install", ("unknown",), (), plan_transition
+            )
+        for receipt in invalid:
+            with self.subTest(receipt=receipt.identifier):
+                with self.assertRaises(ValueError):
+                    receipt.validate(manifest)
 
 
 def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
