@@ -12,6 +12,7 @@ from codexy_runtime_tools.component_lifecycle import inventory_path, run_operati
 
 
 class LifecycleInterruptionTests(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "SIGKILL interruption is POSIX-specific")
     def test_sigkill_mid_operation_recovers_from_journal_on_next_public_invocation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()

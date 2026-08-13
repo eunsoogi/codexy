@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import errno
+import os
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -149,6 +151,7 @@ class ComponentLifecycleTests(unittest.TestCase):
             saved = inventory_path(state.home).parent / "receipts" / "op-stale.json"
             self.assertEqual(json.loads(saved.read_text(encoding="utf-8"))["selection_before"], ["core"])
 
+    @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows developer privileges")
     def test_symlinked_transaction_storage_is_rejected_without_a_host_mutation(self) -> None:
         with fixture({"core"}) as state:
             target = inventory_path(state.home)
@@ -168,7 +171,9 @@ class ComponentLifecycleTests(unittest.TestCase):
     def test_an_existing_lifecycle_lock_refuses_a_second_operation(self) -> None:
         with fixture() as state:
             from codexy_runtime_tools.component_transaction_state import transaction_lock
-            with patch("fcntl.flock", side_effect=BlockingIOError), self.assertRaisesRegex(RuntimeError, "another getcodexy"):
+            target = "msvcrt.locking" if os.name == "nt" else "fcntl.flock"
+            failure = OSError(errno.EACCES, "already locked") if os.name == "nt" else BlockingIOError()
+            with patch(target, side_effect=failure), self.assertRaisesRegex(RuntimeError, "another getcodexy"):
                 with transaction_lock(state.home):
                     pass
             self.assertEqual(state.mutations, [])

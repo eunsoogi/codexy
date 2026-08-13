@@ -32,6 +32,9 @@ class PublicActivationContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("github-activation-windows", workflow)
+        self.assertIn("Run native component lifecycle tests", workflow)
+        self.assertIn("-p 'test_component*.py'", workflow)
+        self.assertIn("getcodexy.exe --help", workflow)
         self.assertIn("codexy-github-install.exe --help", workflow)
         self.assertIn("codexy-github-check.exe --check-pr-labels", workflow)
         self.assertIn("& (Join-Path $hookRoot", workflow)
