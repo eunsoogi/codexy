@@ -213,6 +213,68 @@
     "specialist_rationale": "No helper was assigned: this small test-only matrix, its source-local proof, and its ledger update are inseparable from the one child-owned review-response responsibility. Earlier mapping and architecture helpers remain recorded above; the independent packaged Sentinel is the authorized reviewer.",
     "ledger_transition": "This tracked evidence commit advances the test implementation head. A separate external final-head receipt will bind its own clean commit and repeat focused source-invariant checks before the fresh authorized full Sentinel review."
   },
+  "prepared_version_transformation_repair": {
+    "starting_head_oid": "b4c62fd824a073c0f46f9a37019920eaa5343e60",
+    "implementation_head_oid": "37c131a2bd5f408c0afefea9cd202fc06f555ee9",
+    "commit": "fix(runtime): prepare version updates before writes",
+    "goal_receipts": {
+      "get_goal": {"status": "null"},
+      "create_goal": {
+        "objective": "Repair the #555 version-mutation late-rewriter atomicity defect with a prepared transformation set, prove exact-current-head behavior, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
+        "createdAt": 1786603100
+      },
+      "plan": {
+        "in_progress": "Prepare every version-mutation output before writes, prove markerless late-rewriter RED/GREEN behavior, refresh exact-head proof, commit, and obtain one fresh Sentinel verdict"
+      }
+    },
+    "structural_remediation": {
+      "boundary": "version::mutation constructs a complete Update path-and-bytes set before entering its write loop.",
+      "producer_parity": "Cargo.toml and Cargo.lock use their existing production rewriters to prepare bytes; plugin, marketplace, publish contract, component manifest, and optional package JSON are likewise serialized before the first write.",
+      "scope_limit": "This establishes the requested preflight/late-rewriter invariant. It does not claim cross-file crash-safe filesystem transactionality, which remains #557 scope.",
+      "readability": "The explicit 24-line Update value preserves one preparation boundary and removes the obsolete direct JSON writer; all touched governed files remain below 250 LOC."
+    },
+    "red_green": {
+      "red": {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system system::sync_version_cli::mutation_preflight::markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes -- --exact",
+        "result": "FAIL before repair: valid Cargo.toml version= spacing reached the late rewriter after marketplace, release-contract, and plugin writes; the byte snapshot detected partial mutation. The same matrix includes semantically valid Cargo.lock field reordering."
+      },
+      "green": [
+        "The same actual markerless --version matrix now rejects both Cargo.toml alternate spacing and Cargo.lock package field ordering without changing any managed surface.",
+        "Existing strict component-manifest duplicate, bounded SemVer, leading-zero, malformed, prerelease, dependency-invalid, valid max-bound producer readback, normal reconciliation, and archive activation controls pass."
+      ]
+    },
+    "artifact_backed_commands": [
+      {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system",
+        "result": "PASS: 317 system tests",
+        "sha256": "5d62343018456680587abbb68798f16adb08a5ab2fc0e476ade36e316f945b54"
+      },
+      {
+        "command": "PATH=<temporary python shim> PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/getcodexy/src python3 -m unittest discover -s packages/getcodexy/tests -p test_*.py",
+        "result": "PASS: 107 tests; shim supplies the legacy python executable expected by two tests",
+        "sha256": "0b8b70762a8fe01da20cb862962307be34afbc642b965d7a45a93792374dbf4e"
+      },
+      {
+        "command": "cargo fmt --check; scripts/validate-plugin-config --check; scripts/sync-plugin-version --check; scripts/validate-plugin-config --check-touched-loc --base-ref fbe5174214f9aa36f672126c963bd540bea51d34; git diff --check",
+        "result": "PASS: formatting, plugin/repository policy, 1.3.0 version sync, touched LOC, and diff checks",
+        "sha256": "893660da63268c3fd02dad4b0b77846098b65a31092d1372d8eb9d19a51a14a7"
+      },
+      {
+        "command": "uv build --wheel; uv venv; uv pip install; installed-wheel resource manifest readback; codex plugin marketplace list --json; codex plugin list --json; installed-wheel reconcile_installed_inventory",
+        "result": "PASS: wheel package contains the core/github/devtools manifest and real canonical inventory reconciles to [core]",
+        "hashes": {
+          "wheel": "7a99bc791ba021ae83fc80071ef40b2670d3992cec042a8ad00934e18a7bb60f",
+          "build_log": "0c47384f794ce040644d194ab7d97e0465df18ecc19388af31a330e1faee9646",
+          "install_log": "212b7df4ce01732a960c22d287e80e8cbd0fc566c1de71049389b2a0c3b56d8a",
+          "resource_readback": "667e9347270fa3b0e55d4f416a1e0dc9366cde6951a0f32da48293005085b0d4",
+          "marketplace_inventory": "a36095459f099830eadbb8e817d4b504a5731e285656227e1c8a749ebb3edb5f",
+          "plugin_inventory": "127463d74f4fd965cd6a2d78fe8c53f9e1bd55d820d0ae830fcbfd3ea372efa0",
+          "reconciliation": "d739732838d8c1a2c775d699e39c482bd6162e1dd12d303331b59bc31b330f5d"
+        }
+      }
+    ],
+    "ledger_transition": "This tracked ledger advances the implementation head. A separate external final-head receipt will bind the ledger commit's clean exact head and repeat source-invariant checks before the newly authorized full Sentinel review."
+  },
   "pr_and_connector_evidence": {
     "source": "parent-supplied read-only authoritative evidence, 2026-08-13",
     "pr": {
@@ -282,9 +344,17 @@
         "reviewer_task": "/root/sentinel_pr595_markerless_compatibility_full_review",
         "verdict": "BLOCK",
         "finding": "the real markerless no-mutation SemVer matrix lacked independently malformed and prerelease/build coverage"
+      },
+      {
+        "id": "pr595-authorized-full-b4c62fd8",
+        "head_oid": "b4c62fd824a073c0f46f9a37019920eaa5343e60",
+        "kind": "user-authorized packaged Sentinel",
+        "reviewer_task": "/root/sentinel_pr595_markerless_semver_coverage_full_review",
+        "verdict": "BLOCK",
+        "finding": "Cargo semantic input validation and later textual rewriters diverged, allowing late failure after earlier writes"
       }
     ],
-    "current_disposition": "The user explicitly authorized one fresh packaged Sentinel full review after this markerless SemVer coverage repair's final clean-head proof; no reviewer is live yet.",
+    "current_disposition": "The user explicitly authorized one fresh packaged Sentinel full review after this prepared version-transformation repair's final clean-head proof; no reviewer is live yet.",
     "routing_exception": "Connector review followed an earlier pre-connector Sentinel PASS; its finding changed the head after ordinary review budget exhaustion. The parent-spawned reviewer was interrupted before verdict and is invalid evidence. This is a maintainer-authorized dogfood/review-routing exception, not normal order."
   },
   "truthfulness": {
