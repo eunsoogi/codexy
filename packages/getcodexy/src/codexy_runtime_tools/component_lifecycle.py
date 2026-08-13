@@ -70,6 +70,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root, command)
             recorded = recorded_selection(home, manifest)
+            replay = replay_receipt(home, manifest, identifier, command, requested)
             if replay is not None:
                 return replay
         if recorded is not None and recorded != before and command != "bootstrap":

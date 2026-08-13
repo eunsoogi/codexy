@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Callable
@@ -51,7 +51,7 @@ def doctor(codex_home: str | os.PathLike[str], *, codex: Path | None = None, run
     health = _health(manifest, actual, recorded, report["records"], report["admission_error"])
     readiness = {"state": "ready", "missing_requirements": []}
     if report["host_error"]:
-        readiness = {"state": "missing", "missing_requirements": ["codex-plugin-list"]}
+        readiness = {"state": "missing", "missing_requirements": [report["host_error"]]}
     return {
         "schema": DOCTOR_SCHEMA,
         "command": "doctor",
@@ -78,7 +78,7 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
         actual, records, admission_error = _actual(manifest, installed, root)
         host_error = False
     except (OSError, RuntimeError, ValueError) as error:
-        actual, records, admission_error, host_error = (), {}, _code(error), True
+        actual, records, admission_error, host_error = (), {}, _code(error), "codex-marketplace-list"
     errors = []
     error = admission_error or inventory_error
     if error:
@@ -168,7 +168,16 @@ def _entry(component: str, state: str) -> dict[str, str]:
 
 
 def _version_is_stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:
-    return record is not None and isinstance(record.get("version"), str) and record["version"] < manifest.version
+    version = record.get("version") if record is not None else None
+    return isinstance(version, str) and _semver(version) < _semver(manifest.version)
+
+
+def _semver(value: str) -> tuple[int, int, int]:
+    try:
+        parts = tuple(int(part) for part in value.split("."))
+    except ValueError:
+        return (2_147_483_647,) * 3
+    return parts if len(parts) == 3 else (2_147_483_647,) * 3
 
 
 def _stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:
@@ -195,8 +204,11 @@ def _regular(path: Path) -> bool:
 
 
 def _surface_json_is_valid(plugin: Path, component: str) -> bool:
-    paths = {"core": ("hooks/hooks.json",), "github": ("hooks/hooks.json",), "devtools": (".mcp.json",)}[component]
-    return all(_json_object(plugin / path) for path in paths)
+    if component == "devtools":
+        value = _json_value(plugin / ".mcp.json")
+        return isinstance(value, dict) and bool(value) and all(isinstance(entry, dict) and isinstance(entry.get("command"), str) and entry["command"] for entry in value.values())
+    value = _json_value(plugin / "hooks/hooks.json")
+    return isinstance(value, dict) and isinstance(value.get("hooks"), dict) and bool(value["hooks"])
 
 
 def _manifest_is_valid(plugin: Path, name: str, version: str) -> bool:

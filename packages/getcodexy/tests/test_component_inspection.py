@@ -21,12 +21,12 @@ def materialize(state: fixture, *components: str) -> None:
         for relative in paths[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": "1.3.0"}) if relative.endswith("plugin.json") else "{}"
+            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": "1.3.0"}) if relative.endswith("plugin.json") else json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools"}}) if relative == ".mcp.json" else "{}"
             path.write_text(contents, encoding="utf-8")
         for relative in {"core": ("agents/catalog.toml", "hooks/hooks.json"), "github": ("agents/catalog.toml", "hooks/hooks.json"), "devtools": ("mcp/codexy-mcp-devtools",)}[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            contents = "{}" if relative.endswith(".json") else "#!/bin/sh\n"
+            contents = json.dumps({"hooks": {"PreToolUse": [{"command": "hooks/entry.sh"}]}}) if relative.endswith("hooks.json") else "#!/bin/sh\n"
             path.write_text(contents, encoding="utf-8")
             if relative == "mcp/codexy-mcp-devtools":
                 path.chmod(0o700)
@@ -153,7 +153,7 @@ class ComponentInspectionTests(unittest.TestCase):
 
             result = doctor(state.home, codex=state.codex, runner=unavailable)
 
-        self.assertEqual(result["host_readiness"], {"state": "missing", "missing_requirements": ["codex-plugin-list"]})
+        self.assertEqual(result["host_readiness"], {"state": "missing", "missing_requirements": ["codex-marketplace-list"]})
         self.assertEqual(result["errors"], [{"code": "invalid-installed-inventory"}])
 
 

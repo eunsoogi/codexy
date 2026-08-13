@@ -80,8 +80,12 @@ class Journal:
         self._require_snapshot()
         if any(value != canonical_components(manifest, set(value)) for value in (self.before, self.target, self.resolved)) or self.before not in manifest.compatible_combinations or self.target not in manifest.compatible_combinations:
             raise ValueError("component transaction journal is inconsistent")
-        if self.snapshot.contents is not None and decode_snapshot(self.snapshot.contents) != self.before and self.command != "bootstrap":
-            raise ValueError("component transaction journal does not match its inventory snapshot")
+        if self.snapshot.contents is not None:
+            durable = decode_snapshot(self.snapshot.contents)
+            if durable != canonical_components(manifest, set(durable)) or durable not in manifest.compatible_combinations:
+                raise ValueError("component transaction journal has an invalid durable inventory snapshot")
+            if durable != self.before and self.command != "bootstrap":
+                raise ValueError("component transaction journal does not match its inventory snapshot")
         try:
             plan = plan_transition(manifest, self.command, self.requested, self.before, self.before)
         except ComponentResolutionError as error:

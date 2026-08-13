@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import unittest
+import json
 
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_transition_model import OperationReceipt
+from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, write_journal
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 
 
@@ -31,6 +33,14 @@ class BootstrapTests(unittest.TestCase):
             receipt = run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id="op-bootstrap-mismatch")
         self.assertEqual(receipt["selection_before"], ["core"])
         self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
+
+    def test_corrupt_bootstrap_durable_snapshot_fails_closed(self) -> None:
+        with fixture({"core"}) as state:
+            invalid = json.dumps({"schema": "getcodexy.installed-component-inventory.v1", "components": ["unknown"]}).encode()
+            write_journal(state.home, Journal("op-bootstrap-corrupt", "bootstrap", (), ("core", "github", "devtools"), ("core",), ("core", "github", "devtools"), InventorySnapshot(invalid), "started"))
+            with self.assertRaisesRegex(ValueError, "durable inventory"):
+                run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id="op-bootstrap-corrupt")
+            self.assertEqual(state.mutations, [])
 
 
 if __name__ == "__main__":
