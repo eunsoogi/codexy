@@ -71,6 +71,23 @@
     "verdict": "PASS",
     "verbatim_summary": "Preserve live plugin observation after marketplace-list failure: PASS. No bootstrap false-negative: PASS. Regular/symlink/directory stale fail-closed matrix: PASS. Durable snapshot-restore fault fails closed: PASS. Preserve #555/#557 boundaries: PASS."
   },
+  "fresh_auditor_terminal_pass": {
+    "identity": "/root/auditor_final_proof (codexy-auditor, nick Laplace)",
+    "head": "4e28d38188abf5614b35bd20f6947ad3d737811d",
+    "constraints": "read-only; MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread",
+    "verdict": "PASS",
+    "verbatim_output": "PASS — narrow #558 repair is acceptance-ready at 4e28d38188abf5614b35bd20f6947ad3d737811d. Executed corrupt restore + wrong-byte readback + journal retention: PASS. Devtools .mcp.json symlink/directory and exact binding negatives: PASS. No production change after repair proof: PASS. Durable tracked ledger: PASS. Structural gates: PASS. Worktree clean; wheel/install was appropriately scoped out because no production bytes changed after the proof head; Codegraph/LSP unavailable and direct reads recorded."
+  },
+  "fresh_goal_plan_receipts": {
+    "get_goal_before_create": {"goal": null, "remainingTokens": null},
+    "create_goal": {
+      "status": "active",
+      "objective": "Record the #558 fresh Auditor terminal PASS durably, refresh exact-head proof, and obtain the parent-authorized new full Sentinel review; return a publish/current-head-CI authorization request on PASS.",
+      "tokensUsed": 0,
+      "timeUsedSeconds": 0
+    },
+    "update_plan": {"result": {}, "in_progress": "Persist the fresh Auditor terminal PASS and current goal/plan receipts without changing production behavior"}
+  },
   "exposure": {
     "codegraph_lsp": "Unavailable: codex mcp list --json has no Codexy entries; direct source reads used.",
     "sha256": "f37d3415fd6f0086b9a6e7ca93fa4033e083c0e974c98ec2e6d7616033aef3fb"
