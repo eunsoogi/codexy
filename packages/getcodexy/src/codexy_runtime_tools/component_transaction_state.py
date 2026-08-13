@@ -2,25 +2,20 @@
 
 from __future__ import annotations
 
-import base64
 import errno
 import json
 import os
 import stat
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
 from .component_transaction_durability import sync_parent_directory
-from .component_transaction_identity import operation_id
+from .component_transition_model import InventorySnapshot, JOURNAL_SCHEMA, Journal
 from .updater import _absolute, _validate_real_path
 
 
 INVENTORY_SCHEMA = "getcodexy.installed-component-inventory.v1"
-JOURNAL_SCHEMA = "getcodexy.component-transaction.v1"
-
-
 def inventory_path(home: str | os.PathLike[str]) -> Path:
     return _absolute(home) / "getcodexy" / "installed-components.json"
 
@@ -43,61 +38,27 @@ def write_inventory(home: Path, components: tuple[str, ...]) -> None:
     _atomic_write(inventory_path(home), json.dumps({"schema": INVENTORY_SCHEMA, "components": list(components)}, sort_keys=True).encode())
 
 
-@dataclass(frozen=True)
-class InventorySnapshot:
-    contents: bytes | None
-
-    @classmethod
-    def capture(cls, home: Path) -> "InventorySnapshot":
-        return cls(_read_regular(inventory_path(home)))
-
-    def restore(self, home: Path) -> None:
-        target = inventory_path(home)
-        if self.contents is None:
-            _unlink_regular(target)
-        else:
-            _atomic_write(target, self.contents)
+def capture_inventory_snapshot(home: object) -> InventorySnapshot:
+    return InventorySnapshot(_read_regular(inventory_path(Path(home))))
 
 
-@dataclass(frozen=True)
-class Journal:
-    identifier: str
-    command: str
-    requested: tuple[str, ...]
-    resolved: tuple[str, ...]
-    before: tuple[str, ...]
-    target: tuple[str, ...]
-    snapshot: InventorySnapshot
-    phase: str
-
-    def with_phase(self, phase: str) -> "Journal":
-        return Journal(self.identifier, self.command, self.requested, self.resolved, self.before, self.target, self.snapshot, phase)
+def restore_inventory_snapshot(home: object, snapshot: InventorySnapshot) -> None:
+    target = inventory_path(Path(home))
+    if snapshot.contents is None:
+        _unlink_regular(target)
+    else:
+        _atomic_write(target, snapshot.contents)
 
 
 def read_journal(home: Path) -> Journal | None:
     contents = _read_regular(_journal_path(home))
     if contents is None:
         return None
-    data = json.loads(contents, object_pairs_hook=_unique_object)
-    required = {"schema", "operation_id", "command", "requested", "resolved", "before", "target", "inventory", "phase"}
-    if not isinstance(data, dict) or set(data) != required or data.get("schema") != JOURNAL_SCHEMA or data.get("phase") not in {"started", "rolling-back", "committed"}:
-        raise ValueError("component transaction journal has an invalid shape")
-    fields = [data.get(name) for name in ("requested", "resolved", "before", "target")]
-    if not all(isinstance(value, list) and all(isinstance(item, str) for item in value) for value in fields):
-        raise ValueError("component transaction journal has invalid components")
-    encoded = data.get("inventory")
-    if not isinstance(encoded, str) or not isinstance(data.get("command"), str) or not isinstance(data.get("operation_id"), str) or operation_id(data["operation_id"]) != data["operation_id"]:
-        raise ValueError("component transaction journal has invalid identifiers")
-    try:
-        snapshot = InventorySnapshot(base64.b64decode(encoded.encode(), validate=True) or None)
-    except ValueError as error:
-        raise ValueError("component transaction journal has invalid inventory") from error
-    return Journal(data["operation_id"], data["command"], *(tuple(value) for value in fields), snapshot, data["phase"])
+    return Journal.decode(json.loads(contents, object_pairs_hook=_unique_object))
 
 
 def write_journal(home: Path, journal: Journal) -> None:
-    data = {"schema": JOURNAL_SCHEMA, "operation_id": journal.identifier, "command": journal.command, "requested": list(journal.requested), "resolved": list(journal.resolved), "before": list(journal.before), "target": list(journal.target), "inventory": base64.b64encode(journal.snapshot.contents or b"").decode(), "phase": journal.phase}
-    _atomic_write(_journal_path(home), json.dumps(data, sort_keys=True).encode())
+    _atomic_write(_journal_path(home), json.dumps(journal.encode(), sort_keys=True).encode())
 
 
 def clear_journal(home: Path) -> None:

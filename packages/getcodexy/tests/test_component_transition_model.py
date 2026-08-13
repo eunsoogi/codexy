@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+import json
+import unittest
+
+from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_resolver import ComponentResolutionError
+from codexy_runtime_tools.component_transaction_state import decode_inventory
+from codexy_runtime_tools.component_transition_model import InventorySnapshot, Journal, OperationReceipt, plan_transition
+
+
+class TransitionModelTests(unittest.TestCase):
+    def test_every_reachable_terminal_transition_round_trips(self) -> None:
+        manifest = load_component_manifest()
+        for before in manifest.compatible_combinations:
+            for command, requested in _requests():
+                for recorded in (None, before):
+                    with self.subTest(before=before, command=command, requested=requested, recorded=recorded):
+                        try:
+                            plan = plan_transition(manifest, command, requested, before, recorded)
+                        except ComponentResolutionError:
+                            continue
+                        snapshot = InventorySnapshot(None if recorded is None else _inventory(before))
+                        journal = Journal.decode(plan.journal(_identifier(command, before, requested, recorded), snapshot).encode())
+                        journal.validate(manifest, decode_inventory)
+                        for outcome, after in (("completed", plan.target), ("rolled-back", plan.before)):
+                            receipt = OperationReceipt.decode(journal.receipt(outcome, after).encode())
+                            receipt.validate(manifest)
+
+    def test_every_model_rejection_has_a_valid_receipt(self) -> None:
+        manifest = load_component_manifest()
+        for before in manifest.compatible_combinations:
+            for command, requested in _requests():
+                for recorded in (None, before):
+                    with self.subTest(before=before, command=command, requested=requested, recorded=recorded):
+                        try:
+                            plan_transition(manifest, command, requested, before, recorded)
+                        except ComponentResolutionError as error:
+                            OperationReceipt.rejected(_identifier(command, before, requested, recorded), command, requested, before, error).validate(manifest)
+
+    def test_decoded_receipts_reject_single_field_mutations_and_unknown_values(self) -> None:
+        manifest = load_component_manifest()
+        plan = plan_transition(manifest, "install", ("github",), ("core",), ("core",))
+        receipt = plan.journal("op-mutation", InventorySnapshot(_inventory(("core",)))).receipt("completed").encode()
+        mutations = {
+            "schema": "getcodexy.operation-receipt.v0",
+            "command": "bootstrap",
+            "outcome": "pending",
+            "requested_components": ["github", "github"],
+            "resolved_components": ["core"],
+            "selection_before": ["github"],
+            "selection_after": ["core"],
+            "installed_components": [],
+            "source_of_truth": "host",
+            "errors": [{"code": "operation-failed"}],
+        }
+        for field, value in mutations.items():
+            with self.subTest(field=field):
+                payload = dict(receipt)
+                payload[field] = value
+                with self.assertRaises(ValueError):
+                    OperationReceipt.decode(payload).validate(manifest)
+        with self.assertRaises(ValueError):
+            OperationReceipt.decode(receipt | {"unknown": True})
+
+
+def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    selections = ((), ("core",), ("github",), ("devtools",), ("core", "github"), ("core", "devtools"), ("core", "github", "devtools"))
+    return tuple((command, selected) for command in ("install", "update", "remove") for selected in selections)
+
+
+def _inventory(selection: tuple[str, ...]) -> bytes:
+    return json.dumps({"schema": "getcodexy.installed-component-inventory.v1", "components": list(selection)}).encode()
+
+
+def _identifier(command: str, before: tuple[str, ...], requested: tuple[str, ...], recorded: tuple[str, ...] | None) -> str:
+    values = (command, "none" if recorded is None else "recorded", *(before or ("empty",)), *(requested or ("all",)))
+    return "op-model-" + "-".join(values)
+
+
+if __name__ == "__main__":
+    unittest.main()

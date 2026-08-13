@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from .component_manifest import ComponentManifest
-from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, resolve_components
+from .component_resolver import admit_installed_inventory
 from .component_transaction_receipts import read_receipt
 from .component_transaction_state import Journal
+from .component_transition_model import OperationReceipt
 
 
 def admitted_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None) -> tuple[str, ...]:
@@ -47,63 +48,9 @@ def matching_receipt(home: Path, manifest: ComponentManifest, receipt: dict[str,
 
 
 def _validate_receipt(manifest: ComponentManifest, receipt: dict[str, object]) -> None:
-    before, after, resolved = (_components(receipt, field) for field in ("selection_before", "selection_after", "resolved_components"))
-    requested = _components(receipt, "requested_components")
-    outcome, errors = receipt["outcome"], receipt["errors"]
-    if before not in manifest.compatible_combinations or after not in manifest.compatible_combinations:
-        raise ValueError("operation receipt has invalid component selections")
-    if outcome == "rejected":
-        if resolved or after != before or not _single_domain_error(manifest, str(receipt["command"]), requested, errors):
-            raise ValueError("operation receipt has invalid rejection semantics")
-        return
     try:
-        expected_resolved, expected_target = _operation_plan(manifest, str(receipt["command"]), requested, before)
-    except ComponentResolutionError as error:
-        raise ValueError("operation receipt has an invalid request contract") from error
-    if resolved != expected_resolved:
-        raise ValueError("operation receipt has an invalid resolved selection")
-    if outcome == "completed" and (after != expected_target or errors != []):
-        raise ValueError("operation receipt has invalid completion semantics")
-    if outcome == "rolled-back" and (after != before or errors != [{"code": "operation-failed"}]):
-        raise ValueError("operation receipt has invalid rollback semantics")
-
-
-def _components(receipt: dict[str, object], field: str) -> tuple[str, ...]:
-    value = receipt[field]
-    if not isinstance(value, list) or any(not isinstance(component, str) for component in value):
-        raise ValueError("operation receipt has invalid components")
-    return tuple(value)
-
-
-def _single_domain_error(manifest: ComponentManifest, command: str, requested: tuple[str, ...], errors: object) -> bool:
-    if not isinstance(errors, list) or len(errors) != 1 or not isinstance(errors[0], dict):
-        return False
-    code = errors[0].get("code")
-    if code not in manifest.domain_errors or code == "operation-failed":
-        return False
-    if code == "missing-removal-target":
-        return command == "remove" and not requested
-    if code == "no-recorded-selection":
-        return command == "update"
-    if code == "dependency-protected-removal":
-        return command == "remove" and bool(requested)
-    return True
-
-
-def _operation_plan(manifest: ComponentManifest, command: str, requested: tuple[str, ...], before: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    if command == "install":
-        resolved = resolve_components(manifest, requested)
-        return resolved, canonical_components(manifest, set(before) | set(resolved))
-    if command == "update":
-        resolved = before if not requested else resolve_components(manifest, requested)
-        if not set(resolved).issubset(before):
-            raise ComponentResolutionError("incompatible-component-selection")
-        return resolved, before
-    if not requested:
-        raise ComponentResolutionError("missing-removal-target")
-    resolve_components(manifest, requested)
-    resolved = canonical_components(manifest, set(requested))
-    target = canonical_components(manifest, set(before) - set(resolved))
-    if target not in manifest.compatible_combinations:
-        raise ComponentResolutionError("dependency-protected-removal")
-    return resolved, target
+        OperationReceipt.decode(receipt).validate(manifest)
+    except ValueError as error:
+        if str(error).startswith("operation receipt"):
+            raise
+        raise ValueError(f"operation receipt {error}") from error
