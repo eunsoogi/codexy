@@ -59,6 +59,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Run native component lifecycle tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "packages/getcodexy/src"
+          python -m unittest packages/getcodexy/tests/test_component_cli.py packages/getcodexy/tests/test_component_lifecycle.py packages/getcodexy/tests/test_component_lifecycle_version_admission.py packages/getcodexy/tests/test_component_lifecycle_interrupt.py packages/getcodexy/tests/test_component_lifecycle_journal.py packages/getcodexy/tests/test_component_transition_model.py packages/getcodexy/tests/test_component_lifecycle_finalization.py packages/getcodexy/tests/test_component_lifecycle_preflight.py packages/getcodexy/tests/test_component_lifecycle_update_recovery.py packages/getcodexy/tests/test_component_lifecycle_admission.py packages/getcodexy/tests/test_component_transaction_durability.py
       - name: Test dependency-aware GitHub activation
         shell: pwsh
         run: |
@@ -69,6 +74,7 @@ jobs:
           python -m venv .package-venv
           $version = python -c "import tomllib; print(tomllib.load(open('packages/getcodexy/pyproject.toml', 'rb'))['project']['version'])"
           .package-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$version"
+          .package-venv\Scripts\getcodexy.exe --help
           .package-venv\Scripts\codexy-github-install.exe --help
           $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
           New-Item -ItemType Directory -Force -Path $checkRoot | Out-Null

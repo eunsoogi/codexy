@@ -9,6 +9,9 @@ from pathlib import Path
 from codexy_runtime_tools.component_manifest import _parse_manifest, load_component_manifest, parse_component_manifest
 from codexy_runtime_tools.component_resolver import (
     ComponentResolutionError,
+    admit_recovery_inventory,
+    classify_installed_inventory,
+    preflight_unregistered_inventory,
     reconcile_installed_inventory,
     resolve_components,
     verify_post_operation_inventory,
@@ -114,6 +117,20 @@ class ComponentManifestResolverTests(unittest.TestCase):
             ("core", "github"),
         )
 
+    def test_pending_update_admission_allows_only_its_own_mixed_version_selection(self) -> None:
+        mixed = {"installed": [self._installed("codexy", "1.3.0"), self._installed("codexy-github", "1.2.0")]}
+        with self.assertRaisesRegex(ComponentResolutionError, "mixed-version-state"):
+            reconcile_installed_inventory(self.manifest, mixed, self.marketplace_root)
+        self.assertEqual(admit_recovery_inventory(self.manifest, mixed, self.marketplace_root, ("core", "github")), ("core", "github"))
+        with self.assertRaisesRegex(ComponentResolutionError, "inconsistent-installed-state"):
+            admit_recovery_inventory(self.manifest, mixed, self.marketplace_root, ("core",))
+        for inventory, code in [
+            ({"installed": [self._installed("codexy", "1.2.0"), self._installed("codexy-github", "1.1.0")]}, "mixed-version-state"),
+            ({"installed": [self._installed("codexy", "9.0.0"), self._installed("codexy-github", "1.2.0")]}, "component-version-mismatch"),
+        ]:
+            with self.subTest(code=code), self.assertRaisesRegex(ComponentResolutionError, code):
+                admit_recovery_inventory(self.manifest, inventory, self.marketplace_root, ("core", "github"))
+
     def test_manifest_rejects_renamed_marketplace_duplicate_assets_and_empty_asset_requirements(self) -> None:
         canonical = json.loads(
             (Path(__file__).parents[1] / "src/codexy_runtime_tools/component-manifest.json").read_text()
@@ -167,13 +184,41 @@ class ComponentManifestResolverTests(unittest.TestCase):
         future = {"installed": [self._installed("codexy", "9.0.0")]}
         core = {"installed": [self._installed("codexy")]}
         cases = [
-            ({"installed": [malformed_unknown]}, self.marketplace_root, "unknown-installed-component"),
+            ({"installed": [malformed_unknown]}, self.marketplace_root, "invalid-installed-inventory"),
             (future, self.marketplace_root, "component-version-mismatch"),
             (core, Path("/wrong-marketplace"), "conflicting-installed-state"),
         ]
         for inventory, root, code in cases:
             with self.subTest(code=code), self.assertRaisesRegex(ComponentResolutionError, code):
                 reconcile_installed_inventory(self.manifest, inventory, root)
+
+    def test_registered_and_unregistered_inventory_share_the_exact_identity_grammar(self) -> None:
+        canonical = self._installed("codexy")
+        cases = [
+            ([{"name": "codexylophone", "pluginId": "codexylophone@other", "marketplaceName": "other"}], None, ()),
+            ([{"name": "codexy", "pluginId": "codexy@other", "marketplaceName": "other"}], "conflicting-installed-state", "conflicting-installed-state"),
+            ([{"pluginId": "codexy@other", "marketplaceName": "other"}], "conflicting-installed-state", "conflicting-installed-state"),
+            ([{"name": "codexy", "pluginId": "malformed", "marketplaceName": "other"}], "conflicting-installed-state", "conflicting-installed-state"),
+            ([canonical], "conflicting-installed-state", ("core",)),
+            ([canonical, self._installed("codexy-github")], "conflicting-installed-state", ("core", "github")),
+            ([{"name": "future", "pluginId": "future@codexy", "marketplaceName": "codexy"}], "unknown-installed-component", "unknown-installed-component"),
+            ([{"name": "alpha", "pluginId": "beta@other", "marketplaceName": "other"}], "invalid-installed-inventory", "invalid-installed-inventory"),
+            ([canonical, canonical], "conflicting-installed-state", "conflicting-installed-state"),
+        ]
+        for records, unregistered, registered in cases:
+            with self.subTest(records=records):
+                inventory = {"installed": records}
+                classified = classify_installed_inventory(self.manifest, inventory)
+                if unregistered is None:
+                    preflight_unregistered_inventory(classified)
+                else:
+                    with self.assertRaisesRegex(ComponentResolutionError, unregistered):
+                        preflight_unregistered_inventory(classified)
+                if isinstance(registered, tuple):
+                    self.assertEqual(reconcile_installed_inventory(self.manifest, inventory, self.marketplace_root), registered)
+                else:
+                    with self.assertRaisesRegex(ComponentResolutionError, registered):
+                        reconcile_installed_inventory(self.manifest, inventory, self.marketplace_root)
 
     @staticmethod
     def _installed(plugin: str, version: str = "1.3.0") -> dict[str, object]:
