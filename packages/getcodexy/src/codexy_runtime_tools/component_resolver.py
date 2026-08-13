@@ -82,7 +82,7 @@ def admit_inspected_inventory(manifest: ComponentManifest, inventory: object, ma
         components = tuple(manifest.component(component) for component in selected)
         if any(not trusted_component_root(marketplace_root, component) for component in components):
             raise ComponentResolutionError("conflicting-installed-state")
-        trees = {component.id: DiagnosticTree(marketplace_root / component.asset.package_root) for component in components}
+        trees = {component.id: DiagnosticTree(marketplace_root / component.asset.package_root, marketplace_root) for component in components}
     if any(
         not trees[component].admits(diagnostic_paths(manifest.component(component)))
         for component in selected

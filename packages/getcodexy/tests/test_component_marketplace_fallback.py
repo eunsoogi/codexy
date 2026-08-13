@@ -124,7 +124,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
     def test_successful_marketplace_canonical_versions_remain_stale_or_healthy(self) -> None:
         for version, state_name, repair in (("1.2.0", "stale", "getcodexy bootstrap"), ("1.3.0", "healthy", None)):
             with self.subTest(version=version), fixture({"core"}, versions={"core": version}) as state:
-                materialize(state, "core")
+                materialize(state, "core", version=version)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
 
             expected = {"component": "core", "state": state_name}

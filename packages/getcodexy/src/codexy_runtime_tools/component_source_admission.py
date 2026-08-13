@@ -70,10 +70,11 @@ class DiagnosticTree:
     """An admitted component root that exposes only no-follow descendant access."""
 
     root: Path
+    anchor: Path | None = None
 
     def read(self, relative: str) -> DiagnosticRead:
         try:
-            contents, executable = _read_regular(self.root, _relative(relative))
+            contents, executable = _read_regular(self.root, _relative(relative), self.anchor)
             return DiagnosticRead(contents, executable)
         except FileNotFoundError:
             return DiagnosticRead(None, False, DiagnosticFailure.MISSING)
@@ -86,7 +87,7 @@ class DiagnosticTree:
 
     def optional(self, relative: str) -> DiagnosticPresence:
         try:
-            _path_metadata(self.root, _relative(relative))
+            _path_metadata(self.root, _relative(relative), self.anchor)
             return DiagnosticPresence(True)
         except FileNotFoundError:
             return DiagnosticPresence(False)
@@ -97,7 +98,7 @@ class DiagnosticTree:
 
     def admits(self, relatives: tuple[str, ...]) -> bool:
         try:
-            return all(stat.S_ISREG(_path_metadata(self.root, _relative(relative)).st_mode) for relative in relatives)
+            return all(stat.S_ISREG(_path_metadata(self.root, _relative(relative), self.anchor).st_mode) for relative in relatives)
         except (OSError, ValueError):
             return False
 
@@ -119,33 +120,65 @@ def trusted_component_root(marketplace_root: Path, component: Component) -> bool
         return False
 
 
-def _read_regular(root: Path, relative: Path) -> tuple[bytes, bool]:
-    target = _path_metadata(root, relative)
+def _read_regular(root: Path, relative: Path, anchor: Path | None = None) -> tuple[bytes, bool]:
+    before = _tree_identity(root, relative, anchor)
+    target = _path_metadata(root, relative, anchor)
     if not stat.S_ISREG(target.st_mode):
         raise ValueError("diagnostic path is not a regular file")
     descriptor = _open_regular(root, relative)
     try:
         opened = os.fstat(descriptor)
-        unchanged = _path_metadata(root, relative)
+        unchanged = _tree_identity(root, relative, anchor)
         same_file = (opened.st_dev, opened.st_ino) == (target.st_dev, target.st_ino)
-        if not stat.S_ISREG(opened.st_mode) or not same_file or unchanged != target:
+        if not stat.S_ISREG(opened.st_mode) or not same_file or unchanged != before:
             raise _ChangedDiagnosticPath("diagnostic path changed while reading")
-        return os.read(descriptor, opened.st_size), bool(opened.st_mode & 0o111)
+        contents = _read_complete(descriptor, opened.st_size)
+        after = os.fstat(descriptor)
+        stable = _tree_identity(root, relative, anchor)
+        if _identity(after) != _identity(opened) or stable != before:
+            raise _ChangedDiagnosticPath("diagnostic path changed while reading")
+        return contents, bool(opened.st_mode & 0o111)
     finally:
         os.close(descriptor)
 
 
-def _path_metadata(root: Path, relative: Path) -> os.stat_result:
-    _safe_directory(root)
+def _path_metadata(root: Path, relative: Path, anchor: Path | None = None) -> os.stat_result:
+    return _tree_metadata(root, relative, anchor)[-1]
+
+def _tree_identity(root: Path, relative: Path, anchor: Path | None) -> tuple[tuple[int, int, int, int, int, int], ...]:
+    return tuple(_identity(metadata) for metadata in _tree_metadata(root, relative, anchor))
+
+
+def _tree_metadata(root: Path, relative: Path, anchor: Path | None) -> tuple[os.stat_result, ...]:
+    ancestors = _ancestry_to_anchor(anchor) if anchor is not None else ()
+    result = []
+    for path in ancestors:
+        result.append(_safe_directory(path))
+    result.append(_safe_directory(root))
     current = root
     for part in relative.parts[:-1]:
         current /= part
-        _safe_directory(current)
+        result.append(_safe_directory(current))
     target = current / relative.name
     metadata = os.lstat(target)
     if _reparse(metadata):
         raise ValueError("diagnostic path is linked or reparse")
-    return metadata
+    return (*result, metadata)
+
+
+def _identity(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (metadata.st_mode, metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns)
+
+
+def _read_complete(descriptor: int, size: int) -> bytes:
+    chunks, remaining = [], size
+    while remaining:
+        chunk = os.read(descriptor, remaining)
+        if not chunk:
+            raise _ChangedDiagnosticPath("diagnostic path ended while reading")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
 
 
 def _open_regular(root: Path, relative: Path) -> int:
@@ -190,16 +223,16 @@ def _ancestry_to_anchor(path: Path) -> tuple[Path, ...]:
         current = current.parent
 
 
-def _safe_directory(path: Path) -> None:
+def _safe_directory(path: Path) -> os.stat_result:
     metadata = os.lstat(path)
     if not stat.S_ISDIR(metadata.st_mode) or _reparse(metadata):
         raise ValueError("diagnostic path is not a real directory")
+    return metadata
 
 
 def _local_directory(path: Path) -> bool:
     try:
-        _safe_directory(path)
-        return True
+        return bool(_safe_directory(path))
     except (OSError, ValueError):
         return False
 

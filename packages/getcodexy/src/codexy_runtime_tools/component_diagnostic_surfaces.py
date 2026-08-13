@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import tomllib
 from dataclasses import dataclass
 
@@ -141,7 +140,7 @@ def _json_value(tree: DiagnosticTree, relative: str) -> tuple[object | None, Dia
     if read.failure:
         return None, read.failure
     try:
-        return json.loads(read.contents.decode(), object_pairs_hook=_unique_object), None  # type: ignore[union-attr]
+        return loads(read.contents, object_pairs_hook=_unique_object), None  # type: ignore[arg-type]
     except (UnicodeDecodeError, ValueError):
         return None, DiagnosticFailure.MALFORMED
 
@@ -163,3 +162,4 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
             raise ValueError("registration has duplicate keys")
         result[key] = value
     return result
+from .component_json import loads

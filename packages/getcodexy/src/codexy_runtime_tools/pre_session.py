@@ -9,6 +9,7 @@ from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Callable
 
+from .component_json import loads
 from .plugin_resolution import (
     named_marketplace as _named_marketplace,
     official_install as _official_install,
@@ -151,6 +152,6 @@ def _json(done: subprocess.CompletedProcess[str], stage: str) -> object:
     if done.returncode:
         raise RuntimeError(f"{stage} failed")
     try:
-        return json.loads(done.stdout)
-    except json.JSONDecodeError as error:
+        return loads(done.stdout)
+    except (json.JSONDecodeError, ValueError) as error:
         raise ValueError(f"{stage} returned invalid JSON") from error

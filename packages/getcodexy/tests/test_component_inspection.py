@@ -12,7 +12,7 @@ from codexy_runtime_tools.component_source_admission import DiagnosticTree
 from component_lifecycle_support import fixture
 
 
-def materialize(state: fixture, *components: str) -> None:
+def materialize(state: fixture, *components: str, version: str = "1.3.0") -> None:
     paths = {
         "core": (".codex-plugin/plugin.json", "assets/codexy-icon.png"),
         "github": (".codex-plugin/plugin.json", "skills/git-workflow/SKILL.md"),
@@ -23,7 +23,7 @@ def materialize(state: fixture, *components: str) -> None:
         for relative in paths[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": "1.3.0"}) if relative.endswith("plugin.json") else json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools", "args": ["lsp", "--stdio"], "cwd": "."}, "codegraph": {"command": "./mcp/codexy-mcp-devtools", "args": ["codegraph", "--stdio"], "cwd": "."}}) if relative == ".mcp.json" else "{}"
+            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": version}) if relative.endswith("plugin.json") else json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools", "args": ["lsp", "--stdio"], "cwd": "."}, "codegraph": {"command": "./mcp/codexy-mcp-devtools", "args": ["codegraph", "--stdio"], "cwd": "."}}) if relative == ".mcp.json" else "{}"
             path.write_text(contents, encoding="utf-8")
         for relative in {"core": ("agents/catalog.toml", "hooks/hooks.json"), "github": ("agents/catalog.toml", "hooks/hooks.json"), "devtools": ("mcp/codexy-mcp-devtools",)}[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
@@ -223,7 +223,7 @@ class ComponentInspectionTests(unittest.TestCase):
         expected = {"1.2.9": "stale", "1.3.0": "healthy", "1.3.1": "incompatible", "1.3.0-alpha.1": "incompatible"}
         for version, health in expected.items():
             with self.subTest(version=version), fixture({"core"}, versions={"core": version}) as state:
-                materialize(state, "core")
+                materialize(state, "core", version=version)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
 
             self.assertEqual(result["component_health"][0]["state"], health)

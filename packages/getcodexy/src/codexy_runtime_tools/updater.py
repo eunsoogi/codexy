@@ -9,6 +9,8 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .component_json import loads
+
 
 @dataclass(frozen=True)
 class SyncResult:
@@ -64,7 +66,7 @@ def _validate_real_path(path: Path, *, require_exists: bool) -> None:
 def _identity(root: Path) -> str:
     manifest = root / ".codex-plugin" / "plugin.json"
     _validate_real_path(manifest, require_exists=True)
-    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data = loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("name") != "codexy":
         raise ValueError("plugin manifest identity must be codexy")
     return "codexy"

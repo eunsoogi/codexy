@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from importlib.resources import files
 from itertools import combinations
 from typing import Any
+
+from .component_json import loads
 
 
 SCHEMA = "getcodexy.component-manifest.v1"
@@ -80,7 +81,7 @@ def load_component_manifest() -> ComponentManifest:
 
 
 def parse_component_manifest(text: str) -> ComponentManifest:
-    return _parse_manifest(json.loads(text, object_pairs_hook=_unique_object))
+    return _parse_manifest(loads(text, object_pairs_hook=_unique_object))
 
 
 def valid_semver(value: object) -> bool:

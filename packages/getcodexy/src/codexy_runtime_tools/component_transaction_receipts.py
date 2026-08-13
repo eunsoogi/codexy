@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .component_manifest import ComponentManifest
+from .component_json import loads
 from .component_transition_model import OperationReceipt, RECEIPT_SCHEMA, SOURCE
 from .component_transaction_state import _atomic_write, _read_regular, inventory_path, _unique_object
 
@@ -14,7 +15,7 @@ def read_receipt(home: Path, identifier: str) -> dict[str, object] | None:
     contents = _read_regular(_receipt_path(home, identifier))
     if contents is None:
         return None
-    value = json.loads(contents, object_pairs_hook=_unique_object)
+    value = loads(contents, object_pairs_hook=_unique_object)
     try:
         return OperationReceipt.decode(value).encode()
     except ValueError:

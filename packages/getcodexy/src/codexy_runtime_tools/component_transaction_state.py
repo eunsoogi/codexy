@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Iterator
 
 from .component_transaction_durability import sync_parent_directory
+from .component_json import loads
 from .component_transaction_snapshot import InventorySnapshot
 from .component_transition_model import JOURNAL_SCHEMA, Journal
 from .updater import _absolute, _validate_real_path
@@ -28,7 +29,7 @@ def read_inventory(home: Path) -> tuple[str, ...] | None:
 
 
 def decode_inventory(contents: bytes) -> tuple[str, ...]:
-    data = json.loads(contents, object_pairs_hook=_unique_object)
+    data = loads(contents, object_pairs_hook=_unique_object)
     components = data.get("components") if isinstance(data, dict) else None
     if not isinstance(data, dict) or set(data) != {"schema", "components"} or data.get("schema") != INVENTORY_SCHEMA or not isinstance(components, list) or any(not isinstance(item, str) for item in components):
         raise ValueError("installed component inventory has an invalid shape")
@@ -55,7 +56,7 @@ def read_journal(home: Path) -> Journal | None:
     contents = _read_regular(_journal_path(home))
     if contents is None:
         return None
-    return Journal.decode(json.loads(contents, object_pairs_hook=_unique_object))
+    return Journal.decode(loads(contents, object_pairs_hook=_unique_object))
 
 
 def write_journal(home: Path, journal: Journal) -> None:
