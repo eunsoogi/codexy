@@ -31,6 +31,27 @@
       {"operation": "update_plan", "status": "recorded", "phase": "review-free repair"}
     ],
     "reviewer_activity": "prohibited for this phase"
+    ,"current_head_proof": {
+      "head_oid": "aed66f4942e56e5aefe79c080d171a55921084d4",
+      "focused": {
+        "python_manifest_resolver": "PASS: duplicate top-level/nested keys and SemVer overflow/leading-zero controls reject",
+        "rust_public_validator": "PASS: duplicate top-level/nested keys and SemVer overflow reject"
+      },
+      "full": {
+        "python_unittest_discover": "PASS",
+        "rust_locked_cargo_test": "PASS",
+        "wheel_build": "PASS",
+        "real_inventory_reconciliation": "PASS: core"
+      },
+      "structural": {
+        "plugin_config": "PASS",
+        "version_sync": "PASS",
+        "touched_loc": "PASS",
+        "rust_format": "PASS",
+        "git_diff_check": "PASS"
+      },
+      "tool_exposure": "Codegraph and LSP unavailable; direct reads used"
+    }
   },
   "parent_goal_readback": {
     "threadId": "019fbcd8-172b-7d60-81b9-33164a2cec65",
