@@ -5,6 +5,8 @@ import json
 
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_transaction_receipts import write_receipt
+from codexy_runtime_tools.component_transaction_state import read_journal
 from codexy_runtime_tools.component_transition_model import OperationReceipt
 from codexy_runtime_tools.component_transaction_state import InventorySnapshot, Journal, write_journal
 from packages.getcodexy.tests.component_lifecycle_support import fixture
@@ -41,6 +43,35 @@ class BootstrapTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "durable inventory"):
                 run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id="op-bootstrap-corrupt")
             self.assertEqual(state.mutations, [])
+
+    def test_rolling_back_bootstrap_restores_distinct_live_and_durable_prestates(self) -> None:
+        with fixture({"core"}) as state:
+            durable = b'{"schema":"getcodexy.installed-component-inventory.v1","components":["core","github"]}'
+            journal = Journal("op-bootstrap-rollback", "bootstrap", (), ("core", "github", "devtools"), ("core",), ("core", "github", "devtools"), InventorySnapshot(durable), "rolling-back")
+            journal.validate(load_component_manifest(), lambda value: ("core", "github") if value == durable else ())
+            journal.snapshot.restore(state.home)
+            write_journal(state.home, journal)
+            write_receipt(state.home, load_component_manifest(), journal.receipt("rolled-back", journal.before))
+
+            receipt = run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id=journal.identifier)
+            self.assertIsNone(read_journal(state.home))
+
+        self.assertEqual(receipt["outcome"], "rolled-back")
+
+    def test_rolling_back_bootstrap_rejects_a_durable_snapshot_that_does_not_match_exact_bytes(self) -> None:
+        with fixture({"core"}) as state:
+            durable = b'{"schema":"getcodexy.installed-component-inventory.v1","components":["core"]}'
+            snapshot = b'{"components":["core"],"schema":"getcodexy.installed-component-inventory.v1"}'
+            journal = Journal("op-bootstrap-wrong-snapshot", "bootstrap", (), ("core", "github", "devtools"), ("core",), ("core", "github", "devtools"), InventorySnapshot(snapshot), "rolling-back")
+            target = state.home / "getcodexy"
+            target.mkdir(parents=True)
+            (target / "installed-components.json").write_bytes(durable)
+            write_journal(state.home, journal)
+            write_receipt(state.home, load_component_manifest(), journal.receipt("rolled-back", journal.before))
+
+            with self.assertRaisesRegex(ValueError, "restored state"):
+                run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id=journal.identifier)
+            self.assertIsNotNone(read_journal(state.home))
 
 
 if __name__ == "__main__":

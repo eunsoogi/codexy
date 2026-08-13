@@ -133,6 +133,13 @@ def verify_post_operation_inventory(manifest: ComponentManifest, inventory: obje
     return selected
 
 
+def compare_versions(left: str, right: str) -> int:
+    """Compare two manifest-valid semantic versions without reimplementing parsing."""
+    if not valid_semver(left) or not valid_semver(right):
+        raise ComponentResolutionError("component-version-mismatch")
+    return (_version_tuple(left) > _version_tuple(right)) - (_version_tuple(left) < _version_tuple(right))
+
+
 def classify_installed_inventory(manifest: ComponentManifest, inventory: object) -> ClassifiedInstalledInventory:
     """Classify all host records once through exact manifest identities."""
     if not isinstance(inventory, dict) or not isinstance(inventory.get("installed"), list):

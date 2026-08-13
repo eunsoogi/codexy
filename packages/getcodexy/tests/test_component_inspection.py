@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.component_inspection import doctor, status
+from codexy_runtime_tools.component_diagnostic_surfaces import CATALOGS, HOOKS, valid_surface
 
 from component_lifecycle_support import fixture
 
@@ -21,18 +22,37 @@ def materialize(state: fixture, *components: str) -> None:
         for relative in paths[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": "1.3.0"}) if relative.endswith("plugin.json") else json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools"}}) if relative == ".mcp.json" else "{}"
+            contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": "1.3.0"}) if relative.endswith("plugin.json") else json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools", "args": ["lsp", "--stdio"], "cwd": "."}, "codegraph": {"command": "./mcp/codexy-mcp-devtools", "args": ["codegraph", "--stdio"], "cwd": "."}}) if relative == ".mcp.json" else "{}"
             path.write_text(contents, encoding="utf-8")
         for relative in {"core": ("agents/catalog.toml", "hooks/hooks.json"), "github": ("agents/catalog.toml", "hooks/hooks.json"), "devtools": ("mcp/codexy-mcp-devtools",)}[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            contents = json.dumps({"hooks": {"PreToolUse": [{"command": "hooks/entry.sh"}]}}) if relative.endswith("hooks.json") else "#!/bin/sh\n"
+            contents = _catalog(component) if relative.endswith("catalog.toml") else _hooks(component) if relative.endswith("hooks.json") else "#!/bin/sh\n"
             path.write_text(contents, encoding="utf-8")
             if relative == "mcp/codexy-mcp-devtools":
                 path.chmod(0o700)
+        if component in CATALOGS:
+            agent_root = state.marketplace / "plugins" / plugins[component] / "agents"
+            for name in CATALOGS[component]["agent_files"]:
+                (agent_root / name).write_text("model = \"gpt-5.6-terra\"\n", encoding="utf-8")
+        if component == "core":
+            for name in ("codexy-thread-delivery.sh", "codexy-thread-delivery.cmd"):
+                path = state.marketplace / "plugins/codexy/hooks" / name
+                path.write_text("exit 0\n", encoding="utf-8")
+        if component == "github":
+            for name in ("codexy-github-workflow-context.sh", "codexy-github-workflow-context.cmd", "codexy-github-admission.sh", "codexy-github-admission-issue.cmd", "codexy-github-admission-pr.cmd"):
+                path = state.marketplace / "plugins/codexy-github/hooks" / name
+                path.write_text("exit 0\n", encoding="utf-8")
 
 
 class ComponentInspectionTests(unittest.TestCase):
+    def test_packaged_registration_contract_matches_the_checked_in_plugins(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
+        for component, plugin in plugins.items():
+            with self.subTest(component=component):
+                self.assertTrue(valid_surface(repository / "plugins" / plugin, component))
+
     def test_every_compatible_live_selection_is_reported_in_canonical_order(self) -> None:
         selections = (set(), {"core"}, {"core", "github"}, {"core", "devtools"}, {"core", "github", "devtools"})
         for selection in selections:
@@ -153,8 +173,60 @@ class ComponentInspectionTests(unittest.TestCase):
 
             result = doctor(state.home, codex=state.codex, runner=unavailable)
 
-        self.assertEqual(result["host_readiness"], {"state": "missing", "missing_requirements": ["codex-marketplace-list"]})
-        self.assertEqual(result["errors"], [{"code": "invalid-installed-inventory"}])
+        self.assertEqual(result["host_readiness"], {"state": "error", "missing_requirements": ["codex-plugin-list"]})
+        self.assertEqual(result["errors"], [{"code": "codex-plugin-list"}])
+
+    def test_doctor_distinguishes_plugin_list_and_marketplace_probe_failures(self) -> None:
+        for tail, expected in (("plugin", "list", "--json"), "codex-plugin-list"), (("plugin", "marketplace", "list", "--json"), "codex-marketplace-list"):
+            with self.subTest(tail=tail), fixture() as state:
+                def failing(command: list[str]) -> subprocess.CompletedProcess[str]:
+                    if tuple(command[1:]) == tail:
+                        return subprocess.CompletedProcess(command, 1, "", "unavailable")
+                    return state.run(command)
+
+                result = doctor(state.home, codex=state.codex, runner=failing)
+
+            self.assertEqual(result["host_readiness"]["missing_requirements"], [expected])
+            self.assertEqual(result["errors"], [{"code": expected}])
+
+    def test_doctor_requires_canonical_catalog_hooks_and_mcp_bindings(self) -> None:
+        cases = (({"core"}, "core", "agents/catalog.toml", "# comments only\n"), ({"core"}, "core", "hooks/hooks.json", '{"hooks":{"Other":[]}}'), ({"core", "devtools"}, "devtools", ".mcp.json", '{"lsp":{"command":"./mcp/codexy-mcp-devtools","args":["lsp","--stdio"],"cwd":"."}}'))
+        for selection, component, relative, contents in cases:
+            with self.subTest(component=component, relative=relative), fixture(selection) as state:
+                materialize(state, *selection)
+                (state.marketplace / "plugins" / {"core": "codexy", "devtools": "codexy-devtools"}[component] / relative).write_text(contents, encoding="utf-8")
+
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+
+            health = {entry["component"]: entry for entry in result["component_health"]}
+            self.assertEqual(health[component], {"component": component, "state": "stale", "repair": "getcodexy bootstrap"})
+
+    def test_doctor_compares_versions_in_both_directions(self) -> None:
+        expected = {"1.2.9": "stale", "1.3.0": "healthy", "1.3.1": "incompatible", "1.3.0-alpha.1": "incompatible"}
+        for version, health in expected.items():
+            with self.subTest(version=version), fixture({"core"}, versions={"core": version}) as state:
+                materialize(state, "core")
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+
+            self.assertEqual(result["component_health"][0]["state"], health)
+
+    def test_doctor_requires_registered_hook_targets(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            (state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh").unlink()
+
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+
+        self.assertEqual(result["component_health"], [{"component": "core", "state": "stale", "repair": "getcodexy bootstrap"}])
+
+
+def _catalog(component: str) -> str:
+    values = CATALOGS[component]
+    return "\n".join(f'{key} = {json.dumps(value)}' for key, value in values.items()) + "\n"
+
+
+def _hooks(component: str) -> str:
+    return json.dumps(HOOKS[component])
 
 
 if __name__ == "__main__":

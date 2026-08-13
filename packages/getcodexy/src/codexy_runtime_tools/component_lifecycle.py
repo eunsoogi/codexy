@@ -58,7 +58,7 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE)
         if pending is not None:
             if pending.phase == "rolling-back" and pending_receipt is not None:
-                if before != pending.before or (pending.snapshot.contents is None) != (recorded is None) or recorded not in {None, pending.before}:
+                if before != pending.before or InventorySnapshot.capture(home) != pending.snapshot:
                     raise ValueError("pending transaction receipt does not match restored state")
                 clear_journal(home)
                 if replay is not None:
@@ -143,6 +143,8 @@ def _rollback_or_raise(home: Path, executable: Path, invoke: Runner, manifest: C
         if restored != journal.before:
             raise RuntimeError("restored selection did not match the operation snapshot")
         journal.snapshot.restore(home)
+        if InventorySnapshot.capture(home) != journal.snapshot:
+            raise RuntimeError("restored durable inventory did not match the operation snapshot")
     except BaseException as rollback_error:
         raise RuntimeError("component operation failed; durable recovery is required") from rollback_error
 

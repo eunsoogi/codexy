@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from enum import Enum
 from pathlib import Path
 from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
-from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, classify_installed_inventory
+from .component_diagnostic_surfaces import valid_surface
+from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, classify_installed_inventory, compare_versions
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
 from .plugin_resolution import named_marketplace, official_marketplace
@@ -20,11 +22,12 @@ from .updater import _absolute, _validate_real_path
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 STATUS_SCHEMA = "getcodexy.status.v1"
 DOCTOR_SCHEMA = "getcodexy.doctor.v1"
-SURFACE_PATHS = {
-    "core": ("agents/catalog.toml", "hooks/hooks.json"),
-    "github": ("agents/catalog.toml", "hooks/hooks.json"),
-    "devtools": ("mcp/codexy-mcp-devtools",),
-}
+
+
+class ProbeStage(str, Enum):
+    EXECUTABLE = "codex-executable"
+    PLUGIN_LIST = "codex-plugin-list"
+    MARKETPLACE_LIST = "codex-marketplace-list"
 
 
 def status(codex_home: str | os.PathLike[str], *, codex: Path | None = None, runner: Runner | None = None) -> dict[str, object]:
@@ -51,7 +54,7 @@ def doctor(codex_home: str | os.PathLike[str], *, codex: Path | None = None, run
     health = _health(manifest, actual, recorded, report["records"], report["admission_error"])
     readiness = {"state": "ready", "missing_requirements": []}
     if report["host_error"]:
-        readiness = {"state": "missing", "missing_requirements": [report["host_error"]]}
+        readiness = {"state": "error", "missing_requirements": [report["host_error"]]}
     return {
         "schema": DOCTOR_SCHEMA,
         "command": "doctor",
@@ -70,20 +73,27 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
     _validate_real_path(home, require_exists=False)
     manifest = load_component_manifest()
     recorded, inventory, inventory_error = _recorded(home)
-    try:
-        executable = trusted_codex(codex or _find_codex())
-        invoke = runner or (lambda command: _run(command, home))
-        installed = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
-        root = _marketplace_root(executable, invoke)
-        actual, records, admission_error = _actual(manifest, installed, root)
-        host_error = False
-    except (OSError, RuntimeError, ValueError) as error:
-        actual, records, admission_error, host_error = (), {}, _code(error), "codex-marketplace-list"
+    executable, invoke, probe = _host(home, codex, runner)
+    if probe is not None:
+        actual, records, admission_error, host_error = (), {}, None, probe.value
+    else:
+        try:
+            installed = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
+        except (OSError, RuntimeError, ValueError):
+            actual, records, admission_error, host_error = (), {}, None, ProbeStage.PLUGIN_LIST.value
+        else:
+            try:
+                root = _marketplace_root(executable, invoke)
+            except (OSError, RuntimeError, ValueError):
+                actual, records, admission_error, host_error = (), {}, None, ProbeStage.MARKETPLACE_LIST.value
+            else:
+                actual, records, admission_error = _actual(manifest, installed, root)
+                host_error = None
     errors = []
-    error = admission_error or inventory_error
+    error = host_error or admission_error or inventory_error
     if error:
         errors.append({"code": error})
-    if admission_error or inventory_error or (recorded is not None and recorded != actual):
+    if host_error or admission_error or inventory_error or (recorded is not None and recorded != actual):
         consistency = "inconsistent"
         if not errors:
             errors.append({"code": "inconsistent-installed-state"})
@@ -102,6 +112,13 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
         "consistency": consistency,
         "errors": errors,
     }
+
+
+def _host(home: Path, codex: Path | None, runner: Runner | None) -> tuple[Path | None, Runner | None, ProbeStage | None]:
+    try:
+        return trusted_codex(codex or _find_codex()), runner or (lambda command: _run(command, home)), None
+    except (OSError, RuntimeError, ValueError):
+        return None, None, ProbeStage.EXECUTABLE
 
 
 def _recorded(home: Path) -> tuple[tuple[str, ...] | None, dict[str, object], str | None]:
@@ -149,8 +166,10 @@ def _health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tupl
             continue
         if component not in actual:
             result.append(_entry(component, "missing"))
-        elif _version_is_stale(manifest, component, records.get(component)):
+        elif _version_relation(manifest, records.get(component)) < 0:
             result.append(_entry(component, "stale"))
+        elif _version_relation(manifest, records.get(component)) > 0:
+            result.append(_entry(component, "incompatible"))
         elif admission_error and component in actual:
             result.append(_entry(component, "incompatible"))
         elif _stale(manifest, component, records.get(component)):
@@ -167,17 +186,14 @@ def _entry(component: str, state: str) -> dict[str, str]:
     return {"component": component, "state": state, "repair": repair}
 
 
-def _version_is_stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:
+def _version_relation(manifest: ComponentManifest, record: dict[str, object] | None) -> int:
     version = record.get("version") if record is not None else None
-    return isinstance(version, str) and _semver(version) < _semver(manifest.version)
-
-
-def _semver(value: str) -> tuple[int, int, int]:
+    if not isinstance(version, str):
+        return -1
     try:
-        parts = tuple(int(part) for part in value.split("."))
-    except ValueError:
-        return (2_147_483_647,) * 3
-    return parts if len(parts) == 3 else (2_147_483_647,) * 3
+        return compare_versions(version, manifest.version)
+    except ComponentResolutionError:
+        return 1
 
 
 def _stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:
@@ -188,12 +204,10 @@ def _stale(manifest: ComponentManifest, component: str, record: dict[str, object
     if not isinstance(root, str) or not Path(root).is_absolute():
         return True
     plugin = Path(root)
-    required = manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
+    required = manifest.component(component).asset.required_paths
     if any(not _regular(plugin / path) for path in required):
         return True
-    if component == "devtools" and not os.access(plugin / "mcp/codexy-mcp-devtools", os.X_OK):
-        return True
-    return not _manifest_is_valid(plugin, manifest.component(component).plugin, manifest.version) or not _surface_json_is_valid(plugin, component) or _has_legacy_core_monolith(plugin, component)
+    return not _manifest_is_valid(plugin, manifest.component(component).plugin, manifest.version) or not valid_surface(plugin, component) or _has_legacy_core_monolith(plugin, component)
 
 
 def _regular(path: Path) -> bool:
@@ -201,14 +215,6 @@ def _regular(path: Path) -> bool:
         return path.is_file() and not path.is_symlink()
     except OSError:
         return False
-
-
-def _surface_json_is_valid(plugin: Path, component: str) -> bool:
-    if component == "devtools":
-        value = _json_value(plugin / ".mcp.json")
-        return isinstance(value, dict) and bool(value) and all(isinstance(entry, dict) and isinstance(entry.get("command"), str) and entry["command"] for entry in value.values())
-    value = _json_value(plugin / "hooks/hooks.json")
-    return isinstance(value, dict) and isinstance(value.get("hooks"), dict) and bool(value["hooks"])
 
 
 def _manifest_is_valid(plugin: Path, name: str, version: str) -> bool:
