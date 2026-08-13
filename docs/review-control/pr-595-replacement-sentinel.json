@@ -104,6 +104,63 @@
     ],
     "ledger_transition": "This tracked ledger records the verified implementation head. Its own commit necessarily advances HEAD; a separate untracked final receipt must bind the ledger commit's exact clean head and repeat source-invariant checks before review."
   },
+  "markerless_compatibility_repair": {
+    "starting_head_oid": "20efdf549aba84ce88434fcfb11359a7386aaed7",
+    "implementation_head_oid": "f620c59db4bfb7057c8cb3ad905d119ea9d65bce",
+    "commit": "fix(runtime): validate markerless component archives",
+    "goal_receipts": {
+      "get_goal": {"status": "null"},
+      "create_goal": {
+        "objective": "Repair #555 markerless component compatibility preflight, prove no mutation on the actual producer path at the exact final head, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
+        "createdAt": 1786601152
+      },
+      "plan": {
+        "in_progress": "Remove marker-gated strict compatibility validation, add actual markerless RED/GREEN no-mutation proof, refresh exact-head evidence, commit, and obtain one fresh Sentinel verdict"
+      }
+    },
+    "root_cause": "source_contract_root required .git before validating the closed component contract. Git archives used by activation omit .git, so the producer fell back to schema-and-version-only checks and could mutate a dependency-invalid compatible combination.",
+    "structural_remediation": "The existing source-contract identity still requires AGENTS.md, marketplace metadata, and getcodexy package metadata, but no longer requires repository VCS metadata. This applies the same closed contract to canonical markerless archives without making cross-file version parity a precondition.",
+    "red_green": {
+      "red": {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system system::sync_version_cli::mutation_preflight::markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes -- --exact",
+        "result": "FAIL before repair: dependency-invalid compatible combination completed actual --version in a markerless archive."
+      },
+      "green": [
+        "The same markerless executable test passes for duplicate top-level and nested keys, oversized and leading-zero SemVer, and dependency-invalid compatibility, preserving byte-identical snapshots of every mutation-managed file.",
+        "The markerless 2147483647.0.0 producer path still succeeds and --check reads it back.",
+        "Both real archive activation recovery fixtures pass."
+      ]
+    },
+    "artifact_backed_commands": [
+      {
+        "command": "cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system",
+        "result": "PASS: 316 system tests",
+        "sha256": "4fb6f6ae321e7755662c2416752e72606b22334f17f0b6b4ced59a24613bd9d5"
+      },
+      {
+        "command": "PATH=<temporary python shim> PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/getcodexy/src python3 -m unittest discover -s packages/getcodexy/tests",
+        "result": "PASS: 107 tests",
+        "sha256": "37baff8aa9816b4b8bac028a6f2ed3f4f43bddbe9651831bb7ecfb8dacdda0b8"
+      },
+      {
+        "command": "cargo fmt --check; scripts/validate-plugin-config --check; scripts/sync-plugin-version --check; scripts/validate-plugin-config --check-touched-loc --base-ref fbe5174214f9aa36f672126c963bd540bea51d34; git diff --check",
+        "result": "PASS: plugin configuration, repository policy, version sync, touched LOC, formatting, and diff checks",
+        "sha256": "893660da63268c3fd02dad4b0b77846098b65a31092d1372d8eb9d19a51a14a7"
+      },
+      {
+        "command": "uv build --wheel; uv venv; uv pip install; installed-wheel resource readback; real marketplace and plugin inventory reconciliation",
+        "result": "PASS: wheel component manifest is readable and the canonical real inventory reconciles to [core]",
+        "hashes": {
+          "wheel": "7a99bc791ba021ae83fc80071ef40b2670d3992cec042a8ad00934e18a7bb60f",
+          "wheel_resource_readback": "245cccf3a13b73c02e93acd2e50be6ead1745aa6626f7e3694c6bdf57536c0e4",
+          "marketplace_inventory": "a36095459f099830eadbb8e817d4b504a5731e285656227e1c8a749ebb3edb5f",
+          "plugin_inventory": "127463d74f4fd965cd6a2d78fe8c53f9e1bd55d820d0ae830fcbfd3ea372efa0",
+          "reconciliation": "3c2aa945558de5117d0151c9d0e8e86ca8af53a7e94622755b686501d6c8720f"
+        }
+      }
+    ],
+    "ledger_transition": "This tracked ledger advances the implementation head. An external final-head receipt will bind its own clean commit and repeat current source invariants before the newly authorized full Sentinel review."
+  },
   "pr_and_connector_evidence": {
     "source": "parent-supplied read-only authoritative evidence, 2026-08-13",
     "pr": {
@@ -157,9 +214,17 @@
         "kind": "retained Sentinel delta",
         "verdict": "BLOCK",
         "finding": "actual --version mutation did not preflight strict component-manifest inputs before writes"
+      },
+      {
+        "id": "pr595-authorized-full-20efdf54",
+        "head_oid": "20efdf549aba84ce88434fcfb11359a7386aaed7",
+        "kind": "maintainer-authorized packaged Sentinel",
+        "reviewer_task": "/root/sentinel_pr595_mutation_preflight_full_review",
+        "verdict": "BLOCK",
+        "finding": "closed compatibility validation was incorrectly gated on .git in markerless activation archives"
       }
     ],
-    "current_disposition": "The prior selected-review full-plus-delta cycle is exhausted. The maintainer explicitly authorized one new packaged Sentinel full review after this repair's final clean-head proof.",
+    "current_disposition": "The maintainer explicitly authorized one fresh packaged Sentinel full review after this markerless repair's final clean-head proof; no reviewer is live yet.",
     "routing_exception": "Connector review followed an earlier pre-connector Sentinel PASS; its finding changed the head after ordinary review budget exhaustion. The parent-spawned reviewer was interrupted before verdict and is invalid evidence. This is a maintainer-authorized dogfood/review-routing exception, not normal order."
   },
   "truthfulness": {
