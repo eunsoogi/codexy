@@ -127,6 +127,25 @@ class TransitionModelTests(unittest.TestCase):
             self.assertNotIn("operation_receipt(", source)
             self.assertNotIn("OperationReceipt(", source)
 
+    def test_typed_receipts_preserve_only_safe_operation_identities(self) -> None:
+        manifest = load_component_manifest()
+        plan = plan_transition(manifest, "install", ("core",), (), ())
+        valid = plan.journal("op-" + "x" * 128, InventorySnapshot(None)).receipt("completed")
+        invalid = ("", "bad", "op-../escape", "op-" + "x" * 129)
+
+        with TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            receipt_storage.write_receipt(home, manifest, valid)
+            self.assertTrue((home / "getcodexy" / "receipts" / f"{valid.identifier}.json").is_file())
+            for identifier in invalid:
+                with self.subTest(identifier=identifier):
+                    receipt = OperationReceipt(identifier, "install", "completed", ("core",), ("core",), (), ("core",), ())
+                    with self.assertRaises(ValueError):
+                        receipt.encode()
+                    with self.assertRaises(ValueError):
+                        receipt_storage.write_receipt(home, manifest, receipt)
+                    self.assertEqual(list((home / "getcodexy" / "receipts").iterdir()), [home / "getcodexy" / "receipts" / f"{valid.identifier}.json"])
+
 
 def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
     selections = ((), ("core",), ("github",), ("devtools",), ("core", "github"), ("core", "devtools"), ("core", "github", "devtools"))

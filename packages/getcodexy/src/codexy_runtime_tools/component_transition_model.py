@@ -9,7 +9,7 @@ from typing import Callable, Literal
 
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, canonical_components, resolve_components
-from .component_transaction_identity import operation_id
+from .component_transaction_identity import valid_operation_id
 from .component_transaction_snapshot import InventorySnapshot
 from .component_transition_rejections import Rejection, RejectionKind, RejectionStage, StateFailure, valid_rejection
 
@@ -40,6 +40,8 @@ class Journal:
 
     @classmethod
     def start(cls, identifier: str, plan: "TransitionPlan", snapshot: InventorySnapshot) -> "Journal":
+        if not valid_operation_id(identifier):
+            raise ValueError("component transaction journal has invalid identifiers")
         journal = cls(identifier, plan.command, plan.requested, plan.resolved, plan.before, plan.target, snapshot, "started")
         journal._require_snapshot()
         return journal
@@ -52,7 +54,7 @@ class Journal:
         command, phase = value.get("command"), value.get("phase")
         components = tuple(_components(value, field, "component transaction journal") for field in ("requested", "resolved", "before", "target"))
         identifier, encoded = value.get("operation_id"), value.get("inventory")
-        if command not in {"install", "update", "remove"} or phase not in {"started", "rolling-back", "committed"} or not isinstance(identifier, str) or operation_id(identifier) != identifier or not isinstance(encoded, str):
+        if command not in {"install", "update", "remove"} or phase not in {"started", "rolling-back", "committed"} or not valid_operation_id(identifier) or not isinstance(encoded, str):
             raise ValueError("component transaction journal has invalid identifiers")
         try:
             snapshot = InventorySnapshot(base64.b64decode(encoded.encode(), validate=True) or None)
@@ -63,6 +65,8 @@ class Journal:
         return journal
 
     def encode(self) -> dict[str, object]:
+        if not valid_operation_id(self.identifier):
+            raise ValueError("component transaction journal has invalid identifiers")
         return {"schema": JOURNAL_SCHEMA, "operation_id": self.identifier, "command": self.command, "requested": list(self.requested), "resolved": list(self.resolved), "before": list(self.before), "target": list(self.target), "inventory": base64.b64encode(self.snapshot.contents or b"").decode(), "phase": self.phase}
 
     def with_phase(self, phase: Phase) -> "Journal":
@@ -141,7 +145,7 @@ class OperationReceipt:
         if not isinstance(value, dict) or set(value) != fields or value.get("schema") != RECEIPT_SCHEMA or value.get("source_of_truth") != SOURCE or value.get("installed_components") != value.get("selection_after"):
             raise ValueError("operation receipt has an invalid shape")
         identifier, command, outcome = value.get("operation_id"), value.get("command"), value.get("outcome")
-        if not isinstance(identifier, str) or operation_id(identifier) != identifier or command not in {"install", "update", "remove"} or outcome not in {"completed", "rejected", "rolled-back"}:
+        if not valid_operation_id(identifier) or command not in {"install", "update", "remove"} or outcome not in {"completed", "rejected", "rolled-back"}:
             raise ValueError("operation receipt has an invalid shape")
         parts = tuple(_components(value, field, "operation receipt") for field in ("requested_components", "resolved_components", "selection_before", "selection_after"))
         errors = value.get("errors")
@@ -150,12 +154,12 @@ class OperationReceipt:
         return cls(identifier, command, outcome, *parts, tuple(error["code"] for error in errors))
 
     def encode(self) -> dict[str, object]:
-        if self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
+        if not valid_operation_id(self.identifier) or self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
             raise ValueError("operation receipt has invalid terminal state")
         return {"schema": RECEIPT_SCHEMA, "operation_id": self.identifier, "command": self.command, "outcome": self.outcome, "requested_components": list(self.requested), "resolved_components": list(self.resolved), "selection_before": list(self.before), "selection_after": list(self.after), "installed_components": list(self.after), "source_of_truth": SOURCE, "errors": [{"code": error} for error in self.errors]}
 
     def validate(self, manifest: ComponentManifest) -> None:
-        if self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
+        if not valid_operation_id(self.identifier) or self.command not in {"install", "update", "remove"} or self.outcome not in {"completed", "rejected", "rolled-back"}:
             raise ValueError("operation receipt has invalid terminal state")
         if self.before not in manifest.compatible_combinations or self.after not in manifest.compatible_combinations:
             raise ValueError("operation receipt has invalid component selections")

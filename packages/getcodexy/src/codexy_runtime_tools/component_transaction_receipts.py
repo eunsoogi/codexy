@@ -7,7 +7,6 @@ from pathlib import Path
 
 from .component_manifest import ComponentManifest
 from .component_transition_model import OperationReceipt, RECEIPT_SCHEMA, SOURCE
-from .component_transaction_identity import operation_id
 from .component_transaction_state import _atomic_write, _read_regular, inventory_path, _unique_object
 
 
@@ -26,7 +25,7 @@ def write_receipt(home: Path, manifest: ComponentManifest, receipt: OperationRec
     if not isinstance(receipt, OperationReceipt):
         raise TypeError("operation receipt persistence requires a typed terminal receipt")
     receipt.validate(manifest)
-    identifier = operation_id(receipt.identifier)
+    identifier = receipt.identifier
     target, contents = _receipt_path(home, identifier), json.dumps(receipt.encode(), sort_keys=True).encode()
     if existing := _read_regular(target):
         if existing != contents:
