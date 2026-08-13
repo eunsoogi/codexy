@@ -12,7 +12,7 @@ from .component_manifest import ComponentManifest, load_component_manifest
 from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, classify_installed_inventory
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
-from .plugin_resolution import official_marketplace
+from .plugin_resolution import named_marketplace, official_marketplace
 from .pre_session import _find_codex, _json, _run
 from .updater import _absolute, _validate_real_path
 
@@ -115,10 +115,8 @@ def _recorded(home: Path) -> tuple[tuple[str, ...] | None, dict[str, object], st
 
 
 def _marketplace_root(executable: Path, invoke: Runner) -> Path | None:
-    try:
-        return official_marketplace(_json(invoke([str(executable), "plugin", "marketplace", "list", "--json"]), "plugin marketplace list"))
-    except (OSError, RuntimeError, ValueError):
-        return None
+    payload = _json(invoke([str(executable), "plugin", "marketplace", "list", "--json"]), "plugin marketplace list")
+    return official_marketplace(payload) if named_marketplace(payload) else None
 
 
 def _actual(manifest: ComponentManifest, installed: object, root: Path | None) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
@@ -170,7 +168,7 @@ def _entry(component: str, state: str) -> dict[str, str]:
 
 
 def _version_is_stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:
-    return record is not None and record.get("version") != manifest.version
+    return record is not None and isinstance(record.get("version"), str) and record["version"] < manifest.version
 
 
 def _stale(manifest: ComponentManifest, component: str, record: dict[str, object] | None) -> bool:

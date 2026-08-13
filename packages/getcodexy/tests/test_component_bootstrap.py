@@ -24,6 +24,14 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(receipt["errors"], [{"code": "components-not-accepted"}])
         OperationReceipt.decode(receipt).validate(load_component_manifest())
 
+    def test_recovery_preserves_distinct_live_and_durable_prestate(self) -> None:
+        with fixture({"core"}) as state:
+            (state.home / "getcodexy").mkdir(parents=True)
+            (state.home / "getcodexy" / "installed-components.json").write_text('{"schema":"getcodexy.installed-component-inventory.v1","components":["core","github"]}')
+            receipt = run_operation("bootstrap", (), state.home, state.codex, state.run, operation_id="op-bootstrap-mismatch")
+        self.assertEqual(receipt["selection_before"], ["core"])
+        self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
+
 
 if __name__ == "__main__":
     unittest.main()

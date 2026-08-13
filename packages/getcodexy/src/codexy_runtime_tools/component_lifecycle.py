@@ -178,7 +178,7 @@ def _restore_selection(executable: Path, invoke: Runner, manifest: ComponentMani
 
 
 def _apply_forward(executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, journal: Journal, adds: tuple[str, ...], removes: tuple[str, ...]) -> tuple[str, ...]:
-    if journal.command == "update":
+    if journal.command in {"update", "bootstrap"}:
         _json(invoke([str(executable), "plugin", "marketplace", "upgrade", "codexy", "--json"]), "plugin marketplace upgrade")
         root = official_marketplace_root(executable, invoke)
     for component in adds:

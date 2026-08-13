@@ -56,8 +56,10 @@ def _human(command: str, receipt: dict[str, object]) -> str:
         )
     if command == "doctor":
         health = receipt.get("component_health", [])
-        summary = ",".join(f"{entry.get('component')}={entry.get('state')}" for entry in health if isinstance(entry, dict)) or "none"
-        return f"getcodexy doctor: health={summary}; errors={','.join(error.get('code', 'unknown') for error in receipt.get('errors', []) if isinstance(error, dict)) or 'none'}"
+        summary = ",".join(f"{entry.get('component')}={entry.get('state')}:{entry.get('repair', 'none')}" for entry in health if isinstance(entry, dict)) or "none"
+        readiness = receipt.get("host_readiness", {})
+        missing = ",".join(readiness.get("missing_requirements", [])) if isinstance(readiness, dict) else "unknown"
+        return f"getcodexy doctor: health={summary}; missing={missing or 'none'}; errors={','.join(error.get('code', 'unknown') for error in receipt.get('errors', []) if isinstance(error, dict)) or 'none'}"
     return f"getcodexy {command}: {receipt['outcome']}"
 
 
