@@ -72,7 +72,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             unsafe = installed(state.marketplace, "core")
             unsafe["source"] = {"source": "local", "path": "/unverified/plugins/codexy"}
             state.inventory_override = {"installed": [unsafe]}
-            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+            with patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                 result = doctor(state.home, codex=state.codex, runner=self._marketplace_failure(state))
             stale.assert_not_called()
 
@@ -140,7 +140,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             external = state.root / "external-codexy"
             plugin.rename(external)
             plugin.symlink_to(external, target_is_directory=True)
-            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+            with patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                 result = doctor(state.home, codex=state.codex, runner=state.run)
             stale.assert_not_called()
 
@@ -176,7 +176,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
                 external = state.root / f"external-{component}-{relative.replace('/', '-').replace('.', 'dot')}"
                 source.rename(external)
                 source.symlink_to(external, target_is_directory=True)
-                with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+                with patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                     result = doctor(state.home, codex=state.codex, runner=state.run)
                 stale.assert_not_called()
 
@@ -190,10 +190,10 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             def reparse(path):
                 metadata = original(path)
                 return SimpleNamespace(st_mode=metadata.st_mode, st_file_attributes=0x0400 if Path(path).name == "agents" else 0)
-            with patch("codexy_runtime_tools.component_source_admission.os.lstat", side_effect=reparse), patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+            with patch("codexy_runtime_tools.component_source_admission.os.lstat", side_effect=reparse), patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                 reparse_result = doctor(state.home, codex=state.codex, runner=state.run)
             stale.assert_not_called()
-            with patch("codexy_runtime_tools.component_source_admission._network_path", return_value=True), patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+            with patch("codexy_runtime_tools.component_source_admission._network_path", return_value=True), patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                 remote_result = doctor(state.home, codex=state.codex, runner=state.run)
             stale.assert_not_called()
 
@@ -208,7 +208,7 @@ class MarketplaceFallbackAdmissionTests(unittest.TestCase):
             path = state.marketplace / "plugins/codexy/hooks/hooks.json"
             path.unlink()
             os.mkfifo(path)
-            with patch("codexy_runtime_tools.component_diagnostic_health._stale") as stale:
+            with patch("codexy_runtime_tools.component_diagnostic_health._canonical_diagnostics") as stale:
                 result = doctor(state.home, codex=state.codex, runner=state.run)
             stale.assert_not_called()
 

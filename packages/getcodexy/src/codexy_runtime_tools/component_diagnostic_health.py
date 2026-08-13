@@ -2,10 +2,10 @@
 
 import json
 
-from .component_diagnostic_surfaces import valid_surface
+from .component_diagnostic_surfaces import diagnose_surface
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, compare_versions
-from .component_source_admission import DiagnosticTree
+from .component_source_admission import DiagnosticFailure, DiagnosticTree
 
 
 def health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple[str, ...] | None, records: dict[str, dict[str, object]], trees: dict[str, DiagnosticTree], admission_error: str | None, marketplace_failure: bool) -> list[dict[str, str]]:
@@ -17,12 +17,12 @@ def health(manifest: ComponentManifest, actual: tuple[str, ...], recorded: tuple
             result.append(_entry(component, "incompatible"))
         elif component not in actual:
             result.append(_entry(component, "missing"))
+        elif not _canonical_diagnostics(manifest, component, trees.get(component)):
+            result.append(_entry(component, "incompatible"))
         elif _version_relation(manifest, records.get(component)) < 0:
             result.append(_entry(component, "stale"))
         elif _version_relation(manifest, records.get(component)) > 0:
             result.append(_entry(component, "incompatible"))
-        elif _stale(manifest, component, trees.get(component)):
-            result.append(_entry(component, "stale"))
         else:
             result.append({"component": component, "state": "healthy"})
     return result
@@ -43,23 +43,49 @@ def _version_relation(manifest: ComponentManifest, record: dict[str, object] | N
         return 1
 
 
-def _stale(manifest: ComponentManifest, component: str, tree: DiagnosticTree | None) -> bool:
+def _canonical_diagnostics(manifest: ComponentManifest, component: str, tree: DiagnosticTree | None) -> bool:
     if tree is None:
-        return True
-    required = manifest.component(component).asset.required_paths
-    if any(tree.read_regular(path) is None for path in required):
-        return True
-    return not _manifest_is_valid(tree, manifest.component(component).plugin, manifest.version) or not valid_surface(tree, component) or _legacy_core_monolith(tree, component)
-
-
-def _manifest_is_valid(tree: DiagnosticTree, name: str, version: str) -> bool:
-    contents = tree.read_regular(".codex-plugin/plugin.json")
-    try:
-        value = json.loads(contents.decode()) if contents is not None else None
-    except (UnicodeDecodeError, ValueError):
         return False
-    return isinstance(value, dict) and value.get("name") == name and value.get("repository") == "https://github.com/eunsoogi/codexy" and value.get("version") == version
+    required = manifest.component(component).asset.required_paths
+    if any(tree.read(path).failure for path in required):
+        return False
+    manifest_ok, failure = _manifest_is_valid(tree, manifest.component(component).plugin, manifest.version)
+    if failure or not manifest_ok:
+        return False
+    surface = diagnose_surface(tree, component)
+    if surface.failure or not surface.canonical:
+        return False
+    return not _legacy_core_monolith(tree, component)
+
+
+def _manifest_is_valid(tree: DiagnosticTree, name: str, version: str) -> tuple[bool, DiagnosticFailure | None]:
+    read = tree.read(".codex-plugin/plugin.json")
+    if read.failure:
+        return False, read.failure
+    try:
+        value = json.loads(read.contents.decode(), object_pairs_hook=_unique_object)  # type: ignore[union-attr]
+    except (UnicodeDecodeError, ValueError):
+        return False, DiagnosticFailure.MALFORMED
+    return (
+        isinstance(value, dict)
+        and value.get("name") == name
+        and value.get("repository") == "https://github.com/eunsoogi/codexy"
+        and value.get("version") == version,
+        None,
+    )
 
 
 def _legacy_core_monolith(tree: DiagnosticTree, component: str) -> bool:
-    return component == "core" and any(tree.present_or_unsafe(path) for path in (".mcp.json", ".codex/lsp-client.json", "lsp", "mcp", "runtime-release.json"))
+    if component != "core":
+        return False
+    observations = tuple(tree.optional(path) for path in (".mcp.json", ".codex/lsp-client.json", "lsp", "mcp", "runtime-release.json"))
+    return any(observation.failure or observation.present for observation in observations)
+
+
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("diagnostic JSON has duplicate keys")
+        result[key] = value
+    return result

@@ -131,15 +131,15 @@ class ComponentInspectionTests(unittest.TestCase):
         health = {entry["component"]: entry["state"] for entry in result["component_health"]}
         self.assertEqual(health, {"core": "healthy", "devtools": "healthy"})
 
-    def test_doctor_flags_malformed_hook_configuration_as_stale(self) -> None:
+    def test_doctor_flags_malformed_hook_configuration_as_incompatible(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
             (state.marketplace / "plugins/codexy/hooks/hooks.json").write_text("not json", encoding="utf-8")
 
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
-        self.assertEqual(result["component_health"][0]["state"], "stale")
-        self.assertEqual(result["component_health"][0]["repair"], "getcodexy bootstrap")
+        self.assertEqual(result["component_health"][0]["state"], "incompatible")
+        self.assertEqual(result["component_health"][0]["repair"], "repair the Codexy registration, then rerun getcodexy doctor")
 
     def test_doctor_flags_malformed_manifest_and_legacy_core_monolith(self) -> None:
         with fixture({"core"}) as state:
@@ -149,7 +149,7 @@ class ComponentInspectionTests(unittest.TestCase):
 
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
-        self.assertEqual(result["component_health"][0]["state"], "stale")
+        self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
     def test_malformed_unregistered_inventory_is_not_silently_accepted(self) -> None:
         with fixture(marketplace_present=False, inventory_override={"installed": [{"name": 123}]}) as state:
@@ -217,7 +217,7 @@ class ComponentInspectionTests(unittest.TestCase):
                 result = doctor(state.home, codex=state.codex, runner=state.run)
 
             health = {entry["component"]: entry for entry in result["component_health"]}
-            self.assertEqual(health[component], {"component": component, "state": "stale", "repair": "getcodexy bootstrap"})
+            self.assertEqual(health[component], {"component": component, "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"})
 
     def test_doctor_compares_versions_in_both_directions(self) -> None:
         expected = {"1.2.9": "stale", "1.3.0": "healthy", "1.3.1": "incompatible", "1.3.0-alpha.1": "incompatible"}

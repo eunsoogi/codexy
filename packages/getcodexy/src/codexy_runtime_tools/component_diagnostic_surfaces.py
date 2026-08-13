@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import tomllib
+from dataclasses import dataclass
 
-from .component_source_admission import DiagnosticTree
+from .component_source_admission import DiagnosticFailure, DiagnosticTree
 
 
 CATALOGS = {
@@ -104,33 +105,55 @@ SURFACE_PATHS = {
 }
 
 
+@dataclass(frozen=True)
+class SurfaceDiagnosis:
+    canonical: bool
+    failure: DiagnosticFailure | None = None
+
+
 def valid_surface(tree: DiagnosticTree, component: str) -> bool:
-    if any(tree.read_regular(path) is None for path in SURFACE_PATHS[component]):
-        return False
+    diagnosis = diagnose_surface(tree, component)
+    return diagnosis.canonical and diagnosis.failure is None
+
+
+def diagnose_surface(tree: DiagnosticTree, component: str) -> SurfaceDiagnosis:
+    if failure := _read_failure(tree, SURFACE_PATHS[component]):
+        return SurfaceDiagnosis(False, failure)
     if component == "devtools":
-        return tree.executable("mcp/codexy-mcp-devtools") and _json_value(tree, ".mcp.json") == MCP
-    catalog = _toml_value(tree, "agents/catalog.toml")
-    if catalog != CATALOGS[component]:
-        return False
-    if any(tree.read_regular(f"agents/{name}") is None for name in CATALOGS[component]["agent_files"]):
-        return False
-    return _json_value(tree, "hooks/hooks.json") == HOOKS[component]
+        launcher = tree.read("mcp/codexy-mcp-devtools")
+        value, failure = _json_value(tree, ".mcp.json")
+        return SurfaceDiagnosis(launcher.executable and value == MCP, failure)
+    catalog, failure = _toml_value(tree, "agents/catalog.toml")
+    if failure:
+        return SurfaceDiagnosis(False, failure)
+    if failure := _read_failure(tree, tuple(f"agents/{name}" for name in CATALOGS[component]["agent_files"])):
+        return SurfaceDiagnosis(False, failure)
+    hooks, failure = _json_value(tree, "hooks/hooks.json")
+    return SurfaceDiagnosis(catalog == CATALOGS[component] and hooks == HOOKS[component], failure)
 
 
-def _json_value(tree: DiagnosticTree, relative: str) -> object | None:
-    contents = tree.read_regular(relative)
+def _read_failure(tree: DiagnosticTree, paths: tuple[str, ...]) -> DiagnosticFailure | None:
+    return next((read.failure for path in paths if (read := tree.read(path)).failure), None)
+
+
+def _json_value(tree: DiagnosticTree, relative: str) -> tuple[object | None, DiagnosticFailure | None]:
+    read = tree.read(relative)
+    if read.failure:
+        return None, read.failure
     try:
-        return json.loads(contents.decode(), object_pairs_hook=_unique_object) if contents is not None else None
+        return json.loads(read.contents.decode(), object_pairs_hook=_unique_object), None  # type: ignore[union-attr]
     except (UnicodeDecodeError, ValueError):
-        return None
+        return None, DiagnosticFailure.MALFORMED
 
 
-def _toml_value(tree: DiagnosticTree, relative: str) -> object | None:
-    contents = tree.read_regular(relative)
+def _toml_value(tree: DiagnosticTree, relative: str) -> tuple[object | None, DiagnosticFailure | None]:
+    read = tree.read(relative)
+    if read.failure:
+        return None, read.failure
     try:
-        return tomllib.loads(contents.decode()) if contents is not None else None
+        return tomllib.loads(read.contents.decode()), None  # type: ignore[union-attr]
     except (UnicodeDecodeError, tomllib.TOMLDecodeError):
-        return None
+        return None, DiagnosticFailure.MALFORMED
 
 
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:

@@ -68,7 +68,7 @@ class DiagnosticSurfaceTests(unittest.TestCase):
 
                 self.assertFalse(valid_surface(DiagnosticTree(plugin), "devtools"))
             health = {entry["component"]: entry for entry in result["component_health"]}
-            self.assertEqual(health["devtools"], {"component": "devtools", "state": "stale", "repair": "getcodexy bootstrap"})
+            self.assertEqual(health["devtools"], {"component": "devtools", "state": "incompatible", "repair": "repair the Codexy registration, then rerun getcodexy doctor"})
 
 
 if __name__ == "__main__":

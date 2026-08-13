@@ -6,6 +6,7 @@ import ctypes
 import os
 import stat
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from .component_manifest import Component
@@ -39,32 +40,60 @@ DIAGNOSTIC_PATHS = {
 }
 
 
+class DiagnosticFailure(str, Enum):
+    MISSING = "missing"
+    UNSAFE = "unsafe"
+    UNREADABLE = "unreadable"
+    CHANGED = "changed"
+    MALFORMED = "malformed"
+
+
+@dataclass(frozen=True)
+class DiagnosticRead:
+    contents: bytes | None
+    executable: bool
+    failure: DiagnosticFailure | None = None
+
+
+@dataclass(frozen=True)
+class DiagnosticPresence:
+    present: bool
+    failure: DiagnosticFailure | None = None
+
+
+class _ChangedDiagnosticPath(OSError):
+    pass
+
+
 @dataclass(frozen=True)
 class DiagnosticTree:
     """An admitted component root that exposes only no-follow descendant access."""
 
     root: Path
 
-    def read_regular(self, relative: str) -> bytes | None:
+    def read(self, relative: str) -> DiagnosticRead:
         try:
-            return _read_regular(self.root, _relative(relative))
-        except (OSError, ValueError):
-            return None
+            contents, executable = _read_regular(self.root, _relative(relative))
+            return DiagnosticRead(contents, executable)
+        except FileNotFoundError:
+            return DiagnosticRead(None, False, DiagnosticFailure.MISSING)
+        except _ChangedDiagnosticPath:
+            return DiagnosticRead(None, False, DiagnosticFailure.CHANGED)
+        except ValueError:
+            return DiagnosticRead(None, False, DiagnosticFailure.UNSAFE)
+        except OSError:
+            return DiagnosticRead(None, False, DiagnosticFailure.UNREADABLE)
 
-    def executable(self, relative: str) -> bool:
-        try:
-            return bool(_metadata(self.root, _relative(relative)).st_mode & 0o111)
-        except (OSError, ValueError):
-            return False
-
-    def present_or_unsafe(self, relative: str) -> bool:
+    def optional(self, relative: str) -> DiagnosticPresence:
         try:
             _path_metadata(self.root, _relative(relative))
-            return True
+            return DiagnosticPresence(True)
         except FileNotFoundError:
-            return False
-        except (OSError, ValueError):
-            return True
+            return DiagnosticPresence(False)
+        except ValueError:
+            return DiagnosticPresence(False, DiagnosticFailure.UNSAFE)
+        except OSError:
+            return DiagnosticPresence(False, DiagnosticFailure.UNREADABLE)
 
     def admits(self, relatives: tuple[str, ...]) -> bool:
         try:
@@ -84,12 +113,13 @@ def trusted_component_root(marketplace_root: Path, component: Component) -> bool
     root = marketplace_root / component.asset.package_root
     try:
         ancestry = all(_local_directory(path) for path in _ancestry(marketplace_root, root))
-        return ancestry and root.resolve(strict=True).is_relative_to(marketplace_root.resolve(strict=True))
+        anchored = all(_local_directory(path) for path in _ancestry_to_anchor(marketplace_root))
+        return anchored and ancestry and root.resolve(strict=True).is_relative_to(marketplace_root.resolve(strict=True))
     except (OSError, RuntimeError):
         return False
 
 
-def _read_regular(root: Path, relative: Path) -> bytes:
+def _read_regular(root: Path, relative: Path) -> tuple[bytes, bool]:
     target = _path_metadata(root, relative)
     if not stat.S_ISREG(target.st_mode):
         raise ValueError("diagnostic path is not a regular file")
@@ -99,17 +129,10 @@ def _read_regular(root: Path, relative: Path) -> bytes:
         unchanged = _path_metadata(root, relative)
         same_file = (opened.st_dev, opened.st_ino) == (target.st_dev, target.st_ino)
         if not stat.S_ISREG(opened.st_mode) or not same_file or unchanged != target:
-            raise OSError("diagnostic path changed while reading")
-        return os.read(descriptor, opened.st_size)
+            raise _ChangedDiagnosticPath("diagnostic path changed while reading")
+        return os.read(descriptor, opened.st_size), bool(opened.st_mode & 0o111)
     finally:
         os.close(descriptor)
-
-
-def _metadata(root: Path, relative: Path) -> os.stat_result:
-    metadata = _path_metadata(root, relative)
-    if not stat.S_ISREG(metadata.st_mode):
-        raise ValueError("diagnostic path is not a regular file")
-    return metadata
 
 
 def _path_metadata(root: Path, relative: Path) -> os.stat_result:
@@ -154,6 +177,15 @@ def _ancestry(marketplace_root: Path, root: Path) -> tuple[Path, ...]:
     while True:
         result.append(current)
         if current == marketplace_root:
+            return tuple(result)
+        current = current.parent
+
+
+def _ancestry_to_anchor(path: Path) -> tuple[Path, ...]:
+    current, result = path, []
+    while True:
+        result.append(current)
+        if current.parent == current:
             return tuple(result)
         current = current.parent
 
