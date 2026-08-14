@@ -133,28 +133,13 @@ fn touched_loc_ignores_comments_and_handles_urls_and_escaped_quotes() -> TestRes
     Ok(())
 }
 
-#[test]
-fn touched_loc_ignores_embedded_raw_string_fixtures() -> TestResult {
-    let repo = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
-    write(
-        repo.path(),
-        "src/lib.rs",
-        "let probe = r#\"\nfirst(); second(); third();\n\"#;\n",
-    )?;
-    assert!(validate(repo.path())?.status.success());
-
-    let inline = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
-    write(
-        inline.path(),
-        "src/lib.rs",
-        "fn compact() { let fixture = r#\"first(); second(); third();\"#; first(); second(); third(); }\n",
-    )?;
-    assert!(!validate(inline.path())?.status.success());
-    Ok(())
-}
+#[path = "validator_touched_loc_density/raw_boundary.rs"]
+mod raw_boundary;
 
 #[path = "validator_touched_loc_density/awk_boundary.rs"]
 mod awk_boundary;
+#[path = "validator_touched_loc_density/markdown_boundary.rs"]
+mod markdown_boundary;
 
 #[test]
 fn validator_cli_checks_density_in_a_changed_structured_file() -> TestResult {
@@ -226,6 +211,17 @@ fn touched_loc_handles_language_specific_nesting_and_boundaries() -> TestResult 
     let javascript = fixture("src/check.js", "const ready = true;\n".to_owned())?;
     write(javascript.path(), "src/check.js", "for (;;) { break; }\n")?;
     assert!(validate(javascript.path())?.status.success());
+
+    write(
+        javascript.path(),
+        "src/check.js",
+        "for (;;) { first(); second(); third(); }\n",
+    )?;
+    assert!(!validate(javascript.path())?.status.success());
+
+    let rust_boundary = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
+    write(rust_boundary.path(), "src/lib.rs", "fn compact() { first(); second(); }\n")?;
+    assert!(validate(rust_boundary.path())?.status.success());
 
     let python = fixture("scripts/check.py", "pass\n".to_owned())?;
     write(python.path(), "scripts/check.py", "if ready: first(); second(); third()\n")?;

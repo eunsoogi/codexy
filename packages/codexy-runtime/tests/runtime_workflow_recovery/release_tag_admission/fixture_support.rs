@@ -1,6 +1,17 @@
-use std::{fs, path::Path};
+use std::{fs, io, path::Path};
 
 use serde_yaml::Value;
+
+use crate::support;
+
+pub(super) fn install_source_binding_verifier(root: &Path) -> io::Result<()> {
+    let verifier = root.join("scripts/verify-runtime-release-source-binding");
+    let source = codexy_runtime::paths::repository_root()
+        .join("scripts/verify-runtime-release-source-binding");
+    fs::create_dir_all(verifier.parent().expect("verifier parent"))?;
+    fs::copy(source, &verifier)?;
+    support::make_executable(&verifier)
+}
 
 pub(super) fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> {
     Ok(fs::read_to_string(path).unwrap_or_default().lines().count())

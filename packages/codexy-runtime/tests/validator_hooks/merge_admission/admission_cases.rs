@@ -36,11 +36,12 @@ fn connector_merge_without_authoritative_state_is_denied() -> TestResult {
     )
 }
 
+#[cfg(unix)]
 #[test]
 fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
-    let owned = super::admission_runtime::repository(
+    let owned = super::super::admission_runtime::repository(
         workspace.path(),
         "owned",
         "git@github.com:eunsoogi/codexy.git",
@@ -74,8 +75,8 @@ fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
         state_file.display(),
         body.display()
     );
-    super::admission_runtime::assert_case(&root, &owned, &command, false, &[])?;
-    super::admission_runtime::assert_case(
+    super::super::admission_runtime::assert_case(&root, &owned, &command, false, &[])?;
+    super::super::admission_runtime::assert_case(
         &root,
         &owned,
         "gh pr merge 128 --repo eunsoogi/codexy --squash --match-head-commit 32b03a210b3defb2d29dd352283ea2488e60d893 --subject 'fix(workflow): require intent (#128)' --body-file body.txt",
@@ -122,11 +123,12 @@ fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     Ok(())
 }
 
+#[cfg(unix)]
 #[test]
 fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestResult {
     let root = github_plugin_root();
     let workspace = tempfile::tempdir()?;
-    let owned = super::admission_runtime::repository(
+    let owned = super::super::admission_runtime::repository(
         workspace.path(),
         "owned",
         "git@github.com:eunsoogi/codexy.git",
@@ -196,5 +198,3 @@ fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestR
     );
     Ok(())
 }
-
-#[cfg(unix)]

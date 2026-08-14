@@ -5,7 +5,9 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 mod analysis;
-use analysis::{markdown_nonprose_lines, reason};
+mod spans;
+use analysis::reason;
+use spans::visible_lines;
 /// Returns a diagnostic only for a changed, maintained source line whose
 /// syntax packs several executable statements or fields into one construct.
 /// Line width is intentionally not an input: long identifiers, URLs, and
@@ -15,18 +17,12 @@ pub(super) fn error(path: &Path, text: &str) -> Option<String> {
         return None;
     }
     text.lines()
-        .zip(
-            rust_raw_string_lines(path, text).into_iter().zip(
-                awk_program_lines(path, text)
-                    .into_iter()
-                    .zip(markdown_nonprose_lines(path, text)),
-            ),
-        )
+        .zip(visible_lines(path, text))
         .enumerate()
-        .find_map(|(index, (line, (raw_string, (awk_program, markdown_nonprose))))| {
-            (!raw_string && !awk_program && !markdown_nonprose)
-                .then(|| reason(path, line))
-                .flatten()
+        .find_map(|(index, (_, visible))| {
+            visible
+                .as_deref()
+                .and_then(|line| reason(path, line))
                 .map(|reason| {
                     format!(
                         "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
@@ -86,21 +82,8 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
             continue;
         };
         let disposition = source_disposition(&path, &text);
-        for (index, (line, raw_string)) in text
-            .lines()
-            .zip(
-                rust_raw_string_lines(&path, &text).into_iter().zip(
-                    awk_program_lines(&path, &text)
-                        .into_iter()
-                        .zip(markdown_nonprose_lines(&path, &text)),
-                ),
-            )
-            .enumerate()
-        {
-            let (raw_string, (awk_program, markdown_nonprose)) = raw_string;
-            let reason = (!raw_string && !awk_program && !markdown_nonprose)
-                .then(|| reason(&path, line))
-                .flatten();
+        for (index, (line, visible)) in text.lines().zip(visible_lines(&path, &text)).enumerate() {
+            let reason = visible.as_deref().and_then(|line| reason(&path, line));
             let structural = reason.is_some();
             if !structural && line.chars().count() <= 160 {
                 continue;
@@ -144,7 +127,10 @@ pub(super) fn disposition(path: &Path) -> Disposition {
     if lower.starts_with("vendor/") || lower.contains("/vendor/") || lower.contains("node_modules/")
     {
         Disposition::Vendor
-    } else if lower.starts_with(".codex/") {
+    } else if lower.starts_with(".codex/")
+        || lower.starts_with("target/")
+        || lower.contains("/target/")
+    {
         Disposition::Generated
     } else if matches!(
         lower.as_str(),
@@ -182,53 +168,6 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
 
 fn is_fixture_path(path: &str) -> bool {
     path.starts_with("tests/fixtures/") || path.contains("/tests/fixtures/")
-}
-
-fn rust_raw_string_lines(path: &Path, text: &str) -> Vec<bool> {
-    if path.extension().is_none_or(|extension| extension != "rs") {
-        return vec![false; text.lines().count()];
-    }
-    let mut terminator = None;
-    text.lines()
-        .map(|line| {
-            let was_raw = terminator.is_some();
-            if let Some(end) = &terminator {
-                if line.contains(end) {
-                    terminator = None;
-                }
-            } else if let Some((hashes, suffix)) = (0..=8).find_map(|hashes| {
-                let opener = format!("r{}\"", "#".repeat(hashes));
-                line.split_once(&opener).map(|(_, suffix)| (hashes, suffix))
-            }) {
-                let end = format!("\"{}", "#".repeat(hashes));
-                if !suffix.contains(&end) {
-                    terminator = Some(end);
-                    return true;
-                }
-            }
-            was_raw
-        })
-        .collect()
-}
-
-fn awk_program_lines(path: &Path, text: &str) -> Vec<bool> {
-    if path.extension().is_none_or(|extension| extension != "sh") {
-        return vec![false; text.lines().count()];
-    }
-    let mut active = false;
-    text.lines()
-        .map(|line| {
-            if !active && line.contains("awk ") {
-                let quotes = line.matches('\'').count();
-                active = quotes % 2 == 1;
-                return active;
-            }
-            if active && line.trim() == "'" {
-                active = false;
-            }
-            active
-        })
-        .collect()
 }
 
 #[cfg(test)]

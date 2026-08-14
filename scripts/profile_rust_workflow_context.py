@@ -1,6 +1,7 @@
 """Indentation-aware, fail-closed Rust workflow job and step contexts."""
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 
@@ -16,6 +17,7 @@ def job_context(
     mapping: Callable[[str], tuple[str, str] | None],
     scalar: Callable[[str], str],
 ) -> dict[str, object]:
+    lines = normalize_block_runs(lines, mapping)
     job: dict[str, object] = {}
     section = ""
     step: dict[str, object] | None = None
@@ -71,3 +73,37 @@ def job_context(
             continue
         job["__invalid__"] = True
     return job
+
+
+def normalize_block_runs(
+    lines: list[str],
+    mapping: Callable[[str], tuple[str, str] | None],
+) -> list[str]:
+    normalized: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        indent = len(line) - len(line.lstrip(" "))
+        entry = mapping(line.strip().removeprefix("-").lstrip())
+        if indent != 8 or entry is None or entry[0] != "run" or entry[1] not in {"|", "|-", "|+"}:
+            normalized.append(line)
+            index += 1
+            continue
+        content: list[str] = []
+        index += 1
+        while index < len(lines):
+            candidate = lines[index]
+            candidate_indent = len(candidate) - len(candidate.lstrip(" "))
+            if candidate.strip() and candidate_indent <= indent:
+                break
+            content.append(candidate)
+            index += 1
+        content_indent = min(
+            (len(item) - len(item.lstrip(" ")) for item in content if item.strip()),
+            default=indent + 2,
+        )
+        command = "\n".join(
+            item[content_indent:] if item.strip() else "" for item in content
+        ).strip()
+        normalized.append(f"{' ' * indent}run: {json.dumps(command)}")
+    return normalized

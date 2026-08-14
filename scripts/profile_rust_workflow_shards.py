@@ -13,7 +13,27 @@ CHECKOUT = {
         "persist-credentials": "false",
     },
 }
-WINDOWS_SETUP = ({"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"}, {"shell": "pwsh", "run": "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"})
+WINDOWS_BOOTSTRAP = "\n".join(
+    (
+        "rustup toolchain install",
+        "if ($LASTEXITCODE -ne 0) {",
+        "  exit $LASTEXITCODE",
+        "}",
+        "cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked",
+        "if ($LASTEXITCODE -ne 0) {",
+        "  exit $LASTEXITCODE",
+        "}",
+    )
+)
+LEGACY_WINDOWS_BOOTSTRAP = (
+    "rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
+    "cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; "
+    "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+)
+WINDOWS_SETUP = (
+    {"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"},
+    {"shell": "pwsh", "run": WINDOWS_BOOTSTRAP},
+)
 
 
 def producer(job: dict[str, object], runner: str, timeout: str, command: str, receipt: str) -> bool:
@@ -27,7 +47,16 @@ def producer(job: dict[str, object], runner: str, timeout: str, command: str, re
     setup = WINDOWS_SETUP if runner.startswith("windows") else ({"run": "sudo apt-get update && sudo apt-get install --yes ripgrep"},)
     platform_name = "windows" if runner.startswith("windows") else "posix"
     upload = {"if": "always()", "uses": "actions/upload-artifact@v7", "with": {"name": f"rust-receipt-{platform_name}-${{{{ matrix.shard }}}}", "path": receipt, "if-no-files-found": "error"}}
-    return tuple(steps) == (CHECKOUT, *setup, {"run": command}, upload)
+    expected_steps = (CHECKOUT, *setup, {"run": command}, upload)
+    if tuple(steps) == expected_steps:
+        return True
+    if not runner.startswith("windows"):
+        return False
+    legacy_setup = (
+        {"shell": "pwsh", "run": "scripts/install-windows-test-prerequisites.ps1"},
+        {"shell": "pwsh", "run": LEGACY_WINDOWS_BOOTSTRAP},
+    )
+    return tuple(steps) == (CHECKOUT, *legacy_setup, {"run": command}, upload)
 
 
 def aggregate(job: dict[str, object]) -> bool:

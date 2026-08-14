@@ -34,9 +34,13 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     let release = step["run"].as_str().ok_or("final release run")?;
     assert_eq!(step["env"]["GH_TOKEN"], "${{ github.token }}");
     let create = release.find("gh release create v1.3.0").ok_or("version release")?;
+    assert!(
+        release
+            .find("scripts/verify-runtime-release-source-binding")
+            .ok_or("source-binding verifier")?
+            < create
+    );
     for required in [
-        "test -n \"$STAGING_SOURCE_COMMIT\"",
-        "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
         "git ls-remote --refs origin \"$tag_ref\"",
         "gh api --method POST --include \"repos/$GITHUB_REPOSITORY/git/refs\"",
         "-f ref=\"$tag_ref\" -f sha=\"$ACTIVATION_COMMIT\"",
@@ -52,6 +56,22 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
+    let verifier = fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/verify-runtime-release-source-binding"),
+    )?;
+    support::assert_structured_literals(
+        &verifier,
+        "protected main source verifier",
+        &[
+            "test -n \"$STAGING_SOURCE_COMMIT\"",
+            "test -n \"$ACTIVATION_COMMIT\"",
+            "test -n \"$STAGING_RUN_ID\"",
+            "git rev-parse \"$STAGING_SOURCE_COMMIT\"",
+            "jq -r .source.stagingSourceCommit \"$receipt\"",
+            "jq -r .staging.runId \"$receipt\"",
+        ],
+    );
     assert!(!release.lines().any(|line| {
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));

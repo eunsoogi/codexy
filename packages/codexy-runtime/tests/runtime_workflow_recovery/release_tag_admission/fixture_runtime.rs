@@ -96,6 +96,11 @@ impl Fixture {
             &root.join("dist/runtime-release-receipt.json"),
             fs::write(root.join("dist/runtime-release-receipt.json"), "{}")
         );
+        fixture_io!(
+            "install release source-binding verifier",
+            &root,
+            install_source_binding_verifier(&root)
+        );
         for (name, body) in [
             ("git", git_fixture()),
             ("jq", jq_fixture()),
@@ -181,6 +186,11 @@ impl Fixture {
     ) -> Result<Output, Box<dyn std::error::Error>> {
         let mut command = Command::new(&self.runner);
         command.current_dir(&self.root);
+        let mut command_path = vec![self.root.join("bin")];
+        command_path.extend(std::env::split_paths(
+            &std::env::var_os("PATH").unwrap_or_default(),
+        ));
+        command.env_path_list("PATH", command_path);
         for (key, value) in inherited {
             command.env(key, value);
         }
@@ -231,4 +241,4 @@ impl Fixture {
     }
 }
 
-use super::fixture_support::{lines, release_step};
+use super::fixture_support::{install_source_binding_verifier, lines, release_step};
