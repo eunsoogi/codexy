@@ -14,15 +14,36 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
         return Some(line.to_owned());
     }
     for (opening, closing) in [("@'", "'@"), ("@\"", "\"@")] {
-        if let Some(index) = line.find(opening) {
-            if line[..index].contains('\'') || line[..index].contains('"') {
-                continue;
+        let mut offset = 0;
+        while let Some(relative) = line[offset..].find(opening) {
+            let index = offset + relative;
+            if here_opener_allowed(&line[..index]) {
+                *end = Some(closing);
+                return Some(line[..index].to_owned());
             }
-            *end = Some(closing);
-            return Some(line[..index].to_owned());
+            offset = index + opening.len();
         }
     }
     Some(line.to_owned())
+}
+
+fn here_opener_allowed(prefix: &str) -> bool {
+    let mut quote = None;
+    let mut escaped = false;
+    for character in prefix.chars() {
+        if let Some(delimiter) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '`' {
+                escaped = true;
+            } else if character == delimiter {
+                quote = None;
+            }
+        } else if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        }
+    }
+    quote.is_none()
 }
 
 fn comment_before_opener(line: &str) -> bool {

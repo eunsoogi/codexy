@@ -50,7 +50,9 @@ fn heredoc_span(line: &str) -> Option<(usize, usize, String)> {
     let leading = after_operator.len() - after_operator.trim_start().len();
     let token = after_operator
         .trim_start()
-        .split(|character: char| character.is_whitespace() || matches!(character, ';' | '&' | '|'))
+        .split(|character: char| {
+            character.is_whitespace() || matches!(character, ';' | '&' | '|' | '<' | '>')
+        })
         .next()?;
     let end = token.trim_matches(|character| matches!(character, '\'' | '"'));
     (!end.is_empty()).then(|| {

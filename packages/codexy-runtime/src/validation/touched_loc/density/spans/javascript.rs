@@ -64,12 +64,17 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
 
 fn skip_regex(line: &str) -> Option<&str> {
     let mut escaped = false;
+    let mut class = false;
     for (index, character) in line.char_indices() {
         if escaped {
             escaped = false;
         } else if character == '\\' {
             escaped = true;
-        } else if character == '/' {
+        } else if character == '[' {
+            class = true;
+        } else if character == ']' {
+            class = false;
+        } else if character == '/' && !class {
             return Some(&line[index + 1..]);
         }
     }
@@ -121,10 +126,11 @@ fn regex_context(prefix: &str) -> bool {
     matches!(
         trimmed.split_whitespace().next_back(),
         Some("return" | "throw" | "case" | "yield")
-    ) || trimmed.chars().next_back().is_none_or(|character| {
-        matches!(
-            character,
-            '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
-        )
-    })
+    ) || trimmed.ends_with("=>")
+        || trimmed.chars().next_back().is_none_or(|character| {
+            matches!(
+                character,
+                '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
+            )
+        })
 }

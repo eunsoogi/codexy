@@ -14,7 +14,7 @@ pub(super) fn reason(language: Language, line: &str) -> Option<&'static str> {
         Language::Python if python_inline_suite(&visible) || statement_count(&visible) >= 2 => {
             Some("dense executable statements")
         }
-        Language::JavaScript if statement_count(javascript_body(&visible)) >= 3 => {
+        Language::JavaScript if statement_count(&visible) >= 3 => {
             Some("dense executable statements")
         }
         Language::Shell | Language::PowerShell
@@ -80,28 +80,6 @@ fn python_inline_suite(line: &str) -> bool {
         })
 }
 
-fn javascript_body(line: &str) -> &str {
-    let trimmed = line.trim_start();
-    if let Some(index) = for_header_start(trimmed) {
-        closing_parenthesis(&trimmed[index..]).map_or(trimmed, |end| &trimmed[index + end + 1..])
-    } else {
-        trimmed
-    }
-}
-
-fn for_header_start(line: &str) -> Option<usize> {
-    line.match_indices("for").find_map(|(index, _)| {
-        let before = line[..index].chars().next_back();
-        let after = &line[index + "for".len()..];
-        (!before.is_some_and(is_javascript_identifier) && after.trim_start().starts_with('('))
-            .then_some(index)
-    })
-}
-
-fn is_javascript_identifier(character: char) -> bool {
-    character.is_ascii_alphanumeric() || matches!(character, '_' | '$')
-}
-
 fn yaml_commands(line: &str) -> String {
     let mut visible = String::new();
     let mut remainder = line;
@@ -116,44 +94,28 @@ fn yaml_commands(line: &str) -> String {
     visible
 }
 
-fn closing_parenthesis(line: &str) -> Option<usize> {
-    let mut depth = 0;
-    let mut quote = None;
-    let mut escaped = false;
-    for (index, character) in line.char_indices() {
-        if let Some(delimiter) = quote {
-            if escaped {
-                escaped = false;
-            } else if character == '\\' {
-                escaped = true;
-            } else if character == delimiter {
-                quote = None;
-            }
-            continue;
-        }
-        if matches!(character, '\'' | '"' | '`') {
-            quote = Some(character);
-        } else if character == '(' {
-            depth += 1;
-        } else if character == ')' {
-            depth -= 1;
-            if depth == 0 {
-                return Some(index);
-            }
-        }
-    }
-    None
-}
-
 fn statement_count(line: &str) -> usize {
     let mut count = 0;
     let mut current = String::new();
-    let mut nested: usize = 0;
+    let mut parentheses: usize = 0;
+    let mut brackets: usize = 0;
+    let mut brace_parentheses = Vec::new();
     for character in line.chars() {
         match character {
-            '(' | '[' => nested += 1,
-            ')' | ']' => nested = nested.saturating_sub(1),
-            ';' if nested == 0 => {
+            '(' => parentheses += 1,
+            ')' => parentheses = parentheses.saturating_sub(1),
+            '[' => brackets += 1,
+            ']' => brackets = brackets.saturating_sub(1),
+            '{' => brace_parentheses.push(parentheses),
+            '}' => {
+                brace_parentheses.pop();
+            }
+            ';' if brackets == 0
+                && (parentheses == 0
+                    || brace_parentheses
+                        .last()
+                        .is_some_and(|depth| *depth == parentheses)) =>
+            {
                 count += statement_fragment(&current) as usize;
                 current.clear();
                 continue;
