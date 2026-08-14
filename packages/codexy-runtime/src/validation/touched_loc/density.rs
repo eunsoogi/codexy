@@ -96,7 +96,6 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
                 Disposition::Maintained if structural => "confirmed-density-defect",
                 Disposition::Maintained => "maintained-readable",
                 Disposition::ExactFixture => "exact-fixture",
-                Disposition::ExactMalformedFixture => "exact-malformed-fixture",
                 Disposition::Generated => "generated",
                 Disposition::Vendor => "vendor",
             };
@@ -120,7 +119,6 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
 pub(super) enum Disposition {
     Maintained,
     ExactFixture,
-    ExactMalformedFixture,
     Generated,
     Vendor,
 }
@@ -154,10 +152,7 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
     if base != Disposition::Maintained {
         return base;
     }
-    if text.starts_with("# codexy-exact-fixture: malformed\n") {
-        return Disposition::ExactMalformedFixture;
-    }
-    if text.starts_with("// codexy-exact-fixture-file: ") {
+    if manifested_exact_fixture(path, text) {
         return Disposition::ExactFixture;
     }
     let json = serde_json::from_str::<Value>(text).ok();
@@ -166,6 +161,31 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
     } else {
         Disposition::Maintained
     }
+}
+
+fn manifested_exact_fixture(path: &Path, text: &str) -> bool {
+    let Some(marker) = text
+        .lines()
+        .next()
+        .and_then(|line| line.strip_prefix("// codexy-exact-fixture-file: "))
+    else {
+        return false;
+    };
+    let Ok(manifest) =
+        serde_json::from_str::<Value>(include_str!("density/exact_fixture_manifest.json"))
+    else {
+        return false;
+    };
+    manifest.get("schema").and_then(Value::as_str) == Some("codexy.exact-fixture-manifest.v1")
+        && manifest
+            .get("fixtures")
+            .and_then(Value::as_array)
+            .is_some_and(|fixtures| {
+                fixtures.iter().any(|fixture| {
+                    fixture.get("path").and_then(Value::as_str) == path.to_str()
+                        && fixture.get("marker").and_then(Value::as_str) == Some(marker)
+                })
+            })
 }
 
 fn exact_json_fixture(value: &Value) -> bool {

@@ -48,10 +48,10 @@ fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -
     write(
         fixture_repo.path(),
         "tests/fixtures/malformed_input.py",
-        "# codexy-exact-fixture: malformed\nfirst(); second(); third()\n",
+        "# malformed input remains maintained\nfirst(); second(); third()\n",
     )?;
     let fixture_output = validate(fixture_repo.path())?;
-    assert!(fixture_output.status.success(), "{}", stderr(&fixture_output));
+    assert!(!fixture_output.status.success(), "{}", stderr(&fixture_output));
 
     let json_fixture = fixture("tests/fixtures/reference.json", "{}\n".to_owned())?;
     write(

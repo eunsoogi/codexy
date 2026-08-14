@@ -35,17 +35,19 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
     );
     assert_eq!(
         source_disposition(
-            Path::new("tests/fixtures/malformed_input.py"),
-            "# codexy-exact-fixture: malformed\ninvalid source",
+            Path::new(
+                "packages/codexy-runtime/tests/runtime_workflow_recovery/release_tag_admission/fixture_scripts.rs"
+            ),
+            "// codexy-exact-fixture-file: shell-command-scenarios\nfn fixture() {}",
         ),
-        Disposition::ExactMalformedFixture
+        Disposition::ExactFixture
     );
     assert_eq!(
         source_disposition(
             Path::new("tests/fixture_program.rs"),
             "// codexy-exact-fixture-file: shell-command-scenarios\nfn fixture() {}",
         ),
-        Disposition::ExactFixture
+        Disposition::Maintained
     );
     assert_eq!(
         disposition(Path::new("packages/codexy-runtime/Cargo.lock")),

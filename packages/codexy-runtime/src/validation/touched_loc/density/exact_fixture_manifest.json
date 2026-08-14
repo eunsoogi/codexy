@@ -1,0 +1,9 @@
+{
+  "schema": "codexy.exact-fixture-manifest.v1",
+  "fixtures": [
+    {
+      "path": "packages/codexy-runtime/tests/runtime_workflow_recovery/release_tag_admission/fixture_scripts.rs",
+      "marker": "shell-command-scenarios"
+    }
+  ]
+}
