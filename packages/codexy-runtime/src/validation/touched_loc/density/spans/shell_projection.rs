@@ -4,7 +4,7 @@ pub(super) struct Projection {
 
 enum Frame {
     Quote(Quote),
-    Substitution { depth: usize, quote: Option<Quote> },
+    Substitution { depth: usize },
 }
 
 #[derive(Clone, Copy)]
@@ -31,16 +31,16 @@ impl Projection {
                         quote.escaped = false;
                         mask(&mut visible, character);
                         index += character.len_utf8();
-                    } else if character == '\\' {
+                    } else if quote.delimiter == '"' && character == '\\' {
                         quote.escaped = true;
                         mask(&mut visible, character);
                         index += 1;
-                    } else if quote.delimiter == '"' && tail.starts_with("$(") {
+                    } else if quote.delimiter == '"'
+                        && tail.starts_with("$(")
+                        && !tail.starts_with("$((")
+                    {
                         mask_pair(&mut visible);
-                        self.frames.push(Frame::Substitution {
-                            depth: 1,
-                            quote: None,
-                        });
+                        self.frames.push(Frame::Substitution { depth: 1 });
                         index += 2;
                     } else if character == quote.delimiter {
                         self.frames.pop();
@@ -51,27 +51,17 @@ impl Projection {
                         index += character.len_utf8();
                     }
                 }
-                Some(Frame::Substitution { depth, quote }) => {
-                    if let Some(active_quote) = *quote {
-                        if active_quote.escaped {
-                            quote.as_mut().expect("quote must remain active").escaped = false;
-                        } else if character == '\\' {
-                            quote.as_mut().expect("quote must remain active").escaped = true;
-                        } else if character == active_quote.delimiter {
-                            *quote = None;
-                        }
-                        mask(&mut visible, character);
-                        index += character.len_utf8();
-                    } else if matches!(character, '\'' | '"') {
-                        *quote = Some(Quote {
+                Some(Frame::Substitution { depth }) => {
+                    if matches!(character, '\'' | '"') {
+                        self.frames.push(Frame::Quote(Quote {
                             delimiter: character,
                             escaped: false,
-                        });
+                        }));
                         mask(&mut visible, character);
                         index += character.len_utf8();
-                    } else if tail.starts_with("$(") {
-                        *depth += 1;
+                    } else if tail.starts_with("$(") && !tail.starts_with("$((") {
                         mask_pair(&mut visible);
+                        self.frames.push(Frame::Substitution { depth: 1 });
                         index += 2;
                     } else if character == '(' {
                         *depth += 1;
@@ -97,11 +87,8 @@ impl Projection {
                     mask(&mut visible, character);
                     index += character.len_utf8();
                 }
-                None if tail.starts_with("$(") => {
-                    self.frames.push(Frame::Substitution {
-                        depth: 1,
-                        quote: None,
-                    });
+                None if tail.starts_with("$(") && !tail.starts_with("$((") => {
+                    self.frames.push(Frame::Substitution { depth: 1 });
                     mask_pair(&mut visible);
                     index += 2;
                 }
@@ -115,12 +102,10 @@ impl Projection {
     }
 
     fn start_line(&mut self) {
-        match self.frames.last_mut() {
-            Some(Frame::Quote(quote)) => quote.escaped = false,
-            Some(Frame::Substitution {
-                quote: Some(quote), ..
-            }) => quote.escaped = false,
-            _ => {}
+        for frame in &mut self.frames {
+            if let Frame::Quote(quote) = frame {
+                quote.escaped = false;
+            }
         }
     }
 }

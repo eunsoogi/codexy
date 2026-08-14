@@ -27,26 +27,16 @@ impl Heredoc {
 
 pub(super) fn spans(line: &str, code: &str) -> Vec<Span> {
     let mut spans = Vec::new();
-    let mut quote = None;
-    let mut escaped = false;
     let mut index = 0;
     while index < line.len() {
         let tail = &line[index..];
+        let code_tail = &code[index..];
         let character = tail.chars().next().expect("index must be in bounds");
-        if let Some(delimiter) = quote {
-            if escaped {
-                escaped = false;
-            } else if character == '\\' && delimiter == '"' {
-                escaped = true;
-            } else if character == delimiter {
-                quote = None;
-            }
+        if code_tail.starts_with(' ') {
             index += character.len_utf8();
             continue;
         }
-        if matches!(character, '\'' | '"') {
-            quote = Some(character);
-        } else if character == '\\' {
+        if character == '\\' {
             index += escaped_char_len(tail);
             continue;
         } else if tail.starts_with("$((") || tail.starts_with("((") {
@@ -57,7 +47,7 @@ pub(super) fn spans(line: &str, code: &str) -> Vec<Span> {
         } else if tail.starts_with("<<<") {
             index += 3;
             continue;
-        } else if tail.starts_with("<<") && code[index..].starts_with("<<") {
+        } else if tail.starts_with("<<") && code_tail.starts_with("<<") {
             let strip_tabs = tail[2..].starts_with('-');
             let operator_end = index + 2 + strip_tabs as usize;
             if let Some((word_len, end)) = word(&line[operator_end..]) {
