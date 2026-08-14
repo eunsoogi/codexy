@@ -12,7 +12,7 @@ impl McpClient {
     fn spawn() -> Result<Self, Box<dyn std::error::Error>> {
         let path_dir = tempfile::tempdir()?;
         let child = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
-            .env("PATH", path_dir.path())
+            .env("CODEXY_LSP_LOOKUP_PATH", path_dir.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

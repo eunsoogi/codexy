@@ -36,7 +36,10 @@ pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, O
         return (false, None, Some(reason));
     }
     let executable_names = executable_names(executable);
-    for entry in std::env::var_os("PATH")
+    // Lookup can be scoped without starving the MCP process of platform loader paths.
+    let search_path =
+        std::env::var_os("CODEXY_LSP_LOOKUP_PATH").or_else(|| std::env::var_os("PATH"));
+    for entry in search_path
         .as_deref()
         .map(std::env::split_paths)
         .into_iter()
