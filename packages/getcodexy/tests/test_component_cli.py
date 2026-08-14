@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import io
 import json
+import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_cli import main
+from codexy_runtime_tools.component_manifest import load_component_manifest
 
 
 class ComponentCliTests(unittest.TestCase):
@@ -46,6 +48,22 @@ class ComponentCliTests(unittest.TestCase):
         receipt = json.loads(output.getvalue())
         self.assertEqual(receipt["command"], "bootstrap")
         self.assertEqual(receipt["errors"], [{"code": "components-not-accepted"}])
+
+    def test_bootstrap_json_host_failure_emits_one_closed_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output, errors = io.StringIO(), io.StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
+                code = main(["--codex", str(Path(directory) / "missing-codex"), "bootstrap", "--json"])
+
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        self.assertEqual(errors.getvalue(), "")
+        self.assertEqual(receipt["schema"], "getcodexy.operation-receipt.v1")
+        self.assertEqual(receipt["command"], "bootstrap")
+        self.assertEqual(receipt["outcome"], "rejected")
+        self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
+        self.assertTrue({error["code"] for error in receipt["errors"]}.issubset(load_component_manifest().domain_errors))
 
     def test_json_install_prints_exactly_one_operation_receipt(self) -> None:
         receipt = {

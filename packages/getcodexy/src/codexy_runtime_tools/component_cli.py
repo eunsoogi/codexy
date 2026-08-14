@@ -10,6 +10,9 @@ from pathlib import Path
 
 from .component_inspection import doctor, status
 from .component_lifecycle import run_operation
+from .component_transaction_identity import operation_id
+from .component_transition_model import OperationReceipt
+from .component_transition_rejections import Rejection, RejectionStage, StateFailure
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,6 +38,12 @@ def main(argv: list[str] | None = None) -> int:
             receipt = doctor(arguments.codex_home, codex=arguments.codex)
         else:
             receipt = run_operation(arguments.command, tuple(getattr(arguments, "components", ())), arguments.codex_home, arguments.codex)
+    except (OSError, RuntimeError, ValueError) as error:
+        if arguments.command == "bootstrap" and arguments.json_output:
+            print(json.dumps(_bootstrap_host_failure(), sort_keys=True))
+            return 2
+        print(f"getcodexy {arguments.command}: {error}", file=sys.stderr)
+        return 1
     except Exception as error:
         print(f"getcodexy {arguments.command}: {error}", file=sys.stderr)
         return 1
@@ -61,6 +70,11 @@ def _human(command: str, receipt: dict[str, object]) -> str:
         missing = ",".join(readiness.get("missing_requirements", [])) if isinstance(readiness, dict) else "unknown"
         return f"getcodexy doctor: health={summary}; missing={missing or 'none'}; errors={','.join(error.get('code', 'unknown') for error in receipt.get('errors', []) if isinstance(error, dict)) or 'none'}"
     return f"getcodexy {command}: {receipt['outcome']}"
+
+
+def _bootstrap_host_failure() -> dict[str, object]:
+    rejection = Rejection.from_failure(RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE)
+    return OperationReceipt.rejected(operation_id(None), "bootstrap", (), (), rejection).encode()
 
 
 

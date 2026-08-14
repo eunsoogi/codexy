@@ -4,7 +4,7 @@ import unittest
 import json
 from unittest.mock import patch
 
-from codexy_runtime_tools.component_lifecycle import run_operation
+from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_transaction_receipts import write_receipt
 from codexy_runtime_tools.component_transaction_state import read_inventory, read_journal, write_inventory
@@ -22,6 +22,37 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(receipt["selection_before"], ["core"])
         self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
         self.assertEqual(repeated["selection_after"], ["core", "github", "devtools"])
+
+    def test_started_stale_bootstrap_recovers_before_a_different_install(self) -> None:
+        with fixture({"core", "github", "devtools"}, versions={"core": "1.2.0", "github": "1.2.0", "devtools": "1.2.0"}) as state:
+            journal = Journal(
+                "op-stale-bootstrap",
+                "bootstrap",
+                (),
+                ("core", "github", "devtools"),
+                (),
+                ("core", "github", "devtools"),
+                InventorySnapshot.capture(state.home),
+                "started",
+            )
+            write_journal(state.home, journal)
+
+            receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-after-stale-bootstrap")
+
+            self.assertEqual(receipt["outcome"], "completed")
+            prior = inventory_path(state.home).parent / "receipts" / "op-stale-bootstrap.json"
+            self.assertEqual(json.loads(prior.read_text(encoding="utf-8"))["outcome"], "rolled-back")
+            self.assertIsNone(read_journal(state.home))
+            self.assertEqual(receipt["selection_after"], ["core"])
+            self.assertEqual(
+                state.mutations,
+                [
+                    ("plugin", "remove", "codexy-devtools@codexy", "--json"),
+                    ("plugin", "remove", "codexy-github@codexy", "--json"),
+                    ("plugin", "remove", "codexy@codexy", "--json"),
+                    ("plugin", "add", "codexy@codexy", "--json"),
+                ],
+            )
 
     def test_operands_have_a_typed_rejection(self) -> None:
         with fixture() as state:
