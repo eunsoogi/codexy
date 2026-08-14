@@ -1,7 +1,8 @@
 use std::fs;
 
 use crate::support::{
-    FixtureScriptBinding, ReleaseFixtureCommand, bind_posix_fixture_script_launchers,
+    FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
+    bind_posix_fixture_script_launchers,
     bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 
@@ -10,6 +11,9 @@ use sha2::{Digest, Sha256};
 
 #[path = "release_attestation_reconciliation.rs"]
 mod release_attestation_reconciliation;
+#[path = "release_reconciliation_assertions.rs"]
+mod release_reconciliation_assertions;
+use release_reconciliation_assertions::assert_rejected;
 
 #[test]
 fn release_reconciliation_authenticates_a_draft_before_finalization()
@@ -185,14 +189,21 @@ esac
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
     let verified = run(false)?;
-    ReleaseFixtureCommand::assert_success("verify-release-edit-baseline", &verified);
+    ReleaseFixtureCommand::assert_outcome(
+        "verify-release-edit-baseline",
+        ReleaseFixtureOutcome::Success,
+        &verified,
+    );
     for (name, changed_event) in [
         ("name", r#"{"action":"edited","changes":{"name":{"from":"old"}},"release":{"id":42}}"#),
         ("body and name", r#"{"action":"edited","changes":{"body":{"from":"old"},"name":{"from":"old"}},"release":{"id":42}}"#),
         ("empty", r#"{"action":"edited","changes":{},"release":{"id":42}}"#),
     ] {
         fs::write(temp.path().join("event.json"), changed_event)?;
-        assert!(!run(false)?.status.success(), "accepted edited release event with {name}");
+        assert_rejected(
+            &format!("verify-release-edit-baseline changed {name}"),
+            &run(false)?,
+        );
     }
     fs::write(temp.path().join("event.json"), event)?;
     let rejected_states: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
@@ -211,7 +222,10 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&state)?;
         mutate(&mut tampered);
         fs::write(fixture.join("state.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+        assert_rejected(
+            &format!("verify-release-edit-baseline release {name}"),
+            &run(false)?,
+        );
     }
     fs::write(fixture.join("state.json"), &state)?;
     for (name, pointer, replacement) in [
@@ -222,9 +236,15 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&baseline_bytes)?;
         *tampered.pointer_mut(pointer).ok_or("baseline field")? = replacement;
         fs::write(fixture.join("baseline.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+        assert_rejected(
+            &format!("verify-release-edit-baseline baseline {name}"),
+            &run(false)?,
+        );
     }
     fs::write(fixture.join("baseline.json"), &baseline_bytes)?;
-    assert!(!run(true)?.status.success());
+    assert_rejected(
+        "verify-release-edit-baseline extra attestation",
+        &run(true)?,
+    );
     Ok(())
 }

@@ -4,7 +4,7 @@ use std::{
     process::Output,
 };
 
-use crate::support::{ReleaseFixtureCommand, fixture_script_interpreter_path};
+use crate::support::{ReleaseFixtureCommand, ReleaseFixtureOutcome, fixture_script_interpreter_path};
 
 #[path = "fixture_materialization.rs"]
 mod fixture_materialization;
@@ -120,18 +120,30 @@ impl Fixture {
 
     pub(crate) fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
         let publish = self.run("publish-verified-release")?;
-        ReleaseFixtureCommand::assert_success("publish-verified-release", &publish);
+        ReleaseFixtureCommand::assert_outcome(
+            "publish-verified-release",
+            ReleaseFixtureOutcome::Success,
+            &publish,
+        );
         let finalize = self.run_with_settings(
             "finalize-verified-release",
             self.last_baseline_created()?,
             true,
         )?;
-        ReleaseFixtureCommand::assert_success("finalize-verified-release", &finalize);
+        ReleaseFixtureCommand::assert_outcome(
+            "finalize-verified-release",
+            ReleaseFixtureOutcome::Success,
+            &finalize,
+        );
         Ok(())
     }
 
-    pub(crate) fn assert_success(operation: &str, output: &Output) {
-        ReleaseFixtureCommand::assert_success(operation, output);
+    pub(crate) fn assert_outcome(
+        operation: &str,
+        expected: ReleaseFixtureOutcome,
+        output: &Output,
+    ) {
+        ReleaseFixtureCommand::assert_outcome(operation, expected, output);
     }
 
     pub(crate) fn run(

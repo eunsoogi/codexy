@@ -11,6 +11,12 @@ pub(crate) struct ReleaseFixtureCommand {
     command: FixtureCommand,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ReleaseFixtureOutcome {
+    Success,
+    Failure,
+}
+
 impl ReleaseFixtureCommand {
     pub(crate) fn new(script: impl AsRef<OsStr>) -> Self {
         Self {
@@ -56,13 +62,19 @@ impl ReleaseFixtureCommand {
         self.command.output()
     }
 
-    pub(crate) fn assert_success(operation: &str, output: &Output) {
+    pub(crate) fn assert_outcome<'a>(
+        operation: &str,
+        expected: ReleaseFixtureOutcome,
+        output: &'a Output,
+    ) -> &'a Output {
+        let expected_success = matches!(expected, ReleaseFixtureOutcome::Success);
         assert!(
-            output.status.success(),
-            "{operation} exited {:?}; stdout: {}; stderr: {}",
+            output.status.success() == expected_success,
+            "{operation} expected {expected:?}, exited {:?}; stdout: {}; stderr: {}",
             output.status.code(),
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr),
         );
+        output
     }
 }

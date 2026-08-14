@@ -1,7 +1,8 @@
 use std::fs;
 
 use crate::support::{
-    ReleaseFixtureCommand, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
+    ReleaseFixtureCommand, ReleaseFixtureOutcome, bind_posix_fixture_shell_launchers,
+    fixture_script_interpreter_path,
 };
 
 #[test]
@@ -43,14 +44,27 @@ esac
         .path("GITHUB_ENV", &environment).scalar("ATTESTATION_STATE", state)
         .path("FIXTURE_GH", &gh).path("FIXTURE_GH_LAUNCHER", &launcher).output();
     let absent = run("absent")?;
-    ReleaseFixtureCommand::assert_success("reconcile-release-attestations absent", &absent);
+    ReleaseFixtureCommand::assert_outcome(
+        "reconcile-release-attestations absent",
+        ReleaseFixtureOutcome::Success,
+        &absent,
+    );
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=true\n");
     fs::write(&environment, "")?;
     let existing = run("existing")?;
-    ReleaseFixtureCommand::assert_success("reconcile-release-attestations existing", &existing);
+    ReleaseFixtureCommand::assert_outcome(
+        "reconcile-release-attestations existing",
+        ReleaseFixtureOutcome::Success,
+        &existing,
+    );
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=false\n");
     fs::write(&environment, "")?;
-    assert!(!run("mismatch")?.status.success());
+    let mismatch = run("mismatch")?;
+    ReleaseFixtureCommand::assert_outcome(
+        "reconcile-release-attestations mismatch",
+        ReleaseFixtureOutcome::Failure,
+        &mismatch,
+    );
     assert_eq!(fs::read_to_string(&environment)?, "");
     Ok(())
 }

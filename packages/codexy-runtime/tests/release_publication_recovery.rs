@@ -4,7 +4,8 @@ use fixture::{ASSETS, Fixture};
 use std::fs;
 
 use crate::support::{
-    FixtureScriptBinding, ReleaseFixtureCommand, bind_posix_fixture_script_launchers,
+    FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
+    bind_posix_fixture_script_launchers,
     fixture_script_interpreter_path, write_posix_fixture_command,
 };
 
@@ -31,11 +32,15 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
 fn finalizer_rejects_policy_drift_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    Fixture::assert_success("publish-verified-release", &publish);
+    Fixture::assert_outcome("publish-verified-release", ReleaseFixtureOutcome::Success, &publish);
     let baseline_created = fixture.last_baseline_created()?;
     let before = fixture.log()?;
     let finalize = fixture.run_with_settings("finalize-verified-release", baseline_created, false)?;
-    assert!(!finalize.status.success());
+    Fixture::assert_outcome(
+        "finalize-verified-release policy drift",
+        ReleaseFixtureOutcome::Failure,
+        &finalize,
+    );
     assert!(fixture.log()?.starts_with(&before));
     assert!(!fixture.log()?.contains("publish\n"), "policy drift published the release");
     Ok(())
@@ -46,10 +51,14 @@ fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    Fixture::assert_success("publish-verified-release", &publish);
+    Fixture::assert_outcome("publish-verified-release", ReleaseFixtureOutcome::Success, &publish);
     let baseline_created = fixture.last_baseline_created()?;
     let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, true, false)?;
-    assert!(!finalize.status.success());
+    Fixture::assert_outcome(
+        "finalize-verified-release immutable observation",
+        ReleaseFixtureOutcome::Failure,
+        &finalize,
+    );
     assert!(fixture.log()?.contains("publish\n"), "fixture did not exercise the post-publication observation");
     Ok(())
 }
@@ -59,7 +68,11 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&[ASSETS[1]], false, true)?;
     let result = fixture.run("publish-verified-release")?;
-    assert!(!result.status.success());
+    Fixture::assert_outcome(
+        "publish-verified-release mismatched asset",
+        ReleaseFixtureOutcome::Failure,
+        &result,
+    );
     assert!(fixture.log()?.is_empty(), "mismatch mutated release state");
     Ok(())
 }
@@ -111,5 +124,41 @@ fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Bo
         .output()?;
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(fs::read_to_string(environment)?, "event-body\n");
+    Ok(())
+}
+
+#[test]
+fn release_fixture_result_contract_keeps_success_and_expected_failure_distinct()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-result-contract");
+    write_posix_fixture_command(
+        &script,
+        "#!/bin/sh\nprintf 'fixture stdout\\n'\nprintf 'fixture stderr\\n' >&2\nexit \"$1\"\n",
+    )?;
+
+    let succeeded = ReleaseFixtureCommand::new(&script).arg("0").output()?;
+    let observed = ReleaseFixtureCommand::assert_outcome(
+        "release result success",
+        ReleaseFixtureOutcome::Success,
+        &succeeded,
+    );
+    assert_eq!(String::from_utf8_lossy(&observed.stdout), "fixture stdout\n");
+    assert_eq!(String::from_utf8_lossy(&observed.stderr), "fixture stderr\n");
+
+    let failed = ReleaseFixtureCommand::new(&script).arg("7").output()?;
+    ReleaseFixtureCommand::assert_outcome(
+        "release result failure",
+        ReleaseFixtureOutcome::Failure,
+        &failed,
+    );
+    assert!(std::panic::catch_unwind(|| {
+        ReleaseFixtureCommand::assert_outcome(
+            "release result wrong expectation",
+            ReleaseFixtureOutcome::Success,
+            &failed,
+        );
+    })
+    .is_err());
     Ok(())
 }
