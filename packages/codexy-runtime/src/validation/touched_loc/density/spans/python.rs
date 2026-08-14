@@ -4,26 +4,30 @@ pub(super) fn lines(text: &str) -> Vec<Option<String>> {
 }
 
 fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
-    if let Some(delimiter) = *end {
-        if let Some(index) = line.find(delimiter) {
-            *end = None;
-            return Some(line[index + delimiter.len()..].to_owned());
+    let mut visible = String::new();
+    let mut remainder = line;
+    loop {
+        if let Some(delimiter) = *end {
+            if let Some(index) = remainder.find(delimiter) {
+                remainder = &remainder[index + delimiter.len()..];
+                *end = None;
+                continue;
+            }
+            return Some(visible);
         }
-        return Some(String::new());
-    }
-    if let Some((index, delimiter)) = triple_opener(line) {
-        let tail = &line[index + delimiter.len()..];
-        if let Some(close) = tail.find(delimiter) {
-            return Some(format!(
-                "{}{}",
-                &line[..index],
-                &tail[close + delimiter.len()..]
-            ));
+        if let Some((index, delimiter)) = triple_opener(remainder) {
+            visible.push_str(&remainder[..index]);
+            remainder = &remainder[index + delimiter.len()..];
+            if let Some(close) = remainder.find(delimiter) {
+                remainder = &remainder[close + delimiter.len()..];
+                continue;
+            }
+            *end = Some(delimiter);
+            return Some(visible);
         }
-        *end = Some(delimiter);
-        return Some(line[..index].to_owned());
+        visible.push_str(remainder);
+        return Some(visible);
     }
-    Some(line.to_owned())
 }
 
 fn triple_opener(line: &str) -> Option<(usize, &'static str)> {

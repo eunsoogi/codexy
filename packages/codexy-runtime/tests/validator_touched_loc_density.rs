@@ -159,6 +159,8 @@ mod sentinel_v4_boundary;
 mod sentinel_v7_boundary;
 #[path = "validator_touched_loc_density/sentinel_v8_boundary.rs"]
 mod sentinel_v8_boundary;
+#[path = "validator_touched_loc_density/sentinel_v9_boundary.rs"]
+mod sentinel_v9_boundary;
 #[path = "validator_touched_loc_density/cli.rs"]
 mod cli;
 
