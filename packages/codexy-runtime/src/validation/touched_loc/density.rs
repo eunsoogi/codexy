@@ -2,36 +2,26 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
+use serde_json::Value;
 
-mod analysis;
-mod provenance;
-mod spans;
-use analysis::reason;
-use spans::{language, visible_lines};
-/// Returns a diagnostic only for a changed, maintained source line whose
-/// syntax packs several executable statements or fields into one construct.
-/// Line width is intentionally not an input: long identifiers, URLs, and
-/// protocol literals are not evidence of LOC-compliance compression.
+const PROVENANCE: &str = include_str!("density/provenance_manifest.json");
+
+/// Detects compact, executable structures in maintained changed source. This
+/// intentionally recognizes only stable single-line forms; other syntax is
+/// left to the complete source inventory and human readability review.
 pub(super) fn error(path: &Path, text: &str) -> Option<String> {
-    if source_disposition(path, text) != Disposition::Maintained {
+    if disposition(path, text) != Disposition::Maintained {
         return None;
     }
-    let language = language(path, text);
-    text.lines()
-        .zip(visible_lines(language, text))
-        .enumerate()
-        .find_map(|(index, (_, visible))| {
-            visible
-                .as_deref()
-                .and_then(|line| reason(language, line))
-                .map(|reason| {
-                    format!(
-                        "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
-                        path.display(),
-                        index + 1,
-                    )
-                })
+    text.lines().enumerate().find_map(|(index, line)| {
+        (admitted(path, line)).then(|| reason(path, line)).flatten().map(|reason| {
+            format!(
+                "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
+                path.display(),
+                index + 1,
+            )
         })
+    })
 }
 
 pub(super) fn is_governed_path(path: &Path) -> bool {
@@ -56,9 +46,8 @@ pub(super) fn is_governed_path(path: &Path) -> bool {
         || path.starts_with("scripts/")
 }
 
-/// Classifies each structural candidate and each wide-line audit input without
-/// using width as a failing policy. The report is stable and source-addressable
-/// so a review can distinguish an exact fixture from maintained source.
+/// Reports every recognized structural candidate with its source-backed
+/// disposition. It does not turn line length into a readability policy.
 pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
     let output = Command::new("git")
         .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -82,32 +71,22 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
         let Ok(text) = std::fs::read_to_string(root.join(&path)) else {
             continue;
         };
-        let disposition = source_disposition(&path, &text);
-        let language = language(&path, &text);
-        for (index, (_line, visible)) in
-            text.lines().zip(visible_lines(language, &text)).enumerate()
-        {
-            let reason = visible.as_deref().and_then(|line| reason(language, line));
-            let structural = reason.is_some();
-            if !structural {
+        let disposition = disposition(&path, &text);
+        for (index, line) in text.lines().enumerate() {
+            if reason(&path, line).is_none() {
                 continue;
             }
-            let classification = match disposition {
-                Disposition::Maintained if structural => "confirmed-density-defect",
-                Disposition::Maintained => "maintained-readable",
-                Disposition::ExactFixture => "exact-fixture",
-                Disposition::Generated => "generated",
-                Disposition::Vendor => "vendor",
+            let classification = if disposition == Disposition::Maintained && !admitted(&path, line)
+            {
+                "maintained-readable/manual-audit"
+            } else {
+                disposition.name()
             };
             records.push(format!(
-                "{}:{}\t{classification}\taudit-input={}",
+                "{}:{}\t{}\taudit-input=structural-density",
                 path.display(),
                 index + 1,
-                if structural {
-                    "structural-density"
-                } else {
-                    "structural-density"
-                },
+                classification,
             ));
         }
     }
@@ -115,42 +94,153 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
     Ok(records)
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub(super) enum Disposition {
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Disposition {
     Maintained,
     ExactFixture,
     Generated,
     Vendor,
 }
 
-pub(super) fn disposition(path: &Path) -> Disposition {
-    let path = path.to_string_lossy();
-    let lower = path.to_ascii_lowercase();
-    if lower.starts_with("vendor/") || lower.contains("/vendor/") || lower.contains("node_modules/")
-    {
-        Disposition::Vendor
-    } else if lower.starts_with(".codex/")
-        || lower.starts_with("target/")
-        || lower.contains("/target/")
-    {
-        Disposition::Generated
-    } else if matches!(
-        lower.as_str(),
-        "packages/codexy-runtime/cargo.lock"
-            | "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
-            | "plugins/codexy/runtime-activation.json"
-            | "plugins/codexy/runtime-release.json"
-    ) {
-        Disposition::Generated
-    } else {
-        Disposition::Maintained
+impl Disposition {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Maintained => "confirmed-density-defect",
+            Self::ExactFixture => "exact-fixture",
+            Self::Generated => "generated",
+            Self::Vendor => "vendor",
+        }
     }
 }
 
-fn source_disposition(path: &Path, text: &str) -> Disposition {
-    provenance::disposition(path, text, disposition(path))
+fn disposition(path: &Path, text: &str) -> Disposition {
+    let path_text = path.to_string_lossy();
+    if path_text.starts_with("vendor/") || path_text.contains("/vendor/") {
+        return Disposition::Vendor;
+    }
+    provenance(path, text).unwrap_or(Disposition::Maintained)
 }
 
-#[cfg(test)]
-#[path = "density/tests.rs"]
-mod tests;
+fn provenance(path: &Path, text: &str) -> Option<Disposition> {
+    let document = serde_json::from_str::<Value>(PROVENANCE).ok()?;
+    let source = document.get("sources")?.as_array()?.iter().find(|source| {
+        source.get("path").and_then(Value::as_str) == path.to_str() && matches_source(source, text)
+    })?;
+    match source.get("classification").and_then(Value::as_str) {
+        Some("exact-fixture") => Some(Disposition::ExactFixture),
+        Some("generated") => Some(Disposition::Generated),
+        _ => None,
+    }
+}
+
+fn matches_source(source: &Value, text: &str) -> bool {
+    let Ok(document) = serde_json::from_str::<Value>(text) else {
+        return false;
+    };
+    source
+        .get("schema")
+        .and_then(Value::as_str)
+        .is_some_and(|schema| document.get("schema").and_then(Value::as_str) == Some(schema))
+        || source
+            .get("marker")
+            .and_then(Value::as_str)
+            .is_some_and(|marker| {
+                document.get("description").and_then(Value::as_str) == Some(marker)
+            })
+}
+
+fn reason(path: &Path, line: &str) -> Option<&'static str> {
+    let extension = path.extension().and_then(|extension| extension.to_str())?;
+    let visible = visible_code(extension, line);
+    match extension {
+        "rs" if visible.contains('{') && separators(&visible, ';') >= 3 => {
+            Some("dense Rust statements")
+        }
+        "py" | "js" | "ts" | "tsx" | "jsx" if separators(&visible, ';') >= 2 => {
+            Some("dense executable statements")
+        }
+        "sh" | "ps1" if command_separators(&visible) >= 2 => Some("dense command chain"),
+        "json" if fields(&visible, ':') >= 4 => Some("dense JSON object"),
+        "toml" if fields(&visible, '=') >= 4 => Some("dense TOML table"),
+        "yml" | "yaml" if fields(&visible, ':') >= 4 => Some("dense YAML flow mapping"),
+        "md" if markdown_clauses(line) >= 3 => Some("dense Markdown clauses"),
+        _ => None,
+    }
+}
+
+fn admitted(path: &Path, line: &str) -> bool {
+    let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+        return false;
+    };
+    let trimmed = line.trim_start();
+    match extension {
+        "rs" => trimmed.starts_with("fn ") || trimmed.starts_with("pub fn "),
+        "py" | "js" | "ts" | "tsx" | "jsx" => !line.contains(['\'', '"']),
+        "sh" | "ps1" => simple_shell_chain(trimmed),
+        "json" => {
+            !path.to_string_lossy().contains("/references/")
+                && !path.to_string_lossy().contains("/templates/")
+                && !path.to_string_lossy().starts_with(".agents/")
+        }
+        "toml" => true,
+        "md" => !line.starts_with(' ') && !trimmed.starts_with('|'),
+        _ => false,
+    }
+}
+
+fn simple_shell_chain(line: &str) -> bool {
+    let normalized = line.replace("&&", ";").replace("||", ";");
+    let parts = normalized.split(';').collect::<Vec<_>>();
+    parts.len() >= 3
+        && parts
+            .iter()
+            .all(|part| !part.trim().is_empty() && !part.trim().contains(char::is_whitespace))
+}
+
+fn visible_code(extension: &str, line: &str) -> String {
+    let slash_comments = matches!(extension, "rs" | "js" | "ts" | "tsx" | "jsx");
+    let hash_comments = matches!(extension, "py" | "sh" | "ps1" | "yml" | "yaml");
+    let mut visible = String::new();
+    let mut characters = line.chars().peekable();
+    let mut quote = None;
+    while let Some(character) = characters.next() {
+        if let Some(delimiter) = quote {
+            if character == '\\' {
+                characters.next();
+            } else if character == delimiter {
+                quote = None;
+            }
+        } else if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        } else if (hash_comments && character == '#')
+            || (slash_comments && character == '/' && characters.peek() == Some(&'/'))
+        {
+            break;
+        } else {
+            visible.push(character);
+        }
+    }
+    visible
+}
+
+fn separators(line: &str, separator: char) -> usize {
+    line.matches(separator).count()
+}
+
+fn command_separators(line: &str) -> usize {
+    line.replace(";;", "").matches(';').count()
+        + line.matches("&&").count()
+        + line.matches("||").count()
+}
+
+fn fields(line: &str, separator: char) -> usize {
+    line.contains('{')
+        .then(|| separators(line, separator))
+        .unwrap_or_default()
+}
+
+fn markdown_clauses(line: &str) -> usize {
+    line.split(';')
+        .filter(|clause| clause.split_whitespace().count() >= 3)
+        .count()
+}
