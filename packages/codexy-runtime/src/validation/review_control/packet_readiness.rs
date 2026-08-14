@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use anyhow::{Result, bail};
 
-use super::Packet;
+use super::{Packet, finding_disposition};
 
 pub(super) fn validate(
     packet: &Packet,
@@ -22,6 +22,13 @@ pub(super) fn validate(
     )?;
     if repaired != resolved
         || (!resolved.is_empty() && packet.resolution.changed_boundaries.is_empty())
+        || packet.findings.iter().any(|finding| {
+            finding.resolved
+                && matches!(
+                    finding.disposition.as_str(),
+                    "out_of_scope_followup" | "rejected"
+                )
+        })
         || packet.resolution.repaired_finding_ids.iter().any(|id| {
             !findings.contains(id.as_str())
                 || !packet
@@ -40,7 +47,7 @@ pub(super) fn validate(
     let unresolved = packet
         .findings
         .iter()
-        .filter(|finding| finding.kind == "blocker" && !finding.resolved)
+        .filter(|finding| finding_disposition::is_blocker(finding) && !finding.resolved)
         .map(|finding| finding.id.as_str())
         .collect::<BTreeSet<_>>();
     if unique(

@@ -89,7 +89,6 @@ pub(crate) use plugin_fixture::{
     PluginFixture, copy_plugin_fixture, copy_plugin_fixture_into_with_mutable_files,
     copy_plugin_fixture_with_mutable_files, fixture_mutable_files,
     materialize_admission_runtime_suite, plugin_fixture, plugin_fixture_with_mutable_files,
-    roles_fixture,
 };
 pub(crate) use profile_interval_metrics::mcp_interval;
 pub(crate) use profile_metrics::record_mcp_wait;
