@@ -1,3 +1,5 @@
+use super::javascript_expression::{ExpressionState, regex_context};
+
 const TEMPLATE_DELIMITER: char = '`';
 
 pub(super) struct Template {
@@ -12,15 +14,6 @@ enum Frame {
 struct Expression {
     depth: usize,
     state: ExpressionState,
-}
-
-#[derive(Clone, Copy)]
-enum ExpressionState {
-    Code,
-    Quote { delimiter: char, escaped: bool },
-    BlockComment,
-    LineComment,
-    Regex { class: bool, escaped: bool },
 }
 
 impl Template {
@@ -64,9 +57,7 @@ impl Template {
         if let Some(Frame::Literal { escaped }) = self.frames.last_mut() {
             *escaped = false;
         } else if let Some(Frame::Expression(expression)) = self.frames.last_mut() {
-            if matches!(expression.state, ExpressionState::LineComment) {
-                expression.state = ExpressionState::Code;
-            }
+            expression.state = expression.state.start_line();
         }
     }
 
@@ -221,18 +212,4 @@ impl Template {
             expression.state = state;
         }
     }
-}
-
-fn regex_context(prefix: &str) -> bool {
-    let trimmed = prefix.trim_end();
-    matches!(
-        trimmed.split_whitespace().next_back(),
-        Some("return" | "throw" | "case" | "yield")
-    ) || trimmed.ends_with("=>")
-        || trimmed.chars().next_back().is_none_or(|character| {
-            matches!(
-                character,
-                '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
-            )
-        })
 }

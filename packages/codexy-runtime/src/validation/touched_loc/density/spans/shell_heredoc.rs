@@ -79,22 +79,34 @@ fn word(text: &str) -> Option<(usize, String)> {
     let leading = text.len() - text.trim_start().len();
     let text = &text[leading..];
     let mut quote = None;
-    let mut escaped = false;
     let mut end = String::new();
-    for (index, character) in text.char_indices() {
-        if escaped {
-            end.push(character);
-            escaped = false;
-        } else if let Some(delimiter) = quote {
+    let mut index = 0;
+    while index < text.len() {
+        let tail = &text[index..];
+        let character = tail.chars().next().expect("index must be in bounds");
+        if let Some(delimiter) = quote {
             if character == '\\' && delimiter == '"' {
-                escaped = true;
+                let next = tail[1..].chars().next()?;
+                if matches!(next, '$' | '"' | '\\') || next == char::from(96) {
+                    end.push(next);
+                    index += 1 + next.len_utf8();
+                    continue;
+                }
+                if next == '\n' {
+                    index += 2;
+                    continue;
+                }
+                end.push(character);
             } else if character == delimiter {
                 quote = None;
             } else {
                 end.push(character);
             }
         } else if character == '\\' {
-            escaped = true;
+            let next = tail[1..].chars().next()?;
+            end.push(next);
+            index += 1 + next.len_utf8();
+            continue;
         } else if matches!(character, '\'' | '"') {
             quote = Some(character);
         } else if boundary(character) {
@@ -102,8 +114,9 @@ fn word(text: &str) -> Option<(usize, String)> {
         } else {
             end.push(character);
         }
+        index += character.len_utf8();
     }
-    (quote.is_none() && !escaped && !end.is_empty()).then(|| (text.len() + leading, end))
+    (quote.is_none() && !end.is_empty()).then(|| (text.len() + leading, end))
 }
 
 fn arithmetic_len(text: &str) -> Option<usize> {
