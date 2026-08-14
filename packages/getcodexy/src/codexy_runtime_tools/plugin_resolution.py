@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from .component_json import loads
 from .updater import _absolute, _validate_real_path
 
 OFFICIAL = "https://github.com/eunsoogi/codexy.git"
@@ -84,7 +84,7 @@ def official_named_install(
 
     manifest = root / ".codex-plugin" / "plugin.json"
     _validate_real_path(manifest, require_exists=True)
-    data = loads(manifest.read_text(encoding="utf-8"))
+    data = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or (
         data.get("name"),
         data.get("repository"),

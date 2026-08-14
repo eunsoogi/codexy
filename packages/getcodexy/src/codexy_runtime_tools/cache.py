@@ -5,7 +5,6 @@ import json
 import re
 from pathlib import Path
 
-from .component_json import loads
 
 
 SEMVER = re.compile(
@@ -21,7 +20,7 @@ def plugin_release(manifest_path: Path, package_override: bool = False) -> str:
         if package_override:
             return "package-override"
         raise ValueError("plugin manifest is missing")
-    manifest = loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     release = manifest.get("version") if isinstance(manifest, dict) else None
     if not isinstance(release, str) or not SEMVER.fullmatch(release):
         raise ValueError("plugin manifest version is invalid")

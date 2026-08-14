@@ -11,7 +11,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from .component_json import loads
 from .updater import _absolute, _validate_real_path
 
 
@@ -81,7 +80,7 @@ def frozen_component(root: Path, name: str, version: str | None = None) -> Itera
 
 def _verify_manifest(contents: bytes, name: str, version: str | None) -> None:
     try:
-        manifest = loads(contents, object_pairs_hook=_unique_object)
+        manifest = json.loads(contents, object_pairs_hook=_unique_object)
     except (json.JSONDecodeError, ValueError) as error:
         raise ValueError(f"component manifest is invalid JSON: {name}") from error
     if not isinstance(manifest, dict) or (

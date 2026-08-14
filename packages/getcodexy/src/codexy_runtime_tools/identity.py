@@ -7,7 +7,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from .component_json import loads
 
 
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
@@ -31,7 +30,7 @@ def document(text: str) -> Any:
                 raise ValueError(f"runtime release has duplicate JSON key: {key}")
             value[key] = item
         return value
-    return loads(text, object_pairs_hook=pairs)
+    return json.loads(text, object_pairs_hook=pairs)
 
 
 def object(value: Any, name: str) -> dict[str, Any]:

@@ -33,7 +33,21 @@ class PublicActivationContractTests(unittest.TestCase):
         )
         self.assertIn("github-activation-windows", workflow)
         self.assertIn("Run native component lifecycle tests", workflow)
-        self.assertIn('discover -s packages/getcodexy/tests -p "test_component_*.py"', workflow)
+        for test in (
+            "test_component_cli.py",
+            "test_component_lifecycle.py",
+            "test_component_lifecycle_version_admission.py",
+            "test_component_lifecycle_interrupt.py",
+            "test_component_lifecycle_journal.py",
+            "test_component_transition_model.py",
+            "test_component_lifecycle_finalization.py",
+            "test_component_lifecycle_preflight.py",
+            "test_component_lifecycle_update_recovery.py",
+            "test_component_lifecycle_admission.py",
+            "test_component_transaction_durability.py",
+        ):
+            self.assertIn(test, workflow)
+        self.assertNotIn("-p 'test_component*.py'", workflow)
         self.assertNotIn("test_component_integrity_windows.py", workflow)
         self.assertNotIn("test_component_manifest_resolver.py", workflow)
         self.assertIn("getcodexy.exe --help", workflow)

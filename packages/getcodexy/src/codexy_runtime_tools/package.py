@@ -13,7 +13,6 @@ import zlib
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .component_json import loads
 
 
 MAX_ARCHIVE_FILES = 2_048
@@ -138,7 +137,7 @@ def _artifact_package(api_url: str, work: Path) -> Path:
     token = _github_token_for(api_url)
     metadata = work / "artifacts.json"
     _download(api_url, metadata, token)
-    payload = loads(metadata.read_text(encoding="utf-8"))
+    payload = json.loads(metadata.read_text(encoding="utf-8"))
     artifacts = payload.get("artifacts") if isinstance(payload, dict) else None
     if not isinstance(artifacts, list):
         raise RuntimeError("artifact source has invalid artifacts listing")

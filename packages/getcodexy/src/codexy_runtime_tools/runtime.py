@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import NoReturn
 
 from .cache import plugin_release, releases_match, runtime_cache_key
-from .component_json import loads
 from .contract import RuntimeRelease, load as load_runtime_release
 from .installer import executable, execute, install_git, install_package
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
@@ -179,7 +178,7 @@ def run(config: Configuration) -> NoReturn:
     if executable(installed):
         if marker.is_file():
             try:
-                valid = source_identity.valid_marker(loads(marker.read_text()), platform=config.platform, server=config.server, binary=installed.read_bytes())
+                valid = source_identity.valid_marker(json.loads(marker.read_text()), platform=config.platform, server=config.server, binary=installed.read_bytes())
             except (OSError, ValueError, json.JSONDecodeError):
                 valid = False
             if valid:
@@ -217,7 +216,7 @@ def run(config: Configuration) -> NoReturn:
     if executable(git_installed) and git_marker.is_file():
         try:
             valid = git_identity.valid_marker(
-                loads(git_marker.read_text()), platform=config.platform,
+                json.loads(git_marker.read_text()), platform=config.platform,
                 server=config.server, binary=git_installed.read_bytes()
             )
         except (OSError, ValueError, json.JSONDecodeError):
