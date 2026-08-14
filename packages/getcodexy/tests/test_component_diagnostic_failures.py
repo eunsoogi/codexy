@@ -143,6 +143,22 @@ class DiagnosticFailureTests(unittest.TestCase):
 
         self.assertEqual(_health(result), _incompatible("core"))
 
+    def test_deep_manifest_json_is_incompatible_not_process_failure(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            manifest = state.marketplace / "plugins/codexy/.codex-plugin/plugin.json"
+            manifest.write_text(
+                '{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0","extra":'
+                + "[" * 2_000
+                + "0"
+                + "]" * 2_000
+                + "}",
+                encoding="utf-8",
+            )
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+
+        self.assertEqual(_health(result), _incompatible("core"))
+
     def test_mutation_during_production_read_is_incompatible_not_healthy(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")

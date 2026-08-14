@@ -27,6 +27,32 @@ class StrictComponentJsonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "non-finite"):
             decode_inventory(b'{"schema":"getcodexy.installed-component-inventory.v1","components":[],"nested":{"value":Infinity}}')
 
+    def test_deep_json_is_normalized_to_typed_input_failure(self) -> None:
+        with self.assertRaisesRegex(ValueError, "nesting"):
+            loads(_nested_array(2_000))
+        with self.assertRaisesRegex(ValueError, "nesting"):
+            decode_inventory((
+                '{"schema":"getcodexy.installed-component-inventory.v1","components":[],"extra":'
+                + _nested_array(2_000)
+                + "}"
+            ).encode())
+
+    def test_reasonable_depth_and_finite_exponent_remain_valid(self) -> None:
+        self.assertEqual(_array_depth(loads(_nested_array(32))), 32)
+        self.assertEqual(loads("1e99"), 1e99)
+
+
+def _nested_array(depth: int) -> str:
+    return "[" * depth + "0" + "]" * depth
+
+
+def _array_depth(value: object) -> int:
+    depth = 0
+    while isinstance(value, list):
+        depth += 1
+        value = value[0]
+    return depth
+
 
 if __name__ == "__main__":
     unittest.main()
