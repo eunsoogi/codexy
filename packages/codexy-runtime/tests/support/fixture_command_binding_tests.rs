@@ -115,7 +115,7 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
     write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
     std::fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport sys\nsys.stdout.buffer.write(b'gh:release view\\r\\n')\n",
+        "#!/usr/bin/env python3\nimport sys\nsys.stdout.buffer.write(('gh:' + ' '.join(sys.argv[1:]) + '\\r\\n').encode())\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
