@@ -134,7 +134,10 @@ pub(crate) fn roles_fixture() -> TestResult<PluginFixture> {
     #[cfg(windows)]
     {
         return materialize_fixture(
-            &[Path::new("agents/codexy-sentinel.toml")],
+            &[
+                Path::new("agents/codexy-inspector.toml"),
+                Path::new("agents/codexy-sentinel.toml"),
+            ],
             fixture_identity("full", Location::caller()),
         )
         .map_err(Into::into);
