@@ -43,7 +43,7 @@ fn touched_loc_checks_maintained_fixture_and_structured_source() -> TestResult {
 }
 
 #[test]
-fn touched_loc_preserves_exact_fixture_and_long_readable_line() -> TestResult {
+fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -> TestResult {
     let fixture_repo = fixture("tests/fixtures/malformed_input.py", "pass\n".to_owned())?;
     write(
         fixture_repo.path(),
@@ -53,11 +53,99 @@ fn touched_loc_preserves_exact_fixture_and_long_readable_line() -> TestResult {
     let fixture_output = validate(fixture_repo.path())?;
     assert!(fixture_output.status.success(), "{}", stderr(&fixture_output));
 
+    let json_fixture = fixture("tests/fixtures/reference.json", "{}\n".to_owned())?;
+    write(
+        json_fixture.path(),
+        "tests/fixtures/reference.json",
+        r#"{"one":1,"two":2,"three":3,"four":4}"#,
+    )?;
+    assert!(validate(json_fixture.path())?.status.success());
+
     let line = format!("const URL: &str = \"https://example.test/{}\";\n", "x".repeat(220));
     let readable_repo = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
     write(readable_repo.path(), "src/lib.rs", &line)?;
     let readable_output = validate(readable_repo.path())?;
     assert!(readable_output.status.success(), "{}", stderr(&readable_output));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_distinguishes_maintained_tests_from_exact_fixtures() -> TestResult {
+    let repo = fixture("tests/mcp_response_checker.rs", "fn readable() {}\n".to_owned())?;
+    write(
+        repo.path(),
+        "tests/mcp_response_checker.rs",
+        "fn compact() { first(); second(); third(); }\n",
+    )?;
+    let output = validate(repo.path())?;
+    assert!(!output.status.success(), "{}", stderr(&output));
+    assert!(stderr(&output).contains("dense Rust statements"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_detects_dense_markdown_but_preserves_instruction_boundaries() -> TestResult {
+    let dense = fixture("plugins/codexy/skills/example/SKILL.md", "Readable text.\n".to_owned())?;
+    write(
+        dense.path(),
+        "plugins/codexy/skills/example/SKILL.md",
+        "A rule MUST identify the owner, MUST retain evidence, and MUST avoid duplicate work.\n",
+    )?;
+    assert!(!validate(dense.path())?.status.success());
+
+    let boundary = fixture("plugins/codexy/skills/example/SKILL.md", "Readable text.\n".to_owned())?;
+    write(
+        boundary.path(),
+        "plugins/codexy/skills/example/SKILL.md",
+        "A rule MUST identify the owner and MUST retain evidence.\n",
+    )?;
+    assert!(validate(boundary.path())?.status.success());
+    Ok(())
+}
+
+#[test]
+fn touched_loc_ignores_comments_and_handles_urls_and_escaped_quotes() -> TestResult {
+    let comment = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
+    write(
+        comment.path(),
+        "src/lib.rs",
+        "// fn compact() { first(); second(); third(); }\n",
+    )?;
+    assert!(validate(comment.path())?.status.success());
+
+    let json = fixture("config/plugin.json", "{}\n".to_owned())?;
+    write(
+        json.path(),
+        "config/plugin.json",
+        r#"{"url":"https://example.test/\"//","one":1,"two":2,"three":3,"four":4}"#,
+    )?;
+    let output = validate(json.path())?;
+    assert!(!output.status.success(), "{}", stderr(&output));
+    assert!(stderr(&output).contains("dense JSON object"));
+    Ok(())
+}
+
+#[test]
+fn touched_loc_ignores_embedded_raw_string_fixtures() -> TestResult {
+    let repo = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
+    write(
+        repo.path(),
+        "src/lib.rs",
+        "let probe = r#\"\nfirst(); second(); third();\n\"#;\n",
+    )?;
+    assert!(validate(repo.path())?.status.success());
+    Ok(())
+}
+
+#[test]
+fn touched_loc_ignores_an_embedded_awk_parser() -> TestResult {
+    let repo = fixture("scripts/parser.sh", "exit 0\n".to_owned())?;
+    write(
+        repo.path(),
+        "scripts/parser.sh",
+        "awk '\nfunction value() { first(); second(); third(); }\n'\n",
+    )?;
+    assert!(validate(repo.path())?.status.success());
     Ok(())
 }
 
@@ -134,7 +222,8 @@ fn validator_cli_emits_a_source_addressable_density_inventory() -> TestResult {
         .output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let report = String::from_utf8(output.stdout)?;
-    assert!(report.lines().all(|line| line.contains("\taudit-input=wide-line")));
+    assert!(report.lines().all(|line| line.contains("\taudit-input=")));
+    assert!(report.lines().any(|line| line.contains("audit-input=structural-density")));
     assert!(report.lines().any(|line| line.contains("\tmaintained-readable\t")));
     Ok(())
 }

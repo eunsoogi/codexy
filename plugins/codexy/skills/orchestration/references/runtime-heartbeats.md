@@ -2,7 +2,11 @@
 
 The owner MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable.
 
-After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata.
+After a host transition or `No handler registered` failure, the owner MUST treat the
+mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and
+one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded
+`read_thread`, and any bounded metadata fallback MUST consume the current parent-stage
+budget and record only returned size/token metadata.
 
 While a desktop-origin root turn has a callable `wait_threads` handler, the owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop without finalizing that root turn between unchanged waits; mobile input that interrupts the active local wait MUST be consumed in that same local turn before the cursor-based wait continues.
 If a slingshot-host turn still returns `No handler registered` after the one fresh discovery and one host-aware retry, the owner MUST emit exactly one unavailable evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery.
@@ -41,11 +45,24 @@ material user decision or missing user information can do so.
 
 ## Goal And Terminal Lifecycle
 
-A successfully registered heartbeat is runtime-owned waiting. The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal. When no implementation obligation remains, the owner MAY complete the goal through the normal terminal receipt path before runtime-only monitoring. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. The awakened owner MUST consume the event in the same turn and MUST delete or disable the heartbeat when no further observation is required. It MUST record the resulting lifecycle state in the compact lane delta.
+A successfully registered heartbeat is runtime-owned waiting. The owner MUST retain its
+active goal and plan while an implementation obligation remains, record `goal state=active`
+and `goal transition=none`, and return control without completing or blocking the goal. When
+no implementation obligation remains, the owner MAY complete the goal through the normal
+terminal receipt path before runtime-only monitoring. A qualifying event MUST resume the
+retained goal and plan or start a fresh short-lived execution goal only after an earlier
+valid completion. The awakened owner MUST consume the event in the same turn and MUST delete
+or disable the heartbeat when no further observation is required. It MUST record the
+resulting lifecycle state in the compact lane delta.
 When cleanup is needed, the owner MUST delete the heartbeat by id or disable it with
 a paused status and the heartbeat's full update fields; it MUST record which terminal
 action occurred.
 
 ## Unavailable And Sentinel Boundaries
 
-If heartbeat automation is not callable, the owner MUST record the exact discovery/exposure evidence and use a bounded fallback wake route without fabricating a monitor identity or repeating unchanged continuation turns; it MUST mark automation id, schedule, and lifecycle as not-created. The owner MUST NOT fold a live packaged Sentinel into heartbeat observation: Sentinel observation remains read-only, event-driven, and subject to its no-poll/no-message boundary.
+If heartbeat automation is not callable, the owner MUST record the exact discovery/exposure
+evidence and use a bounded fallback wake route without fabricating a monitor identity or
+repeating unchanged continuation turns; it MUST mark automation id, schedule, and lifecycle
+as not-created. The owner MUST NOT fold a live packaged Sentinel into heartbeat observation:
+Sentinel observation remains read-only, event-driven, and subject to its no-poll/no-message
+boundary.

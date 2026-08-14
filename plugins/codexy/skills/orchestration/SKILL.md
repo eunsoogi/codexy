@@ -110,7 +110,8 @@ uninstalling, diagnosing, or invoking a packaged specialist.
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST follow [event-driven-waits.md](references/event-driven-waits.md) for
+  asynchronous waits, host-transition recovery, and live-Sentinel observation.
 - In long multi-issue or multi-PR polling loops, MUST preserve all proof gates while carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
   completion, merge, default Codexy merge flow, or no explicit stop/wait/
@@ -128,7 +129,8 @@ only active/waiting Codex app child threads against that cap and MUST NOT create
 Packaged specialist subagents MUST NOT be counted as active
 child Codex app threads.
 
-Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
+Before creating a new child Codex app thread, orchestration MUST follow
+[child owner reuse](references/child-owner-reuse.md).
 Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
 blocker, latest evidence, and next action. It MUST also include canonical

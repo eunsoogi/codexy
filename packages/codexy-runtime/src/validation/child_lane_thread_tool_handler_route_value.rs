@@ -110,7 +110,12 @@ fn invalid_followup_before_later_route(prefix: &str) -> bool { let prefix = pref
 fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
     const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
     let tokens = local.split_whitespace().collect::<Vec<_>>();
-    let Some(negation_index) = tokens.iter().rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't")) else { return false; };
+    let Some(negation_index) = tokens
+        .iter()
+        .rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't"))
+    else {
+        return false;
+    };
     let mut after_not = &tokens[negation_index + 1..];
     while matches!(after_not.first().copied(), Some("actually" | "fully" | "really" | "truly")) { after_not = &after_not[1..]; }
     if after_not.first().is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb)) {

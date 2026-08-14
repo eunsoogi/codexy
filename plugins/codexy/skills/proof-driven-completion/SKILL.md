@@ -114,7 +114,14 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../orch
   fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT
   satisfy PR readiness, push readiness, parent acceptance, or completion unless
   a maintainer explicitly approves a fallback.
-- When the selected reviewer is Sentinel, live observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- When the selected reviewer is Sentinel, live observation MUST be read-only and
+event-driven. Generic child and ledger polling remains permitted. Both the child owner and
+the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or
+poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation,
+and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer
+verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its
+natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or
+`UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST verify
   the child reported actual goal-tool usage or an unavailable-goal-tool

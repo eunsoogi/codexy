@@ -163,7 +163,11 @@ Maintainer reassignment: none
             .to_owned(),
         true,
     ));
-    cases.push(("preceding metadata".to_owned(), preceding_metadata_evidence(), true));
+    cases.push((
+        "preceding metadata".to_owned(),
+        preceding_metadata_evidence(),
+        true,
+    ));
     cases.push((
         "preceding metadata without defect".to_owned(),
         preceding_metadata_without_defect_evidence(),

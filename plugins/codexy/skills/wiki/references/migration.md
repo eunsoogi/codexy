@@ -11,11 +11,13 @@ Migrate only an existing supported topic root. MUST preserve existing `raw/`, `w
 2. MUST validate every referenced provenance and freshness input before any log
    or derived write. MUST preserve every complete relative `sources:` scalar
    exactly. If a source chain is missing, broken, weak, drifted, or
-   contradictory, MUST stop, MUST report the provenance gap, and MUST leave the
-   entire topic tree unchanged after a provenance failure. If freshness data is missing or malformed, MUST
-   halt, MUST report the freshness gap, and MUST preserve the entire topic tree
-   unchanged. A valid future date MUST receive zero freshness credit and MUST
-   be reported before any derived write, but it does not invalidate provenance.
+   contradictory, MUST stop and report the provenance gap.
+   MUST leave the entire topic tree unchanged after a provenance failure.
+   If freshness data is missing or malformed, MUST halt and report the freshness
+   gap. It MUST preserve the entire topic tree unchanged.
+   A valid future date MUST receive zero freshness credit.
+   It MUST be reported before any derived write, but it does not invalidate
+   provenance.
 3. MUST stage all derived changes and the completion log entry outside the topic
    tree. MUST validate staged derived changes and the completion log entry
    together.

@@ -2,23 +2,34 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
+use serde_json::Value;
+
+mod analysis;
+
+use analysis::reason;
 /// Returns a diagnostic only for a changed, maintained source line whose
 /// syntax packs several executable statements or fields into one construct.
 /// Line width is intentionally not an input: long identifiers, URLs, and
 /// protocol literals are not evidence of LOC-compliance compression.
 pub(super) fn error(path: &Path, text: &str) -> Option<String> {
-    text.lines().enumerate().find_map(|(index, line)| {
-        if disposition_for(path, line) != Disposition::Maintained {
-            return None;
-        }
-        reason(path, line).map(|reason| {
-            format!(
-                "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
-                path.display(),
-                index + 1,
-            )
+    if source_disposition(path, text) != Disposition::Maintained {
+        return None;
+    }
+    text.lines()
+        .zip(rust_raw_string_lines(path, text).into_iter().zip(awk_program_lines(path, text)))
+        .enumerate()
+        .find_map(|(index, (line, (raw_string, awk_program)))| {
+            (!raw_string && !awk_program)
+                .then(|| reason(path, line))
+                .flatten()
+                .map(|reason| {
+                format!(
+                    "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
+                    path.display(),
+                    index + 1,
+                )
+            })
         })
-    })
 }
 
 pub(super) fn is_governed_path(path: &Path) -> bool {
@@ -43,9 +54,9 @@ pub(super) fn is_governed_path(path: &Path) -> bool {
         || path.starts_with("scripts/")
 }
 
-/// Classifies every wide-line audit candidate without using width as a failing
-/// policy. The report is deliberately stable and source-addressable so a review
-/// can distinguish an exact fixture or generated artifact from maintained code.
+/// Classifies each structural candidate and each wide-line audit input without
+/// using width as a failing policy. The report is stable and source-addressable
+/// so a review can distinguish an exact fixture from maintained source.
 pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
     let output = Command::new("git")
         .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -69,14 +80,26 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
         let Ok(text) = std::fs::read_to_string(root.join(&path)) else {
             continue;
         };
-        for (index, line) in text.lines().enumerate() {
-            if line.chars().count() <= 160 {
+        let disposition = source_disposition(&path, &text);
+        for (index, (line, raw_string)) in text
+            .lines()
+            .zip(
+                rust_raw_string_lines(&path, &text)
+                    .into_iter()
+                    .zip(awk_program_lines(&path, &text)),
+            )
+            .enumerate()
+        {
+            let (raw_string, awk_program) = raw_string;
+            let reason = (!raw_string && !awk_program)
+                .then(|| reason(&path, line))
+                .flatten();
+            let structural = reason.is_some();
+            if !structural && line.chars().count() <= 160 {
                 continue;
             }
-            let classification = match inventory_disposition(&path, line) {
-                Disposition::Maintained if reason(&path, line).is_some() => {
-                    "confirmed-density-defect"
-                }
+            let classification = match disposition {
+                Disposition::Maintained if structural => "confirmed-density-defect",
                 Disposition::Maintained => "maintained-readable",
                 Disposition::ExactFixture => "exact-fixture",
                 Disposition::ExactMalformedFixture => "exact-malformed-fixture",
@@ -84,9 +107,14 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
                 Disposition::Vendor => "vendor",
             };
             records.push(format!(
-                "{}:{}\t{classification}\taudit-input=wide-line",
+                "{}:{}\t{classification}\taudit-input={}",
                 path.display(),
                 index + 1,
+                if structural {
+                    "structural-density"
+                } else {
+                    "wide-line"
+                },
             ));
         }
     }
@@ -137,100 +165,70 @@ pub(super) fn disposition(path: &Path) -> Disposition {
     }
 }
 
-fn disposition_for(path: &Path, line: &str) -> Disposition {
+fn source_disposition(path: &Path, text: &str) -> Disposition {
     let base = disposition(path);
     if base != Disposition::Maintained {
         return base;
     }
     let path = path.to_string_lossy();
-    let exact_json_fixture = path.contains("/tests/fixtures/") && path.ends_with(".json");
-    let exact_test_literal = path.contains("/tests/") && line.contains('"');
+    let exact_json_fixture = is_fixture_path(&path) && path.ends_with(".json");
     let routing_reference = path.contains("routing-evaluation-") && path.ends_with(".json");
-    if exact_json_fixture || exact_test_literal || routing_reference {
+    if (exact_json_fixture || routing_reference) && serde_json::from_str::<Value>(text).is_ok() {
         Disposition::ExactFixture
     } else {
         Disposition::Maintained
     }
 }
 
-fn inventory_disposition(path: &Path, line: &str) -> Disposition {
-    let path_text = path.to_string_lossy();
-    if path_text.contains("/tests/") || path_text.starts_with("tests/") {
-        Disposition::ExactFixture
-    } else {
-        disposition_for(path, line)
+fn is_fixture_path(path: &str) -> bool {
+    path.starts_with("tests/fixtures/") || path.contains("/tests/fixtures/")
+}
+
+fn rust_raw_string_lines(path: &Path, text: &str) -> Vec<bool> {
+    if path.extension().is_none_or(|extension| extension != "rs") {
+        return vec![false; text.lines().count()];
     }
+    let mut terminator = None;
+    text.lines()
+        .map(|line| {
+            let was_raw = terminator.is_some();
+            if let Some(end) = &terminator {
+                if line.contains(end) {
+                    terminator = None;
+                }
+            } else if let Some((hashes, suffix)) = (0..=8).find_map(|hashes| {
+                let opener = format!("r{}\"", "#".repeat(hashes));
+                line.split_once(&opener).map(|(_, suffix)| (hashes, suffix))
+            }) {
+                let end = format!("\"{}", "#".repeat(hashes));
+                if !suffix.contains(&end) {
+                    terminator = Some(end);
+                }
+                return true;
+            }
+            was_raw
+        })
+        .collect()
 }
 
-fn reason(path: &Path, line: &str) -> Option<&'static str> {
-    let visible = visible_code(line);
-    match path.extension().and_then(|extension| extension.to_str()) {
-        Some("rs") if visible.contains('{') && statement_count(&visible) >= 3 => {
-            Some("dense Rust statements")
-        }
-        Some("py" | "js" | "ts" | "tsx" | "jsx") if statement_count(&visible) >= 3 => {
-            Some("dense executable statements")
-        }
-        Some("sh" | "ps1") if command_chain_count(&visible) >= 3 => Some("dense command chain"),
-        Some("json") if inline_object_fields(&visible, ':') >= 4 => Some("dense JSON object"),
-        Some("toml") if inline_object_fields(&visible, '=') >= 4 => Some("dense TOML table"),
-        Some("yml" | "yaml") if yaml_flow_fields(&visible) >= 4 => Some("dense YAML flow mapping"),
-        Some("yml" | "yaml") if command_chain_count(&visible) >= 3 => {
-            Some("dense workflow command chain")
-        }
-        _ => None,
+fn awk_program_lines(path: &Path, text: &str) -> Vec<bool> {
+    if path.extension().is_none_or(|extension| extension != "sh") {
+        return vec![false; text.lines().count()];
     }
-}
-
-fn visible_code(line: &str) -> String {
-    let before_comment = line.split_once("//").map_or(line, |(code, _)| code);
-    let mut visible = String::with_capacity(before_comment.len());
-    let mut quoted = None;
-    for character in before_comment.chars() {
-        match (quoted, character) {
-            (None, '"' | '\'') => quoted = Some(character),
-            (Some(quote), current) if quote == current => quoted = None,
-            (None, current) => visible.push(current),
-            _ => {}
-        }
-    }
-    visible
-}
-
-fn statement_count(line: &str) -> usize {
-    line.matches(';').count() + 1
-}
-
-fn command_chain_count(line: &str) -> usize {
-    line.replace(";;", "")
-        .replace("; then", "")
-        .replace("; fi", "")
-        .matches(';')
-        .count()
-        + line.matches("&&").count()
-        + line.matches("||").count()
-        + 1
-}
-
-fn inline_object_fields(line: &str, separator: char) -> usize {
-    let Some((_, inner)) = line.split_once('{') else {
-        return 0;
-    };
-    let Some((inner, _)) = inner.split_once('}') else {
-        return 0;
-    };
-    inner.matches(separator).count()
-}
-
-fn yaml_flow_fields(line: &str) -> usize {
-    let Some((prefix, _)) = line.split_once('{') else {
-        return 0;
-    };
-    prefix
-        .trim_end()
-        .ends_with(':')
-        .then(|| inline_object_fields(line, ':'))
-        .unwrap_or_default()
+    let mut active = false;
+    text.lines()
+        .map(|line| {
+            if !active && line.contains("awk ") {
+                let quotes = line.matches('\'').count();
+                active = quotes % 2 == 1;
+                return active;
+            }
+            if active && line.trim() == "'" {
+                active = false;
+            }
+            active
+        })
+        .collect()
 }
 #[cfg(test)]
 #[path = "density/tests.rs"]
