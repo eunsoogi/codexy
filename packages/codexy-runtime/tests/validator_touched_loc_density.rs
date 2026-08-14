@@ -53,11 +53,14 @@ fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -
     let fixture_output = validate(fixture_repo.path())?;
     assert!(!fixture_output.status.success(), "{}", stderr(&fixture_output));
 
-    let json_fixture = fixture("tests/fixtures/reference.json", "{}\n".to_owned())?;
+    let json_fixture = fixture(
+        "packages/getcodexy/tests/fixtures/component-installation-cases.json",
+        "{}\n".to_owned(),
+    )?;
     write(
         json_fixture.path(),
-        "tests/fixtures/reference.json",
-        r#"{"schema":"codexy.routing-evaluation-corpus.v1","corpus_id":"fixture","tasks":[{"id":"one","classification":"unit","prompt":"prompt","acceptance_oracle":"oracle"}]}"#,
+        "packages/getcodexy/tests/fixtures/component-installation-cases.json",
+        r#"{"schema":"getcodexy.component-installation-cases.v1","fixtures":[]}"#,
     )?;
     assert!(validate(json_fixture.path())?.status.success());
 

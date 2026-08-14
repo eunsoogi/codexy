@@ -119,9 +119,27 @@ fn closing_parenthesis(line: &str) -> Option<usize> {
 }
 
 fn statement_count(line: &str) -> usize {
-    line.split(';')
-        .filter(|statement| !statement.trim().trim_matches(['{', '}']).trim().is_empty())
-        .count()
+    let mut count = 0;
+    let mut current = String::new();
+    let mut nested: usize = 0;
+    for character in line.chars() {
+        match character {
+            '(' | '[' => nested += 1,
+            ')' | ']' => nested = nested.saturating_sub(1),
+            ';' if nested == 0 => {
+                count += statement_fragment(&current) as usize;
+                current.clear();
+                continue;
+            }
+            _ => {}
+        }
+        current.push(character);
+    }
+    count + statement_fragment(&current) as usize
+}
+
+fn statement_fragment(fragment: &str) -> bool {
+    !fragment.trim().trim_matches(['{', '}']).trim().is_empty()
 }
 
 fn command_chain_count(line: &str) -> usize {
