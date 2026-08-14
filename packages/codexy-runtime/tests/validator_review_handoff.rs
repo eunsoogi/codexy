@@ -2,6 +2,8 @@ use std::fs;
 
 use serde_json::{Value, json};
 
+#[path = "validator_review_handoff/contracts.rs"] mod contracts;
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[path = "validator_review_handoff/evidence_cases.rs"]
@@ -69,6 +71,7 @@ fn validate_bound(mutate: impl FnOnce(&mut Value)) -> TestResult<std::process::O
         "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"h","profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"state":"passed","event_id":"e-passed","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[{"id":"e-full","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"h","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},{"id":"e-passed","predecessor_event_id":"e-full","profile":"standard","base_oid":"base","head_oid":"h","state":"passed","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}]}
     });
+    contracts::bind_ledger(&mut state);
     mutate(&mut state);
     crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
@@ -94,6 +97,7 @@ fn validate_escalated_delta(mutate: impl FnOnce(&mut Value)) -> TestResult<std::
             {"id":"e-passed","predecessor_event_id":"e-delta","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"passed","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
         ]}
     });
+    contracts::bind_ledger(&mut state);
     mutate(&mut state);
     crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
@@ -121,6 +125,7 @@ fn validate_escalated_parent_decision(
             {"id":"e-parent","predecessor_event_id":"e-delta","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"parent_decision","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
         ]}
     });
+    contracts::bind_ledger(&mut state);
     mutate(&mut state);
     crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
@@ -145,6 +150,7 @@ fn validate_delta_base(mutate: impl FnOnce(&mut Value)) -> TestResult<std::proce
             {"id":"e-passed","predecessor_event_id":"e-delta","profile":"standard","base_oid":"reviewed","head_oid":"repair","state":"passed","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
         ]}
     });
+    contracts::bind_ledger(&mut state);
     mutate(&mut state);
     crate::support::review_control_state::namespace_review_control(&mut state);
     fs::write(&state_path, serde_json::to_vec(&state)?)?;

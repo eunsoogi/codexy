@@ -3,7 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
-use super::{packet::Escalation, policy, presence::RequiredNullable};
+use super::{
+    history_contract, history_evidence, issue_contract::IssueContract, packet::Escalation, policy,
+    presence::RequiredNullable,
+};
 
 const SCHEMA: &str = "codexy.review-ledger.v1";
 
@@ -27,6 +30,8 @@ pub(super) struct Event {
     pub(super) delta_used: u8,
     pub(super) blockers: Vec<Blocker>,
     pub(super) boundaries: Vec<String>,
+    pub(super) issue_contract: IssueContract,
+    pub(super) issue_contract_sha256: String,
     pub(super) escalation: RequiredNullable<Escalation>,
 }
 
@@ -52,16 +57,12 @@ impl History {
             bail!("review ledger schema is invalid");
         }
         for (index, event) in self.events.iter().enumerate() {
-            if !valid_id(&event.id)
-                || !valid_id(&event.base_oid)
-                || !valid_id(&event.head_oid)
+            if !history_evidence::valid(event)
                 || event.predecessor_event_id.as_deref()
                     != index
                         .checked_sub(1)
                         .and_then(|prior| self.events.get(prior))
                         .map(|prior| prior.id.as_str())
-                || !valid_boundaries(&event.boundaries)
-                || !valid_blockers(&event.blockers)
             {
                 bail!("review ledger event identity or evidence is invalid");
             }
@@ -137,6 +138,7 @@ fn escalated_full(unobservable: &Event, full: &Event) -> bool {
         && full.base_oid == unobservable.base_oid
         && full.head_oid == unobservable.head_oid
         && full.boundaries == unobservable.boundaries
+        && history_contract::preserves(unobservable, full)
         && (full.full_used, full.delta_used) == (1, 0)
         && full.escalation.as_ref().is_some_and(|escalation| {
             escalation.discarded_lower_profile
@@ -154,6 +156,7 @@ fn delta_after(full: &Event, delta: &Event) -> bool {
         && delta.escalation.is_none()
         && (delta.full_used, delta.delta_used) == (1, 1)
         && delta.boundaries == full.boundaries
+        && history_contract::preserves(full, delta)
         && preserves_blockers(full, delta)
 }
 
@@ -179,7 +182,9 @@ fn parent_decision(delta: &Event, decision: &Event) -> bool {
 }
 
 fn preserves_scope(prior: &Event, next: &Event) -> bool {
-    next.base_oid == prior.base_oid && next.boundaries == prior.boundaries
+    next.base_oid == prior.base_oid
+        && next.boundaries == prior.boundaries
+        && history_contract::preserves(prior, next)
 }
 
 fn preserves_blockers(prior: &Event, next: &Event) -> bool {
@@ -208,29 +213,8 @@ fn preserves_blockers(prior: &Event, next: &Event) -> bool {
     })
 }
 
-fn valid_id(id: &str) -> bool {
-    !id.is_empty()
-        && id.len() <= 128
-        && id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
-}
-
 fn reviewed_profile(profile: &str) -> bool {
     matches!(profile, "standard" | "strict")
-}
-
-fn valid_boundaries(boundaries: &[String]) -> bool {
-    !boundaries.is_empty()
-        && boundaries.iter().all(|boundary| !boundary.is_empty())
-        && boundaries.iter().collect::<BTreeSet<_>>().len() == boundaries.len()
-}
-
-fn valid_blockers(blockers: &[Blocker]) -> bool {
-    blockers
-        .iter()
-        .all(|blocker| valid_id(&blocker.id) && !blocker.defect_class.is_empty())
-        && blocker_map(blockers).is_some()
 }
 
 fn blocker_map(blockers: &[Blocker]) -> Option<BTreeMap<&str, &Blocker>> {

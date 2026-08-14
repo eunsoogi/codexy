@@ -3,6 +3,7 @@ use std::{fs, path::Path};
 use anyhow::{Result, bail};
 
 use super::{
+    finding_disposition,
     history::{Blocker, Event, History},
     packet::Packet,
     policy::Profile,
@@ -29,7 +30,7 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
         blockers: packet
             .findings
             .iter()
-            .filter(|finding| finding.kind == "blocker")
+            .filter(|finding| finding_disposition::is_blocker(finding))
             .map(|finding| Blocker {
                 id: finding.id.clone(),
                 defect_class: finding.defect_class.clone(),
@@ -38,6 +39,8 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
             })
             .collect(),
         boundaries: packet.boundaries().to_vec(),
+        issue_contract: packet.issue_contract().clone(),
+        issue_contract_sha256: packet.issue_contract().digest(),
         escalation: super::presence::RequiredNullable::new(packet.escalation().cloned()),
     });
     history.validate()?;
