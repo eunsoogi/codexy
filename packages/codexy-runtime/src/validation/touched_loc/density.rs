@@ -158,12 +158,29 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
         return Disposition::ExactFixture;
     }
     let exact_json_fixture = is_fixture_path(&path) && path.ends_with(".json");
-    let routing_reference = path.contains("routing-evaluation-") && path.ends_with(".json");
-    if (exact_json_fixture || routing_reference) && serde_json::from_str::<Value>(text).is_ok() {
+    let json = serde_json::from_str::<Value>(text).ok();
+    if (exact_json_fixture && json.is_some()) || json.as_ref().is_some_and(routing_fixture) {
         Disposition::ExactFixture
     } else {
         Disposition::Maintained
     }
+}
+
+fn routing_fixture(value: &Value) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    matches!(
+        object.get("schema").and_then(Value::as_str),
+        Some("codexy.routing-evaluation-corpus.v1" | "codexy.routing-evaluation-results.v1")
+    ) || object
+        .get("$schema")
+        .and_then(Value::as_str)
+        .is_some_and(|schema| {
+            schema.ends_with("routing-evaluation-results.schema.json")
+                && object.get("required").is_some()
+                && object.get("properties").is_some()
+        })
 }
 
 fn is_fixture_path(path: &str) -> bool {

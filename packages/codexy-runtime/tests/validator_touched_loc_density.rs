@@ -140,6 +140,8 @@ mod raw_boundary;
 mod awk_boundary;
 #[path = "validator_touched_loc_density/markdown_boundary.rs"]
 mod markdown_boundary;
+#[path = "validator_touched_loc_density/lexer_boundary.rs"]
+mod lexer_boundary;
 
 #[test]
 fn validator_cli_checks_density_in_a_changed_structured_file() -> TestResult {

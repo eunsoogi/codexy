@@ -126,7 +126,9 @@ def main() -> int:
     started = time.perf_counter()
     workload_arguments = (root, arguments.budget_seconds, arguments.windows, workload, expected_owned_targets) if spec else ((root, arguments.budget_seconds, True) if arguments.windows else (root, arguments.budget_seconds))
     output, elapsed, status, phases = run_workload(*workload_arguments)
-    expected_tests: Counter[str] = Counter(); listed_targets: set[str] = set(); inventory_status = 0
+    expected_tests: Counter[str] = Counter()
+    listed_targets: set[str] = set()
+    inventory_status = 0
     inventory_started = time.perf_counter() if arguments.verify_coverage else None
     if arguments.verify_coverage:
         (expected_tests, listed_targets), inventory_status = listed_test_inventory_from_completed_binaries(root, output, expected_owned_targets)
@@ -167,7 +169,10 @@ def main() -> int:
     print(f"compile-seconds\t{compile_seconds:.3f}"); print(f"execution-seconds\t{max(0.0, elapsed - compile_seconds):.3f}")
     if arguments.verify_coverage:
         print(f"coverage-tests\t{sum(expected_tests.values())}\t{sum(observed_tests.values())}\t{'PASS' if coverage_pass else 'FAIL'}")
-        print(f"coverage-missing\t{len(missing)}"); print(f"coverage-duplicates\t{len(duplicate)}"); print(f"coverage-extra\t{len(extra)}"); print(f"coverage-duplicate-or-extra\t{len(duplicate) + len(extra)}")
+        print(f"coverage-missing\t{len(missing)}")
+        print(f"coverage-duplicates\t{len(duplicate)}")
+        print(f"coverage-extra\t{len(extra)}")
+        print(f"coverage-duplicate-or-extra\t{len(duplicate) + len(extra)}")
         print(f"coverage-targets\t{len(listed_targets)}\t{len(observed_targets)}\t{'PASS' if targets_pass else 'FAIL'}")
         print("coverage-report-json\t" + json.dumps({"expected_targets": sorted(listed_targets), "observed_targets": sorted(observed_targets), "missing": missing, "duplicates": duplicate, "extra": extra, "inventory_status": inventory_status}, sort_keys=True))
     print(f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if budget_pass else 'FAIL'}")

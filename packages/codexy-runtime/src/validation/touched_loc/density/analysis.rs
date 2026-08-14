@@ -7,7 +7,7 @@ pub(super) fn reason(path: &Path, line: &str) -> Option<&'static str> {
             .then_some("dense Markdown clauses");
     }
     let visible = visible_code(path, line);
-    match path.extension().and_then(|extension| extension.to_str()) {
+    match language(path) {
         Some("rs") if visible.contains('{') && statement_count(&visible) >= 3 => {
             Some("dense Rust statements")
         }
@@ -28,6 +28,12 @@ pub(super) fn reason(path: &Path, line: &str) -> Option<&'static str> {
         }
         _ => None,
     }
+}
+
+fn language(path: &Path) -> Option<&str> {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .or_else(|| path.starts_with("scripts").then_some("sh"))
 }
 
 fn visible_code(path: &Path, line: &str) -> String {
@@ -79,10 +85,39 @@ fn python_inline_suite(line: &str) -> bool {
 fn javascript_body(line: &str) -> &str {
     let trimmed = line.trim_start();
     if trimmed.starts_with("for (") || trimmed.starts_with("for(") {
-        trimmed.split_once(')').map_or(trimmed, |(_, body)| body)
+        closing_parenthesis(trimmed).map_or(trimmed, |index| &trimmed[index + 1..])
     } else {
         trimmed
     }
+}
+
+fn closing_parenthesis(line: &str) -> Option<usize> {
+    let mut depth = 0;
+    let mut quote = None;
+    let mut escaped = false;
+    for (index, character) in line.char_indices() {
+        if let Some(delimiter) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == delimiter {
+                quote = None;
+            }
+            continue;
+        }
+        if matches!(character, '\'' | '"' | '`') {
+            quote = Some(character);
+        } else if character == '(' {
+            depth += 1;
+        } else if character == ')' {
+            depth -= 1;
+            if depth == 0 {
+                return Some(index);
+            }
+        }
+    }
+    None
 }
 
 fn statement_count(line: &str) -> usize {

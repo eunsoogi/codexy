@@ -101,12 +101,22 @@ verify_batch() {
   mkdir -p "$results"
   tab="$(printf '\t')"
   count=0
+  batch_record_is_complete() {
+    test -z "$extra" || return 1
+    test -n "$id" || return 1
+    test -n "$branch" || return 1
+    test -n "$base" || return 1
+    test -n "$bootstrap" || return 1
+    test -n "$receipt" || return 1
+    test -n "$repo" || return 1
+    test -n "$expected_root" || return 1
+    test -n "$state_file"
+  }
   while IFS="$tab" read -r id branch base bootstrap receipt repo expected_root state_file test_mode extra; do
-    test -z "$extra" && test -n "$id" && test -n "$branch" && test -n "$base" && \
-      test -n "$bootstrap" && test -n "$receipt" && test -n "$repo" && \
-      test -n "$expected_root" && test -n "$state_file" || {
-      printf '%s\n' "batch manifest record is incomplete" >&2; exit 2;
-    }
+    if ! batch_record_is_complete; then
+      printf '%s\n' "batch manifest record is incomplete" >&2
+      exit 2
+    fi
     case "$id" in *[!A-Za-z0-9_-]*) printf '%s\n' "batch case id is invalid" >&2; exit 2 ;; esac
     case "$test_mode" in 0|1) ;; *) printf '%s\n' "batch test mode is invalid" >&2; exit 2 ;; esac
     test -f "$state_file" && test ! -L "$state_file" || { printf '%s\n' "batch state file must be regular" >&2; exit 2; }

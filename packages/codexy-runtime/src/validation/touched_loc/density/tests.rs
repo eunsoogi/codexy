@@ -51,4 +51,18 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
         disposition(Path::new("packages/codexy-runtime/Cargo.lock")),
         Disposition::Generated
     );
+    assert_eq!(
+        source_disposition(
+            Path::new("anywhere/routing-evaluation-decoy.json"),
+            r#"{"schema":"not-a-routing-artifact"}"#,
+        ),
+        Disposition::Maintained
+    );
+    assert_eq!(
+        source_disposition(
+            Path::new("anywhere/corpus.json"),
+            r#"{"schema":"codexy.routing-evaluation-corpus.v1","tasks":[]}"#,
+        ),
+        Disposition::ExactFixture
+    );
 }
