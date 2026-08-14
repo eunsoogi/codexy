@@ -75,6 +75,7 @@ pub(super) fn version_surface_contents(
             "packages/codexy-runtime/Cargo.lock",
             "packages/codexy-runtime/Cargo.toml",
             "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+            "package-lock.json",
             "package.json",
             "plugins/codexy/.codex-plugin/plugin.json",
             "plugins/codexy-devtools/.codex-plugin/plugin.json",

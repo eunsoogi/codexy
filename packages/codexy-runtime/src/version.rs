@@ -19,6 +19,7 @@ mod fields;
 mod github_plugin;
 mod mutation;
 mod mutation_inputs;
+mod package_lock;
 mod runtime_selection;
 mod semver;
 mod wrappers;
@@ -30,6 +31,7 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::set_version;
+pub(super) use package_lock::{package_locks, root_package_lock, root_package_lock_mut};
 pub(crate) use semver::require as require_semver;
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
@@ -208,6 +210,20 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
     for path in package_manifests()? {
         let package = load_json(&path)?;
         let package_version = string_field(&package, "version", &display_relative(&path))?;
+        require_matching_version(
+            package_version,
+            &display_relative(&path),
+            manifest_version,
+            &display_relative(&manifest_path),
+        )?;
+    }
+    for path in package_locks()? {
+        let lock = load_json(&path)?;
+        let package_version = string_field(
+            root_package_lock(&lock, &path)?,
+            "version",
+            &format!("{} root package", display_relative(&path)),
+        )?;
         require_matching_version(
             package_version,
             &display_relative(&path),
