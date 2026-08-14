@@ -2,7 +2,7 @@ use std::{io::ErrorKind, process::Command};
 
 use crate::support::{
     FixtureCommand, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
-    write_posix_fixture_command, write_posix_fixture_shell_runner,
+    normalize_fixture_text, write_posix_fixture_command, write_posix_fixture_shell_runner,
 };
 
 #[test]
@@ -115,7 +115,7 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
     write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
     std::fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport sys\nprint('gh:' + ' '.join(sys.argv[1:]))\n",
+        "#!/usr/bin/env python3\nimport sys\nsys.stdout.buffer.write(b'gh:release view\\r\\n')\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -136,6 +136,9 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(String::from_utf8(output.stdout)?, "gh:release view\n");
+    assert_eq!(
+        normalize_fixture_text(&String::from_utf8(output.stdout)?),
+        "gh:release view\n"
+    );
     Ok(())
 }
