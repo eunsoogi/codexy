@@ -139,3 +139,64 @@ fn shell_runner_projects_bound_commands_into_a_nested_shell_source()
     assert_eq!(String::from_utf8(output.stdout)?, "git:nested\n");
     Ok(())
 }
+
+#[test]
+fn shell_runner_rejects_unsafe_source_bindings_before_writing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    for source_path in [
+        "",
+        "/scripts/verify",
+        "scripts/../verify",
+        "scripts//verify",
+    ] {
+        let runner = temp.path().join(format!("runner-{}.sh", source_path.len()));
+        let error = write_posix_fixture_shell_runner_with_scrub_and_sources(
+            &runner,
+            "CODEXY_FIXTURE_TARGET",
+            &[],
+            &[],
+            &[],
+            &[(source_path, "CODEXY_FIXTURE_SOURCE")],
+        )
+        .expect_err("unsafe source binding must fail closed");
+        assert_eq!(error.kind(), ErrorKind::InvalidInput, "{source_path:?}");
+        assert!(!runner.exists(), "{source_path:?} wrote a runner");
+    }
+    Ok(())
+}
+
+#[test]
+fn shell_runner_falls_back_for_undeclared_nested_shell_sources()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let scripts = temp.path().join("scripts");
+    std::fs::create_dir(&scripts)?;
+    let declared = scripts.join("declared");
+    write_posix_fixture_command(&declared, "#!/bin/sh\nprintf 'declared\\n'\n")?;
+    let unbound = scripts.join("unbound");
+    write_posix_fixture_command(&unbound, "#!/bin/sh\nprintf 'fallback\\n'\n")?;
+    let target = temp.path().join("target.sh");
+    write_posix_fixture_command(&target, "#!/bin/sh\nsh scripts/unbound\n")?;
+    let runner = temp.path().join("runner.sh");
+    write_posix_fixture_shell_runner_with_scrub_and_sources(
+        &runner,
+        "CODEXY_FIXTURE_TARGET",
+        &[],
+        &[],
+        &[],
+        &[("scripts/declared", "CODEXY_FIXTURE_SOURCE")],
+    )?;
+    let output = FixtureCommand::new(&runner)
+        .current_dir(temp.path())
+        .env_path("CODEXY_FIXTURE_TARGET", &target)
+        .env_path("CODEXY_FIXTURE_SOURCE", &declared)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(String::from_utf8(output.stdout)?, "fallback\n");
+    Ok(())
+}
