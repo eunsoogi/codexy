@@ -9,6 +9,7 @@ mod python;
 mod rust;
 mod shell;
 mod shell_heredoc;
+mod shell_projection;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum Language {

@@ -25,7 +25,7 @@ impl Heredoc {
     }
 }
 
-pub(super) fn spans(line: &str) -> Vec<Span> {
+pub(super) fn spans(line: &str, code: &str) -> Vec<Span> {
     let mut spans = Vec::new();
     let mut quote = None;
     let mut escaped = false;
@@ -57,7 +57,7 @@ pub(super) fn spans(line: &str) -> Vec<Span> {
         } else if tail.starts_with("<<<") {
             index += 3;
             continue;
-        } else if tail.starts_with("<<") {
+        } else if tail.starts_with("<<") && code[index..].starts_with("<<") {
             let strip_tabs = tail[2..].starts_with('-');
             let operator_end = index + 2 + strip_tabs as usize;
             if let Some((word_len, end)) = word(&line[operator_end..]) {
