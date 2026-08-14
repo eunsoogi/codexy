@@ -54,7 +54,8 @@ fn opens_fence(line: &str) -> Option<Fence> {
         .chars()
         .take_while(|character| *character == marker)
         .count();
-    (count >= 3).then_some(Fence(marker, count))
+    (count >= 3 && (marker != '`' || !trimmed[count..].contains('`')))
+        .then_some(Fence(marker, count))
 }
 
 fn closes_fence(line: &str, Fence(marker, minimum): Fence) -> bool {
@@ -104,6 +105,7 @@ fn hide_tables(visible: &mut [Option<String>]) {
 }
 
 fn table_cells(line: &str) -> Option<Vec<String>> {
+    let outer_pipes = line.trim().starts_with('|') && line.trim().ends_with('|');
     let mut cells = vec![String::new()];
     let mut escaped = false;
     let mut separators = 0;
@@ -120,7 +122,7 @@ fn table_cells(line: &str) -> Option<Vec<String>> {
             cells.last_mut()?.push(character);
         }
     }
-    (separators > 0).then(|| {
+    (separators > 0 || outer_pipes).then(|| {
         cells
             .into_iter()
             .map(|cell| cell.trim().to_owned())

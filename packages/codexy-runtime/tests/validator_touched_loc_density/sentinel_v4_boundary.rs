@@ -43,6 +43,8 @@ fn touched_loc_selects_shebangs_and_shell_data_boundaries() -> TestResult {
         "cat <<'EOF'\nfirst && second && third\nEOF\n",
     )?;
     assert!(validate(shell.path())?.status.success());
+    write(shell.path(), "scripts/release.sh", "echo '<<EOF' && first && second && third\n")?;
+    assert!(!validate(shell.path())?.status.success());
     write(
         shell.path(),
         "scripts/release.sh",
@@ -52,9 +54,26 @@ fn touched_loc_selects_shebangs_and_shell_data_boundaries() -> TestResult {
     write(
         shell.path(),
         "scripts/release.sh",
+        "case \"$x\" in a) first; second; third;; esac\n",
+    )?;
+    assert!(!validate(shell.path())?.status.success());
+    write(
+        shell.path(),
+        "scripts/release.sh",
         "echo notawk; awk 'BEGIN {\nfirst(); second(); third();\n}'\n",
     )?;
     assert!(validate(shell.path())?.status.success());
+    Ok(())
+}
+
+#[test]
+fn touched_loc_tracks_python_and_powershell_multiline_data() -> TestResult {
+    let python = fixture("scripts/check.py", "pass\n".to_owned())?;
+    write(python.path(), "scripts/check.py", "data = \"\"\"\nfirst(); second(); third();\n\"\"\"\n")?;
+    assert!(validate(python.path())?.status.success());
+    let powershell = fixture("scripts/check.ps1", "exit 0\n".to_owned())?;
+    write(powershell.path(), "scripts/check.ps1", "$data = @'\nfirst; second; third\n'@\n")?;
+    assert!(validate(powershell.path())?.status.success());
     Ok(())
 }
 

@@ -157,8 +157,10 @@ def main() -> int:
     compile_matches = COMPILE_PATTERN.findall(output)
     compile_seconds = int(compile_matches[-1][0] or 0) * 60 + float(compile_matches[-1][1]) if compile_matches else 0.0
     success = status == 0 and tests_pass and archive_pass and budget_pass and coverage_pass
-    print(f"command\t{' '.join(workload)}"); print("workload-invocations\t1")
-    if arguments.verify_coverage: print(f"compiled-targets\t{len(listed_targets)}\t{'PASS' if targets_pass else 'FAIL'}")
+    print(f"command\t{' '.join(workload)}")
+    print("workload-invocations\t1")
+    if arguments.verify_coverage:
+        print(f"compiled-targets\t{len(listed_targets)}\t{'PASS' if targets_pass else 'FAIL'}")
     print(f"tests\t{passed} passed\t{failed} failed\t{ignored} ignored\t{'PASS' if tests_pass else 'FAIL'}")
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_pass else 'FAIL'}")
     if phases.get("fixture-telemetry-json") is not None: print(f"fixture-telemetry-json\t{phases['fixture-telemetry-json']}")
@@ -168,7 +170,8 @@ def main() -> int:
         print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")
     emit_receipt_report(phases.get("archive-inspector-receipt-lines"))
     print_phases(arguments, root, output, status, phases, total_elapsed)
-    print(f"compile-seconds\t{compile_seconds:.3f}"); print(f"execution-seconds\t{max(0.0, elapsed - compile_seconds):.3f}")
+    print(f"compile-seconds\t{compile_seconds:.3f}")
+    print(f"execution-seconds\t{max(0.0, elapsed - compile_seconds):.3f}")
     if arguments.verify_coverage:
         print(f"coverage-tests\t{sum(expected_tests.values())}\t{sum(observed_tests.values())}\t{'PASS' if coverage_pass else 'FAIL'}")
         print(f"coverage-missing\t{len(missing)}")
@@ -176,11 +179,41 @@ def main() -> int:
         print(f"coverage-extra\t{len(extra)}")
         print(f"coverage-duplicate-or-extra\t{len(duplicate) + len(extra)}")
         print(f"coverage-targets\t{len(listed_targets)}\t{len(observed_targets)}\t{'PASS' if targets_pass else 'FAIL'}")
-        print("coverage-report-json\t" + json.dumps({"expected_targets": sorted(listed_targets), "observed_targets": sorted(observed_targets), "missing": missing, "duplicates": duplicate, "extra": extra, "inventory_status": inventory_status}, sort_keys=True))
+        coverage_report = {
+            "expected_targets": sorted(listed_targets),
+            "observed_targets": sorted(observed_targets),
+            "missing": missing,
+            "duplicates": duplicate,
+            "extra": extra,
+            "inventory_status": inventory_status,
+        }
+        print("coverage-report-json\t" + json.dumps(coverage_report, sort_keys=True))
     print(f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if budget_pass else 'FAIL'}")
     if receipt_path is not None:
-        receipt = {"schema": SCHEMA, "state": "PASS" if success and elapsed <= 270 else "FAIL", "shard": spec.name, "platform": "windows" if arguments.windows else "posix", "argv": workload, "head": head, "index_tree": index_tree, "run_id": run_id, "run_attempt": run_attempt, "status": status, "failed": failed, "ignored": ignored, "elapsed": elapsed, "tests": sorted(observed_tests.elements()), "digest": digest(observed_tests), "listed_digest": digest(expected_tests), "physical_targets": sorted(listed_targets), "started": phases.get("profiler-started-epoch", started_epoch), "finished": time.time(), "workload_receipt": phases.get("workload-receipt-json")}
-        write(receipt_path, receipt); print(f"shard\t{spec.name}\t{receipt['state']}\t{sum(expected_tests.values())}\t{receipt['digest']}")
+        receipt = {
+            "schema": SCHEMA,
+            "state": "PASS" if success and elapsed <= 270 else "FAIL",
+            "shard": spec.name,
+            "platform": "windows" if arguments.windows else "posix",
+            "argv": workload,
+            "head": head,
+            "index_tree": index_tree,
+            "run_id": run_id,
+            "run_attempt": run_attempt,
+            "status": status,
+            "failed": failed,
+            "ignored": ignored,
+            "elapsed": elapsed,
+            "tests": sorted(observed_tests.elements()),
+            "digest": digest(observed_tests),
+            "listed_digest": digest(expected_tests),
+            "physical_targets": sorted(listed_targets),
+            "started": phases.get("profiler-started-epoch", started_epoch),
+            "finished": time.time(),
+            "workload_receipt": phases.get("workload-receipt-json"),
+        }
+        write(receipt_path, receipt)
+        print(f"shard\t{spec.name}\t{receipt['state']}\t{sum(expected_tests.values())}\t{receipt['digest']}")
         success = success and receipt["state"] == "PASS"
     print(f"result\t{'PASS' if success else 'FAIL'}")
     return 0 if success else status or 1

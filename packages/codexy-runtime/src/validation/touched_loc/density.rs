@@ -171,21 +171,61 @@ fn exact_json_fixture(value: &Value) -> bool {
     let Some(object) = value.as_object() else {
         return false;
     };
-    let routing = matches!(
-        object.get("schema").and_then(Value::as_str),
-        Some("codexy.routing-evaluation-corpus.v1" | "codexy.routing-evaluation-results.v1")
-    ) || object
-        .get("$schema")
-        .and_then(Value::as_str)
-        .is_some_and(|schema| {
-            schema.ends_with("routing-evaluation-results.schema.json")
-                && object.get("required").is_some()
-                && object.get("properties").is_some()
-        });
+    let routing = routing_corpus(object)
+        || routing_results(object)
+        || object
+            .get("$schema")
+            .and_then(Value::as_str)
+            .is_some_and(|schema| {
+                schema.ends_with("routing-evaluation-results.schema.json")
+                    && object.get("required").is_some()
+                    && object.get("properties").is_some()
+            });
     routing
         || (object.get("schema").and_then(Value::as_str)
             == Some("getcodexy.component-installation-cases.v1")
             && object.get("fixtures").is_some_and(Value::is_array))
+}
+
+fn routing_corpus(object: &serde_json::Map<String, Value>) -> bool {
+    object.get("schema").and_then(Value::as_str) == Some("codexy.routing-evaluation-corpus.v1")
+        && object
+            .get("corpus_id")
+            .and_then(Value::as_str)
+            .is_some_and(|id| !id.is_empty())
+        && object
+            .get("tasks")
+            .and_then(Value::as_array)
+            .is_some_and(|tasks| {
+                !tasks.is_empty()
+                    && tasks.iter().all(|task| {
+                        task.as_object().is_some_and(|task| {
+                            ["id", "classification", "prompt", "acceptance_oracle"]
+                                .iter()
+                                .all(|key| {
+                                    task.get(*key)
+                                        .and_then(Value::as_str)
+                                        .is_some_and(|value| !value.is_empty())
+                                })
+                        })
+                    })
+            })
+}
+
+fn routing_results(object: &serde_json::Map<String, Value>) -> bool {
+    object.get("schema").and_then(Value::as_str) == Some("codexy.routing-evaluation-results.v1")
+        && object
+            .get("corpus_id")
+            .and_then(Value::as_str)
+            .is_some_and(|id| !id.is_empty())
+        && object
+            .get("selected_effort")
+            .and_then(Value::as_str)
+            .is_some()
+        && object
+            .get("results")
+            .and_then(Value::as_array)
+            .is_some_and(|results| !results.is_empty())
 }
 
 #[cfg(test)]

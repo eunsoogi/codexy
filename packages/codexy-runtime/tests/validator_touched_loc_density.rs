@@ -57,7 +57,7 @@ fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -
     write(
         json_fixture.path(),
         "tests/fixtures/reference.json",
-        r#"{"schema":"codexy.routing-evaluation-corpus.v1","tasks":[]}"#,
+        r#"{"schema":"codexy.routing-evaluation-corpus.v1","corpus_id":"fixture","tasks":[{"id":"one","classification":"unit","prompt":"prompt","acceptance_oracle":"oracle"}]}"#,
     )?;
     assert!(validate(json_fixture.path())?.status.success());
 

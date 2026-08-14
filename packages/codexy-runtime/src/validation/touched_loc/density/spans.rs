@@ -2,6 +2,8 @@ use std::path::Path;
 
 mod javascript;
 mod markdown;
+mod powershell;
+mod python;
 mod rust;
 mod shell;
 
@@ -38,7 +40,9 @@ pub(super) fn language(path: &Path, text: &str) -> Language {
 pub(super) fn visible_lines(language: Language, text: &str) -> Vec<Option<String>> {
     match language {
         Language::Rust => rust::lines(text),
+        Language::Python => python::lines(text),
         Language::Shell => shell::lines(text),
+        Language::PowerShell => powershell::lines(text),
         Language::JavaScript => javascript::lines(text),
         Language::Markdown => markdown::lines(text),
         _ => text.lines().map(|line| Some(line.to_owned())).collect(),

@@ -1,6 +1,6 @@
-use super::child_lane_thread_tool_handler_route_owner_absence::{
-    has_route_owner_absence, strip_actor_article,
-};
+// `route_owner_absence` is consulted only by the route_negation helper.
+mod route_negation;
+use route_negation::has_qualified_actor_negation;
 
 const ROUTE_PREFIX_TRIM_CHARACTERS: [char; 13] = [
     ',', ';', '.', ':', '_', '-', '/', '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}',
@@ -103,41 +103,13 @@ fn has_pre_action_route_negation(value: &str, action_index: usize) -> bool {
         || has_route_not_used_clause(&local)
 }
 
-#[rustfmt::skip]
-fn invalid_followup_before_later_route(prefix: &str) -> bool { let prefix = prefix.trim_end(); has_invalid_route_followup(prefix) && (prefix.ends_with('.') || prefix.ends_with(';') || prefix.ends_with(" and then")) }
-
-#[rustfmt::skip]
-fn has_qualified_actor_negation(local: &str, at_boundary: bool) -> bool {
-    const PROOF_VERBS: &str = "confirm|document|establish|prove|show|verify";
-    let tokens = local.split_whitespace().collect::<Vec<_>>();
-    let Some(negation_index) = tokens
-        .iter()
-        .rposition(|token| matches!(*token, "no" | "not") || token.ends_with("n't"))
-    else {
-        return false;
-    };
-    let mut after_not = &tokens[negation_index + 1..];
-    while matches!(after_not.first().copied(), Some("actually" | "fully" | "really" | "truly")) { after_not = &after_not[1..]; }
-    if after_not.first().is_some_and(|token| PROOF_VERBS.split('|').any(|verb| *token == verb)) {
-        let proof_subject = match after_not.get(1).copied() { Some("if" | "that" | "whether") => &after_not[2..], _ => &after_not[1..] };
-        let actor_prefix = strip_actor_article(proof_subject);
-        if actor_prefix.is_empty() { return !at_boundary || !has_handler_tool_negation_subject(&tokens[..negation_index]); }
-        return has_negated_actor_prefix(actor_prefix);
-    }
-    has_route_owner_absence(after_not) || has_negated_actor_prefix(strip_actor_article(after_not))
+fn invalid_followup_before_later_route(prefix: &str) -> bool {
+    let prefix = prefix.trim_end();
+    has_invalid_route_followup(prefix)
+        && (prefix.ends_with('.') || prefix.ends_with(';') || prefix.ends_with(" and then"))
 }
 
 #[rustfmt::skip]
-fn has_handler_tool_negation_subject(tokens: &[&str]) -> bool { tokens.iter().rev().find(|token| !matches!(**token, "actually" | "can" | "could" | "did" | "does" | "do" | "fully" | "really" | "truly")).is_some_and(|token| matches!(*token, "handler" | "tool")) }
-
-fn has_negated_actor_prefix(tokens: &[&str]) -> bool {
-    const QUALIFIERS: &str = "actual|assigned|authorized|correct|current|expected|intended|primary|proper|real|responsible|right|same|valid";
-    tokens.is_empty()
-        || tokens
-            .iter()
-            .all(|token| QUALIFIERS.split('|').any(|qualifier| *token == qualifier))
-}
-
 fn has_post_destination_route_negation(suffix: &str) -> bool {
     let suffix = suffix
         .trim_start()

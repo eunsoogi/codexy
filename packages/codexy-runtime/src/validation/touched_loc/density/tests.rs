@@ -61,7 +61,7 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
     assert_eq!(
         source_disposition(
             Path::new("anywhere/corpus.json"),
-            r#"{"schema":"codexy.routing-evaluation-corpus.v1","tasks":[]}"#,
+            r#"{"schema":"codexy.routing-evaluation-corpus.v1","corpus_id":"fixture","tasks":[{"id":"one","classification":"unit","prompt":"prompt","acceptance_oracle":"oracle"}]}"#,
         ),
         Disposition::ExactFixture
     );
@@ -69,6 +69,13 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
         source_disposition(
             Path::new("tests/fixtures/maintained.json"),
             r#"{"one":1,"two":2,"three":3,"four":4}"#,
+        ),
+        Disposition::Maintained
+    );
+    assert_eq!(
+        source_disposition(
+            Path::new("tests/fixtures/spoof.json"),
+            r#"{"schema":"codexy.routing-evaluation-corpus.v1","tasks":[]}"#,
         ),
         Disposition::Maintained
     );

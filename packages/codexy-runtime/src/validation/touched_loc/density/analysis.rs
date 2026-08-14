@@ -144,7 +144,7 @@ fn shell_body(line: &str) -> &str {
             .or_else(|| trimmed.split_once("; do"))
             .map_or("", |(_, body)| body)
     } else if trimmed.starts_with("case ") {
-        ""
+        trimmed.split_once(')').map_or("", |(_, body)| body)
     } else {
         trimmed
     }

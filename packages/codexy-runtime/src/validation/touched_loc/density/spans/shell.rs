@@ -43,13 +43,27 @@ fn strip_awk(line: &str, state: &mut State) -> Option<String> {
 }
 
 fn heredoc_span(line: &str) -> Option<(usize, String)> {
-    let start = line.find("<<")?;
+    let start = unquoted_heredoc_start(line)?;
     let tail = line[start + 2..]
         .strip_prefix('-')
         .unwrap_or(&line[start + 2..]);
     let token = tail.trim_start().split_whitespace().next()?;
     let end = token.trim_matches(|character| matches!(character, '\'' | '"'));
     (!end.is_empty()).then(|| (start, end.to_owned()))
+}
+
+fn unquoted_heredoc_start(line: &str) -> Option<usize> {
+    let mut quote = None;
+    for (index, character) in line.char_indices() {
+        quote = match quote {
+            Some(delimiter) if character == delimiter => None,
+            Some(delimiter) => Some(delimiter),
+            None if matches!(character, '\'' | '"') => Some(character),
+            None if line[index..].starts_with("<<") => return Some(index),
+            None => None,
+        };
+    }
+    None
 }
 
 fn awk_program_opener(line: &str) -> Option<usize> {
