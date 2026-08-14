@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -68,19 +70,53 @@ class LintFixtureTests(unittest.TestCase):
     def test_changed_scope_includes_a_changed_maintained_file(self) -> None:
         runner = inventory_module()
 
-        with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "HEAD^"}):
-            plan = runner.build_plan(ROOT, "check", {"python"})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "unchanged.py").write_text("value = 1\n", encoding="utf-8")
+            subprocess.run(["git", "init", "--quiet"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "lint@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Lint test"], cwd=root, check=True
+            )
+            subprocess.run(["git", "add", "unchanged.py"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "--quiet", "-m", "initial"], cwd=root, check=True
+            )
+            baseline = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            (root / "changed.py").write_text("value = 2\n", encoding="utf-8")
+            subprocess.run(["git", "add", "changed.py"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "--quiet", "-m", "changed"], cwd=root, check=True
+            )
 
-        self.assertIn("tests/test_lint_fixtures.py", plan[0].command)
+            with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": baseline}):
+                self.assertEqual(
+                    runner.tracked_regular_files(root, "*.py"), ("changed.py",)
+                )
 
     def test_changed_scope_reports_an_unavailable_baseline(self) -> None:
         runner = inventory_module()
 
-        with mock.patch.dict(
-            os.environ, {"CODEXY_LINT_CHANGED_SINCE": "missing-lint-baseline"}
-        ):
-            with self.assertRaisesRegex(ValueError, "baseline is unavailable"):
-                runner.build_plan(ROOT, "check", {"python"})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "script.py").write_text("value = 1\n", encoding="utf-8")
+            subprocess.run(["git", "init", "--quiet"], cwd=root, check=True)
+            subprocess.run(["git", "add", "script.py"], cwd=root, check=True)
+            with mock.patch.dict(
+                os.environ, {"CODEXY_LINT_CHANGED_SINCE": "missing-lint-baseline"}
+            ):
+                with self.assertRaisesRegex(ValueError, "baseline is unavailable"):
+                    runner.tracked_regular_files(root, "*.py")
 
     def test_workflow_exercises_real_failure_fixtures_for_every_route(self) -> None:
         workflow = (ROOT / ".github/workflows/language-lint.yml").read_text(
@@ -93,7 +129,12 @@ class LintFixtureTests(unittest.TestCase):
                     f"scripts/verify-lint-fixtures.py --language {language}", workflow
                 )
 
-        self.assertEqual(workflow.count("fetch-depth: 0"), 5)
+        for job in ("rust", "python", "text", "shell", "windows"):
+            with self.subTest(job=job):
+                section = re.search(rf"(?ms)^  {job}:.*?(?=^  [a-z]+:\n|\Z)", workflow)
+                self.assertIsNotNone(section)
+                self.assertIn("uses: actions/checkout@v7", section.group())
+                self.assertIn("fetch-depth: 0", section.group())
 
     def test_powershell_fixture_exercises_multiple_paths(self) -> None:
         fixtures = (ROOT / "scripts/verify-lint-fixtures.py").read_text(
