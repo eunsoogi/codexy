@@ -11,7 +11,6 @@ use crate::validation::{
 
 mod delegation_contract;
 mod delegation_contract_parser;
-mod reviewer_priority;
 mod sentinel_gate;
 
 const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
@@ -213,7 +212,6 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
     if name == "codexy-sentinel" {
         sentinel_gate::check(path, &agent, errors);
     }
-    reviewer_priority::check(path, name, &agent, errors);
     delegation_contract::check(path, &agent, errors);
 }
 
