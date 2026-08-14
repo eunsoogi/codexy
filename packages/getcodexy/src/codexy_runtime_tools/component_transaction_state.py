@@ -170,7 +170,7 @@ def _lock(descriptor: int) -> None:
             return
         except OSError as error:
             if error.errno in {errno.EACCES, errno.EDEADLK}:
-                raise RuntimeError("another getcodexy component operation is active") from error
+                raise PreAdmissionError("another getcodexy component operation is active") from error
             raise
     import fcntl
     try:

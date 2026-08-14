@@ -4,7 +4,9 @@ import errno
 import io
 import json
 import os
+import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -92,6 +94,31 @@ class ComponentCliTests(unittest.TestCase):
             target = "msvcrt.locking" if os.name == "nt" else "fcntl.flock"
             failure = OSError(errno.EACCES, "already locked") if os.name == "nt" else BlockingIOError()
             with patch(target, side_effect=failure), redirect_stdout(output), redirect_stderr(errors):
+                code = main(["--codex", str(codex), "--codex-home", str(Path(directory) / "home"), "bootstrap", "--json"])
+
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        self.assertEqual(errors.getvalue(), "")
+        self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
+
+    def test_bootstrap_json_windows_busy_lifecycle_lock_emits_one_closed_receipt(self) -> None:
+        class WindowsOS:
+            name = "nt"
+
+            def __getattr__(self, attribute: str) -> object:
+                return getattr(os, attribute)
+
+        def deny_lock(*_: object) -> None:
+            raise OSError(errno.EACCES, "already locked")
+
+        with tempfile.TemporaryDirectory() as directory:
+            codex = Path(directory) / "codex"
+            codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            codex.chmod(0o700)
+            output, errors = io.StringIO(), io.StringIO()
+            msvcrt = SimpleNamespace(LK_NBLCK=1, LK_UNLCK=2, locking=deny_lock)
+            with patch("codexy_runtime_tools.component_transaction_state.os", WindowsOS()), patch.dict(sys.modules, {"msvcrt": msvcrt}), redirect_stdout(output), redirect_stderr(errors):
                 code = main(["--codex", str(codex), "--codex-home", str(Path(directory) / "home"), "bootstrap", "--json"])
 
         receipt = json.loads(output.getvalue())
