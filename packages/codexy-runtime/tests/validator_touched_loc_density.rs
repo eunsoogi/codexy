@@ -144,25 +144,8 @@ fn touched_loc_ignores_comments_and_handles_urls_and_escaped_quotes() -> TestRes
     Ok(())
 }
 
-#[path = "validator_touched_loc_density/raw_boundary.rs"]
-mod raw_boundary;
-
-#[path = "validator_touched_loc_density/awk_boundary.rs"]
-mod awk_boundary;
-#[path = "validator_touched_loc_density/markdown_boundary.rs"]
-mod markdown_boundary;
-#[path = "validator_touched_loc_density/lexer_boundary.rs"]
-mod lexer_boundary;
-#[path = "validator_touched_loc_density/sentinel_v4_boundary.rs"]
-mod sentinel_v4_boundary;
-#[path = "validator_touched_loc_density/sentinel_v7_boundary.rs"]
-mod sentinel_v7_boundary;
-#[path = "validator_touched_loc_density/sentinel_v8_boundary.rs"]
-mod sentinel_v8_boundary;
-#[path = "validator_touched_loc_density/sentinel_v9_boundary.rs"]
-mod sentinel_v9_boundary;
-#[path = "validator_touched_loc_density/cli.rs"]
-mod cli;
+#[path = "validator_touched_loc_density/boundaries.rs"]
+mod boundaries;
 
 #[test]
 fn touched_loc_handles_language_specific_nesting_and_boundaries() -> TestResult {

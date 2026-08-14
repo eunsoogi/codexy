@@ -1,6 +1,7 @@
 use std::path::Path;
 
 mod javascript;
+mod javascript_template;
 mod markdown;
 mod powershell;
 mod python;

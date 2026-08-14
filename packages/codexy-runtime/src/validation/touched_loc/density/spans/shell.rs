@@ -6,19 +6,19 @@ pub(super) fn lines(text: &str) -> Vec<Option<String>> {
 enum State {
     Code,
     AwkProgram,
-    Heredoc(String),
+    Heredoc { end: String, strip_tabs: bool },
 }
 
 fn strip(line: &str, state: &mut State) -> Option<String> {
-    if let State::Heredoc(end) = state {
-        if line.trim() == end {
+    if let State::Heredoc { end, strip_tabs } = state {
+        if heredoc_terminates(line, end, *strip_tabs) {
             *state = State::Code;
         }
         return None;
     }
     let visible = strip_awk(line, state)?;
-    if let Some((start, token_end, end)) = heredoc_span(&visible) {
-        *state = State::Heredoc(end);
+    if let Some((start, token_end, end, strip_tabs)) = heredoc_span(&visible) {
+        *state = State::Heredoc { end, strip_tabs };
         return Some(format!("{}{}", &visible[..start], &visible[token_end..]));
     }
     Some(visible)
@@ -42,10 +42,11 @@ fn strip_awk(line: &str, state: &mut State) -> Option<String> {
     Some(prefix.to_owned())
 }
 
-fn heredoc_span(line: &str) -> Option<(usize, usize, String)> {
+fn heredoc_span(line: &str) -> Option<(usize, usize, String, bool)> {
     let start = unquoted_heredoc_start(line)?;
     let after_operator = &line[start + 2..];
-    let dash = after_operator.starts_with('-') as usize;
+    let strip_tabs = after_operator.starts_with('-');
+    let dash = strip_tabs as usize;
     let after_operator = &after_operator[dash..];
     let leading = after_operator.len() - after_operator.trim_start().len();
     let token = after_operator
@@ -60,8 +61,17 @@ fn heredoc_span(line: &str) -> Option<(usize, usize, String)> {
             start,
             start + 2 + dash + leading + token.len(),
             end.to_owned(),
+            strip_tabs,
         )
     })
+}
+
+fn heredoc_terminates(line: &str, end: &str, strip_tabs: bool) -> bool {
+    if strip_tabs {
+        line.trim_start_matches('\t') == end
+    } else {
+        line == end
+    }
 }
 
 fn unquoted_heredoc_start(line: &str) -> Option<usize> {

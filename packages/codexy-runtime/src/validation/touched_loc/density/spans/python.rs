@@ -8,7 +8,7 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
     let mut remainder = line;
     loop {
         if let Some(delimiter) = *end {
-            if let Some(index) = remainder.find(delimiter) {
+            if let Some(index) = unescaped_delimiter(remainder, delimiter) {
                 remainder = &remainder[index + delimiter.len()..];
                 *end = None;
                 continue;
@@ -18,7 +18,7 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
         if let Some((index, delimiter)) = triple_opener(remainder) {
             visible.push_str(&remainder[..index]);
             remainder = &remainder[index + delimiter.len()..];
-            if let Some(close) = remainder.find(delimiter) {
+            if let Some(close) = unescaped_delimiter(remainder, delimiter) {
                 remainder = &remainder[close + delimiter.len()..];
                 continue;
             }
@@ -36,9 +36,7 @@ fn triple_opener(line: &str) -> Option<(usize, &'static str)> {
         let (relative, delimiter) = ["\"\"\"", "'''"]
             .into_iter()
             .filter_map(|delimiter| {
-                line[offset..]
-                    .find(delimiter)
-                    .map(|index| (index, delimiter))
+                unescaped_delimiter(&line[offset..], delimiter).map(|index| (index, delimiter))
             })
             .min_by_key(|(index, _)| *index)?;
         let index = offset + relative;
@@ -48,6 +46,28 @@ fn triple_opener(line: &str) -> Option<(usize, &'static str)> {
         offset = index + delimiter.len();
     }
     None
+}
+
+fn unescaped_delimiter(text: &str, delimiter: &str) -> Option<usize> {
+    let mut offset = 0;
+    while let Some(relative) = text[offset..].find(delimiter) {
+        let index = offset + relative;
+        if !escaped_at(text, index) {
+            return Some(index);
+        }
+        offset = index + delimiter.len();
+    }
+    None
+}
+
+fn escaped_at(text: &str, index: usize) -> bool {
+    text[..index]
+        .chars()
+        .rev()
+        .take_while(|character| *character == '\\')
+        .count()
+        % 2
+        == 1
 }
 
 fn triple_opener_allowed(prefix: &str) -> bool {

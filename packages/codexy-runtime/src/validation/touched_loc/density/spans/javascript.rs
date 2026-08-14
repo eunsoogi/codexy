@@ -1,3 +1,5 @@
+use super::javascript_template::strip_template;
+
 pub(super) fn lines(text: &str) -> Vec<Option<String>> {
     let mut state = State::Code;
     text.lines().map(|line| strip(line, &mut state)).collect()
@@ -8,6 +10,11 @@ enum State {
     BlockComment,
     String(char),
     Regex,
+    Template {
+        depth: usize,
+        quote: Option<char>,
+        escaped: bool,
+    },
 }
 
 fn strip(line: &str, state: &mut State) -> Option<String> {
@@ -36,6 +43,20 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                 }
                 None => return Some(visible),
             },
+            State::Template {
+                depth,
+                quote,
+                escaped,
+            } => {
+                let (fragment, tail) = strip_template(remainder, depth, quote, escaped);
+                visible.push_str(&fragment);
+                if let Some(tail) = tail {
+                    remainder = tail;
+                    *state = State::Code;
+                } else {
+                    return Some(visible);
+                }
+            }
             State::Code => {
                 let Some((index, span)) = next_span(remainder) else {
                     visible.push_str(remainder);
@@ -55,6 +76,14 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                     Span::Regex => {
                         remainder = &remainder[index + 1..];
                         *state = State::Regex;
+                    }
+                    Span::Template => {
+                        remainder = &remainder[index + 1..];
+                        *state = State::Template {
+                            depth: 0,
+                            quote: None,
+                            escaped: false,
+                        };
                     }
                 }
             }
@@ -100,6 +129,7 @@ enum Span {
     BlockComment,
     String(char),
     Regex,
+    Template,
 }
 
 fn next_span(line: &str) -> Option<(usize, Span)> {
@@ -114,8 +144,11 @@ fn next_span(line: &str) -> Option<(usize, Span)> {
         if character == '/' && regex_context(&line[..index]) {
             return Some((index, Span::Regex));
         }
-        if matches!(character, '\'' | '"' | '`') {
+        if matches!(character, '\'' | '"') {
             return Some((index, Span::String(character)));
+        }
+        if character == '`' {
+            return Some((index, Span::Template));
         }
     }
     None
