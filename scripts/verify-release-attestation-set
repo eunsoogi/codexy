@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
+artifact_dir="${1:?artifact directory is required}"
+output="${2:?output path is required}"
+signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+
+for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+  artifact="$artifact_dir/$name"
+  attestations="$artifact_dir/$name.attestations.json"
+  digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
+  total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')"
+  gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
+    --signer-workflow "$signer" --source-ref refs/heads/main \
+    --source-digest "$ACTIVATION_COMMIT" --deny-self-hosted-runners \
+    --format json > "$attestations"
+  jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
+    "$attestations" >/dev/null
+  count="$(jq 'length' "$attestations")"
+  test "$count" = "$total"
+  fingerprint="$(jq -cS '[.[] | .verificationResult.statement] | sort_by(tojson)' "$attestations" | sha256sum | awk '{print $1}')"
+  jq -n --arg name "$name" --arg fingerprint "$fingerprint" --argjson count "$count" \
+    '{name: $name, count: $count, fingerprint: $fingerprint}'
+done | jq -s 'sort_by(.name)' > "$output"

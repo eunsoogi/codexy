@@ -51,6 +51,18 @@ mod release_tag_parity;
 #[path = "../release_workflow_parity.rs"]
 mod release_workflow_parity;
 
+#[path = "../release_actions_lifecycle.rs"]
+mod release_actions_lifecycle;
+
+#[path = "../release_lifecycle_contract.rs"]
+mod release_lifecycle_contract;
+
+#[path = "../release_publication_recovery.rs"]
+mod release_publication_recovery;
+
+#[path = "../release_settings_admission.rs"]
+mod release_settings_admission;
+
 #[path = "../repository_eol_contract.rs"]
 mod repository_eol_contract;
 

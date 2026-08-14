@@ -35,10 +35,15 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     support::assert_structured_literals(
         activation_pr,
         "activation pull request metadata",
-        &["--title \"feat(runtime): activate v${BOOTSTRAP_VERSION}\"", "Fixes #502"],
+        &["--title \"feat(runtime): activate v${BOOTSTRAP_VERSION}\"", "version ${BOOTSTRAP_VERSION}"],
     );
-    let release = run(&publisher, "publish-v1-3-0", "Create and verify the only public version release")?;
-    assert!(command_present(release, &["gh", "release", "create", "v1.3.0"]));
+    support::assert_structured_absent_literals(
+        activation_pr,
+        "activation pull request metadata",
+        &["Fixes #"],
+    );
+    let release = run(&publisher, "publish-release", "Create and verify the only public version release")?;
+    assert_eq!(release, "scripts/publish-verified-release");
     Ok(())
 }
 

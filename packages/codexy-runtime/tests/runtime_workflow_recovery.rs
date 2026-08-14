@@ -51,7 +51,7 @@ fn staging_publication_uses_expiring_authenticated_artifacts()
         .as_sequence()
         .ok_or("staging steps")?;
     let (_, publish) = named_step(steps, "Upload authenticated staging bundle")?;
-    assert_eq!(publish["uses"], "actions/upload-artifact@v7");
+    assert_eq!(publish["uses"], "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
     assert_eq!(publish["with"]["name"], "runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}");
     assert_eq!(publish["with"]["retention-days"], 14);
     Ok(())

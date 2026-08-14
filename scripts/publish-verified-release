@@ -1,0 +1,98 @@
+#!/bin/sh
+set -eu
+
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required}"
+: "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
+: "${STAGING_RUN_ID:?STAGING_RUN_ID is required}"
+: "${RELEASE_TAG:?RELEASE_TAG is required}"
+
+git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
+test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = "$STAGING_SOURCE_COMMIT"
+test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
+test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
+git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+release_exists=false
+if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
+  release_exists=true
+  test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
+  test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
+  test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
+  test "$(jq -r .isPrerelease release-state.json)" = false
+  for name in $(jq -r '.assets[].name' release-state.json); do
+    case "$name" in
+      codexy-marketplace-plugin.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;;
+      release-baseline.json) ;;
+      *) exit 1 ;;
+    esac
+  done
+  if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
+    for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+      jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
+    done
+  fi
+  if test "$(jq -r .isDraft release-state.json)" = false; then
+    for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
+      jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
+    done
+  fi
+fi
+tag_ref="refs/tags/$RELEASE_TAG"
+remote_tag="$(git ls-remote --refs origin "$tag_ref")"
+if test -z "$remote_tag"; then
+  test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+fi
+if test -z "$remote_tag"; then
+  tag_create_response=tag-create-response.txt
+  if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response"; then
+    test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 201
+  else
+    test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 422
+  fi
+fi
+remote_tag="$(git ls-remote --refs origin "$tag_ref")"
+test -n "$remote_tag"
+remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
+test "$remote_tag_oid" = "$ACTIVATION_COMMIT"
+git fetch --tags --force origin
+tag_commit="$(git rev-parse --verify "$tag_ref^{commit}")"
+test "$tag_commit" = "$ACTIVATION_COMMIT"
+test "$remote_tag" = "$(git ls-remote --refs origin "$tag_ref")"
+git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+
+if test "$release_exists" = false; then
+  changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
+  gh release create "$RELEASE_TAG" --verify-tag --draft --target "$ACTIVATION_COMMIT" --title "$RELEASE_TAG" --notes "$changelog_notes"
+  gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
+fi
+
+release_error() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+verify_release_asset() {
+  gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$1" --pattern "$asset" || return 1
+  cmp "dist/$asset" "$1/$asset" || release_error "release asset differs from verified bytes: $asset"
+}
+existing_release="$(mktemp -d)"
+verified_release="$(mktemp -d)"
+release_assets='codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
+for asset in $release_assets; do
+  if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
+    verify_release_asset "$existing_release"
+  fi
+done
+for asset in $release_assets; do
+  if ! jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
+    gh release upload "$RELEASE_TAG" "dist/$asset"
+  fi
+done
+gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
+for asset in $release_assets; do
+  jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
+  verify_release_asset "$verified_release"
+done
+scripts/reconcile-release-baseline

@@ -23,7 +23,7 @@ fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Res
     assert!(lines(assemble).any(|line| line == "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz"));
     assert!(lines(assemble).any(|line| line.ends_with("public-release")));
     assert!(!lines(assemble).any(|line| line.split_ascii_whitespace().take(2).eq(["cargo", "build"])));
-    let upload = job["steps"].as_sequence().ok_or("steps")?.iter().find(|step| step["uses"] == "actions/upload-artifact@v7").ok_or("upload")?;
+    let upload = job["steps"].as_sequence().ok_or("steps")?.iter().find(|step| step["uses"] == "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a").ok_or("upload")?;
     assert_eq!(upload["with"]["name"], "codexy-marketplace-plugin-${{ matrix.platform }}");
     Ok(())
 }

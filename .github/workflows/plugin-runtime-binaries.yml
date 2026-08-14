@@ -36,7 +36,7 @@ jobs:
           - platform: darwin-arm64
             runner: macos-14
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Download and verify selected immutable bytes
@@ -134,7 +134,7 @@ jobs:
             scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
             ;;
           esac
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: codexy-marketplace-plugin-${{ matrix.platform }}
           path: dist/codexy-marketplace-plugin.tar.gz
@@ -144,7 +144,7 @@ jobs:
     name: Verify native Windows selected candidate
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Verify immutable native Windows candidate bytes

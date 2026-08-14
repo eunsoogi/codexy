@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+
+target_version="${1:?target version is required}"
+case "$target_version" in
+  *[!0-9.]*|*.*.*.*|.*|*.)
+    printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+    exit 1
+    ;;
+esac
+IFS=.
+set -- $target_version
+unset IFS
+test "$#" = 3 && test -n "$1" && test -n "$2" && test -n "$3" || {
+  printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+  exit 1
+}
+
+release_tag="v$target_version"
+contract=.agents/plugins/release-publish-contract.json
+test "$(jq -r .version "$contract")" = "$target_version"
+test "$(jq -r .bootstrap.selectedVersion "$contract")" = "$target_version"
+test "$(jq -r .bootstrap.candidateVersion "$contract")" = "$target_version"
+test "$(jq -r .runtime.selectedTag "$contract")" = "$release_tag"
+for manifest in plugins/codexy/.codex-plugin/plugin.json \
+  plugins/codexy-devtools/.codex-plugin/plugin.json \
+  plugins/codexy-github/.codex-plugin/plugin.json; do
+  test "$(jq -r .version "$manifest")" = "$target_version"
+done
+package_version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+test "$package_version" = "$target_version"
+
+if test -n "${GITHUB_ENV:-}"; then
+  printf 'TARGET_VERSION=%s\nRELEASE_TAG=%s\n' "$target_version" "$release_tag" >> "$GITHUB_ENV"
+else
+  printf 'TARGET_VERSION=%s\nRELEASE_TAG=%s\n' "$target_version" "$release_tag"
+fi

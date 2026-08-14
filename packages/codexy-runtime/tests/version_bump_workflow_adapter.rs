@@ -71,12 +71,7 @@ fn governing_issue_request_is_canonicalized_before_mutation() -> TestResult {
             .lines()
             .find(|line| line.starts_with("--check-merge-message "))
             .ok_or("merge-message gate")?;
-        let arguments = merge_gate.split_ascii_whitespace().collect::<Vec<_>>();
-        let issue_index = arguments
-            .iter()
-            .position(|argument| *argument == "--expected-issue")
-            .ok_or("expected issue argument")?;
-        assert_eq!(arguments.get(issue_index + 1), Some(&"301"), "{request}");
+        assert!(!merge_gate.contains("--expected-issue"), "{request}");
     }
 
     for request in ["0", "not-a-number", "301;echo"] {

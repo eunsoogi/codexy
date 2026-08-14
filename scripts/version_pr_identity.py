@@ -134,12 +134,29 @@ class ObservedVersionPrIdentity:
     body: str
 
     @classmethod
-    def from_pr(cls, value: object, repository: str) -> "ObservedVersionPrIdentity":
+    def from_pr(cls, value: object, repository: str, issue_link_mode: str = "closing") -> "ObservedVersionPrIdentity":
         pr = require_object(value, "observed PR")
         branch = pr.get("headRefName")
         if not isinstance(branch, str) or not branch or branch != branch.strip():
             raise ValueError("observed PR requires a canonical version branch")
         references = pr.get("closingIssuesReferences")
+        if issue_link_mode == "nonclosing":
+            if not isinstance(references, list) or references:
+                raise ValueError("existing provisional release PR must not close an issue")
+            body = pr.get("body")
+            if not isinstance(body, str):
+                raise ValueError("observed PR requires a body")
+            if parse_body_closing_references(body, repository):
+                raise ValueError("existing provisional release PR must not contain closing references")
+            line = next((line for line in reversed(body.splitlines()) if line), "")
+            match = re.fullmatch(r"Tracks #([1-9][0-9]*)", line)
+            if match is None:
+                raise ValueError("observed provisional release PR body must end with canonical Tracks issue linkage")
+            number = int(match[1])
+            owner, name = parse_repository(repository)
+            return cls(branch, CanonicalIssueIdentity(owner, name, number, f"https://github.com/{repository}/issues/{number}"), cls._labels(pr.get("labels")), body)
+        if issue_link_mode != "closing":
+            raise ValueError("unsupported governing issue link mode")
         if not isinstance(references, list) or len(references) != 1:
             raise ValueError(
                 "existing PR must have exactly one canonical closing issue reference"
@@ -200,6 +217,7 @@ def authorize_governing_identity(
     repository: str,
     requested_issue: object,
     observed_pr: object | None,
+    issue_link_mode: str = "closing",
 ) -> None:
     if VERSION_PATTERN.fullmatch(version) is None:
         raise ValueError("version must use MAJOR.MINOR.PATCH form")
@@ -214,7 +232,7 @@ def authorize_governing_identity(
         raise ValueError(f"unsupported governing-identity transition: {action}")
     if observed_pr is None:
         raise ValueError("existing PR update requires observed governing identity")
-    observed = ObservedVersionPrIdentity.from_pr(observed_pr, repository)
+    observed = ObservedVersionPrIdentity.from_pr(observed_pr, repository, issue_link_mode)
     if observed.branch != f"codexy/version-{version}":
         raise ValueError("observed PR version branch does not match requested version")
     if observed.issue != requested:

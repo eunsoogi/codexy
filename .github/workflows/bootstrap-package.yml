@@ -12,6 +12,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: codexy-bootstrap-${{ inputs.bootstrap_version }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -25,18 +29,19 @@ jobs:
       name: pypi
       url: https://pypi.org/p/getcodexy
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
       - name: Admit current protected-main bootstrap source
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
         run: |
           test "${#SOURCE_COMMIT}" = 40
           case "$SOURCE_COMMIT" in
@@ -45,6 +50,9 @@ jobs:
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           main_at_admission="$(git rev-parse origin/main)"
           test "$SOURCE_COMMIT" = "$main_at_admission"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$SOURCE_COMMIT"
+          scripts/verify-release-settings --require-pypi
           git cat-file -e "$SOURCE_COMMIT^{commit}"
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
@@ -52,9 +60,9 @@ jobs:
           test "$version" = "$BOOTSTRAP_VERSION"
       - name: Build and publish bootstrap package
         run: |
-          python -m pip install --disable-pip-version-check build
-          python -m build --outdir dist packages/getcodexy
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes --requirement .github/requirements/release-build.txt
+          python -m build --no-isolation --outdir dist packages/getcodexy
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
       - name: Prove public wheel and source distribution availability
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
