@@ -44,13 +44,22 @@ fn strip_awk(line: &str, state: &mut State) -> Option<String> {
 
 fn heredoc_span(line: &str) -> Option<(usize, usize, String)> {
     let start = unquoted_heredoc_start(line)?;
-    let after_operator = line[start + 2..]
-        .strip_prefix('-')
-        .unwrap_or(&line[start + 2..]);
+    let after_operator = &line[start + 2..];
+    let dash = after_operator.starts_with('-') as usize;
+    let after_operator = &after_operator[dash..];
     let leading = after_operator.len() - after_operator.trim_start().len();
-    let token = after_operator.trim_start().split_whitespace().next()?;
+    let token = after_operator
+        .trim_start()
+        .split(|character: char| character.is_whitespace() || matches!(character, ';' | '&' | '|'))
+        .next()?;
     let end = token.trim_matches(|character| matches!(character, '\'' | '"'));
-    (!end.is_empty()).then(|| (start, start + 2 + leading + token.len(), end.to_owned()))
+    (!end.is_empty()).then(|| {
+        (
+            start,
+            start + 2 + dash + leading + token.len(),
+            end.to_owned(),
+        )
+    })
 }
 
 fn unquoted_heredoc_start(line: &str) -> Option<usize> {

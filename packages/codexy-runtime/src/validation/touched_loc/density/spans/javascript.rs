@@ -117,14 +117,14 @@ fn next_span(line: &str) -> Option<(usize, Span)> {
 }
 
 fn regex_context(prefix: &str) -> bool {
-    prefix
-        .trim_end()
-        .chars()
-        .next_back()
-        .is_none_or(|character| {
-            matches!(
-                character,
-                '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
-            )
-        })
+    let trimmed = prefix.trim_end();
+    matches!(
+        trimmed.split_whitespace().next_back(),
+        Some("return" | "throw" | "case" | "yield")
+    ) || trimmed.chars().next_back().is_none_or(|character| {
+        matches!(
+            character,
+            '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
+        )
+    })
 }

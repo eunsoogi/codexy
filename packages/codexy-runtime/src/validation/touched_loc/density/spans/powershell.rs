@@ -10,7 +10,7 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
         }
         return Some(String::new());
     }
-    if line.trim_start().starts_with('#') {
+    if comment_before_opener(line) {
         return Some(line.to_owned());
     }
     for (opening, closing) in [("@'", "'@"), ("@\"", "\"@")] {
@@ -23,4 +23,25 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
         }
     }
     Some(line.to_owned())
+}
+
+fn comment_before_opener(line: &str) -> bool {
+    let mut quote = None;
+    let mut escaped = false;
+    for character in line.chars() {
+        if let Some(delimiter) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '`' {
+                escaped = true;
+            } else if character == delimiter {
+                quote = None;
+            }
+        } else if character == '#' {
+            return true;
+        } else if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        }
+    }
+    false
 }

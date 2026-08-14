@@ -13,7 +13,7 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
     }
     for delimiter in ["\"\"\"", "'''"] {
         if let Some(index) = line.find(delimiter) {
-            if line[..index].contains('#') || quoted_before(&line[..index]) {
+            if !triple_opener_allowed(&line[..index]) {
                 continue;
             }
             let tail = &line[index + delimiter.len()..];
@@ -31,15 +31,23 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
     Some(line.to_owned())
 }
 
-fn quoted_before(prefix: &str) -> bool {
+fn triple_opener_allowed(prefix: &str) -> bool {
     let mut quote = None;
+    let mut escaped = false;
     for character in prefix.chars() {
-        quote = match quote {
-            Some(delimiter) if character == delimiter => None,
-            Some(delimiter) => Some(delimiter),
-            None if matches!(character, '\'' | '"') => Some(character),
-            None => None,
-        };
+        if let Some(delimiter) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == delimiter {
+                quote = None;
+            }
+        } else if character == '#' {
+            return false;
+        } else if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        }
     }
-    quote.is_some()
+    quote.is_none()
 }

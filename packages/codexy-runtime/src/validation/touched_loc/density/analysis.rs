@@ -25,7 +25,7 @@ pub(super) fn reason(language: Language, line: &str) -> Option<&'static str> {
         Language::Json if inline_object_fields(&visible, ':') >= 4 => Some("dense JSON object"),
         Language::Toml if inline_object_fields(&visible, '=') >= 4 => Some("dense TOML table"),
         Language::Yaml if yaml_flow_fields(&visible) >= 4 => Some("dense YAML flow mapping"),
-        Language::Yaml if !visible.contains("${{") && command_chain_count(&visible) >= 3 => {
+        Language::Yaml if command_chain_count(&yaml_commands(&visible)) >= 3 => {
             Some("dense workflow command chain")
         }
         _ => None,
@@ -82,11 +82,38 @@ fn python_inline_suite(line: &str) -> bool {
 
 fn javascript_body(line: &str) -> &str {
     let trimmed = line.trim_start();
-    if trimmed.starts_with("for (") || trimmed.starts_with("for(") {
-        closing_parenthesis(trimmed).map_or(trimmed, |index| &trimmed[index + 1..])
+    if let Some(index) = for_header_start(trimmed) {
+        closing_parenthesis(&trimmed[index..]).map_or(trimmed, |end| &trimmed[index + end + 1..])
     } else {
         trimmed
     }
+}
+
+fn for_header_start(line: &str) -> Option<usize> {
+    line.match_indices("for").find_map(|(index, _)| {
+        let before = line[..index].chars().next_back();
+        let after = &line[index + "for".len()..];
+        (!before.is_some_and(is_javascript_identifier) && after.trim_start().starts_with('('))
+            .then_some(index)
+    })
+}
+
+fn is_javascript_identifier(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '_' | '$')
+}
+
+fn yaml_commands(line: &str) -> String {
+    let mut visible = String::new();
+    let mut remainder = line;
+    while let Some(start) = remainder.find("${{") {
+        visible.push_str(&remainder[..start]);
+        let Some(end) = remainder[start + 3..].find("}}") else {
+            return visible;
+        };
+        remainder = &remainder[start + end + 5..];
+    }
+    visible.push_str(remainder);
+    visible
 }
 
 fn closing_parenthesis(line: &str) -> Option<usize> {

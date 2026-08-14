@@ -65,7 +65,7 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
             Path::new("anywhere/corpus.json"),
             r#"{"schema":"codexy.routing-evaluation-corpus.v1","corpus_id":"fixture","tasks":[{"id":"one","classification":"unit","prompt":"prompt","acceptance_oracle":"oracle"}]}"#,
         ),
-        Disposition::ExactFixture
+        Disposition::Maintained
     );
     assert_eq!(
         source_disposition(

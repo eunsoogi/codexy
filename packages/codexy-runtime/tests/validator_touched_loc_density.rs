@@ -155,6 +155,8 @@ mod markdown_boundary;
 mod lexer_boundary;
 #[path = "validator_touched_loc_density/sentinel_v4_boundary.rs"]
 mod sentinel_v4_boundary;
+#[path = "validator_touched_loc_density/sentinel_v7_boundary.rs"]
+mod sentinel_v7_boundary;
 #[path = "validator_touched_loc_density/cli.rs"]
 mod cli;
 
