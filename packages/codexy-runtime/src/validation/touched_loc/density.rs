@@ -5,8 +5,7 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 mod analysis;
-
-use analysis::reason;
+use analysis::{markdown_nonprose_lines, reason};
 /// Returns a diagnostic only for a changed, maintained source line whose
 /// syntax packs several executable statements or fields into one construct.
 /// Line width is intentionally not an input: long identifiers, URLs, and
@@ -16,19 +15,25 @@ pub(super) fn error(path: &Path, text: &str) -> Option<String> {
         return None;
     }
     text.lines()
-        .zip(rust_raw_string_lines(path, text).into_iter().zip(awk_program_lines(path, text)))
+        .zip(
+            rust_raw_string_lines(path, text).into_iter().zip(
+                awk_program_lines(path, text)
+                    .into_iter()
+                    .zip(markdown_nonprose_lines(path, text)),
+            ),
+        )
         .enumerate()
-        .find_map(|(index, (line, (raw_string, awk_program)))| {
-            (!raw_string && !awk_program)
+        .find_map(|(index, (line, (raw_string, (awk_program, markdown_nonprose))))| {
+            (!raw_string && !awk_program && !markdown_nonprose)
                 .then(|| reason(path, line))
                 .flatten()
                 .map(|reason| {
-                format!(
-                    "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
-                    path.display(),
-                    index + 1,
-                )
-            })
+                    format!(
+                        "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
+                        path.display(),
+                        index + 1,
+                    )
+                })
         })
 }
 
@@ -84,14 +89,16 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
         for (index, (line, raw_string)) in text
             .lines()
             .zip(
-                rust_raw_string_lines(&path, &text)
-                    .into_iter()
-                    .zip(awk_program_lines(&path, &text)),
+                rust_raw_string_lines(&path, &text).into_iter().zip(
+                    awk_program_lines(&path, &text)
+                        .into_iter()
+                        .zip(markdown_nonprose_lines(&path, &text)),
+                ),
             )
             .enumerate()
         {
-            let (raw_string, awk_program) = raw_string;
-            let reason = (!raw_string && !awk_program)
+            let (raw_string, (awk_program, markdown_nonprose)) = raw_string;
+            let reason = (!raw_string && !awk_program && !markdown_nonprose)
                 .then(|| reason(&path, line))
                 .flatten();
             let structural = reason.is_some();
@@ -147,19 +154,6 @@ pub(super) fn disposition(path: &Path) -> Disposition {
             | "plugins/codexy/runtime-release.json"
     ) {
         Disposition::Generated
-    } else if (lower.starts_with("tests/fixtures/") || lower.contains("/tests/fixtures/"))
-        && [
-            "invalid",
-            "malformed",
-            "broken",
-            "corrupt",
-            "unsafe",
-            "missing",
-        ]
-        .iter()
-        .any(|marker| lower.contains(marker))
-    {
-        Disposition::ExactMalformedFixture
     } else {
         Disposition::Maintained
     }
@@ -171,6 +165,12 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
         return base;
     }
     let path = path.to_string_lossy();
+    if is_fixture_path(&path) && text.starts_with("# codexy-exact-fixture: malformed\n") {
+        return Disposition::ExactMalformedFixture;
+    }
+    if text.starts_with("// codexy-exact-fixture-file: ") {
+        return Disposition::ExactFixture;
+    }
     let exact_json_fixture = is_fixture_path(&path) && path.ends_with(".json");
     let routing_reference = path.contains("routing-evaluation-") && path.ends_with(".json");
     if (exact_json_fixture || routing_reference) && serde_json::from_str::<Value>(text).is_ok() {
@@ -203,8 +203,8 @@ fn rust_raw_string_lines(path: &Path, text: &str) -> Vec<bool> {
                 let end = format!("\"{}", "#".repeat(hashes));
                 if !suffix.contains(&end) {
                     terminator = Some(end);
+                    return true;
                 }
-                return true;
             }
             was_raw
         })
@@ -230,6 +230,7 @@ fn awk_program_lines(path: &Path, text: &str) -> Vec<bool> {
         })
         .collect()
 }
+
 #[cfg(test)]
 #[path = "density/tests.rs"]
 mod tests;

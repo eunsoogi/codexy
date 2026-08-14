@@ -2,14 +2,21 @@ use std::path::Path;
 
 pub(super) fn reason(path: &Path, line: &str) -> Option<&'static str> {
     if path.extension().is_some_and(|extension| extension == "md") {
-        return (line.matches("MUST ").count() >= 3).then_some("dense mandatory instruction");
+        return markdown_clause_count(line)
+            .ge(&3)
+            .then_some("dense Markdown clauses");
     }
     let visible = visible_code(path, line);
     match path.extension().and_then(|extension| extension.to_str()) {
         Some("rs") if visible.contains('{') && statement_count(&visible) >= 3 => {
             Some("dense Rust statements")
         }
-        Some("py" | "js" | "ts" | "tsx" | "jsx") if statement_count(&visible) >= 3 => {
+        Some("py") if python_inline_suite(&visible) || statement_count(&visible) >= 3 => {
+            Some("dense executable statements")
+        }
+        Some("js" | "ts" | "tsx" | "jsx")
+            if !javascript_header(&visible) && statement_count(&visible) >= 3 =>
+        {
             Some("dense executable statements")
         }
         Some("sh" | "ps1") if !shell_predicate(&visible) && command_chain_count(&visible) >= 3 => {
@@ -23,6 +30,24 @@ pub(super) fn reason(path: &Path, line: &str) -> Option<&'static str> {
         }
         _ => None,
     }
+}
+
+pub(super) fn markdown_nonprose_lines(path: &Path, text: &str) -> Vec<bool> {
+    if path.extension().is_none_or(|extension| extension != "md") {
+        return vec![false; text.lines().count()];
+    }
+    let mut fenced = false;
+    text.lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("```") {
+                fenced = !fenced;
+                true
+            } else {
+                fenced || trimmed.starts_with('|')
+            }
+        })
+        .collect()
 }
 
 fn visible_code(path: &Path, line: &str) -> String {
@@ -39,7 +64,7 @@ fn visible_code(path: &Path, line: &str) -> String {
             } else if character == delimiter {
                 quote = None;
             }
-        } else if matches!(character, '"' | '\'') {
+        } else if matches!(character, '"') || (character == '\'' && !rust_lifetime(&visible)) {
             quote = Some(character);
         } else if (hash_comment && character == '#')
             || (slash_comment && character == '/' && characters.peek() == Some(&'/'))
@@ -50,6 +75,37 @@ fn visible_code(path: &Path, line: &str) -> String {
         }
     }
     visible
+}
+
+fn markdown_clause_count(line: &str) -> usize {
+    line.split(';')
+        .filter(|clause| clause.split_whitespace().count() >= 3)
+        .count()
+}
+
+fn python_inline_suite(line: &str) -> bool {
+    line.trim_start()
+        .split_once(':')
+        .is_some_and(|(header, suite)| {
+            (header.starts_with("if ")
+                || header.starts_with("for ")
+                || header.starts_with("while ")
+                || header.starts_with("def ")
+                || header.starts_with("class "))
+                && suite.trim().contains(';')
+        })
+}
+
+fn javascript_header(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("for (") || trimmed.starts_with("for(")
+}
+
+fn rust_lifetime(visible: &str) -> bool {
+    visible
+        .chars()
+        .last()
+        .is_some_and(|character| character.is_ascii_alphanumeric() || character == '_')
 }
 
 fn statement_count(line: &str) -> usize {

@@ -1,3 +1,4 @@
+// codexy-exact-fixture-file: shell-command-scenarios
 pub(super) fn remote_state(state: RemoteTag) -> &'static str {
     match state {
         RemoteTag::Wrong => "wrong",

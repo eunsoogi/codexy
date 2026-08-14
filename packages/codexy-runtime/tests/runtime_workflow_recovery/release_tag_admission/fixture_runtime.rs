@@ -224,7 +224,7 @@ impl Fixture {
             .count())
     }
 
-pub(super) fn remote_state(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub(super) fn remote_state(&self) -> Result<String, Box<dyn std::error::Error>> {
         Ok(fs::read_to_string(self.root.join("remote-state"))?
             .trim()
             .to_owned())

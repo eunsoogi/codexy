@@ -116,9 +116,28 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
         tests[platform].update(item_tests)
         targets[platform].update(item.get("physical_targets", []))
     duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
-    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts}) == 1 and all(targets[platform] == expected_targets and provenance_windows_within_budget(receipts, platform, valid_timing) for platform in tests) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    one_receipt_per_run = len(
+        {(item.get("run_id"), item.get("run_attempt")) for item in receipts}
+    ) == 1
+    targets_match = all(
+        targets[platform] == expected_targets
+        and provenance_windows_within_budget(receipts, platform, valid_timing)
+        for platform in tests
+    )
+    elapsed_within_budget = all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    valid = (
+        receipt_valid
+        and platforms == selected
+        and found == expected
+        and len(receipts) == len(expected)
+        and duplicates == 0
+        and one_receipt_per_run
+        and targets_match
+        and elapsed_within_budget
+    )
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
-    for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
+    for platform, values in tests.items():
+        print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
 
 

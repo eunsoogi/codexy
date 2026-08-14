@@ -28,7 +28,16 @@ def run_workload(
 ) -> tuple[str, float, int, dict[str, float | str | Path]]:
     started = time.perf_counter()
     deadline = time.monotonic() + budget_seconds
-    phases: dict[str, float | str] = {"windows-job-active-zero": "not-applicable", **dict.fromkeys(("cargo-root-status", "windows-job-pids-json", "windows-job-images-json", "linux-cargo-descendants-json"), "not-applicable")}
+    phase_names = (
+        "cargo-root-status",
+        "windows-job-pids-json",
+        "windows-job-images-json",
+        "linux-cargo-descendants-json",
+    )
+    phases: dict[str, float | str] = {
+        "windows-job-active-zero": "not-applicable",
+        **dict.fromkeys(phase_names, "not-applicable"),
+    }
     phases["profiler-started-epoch"] = getattr(time, "time", time.perf_counter)()
     with tempfile.TemporaryDirectory(prefix="codexy-profile-") as directory:
         capture_path = Path(directory) / "cargo-output"

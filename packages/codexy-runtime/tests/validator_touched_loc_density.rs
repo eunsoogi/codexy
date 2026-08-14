@@ -48,7 +48,7 @@ fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -
     write(
         fixture_repo.path(),
         "tests/fixtures/malformed_input.py",
-        "first(); second(); third()\n",
+        "# codexy-exact-fixture: malformed\nfirst(); second(); third()\n",
     )?;
     let fixture_output = validate(fixture_repo.path())?;
     assert!(fixture_output.status.success(), "{}", stderr(&fixture_output));
@@ -89,7 +89,7 @@ fn touched_loc_detects_dense_markdown_but_preserves_instruction_boundaries() -> 
     write(
         dense.path(),
         "plugins/codexy/skills/example/SKILL.md",
-        "A rule MUST identify the owner, MUST retain evidence, and MUST avoid duplicate work.\n",
+        "Identify the owner; retain the evidence; avoid duplicate work.\n",
     )?;
     assert!(!validate(dense.path())?.status.success());
 
@@ -100,6 +100,14 @@ fn touched_loc_detects_dense_markdown_but_preserves_instruction_boundaries() -> 
         "A rule MUST identify the owner and MUST retain evidence.\n",
     )?;
     assert!(validate(boundary.path())?.status.success());
+
+    let prose = fixture("plugins/codexy/skills/example/SKILL.md", "Readable text.\n".to_owned())?;
+    write(
+        prose.path(),
+        "plugins/codexy/skills/example/SKILL.md",
+        "Identify the owner; retain the evidence; avoid duplicate work.\n",
+    )?;
+    assert!(!validate(prose.path())?.status.success());
     Ok(())
 }
 
@@ -134,20 +142,19 @@ fn touched_loc_ignores_embedded_raw_string_fixtures() -> TestResult {
         "let probe = r#\"\nfirst(); second(); third();\n\"#;\n",
     )?;
     assert!(validate(repo.path())?.status.success());
+
+    let inline = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
+    write(
+        inline.path(),
+        "src/lib.rs",
+        "fn compact() { let fixture = r#\"first(); second(); third();\"#; first(); second(); third(); }\n",
+    )?;
+    assert!(!validate(inline.path())?.status.success());
     Ok(())
 }
 
-#[test]
-fn touched_loc_ignores_an_embedded_awk_parser() -> TestResult {
-    let repo = fixture("scripts/parser.sh", "exit 0\n".to_owned())?;
-    write(
-        repo.path(),
-        "scripts/parser.sh",
-        "awk '\nfunction value() { first(); second(); third(); }\n'\n",
-    )?;
-    assert!(validate(repo.path())?.status.success());
-    Ok(())
-}
+#[path = "validator_touched_loc_density/awk_boundary.rs"]
+mod awk_boundary;
 
 #[test]
 fn validator_cli_checks_density_in_a_changed_structured_file() -> TestResult {
@@ -211,6 +218,18 @@ fn touched_loc_handles_language_specific_nesting_and_boundaries() -> TestResult 
     let json_boundary = fixture("config/plugin.json", "{}\n".to_owned())?;
     write(json_boundary.path(), "config/plugin.json", r#"{"one":1,"two":2,"three":3}"#)?;
     assert!(validate(json_boundary.path())?.status.success());
+
+    let lifetime = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
+    write(lifetime.path(), "src/lib.rs", "fn borrow<'a>(item: &'a str) -> &'a str { item }\n")?;
+    assert!(validate(lifetime.path())?.status.success());
+
+    let javascript = fixture("src/check.js", "const ready = true;\n".to_owned())?;
+    write(javascript.path(), "src/check.js", "for (;;) { break; }\n")?;
+    assert!(validate(javascript.path())?.status.success());
+
+    let python = fixture("scripts/check.py", "pass\n".to_owned())?;
+    write(python.path(), "scripts/check.py", "if ready: first(); second(); third()\n")?;
+    assert!(!validate(python.path())?.status.success());
     Ok(())
 }
 

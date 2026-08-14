@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{Disposition, disposition, error};
+use super::{Disposition, disposition, error, source_disposition};
 
 #[test]
 fn detects_syntax_not_line_width() {
@@ -34,8 +34,18 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
         Disposition::Maintained
     );
     assert_eq!(
-        disposition(Path::new("tests/fixtures/malformed_input.py")),
+        source_disposition(
+            Path::new("tests/fixtures/malformed_input.py"),
+            "# codexy-exact-fixture: malformed\ninvalid source",
+        ),
         Disposition::ExactMalformedFixture
+    );
+    assert_eq!(
+        source_disposition(
+            Path::new("tests/fixture_program.rs"),
+            "// codexy-exact-fixture-file: shell-command-scenarios\nfn fixture() {}",
+        ),
+        Disposition::ExactFixture
     );
     assert_eq!(
         disposition(Path::new("packages/codexy-runtime/Cargo.lock")),
