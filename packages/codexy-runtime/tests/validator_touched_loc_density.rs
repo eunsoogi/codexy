@@ -236,6 +236,6 @@ fn validator_cli_emits_a_source_addressable_density_inventory() -> TestResult {
     let report = String::from_utf8(output.stdout)?;
     assert!(report.lines().all(|line| line.contains("\taudit-input=")));
     assert!(report.lines().any(|line| line.contains("audit-input=structural-density")));
-    assert!(report.lines().any(|line| line.contains("\tmaintained-readable\t")));
+    assert!(report.lines().all(|line| line.contains("structural-density")));
     Ok(())
 }

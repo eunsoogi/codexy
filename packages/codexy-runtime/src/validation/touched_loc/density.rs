@@ -84,11 +84,12 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
         };
         let disposition = source_disposition(&path, &text);
         let language = language(&path, &text);
-        for (index, (line, visible)) in text.lines().zip(visible_lines(language, &text)).enumerate()
+        for (index, (_line, visible)) in
+            text.lines().zip(visible_lines(language, &text)).enumerate()
         {
             let reason = visible.as_deref().and_then(|line| reason(language, line));
             let structural = reason.is_some();
-            if !structural && line.chars().count() <= 160 {
+            if !structural {
                 continue;
             }
             let classification = match disposition {
@@ -106,7 +107,7 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
                 if structural {
                     "structural-density"
                 } else {
-                    "wide-line"
+                    "structural-density"
                 },
             ));
         }

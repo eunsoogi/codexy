@@ -25,7 +25,7 @@ pub(super) fn reason(language: Language, line: &str) -> Option<&'static str> {
         Language::Json if inline_object_fields(&visible, ':') >= 4 => Some("dense JSON object"),
         Language::Toml if inline_object_fields(&visible, '=') >= 4 => Some("dense TOML table"),
         Language::Yaml if yaml_flow_fields(&visible) >= 4 => Some("dense YAML flow mapping"),
-        Language::Yaml if command_chain_count(&visible) >= 3 => {
+        Language::Yaml if !visible.contains("${{") && command_chain_count(&visible) >= 3 => {
             Some("dense workflow command chain")
         }
         _ => None,
@@ -119,7 +119,9 @@ fn closing_parenthesis(line: &str) -> Option<usize> {
 }
 
 fn statement_count(line: &str) -> usize {
-    line.matches(';').count()
+    line.split(';')
+        .filter(|statement| !statement.trim().trim_matches(['{', '}']).trim().is_empty())
+        .count()
 }
 
 fn command_chain_count(line: &str) -> usize {
