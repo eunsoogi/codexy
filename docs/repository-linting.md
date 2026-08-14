@@ -22,11 +22,12 @@ scripts/lint-repository.ps1 --check
 `tooling/lint-tools.json` is the single tool-version policy. The runner
 inventories Rust, Python, shell, PowerShell, Windows command launchers, and
 Markdown, JSON, YAML, and TOML. Prettier checks Markdown, JSON, and YAML;
-Taplo checks TOML. Rust uses the repository
-toolchain and lockfile; the other CI tools use the exact versions listed there.
-CI sets `CODEXY_LINT_CHANGED_SINCE` to the pull request base (or previous push)
-so every changed maintained file is checked while pre-existing repository debt
-remains an explicit baseline rather than making every first rollout red.
+Taplo checks TOML. Rust uses the pinned `1.85.0` toolchain and lockfile; the
+other CI tools use the exact versions listed there. CI sets
+`CODEXY_LINT_CHANGED_SINCE` to the current pull request base branch (or the
+previous push) and selects its merge-base diff, so every changed maintained
+file is checked while pre-existing repository debt remains an explicit baseline
+rather than making every first rollout red.
 
 Check mode is read-only. Fix mode applies Rustfmt, Ruff, shfmt,
 `Invoke-Formatter`, and Prettier; Ruff check mode is non-mutating while Ruff
