@@ -185,7 +185,7 @@ fn enrich_server(
         command,
         resolved_executable: resolved_command
             .as_ref()
-            .map(|item| item.executable.clone()),
+            .map(ResolvedCommand::display_executable),
         available: resolved_command.is_some(),
         resolved_command,
         install_hints: catalog_entry
