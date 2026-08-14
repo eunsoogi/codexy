@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import stat
 import subprocess
@@ -97,6 +98,22 @@ def tracked_regular_files(
         check=True,
         capture_output=True,
     ).stdout.split(b"\0")
+    base = os.environ.get("CODEXY_LINT_CHANGED_SINCE")
+    changed = None
+    if base:
+        changed = set(
+            filter(
+                None,
+                subprocess.run(
+                    ["git", "diff", "--name-only", "-z", base, "HEAD"],
+                    cwd=root,
+                    check=True,
+                    capture_output=True,
+                )
+                .stdout.decode("utf-8", "surrogateescape")
+                .split("\0"),
+            )
+        )
     files: list[str] = []
     for encoded in filter(None, listed):
         relative = Path(encoded.decode(sys.getfilesystemencoding(), "surrogateescape"))
@@ -107,6 +124,8 @@ def tracked_regular_files(
         ):
             raise ValueError(f"unsafe tracked path: {relative}")
         if any(relative.as_posix().startswith(prefix) for prefix in excluded):
+            continue
+        if changed is not None and relative.as_posix() not in changed:
             continue
         if any(ord(character) < 32 for character in relative.as_posix()):
             raise ValueError(f"unsafe tracked path: {relative}")

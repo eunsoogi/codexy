@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +58,12 @@ class LintFixtureTests(unittest.TestCase):
                         for path in step.command
                     )
                 )
+
+    def test_changed_scope_skips_unchanged_repository_debt(self) -> None:
+        runner = inventory_module()
+
+        with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "HEAD"}):
+            self.assertEqual(runner.build_plan(ROOT, "check", LANGUAGES), [])
 
     def test_workflow_exercises_real_failure_fixtures_for_every_route(self) -> None:
         workflow = (ROOT / ".github/workflows/language-lint.yml").read_text(

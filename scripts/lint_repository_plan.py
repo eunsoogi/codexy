@@ -28,7 +28,7 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
     if not selected <= EXPECTED_LANGUAGES:
         raise ValueError("unknown language requested")
     checking, plan = mode == "check", []
-    if "rust" in selected:
+    if "rust" in selected and inventory_files(root, "rust"):
         fmt = (
             "cargo",
             "+1.85.0",
@@ -59,8 +59,7 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
                 True,
             )
         )
-    if "python" in selected:
-        files = inventory_files(root, "python")
+    if "python" in selected and (files := inventory_files(root, "python")):
         check = ("ruff", "check") if checking else ("ruff", "check", "--fix")
         plan += [
             Step("python", check + ("--", *files), checking),
@@ -71,8 +70,7 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
                 checking,
             ),
         ]
-    if "shell" in selected:
-        files = shell_files(root)
+    if "shell" in selected and (files := shell_files(root)):
         plan += [
             Step("shell", ("shellcheck", f"--shell={dialect}", "--", *paths), True)
             for dialect, paths in shell_groups(root).items()
@@ -80,11 +78,8 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
         plan.append(
             Step("shell", ("shfmt", "-d" if checking else "-w", "--", *files), checking)
         )
-    if "powershell" in selected:
-        files, version = (
-            inventory_files(root, "powershell"),
-            tool_versions(root)["PSScriptAnalyzer"],
-        )
+    if "powershell" in selected and (files := inventory_files(root, "powershell")):
+        version = tool_versions(root)["PSScriptAnalyzer"]
         module = os.environ.get("CODEXY_PSSCRIPTANALYZER_PATH")
         module_arg = ("-ModulePath", module) if module else ()
         plan.append(
@@ -107,14 +102,16 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
                 checking,
             )
         )
-    if "windows-command" in selected:
+    if "windows-command" in selected and (
+        files := inventory_files(root, "windows-command")
+    ):
         plan.append(
             Step(
                 "windows-command",
                 (
                     sys.executable,
                     "scripts/lint-windows-command.py",
-                    *inventory_files(root, "windows-command"),
+                    *files,
                 ),
                 True,
             )
@@ -125,23 +122,25 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
         )
         toml = selected_files(root, ("*.toml",), INVENTORY_EXCLUSIONS)
         taplo = ("taplo", "fmt", "--check") if checking else ("taplo", "fmt")
-        plan += [
-            Step(
-                "text",
-                (
-                    "npx",
-                    "--no-install",
-                    "prettier",
-                    "--config",
-                    ".prettierrc.json",
-                    "--check" if checking else "--write",
-                    "--",
-                    *prettier,
-                ),
-                checking,
-            ),
-            Step("text", taplo + ("--", *toml), checking),
-        ]
+        if prettier:
+            plan.append(
+                Step(
+                    "text",
+                    (
+                        "npx",
+                        "--no-install",
+                        "prettier",
+                        "--config",
+                        ".prettierrc.json",
+                        "--check" if checking else "--write",
+                        "--",
+                        *prettier,
+                    ),
+                    checking,
+                )
+            )
+        if toml:
+            plan.append(Step("text", taplo + ("--", *toml), checking))
     return plan
 
 

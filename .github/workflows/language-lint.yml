@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CODEXY_LINT_CHANGED_SINCE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

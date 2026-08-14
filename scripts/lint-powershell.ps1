@@ -2,7 +2,7 @@ param(
     [ValidateSet("--check", "--fix")][string]$Mode,
     [Parameter(Mandatory = $true)][string]$Version,
     [string]$ModulePath,
-    [Parameter(Mandatory = $true)][string[]]$Path
+    [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][string[]]$Path
 )
 
 $ErrorActionPreference = "Stop"
