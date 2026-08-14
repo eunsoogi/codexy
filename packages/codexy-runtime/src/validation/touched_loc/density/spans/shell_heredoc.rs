@@ -28,27 +28,12 @@ impl Heredoc {
 pub(super) fn spans(line: &str, code: &str) -> Vec<Span> {
     let mut spans = Vec::new();
     let mut index = 0;
-    while index < line.len() {
-        let tail = &line[index..];
-        let code_tail = &code[index..];
-        let character = tail.chars().next().expect("index must be in bounds");
-        if code_tail.starts_with(' ') {
-            index += character.len_utf8();
-            continue;
-        }
-        if character == '\\' {
-            index += escaped_char_len(tail);
-            continue;
-        } else if tail.starts_with("$((") || tail.starts_with("((") {
-            index += arithmetic_len(tail).unwrap_or(tail.len());
-            continue;
-        } else if character == '#' && comment_start(line, index) {
-            break;
-        } else if tail.starts_with("<<<") {
+    while index < code.len() {
+        let tail = &code[index..];
+        if tail.starts_with("<<<") {
             index += 3;
-            continue;
-        } else if tail.starts_with("<<") && code_tail.starts_with("<<") {
-            let strip_tabs = tail[2..].starts_with('-');
+        } else if tail.starts_with("<<") {
+            let strip_tabs = line[index + 2..].starts_with('-');
             let operator_end = index + 2 + strip_tabs as usize;
             if let Some((word_len, end)) = word(&line[operator_end..]) {
                 spans.push(Span {
@@ -57,10 +42,16 @@ pub(super) fn spans(line: &str, code: &str) -> Vec<Span> {
                     heredoc: Heredoc { end, strip_tabs },
                 });
                 index = operator_end + word_len;
-                continue;
+            } else {
+                index += 2;
             }
+        } else {
+            index += tail
+                .chars()
+                .next()
+                .expect("index must be in bounds")
+                .len_utf8();
         }
-        index += character.len_utf8();
     }
     spans
 }
@@ -109,38 +100,6 @@ fn word(text: &str) -> Option<(usize, String)> {
     (quote.is_none() && !end.is_empty()).then(|| (text.len() + leading, end))
 }
 
-fn arithmetic_len(text: &str) -> Option<usize> {
-    let mut depth = 1;
-    let mut index = 2 + text.starts_with("$") as usize;
-    while index < text.len() {
-        let tail = &text[index..];
-        if tail.starts_with("((") {
-            depth += 1;
-            index += 2;
-        } else if tail.starts_with("))") {
-            depth -= 1;
-            index += 2;
-            if depth == 0 {
-                return Some(index);
-            }
-        } else {
-            index += tail.chars().next()?.len_utf8();
-        }
-    }
-    None
-}
-
-fn escaped_char_len(text: &str) -> usize {
-    let slash = '\\'.len_utf8();
-    slash + text[slash..].chars().next().map_or(0, char::len_utf8)
-}
-
 fn boundary(character: char) -> bool {
     character.is_whitespace() || matches!(character, ';' | '&' | '|' | '<' | '>')
-}
-
-fn comment_start(line: &str, index: usize) -> bool {
-    line[..index].chars().next_back().is_none_or(|character| {
-        character.is_whitespace() || matches!(character, ';' | '&' | '|' | '(' | ')')
-    })
 }

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use super::{
     shell_heredoc::{Heredoc, Span, spans},
-    shell_projection::{Projection, continues},
+    shell_projection::Projection,
 };
 
 pub(super) fn lines(text: &str) -> Vec<Option<String>> {
@@ -33,13 +33,13 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
         return None;
     }
     let mut logical = state.continued.take().unwrap_or_default();
-    if continues(line) {
-        logical.push_str(&line[..line.len() - 1]);
+    logical.push_str(line);
+    if state.projection.continues(&logical) {
+        logical.pop();
         state.continued = Some(logical);
         return Some(String::new());
     }
-    logical.push_str(line);
-    let visible = state.projection.project(&logical);
+    let visible = state.projection.project(&logical).visible;
     let heredocs = spans(&logical, &visible);
     if heredocs.is_empty() {
         return Some(visible);
