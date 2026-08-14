@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from .component_inspection import doctor, status
-from .component_lifecycle import run_operation
+from .component_lifecycle import HostExecutableError, run_operation
 from .component_transaction_identity import operation_id
 from .component_transition_model import OperationReceipt
 from .component_transition_rejections import Rejection, RejectionStage, StateFailure
@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
             receipt = doctor(arguments.codex_home, codex=arguments.codex)
         else:
             receipt = run_operation(arguments.command, tuple(getattr(arguments, "components", ())), arguments.codex_home, arguments.codex)
-    except (OSError, RuntimeError, ValueError) as error:
+    except HostExecutableError as error:
         if arguments.command == "bootstrap" and arguments.json_output:
             print(json.dumps(_bootstrap_host_failure(), sort_keys=True))
             return 2

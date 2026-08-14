@@ -109,6 +109,14 @@ def admit_recovery_inventory(manifest: ComponentManifest, inventory: object, mar
     return selected
 
 
+def admit_bootstrap_recovery_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, before: tuple[str, ...], target: tuple[str, ...]) -> tuple[str, ...]:
+    """Admit only a canonical add-only bootstrap state authorized by its journal."""
+    selected = admit_operation_inventory(manifest, inventory, marketplace_root, "bootstrap")
+    if not set(before).issubset(selected) or not set(selected).issubset(target):
+        raise ComponentResolutionError("inconsistent-installed-state")
+    return selected
+
+
 def _reconcile_classified_inventory(manifest: ComponentManifest, classified: ClassifiedInstalledInventory, marketplace_root: Path) -> tuple[str, ...]:
     records = _component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}

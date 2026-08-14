@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .component_manifest import ComponentManifest
-from .component_resolver import admit_operation_inventory, admit_recovery_inventory
+from .component_resolver import admit_bootstrap_recovery_inventory, admit_operation_inventory, admit_recovery_inventory
 from .component_transaction_receipts import read_receipt
 from .component_transaction_state import Journal
 from .component_transition_model import OperationReceipt
@@ -17,6 +17,10 @@ def admitted_selection(manifest: ComponentManifest, inventory: object, marketpla
 
 def admitted_recovery_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, expected: tuple[str, ...]) -> tuple[str, ...]:
     return admit_recovery_inventory(manifest, inventory, marketplace_root, expected)
+
+
+def admitted_bootstrap_recovery_selection(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, before: tuple[str, ...], target: tuple[str, ...]) -> tuple[str, ...]:
+    return admit_bootstrap_recovery_inventory(manifest, inventory, marketplace_root, before, target)
 
 
 def replay_receipt(home: Path, manifest: ComponentManifest, identifier: str, command: str, requested: tuple[str, ...]) -> dict[str, object] | None:

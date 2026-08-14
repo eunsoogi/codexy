@@ -23,8 +23,8 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
         self.assertEqual(repeated["selection_after"], ["core", "github", "devtools"])
 
-    def test_started_stale_bootstrap_recovers_before_a_different_install(self) -> None:
-        with fixture({"core", "github", "devtools"}, versions={"core": "1.2.0", "github": "1.2.0", "devtools": "1.2.0"}) as state:
+    def test_started_stale_bootstrap_recovers_an_intermediate_selection_before_a_different_install(self) -> None:
+        with fixture({"core", "github"}, versions={"core": "1.2.0", "github": "1.2.0"}) as state:
             journal = Journal(
                 "op-stale-bootstrap",
                 "bootstrap",
@@ -41,16 +41,16 @@ class BootstrapTests(unittest.TestCase):
 
             self.assertEqual(receipt["outcome"], "completed")
             prior = inventory_path(state.home).parent / "receipts" / "op-stale-bootstrap.json"
-            self.assertEqual(json.loads(prior.read_text(encoding="utf-8"))["outcome"], "rolled-back")
+            self.assertEqual(json.loads(prior.read_text(encoding="utf-8"))["outcome"], "completed")
             self.assertIsNone(read_journal(state.home))
-            self.assertEqual(receipt["selection_after"], ["core"])
+            self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
             self.assertEqual(
                 state.mutations,
                 [
-                    ("plugin", "remove", "codexy-devtools@codexy", "--json"),
-                    ("plugin", "remove", "codexy-github@codexy", "--json"),
-                    ("plugin", "remove", "codexy@codexy", "--json"),
+                    ("plugin", "marketplace", "upgrade", "codexy", "--json"),
                     ("plugin", "add", "codexy@codexy", "--json"),
+                    ("plugin", "add", "codexy-github@codexy", "--json"),
+                    ("plugin", "add", "codexy-devtools@codexy", "--json"),
                 ],
             )
 

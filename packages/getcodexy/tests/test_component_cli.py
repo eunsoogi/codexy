@@ -65,6 +65,15 @@ class ComponentCliTests(unittest.TestCase):
         self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
         self.assertTrue({error["code"] for error in receipt["errors"]}.issubset(load_component_manifest().domain_errors))
 
+    def test_bootstrap_json_does_not_relabel_a_post_mutation_runtime_failure(self) -> None:
+        output, errors = io.StringIO(), io.StringIO()
+        with patch("codexy_runtime_tools.component_cli.run_operation", side_effect=RuntimeError("durable recovery is required")), redirect_stdout(output), redirect_stderr(errors):
+            code = main(["bootstrap", "--json"])
+
+        self.assertEqual(code, 1)
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(errors.getvalue(), "getcodexy bootstrap: durable recovery is required\n")
+
     def test_json_install_prints_exactly_one_operation_receipt(self) -> None:
         receipt = {
             "schema": "getcodexy.operation-receipt.v1",

@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from .component_lifecycle_admission import admit_pending_receipt, admitted_recovery_selection, admitted_selection, matching_receipt, replay_receipt
+from .component_lifecycle_admission import admit_pending_receipt, admitted_bootstrap_recovery_selection, admitted_recovery_selection, admitted_selection, matching_receipt, replay_receipt
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
 from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, verify_post_operation_inventory
@@ -23,13 +23,17 @@ from .updater import _absolute, _validate_real_path
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
+class HostExecutableError(RuntimeError):
+    """The requested Codex executable was rejected before transaction admission."""
+
+
 def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os.PathLike[str], codex: Path | None = None, runner: Runner | None = None, *, operation_id: str | None = None) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
     home = _absolute(codex_home)
     _validate_real_path(home, require_exists=False)
-    executable, invoke = trusted_codex(codex or _find_codex()), runner or (lambda args: _run(args, home))
+    executable, invoke = _host_executable(codex), runner or (lambda args: _run(args, home))
     manifest, identifier = load_component_manifest(), _operation_id(operation_id)
     with transaction_lock(home):
         pending = read_journal(home)
@@ -51,7 +55,12 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            before = admitted_recovery_selection(manifest, inventory, root, pending.target) if pending is not None and pending.phase == "started" and pending.command in {"update", "bootstrap"} else admitted_selection(manifest, inventory, root, command)
+            if pending is not None and pending.phase == "started" and pending.command == "update":
+                before = admitted_recovery_selection(manifest, inventory, root, pending.target)
+            elif pending is not None and pending.phase == "started" and pending.command == "bootstrap":
+                before = admitted_bootstrap_recovery_selection(manifest, inventory, root, pending.before, pending.target)
+            else:
+                before = admitted_selection(manifest, inventory, root, command)
         except ComponentResolutionError as error:
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, error)
         except (OSError, ValueError, RuntimeError):
@@ -104,6 +113,13 @@ def _operation_id(value: str | None) -> str:
     return identifier
 
 
+def _host_executable(codex: Path | None) -> Path:
+    try:
+        return trusted_codex(codex or _find_codex())
+    except (OSError, RuntimeError, ValueError) as error:
+        raise HostExecutableError(str(error)) from error
+
+
 def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path) -> None:
     journal = read_journal(home)
     if journal is None:
@@ -112,7 +128,7 @@ def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: C
     if journal.phase == "committed":
         _finish_committed(home, executable, invoke, manifest, root, journal)
         return
-    if journal.command == "update" and journal.phase == "started":
+    if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
             installed = _apply_forward(executable, invoke, manifest, root, journal, journal.resolved, ())
         except BaseException as error:
