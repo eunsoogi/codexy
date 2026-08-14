@@ -10,18 +10,19 @@ import sys
 from pathlib import Path
 
 
-def relative_path(root: Path, file_name: str, package_root: Path) -> str | None:
+def relative_paths(root: Path, file_name: str, package_root: Path) -> set[str]:
     candidate = Path(file_name)
     if not candidate.is_absolute():
         candidates = (root / candidate, package_root / candidate)
     else:
         candidates = (candidate,)
+    paths: set[str] = set()
     for candidate in candidates:
         try:
-            return candidate.resolve().relative_to(root.resolve()).as_posix()
+            paths.add(candidate.resolve().relative_to(root.resolve()).as_posix())
         except ValueError:
             continue
-    return None
+    return paths
 
 
 def changed_diagnostics(
@@ -40,7 +41,7 @@ def changed_diagnostics(
             continue
         if any(
             span.get("is_primary")
-            and relative_path(root, span.get("file_name", ""), package_root) in changed
+            and changed & relative_paths(root, span.get("file_name", ""), package_root)
             for span in message.get("spans", [])
         ):
             diagnostics.append(message)

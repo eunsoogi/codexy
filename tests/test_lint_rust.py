@@ -6,6 +6,8 @@ import importlib.util
 import json
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,6 +82,37 @@ class RustLintTests(unittest.TestCase):
                     [item["message"] for item in diagnostics],
                     [f"package-relative {level}"],
                 )
+
+    def test_main_rejects_a_package_relative_changed_source_diagnostic(self) -> None:
+        lint_rust = load_lint_rust()
+        output = json.dumps(
+            {
+                "reason": "compiler-message",
+                "message": {
+                    "level": "error",
+                    "message": "changed package source",
+                    "spans": [
+                        {
+                            "file_name": "tests/repository_eol_contract.rs",
+                            "is_primary": True,
+                        }
+                    ],
+                },
+            }
+        )
+        completed = SimpleNamespace(returncode=0, stdout=output, stderr="")
+        arguments = [
+            "lint-rust.py",
+            "--manifest-path",
+            "packages/codexy-runtime/Cargo.toml",
+            "packages/codexy-runtime/tests/repository_eol_contract.rs",
+        ]
+
+        with (
+            mock.patch.object(lint_rust.subprocess, "run", return_value=completed),
+            mock.patch("sys.argv", arguments),
+        ):
+            self.assertEqual(lint_rust.main(), 1)
 
 
 if __name__ == "__main__":
