@@ -179,7 +179,8 @@ esac
         .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
         .env_path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .env_path("FIXTURE_SCRIPT_ROOT", temp.path())
-        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string())
+        .env_path("GITHUB_EVENT_PATH", temp.path().join("event.json"))
+        .env("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;

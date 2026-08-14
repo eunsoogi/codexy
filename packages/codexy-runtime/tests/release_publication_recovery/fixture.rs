@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Output,
 };
 
 use crate::support::{FixtureCommand as Command, fixture_script_interpreter_path};
@@ -119,23 +120,24 @@ impl Fixture {
 
     pub(crate) fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
         let publish = self.run("publish-verified-release")?;
-        assert!(
-            publish.status.success(),
-            "stdout: {} stderr: {}",
-            String::from_utf8_lossy(&publish.stdout),
-            String::from_utf8_lossy(&publish.stderr)
-        );
+        Self::assert_success("publish-verified-release", &publish);
         let finalize = self.run_with_settings(
             "finalize-verified-release",
             self.last_baseline_created()?,
             true,
         )?;
-        assert!(
-            finalize.status.success(),
-            "{}",
-            String::from_utf8_lossy(&finalize.stderr)
-        );
+        Self::assert_success("finalize-verified-release", &finalize);
         Ok(())
+    }
+
+    pub(crate) fn assert_success(operation: &str, output: &Output) {
+        assert!(
+            output.status.success(),
+            "{operation} exited {:?}; stdout: {}; stderr: {}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
     }
 
     pub(crate) fn run(
@@ -177,7 +179,7 @@ impl Fixture {
             .env("ACTIVATION_COMMIT", COMMIT)
             .env("STAGING_RUN_ID", "42")
             .env("RELEASE_TAG", "v9.9.9")
-            .env("GITHUB_ENV", self.root.join("release.env"))
+            .env_path("GITHUB_ENV", self.root.join("release.env"))
             .env("BASELINE_CREATED", baseline_created.to_string())
             .env("RELEASE_POLICY_TOKEN", "fixture-token")
             .env("SETTINGS_ALLOWED", settings_allowed.to_string())

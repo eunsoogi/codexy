@@ -31,7 +31,7 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
 fn finalizer_rejects_policy_drift_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    assert!(publish.status.success());
+    Fixture::assert_success("publish-verified-release", &publish);
     let baseline_created = fixture.last_baseline_created()?;
     let before = fixture.log()?;
     let finalize = fixture.run_with_settings("finalize-verified-release", baseline_created, false)?;
@@ -46,7 +46,7 @@ fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    assert!(publish.status.success());
+    Fixture::assert_success("publish-verified-release", &publish);
     let baseline_created = fixture.last_baseline_created()?;
     let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, true, false)?;
     assert!(!finalize.status.success());
@@ -93,5 +93,23 @@ fn declared_release_child_launch_is_independent_of_the_shell_working_directory()
         .output()?;
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(String::from_utf8(output.stdout)?, "release:v9.9.9\n");
+    Ok(())
+}
+
+#[test]
+fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-path-bridge");
+    let event = temp.path().join("event payload.json");
+    let environment = temp.path().join("release environment");
+    fs::write(&event, "event-body\n")?;
+    write_posix_fixture_command(&script, "#!/bin/sh\ncat \"$GITHUB_EVENT_PATH\" > \"$GITHUB_ENV\"\n")?;
+
+    let output = FixtureCommand::new(&script)
+        .env_path("GITHUB_EVENT_PATH", &event)
+        .env_path("GITHUB_ENV", &environment)
+        .output()?;
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(fs::read_to_string(environment)?, "event-body\n");
     Ok(())
 }
