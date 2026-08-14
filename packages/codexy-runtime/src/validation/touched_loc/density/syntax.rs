@@ -11,6 +11,10 @@ pub(super) fn is_extensionless_script(path: &Path) -> bool {
     path.starts_with("scripts/") && path.extension().is_none()
 }
 
+pub(super) fn portable_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 pub(super) fn visible_code(kind: &str, line: &str) -> String {
     let slash_comments = matches!(kind, "rs" | "js" | "ts" | "tsx" | "jsx");
     let hash_comments = matches!(kind, "py" | "sh" | "ps1" | "yml" | "yaml");

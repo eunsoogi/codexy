@@ -39,3 +39,9 @@ pub(super) fn release_step() -> Result<String, Box<dyn std::error::Error>> {
         release.replace("scripts/generate-release-changelog v1.3.0", "printf notes")
     ))
 }
+
+#[test]
+fn release_step_runs_the_extracted_verifier_through_sh() -> Result<(), Box<dyn std::error::Error>> {
+    assert!(release_step()?.contains("sh scripts/verify-runtime-release-source-binding"));
+    Ok(())
+}

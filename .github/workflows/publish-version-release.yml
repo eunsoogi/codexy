@@ -116,7 +116,7 @@ jobs:
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-          scripts/verify-runtime-release-source-binding dist/runtime-release-receipt.json
+          sh scripts/verify-runtime-release-source-binding dist/runtime-release-receipt.json
           git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
           tag_ref=refs/tags/v1.3.0
           remote_tag="$(git ls-remote --refs origin "$tag_ref")"

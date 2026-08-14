@@ -2,13 +2,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail};
-use serde_json::Value;
 
+mod provenance;
 mod syntax;
 
-use syntax::{is_extensionless_script, source_kind, visible_code};
-
-const PROVENANCE: &str = include_str!("density/provenance_manifest.json");
+use provenance::classify as provenance;
+use syntax::{is_extensionless_script, portable_path, source_kind, visible_code};
 
 /// Detects compact, executable structures in maintained changed source. This
 /// intentionally recognizes only stable single-line forms; other syntax is
@@ -135,34 +134,6 @@ fn disposition(path: &Path, text: &str) -> Disposition {
         return Disposition::Generated;
     }
     provenance(path, text).unwrap_or(Disposition::Maintained)
-}
-
-fn provenance(path: &Path, text: &str) -> Option<Disposition> {
-    let document = serde_json::from_str::<Value>(PROVENANCE).ok()?;
-    let source = document.get("sources")?.as_array()?.iter().find(|source| {
-        source.get("path").and_then(Value::as_str) == path.to_str() && matches_source(source, text)
-    })?;
-    match source.get("classification").and_then(Value::as_str) {
-        Some("exact-fixture") => Some(Disposition::ExactFixture),
-        Some("generated") => Some(Disposition::Generated),
-        _ => None,
-    }
-}
-
-fn matches_source(source: &Value, text: &str) -> bool {
-    let Ok(document) = serde_json::from_str::<Value>(text) else {
-        return false;
-    };
-    source
-        .get("schema")
-        .and_then(Value::as_str)
-        .is_some_and(|schema| document.get("schema").and_then(Value::as_str) == Some(schema))
-        || source
-            .get("marker")
-            .and_then(Value::as_str)
-            .is_some_and(|marker| {
-                document.get("description").and_then(Value::as_str) == Some(marker)
-            })
 }
 
 fn reason(path: &Path, text: &str, line: &str) -> Option<&'static str> {
