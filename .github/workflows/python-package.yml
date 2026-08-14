@@ -63,7 +63,20 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH = "packages/getcodexy/src"
-          python -m unittest packages/getcodexy/tests/test_component_cli.py packages/getcodexy/tests/test_component_lifecycle.py packages/getcodexy/tests/test_component_lifecycle_version_admission.py packages/getcodexy/tests/test_component_lifecycle_interrupt.py packages/getcodexy/tests/test_component_lifecycle_journal.py packages/getcodexy/tests/test_component_transition_model.py packages/getcodexy/tests/test_component_lifecycle_finalization.py packages/getcodexy/tests/test_component_lifecycle_preflight.py packages/getcodexy/tests/test_component_lifecycle_update_recovery.py packages/getcodexy/tests/test_component_lifecycle_admission.py packages/getcodexy/tests/test_component_transaction_durability.py
+          $componentTests = @(
+            "packages/getcodexy/tests/test_component_cli.py"
+            "packages/getcodexy/tests/test_component_lifecycle.py"
+            "packages/getcodexy/tests/test_component_lifecycle_version_admission.py"
+            "packages/getcodexy/tests/test_component_lifecycle_interrupt.py"
+            "packages/getcodexy/tests/test_component_lifecycle_journal.py"
+            "packages/getcodexy/tests/test_component_transition_model.py"
+            "packages/getcodexy/tests/test_component_lifecycle_finalization.py"
+            "packages/getcodexy/tests/test_component_lifecycle_preflight.py"
+            "packages/getcodexy/tests/test_component_lifecycle_update_recovery.py"
+            "packages/getcodexy/tests/test_component_lifecycle_admission.py"
+            "packages/getcodexy/tests/test_component_transaction_durability.py"
+          )
+          python -m unittest @componentTests
       - name: Test dependency-aware GitHub activation
         shell: pwsh
         run: |
@@ -79,10 +92,21 @@ jobs:
           $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
           New-Item -ItemType Directory -Force -Path $checkRoot | Out-Null
           $state = Join-Path $checkRoot "pr state.json"
-          Set-Content -NoNewline -Path $state -Value '{"state":"OPEN","repository":"owner/repo","labels":[{"name":"type/refactor"}],"repositoryLabels":[{"name":"type/refactor"}]}'
+          $statePayload = @{
+            state = "OPEN"
+            repository = "owner/repo"
+            labels = @(@{ name = "type/refactor" })
+            repositoryLabels = @(@{ name = "type/refactor" })
+          } | ConvertTo-Json -Compress
+          Set-Content -NoNewline -Path $state -Value $statePayload
           .package-venv\Scripts\codexy-github-check.exe --check-issue-title --issue-title "Extract GitHub workflow"
           .package-venv\Scripts\codexy-github-check.exe --check-pr-labels --pr-state-file $state
-          .package-venv\Scripts\codexy-github-check.exe --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message "refactor(github): extract workflow (#553)`n`nFixes #552"
+          $mergeMessage = @(
+            "refactor(github): extract workflow (#553)"
+            ""
+            "Fixes #552"
+          ) -join "`n"
+          .package-venv\Scripts\codexy-github-check.exe --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message $mergeMessage
           $hookRoot = Join-Path $env:RUNNER_TEMP "codexy github hook"
           Copy-Item -Recurse -Force plugins/codexy-github/hooks $hookRoot
           $context = '{"prompt":"Open a GitHub issue"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")

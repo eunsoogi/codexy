@@ -4,6 +4,7 @@ use std::process::Command;
 use anyhow::{Context as _, Result, bail};
 
 mod changes;
+mod density;
 mod reconciliation;
 
 use super::touched_loc_remediation;
@@ -49,6 +50,11 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
             continue;
         }
         let line_count = count_lines(&path)?;
+        let text = std::fs::read_to_string(&path)
+            .with_context(|| format!("reading touched file {}", file.path.display()))?;
+        if let Some(error) = density::error(&file.path, &text) {
+            errors.push(error);
+        }
         if let Some(error) = touched_loc_remediation::formatting_only_error(
             &root,
             base_ref,
