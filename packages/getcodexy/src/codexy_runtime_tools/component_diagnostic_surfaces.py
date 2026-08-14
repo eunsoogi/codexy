@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import tomllib
 from dataclasses import dataclass
 
 from .component_source_admission import DiagnosticFailure, DiagnosticTree
+from .component_toml import loads as load_toml
 
 
 CATALOGS = {
@@ -150,8 +150,8 @@ def _toml_value(tree: DiagnosticTree, relative: str) -> tuple[object | None, Dia
     if read.failure:
         return None, read.failure
     try:
-        return tomllib.loads(read.contents.decode()), None  # type: ignore[union-attr]
-    except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+        return load_toml(read.contents), None  # type: ignore[arg-type]
+    except ValueError:
         return None, DiagnosticFailure.MALFORMED
 
 

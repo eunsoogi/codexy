@@ -1,11 +1,12 @@
 #!/bin/sh
 set -eu
 
-root=$(mktemp -d /tmp/codexy-558-wheel-proof.XXXXXX)
-repo=$(git rev-parse --show-toplevel)
+root=$(cd -P "$(mktemp -d /tmp/codexy-558-wheel-proof.XXXXXX)" && pwd)
+source_repo=$(git rev-parse --show-toplevel)
+marketplace=$root/marketplace
 mkdir -p "$root"/dist "$root"/logs "$root"/state
 export CODEXY_WHEEL_STATE="$root/state"
-export CODEXY_WHEEL_REPOSITORY="$repo"
+export CODEXY_WHEEL_REPOSITORY="$source_repo"
 
 cat > "$root/codex" <<'CODEX'
 #!/bin/sh
@@ -45,6 +46,16 @@ for command in status doctor bootstrap; do
 done
 run status-final-json "$root/venv/bin/getcodexy" --codex "$root/codex" --codex-home "$root/home" status --json
 run doctor-final-json "$root/venv/bin/getcodexy" --codex "$root/codex" --codex-home "$root/home" doctor --json
+mkdir -p "$marketplace"
+cp -R "$source_repo/plugins" "$marketplace/plugins"
+export CODEXY_WHEEL_REPOSITORY="$marketplace"
+"$root/venv/bin/python" - "$marketplace/plugins/codexy/agents/catalog.toml" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+path.write_text(path.read_text() + "\nextra = " + "9" * 5_000 + "\n")
+PY
+run doctor-corrupt-json "$root/venv/bin/getcodexy" --codex "$root/codex" --codex-home "$root/home" doctor --json
+run doctor-corrupt-human "$root/venv/bin/getcodexy" --codex "$root/codex" --codex-home "$root/home" doctor
 
 "$root/venv/bin/python" - "$root/logs" <<'PY' > "$root/logs/assertions.out"
 import json, pathlib, sys
@@ -55,6 +66,11 @@ for command, schema in (("status", "getcodexy.status.v1"), ("doctor", "getcodexy
     assert (logs / f"{command}-human.out").read_text().strip()
 assert json.loads((logs / "status-final-json.out").read_text())["installed_components"] == ["core", "github", "devtools"]
 assert all(item["state"] == "healthy" for item in json.loads((logs / "doctor-final-json.out").read_text())["component_health"])
+corrupt = json.loads((logs / "doctor-corrupt-json.out").read_text())
+core = next(item for item in corrupt["component_health"] if item["component"] == "core")
+assert core["state"] == "incompatible"
+assert core["repair"] == "repair the Codexy registration, then rerun getcodexy doctor"
+assert "incompatible" in (logs / "doctor-corrupt-human.out").read_text()
 print("wheel-console-assertions=PASS")
 PY
 printf '%s\n' "$?" > "$root/logs/assertions.exit"

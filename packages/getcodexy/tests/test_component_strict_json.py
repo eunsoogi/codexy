@@ -41,6 +41,11 @@ class StrictComponentJsonTests(unittest.TestCase):
         self.assertEqual(_array_depth(loads(_nested_array(32))), 32)
         self.assertEqual(loads("1e99"), 1e99)
 
+    def test_exact_nesting_boundary_accepts_128_and_rejects_129(self) -> None:
+        self.assertEqual(_array_depth(loads(_nested_array(128))), 128)
+        with self.assertRaisesRegex(ValueError, "nesting"):
+            loads(_nested_array(129))
+
 
 def _nested_array(depth: int) -> str:
     return "[" * depth + "0" + "]" * depth
