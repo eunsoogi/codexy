@@ -81,25 +81,3 @@ mod validator_review_handoff;
 
 #[path = "../validator_pr_state_capture.rs"]
 mod validator_pr_state_capture;
-
-
-#[path = "../validator_sentinel_loc_remediation.rs"]
-mod validator_sentinel_loc_remediation;
-
-#[path = "../validator_sentinel_reasoning_control.rs"]
-mod validator_sentinel_reasoning_control;
-
-#[path = "../validator_sentinel_reasoning_edges.rs"]
-mod validator_sentinel_reasoning_edges;
-
-#[path = "../validator_sentinel_reasoning_evidence.rs"]
-mod validator_sentinel_reasoning_evidence;
-
-#[path = "../validator_sentinel_reasoning_followups.rs"]
-mod validator_sentinel_reasoning_followups;
-
-#[path = "../validator_sentinel_reasoning_fixture.rs"]
-mod validator_sentinel_reasoning_fixture;
-
-#[path = "../validator_sentinel_reviewer_gate.rs"]
-mod validator_sentinel_reviewer_gate;
