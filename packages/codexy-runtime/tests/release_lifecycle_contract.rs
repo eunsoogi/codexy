@@ -1,4 +1,6 @@
-use std::{fs, process::Command};
+use std::fs;
+
+use crate::support::ReleaseFixtureCommand;
 
 #[test]
 fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
@@ -21,15 +23,16 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         fs::create_dir_all(to.parent().ok_or("parent")?)?;
         fs::write(&to, fs::read_to_string(from)?.replace("1.3.0", version))?;
     }
+    let lifecycle_script = target.join("scripts/validate-release-lifecycle-contract");
+    crate::support::make_executable(&lifecycle_script)?;
     let environment = target.join("release.env");
     let run = |value: &str| {
-        Command::new("sh")
-            .arg("scripts/validate-release-lifecycle-contract")
+        ReleaseFixtureCommand::new(&lifecycle_script)
             .arg(value)
             .current_dir(target)
-            .env("GITHUB_ENV", &environment)
-            .status()
-            .map(|status| status.success())
+            .path("GITHUB_ENV", &environment)
+            .output()
+            .map(|output| output.status.success())
     };
     for accepted in [version, "2147483647.0.0"] {
         if accepted != version {

@@ -4,7 +4,7 @@ use fixture::{ASSETS, Fixture};
 use std::fs;
 
 use crate::support::{
-    FixtureCommand, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    FixtureScriptBinding, ReleaseFixtureCommand, bind_posix_fixture_script_launchers,
     fixture_script_interpreter_path, write_posix_fixture_command,
 };
 
@@ -85,11 +85,11 @@ fn declared_release_child_launch_is_independent_of_the_shell_working_directory()
         }],
     )?;
 
-    let output = FixtureCommand::new(&parent)
+    let output = ReleaseFixtureCommand::new(&parent)
         .current_dir(temp.path())
         .arg("v9.9.9")
-        .env_path("FIXTURE_POSIX_SHELL", fixture_script_interpreter_path(&parent)?)
-        .env_path("FIXTURE_SCRIPT_ROOT", &fixture_root)
+        .path("FIXTURE_POSIX_SHELL", fixture_script_interpreter_path(&parent)?)
+        .path("FIXTURE_SCRIPT_ROOT", &fixture_root)
         .output()?;
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(String::from_utf8(output.stdout)?, "release:v9.9.9\n");
@@ -105,9 +105,9 @@ fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Bo
     fs::write(&event, "event-body\n")?;
     write_posix_fixture_command(&script, "#!/bin/sh\ncat \"$GITHUB_EVENT_PATH\" > \"$GITHUB_ENV\"\n")?;
 
-    let output = FixtureCommand::new(&script)
-        .env_path("GITHUB_EVENT_PATH", &event)
-        .env_path("GITHUB_ENV", &environment)
+    let output = ReleaseFixtureCommand::new(&script)
+        .path("GITHUB_EVENT_PATH", &event)
+        .path("GITHUB_ENV", &environment)
         .output()?;
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert_eq!(fs::read_to_string(environment)?, "event-body\n");

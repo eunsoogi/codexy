@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::support::{
-    FixtureCommand as Command, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    FixtureScriptBinding, ReleaseFixtureCommand, bind_posix_fixture_script_launchers,
     bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 
@@ -173,19 +173,19 @@ esac
     )?;
     let shell_launcher = fixture_script_interpreter_path(&scripts.join("verify-release-edit-baseline"))?;
     let script = scripts.join("verify-release-edit-baseline");
-    let run = |extra_attestation: bool| Command::new(&script)
-        .current_dir(temp.path()).env("FIXTURE_DIR", &fixture).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .env_path("FIXTURE_GH", &gh)
-        .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
-        .env_path("FIXTURE_POSIX_SHELL", &shell_launcher)
-        .env_path("FIXTURE_SCRIPT_ROOT", temp.path())
-        .env_path("GITHUB_EVENT_PATH", temp.path().join("event.json"))
-        .env("EXTRA_ATTESTATION", extra_attestation.to_string())
+    let run = |extra_attestation: bool| ReleaseFixtureCommand::new(&script)
+        .current_dir(temp.path()).path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .path("FIXTURE_GH", &gh)
+        .path("FIXTURE_GH_LAUNCHER", &gh_launcher)
+        .path("FIXTURE_POSIX_SHELL", &shell_launcher)
+        .path("FIXTURE_SCRIPT_ROOT", temp.path())
+        .path("GITHUB_EVENT_PATH", temp.path().join("event.json"))
+        .scalar("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
     let verified = run(false)?;
-    assert!(verified.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&verified.stdout), String::from_utf8_lossy(&verified.stderr));
+    ReleaseFixtureCommand::assert_success("verify-release-edit-baseline", &verified);
     for (name, changed_event) in [
         ("name", r#"{"action":"edited","changes":{"name":{"from":"old"}},"release":{"id":42}}"#),
         ("body and name", r#"{"action":"edited","changes":{"body":{"from":"old"},"name":{"from":"old"}},"release":{"id":42}}"#),

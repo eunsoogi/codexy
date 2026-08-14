@@ -4,7 +4,7 @@ use std::{
     process::Output,
 };
 
-use crate::support::{FixtureCommand as Command, fixture_script_interpreter_path};
+use crate::support::{ReleaseFixtureCommand, fixture_script_interpreter_path};
 
 #[path = "fixture_materialization.rs"]
 mod fixture_materialization;
@@ -120,24 +120,18 @@ impl Fixture {
 
     pub(crate) fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
         let publish = self.run("publish-verified-release")?;
-        Self::assert_success("publish-verified-release", &publish);
+        ReleaseFixtureCommand::assert_success("publish-verified-release", &publish);
         let finalize = self.run_with_settings(
             "finalize-verified-release",
             self.last_baseline_created()?,
             true,
         )?;
-        Self::assert_success("finalize-verified-release", &finalize);
+        ReleaseFixtureCommand::assert_success("finalize-verified-release", &finalize);
         Ok(())
     }
 
     pub(crate) fn assert_success(operation: &str, output: &Output) {
-        assert!(
-            output.status.success(),
-            "{operation} exited {:?}; stdout: {}; stderr: {}",
-            output.status.code(),
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
+        ReleaseFixtureCommand::assert_success(operation, output);
     }
 
     pub(crate) fn run(
@@ -163,27 +157,27 @@ impl Fixture {
         settings_allowed: bool,
         immutable: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        Ok(Command::new(self.root.join("scripts").join(name))
+        Ok(ReleaseFixtureCommand::new(self.root.join("scripts").join(name))
             .current_dir(&self.root)
-            .env_path("FIXTURE_GIT", self.root.join("bin/git"))
-            .env_path("FIXTURE_GIT_LAUNCHER", &self.git_launcher)
-            .env_path("FIXTURE_GH", self.root.join("bin/gh"))
-            .env_path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
-            .env_path(
+            .path("FIXTURE_GIT", self.root.join("bin/git"))
+            .path("FIXTURE_GIT_LAUNCHER", &self.git_launcher)
+            .path("FIXTURE_GH", self.root.join("bin/gh"))
+            .path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
+            .path(
                 "FIXTURE_POSIX_SHELL",
                 fixture_script_interpreter_path(&self.root.join("scripts/publish-verified-release"))?,
             )
-            .env_path("FIXTURE_SCRIPT_ROOT", &self.root)
-            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-            .env("STAGING_SOURCE_COMMIT", COMMIT)
-            .env("ACTIVATION_COMMIT", COMMIT)
-            .env("STAGING_RUN_ID", "42")
-            .env("RELEASE_TAG", "v9.9.9")
-            .env_path("GITHUB_ENV", self.root.join("release.env"))
-            .env("BASELINE_CREATED", baseline_created.to_string())
-            .env("RELEASE_POLICY_TOKEN", "fixture-token")
-            .env("SETTINGS_ALLOWED", settings_allowed.to_string())
-            .env("FIXTURE_IMMUTABLE", immutable.to_string())
+            .path("FIXTURE_SCRIPT_ROOT", &self.root)
+            .scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .scalar("STAGING_SOURCE_COMMIT", COMMIT)
+            .scalar("ACTIVATION_COMMIT", COMMIT)
+            .scalar("STAGING_RUN_ID", "42")
+            .scalar("RELEASE_TAG", "v9.9.9")
+            .path("GITHUB_ENV", self.root.join("release.env"))
+            .scalar("BASELINE_CREATED", baseline_created.to_string())
+            .scalar("RELEASE_POLICY_TOKEN", "fixture-token")
+            .scalar("SETTINGS_ALLOWED", settings_allowed.to_string())
+            .scalar("FIXTURE_IMMUTABLE", immutable.to_string())
             .output()?)
     }
 

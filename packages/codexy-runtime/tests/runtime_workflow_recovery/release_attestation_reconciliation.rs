@@ -1,6 +1,8 @@
 use std::fs;
 
-use crate::support::{bind_posix_fixture_shell_launchers, fixture_script_interpreter_path, FixtureCommand as Command};
+use crate::support::{
+    ReleaseFixtureCommand, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
+};
 
 #[test]
 fn attestation_reconciliation_models_paginated_slurp_and_rerun_state()
@@ -34,17 +36,18 @@ esac
     bind_posix_fixture_shell_launchers(&script, &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER")])?;
     let launcher = fixture_script_interpreter_path(&gh)?;
     let environment = temp.path().join("release.env");
-    let run = |state: &str| Command::new(&script)
+    let run = |state: &str| ReleaseFixtureCommand::new(&script)
         .arg_path(&artifacts).args(["ATTEST_ORIGINAL", "release-baseline.json"])
-        .current_dir(temp.path()).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .env("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-        .env("GITHUB_ENV", &environment).env("ATTESTATION_STATE", state)
-        .env_path("FIXTURE_GH", &gh).env_path("FIXTURE_GH_LAUNCHER", &launcher).output();
-    assert!(run("absent")?.status.success());
+        .current_dir(temp.path()).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .scalar("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        .path("GITHUB_ENV", &environment).scalar("ATTESTATION_STATE", state)
+        .path("FIXTURE_GH", &gh).path("FIXTURE_GH_LAUNCHER", &launcher).output();
+    let absent = run("absent")?;
+    ReleaseFixtureCommand::assert_success("reconcile-release-attestations absent", &absent);
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=true\n");
     fs::write(&environment, "")?;
     let existing = run("existing")?;
-    assert!(existing.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&existing.stdout), String::from_utf8_lossy(&existing.stderr));
+    ReleaseFixtureCommand::assert_success("reconcile-release-attestations existing", &existing);
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=false\n");
     fs::write(&environment, "")?;
     assert!(!run("mismatch")?.status.success());

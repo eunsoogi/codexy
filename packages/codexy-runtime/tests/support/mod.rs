@@ -31,6 +31,7 @@ mod release_cache_fixture;
 mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
+mod release_fixture_command;
 mod release_version;
 pub(crate) mod review_control_state;
 pub(crate) mod touched_loc;
@@ -112,6 +113,7 @@ pub(super) use release_cache_release_match::{
     assert_wrapper_rejects_stale_default_release_then_accepts_matching_release,
 };
 pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
+pub(crate) use release_fixture_command::ReleaseFixtureCommand;
 pub(crate) use wrapper::{
     WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
     make_executable, run_wrapper, run_wrapper_command, run_wrapper_command_with_timeout,
