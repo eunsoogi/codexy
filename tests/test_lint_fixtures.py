@@ -136,6 +136,16 @@ class LintFixtureTests(unittest.TestCase):
                 self.assertIn("uses: actions/checkout@v7", section.group())
                 self.assertIn("fetch-depth: 0", section.group())
 
+        self.assertIn(
+            "ref: ${{ github.event.pull_request.head.sha || github.sha }}", workflow
+        )
+
+    def test_shell_launcher_avoids_ambiguous_empty_environment_assignment(self) -> None:
+        launcher = (ROOT / "scripts/lint-repository").read_text(encoding="utf-8")
+
+        self.assertNotIn("CDPATH= cd", launcher)
+        self.assertIn('cd -- "$(dirname -- "$0")" || exit 1', launcher)
+
     def test_powershell_fixture_exercises_multiple_paths(self) -> None:
         fixtures = (ROOT / "scripts/verify-lint-fixtures.py").read_text(
             encoding="utf-8"
@@ -144,6 +154,7 @@ class LintFixtureTests(unittest.TestCase):
         self.assertIn('"tests/lint-fixtures/powershell/good.ps1",', fixtures)
         self.assertIn('"tests/lint-fixtures/powershell/bad.ps1",', fixtures)
         self.assertIn("A positional parameter cannot be found", fixtures)
+        self.assertNotIn('"-Path",', fixtures)
 
     def test_windows_command_fixtures_cover_success_and_failure(self) -> None:
         checker = [sys.executable, "scripts/lint-windows-command.py"]

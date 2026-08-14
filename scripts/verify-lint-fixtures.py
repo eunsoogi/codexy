@@ -153,7 +153,6 @@ def powershell() -> None:
         "-Mode",
         "--check",
         *module_arg,
-        "-Path",
         "tests/lint-fixtures/powershell/bad.ps1",
         succeeds=False,
     )
@@ -162,7 +161,6 @@ def powershell() -> None:
         "-Mode",
         "--check",
         *module_arg,
-        "-Path",
         "tests/lint-fixtures/powershell/good.ps1",
         succeeds=True,
     )
@@ -172,7 +170,6 @@ def powershell() -> None:
             "-Mode",
             "--check",
             *module_arg,
-            "-Path",
             "tests/lint-fixtures/powershell/good.ps1",
             "tests/lint-fixtures/powershell/bad.ps1",
         ],
@@ -191,13 +188,13 @@ def powershell() -> None:
     shutil.copy2(FIXTURES / "powershell/fix.ps1", target)
     relative = target.relative_to(ROOT).as_posix()
     try:
-        command(*base, "-Mode", "--fix", *module_arg, "-Path", relative, succeeds=True)
+        command(*base, "-Mode", "--fix", *module_arg, relative, succeeds=True)
         once = target.read_bytes()
-        command(*base, "-Mode", "--fix", *module_arg, "-Path", relative, succeeds=True)
+        command(*base, "-Mode", "--fix", *module_arg, relative, succeeds=True)
         if target.read_bytes() != once:
             raise SystemExit("Invoke-Formatter is not idempotent")
         command(
-            *base, "-Mode", "--check", *module_arg, "-Path", relative, succeeds=True
+            *base, "-Mode", "--check", *module_arg, relative, succeeds=True
         )
     finally:
         shutil.rmtree(directory)

@@ -72,6 +72,18 @@ class LintRepositoryTests(unittest.TestCase):
         checker = next(step for step in plan if step.command[:2] == ("ruff", "check"))
         self.assertIn("--fix", checker.command)
 
+    def test_rust_plan_scopes_clippy_to_changed_rust_sources(self) -> None:
+        runner = load_runner()
+        source = "packages/codexy-runtime/tests/repository_eol_contract.rs"
+
+        with mock.patch("lint_repository_plan.selected_files", return_value=(source,)):
+            plan = runner.build_plan(ROOT, "check", {"rust"})
+
+        self.assertEqual(plan[0].command[:2], ("rustfmt", "+1.85.0"))
+        self.assertEqual(plan[1].command[:2], (sys.executable, "scripts/lint-rust.py"))
+        self.assertIn(source, plan[0].command)
+        self.assertIn(source, plan[1].command)
+
     def test_check_fix_fix_check_plan_is_idempotent(self) -> None:
         runner = load_runner()
 

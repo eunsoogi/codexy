@@ -28,33 +28,23 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
     if not selected <= EXPECTED_LANGUAGES:
         raise ValueError("unknown language requested")
     checking, plan = mode == "check", []
-    if "rust" in selected and inventory_files(root, "rust"):
-        fmt = (
-            "cargo",
-            "+1.85.0",
-            "fmt",
-            "--manifest-path",
-            "packages/codexy-runtime/Cargo.toml",
-            "--all",
-        )
+    if "rust" in selected and (
+        files := selected_files(root, ("*.rs",), INVENTORY_EXCLUSIONS)
+    ):
+        fmt = ("rustfmt", "+1.85.0", "--edition", "2024")
         plan.append(
-            Step("rust", fmt + (("--", "--check") if checking else ()), checking)
+            Step("rust", fmt + (("--check",) if checking else ()) + files, checking)
         )
         plan.append(
             Step(
                 "rust",
                 (
-                    "cargo",
-                    "+1.85.0",
-                    "clippy",
+                    sys.executable,
+                    "scripts/lint-rust.py",
                     "--manifest-path",
                     "packages/codexy-runtime/Cargo.toml",
-                    "--locked",
-                    "--all-targets",
-                    "--all-features",
                     "--",
-                    "-D",
-                    "warnings",
+                    *files,
                 ),
                 True,
             )
@@ -96,7 +86,6 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
                     "-Version",
                     version,
                     *module_arg,
-                    "-Path",
                     *files,
                 ),
                 checking,
