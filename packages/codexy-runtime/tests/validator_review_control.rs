@@ -19,6 +19,8 @@ mod handoff_decision;
 mod profile_classification;
 #[path = "validator_review_control/issue_contract.rs"]
 mod issue_contract;
+#[path = "validator_review_control/blocker_class.rs"]
+mod blocker_class;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {

@@ -134,6 +134,14 @@ fn validate(
     let (criteria, invariants) = packet.issue_contract.authority()?;
     let boundaries = unique(packet.direct_boundaries.iter(), "direct boundary")?;
     let findings = unique(packet.findings.iter().map(|item| &item.id), "finding")?;
+    let _blocker_classes = unique(
+        packet
+            .findings
+            .iter()
+            .filter(|item| finding_disposition::is_blocker(item))
+            .map(|item| &item.defect_class),
+        "blocker defect class",
+    )?;
     if criteria.is_empty()
         || boundaries.is_empty()
         || current.changed_files.is_empty()
