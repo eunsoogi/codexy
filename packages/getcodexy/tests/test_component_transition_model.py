@@ -102,7 +102,7 @@ class TransitionModelTests(unittest.TestCase):
         )
         invalid = (
             OperationReceipt("op-pending-encode", "install", "pending", (), (), (), (), ()),  # type: ignore[arg-type]
-            OperationReceipt("op-unknown-command", "bootstrap", "completed", (), (), (), (), ()),  # type: ignore[arg-type]
+            OperationReceipt("op-unknown-command", "unknown", "completed", (), (), (), (), ()),  # type: ignore[arg-type]
             OperationReceipt("op-unknown-outcome", "install", "unknown", (), (), (), (), ()),  # type: ignore[arg-type]
         )
 
@@ -213,7 +213,7 @@ class TransitionModelTests(unittest.TestCase):
 
 def _requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
     selections = ((), ("core",), ("github",), ("devtools",), ("core", "github"), ("core", "devtools"), ("core", "github", "devtools"))
-    return tuple((command, selected) for command in ("install", "update", "remove") for selected in selections)
+    return tuple((command, selected) for command in ("install", "update", "remove", "bootstrap") for selected in selections)
 
 
 def _inventory(selection: tuple[str, ...]) -> bytes:

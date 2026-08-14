@@ -62,7 +62,7 @@ root. A stale or malformed record cannot be treated as an unrelated plugin.
 | `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component. | Rejects a request if a retained component would still depend on a requested removal. |
 | `getcodexy status` | Reads the installed inventory. | None. |
 | `getcodexy doctor` | Reads inventory consistency, host readiness, and component health. | None. |
-| `getcodexy bootstrap` | Selects the complete supported installation. | Installs all components and performs the required host activation. |
+| `getcodexy bootstrap` | Selects the complete supported installation. | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
 
 Unknown components fail with `unknown-component`. `update` without any recorded
 inventory fails with `no-recorded-selection`; a present but dependency-invalid
@@ -115,6 +115,20 @@ dependency-invalid inventory is `inconsistent` with an
 components, or reject for an inconsistent installed state. Doctor additionally
 includes `host_readiness` and canonical `component_health` entries, alongside
 the same inventory consistency report.
+
+Both read commands take a fresh `codex plugin list --json` snapshot and never
+acquire a lifecycle lock, recover a journal, write a receipt, execute an MCP
+wrapper, or invoke an activation helper. `selected_components` is the durable
+selection record when present; `installed_components` is the fresh host
+snapshot. Doctor reports only present or selected components, classifying them
+as `healthy`, `missing`, `stale`, or `incompatible`, and attaches a declarative
+repair. Recoverable missing and stale states use `getcodexy bootstrap`;
+incompatible registrations require repair before the next doctor run.
+
+`bootstrap --json` emits its own typed transactional receipt with
+`command: "bootstrap"`. It is idempotent and reaches the same full default
+selection as `install --json`, while retaining its own durable operation
+identity, host readback, and automatic rollback semantics.
 
 Stable `error.code` values are authoritative; specific numeric exit-code
 assignments remain an implementation decision.

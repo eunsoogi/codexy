@@ -7,13 +7,13 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from .component_lifecycle_admission import admit_pending_receipt, admitted_recovery_selection, admitted_selection, matching_receipt, replay_receipt
+from .component_lifecycle_admission import admit_pending_receipt, admitted_bootstrap_recovery_selection, admitted_recovery_selection, admitted_selection, matching_receipt, replay_receipt
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import existing_marketplace_root, recorded_selection, validate_request
 from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
 from .component_transaction_receipts import write_receipt
-from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
+from .component_transaction_state import InventorySnapshot, Journal, PreAdmissionError, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
 from .component_transition_model import OperationReceipt, Rejection, RejectionStage, StateFailure, plan_transition
 from .github_pre_session import trusted_codex
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
@@ -23,13 +23,20 @@ from .updater import _absolute, _validate_real_path
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
+class HostExecutableError(PreAdmissionError):
+    """The requested Codex executable was rejected before transaction admission."""
+
+
 def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os.PathLike[str], codex: Path | None = None, runner: Runner | None = None, *, operation_id: str | None = None) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
-    if command not in {"install", "update", "remove"}:
+    if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
-    home = _absolute(codex_home)
-    _validate_real_path(home, require_exists=False)
-    executable, invoke = trusted_codex(codex or _find_codex()), runner or (lambda args: _run(args, home))
+    try:
+        home = _absolute(codex_home)
+        _validate_real_path(home, require_exists=False)
+    except (OSError, RuntimeError, ValueError) as error:
+        raise PreAdmissionError(str(error)) from error
+    executable, invoke = _host_executable(codex), runner or (lambda args: _run(args, home))
     manifest, identifier = load_component_manifest(), _operation_id(operation_id)
     with transaction_lock(home):
         pending = read_journal(home)
@@ -51,14 +58,19 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
         try:
             root = existing_marketplace_root(executable, invoke)
             inventory = _list(executable, invoke)
-            before = admitted_recovery_selection(manifest, inventory, root, pending.target) if pending is not None and (pending.command, pending.phase) == ("update", "started") else admitted_selection(manifest, inventory, root, command)
+            if pending is not None and pending.phase == "started" and pending.command == "update":
+                before = admitted_recovery_selection(manifest, inventory, root, pending.target)
+            elif pending is not None and pending.phase == "started" and pending.command == "bootstrap":
+                before = admitted_bootstrap_recovery_selection(manifest, inventory, root, pending.before, pending.target)
+            else:
+                before = admitted_selection(manifest, inventory, root, command)
         except ComponentResolutionError as error:
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, error)
         except (OSError, ValueError, RuntimeError):
             return _reject(home, manifest, identifier, command, requested, (), RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE)
         if pending is not None:
             if pending.phase == "rolling-back" and pending_receipt is not None:
-                if before != pending.before or (pending.snapshot.contents is None) != (recorded is None) or recorded not in {None, pending.before}:
+                if before != pending.before or InventorySnapshot.capture(home) != pending.snapshot:
                     raise ValueError("pending transaction receipt does not match restored state")
                 clear_journal(home)
                 if replay is not None:
@@ -70,9 +82,10 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root, command)
             recorded = recorded_selection(home, manifest)
+            replay = replay_receipt(home, manifest, identifier, command, requested)
             if replay is not None:
                 return replay
-        if recorded is not None and recorded != before:
+        if recorded is not None and recorded != before and command != "bootstrap":
             return _reject(home, manifest, identifier, command, requested, before, RejectionStage.PRESTATE, StateFailure.INCONSISTENT_INSTALLED_STATE)
         try:
             plan = plan_transition(manifest, command, requested, before, recorded)
@@ -103,6 +116,13 @@ def _operation_id(value: str | None) -> str:
     return identifier
 
 
+def _host_executable(codex: Path | None) -> Path:
+    try:
+        return trusted_codex(codex or _find_codex())
+    except (OSError, RuntimeError, ValueError) as error:
+        raise HostExecutableError(str(error)) from error
+
+
 def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path) -> None:
     journal = read_journal(home)
     if journal is None:
@@ -111,7 +131,7 @@ def _recover_if_needed(home: Path, executable: Path, invoke: Runner, manifest: C
     if journal.phase == "committed":
         _finish_committed(home, executable, invoke, manifest, root, journal)
         return
-    if journal.command == "update" and journal.phase == "started":
+    if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
             installed = _apply_forward(executable, invoke, manifest, root, journal, journal.resolved, ())
         except BaseException as error:
@@ -142,6 +162,8 @@ def _rollback_or_raise(home: Path, executable: Path, invoke: Runner, manifest: C
         if restored != journal.before:
             raise RuntimeError("restored selection did not match the operation snapshot")
         journal.snapshot.restore(home)
+        if InventorySnapshot.capture(home) != journal.snapshot:
+            raise RuntimeError("restored durable inventory did not match the operation snapshot")
     except BaseException as rollback_error:
         raise RuntimeError("component operation failed; durable recovery is required") from rollback_error
 
@@ -178,7 +200,7 @@ def _restore_selection(executable: Path, invoke: Runner, manifest: ComponentMani
 
 
 def _apply_forward(executable: Path, invoke: Runner, manifest: ComponentManifest, root: Path, journal: Journal, adds: tuple[str, ...], removes: tuple[str, ...]) -> tuple[str, ...]:
-    if journal.command == "update":
+    if journal.command in {"update", "bootstrap"}:
         _json(invoke([str(executable), "plugin", "marketplace", "upgrade", "codexy", "--json"]), "plugin marketplace upgrade")
         root = official_marketplace_root(executable, invoke)
     for component in adds:

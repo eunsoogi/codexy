@@ -9,7 +9,6 @@ from pathlib import Path
 
 from .component_manifest import DOMAIN_ERRORS, Component, ComponentManifest, valid_semver
 
-
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 
 
@@ -79,10 +78,10 @@ def admit_installed_inventory(manifest: ComponentManifest, inventory: object, ma
 
 def admit_operation_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, command: str) -> tuple[str, ...]:
     """Require current retained components unless this operation will upgrade them."""
-    if command not in {"install", "update", "remove"}:
+    if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
     selected = admit_installed_inventory(manifest, inventory, marketplace_root)
-    if command == "update" or marketplace_root is None:
+    if command in {"update", "bootstrap"} or marketplace_root is None:
         return selected
     records = _component_records(manifest, classify_installed_inventory(manifest, inventory), marketplace_root)
     if any(record["version"] != manifest.version for record in records.values()):
@@ -110,6 +109,14 @@ def admit_recovery_inventory(manifest: ComponentManifest, inventory: object, mar
     return selected
 
 
+def admit_bootstrap_recovery_inventory(manifest: ComponentManifest, inventory: object, marketplace_root: Path | None, before: tuple[str, ...], target: tuple[str, ...]) -> tuple[str, ...]:
+    """Admit only a canonical add-only bootstrap state authorized by its journal."""
+    selected = admit_operation_inventory(manifest, inventory, marketplace_root, "bootstrap")
+    if not set(before).issubset(selected) or not set(selected).issubset(target):
+        raise ComponentResolutionError("inconsistent-installed-state")
+    return selected
+
+
 def _reconcile_classified_inventory(manifest: ComponentManifest, classified: ClassifiedInstalledInventory, marketplace_root: Path) -> tuple[str, ...]:
     records = _component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}
@@ -131,6 +138,13 @@ def verify_post_operation_inventory(manifest: ComponentManifest, inventory: obje
     if any(record["version"] != manifest.version for record in records.values()):
         raise ComponentResolutionError("component-version-mismatch")
     return selected
+
+
+def compare_versions(left: str, right: str) -> int:
+    """Compare two manifest-valid semantic versions without reimplementing parsing."""
+    if not valid_semver(left) or not valid_semver(right):
+        raise ComponentResolutionError("component-version-mismatch")
+    return (_version_tuple(left) > _version_tuple(right)) - (_version_tuple(left) < _version_tuple(right))
 
 
 def classify_installed_inventory(manifest: ComponentManifest, inventory: object) -> ClassifiedInstalledInventory:
@@ -200,13 +214,20 @@ def _component_records(manifest: ComponentManifest, inventory: ClassifiedInstall
 
 
 def _valid_record(entry: dict[str, object], component: Component, manifest: ComponentManifest, marketplace_root: Path) -> bool:
-    asset = component.asset
+    if not valid_observed_record(entry, component, manifest):
+        return False
     source = entry.get("source")
-    if not isinstance(source, dict) or source.get("source") != "local" or not isinstance(source.get("path"), str) or not Path(source["path"]).is_absolute():
+    expected = marketplace_root / component.asset.package_root
+    return isinstance(source, dict) and isinstance(source.get("path"), str) and source["path"] == str(expected) and Path(source["path"]) == expected
+
+
+def valid_observed_record(entry: dict[str, object], component: Component, manifest: ComponentManifest) -> bool:
+    """Validate the identity a failed marketplace probe can still establish."""
+    source = entry.get("source")
+    if not isinstance(source, dict) or source.get("source") != "local" or not isinstance(source.get("path"), str):
         return False
-    if Path(source["path"]) != marketplace_root / asset.package_root:
-        return False
-    return entry.get("pluginId") == asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and valid_semver(entry.get("version"))
+    path, expected = Path(source["path"]), Path(component.asset.package_root)
+    return path.is_absolute() and path.parts[-len(expected.parts):] == expected.parts and entry.get("pluginId") == component.asset.plugin_id and entry.get("marketplaceName") == manifest.marketplace.name and entry.get("marketplaceSource") == {"sourceType": "git", "source": manifest.marketplace.source} and entry.get("installed") is True and entry.get("enabled") is True and valid_semver(entry.get("version"))
 
 
 def _version_tuple(version: str) -> tuple[int, int, int]:

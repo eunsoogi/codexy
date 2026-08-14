@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
+
 @dataclass(frozen=True)
 class SyncResult:
     mode: str

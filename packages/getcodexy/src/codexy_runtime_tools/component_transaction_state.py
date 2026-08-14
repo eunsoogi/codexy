@@ -17,6 +17,12 @@ from .updater import _absolute, _validate_real_path
 
 
 INVENTORY_SCHEMA = "getcodexy.installed-component-inventory.v1"
+
+
+class PreAdmissionError(RuntimeError):
+    """A lifecycle operation failed before durable state admission."""
+
+
 def inventory_path(home: str | os.PathLike[str]) -> Path:
     return _absolute(home) / "getcodexy" / "installed-components.json"
 
@@ -164,13 +170,13 @@ def _lock(descriptor: int) -> None:
             return
         except OSError as error:
             if error.errno in {errno.EACCES, errno.EDEADLK}:
-                raise RuntimeError("another getcodexy component operation is active") from error
+                raise PreAdmissionError("another getcodexy component operation is active") from error
             raise
     import fcntl
     try:
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError as error:
-        raise RuntimeError("another getcodexy component operation is active") from error
+        raise PreAdmissionError("another getcodexy component operation is active") from error
 
 
 def _unlock(descriptor: int) -> None:

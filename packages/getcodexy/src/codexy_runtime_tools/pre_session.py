@@ -152,5 +152,5 @@ def _json(done: subprocess.CompletedProcess[str], stage: str) -> object:
         raise RuntimeError(f"{stage} failed")
     try:
         return json.loads(done.stdout)
-    except json.JSONDecodeError as error:
+    except (json.JSONDecodeError, ValueError) as error:
         raise ValueError(f"{stage} returned invalid JSON") from error
