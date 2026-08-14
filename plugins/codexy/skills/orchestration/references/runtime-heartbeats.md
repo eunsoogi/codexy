@@ -35,13 +35,15 @@ message. The prompt MUST suppress unchanged observations and MUST wake the owner
 A live Sentinel, pending child, queued CI, pending connector review, parent
 authorization, dependency integration, or resource slot is a nonterminal
 producer. The owner MUST preserve ownership through a nonterminal wait handoff
-and MUST use its event route rather than declaring an execution impasse. An
-unavailable wake route does not authorize a blocked goal; only an unanswered
-material user decision or missing user information can do so.
+while immediately executable work remains, or through an idle-wait handoff after
+that finite work is complete, and MUST use its event route rather than declaring
+an execution impasse. An unavailable wake route does not authorize a blocked
+goal; only an unanswered material user decision or missing user information can
+do so.
 
 ## Goal And Terminal Lifecycle
 
-A successfully registered heartbeat is runtime-owned waiting. The owner MUST retain its active goal and plan while an implementation obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal. When no implementation obligation remains, the owner MAY complete the goal through the normal terminal receipt path before runtime-only monitoring. A qualifying event MUST resume the retained goal and plan or start a fresh short-lived execution goal only after an earlier valid completion. The awakened owner MUST consume the event in the same turn and MUST delete or disable the heartbeat when no further observation is required. It MUST record the resulting lifecycle state in the compact lane delta.
+A successfully registered heartbeat is runtime-owned waiting. The owner MUST retain its active goal and plan only while an immediately executable in-scope obligation remains, record `goal state=active` and `goal transition=none`, and return control without completing or blocking the goal. When no immediately executable obligation remains and only an external event or explicit parent wake can advance work, the owner MUST send the idle-wait handoff defined in `goal-transition-reporting.md`, complete the finite goal, and leave the task idle without claiming the issue or implementation complete. A qualifying event MUST create a fresh short-lived execution goal and current plan before any edit, proof, review response, publication, or merge work. The awakened owner MUST consume the event in the same turn and MUST delete or disable the heartbeat when no further observation is required. It MUST record the resulting lifecycle state in the compact lane delta.
 When cleanup is needed, the owner MUST delete the heartbeat by id or disable it with
 a paused status and the heartbeat's full update fields; it MUST record which terminal
 action occurred.

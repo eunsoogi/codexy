@@ -24,6 +24,21 @@
 - bounded child-local monitoring:
 - parent delta before transition:
 
+## Idle Wait Handoff
+
+- state fingerprint:
+- nonterminal producer:
+- exact wake route:
+- issue state: not complete
+- ownership: retained
+- parent task/child task/delivery/task surface:
+- branch/worktree/head/clean-index:
+- last proof/current gate:
+- preserved reservation or artifacts:
+- goal transition: complete
+- parent-owned next action:
+- confirmed idle state: goal state=complete; plan state=idle
+
 ## Runtime Heartbeat
 
 - callable discovery/exposure evidence:
