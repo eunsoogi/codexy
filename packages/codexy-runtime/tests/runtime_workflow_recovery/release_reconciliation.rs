@@ -7,6 +7,9 @@ use crate::support::{
 use crate::support;
 use sha2::{Digest, Sha256};
 
+#[path = "release_attestation_reconciliation.rs"]
+mod release_attestation_reconciliation;
+
 #[test]
 fn release_reconciliation_authenticates_a_draft_before_finalization()
 -> Result<(), Box<dyn std::error::Error>> {

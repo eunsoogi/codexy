@@ -75,6 +75,16 @@ for result, suffix in (("ok", "Oops"), ("ok", "!"), ("FAILED", "Maybe"), ("FAILE
         "     Running tests/suites/all.rs (target/debug/deps/suite_all-suffix)",
         f"test support::unconfirmed ... {result}{suffix}",
     ))
+for result, suffix in (("ok", "Oops"), ("FAILED", "Maybe"), ("ignored", "!")):
+    summary_ambiguous = "\n".join((
+        "     Running tests/suites/all.rs (target/debug/deps/suite_all-summary)",
+        f"test support::unconfirmed ... {result}{suffix}",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    ))
+    assert_no_inference(f"summary {result}{suffix}", tuple(summary_ambiguous.splitlines()))
+    _, _, active, completed, _ = module.deadline_test_context(summary_ambiguous)
+    if active or completed is not None:
+        raise SystemExit(f"summary {result}{suffix} completed deadline accounting")
 for result in ("FAILED", "ignored"):
     spliced = "\n".join((
         "     Running tests/suites/all.rs (target/debug/deps/suite_all-splice)",
