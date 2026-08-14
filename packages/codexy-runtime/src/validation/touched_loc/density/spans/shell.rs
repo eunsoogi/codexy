@@ -17,9 +17,9 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
         return None;
     }
     let visible = strip_awk(line, state)?;
-    if let Some((start, end)) = heredoc_span(&visible) {
+    if let Some((start, token_end, end)) = heredoc_span(&visible) {
         *state = State::Heredoc(end);
-        return Some(visible[..start].to_owned());
+        return Some(format!("{}{}", &visible[..start], &visible[token_end..]));
     }
     Some(visible)
 }
@@ -42,14 +42,15 @@ fn strip_awk(line: &str, state: &mut State) -> Option<String> {
     Some(prefix.to_owned())
 }
 
-fn heredoc_span(line: &str) -> Option<(usize, String)> {
+fn heredoc_span(line: &str) -> Option<(usize, usize, String)> {
     let start = unquoted_heredoc_start(line)?;
-    let tail = line[start + 2..]
+    let after_operator = line[start + 2..]
         .strip_prefix('-')
         .unwrap_or(&line[start + 2..]);
-    let token = tail.trim_start().split_whitespace().next()?;
+    let leading = after_operator.len() - after_operator.trim_start().len();
+    let token = after_operator.trim_start().split_whitespace().next()?;
     let end = token.trim_matches(|character| matches!(character, '\'' | '"'));
-    (!end.is_empty()).then(|| (start, end.to_owned()))
+    (!end.is_empty()).then(|| (start, start + 2 + leading + token.len(), end.to_owned()))
 }
 
 fn unquoted_heredoc_start(line: &str) -> Option<usize> {

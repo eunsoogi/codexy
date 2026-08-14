@@ -10,8 +10,14 @@ fn strip(line: &str, end: &mut Option<&'static str>) -> Option<String> {
         }
         return Some(String::new());
     }
+    if line.trim_start().starts_with('#') {
+        return Some(line.to_owned());
+    }
     for (opening, closing) in [("@'", "'@"), ("@\"", "\"@")] {
         if let Some(index) = line.find(opening) {
+            if line[..index].contains('\'') || line[..index].contains('"') {
+                continue;
+            }
             *end = Some(closing);
             return Some(line[..index].to_owned());
         }

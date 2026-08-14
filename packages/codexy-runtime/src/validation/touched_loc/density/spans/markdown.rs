@@ -2,14 +2,16 @@ pub(super) fn lines(text: &str) -> Vec<Option<String>> {
     let mut visible = Vec::new();
     let mut fence = None;
     let mut comment = false;
-    for line in text.lines() {
-        let line = without_comments(line, &mut comment);
+    for raw_line in text.lines() {
         if let Some(active) = fence {
-            if closes_fence(&line, active) {
+            if closes_fence(raw_line, active) {
                 fence = None;
             }
             visible.push(None);
-        } else if let Some(opening) = opens_fence(&line) {
+            continue;
+        }
+        let line = without_comments(raw_line, &mut comment);
+        if let Some(opening) = opens_fence(&line) {
             fence = Some(opening);
             visible.push(None);
         } else {
