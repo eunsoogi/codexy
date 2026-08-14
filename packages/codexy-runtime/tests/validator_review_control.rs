@@ -17,6 +17,8 @@ mod terminal_scope;
 mod handoff_decision;
 #[path = "validator_review_control/profile_classification.rs"]
 mod profile_classification;
+#[path = "validator_review_control/issue_contract.rs"]
+mod issue_contract;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {
@@ -147,7 +149,7 @@ fn packet_blocks_owned_defects_and_demotes_unowned_parser_scope() -> TestResult 
     ] {
         let mut owned = packet(&format!("{profile}-owned"), "full");
         set_profile(&mut owned, profile, reviewer.clone());
-        owned["schema"] = json!("codexy.review-packet.v3");
+        owned["schema"] = json!("codexy.review-packet.v4");
         owned["findings"][0] = json!({"id":"f-1","defect_class":"bounds","criterion_id":"ac-1","owned_invariant":null,"owned_boundary":"validator","repair_boundary":"validator","counterexample":"repro","head_oid":owned["identity"]["head_oid"],"disposition":"in_scope_blocker","reopen_count":0,"resolved":false});
         assert!(check_packet(fixture.root(), &temp.path().join(format!("{profile}-owned.json")), &owned)?.status.success());
 
@@ -222,7 +224,7 @@ fn packet_for(root: &Path, base: &str, event: &str, state: &str) -> TestResult<V
         .lines().map(str::to_owned).collect::<Vec<_>>();
     let evidence_path = files.first().ok_or("current test head requires a changed file")?;
     let evidence = git_bytes_at(root, ["show", &format!("{head}:{evidence_path}")])?;
-    Ok(json!({"schema":"codexy.review-packet.v3","event_id":event,"predecessor_event_id":null,"profile":"standard","state":state,"reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":format!("{:x}",Sha256::digest(diff))},"issue_contract":{"problem":"owned problem","scope":"owned scope","exclusions":["universal parser"],"adjacent_dependencies":["typed fixture"]},"acceptance_criteria":[{"id":"ac-1"}],"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":format!("{:x}",Sha256::digest(evidence))}],"findings":[{"id":"f-1","defect_class":"bounds","criterion_id":"ac-1","owned_invariant":null,"owned_boundary":"validator","repair_boundary":"validator","counterexample":"repro","head_oid":head,"disposition":"in_scope_blocker","reopen_count":0,"resolved":false}],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"unresolved_blocker_ids":["f-1"],"budget_exhausted":false,"parent_decision_required":false}}))
+    Ok(json!({"schema":"codexy.review-packet.v4","event_id":event,"predecessor_event_id":null,"profile":"standard","state":state,"reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":format!("{:x}",Sha256::digest(diff))},"issue_contract":{"problem":"owned problem","scope":"owned scope","acceptance_criteria":[{"id":"ac-1"}],"owned_invariant_ids":[],"exclusions":["universal parser"],"adjacent_dependencies":["typed fixture"]},"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":format!("{:x}",Sha256::digest(evidence))}],"findings":[{"id":"f-1","defect_class":"bounds","criterion_id":"ac-1","owned_invariant":null,"owned_boundary":"validator","repair_boundary":"validator","counterexample":"repro","head_oid":head,"disposition":"in_scope_blocker","reopen_count":0,"resolved":false}],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"unresolved_blocker_ids":["f-1"],"budget_exhausted":false,"parent_decision_required":false}}))
 }
 
 fn assert_profile(root: &Path, profile: &str, expected: Value) -> TestResult { let triggers = ["destructive","security","permission","secret","release","high_consequence_external_state","high_risk_guardrail","merge_sensitive","durable_delegation","multi_lane_ownership","explicit_audit_evidence"].into_iter().map(|kind| json!({"kind":kind,"applies":profile == "strict" && kind == "security"})).collect::<Vec<_>>(); let classification = if profile == "light" { json!({"schema":"codexy.workflow-profile-classification.v2","work_class":"low_risk","low_risk_eligible":true,"strict_triggers":triggers}) } else { json!({"schema":"codexy.workflow-profile-classification.v2","work_class":"middle","low_risk_eligible":false,"strict_triggers":triggers}) }; let request = if expected.get("discarded_lower_profile").is_some() { json!({"schema":"codexy.review-profile-request.v1","classification":classification,"prior_profile":"standard"}) } else { json!({"schema":"codexy.review-profile-request.v1","classification":classification}) }; let output = resolve_profile(root, request)?; assert!(output.status.success()); assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected); Ok(()) }

@@ -39,6 +39,8 @@ pub(super) fn record(path: &Path, packet: &Packet, profile: &Profile) -> Result<
             })
             .collect(),
         boundaries: packet.boundaries().to_vec(),
+        issue_contract: packet.issue_contract().clone(),
+        issue_contract_sha256: packet.issue_contract().digest(),
         escalation: super::presence::RequiredNullable::new(packet.escalation().cloned()),
     });
     history.validate()?;

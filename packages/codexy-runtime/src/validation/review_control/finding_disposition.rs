@@ -11,6 +11,7 @@ pub(super) fn is_blocker(finding: &Finding) -> bool {
 pub(super) fn is_valid(
     finding: &Finding,
     criteria: &BTreeSet<&str>,
+    invariants: &BTreeSet<&str>,
     boundaries: &BTreeSet<&str>,
     head_oid: &str,
 ) -> bool {
@@ -23,7 +24,7 @@ pub(super) fn is_valid(
     }
     match finding.disposition.as_str() {
         IN_SCOPE_BLOCKER | "in_scope_nonblocking" => {
-            cites_owned_rule(finding, criteria)
+            cites_owned_rule(finding, criteria, invariants)
                 && names_boundary(&finding.owned_boundary, boundaries)
                 && names_boundary(&finding.repair_boundary, boundaries)
         }
@@ -37,15 +38,16 @@ pub(super) fn is_valid(
     }
 }
 
-fn cites_owned_rule(finding: &Finding, criteria: &BTreeSet<&str>) -> bool {
-    finding
-        .criterion_id
-        .as_deref()
-        .is_some_and(|criterion| criteria.contains(criterion))
-        || finding
-            .owned_invariant
-            .as_deref()
-            .is_some_and(|invariant| !invariant.is_empty())
+fn cites_owned_rule(
+    finding: &Finding,
+    criteria: &BTreeSet<&str>,
+    invariants: &BTreeSet<&str>,
+) -> bool {
+    match (&finding.criterion_id, &finding.owned_invariant) {
+        (Some(criterion), None) => criteria.contains(criterion.as_str()),
+        (None, Some(invariant)) => invariants.contains(invariant.as_str()),
+        _ => false,
+    }
 }
 
 fn names_boundary(boundary: &Option<String>, boundaries: &BTreeSet<&str>) -> bool {
