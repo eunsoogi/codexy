@@ -65,6 +65,23 @@ class LintFixtureTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "HEAD"}):
             self.assertEqual(runner.build_plan(ROOT, "check", LANGUAGES), [])
 
+    def test_changed_scope_includes_a_changed_maintained_file(self) -> None:
+        runner = inventory_module()
+
+        with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "HEAD^"}):
+            plan = runner.build_plan(ROOT, "check", {"python"})
+
+        self.assertIn("tests/test_lint_fixtures.py", plan[0].command)
+
+    def test_changed_scope_reports_an_unavailable_baseline(self) -> None:
+        runner = inventory_module()
+
+        with mock.patch.dict(
+            os.environ, {"CODEXY_LINT_CHANGED_SINCE": "missing-lint-baseline"}
+        ):
+            with self.assertRaisesRegex(ValueError, "baseline is unavailable"):
+                runner.build_plan(ROOT, "check", {"python"})
+
     def test_workflow_exercises_real_failure_fixtures_for_every_route(self) -> None:
         workflow = (ROOT / ".github/workflows/language-lint.yml").read_text(
             encoding="utf-8"
@@ -75,6 +92,17 @@ class LintFixtureTests(unittest.TestCase):
                 self.assertIn(
                     f"scripts/verify-lint-fixtures.py --language {language}", workflow
                 )
+
+        self.assertEqual(workflow.count("fetch-depth: 0"), 5)
+
+    def test_powershell_fixture_exercises_multiple_paths(self) -> None:
+        fixtures = (ROOT / "scripts/verify-lint-fixtures.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"tests/lint-fixtures/powershell/good.ps1",', fixtures)
+        self.assertIn('"tests/lint-fixtures/powershell/bad.ps1",', fixtures)
+        self.assertIn("A positional parameter cannot be found", fixtures)
 
     def test_windows_command_fixtures_cover_success_and_failure(self) -> None:
         checker = [sys.executable, "scripts/lint-windows-command.py"]

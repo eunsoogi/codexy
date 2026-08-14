@@ -166,6 +166,26 @@ def powershell() -> None:
         "tests/lint-fixtures/powershell/good.ps1",
         succeeds=True,
     )
+    multi_path = subprocess.run(
+        [
+            *base,
+            "-Mode",
+            "--check",
+            *module_arg,
+            "-Path",
+            "tests/lint-fixtures/powershell/good.ps1",
+            "tests/lint-fixtures/powershell/bad.ps1",
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    multi_path_output = multi_path.stdout + multi_path.stderr
+    if multi_path.returncode == 0 or "bad.ps1" not in multi_path_output:
+        raise SystemExit("expected multi-path PowerShell analysis to reject bad.ps1")
+    if "A positional parameter cannot be found" in multi_path_output:
+        raise SystemExit("PowerShell did not bind every lint path")
     directory = Path(tempfile.mkdtemp(dir=ROOT, prefix=".lint-fixture-"))
     target = directory / "fix.ps1"
     shutil.copy2(FIXTURES / "powershell/fix.ps1", target)

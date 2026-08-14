@@ -101,17 +101,21 @@ def tracked_regular_files(
     base = os.environ.get("CODEXY_LINT_CHANGED_SINCE")
     changed = None
     if base:
+        try:
+            changed_output = subprocess.run(
+                ["git", "diff", "--name-only", "-z", base, "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            ).stdout
+        except subprocess.CalledProcessError as error:
+            raise ValueError(
+                f"lint changed-file baseline is unavailable: {base}"
+            ) from error
         changed = set(
             filter(
                 None,
-                subprocess.run(
-                    ["git", "diff", "--name-only", "-z", base, "HEAD"],
-                    cwd=root,
-                    check=True,
-                    capture_output=True,
-                )
-                .stdout.decode("utf-8", "surrogateescape")
-                .split("\0"),
+                changed_output.decode("utf-8", "surrogateescape").split("\0"),
             )
         )
     files: list[str] = []
