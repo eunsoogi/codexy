@@ -137,6 +137,7 @@ fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> 
         "scripts/plan-version-pr-reconciliation",
         "scripts/render-version-pr-metadata",
         "scripts/version_pr_identity.py",
+        "scripts/version_pr_tracks.py",
         "scripts/build-version-pr-state",
         "plugins/codexy-github/hooks/codexy-pr-title-check.sh",
         "plugins/codexy-github/hooks/codexy-pr-label-check.sh",
