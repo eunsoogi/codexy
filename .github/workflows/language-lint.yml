@@ -1,0 +1,134 @@
+name: Language lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust format and clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
+      - run: scripts/lint-repository --check --language rust
+
+  python:
+    name: Python ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned Ruff
+        run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
+      - run: scripts/lint-repository --check --language python
+
+  text:
+    name: Markdown JSON YAML and TOML Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - name: Install pinned Taplo
+        run: |
+          taplo_version="$(jq -r .taplo.version tooling/lint-tools.json)"
+          taplo_sha="$(jq -r .taplo.linuxX64Sha256 tooling/lint-tools.json)"
+          tool_dir="$RUNNER_TEMP/codexy-lint-tools"
+          mkdir -p "$tool_dir"
+          curl --fail --location --output "$tool_dir/taplo.gz" "https://github.com/tamasfe/taplo/releases/download/${taplo_version}/taplo-linux-x86_64.gz"
+          printf '%s  %s\n' "$taplo_sha" "$tool_dir/taplo.gz" | sha256sum --check --status
+          gzip --decompress "$tool_dir/taplo.gz"
+          chmod 755 "$tool_dir/taplo"
+          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
+      - run: scripts/lint-repository --check --language text
+
+  shell:
+    name: ShellCheck and shfmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install pinned shell tools
+        run: |
+          tool_dir="$RUNNER_TEMP/codexy-lint-tools"
+          mkdir -p "$tool_dir"
+          shellcheck_version="$(jq -r .shellcheck.version tooling/lint-tools.json)"
+          shellcheck_sha="$(jq -r .shellcheck.linuxX64Sha256 tooling/lint-tools.json)"
+          archive="shellcheck-v${shellcheck_version}.linux.x86_64.tar.xz"
+          curl --fail --location --output "$tool_dir/$archive" "https://github.com/koalaman/shellcheck/releases/download/v${shellcheck_version}/$archive"
+          printf '%s  %s\n' "$shellcheck_sha" "$tool_dir/$archive" | sha256sum --check --status
+          tar -xf "$tool_dir/$archive" -C "$tool_dir"
+          printf '%s\n' "$tool_dir/shellcheck-v${shellcheck_version}" >> "$GITHUB_PATH"
+          shfmt_version="$(jq -r .shfmt.version tooling/lint-tools.json)"
+          shfmt_sha="$(jq -r .shfmt.linuxX64Sha256 tooling/lint-tools.json)"
+          curl --fail --location --output "$tool_dir/shfmt" "https://github.com/mvdan/sh/releases/download/v${shfmt_version}/shfmt_v${shfmt_version}_linux_amd64"
+          printf '%s  %s\n' "$shfmt_sha" "$tool_dir/shfmt" | sha256sum --check --status
+          chmod 755 "$tool_dir/shfmt"
+          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
+      - run: scripts/lint-repository --check --language shell
+
+  windows:
+    name: Native PowerShell and command launchers
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned PowerShell analyzer
+        shell: pwsh
+        run: |
+          $tools = Get-Content -Raw tooling/lint-tools.json | ConvertFrom-Json
+          $toolRoot = Join-Path $env:RUNNER_TEMP "codexy-lint-tools"
+          $package = Join-Path $toolRoot "PSScriptAnalyzer.$($tools.PSScriptAnalyzer).nupkg"
+          New-Item -ItemType Directory -Force -Path $toolRoot | Out-Null
+          Invoke-WebRequest -UseBasicParsing -Uri "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$($tools.PSScriptAnalyzer)" -OutFile $package
+          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $package).Hash.ToLowerInvariant() -ne $tools.psScriptAnalyzerNupkgSha256) { throw "PSScriptAnalyzer package hash mismatch" }
+          $archive = "$package.zip"
+          Copy-Item -LiteralPath $package -Destination $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $toolRoot -Force
+          "CODEXY_PSSCRIPTANALYZER_PATH=$toolRoot" | Add-Content -LiteralPath $env:GITHUB_ENV
+      - shell: pwsh
+        run: scripts/lint-repository.ps1 --check --language powershell --language windows-command
+
+  lint:
+    name: Language lint
+    if: always()
+    needs: [rust, python, text, shell, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every language check
+        run: |
+          test '${{ needs.rust.result }}' = success
+          test '${{ needs.python.result }}' = success
+          test '${{ needs.text.result }}' = success
+          test '${{ needs.shell.result }}' = success
+          test '${{ needs.windows.result }}' = success

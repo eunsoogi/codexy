@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,9 +30,7 @@ class ComponentIntegrityWindowsTests(unittest.TestCase):
                 return_value=True,
             ):
                 with frozen_component(component, "codexy-github") as frozen:
-                    self.assertTrue(
-                        (frozen / "agents/codexy-weaver.toml").is_file()
-                    )
+                    self.assertTrue((frozen / "agents/codexy-weaver.toml").is_file())
 
     def test_reparse_point_attribute_is_rejected_without_a_windows_host(self) -> None:
         metadata = SimpleNamespace(
@@ -55,6 +54,37 @@ class ComponentIntegrityWindowsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "link|reparse"):
                     with frozen_component(component, "codexy-github"):
                         pass
+
+    def test_windows_checkout_keeps_packaged_skill_bridge_integrity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary) / "repository"
+            repository.mkdir()
+            shutil.copy2(REPOSITORY / ".gitattributes", repository)
+            shutil.copytree(
+                REPOSITORY / "plugins/codexy-github",
+                repository / "plugins/codexy-github",
+            )
+            self._git(repository, "init", "--quiet")
+            self._git(repository, "config", "user.email", "lint@example.test")
+            self._git(repository, "config", "user.name", "Lint Test")
+            self._git(repository, "add", ".")
+            self._git(repository, "commit", "--quiet", "-m", "test fixture")
+            self._git(repository, "config", "core.autocrlf", "true")
+            self._git(repository, "reset", "--hard", "HEAD")
+
+            bridge = (
+                repository
+                / "plugins/codexy-github/skills/git-workflow/scripts/bootstrap-codexy-github-agent"
+            )
+            self.assertNotIn(b"\r\n", bridge.read_bytes())
+            with frozen_component(
+                repository / "plugins/codexy-github", "codexy-github"
+            ):
+                pass
+
+    @staticmethod
+    def _git(repository: Path, *args: str) -> None:
+        subprocess.run(["git", *args], cwd=repository, check=True, capture_output=True)
 
 
 if __name__ == "__main__":

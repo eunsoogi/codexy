@@ -83,6 +83,9 @@ contributor rules stay in the canonical [agent instructions](AGENTS.md),
 [release workflow](.github/workflows/plugin-version-bump.yml), rather than in
 this introduction.
 
+For the local language-check and formatter commands, see
+[repository linting](docs/repository-linting.md).
+
 ## License
 
 Codexy is available under the [MIT License](LICENSE).
