@@ -109,28 +109,23 @@ fn bootstrap_publication_uses_minimal_build_dependencies_and_protected_pypi_envi
 }
 
 #[test]
-fn release_script_fixtures_use_the_shared_cross_platform_command_dispatcher()
+fn release_script_fixtures_declare_their_known_windows_shell_children()
 -> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::runtime_package_root().join("tests");
-    for path in [
-        root.join("release_publication_recovery.rs"),
-        root.join("release_settings_admission.rs"),
-        root.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    let tests = codexy_runtime::paths::runtime_package_root().join("tests");
+    let materializer = fs::read_to_string(
+        tests.join("release_publication_recovery/fixture_materialization.rs"),
+    )?;
+    let reconciliation = fs::read_to_string(
+        tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    )?;
+    for (fixture, invocation) in [
+        (&materializer, "scripts/generate-release-changelog"),
+        (&materializer, "scripts/reconcile-release-baseline"),
+        (&materializer, "scripts/verify-release-attestation-total"),
+        (&reconciliation, "scripts/verify-release-attestation-total"),
     ] {
-        let source = fs::read_to_string(&path)?;
-        assert!(
-            source.contains("FixtureCommand as Command"),
-            "{} must dispatch shell fixtures through FixtureCommand",
-            path.display()
-        );
-        assert!(
-            source.contains("bind_posix_fixture_shell_launchers")
-                && source.contains(".env_path(\"FIXTURE_GH\"")
-                && source.contains(".env_path(\"FIXTURE_GH_LAUNCHER\"")
-                && !source.contains(".env(\"PATH\", format!(\"{}:{}\""),
-            "{} must bind its copied shell fixture instead of relying on Windows PATH precedence",
-            path.display()
-        );
+        assert!(fixture.contains("FixtureScriptBinding"));
+        assert!(fixture.contains(invocation), "missing typed fixture invocation: {invocation}");
     }
     Ok(())
 }

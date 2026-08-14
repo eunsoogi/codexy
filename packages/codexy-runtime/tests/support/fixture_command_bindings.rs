@@ -1,5 +1,11 @@
 use std::{fs, io, path::Path, process::Command};
 
+#[derive(Clone, Copy)]
+pub(crate) struct FixtureScriptBinding {
+    pub(crate) invocation: &'static str,
+    pub(crate) child: &'static str,
+}
+
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
 /// Git Bash can reject an extensionless PATH script despite a valid shebang and
@@ -45,6 +51,42 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
     bound.push_str(body);
     fs::write(path, bound)?;
     crate::support::make_executable(path)
+}
+
+/// Launches the known copied child scripts through the parent's concrete shell.
+/// These declarations are test-fixture contracts, not a parser for production
+/// shell: every child invocation is named explicitly by its owning fixture.
+pub(crate) fn bind_posix_fixture_script_launchers(
+    path: &Path,
+    launcher_environment: &str,
+    bindings: &[FixtureScriptBinding],
+) -> io::Result<()> {
+    validate_identifier(launcher_environment)?;
+    let mut bound = fs::read_to_string(path)?;
+    for binding in bindings {
+        validate_fixture_script_path(binding.child)?;
+        if !binding.invocation.starts_with(binding.child)
+            || bound.matches(binding.invocation).count() != 1
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "fixture child invocation must occur once: {}",
+                    binding.invocation
+                ),
+            ));
+        }
+        let arguments = binding
+            .invocation
+            .strip_prefix(binding.child)
+            .unwrap_or_default();
+        let replacement = format!(
+            "\"${launcher_environment}\" \"{}\"{arguments}",
+            binding.child
+        );
+        bound = bound.replacen(binding.invocation, &replacement, 1);
+    }
+    fs::write(path, bound)
 }
 
 pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
@@ -101,4 +143,17 @@ fn validate_identifier(value: &str) -> io::Result<()> {
     parser_accepts
         .then_some(())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture shell identifier"))
+}
+
+fn validate_fixture_script_path(value: &str) -> io::Result<()> {
+    let valid = value.starts_with("scripts/")
+        && value.chars().all(|character| {
+            character == '/'
+                || character == '-'
+                || character == '_'
+                || character.is_ascii_alphanumeric()
+        });
+    valid
+        .then_some(())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture script path"))
 }

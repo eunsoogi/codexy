@@ -1,7 +1,8 @@
 use std::fs;
 
 use crate::support::{
-    FixtureCommand as Command, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
+    FixtureCommand as Command, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 
 use crate::support;
@@ -155,11 +156,27 @@ esac
         )?;
     }
     let gh_launcher = fixture_script_interpreter_path(&gh)?;
+    bind_posix_fixture_script_launchers(
+        &scripts.join("verify-release-edit-baseline"),
+        "FIXTURE_POSIX_SHELL",
+        &[
+            FixtureScriptBinding {
+                invocation: "scripts/verify-release-attestation-total release-baseline/release-baseline.json 1",
+                child: "scripts/verify-release-attestation-total",
+            },
+            FixtureScriptBinding {
+                invocation: "scripts/verify-release-attestation-set release-assets release-attestations.json",
+                child: "scripts/verify-release-attestation-set",
+            },
+        ],
+    )?;
+    let shell_launcher = fixture_script_interpreter_path(&scripts.join("verify-release-edit-baseline"))?;
     let script = scripts.join("verify-release-edit-baseline");
     let run = |extra_attestation: bool| Command::new(&script)
         .current_dir(temp.path()).env("FIXTURE_DIR", &fixture).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .env_path("FIXTURE_GH", &gh)
         .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
+        .env_path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;
