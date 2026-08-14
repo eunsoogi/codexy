@@ -6,9 +6,12 @@ use std::{
 
 use crate::support::{
     self, FixtureCommand as Command, write_posix_fixture_command,
-    write_posix_fixture_shell_runner_with_scrub,
+    write_posix_fixture_shell_runner_with_scrub_and_sources,
 };
-use super::fixture_scripts::{gh_fixture, git_fixture, jq_fixture, remote_state};
+use super::{
+    fixture_scripts::{gh_fixture, git_fixture, jq_fixture, remote_state},
+    fixture_support::{SOURCE_BINDINGS, source_binding_path},
+};
 
 const STAGING: &str = "0123456789abcdef0123456789abcdef01234567";
 const ACTIVATION: &str = "89abcdef0123456789abcdef0123456789abcdef";
@@ -128,7 +131,7 @@ impl Fixture {
         fixture_io!(
             "write bound runner; sh -n validation and chmod",
             &runner,
-            write_posix_fixture_shell_runner_with_scrub(
+            write_posix_fixture_shell_runner_with_scrub_and_sources(
                 &runner,
                 "CODEXY_FIXTURE_RELEASE_STEP",
                 &[
@@ -148,6 +151,7 @@ impl Fixture {
                     "GITHUB_TOKEN",
                 ],
                 &[("GH_TOKEN", "CODEXY_FIXTURE_GH_TOKEN")],
+                &SOURCE_BINDINGS,
             )
         );
         fixture_io!(
@@ -196,6 +200,7 @@ impl Fixture {
         }
         command
             .env_path("CODEXY_FIXTURE_RELEASE_STEP", &self.script)
+            .env_path("CODEXY_FIXTURE_SOURCE_BINDING", source_binding_path(&self.root))
             .env_path("CODEXY_FIXTURE_GIT", self.root.join("bin/git"))
             .env_path("CODEXY_FIXTURE_JQ", self.root.join("bin/jq"))
             .env_path("CODEXY_FIXTURE_GH", self.root.join("bin/gh"))

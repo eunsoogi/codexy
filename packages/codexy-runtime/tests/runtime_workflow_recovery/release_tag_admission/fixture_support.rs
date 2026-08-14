@@ -1,8 +1,20 @@
-use std::{fs, io, path::Path};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use serde_yaml::Value;
 
 use crate::support;
+
+pub(super) const SOURCE_BINDINGS: [(&str, &str); 1] = [(
+    "scripts/verify-runtime-release-source-binding",
+    "CODEXY_FIXTURE_SOURCE_BINDING",
+)];
+
+pub(super) fn source_binding_path(root: &Path) -> PathBuf {
+    root.join("scripts/verify-runtime-release-source-binding")
+}
 
 pub(super) fn install_source_binding_verifier(root: &Path) -> io::Result<()> {
     let verifier = root.join("scripts/verify-runtime-release-source-binding");
