@@ -1,8 +1,9 @@
-use std::{io::ErrorKind, process::Command};
+use std::{fs, io::ErrorKind, process::Command};
 
 use crate::support::{
-    FixtureCommand, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
-    normalize_fixture_text, write_posix_fixture_command, write_posix_fixture_shell_runner,
+    FixtureCommand, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    bind_posix_fixture_shell_launchers, fixture_script_interpreter_path, normalize_fixture_text,
+    write_posix_fixture_command, write_posix_fixture_shell_runner,
 };
 
 #[test]
@@ -140,5 +141,63 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
         normalize_fixture_text(&String::from_utf8(output.stdout)?),
         "gh:release view\n"
     );
+    Ok(())
+}
+
+#[test]
+fn declared_release_child_bindings_replace_once_or_preserve_fixture_source()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-helper");
+    let launcher = "FIXTURE_POSIX_SHELL";
+    let invocation = "scripts/verify-release-settings --require-pypi";
+    let child = "scripts/verify-release-settings";
+    let source = format!("#!/bin/sh\n{invocation}\n");
+    fs::write(&script, &source)?;
+    bind_posix_fixture_script_launchers(
+        &script,
+        launcher,
+        &[FixtureScriptBinding { invocation, child }],
+    )?;
+    assert_eq!(
+        fs::read_to_string(&script)?,
+        format!("#!/bin/sh\n\"${launcher}\" \"{child}\" --require-pypi\n")
+    );
+
+    for (name, candidate, binding, expected_kind) in [
+        (
+            "absent",
+            "#!/bin/sh\nscripts/other-child\n",
+            FixtureScriptBinding { invocation, child },
+            ErrorKind::InvalidData,
+        ),
+        (
+            "duplicated",
+            "#!/bin/sh\nscripts/verify-release-settings --require-pypi\nscripts/verify-release-settings --require-pypi\n",
+            FixtureScriptBinding { invocation, child },
+            ErrorKind::InvalidData,
+        ),
+        (
+            "mismatched",
+            "#!/bin/sh\nscripts/verify-release-settings --require-pypi\n",
+            FixtureScriptBinding { invocation, child: "scripts/other-child" },
+            ErrorKind::InvalidData,
+        ),
+        (
+            "unsafe",
+            "#!/bin/sh\nscripts/../verify-release-settings --require-pypi\n",
+            FixtureScriptBinding {
+                invocation: "scripts/../verify-release-settings --require-pypi",
+                child: "scripts/../verify-release-settings",
+            },
+            ErrorKind::InvalidInput,
+        ),
+    ] {
+        fs::write(&script, candidate)?;
+        let error = bind_posix_fixture_script_launchers(&script, launcher, &[binding])
+            .expect_err("invalid declared child must fail closed");
+        assert_eq!(error.kind(), expected_kind, "{name}");
+        assert_eq!(fs::read_to_string(&script)?, candidate, "{name} wrote fixture source");
+    }
     Ok(())
 }
