@@ -130,6 +130,35 @@ fn release_script_fixtures_declare_their_known_windows_shell_children()
     Ok(())
 }
 
+#[test]
+fn release_fixture_shell_boundaries_project_every_filesystem_input()
+-> Result<(), Box<dyn std::error::Error>> {
+    let tests = codexy_runtime::paths::runtime_package_root().join("tests");
+    let recovery = fs::read_to_string(tests.join("release_publication_recovery/fixture.rs"))?;
+    let reconciliation = fs::read_to_string(
+        tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    )?;
+    let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
+    for (fixture, input) in [
+        (&recovery, "FIXTURE_GH"),
+        (&reconciliation, "GITHUB_EVENT_PATH"),
+    ] {
+        assert!(
+            fixture.contains(&format!(".path(\"{input}\"")),
+            "POSIX shell input must use its projected path: {input}"
+        );
+        assert!(
+            !fixture.contains(&format!(".native_path(\"{input}\"")),
+            "POSIX shell input bypassed path projection: {input}"
+        );
+    }
+    assert!(
+        !command.contains("native_path"),
+        "release fixture commands expose only projected filesystem inputs"
+    );
+    Ok(())
+}
+
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows").join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)

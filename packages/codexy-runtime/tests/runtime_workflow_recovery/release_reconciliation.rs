@@ -183,7 +183,7 @@ esac
         .path("FIXTURE_GH_LAUNCHER", &gh_launcher)
         .path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .path("FIXTURE_SCRIPT_ROOT", temp.path())
-        .native_path("GITHUB_EVENT_PATH", temp.path().join("event.json"))
+        .path("GITHUB_EVENT_PATH", temp.path().join("event.json"))
         .scalar("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;

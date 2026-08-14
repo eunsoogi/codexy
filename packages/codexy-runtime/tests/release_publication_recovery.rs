@@ -180,26 +180,3 @@ fn release_fixture_result_contract_keeps_success_and_expected_failure_distinct()
     .is_err());
     Ok(())
 }
-
-#[test]
-fn release_fixture_native_payload_keeps_the_host_path_identity()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-native-payload");
-    let payload = temp.path().join("native payload");
-    write_posix_fixture_command(&script, "#!/bin/sh\nprintf '%s\\n' \"$FIXTURE_PAYLOAD\"\n")?;
-
-    let output = ReleaseFixtureCommand::new(&script)
-        .native_path("FIXTURE_PAYLOAD", &payload)
-        .output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "release native payload",
-        ReleaseFixtureOutcome::Success,
-        &output,
-    );
-    assert_eq!(
-        String::from_utf8(output.stdout)?,
-        format!("{}\n", payload.display())
-    );
-    Ok(())
-}
