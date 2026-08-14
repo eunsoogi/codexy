@@ -1,4 +1,5 @@
 use std::ffi::{OsStr, OsString};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 #[path = "archive_inspection_receipt.rs"]
 mod archive_inspection_receipt;
@@ -179,6 +180,24 @@ impl FixtureCommand {
             value.to_owned()
         }
     }
+}
+
+/// Returns the concrete interpreter that `FixtureCommand` would use for a script.
+///
+/// Nested POSIX scripts cannot rely on PATH lookup for fixture payloads on native
+/// Windows, where Git Bash and native executable discovery have different rules.
+pub(crate) fn fixture_script_interpreter_path(program: &Path) -> Result<PathBuf, String> {
+    let command = FixtureCommand::new(program);
+    let launcher = PathBuf::from(command.get_program());
+    if launcher.is_absolute() {
+        return Ok(launcher);
+    }
+    let path = std::env::var_os("PATH")
+        .ok_or_else(|| "fixture interpreter cannot discover PATH".to_owned())?;
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(&launcher))
+        .find(|candidate| candidate.is_file())
+        .ok_or_else(|| format!("fixture interpreter was not found: {}", launcher.display()))
 }
 
 impl std::ops::Deref for FixtureCommand {

@@ -1,5 +1,5 @@
 use crate::support::{
-    FixtureCommand as Command, bind_posix_fixture_shell_launchers,
+    FixtureCommand as Command, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 use std::fs;
 
@@ -42,12 +42,14 @@ esac
     fs::copy(root.join("scripts/verify-release-settings"), &script)?;
     bind_posix_fixture_shell_launchers(
         &script,
-        &[("gh", "FIXTURE_GH", "sh")],
+        &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER")],
     )?;
+    let gh_launcher = fixture_script_interpreter_path(&gh)?;
     let run = |immutable: &str, pypi: &str, permission: &str| {
         Command::new(&script)
             .arg("--require-pypi")
             .env_path("FIXTURE_GH", &gh)
+            .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("RELEASE_POLICY_TOKEN", "test-token")
             .env("FIXTURE_IMMUTABLE", immutable)

@@ -149,6 +149,7 @@ fn release_script_fixtures_use_the_shared_cross_platform_command_dispatcher()
         assert!(
             source.contains("bind_posix_fixture_shell_launchers")
                 && source.contains(".env_path(\"FIXTURE_GH\"")
+                && source.contains(".env_path(\"FIXTURE_GH_LAUNCHER\"")
                 && !source.contains(".env(\"PATH\", format!(\"{}:{}\""),
             "{} must bind its copied shell fixture instead of relying on Windows PATH precedence",
             path.display()

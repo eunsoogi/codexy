@@ -1,5 +1,5 @@
 use crate::support::{
-    FixtureCommand as Command, bind_posix_fixture_shell_launchers,
+    FixtureCommand as Command, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 use std::fs;
 
@@ -73,6 +73,8 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
 struct Fixture {
     _temp: tempfile::TempDir,
     root: std::path::PathBuf,
+    git_launcher: std::path::PathBuf,
+    gh_launcher: std::path::PathBuf,
 }
 
 impl Fixture {
@@ -133,8 +135,10 @@ impl Fixture {
             root.join("scripts/verify-release-settings"),
             "#!/bin/sh\ntest \"${SETTINGS_ALLOWED:-true}\" = true\n",
         )?;
-        fs::write(root.join("bin/git"), git_fixture())?;
-        fs::write(root.join("bin/gh"), gh_fixture())?;
+        let git = root.join("bin/git");
+        let gh = root.join("bin/gh");
+        fs::write(&git, git_fixture())?;
+        fs::write(&gh, gh_fixture())?;
         for path in fs::read_dir(root.join("scripts"))?.chain(fs::read_dir(root.join("bin"))?) {
             make_executable(&path?.path())?;
         }
@@ -145,10 +149,18 @@ impl Fixture {
         ] {
             bind_posix_fixture_shell_launchers(
                 &root.join("scripts").join(name),
-                &[("git", "FIXTURE_GIT", "sh"), ("gh", "FIXTURE_GH", "python3")],
+                &[
+                    ("git", "FIXTURE_GIT", "FIXTURE_GIT_LAUNCHER"),
+                    ("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER"),
+                ],
             )?;
         }
-        Ok(Self { _temp: temp, root })
+        Ok(Self {
+            _temp: temp,
+            root,
+            git_launcher: fixture_script_interpreter_path(&git)?,
+            gh_launcher: fixture_script_interpreter_path(&gh)?,
+        })
     }
 
     fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -188,7 +200,9 @@ impl Fixture {
         Ok(Command::new(self.root.join("scripts").join(name))
             .current_dir(&self.root)
             .env_path("FIXTURE_GIT", self.root.join("bin/git"))
+            .env_path("FIXTURE_GIT_LAUNCHER", &self.git_launcher)
             .env_path("FIXTURE_GH", self.root.join("bin/gh"))
+            .env_path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("STAGING_SOURCE_COMMIT", COMMIT)
             .env("ACTIVATION_COMMIT", COMMIT)

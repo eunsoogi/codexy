@@ -60,8 +60,8 @@ pub(crate) use devtools_fixture::copy_into_with_mutable_files as copy_devtools_f
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
 pub(crate) use fixture_command::{
-    FixtureCommand, fixture_native_launcher, fixture_script_launcher, windows_fixture_companion,
-    windows_static_python_fixture,
+    FixtureCommand, fixture_native_launcher, fixture_script_interpreter_path,
+    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
 };
 pub(crate) use fixture_command_bindings::{
     bind_posix_fixture_shell_launchers, write_posix_fixture_shell_runner,

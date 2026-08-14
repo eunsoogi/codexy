@@ -13,9 +13,9 @@ pub(crate) fn write_posix_fixture_shell_runner(
     write_posix_fixture_shell_runner_with_scrub(path, target_environment, bindings, &[], &[])
 }
 
-/// Sources a POSIX fixture script with an explicit interpreter for every bare
-/// command binding. This keeps shell and Python mocks deterministic under Git
-/// Bash, where an extensionless fixture on PATH can lose to a native `.exe`.
+/// Sources a POSIX fixture script with an explicit interpreter path for every
+/// bare command binding. This keeps shell and Python mocks deterministic under
+/// Git Bash, where PATH lookup can lose to a native `.exe` or omit `python3`.
 pub(crate) fn bind_posix_fixture_shell_launchers(
     path: &Path,
     bindings: &[(&str, &str, &str)],
@@ -34,12 +34,12 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
         ));
     }
     let mut bound = format!("{shebang}\n");
-    for (command, payload_environment, launcher) in bindings {
+    for (command, payload_environment, launcher_environment) in bindings {
         validate_identifier(command)?;
         validate_identifier(payload_environment)?;
-        validate_identifier(launcher)?;
+        validate_identifier(launcher_environment)?;
         bound.push_str(&format!(
-            "{command}() {{ {launcher} \"${payload_environment}\" \"$@\"; }}\n"
+            "{command}() {{ \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
         ));
     }
     bound.push_str(body);

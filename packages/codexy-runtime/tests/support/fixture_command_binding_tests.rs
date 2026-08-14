@@ -1,7 +1,8 @@
 use std::{io::ErrorKind, process::Command};
 
 use crate::support::{
-    FixtureCommand, write_posix_fixture_command, write_posix_fixture_shell_runner,
+    FixtureCommand, bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
+    write_posix_fixture_command, write_posix_fixture_shell_runner,
 };
 
 #[test]
@@ -100,5 +101,41 @@ fn shell_runner_executes_the_safe_fixture_identifiers() -> Result<(), Box<dyn st
         String::from_utf8(output.stdout)?,
         "git:first\njq:second\ngh:third\n"
     );
+    Ok(())
+}
+
+#[test]
+fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-helper");
+    let gh = temp.path().join("gh");
+    let empty_path = temp.path().join("empty-path");
+    std::fs::create_dir(&empty_path)?;
+    write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
+    std::fs::write(
+        &gh,
+        "#!/usr/bin/env python3\nimport sys\nprint('gh:' + ' '.join(sys.argv[1:]))\n",
+    )?;
+    crate::support::make_executable(&gh)?;
+    bind_posix_fixture_shell_launchers(
+        &script,
+        &[("gh", "CODEXY_FIXTURE_GH", "CODEXY_FIXTURE_GH_LAUNCHER")],
+    )?;
+    let output = FixtureCommand::new(&script)
+        .env_path("CODEXY_FIXTURE_GH", &gh)
+        .env_path(
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            fixture_script_interpreter_path(&gh)?,
+        )
+        .env_path("PATH", &empty_path)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "stdout: {} stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(String::from_utf8(output.stdout)?, "gh:release view\n");
     Ok(())
 }
