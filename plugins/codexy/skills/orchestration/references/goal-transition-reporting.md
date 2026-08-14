@@ -103,12 +103,34 @@ window, whether it appears before or after a stale matching pre-mutation check.
 Before any blocked call, the child MUST perform a fresh typed gate and a fresh
 pre-delivery receipt after that event, followed by a matching pre-mutation check.
 
-A child that is only waiting MUST use `Nonterminal wait handoff:` with a stable
-state fingerprint, nonterminal producer, wake route, `ownership=retained`,
-`goal state=active`, `plan state=active`, `goal transition=none`, and `return control=confirmed`; it MUST NOT call
-`update_goal(complete)` or `update_goal(blocked)` for that wait before a same-lane
-terminal result from the reviewer selected by `review-profiles.json`: PASS, BLOCK,
-or UNOBSERVABLE.
+A child with an immediately executable in-scope obligation that is waiting on an
+external event MUST use `Nonterminal wait handoff:` with a stable state
+fingerprint, nonterminal producer, wake route, `ownership=retained`, `goal
+state=active`, `plan state=active`, `goal transition=none`, and `return
+control=confirmed`; it MUST NOT call `update_goal(complete)` or
+`update_goal(blocked)` merely for that wait.
+
+When no immediately executable child-owned obligation remains and only an
+external event or explicit parent wake can advance work, the child MUST send one
+`Idle wait handoff:` before completing its finite goal and leaving the task idle.
+This is the terminal parent handoff for `update_goal(complete)`, so it MUST also
+meet that receipt's parent-task, child-task, delivery, and task-surface fields.
+It MUST include the stable state fingerprint, nonterminal producer, exact wake
+route, `ownership=retained`, issue/PR state, branch, worktree, exact HEAD,
+dirty/index state, last proof, current gate, preserved reservation or artifacts,
+`issue state=not complete`, `goal transition=complete`, `return
+control=confirmed`, and the parent-owned next action. After the confirmed goal
+completion, the compact idle state MUST record `goal state=complete` and `plan
+state=idle`. It preserves the lane; it MUST NOT claim the issue or implementation
+complete, poll, interrupt, duplicate, replace, or approve the live producer or
+reviewer. The #590 and #609 lanes waiting for #591's merged SHA illustrate this
+condition: their local work was complete, while the merge remained an external
+producer.
+
+A qualifying wake event MUST cause the child to create a fresh short-lived goal
+and current plan before any edit, proof, review response, publication, or merge
+work. `update_goal(blocked)` remains reserved for the typed unanswered
+user-decision boundary.
 
 ## Static Recovery Shapes
 
