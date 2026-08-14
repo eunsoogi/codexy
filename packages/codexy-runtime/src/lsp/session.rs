@@ -30,14 +30,12 @@ impl LspSession {
     pub(super) fn spawn(request: &LspRequest) -> Result<Self> {
         let command = request
             .server
-            .command
+            .resolved_command
             .as_ref()
-            .filter(|items| !items.is_empty())
-            .context("server command is missing")?;
-        let executable = command.first().context("server command is missing")?;
+            .context("resolved server command is missing")?;
         let workspace_root = request.workspace_root_path();
-        let mut child = Command::new(executable)
-            .args(command.iter().skip(1))
+        let mut child = Command::new(&command.executable)
+            .args(&command.arguments)
             .current_dir(&workspace_root)
             .envs(std::env::vars_os())
             .stdin(Stdio::piped())

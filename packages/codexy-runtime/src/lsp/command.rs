@@ -5,6 +5,12 @@ use anyhow::Result;
 
 use crate::lsp::pathing::resolve_root;
 
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedCommand {
+    pub(crate) executable: String,
+    pub(crate) arguments: Vec<String>,
+}
+
 pub(crate) fn resolve_command(command: &[String], root: Option<&str>) -> Result<Vec<String>> {
     let Some(first) = command.first() else {
         return Ok(Vec::new());
@@ -19,21 +25,24 @@ pub(crate) fn resolve_command(command: &[String], root: Option<&str>) -> Result<
     Ok(command.to_vec())
 }
 
-pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, Option<String>) {
+pub(crate) fn resolve_executable(command: &[String]) -> Result<ResolvedCommand, String> {
     let Some(executable) = command.first() else {
-        return (false, None, Some("server command is missing".to_owned()));
+        return Err("server command is missing".to_owned());
     };
     if executable.contains(std::path::MAIN_SEPARATOR) {
         let path = Path::new(executable);
         if is_executable(path) {
-            return (true, Some(executable.clone()), None);
+            return Ok(ResolvedCommand {
+                executable: executable.clone(),
+                arguments: command[1..].to_vec(),
+            });
         }
         let reason = if path.exists() {
             format!("executable is not executable: {executable}")
         } else {
             format!("executable not found: {executable}")
         };
-        return (false, None, Some(reason));
+        return Err(reason);
     }
     let executable_names = executable_names(executable);
     // Lookup can be scoped without starving the MCP process of platform loader paths.
@@ -48,15 +57,14 @@ pub(crate) fn resolve_executable(command: &[String]) -> (bool, Option<String>, O
         for name in &executable_names {
             let candidate = entry.join(name);
             if is_executable(&candidate) {
-                return (true, Some(candidate.display().to_string()), None);
+                return Ok(ResolvedCommand {
+                    executable: candidate.display().to_string(),
+                    arguments: command[1..].to_vec(),
+                });
             }
         }
     }
-    (
-        false,
-        None,
-        Some(format!("executable not found on PATH: {executable}")),
-    )
+    Err(format!("executable not found on PATH: {executable}"))
 }
 
 fn executable_names(executable: &str) -> Vec<String> {
