@@ -33,6 +33,9 @@ formatter exists. `.prettierignore` and the runner exclude the exact generated,
 vendor, and intentionally malformed fixture roots listed in the policy; source
 and executable fixtures are still classified by suffix or shebang. JSONL is an
 intentional check-only fixture/evidence format and is excluded from formatting.
+The CI jobs also run checked-in valid, invalid, and formatter-idempotence
+fixtures in their matching language route. Malformed fixtures stay excluded
+from ordinary repository checks so they cannot mask source debt.
 
 Run either command only in a trusted checkout: check mode can execute Cargo
 build scripts and procedural macros, while fix mode can also change source. The

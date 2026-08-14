@@ -35,6 +35,8 @@ TEXT_EXCLUSIONS = (
     "packages/getcodexy/tests/fixtures/",
     "plugins/codexy-devtools/runtime/",
 )
+FIXTURE_EXCLUSIONS = ("tests/lint-fixtures/",)
+INVENTORY_EXCLUSIONS = TEXT_EXCLUSIONS + FIXTURE_EXCLUSIONS
 LANGUAGES = {
     "rust": {"check": "rustfmt and clippy", "fix": "rustfmt", "fixable": True},
     "python": {"check": "ruff", "fix": "ruff", "fixable": True},
@@ -153,7 +155,7 @@ def shebang_language(first: bytes) -> str | None:
 
 def shebang_inventory(root: Path) -> dict[str, tuple[str, ...]]:
     languages = {"shell": [], "python": []}
-    for name in selected_files(root, ("*",), TEXT_EXCLUSIONS):
+    for name in selected_files(root, ("*",), INVENTORY_EXCLUSIONS):
         first = (root / name).read_bytes().splitlines()[:1]
         if not first or not first[0].startswith(b"#!") or first[0].startswith(b"#!["):
             continue
@@ -167,7 +169,8 @@ def shebang_inventory(root: Path) -> dict[str, tuple[str, ...]]:
 def shell_files(root: Path) -> tuple[str, ...]:
     return tuple(
         sorted(
-            set(selected_files(root, ("*.sh",))) | set(shebang_inventory(root)["shell"])
+            set(selected_files(root, ("*.sh",), INVENTORY_EXCLUSIONS))
+            | set(shebang_inventory(root)["shell"])
         )
     )
 
@@ -189,10 +192,12 @@ def inventory_files(root: Path, language: str) -> tuple[str, ...]:
     if language == "python":
         return tuple(
             sorted(
-                set(selected_files(root, SOURCE_PATTERNS[language]))
+                set(
+                    selected_files(
+                        root, SOURCE_PATTERNS[language], INVENTORY_EXCLUSIONS
+                    )
+                )
                 | set(shebang_inventory(root)["python"])
             )
         )
-    return selected_files(
-        root, SOURCE_PATTERNS[language], TEXT_EXCLUSIONS if language == "text" else ()
-    )
+    return selected_files(root, SOURCE_PATTERNS[language], INVENTORY_EXCLUSIONS)

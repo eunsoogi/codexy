@@ -23,6 +23,7 @@ jobs:
           persist-credentials: false
       - run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
       - run: scripts/lint-repository --check --language rust
+      - run: python3 scripts/verify-lint-fixtures.py --language rust
 
   python:
     name: Python ruff
@@ -38,6 +39,7 @@ jobs:
       - name: Install pinned Ruff
         run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
       - run: scripts/lint-repository --check --language python
+      - run: python scripts/verify-lint-fixtures.py --language python
 
   text:
     name: Markdown JSON YAML and TOML Prettier
@@ -63,6 +65,7 @@ jobs:
           chmod 755 "$tool_dir/taplo"
           printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
       - run: scripts/lint-repository --check --language text
+      - run: python3 scripts/verify-lint-fixtures.py --language text
 
   shell:
     name: ShellCheck and shfmt
@@ -90,6 +93,7 @@ jobs:
           chmod 755 "$tool_dir/shfmt"
           printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
       - run: scripts/lint-repository --check --language shell
+      - run: python3 scripts/verify-lint-fixtures.py --language shell
 
   windows:
     name: Native PowerShell and command launchers
@@ -117,6 +121,8 @@ jobs:
           "CODEXY_PSSCRIPTANALYZER_PATH=$toolRoot" | Add-Content -LiteralPath $env:GITHUB_ENV
       - shell: pwsh
         run: scripts/lint-repository.ps1 --check --language powershell --language windows-command
+      - run: python scripts/verify-lint-fixtures.py --language powershell
+      - run: python scripts/verify-lint-fixtures.py --language windows-command
 
   lint:
     name: Language lint
