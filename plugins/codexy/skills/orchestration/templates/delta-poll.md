@@ -29,7 +29,7 @@
 - state fingerprint:
 - nonterminal producer:
 - exact wake route:
-- issue state: not complete
+- issue/PR state: issue=not complete; PR=
 - ownership: retained
 - parent task/child task/delivery/task surface:
 - branch/worktree/head/clean-index:
@@ -37,6 +37,7 @@
 - preserved reservation or artifacts:
 - goal transition: complete
 - parent-owned next action:
+- return control: confirmed
 - confirmed idle state: goal state=complete; plan state=idle
 
 ## Runtime Heartbeat

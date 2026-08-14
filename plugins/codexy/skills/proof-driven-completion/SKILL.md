@@ -165,8 +165,10 @@ MUST include:
 - MUST stop and fix if proof contradicts the claim.
 - MUST stop and ask only when the missing proof requires a secret, account action,
   destructive operation, or human-only decision.
-- MUST NOT call `update_goal(status="complete")` until every requirement has
-  current matching proof and no required work remains.
+- MUST NOT call `update_goal(status="complete")` until every requirement in the
+  finite execution phase has current matching proof and no immediately executable
+  in-scope owner work remains. Goal completion MUST NOT claim that the issue,
+  implementation, or an external gate is complete.
 - MUST NOT call `update_goal(status="blocked")` merely because child-thread work,
   queued worktree/thread setup, or asynchronous tool completion is pending. While
   an immediately executable in-scope obligation remains, the child MUST use one
