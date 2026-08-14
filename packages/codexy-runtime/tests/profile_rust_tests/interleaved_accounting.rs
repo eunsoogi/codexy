@@ -45,6 +45,14 @@ tests, _, outcomes = module.observed_test_records(whitespace_suffix)
 if tests or outcomes:
     raise SystemExit(f"whitespace-suffixed non-outcome was accepted: tests={tests!r} outcomes={outcomes!r}")
 
+okay_suffix = "\n".join((
+    "     Running tests/suites/system.rs (target/debug/deps/suite_system-okay)",
+    "test architecture_docs_inventory::unconfirmed ... okay",
+))
+tests, _, outcomes = module.observed_test_records(okay_suffix)
+if tests or outcomes:
+    raise SystemExit(f"word-suffixed non-outcome was accepted: tests={tests!r} outcomes={outcomes!r}")
+
 def assert_no_inference(label, lines):
     tests, _, outcomes = module.observed_test_records("\n".join(lines))
     if tests or outcomes:

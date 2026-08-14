@@ -60,7 +60,16 @@ esac
     };
     assert!(run(r#"{"enabled":true}"#, protected, "maintain")?);
     assert!(!run(r#"{"enabled":false}"#, protected, "maintain")?);
-    assert!(!run(r#"{"enabled":true}"#, r#"{"protection_rules":[]}"#, "maintain")?);
+    for (name, pypi) in [
+        ("protected branches", protected.replace("\"protected_branches\": true", "\"protected_branches\": false")),
+        ("custom branches", protected.replace("\"custom_branch_policies\": false", "\"custom_branch_policies\": true")),
+        ("admin bypass", protected.replace("\"can_admins_bypass\": false", "\"can_admins_bypass\": true")),
+        ("self review", protected.replace("\"prevent_self_review\": true", "\"prevent_self_review\": false")),
+        ("reviewer", protected.replace("\"reviewers\": [{\"reviewer\": {\"login\": \"maintainer\"}}]", "\"reviewers\": []")),
+        ("rule types", protected.replace("{\"type\": \"branch_policy\"}", "{\"type\": \"wait_timer\"}")),
+    ] {
+        assert!(!run(r#"{"enabled":true}"#, &pypi, "maintain")?, "accepted weakened {name}");
+    }
     assert!(!run(r#"{"enabled":true}"#, protected, "write")?);
     Ok(())
 }

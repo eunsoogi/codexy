@@ -13,12 +13,10 @@ SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
 if SCRIPT_DIRECTORY not in sys.path:
     sys.path.insert(0, SCRIPT_DIRECTORY)
 
+from profile_rust_patterns import RUN_PATTERN
 from profile_rust_targets import canonical_test_name, target_name
 
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
-# Preserve a libtest outcome when child output is appended directly to its
-# status token (for example, `... okdone.` on the hosted Ubuntu runner).
-RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)(?:\S.*)?$")
 RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
 RUNNING_NOTICE_PATTERN = re.compile(r"^test (?P<name>.+) has been running for over 60 seconds$")
 RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")

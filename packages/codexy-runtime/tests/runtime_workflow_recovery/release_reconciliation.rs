@@ -114,7 +114,8 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
         "id": 42, "name": "v9.9.9", "tag_name": "v9.9.9", "target_commitish": commit,
         "draft": false, "prerelease": false, "assets": assets
     }))?)?;
-    fs::write(temp.path().join("event.json"), r#"{"action":"edited","changes":{"body":{"from":"old"}},"release":{"id":42}}"#)?;
+    let event = r#"{"action":"edited","changes":{"body":{"from":"old"}},"release":{"id":42}}"#;
+    fs::write(temp.path().join("event.json"), event)?;
     let bin = temp.path().join("bin"); fs::create_dir(&bin)?;
     let gh = bin.join("gh");
     fs::write(&gh, r#"#!/bin/sh
@@ -162,6 +163,15 @@ esac
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
     let verified = run(false)?;
     assert!(verified.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&verified.stdout), String::from_utf8_lossy(&verified.stderr));
+    for (name, changed_event) in [
+        ("name", r#"{"action":"edited","changes":{"name":{"from":"old"}},"release":{"id":42}}"#),
+        ("body and name", r#"{"action":"edited","changes":{"body":{"from":"old"},"name":{"from":"old"}},"release":{"id":42}}"#),
+        ("empty", r#"{"action":"edited","changes":{},"release":{"id":42}}"#),
+    ] {
+        fs::write(temp.path().join("event.json"), changed_event)?;
+        assert!(!run(false)?.status.success(), "accepted edited release event with {name}");
+    }
+    fs::write(temp.path().join("event.json"), event)?;
     let rejected_states: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
         ("release id", Box::new(|state| state["id"] = serde_json::json!(43))),
         ("title", Box::new(|state| state["name"] = serde_json::json!("v9.9.8"))),

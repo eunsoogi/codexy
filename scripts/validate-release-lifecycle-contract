@@ -15,6 +15,20 @@ test "$#" = 3 && test -n "$1" && test -n "$2" && test -n "$3" || {
   printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
   exit 1
 }
+for component in "$@"; do
+  case "$component" in
+    0|[1-9]|[1-9][0-9]*) ;;
+    *)
+      printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+      exit 1
+      ;;
+  esac
+  length=${#component}
+  if test "$length" -gt 10 || { test "$length" -eq 10 && test "$component" -gt 2147483647; }; then
+    printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+    exit 1
+  fi
+done
 
 release_tag="v$target_version"
 contract=.agents/plugins/release-publish-contract.json
