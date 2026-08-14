@@ -7,7 +7,7 @@ use serde_json::Value;
 mod analysis;
 mod spans;
 use analysis::reason;
-use spans::visible_lines;
+use spans::{language, visible_lines};
 /// Returns a diagnostic only for a changed, maintained source line whose
 /// syntax packs several executable statements or fields into one construct.
 /// Line width is intentionally not an input: long identifiers, URLs, and
@@ -16,13 +16,14 @@ pub(super) fn error(path: &Path, text: &str) -> Option<String> {
     if source_disposition(path, text) != Disposition::Maintained {
         return None;
     }
+    let language = language(path, text);
     text.lines()
-        .zip(visible_lines(path, text))
+        .zip(visible_lines(language, text))
         .enumerate()
         .find_map(|(index, (_, visible))| {
             visible
                 .as_deref()
-                .and_then(|line| reason(path, line))
+                .and_then(|line| reason(language, line))
                 .map(|reason| {
                     format!(
                         "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
@@ -82,8 +83,10 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
             continue;
         };
         let disposition = source_disposition(&path, &text);
-        for (index, (line, visible)) in text.lines().zip(visible_lines(&path, &text)).enumerate() {
-            let reason = visible.as_deref().and_then(|line| reason(&path, line));
+        let language = language(&path, &text);
+        for (index, (line, visible)) in text.lines().zip(visible_lines(language, &text)).enumerate()
+        {
+            let reason = visible.as_deref().and_then(|line| reason(language, line));
             let structural = reason.is_some();
             if !structural && line.chars().count() <= 160 {
                 continue;
@@ -150,27 +153,25 @@ fn source_disposition(path: &Path, text: &str) -> Disposition {
     if base != Disposition::Maintained {
         return base;
     }
-    let path = path.to_string_lossy();
-    if is_fixture_path(&path) && text.starts_with("# codexy-exact-fixture: malformed\n") {
+    if text.starts_with("# codexy-exact-fixture: malformed\n") {
         return Disposition::ExactMalformedFixture;
     }
     if text.starts_with("// codexy-exact-fixture-file: ") {
         return Disposition::ExactFixture;
     }
-    let exact_json_fixture = is_fixture_path(&path) && path.ends_with(".json");
     let json = serde_json::from_str::<Value>(text).ok();
-    if (exact_json_fixture && json.is_some()) || json.as_ref().is_some_and(routing_fixture) {
+    if json.as_ref().is_some_and(exact_json_fixture) {
         Disposition::ExactFixture
     } else {
         Disposition::Maintained
     }
 }
 
-fn routing_fixture(value: &Value) -> bool {
+fn exact_json_fixture(value: &Value) -> bool {
     let Some(object) = value.as_object() else {
         return false;
     };
-    matches!(
+    let routing = matches!(
         object.get("schema").and_then(Value::as_str),
         Some("codexy.routing-evaluation-corpus.v1" | "codexy.routing-evaluation-results.v1")
     ) || object
@@ -180,11 +181,11 @@ fn routing_fixture(value: &Value) -> bool {
             schema.ends_with("routing-evaluation-results.schema.json")
                 && object.get("required").is_some()
                 && object.get("properties").is_some()
-        })
-}
-
-fn is_fixture_path(path: &str) -> bool {
-    path.starts_with("tests/fixtures/") || path.contains("/tests/fixtures/")
+        });
+    routing
+        || (object.get("schema").and_then(Value::as_str)
+            == Some("getcodexy.component-installation-cases.v1")
+            && object.get("fixtures").is_some_and(Value::is_array))
 }
 
 #[cfg(test)]

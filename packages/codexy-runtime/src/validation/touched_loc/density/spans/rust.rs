@@ -25,13 +25,17 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                 remainder = tail;
                 *depth = remaining;
                 if remaining != 0 {
-                    return None;
+                    return Some(visible);
                 }
                 *state = State::Code;
             }
             State::String => {
-                remainder = skip_string(remainder)?;
-                *state = State::Code;
+                if let Some(tail) = skip_string(remainder) {
+                    remainder = tail;
+                    *state = State::Code;
+                } else {
+                    return Some(visible);
+                }
             }
             State::Code => {
                 let Some((index, span)) = next_span(remainder) else {

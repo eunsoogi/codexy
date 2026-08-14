@@ -1,45 +1,43 @@
-use std::path::Path;
+use super::spans::Language;
 
-pub(super) fn reason(path: &Path, line: &str) -> Option<&'static str> {
-    if path.extension().is_some_and(|extension| extension == "md") {
+pub(super) fn reason(language: Language, line: &str) -> Option<&'static str> {
+    if language == Language::Markdown {
         return markdown_clause_count(line)
             .ge(&3)
             .then_some("dense Markdown clauses");
     }
-    let visible = visible_code(path, line);
-    match language(path) {
-        Some("rs") if visible.contains('{') && statement_count(&visible) >= 3 => {
+    let visible = visible_code(language, line);
+    match language {
+        Language::Rust if visible.contains('{') && statement_count(&visible) >= 3 => {
             Some("dense Rust statements")
         }
-        Some("py") if python_inline_suite(&visible) || statement_count(&visible) >= 2 => {
+        Language::Python if python_inline_suite(&visible) || statement_count(&visible) >= 2 => {
             Some("dense executable statements")
         }
-        Some("js" | "ts" | "tsx" | "jsx") if statement_count(javascript_body(&visible)) >= 3 => {
+        Language::JavaScript if statement_count(javascript_body(&visible)) >= 3 => {
             Some("dense executable statements")
         }
-        Some("sh" | "ps1") if !shell_predicate(&visible) && command_chain_count(&visible) >= 3 => {
+        Language::Shell | Language::PowerShell
+            if command_chain_count(shell_body(&visible)) >= 3 =>
+        {
             Some("dense command chain")
         }
-        Some("json") if inline_object_fields(&visible, ':') >= 4 => Some("dense JSON object"),
-        Some("toml") if inline_object_fields(&visible, '=') >= 4 => Some("dense TOML table"),
-        Some("yml" | "yaml") if yaml_flow_fields(&visible) >= 4 => Some("dense YAML flow mapping"),
-        Some("yml" | "yaml") if command_chain_count(&visible) >= 3 => {
+        Language::Json if inline_object_fields(&visible, ':') >= 4 => Some("dense JSON object"),
+        Language::Toml if inline_object_fields(&visible, '=') >= 4 => Some("dense TOML table"),
+        Language::Yaml if yaml_flow_fields(&visible) >= 4 => Some("dense YAML flow mapping"),
+        Language::Yaml if command_chain_count(&visible) >= 3 => {
             Some("dense workflow command chain")
         }
         _ => None,
     }
 }
 
-fn language(path: &Path) -> Option<&str> {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .or_else(|| path.starts_with("scripts").then_some("sh"))
-}
-
-fn visible_code(path: &Path, line: &str) -> String {
-    let extension = path.extension().and_then(|item| item.to_str());
-    let slash_comment = matches!(extension, Some("rs" | "js" | "ts" | "tsx" | "jsx"));
-    let hash_comment = matches!(extension, Some("py" | "sh" | "ps1" | "yml" | "yaml"));
+fn visible_code(language: Language, line: &str) -> String {
+    let slash_comment = matches!(language, Language::Rust | Language::JavaScript);
+    let hash_comment = matches!(
+        language,
+        Language::Python | Language::Shell | Language::PowerShell | Language::Yaml
+    );
     let mut visible = String::with_capacity(line.len());
     let mut characters = line.chars().peekable();
     let mut quote = None;
@@ -50,7 +48,7 @@ fn visible_code(path: &Path, line: &str) -> String {
             } else if character == delimiter {
                 quote = None;
             }
-        } else if matches!(character, '"') || (character == '\'' && extension != Some("rs")) {
+        } else if matches!(character, '"') || (character == '\'' && language != Language::Rust) {
             quote = Some(character);
         } else if (hash_comment && character == '#')
             || (slash_comment && character == '/' && characters.peek() == Some(&'/'))
@@ -125,24 +123,31 @@ fn statement_count(line: &str) -> usize {
 }
 
 fn command_chain_count(line: &str) -> usize {
-    line.replace(";;", "")
+    let line = line
+        .replace(";;", "")
         .replace("; then", "")
-        .replace("; fi", "")
-        .matches(';')
-        .count()
-        + line.matches("&&").count()
-        + line.matches("||").count()
-        + 1
+        .replace("; fi", "");
+    let line = line.trim().trim_end_matches(';');
+    line.matches(';').count() + line.matches("&&").count() + line.matches("||").count() + 1
 }
 
-fn shell_predicate(line: &str) -> bool {
+fn shell_body(line: &str) -> &str {
     let trimmed = line.trim_start();
-    trimmed.starts_with("test ")
-        || trimmed.starts_with("[ ")
-        || trimmed.starts_with("if ")
-        || trimmed.starts_with("while ")
-        || trimmed.starts_with("for ")
-        || trimmed.starts_with("case ")
+    if let Some((_, body)) = trimmed.split_once("|| {") {
+        body.strip_suffix('}').unwrap_or(body)
+    } else if matches!(
+        trimmed.split_whitespace().next(),
+        Some("if" | "while" | "until" | "for")
+    ) {
+        trimmed
+            .split_once("; then")
+            .or_else(|| trimmed.split_once("; do"))
+            .map_or("", |(_, body)| body)
+    } else if trimmed.starts_with("case ") {
+        ""
+    } else {
+        trimmed
+    }
 }
 
 fn inline_object_fields(line: &str, separator: char) -> usize {

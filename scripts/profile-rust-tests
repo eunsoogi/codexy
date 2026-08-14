@@ -163,7 +163,9 @@ def main() -> int:
     print(f"archive-fixture-nested-cargo-builds\t{archive_fixture_nested_cargo_builds}\t{'PASS' if archive_pass else 'FAIL'}")
     if phases.get("fixture-telemetry-json") is not None: print(f"fixture-telemetry-json\t{phases['fixture-telemetry-json']}")
     if phases.get("workload-receipt-json"): print(f"workload-receipt-json\t{phases['workload-receipt-json']}")
-    if arguments.windows: print(f"windows-telemetry-json\t{phases['windows-telemetry-json']}"); print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")
+    if arguments.windows:
+        print(f"windows-telemetry-json\t{phases['windows-telemetry-json']}")
+        print(f"windows-temp-cleanup-receipt-json\t{phases['windows-temp-cleanup-receipt-json']}")
     emit_receipt_report(phases.get("archive-inspector-receipt-lines"))
     print_phases(arguments, root, output, status, phases, total_elapsed)
     print(f"compile-seconds\t{compile_seconds:.3f}"); print(f"execution-seconds\t{max(0.0, elapsed - compile_seconds):.3f}")

@@ -57,9 +57,17 @@ fn touched_loc_preserves_source_backed_exact_fixtures_and_long_readable_line() -
     write(
         json_fixture.path(),
         "tests/fixtures/reference.json",
-        r#"{"one":1,"two":2,"three":3,"four":4}"#,
+        r#"{"schema":"codexy.routing-evaluation-corpus.v1","tasks":[]}"#,
     )?;
     assert!(validate(json_fixture.path())?.status.success());
+
+    let json_decoy = fixture("tests/fixtures/maintained.json", "{}\n".to_owned())?;
+    write(
+        json_decoy.path(),
+        "tests/fixtures/maintained.json",
+        r#"{"one":1,"two":2,"three":3,"four":4}"#,
+    )?;
+    assert!(!validate(json_decoy.path())?.status.success());
 
     let line = format!("const URL: &str = \"https://example.test/{}\";\n", "x".repeat(220));
     let readable_repo = fixture("src/lib.rs", "pub fn readable() {}\n".to_owned())?;
@@ -142,23 +150,10 @@ mod awk_boundary;
 mod markdown_boundary;
 #[path = "validator_touched_loc_density/lexer_boundary.rs"]
 mod lexer_boundary;
-
-#[test]
-fn validator_cli_checks_density_in_a_changed_structured_file() -> TestResult {
-    let repo = fixture("config/plugin.json", "{}\n".to_owned())?;
-    write(
-        repo.path(),
-        "config/plugin.json",
-        r#"{"one":1,"two":2,"three":3,"four":4}"#,
-    )?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--check-touched-loc", "--base-ref", "HEAD"])
-        .current_dir(repo.path())
-        .output()?;
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("dense JSON object"));
-    Ok(())
-}
+#[path = "validator_touched_loc_density/sentinel_v4_boundary.rs"]
+mod sentinel_v4_boundary;
+#[path = "validator_touched_loc_density/cli.rs"]
+mod cli;
 
 #[test]
 fn touched_loc_handles_language_specific_nesting_and_boundaries() -> TestResult {

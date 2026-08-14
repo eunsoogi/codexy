@@ -65,4 +65,11 @@ fn classifies_only_explicit_malformed_fixtures_as_exact() {
         ),
         Disposition::ExactFixture
     );
+    assert_eq!(
+        source_disposition(
+            Path::new("tests/fixtures/maintained.json"),
+            r#"{"one":1,"two":2,"three":3,"four":4}"#,
+        ),
+        Disposition::Maintained
+    );
 }

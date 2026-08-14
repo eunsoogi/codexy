@@ -130,7 +130,12 @@ verify_batch() {
       cd "$repo"
       EXPECTED_ROOT="$expected_root" FAKE_PR_STATE_FILE="$state_file"
       export EXPECTED_ROOT FAKE_PR_STATE_FILE
-      if test "$test_mode" = 1; then CODEXY_TEST_MODE=1; export CODEXY_TEST_MODE; else unset CODEXY_TEST_MODE; fi
+      if test "$test_mode" = 1; then
+        CODEXY_TEST_MODE=1
+        export CODEXY_TEST_MODE
+      else
+        unset CODEXY_TEST_MODE
+      fi
       verify_case "$branch" "$base" "$bootstrap" "$receipt"
     ) >"$stdout" 2>"$stderr"
     case_status=$?
