@@ -6,6 +6,9 @@ use crate::support::{
     write_posix_fixture_command, write_posix_fixture_shell_runner,
 };
 
+#[path = "fixture_command_binding_tests/native_payload.rs"]
+mod native_payload;
+
 #[test]
 fn shell_runner_rejects_unsafe_function_identifiers_before_writing()
 -> Result<(), Box<dyn std::error::Error>> {

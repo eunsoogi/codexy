@@ -48,7 +48,7 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
         validate_identifier(payload_environment)?;
         validate_identifier(launcher_environment)?;
         bound.push_str(&format!(
-            "{command}() {{ \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
+            "{command}() {{ MSYS_NO_PATHCONV=1 \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
         ));
     }
     bound.push_str(body);
