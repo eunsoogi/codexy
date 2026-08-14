@@ -35,6 +35,7 @@ impl Projection {
     pub(super) fn project(&mut self, line: &str) -> Projected {
         self.start_line();
         let mut visible = String::with_capacity(line.len());
+        let mut comment_boundary = true;
         let mut continues = false;
         let mut index = 0;
         while index < line.len() {
@@ -43,10 +44,12 @@ impl Projection {
             match self.frames.last_mut() {
                 Some(Frame::Escape) => {
                     self.frames.pop();
+                    comment_boundary = false;
                     mask(&mut visible, character);
                     index += character.len_utf8();
                 }
                 Some(Frame::Quote(quote)) => {
+                    comment_boundary = false;
                     if quote.escaped {
                         quote.escaped = false;
                         mask(&mut visible, character);
@@ -71,44 +74,56 @@ impl Projection {
                 }
                 Some(Frame::Substitution { depth }) => {
                     if character == '\\' {
+                        comment_boundary = false;
                         continues = tail == "\\";
                         self.start_escape(&mut visible, &mut index);
                     } else if matches!(character, '\'' | '"') {
+                        comment_boundary = false;
                         self.start_quote(character, &mut visible, &mut index);
                     } else if arithmetic_start(tail).is_some() {
+                        comment_boundary = false;
                         self.start_arithmetic(tail, &mut visible, &mut index);
                     } else if tail.starts_with("$(") {
+                        comment_boundary = false;
                         self.start_substitution(&mut visible, &mut index);
                     } else if character == '(' {
+                        comment_boundary = true;
                         *depth += 1;
                         visible.push(character);
                         index += 1;
                     } else if character == ')' {
+                        comment_boundary = false;
                         *depth -= 1;
                         mask(&mut visible, character);
                         index += 1;
                         if *depth == 0 {
                             self.frames.pop();
                         }
-                    } else if character == '#' && comment_start(line, index) {
+                    } else if character == '#' && comment_boundary {
                         mask_rest(&mut visible, tail);
                         break;
                     } else {
                         visible.push(character);
+                        update_comment_boundary(&mut comment_boundary, character);
                         index += character.len_utf8();
                     }
                 }
                 Some(Frame::Arithmetic { depth }) => {
                     if character == '\\' {
+                        comment_boundary = false;
                         continues = tail == "\\";
                         self.start_escape(&mut visible, &mut index);
                     } else if matches!(character, '\'' | '"') {
+                        comment_boundary = false;
                         self.start_quote(character, &mut visible, &mut index);
                     } else if arithmetic_start(tail).is_some() {
+                        comment_boundary = false;
                         self.start_arithmetic(tail, &mut visible, &mut index);
                     } else if tail.starts_with("$(") {
+                        comment_boundary = false;
                         self.start_substitution(&mut visible, &mut index);
                     } else if tail.starts_with("))") {
+                        comment_boundary = false;
                         *depth -= 1;
                         mask_count(&mut visible, 2);
                         index += 2;
@@ -116,33 +131,43 @@ impl Projection {
                             self.frames.pop();
                         }
                     } else if tail.starts_with("<<<") {
+                        comment_boundary = false;
                         mask_count(&mut visible, 3);
                         index += 3;
                     } else if tail.starts_with("<<") {
+                        comment_boundary = false;
                         mask_count(&mut visible, 2);
                         index += 2;
                     } else {
                         visible.push(character);
+                        comment_boundary = false;
                         index += character.len_utf8();
                     }
                 }
                 None if character == '\\' => {
+                    comment_boundary = false;
                     continues = tail == "\\";
                     self.start_escape(&mut visible, &mut index);
                 }
                 None if matches!(character, '\'' | '"') => {
+                    comment_boundary = false;
                     self.start_quote(character, &mut visible, &mut index);
                 }
                 None if arithmetic_start(tail).is_some() => {
+                    comment_boundary = false;
                     self.start_arithmetic(tail, &mut visible, &mut index);
                 }
-                None if tail.starts_with("$(") => self.start_substitution(&mut visible, &mut index),
-                None if character == '#' && comment_start(line, index) => {
+                None if tail.starts_with("$(") => {
+                    comment_boundary = false;
+                    self.start_substitution(&mut visible, &mut index);
+                }
+                None if character == '#' && comment_boundary => {
                     mask_rest(&mut visible, tail);
                     break;
                 }
                 None => {
                     visible.push(character);
+                    update_comment_boundary(&mut comment_boundary, character);
                     index += character.len_utf8();
                 }
             }
@@ -197,10 +222,8 @@ fn arithmetic_start(tail: &str) -> Option<usize> {
     }
 }
 
-fn comment_start(line: &str, index: usize) -> bool {
-    line[..index].chars().next_back().is_none_or(|character| {
-        character.is_whitespace() || matches!(character, ';' | '&' | '|' | '(' | ')')
-    })
+fn update_comment_boundary(boundary: &mut bool, character: char) {
+    *boundary = character.is_whitespace() || matches!(character, ';' | '&' | '|');
 }
 
 fn mask(visible: &mut String, character: char) {

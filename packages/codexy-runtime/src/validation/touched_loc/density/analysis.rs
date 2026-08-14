@@ -6,7 +6,9 @@ pub(super) fn reason(language: Language, line: &str) -> Option<&'static str> {
             .ge(&3)
             .then_some("dense Markdown clauses");
     }
-    let visible = visible_code(language, line);
+    let visible = (language == Language::Shell)
+        .then(|| line.to_owned())
+        .unwrap_or_else(|| visible_code(language, line));
     match language {
         Language::Rust if visible.contains('{') && statement_count(&visible) >= 3 => {
             Some("dense Rust statements")

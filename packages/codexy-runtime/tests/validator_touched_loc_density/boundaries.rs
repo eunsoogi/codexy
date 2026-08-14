@@ -30,5 +30,7 @@ mod sentinel_v14_boundary;
 mod sentinel_v15_boundary;
 #[path = "sentinel_v16_boundary.rs"]
 mod sentinel_v16_boundary;
+#[path = "sentinel_v17_boundary.rs"]
+mod sentinel_v17_boundary;
 #[path = "cli.rs"]
 mod cli;
