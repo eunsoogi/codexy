@@ -75,6 +75,15 @@ for result, suffix in (("ok", "Oops"), ("ok", "!"), ("FAILED", "Maybe"), ("FAILE
         "     Running tests/suites/all.rs (target/debug/deps/suite_all-suffix)",
         f"test support::unconfirmed ... {result}{suffix}",
     ))
+for result in ("FAILED", "ignored"):
+    spliced = "\n".join((
+        "     Running tests/suites/all.rs (target/debug/deps/suite_all-splice)",
+        f"test support::unconfirmed ... {result}done.",
+    ))
+    assert_no_inference(f"non-ok {result} splice", tuple(spliced.splitlines()))
+    _, _, active, completed, _ = module.deadline_test_context(spliced)
+    if active or completed is not None:
+        raise SystemExit(f"non-ok {result} splice completed deadline accounting")
 assert_no_inference("non-adjacent summary", (
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-d)",
     "test support::non_adjacent ... child output",

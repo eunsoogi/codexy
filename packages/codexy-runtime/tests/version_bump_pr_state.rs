@@ -70,9 +70,22 @@ fn nonclosing_pr_state_requires_exact_tracks_linkage_without_fabricating_closure
     let state: Value = serde_json::from_slice(&fs::read(&output)?)?;
     assert_eq!(state["closingIssuesReferences"], json!([]));
     assert_eq!(state["governingIssue"]["number"], 301);
-    pr["body"] = json!("NotTracks #301\n");
-    fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
-    assert!(!run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success());
+    for body in [
+        "NotTracks #301\n",
+        "Tracks #301\nTracks #301\n",
+        "Tracks #302\nTracks #301\n",
+        "tracks #301\n",
+        "- Tracks #301\n",
+        "1. Tracks #301\n",
+        "Tracks #301 extra\n",
+    ] {
+        pr["body"] = json!(body);
+        fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
+        assert!(
+            !run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success(),
+            "accepted ambiguous Tracks directive: {body:?}"
+        );
+    }
     Ok(())
 }
 

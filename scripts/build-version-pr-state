@@ -12,6 +12,8 @@ import tempfile
 from pathlib import Path
 from typing import NoReturn
 
+from version_pr_tracks import parse_tracks_issue_number
+
 OID_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
@@ -87,9 +89,15 @@ def build_state(args: argparse.Namespace) -> dict[str, object]:
     if args.issue_link_mode == "nonclosing":
         if not isinstance(references, list) or references:
             fail("provisional release pull request must not close an issue")
-        last_line = next((line for line in reversed(pr.get("body", "").splitlines()) if line), "")
-        if last_line != f"Tracks #{issue_number}":
-            fail("provisional release pull request must end with canonical Tracks issue linkage")
+        body = pr.get("body")
+        if not isinstance(body, str):
+            fail("provisional release pull request requires a body")
+        try:
+            observed_issue_number = parse_tracks_issue_number(body)
+        except ValueError as error:
+            fail(str(error))
+        if observed_issue_number != issue_number:
+            fail("provisional release pull request Tracks issue does not match the governing issue")
         enriched_reference = {"number": issue_number, "labels": issue_labels}
     else:
         if not isinstance(references, list) or len(references) != 1:

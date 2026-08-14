@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from version_pr_tracks import parse_tracks_issue_number
+
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 OWNER_PATTERN = re.compile(r"(?=[A-Za-z0-9-]{1,39}$)[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
 REPOSITORY_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
@@ -148,13 +150,10 @@ class ObservedVersionPrIdentity:
                 raise ValueError("observed PR requires a body")
             if parse_body_closing_references(body, repository):
                 raise ValueError("existing provisional release PR must not contain closing references")
-            line = next((line for line in reversed(body.splitlines()) if line), "")
-            match = re.fullmatch(r"Tracks #([1-9][0-9]*)", line)
-            if match is None:
-                raise ValueError("observed provisional release PR body must end with canonical Tracks issue linkage")
-            number = int(match[1])
             owner, name = parse_repository(repository)
-            return cls(branch, CanonicalIssueIdentity(owner, name, number, f"https://github.com/{repository}/issues/{number}"), cls._labels(pr.get("labels")), body)
+            number = parse_tracks_issue_number(body)
+            issue = CanonicalIssueIdentity(owner, name, number, f"https://github.com/{repository}/issues/{number}")
+            return cls(branch, issue, cls._labels(pr.get("labels")), body)
         if issue_link_mode != "closing":
             raise ValueError("unsupported governing issue link mode")
         if not isinstance(references, list) or len(references) != 1:
