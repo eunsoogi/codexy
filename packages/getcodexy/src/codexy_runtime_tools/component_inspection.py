@@ -93,7 +93,7 @@ def _inspect(codex_home: str | os.PathLike[str], codex: Path | None, runner: Run
                 host_error = ProbeStage.MARKETPLACE_LIST.value
             else:
                 actual, records, admission_error = _actual(manifest, installed, root)
-    errors = [{"code": code} for code in (host_error, admission_error, inventory_error) if code]
+    errors = ([{"code": "invalid-installed-inventory"}] if host_error else []) + [{"code": code} for code in (admission_error, inventory_error) if code]
     inconsistent = bool(host_error or admission_error or inventory_error or recorded is not None and recorded != actual)
     return {
         "manifest": manifest,

@@ -4,17 +4,44 @@ from __future__ import annotations
 
 import json
 import os
-import tomllib
 from pathlib import Path
 
 
 CATALOGS = {
-    "core": {
-        "version": "0.1.0", "default_branch_prefix": "codexy/", "catalog_kind": "plugin-packaged-specialist-agent-files",
-        "native_custom_agent_registration": "codex-home-standalone-agent-projection", "native_custom_agent_projection": "managed-codexy-subdirectory",
-        "agent_files": ["codexy-architect.toml", "codexy-cartographer.toml", "codexy-auditor.toml", "codexy-shipwright.toml", "codexy-inspector.toml", "codexy-sentinel.toml", "codexy-warden.toml"],
-    },
-    "github": {"version": "0.1.0", "catalog_kind": "plugin-packaged-specialist-agent-files", "agent_files": ["codexy-weaver.toml"]},
+    "core": '''# Codexy packaged-agent discovery/registration contract. Validators and the
+# registration script load agent_files from this catalog; native Codex agent
+# use is through marker-owned standalone files under the Codex home agents directory.
+version = "0.1.0"
+default_branch_prefix = "codexy/"
+catalog_kind = "plugin-packaged-specialist-agent-files"
+native_custom_agent_registration = "codex-home-standalone-agent-projection"
+native_custom_agent_projection = "managed-codexy-subdirectory"
+agent_files = [
+  "codexy-architect.toml",
+  "codexy-cartographer.toml",
+  "codexy-auditor.toml",
+  "codexy-shipwright.toml",
+  "codexy-inspector.toml",
+  "codexy-sentinel.toml",
+  "codexy-warden.toml",
+]
+''',
+    "github": '''version = "0.1.0"
+catalog_kind = "plugin-packaged-specialist-agent-files"
+agent_files = ["codexy-weaver.toml"]
+''',
+}
+AGENT_FILES = {
+    "core": (
+        "codexy-architect.toml",
+        "codexy-cartographer.toml",
+        "codexy-auditor.toml",
+        "codexy-shipwright.toml",
+        "codexy-inspector.toml",
+        "codexy-sentinel.toml",
+        "codexy-warden.toml",
+    ),
+    "github": ("codexy-weaver.toml",),
 }
 HOOKS = {
     "core": {"hooks": {
@@ -45,10 +72,13 @@ def valid_registration(plugin: Path, component: str) -> bool:
     try:
         if component == "devtools":
             return _json(plugin / ".mcp.json") == MCP and _executable(plugin / LAUNCHERS[component][0])
-        catalog = _toml(plugin / "agents/catalog.toml")
-        agents = catalog.get("agent_files") if isinstance(catalog, dict) else ()
-        return catalog == CATALOGS[component] and _json(plugin / "hooks/hooks.json") == HOOKS[component] and all(_regular(plugin / f"agents/{name}") for name in agents) and all(_regular(plugin / path) for path in LAUNCHERS[component])
-    except (KeyError, OSError, UnicodeDecodeError, ValueError, tomllib.TOMLDecodeError):
+        return (
+            _text(plugin / "agents/catalog.toml") == CATALOGS[component]
+            and _json(plugin / "hooks/hooks.json") == HOOKS[component]
+            and all(_regular(plugin / f"agents/{name}") for name in AGENT_FILES[component])
+            and all(_regular(plugin / path) for path in LAUNCHERS[component])
+        )
+    except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False
 
 
@@ -57,9 +87,8 @@ def _json(path: Path) -> object:
         return json.load(source)
 
 
-def _toml(path: Path) -> object:
-    with path.open("rb") as source:
-        return tomllib.load(source)
+def _text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 def _regular(path: Path) -> bool:

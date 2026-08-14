@@ -19,7 +19,7 @@ class MarketplaceFallbackTests(unittest.TestCase):
             observed = status(state.home, codex=state.codex, runner=self._marketplace_failure(state))
             result = doctor(state.home, codex=state.codex, runner=self._marketplace_failure(state))
         self.assertEqual(observed["installed_components"], ["core"])
-        self.assertEqual(observed["errors"], [{"code": "codex-marketplace-list"}])
+        self.assertEqual(observed["errors"], [{"code": "invalid-installed-inventory"}])
         self.assertEqual(result["host_readiness"], {"state": "error", "missing_requirements": ["codex-marketplace-list"]})
 
     def test_fallback_rejects_noncanonical_plugin_records(self) -> None:
