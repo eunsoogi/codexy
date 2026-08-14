@@ -54,6 +54,27 @@ class BootstrapTests(unittest.TestCase):
                 ],
             )
 
+    def test_started_bootstrap_rejects_live_state_missing_a_journal_before_component(self) -> None:
+        with fixture({"core"}, versions={"core": "1.2.0"}) as state:
+            journal = Journal(
+                "op-bootstrap-missing-before",
+                "bootstrap",
+                (),
+                ("core", "github", "devtools"),
+                ("core", "github"),
+                ("core", "github", "devtools"),
+                InventorySnapshot.capture(state.home),
+                "started",
+            )
+            write_journal(state.home, journal)
+
+            receipt = run_operation("install", ("core",), state.home, state.codex, state.run, operation_id="op-after-missing-before")
+
+            self.assertEqual(receipt["outcome"], "rejected")
+            self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
+            self.assertEqual(state.mutations, [])
+            self.assertEqual(read_journal(state.home), journal)
+
     def test_operands_have_a_typed_rejection(self) -> None:
         with fixture() as state:
             receipt = run_operation("bootstrap", ("core",), state.home, state.codex, state.run, operation_id="op-bootstrap-operand")
