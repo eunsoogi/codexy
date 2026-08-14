@@ -45,15 +45,17 @@ class LintFixtureTests(unittest.TestCase):
 
     def test_text_plan_excludes_malformed_fixture_paths(self) -> None:
         runner = inventory_module()
-        plan = runner.build_plan(ROOT, "check", {"text"})
 
-        self.assertTrue(
-            all(
-                not path.startswith("tests/lint-fixtures/")
-                for step in plan
-                for path in step.command
-            )
-        )
+        for mode in ("check", "fix"):
+            with self.subTest(mode=mode):
+                plan = runner.build_plan(ROOT, mode, {"text"})
+                self.assertTrue(
+                    all(
+                        not path.startswith("tests/lint-fixtures/")
+                        for step in plan
+                        for path in step.command
+                    )
+                )
 
     def test_workflow_exercises_real_failure_fixtures_for_every_route(self) -> None:
         workflow = (ROOT / ".github/workflows/language-lint.yml").read_text(
