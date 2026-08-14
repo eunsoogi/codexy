@@ -31,7 +31,6 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::set_version;
-pub(super) use package_lock::{package_locks, root_package_lock, root_package_lock_mut};
 pub(crate) use semver::require as require_semver;
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
@@ -217,10 +216,10 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
             &display_relative(&manifest_path),
         )?;
     }
-    for path in package_locks()? {
+    for path in package_lock::package_locks()? {
         let lock = load_json(&path)?;
         let package_version = string_field(
-            root_package_lock(&lock, &path)?,
+            package_lock::root_package_lock(&lock, &path)?,
             "version",
             &format!("{} root package", display_relative(&path)),
         )?;

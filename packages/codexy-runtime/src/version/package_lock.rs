@@ -7,7 +7,7 @@ use super::repo_path;
 
 const PACKAGE_LOCK: &str = "package-lock.json";
 
-pub(crate) fn package_locks() -> Result<Vec<PathBuf>> {
+pub(super) fn package_locks() -> Result<Vec<PathBuf>> {
     let path = repo_path(PACKAGE_LOCK)?;
     Ok(if path.exists() {
         vec![path]
@@ -16,14 +16,14 @@ pub(crate) fn package_locks() -> Result<Vec<PathBuf>> {
     })
 }
 
-pub(crate) fn root_package_lock<'a>(lock: &'a Value, path: &Path) -> Result<&'a Value> {
+pub(super) fn root_package_lock<'a>(lock: &'a Value, path: &Path) -> Result<&'a Value> {
     lock.get("packages")
         .and_then(Value::as_object)
         .and_then(|packages| packages.get(""))
         .with_context(|| format!("{} must contain a root package", path.display()))
 }
 
-pub(crate) fn root_package_lock_mut<'a>(lock: &'a mut Value, path: &Path) -> Result<&'a mut Value> {
+pub(super) fn root_package_lock_mut<'a>(lock: &'a mut Value, path: &Path) -> Result<&'a mut Value> {
     lock.get_mut("packages")
         .and_then(Value::as_object_mut)
         .and_then(|packages| packages.get_mut(""))
