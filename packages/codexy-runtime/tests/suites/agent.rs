@@ -103,3 +103,6 @@ mod validator_sentinel_reasoning_fixture;
 
 #[path = "../validator_sentinel_reviewer_gate.rs"]
 mod validator_sentinel_reviewer_gate;
+
+#[path = "../validator_reviewer_structural_priority.rs"]
+mod validator_reviewer_structural_priority;

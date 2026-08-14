@@ -94,6 +94,11 @@ edits.
   and strict runs `plugins/codexy/agents/codexy-sentinel.toml` against the current
   diff, exact head or file state, lane scope, touched implementation-file LOC
   evidence, verification outputs, and available evidence.
+- Inspector and Sentinel MUST prioritize a smallest structural defect, ownership
+  error, invalid state model, or violated invariant; consolidate same-cause
+  examples with one repair boundary; and keep genuinely distinct high-severity
+  defects separate. Adjacent edge cases disprove those structural claims, while
+  unrelated edge cases remain non-blocking follow-ups.
 - Packaged Sentinel terminal results MUST be `PASS`, `BLOCK`, or
   `UNOBSERVABLE`. A bounded wait with no event is a non-terminal `PENDING`
   observation, and an independently observed live reviewer is `RUNNING`;
