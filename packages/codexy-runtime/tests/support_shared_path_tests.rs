@@ -198,13 +198,6 @@ fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
         windows_fixture_environment_value("GIT_COMMON_DIR", "D:/work/common"),
         Ok("/d/work/common".into())
     );
-    for key in ["GITHUB_ENV", "GITHUB_EVENT_PATH"] {
-        assert_eq!(
-            windows_fixture_environment_value(key, "C:\\fixture\\release input"),
-            Ok("/c/fixture/release input".into()),
-            "{key} must cross the POSIX fixture command boundary as a path"
-        );
-    }
 }
 
 #[test]

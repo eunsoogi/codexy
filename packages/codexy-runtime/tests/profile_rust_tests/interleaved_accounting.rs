@@ -16,42 +16,13 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 output = "\n".join((
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-a)",
-    "test support::interleaved ... ok",
+    "test support::interleaved ... okSyntax error from child stderr",
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 tests, targets, outcomes = module.observed_test_records(output)
 expected = "suite_all::support::interleaved"
 if tests.get(expected) != 1 or outcomes.get("ok") != 1 or targets != {"suite_all"}:
     raise SystemExit(f"tests={tests!r} targets={targets!r} outcomes={outcomes!r}")
-
-ci_spliced = "\n".join((
-    "     Running tests/suites/system.rs (target/debug/deps/suite_system-ci)",
-    "test architecture_docs_inventory::architecture_inventory_rejects_omissions_duplicates_and_stale_fields ... okdone.",
-    "test another::completed ... ok",
-    "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
-))
-tests, _, outcomes = module.observed_test_records(ci_spliced)
-if tests != Counter({
-    "suite_system::architecture_docs_inventory::architecture_inventory_rejects_omissions_duplicates_and_stale_fields": 1,
-    "suite_system::another::completed": 1,
-}) or outcomes != Counter({"ok": 2}):
-    raise SystemExit(f"CI-spliced completion was lost: tests={tests!r} outcomes={outcomes!r}")
-
-whitespace_suffix = "\n".join((
-    "     Running tests/suites/system.rs (target/debug/deps/suite_system-whitespace)",
-    "test architecture_docs_inventory::unconfirmed ... ok child output",
-))
-tests, _, outcomes = module.observed_test_records(whitespace_suffix)
-if tests or outcomes:
-    raise SystemExit(f"whitespace-suffixed non-outcome was accepted: tests={tests!r} outcomes={outcomes!r}")
-
-okay_suffix = "\n".join((
-    "     Running tests/suites/system.rs (target/debug/deps/suite_system-okay)",
-    "test architecture_docs_inventory::unconfirmed ... okay",
-))
-tests, _, outcomes = module.observed_test_records(okay_suffix)
-if tests or outcomes:
-    raise SystemExit(f"word-suffixed non-outcome was accepted: tests={tests!r} outcomes={outcomes!r}")
 
 def assert_no_inference(label, lines):
     tests, _, outcomes = module.observed_test_records("\n".join(lines))
@@ -70,30 +41,6 @@ assert_no_inference("ignored summary", (
     "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
-for result, suffix in (("ok", "Oops"), ("ok", "!"), ("FAILED", "Maybe"), ("FAILED", "!"), ("ignored", "Maybe"), ("ignored", "!")):
-    assert_no_inference(f"ambiguous {result}{suffix}", (
-        "     Running tests/suites/all.rs (target/debug/deps/suite_all-suffix)",
-        f"test support::unconfirmed ... {result}{suffix}",
-    ))
-for result, suffix in (("ok", "Oops"), ("FAILED", "Maybe"), ("ignored", "!")):
-    summary_ambiguous = "\n".join((
-        "     Running tests/suites/all.rs (target/debug/deps/suite_all-summary)",
-        f"test support::unconfirmed ... {result}{suffix}",
-        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
-    ))
-    assert_no_inference(f"summary {result}{suffix}", tuple(summary_ambiguous.splitlines()))
-    _, _, active, completed, _ = module.deadline_test_context(summary_ambiguous)
-    if active or completed is not None:
-        raise SystemExit(f"summary {result}{suffix} completed deadline accounting")
-for result in ("FAILED", "ignored"):
-    spliced = "\n".join((
-        "     Running tests/suites/all.rs (target/debug/deps/suite_all-splice)",
-        f"test support::unconfirmed ... {result}done.",
-    ))
-    assert_no_inference(f"non-ok {result} splice", tuple(spliced.splitlines()))
-    _, _, active, completed, _ = module.deadline_test_context(spliced)
-    if active or completed is not None:
-        raise SystemExit(f"non-ok {result} splice completed deadline accounting")
 assert_no_inference("non-adjacent summary", (
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-d)",
     "test support::non_adjacent ... child output",

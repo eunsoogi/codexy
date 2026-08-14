@@ -108,12 +108,6 @@ impl FakeLsp {
         }
         self.merge_capture(&json!({
             "cwd": std::env::current_dir()?.display().to_string(),
-            "argv": std::env::args_os()
-                .map(|argument| argument.to_string_lossy().into_owned())
-                .collect::<Vec<_>>(),
-            "currentExecutable": std::env::current_exe()?.display().to_string(),
-            "path": std::env::var_os("PATH")
-                .map(|path| path.to_string_lossy().into_owned()),
             "rootUri": message.pointer("/params/rootUri").cloned().unwrap_or(Value::Null)
         }))
     }

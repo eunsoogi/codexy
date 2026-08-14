@@ -13,10 +13,10 @@ SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
 if SCRIPT_DIRECTORY not in sys.path:
     sys.path.insert(0, SCRIPT_DIRECTORY)
 
-from profile_rust_patterns import accepted_result, is_ambiguous_result
 from profile_rust_targets import canonical_test_name, target_name
 
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
+RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
 RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
 RUNNING_NOTICE_PATTERN = re.compile(r"^test (?P<name>.+) has been running for over 60 seconds$")
 RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
@@ -137,7 +137,7 @@ def deadline_test_context(output: str) -> tuple[str | None, str | None, list[str
             pending = None
             terminal = None
             observed_targets.add(current)
-        elif current and (match := accepted_result(line)):
+        elif current and (match := RUN_PATTERN.match(line)):
             pending = None
             completed = f"{current}::{canonical_test_name(match.group('name'))}"
             active.discard(completed)
@@ -147,7 +147,7 @@ def deadline_test_context(output: str) -> tuple[str | None, str | None, list[str
         elif current and (match := RUNNING_NOTICE_PATTERN.match(line)):
             pending = None
             active.add(f"{current}::{canonical_test_name(match.group('name'))}")
-        elif current and not is_ambiguous_result(line) and (match := RUN_START_PATTERN.match(line)):
+        elif current and (match := RUN_START_PATTERN.match(line)):
             pending = match.group("name")
         elif current and pending and line in {"ok", "FAILED", "ignored"}:
             completed = f"{current}::{canonical_test_name(pending)}"
@@ -205,10 +205,10 @@ def observed_test_records(output: str) -> tuple[Counter[str], set[str], Counter[
             current = target_name(line)
             targets.add(current)
             pending = None
-        elif current and (match := accepted_result(line)):
+        elif current and (match := RUN_PATTERN.match(line)):
             pending = None
             record_observed_test(tests, outcomes, current, match.group("name"), match.group("result"))
-        elif current and not is_ambiguous_result(line) and (match := RUN_START_PATTERN.match(line)):
+        elif current and (match := RUN_START_PATTERN.match(line)):
             pending = match.group("name")
         elif current and pending and line in {"ok", "FAILED", "ignored"}:
             record_observed_test(tests, outcomes, current, pending, line)

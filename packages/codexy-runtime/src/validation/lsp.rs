@@ -234,11 +234,13 @@ fn check_rust_readiness_inner(plugin_root: &Path) -> Result<()> {
         json_array_strings(entry.get("command")).unwrap_or_else(|| catalog_entry.command.clone());
     let command =
         crate::lsp::command::resolve_command(&command, Some(&plugin_root.display().to_string()))?;
-    match crate::lsp::command::resolve_executable(&command) {
-        Ok(_) => Ok(()),
-        Err(reason) => bail!(
+    let (available, _, reason) = crate::lsp::command::resolve_executable(&command);
+    if available {
+        Ok(())
+    } else {
+        bail!(
             "Rust LSP command unavailable: {}; install rust-analyzer, for example with `rustup component add rust-analyzer`, or put rust-analyzer on PATH before PR readiness",
-            reason
-        ),
+            reason.unwrap_or_else(|| "rust-analyzer executable unavailable".to_owned())
+        )
     }
 }

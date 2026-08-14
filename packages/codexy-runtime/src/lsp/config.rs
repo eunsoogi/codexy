@@ -7,7 +7,7 @@ use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::lsp::command::{ResolvedCommand, resolve_command, resolve_executable};
+use crate::lsp::command::{resolve_command, resolve_executable};
 use crate::lsp::pathing::normalize_ext;
 use crate::paths::devtools_plugin_root;
 
@@ -27,8 +27,6 @@ pub(super) struct Server {
     pub(super) executable: Option<String>,
     #[serde(rename = "resolvedExecutable")]
     pub(super) resolved_executable: Option<String>,
-    #[serde(skip)]
-    pub(super) resolved_command: Option<ResolvedCommand>,
     pub(super) available: bool,
     #[serde(rename = "installHints")]
     pub(super) install_hints: Vec<String>,
@@ -100,7 +98,6 @@ pub(super) fn select_server(args: &Value, file_path: &str, root: Option<&str>) -
         command: None,
         executable: None,
         resolved_executable: None,
-        resolved_command: None,
         available: false,
         install_hints: Vec::new(),
         reason: Some(format!("no LSP server matches {unmatched}")),
@@ -169,30 +166,23 @@ fn enrich_server(
     let command = command
         .map(|items| resolve_command(&items, root))
         .transpose()?;
-    let resolution = command
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("server command is missing"))
-        .and_then(|items| resolve_executable(items).map_err(anyhow::Error::msg));
-    let (resolved_command, reason) = match resolution {
-        Ok(command) => (Some(command), None),
-        Err(error) => (None, Some(error.to_string())),
-    };
+    let availability = command.as_ref().map_or_else(
+        || (false, None, Some("server command is missing".to_owned())),
+        |items| resolve_executable(items),
+    );
     Ok(Server {
         id: id.to_owned(),
         language: catalog_entry.and_then(|item| item.language.clone()),
         extensions: entry.extensions.clone(),
         executable: command.as_ref().and_then(|items| items.first().cloned()),
         command,
-        resolved_executable: resolved_command
-            .as_ref()
-            .map(ResolvedCommand::display_executable),
-        available: resolved_command.is_some(),
-        resolved_command,
+        resolved_executable: availability.1,
+        available: availability.0,
         install_hints: catalog_entry
             .and_then(|item| item.install.clone())
             .into_iter()
             .collect(),
-        reason,
+        reason: availability.2,
     })
 }
 
@@ -204,7 +194,6 @@ fn unavailable_override(id: &str, command: Option<Vec<String>>, reason: &str) ->
         executable: command.as_ref().and_then(|items| items.first().cloned()),
         command,
         resolved_executable: None,
-        resolved_command: None,
         available: false,
         install_hints: Vec::new(),
         reason: Some(reason.to_owned()),
