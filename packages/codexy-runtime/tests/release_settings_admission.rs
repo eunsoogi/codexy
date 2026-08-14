@@ -1,4 +1,5 @@
-use std::{fs, process::Command};
+use crate::support::FixtureCommand as Command;
+use std::fs;
 
 #[test]
 fn protected_release_settings_fail_closed_for_immutable_and_pypi_policy_drift()

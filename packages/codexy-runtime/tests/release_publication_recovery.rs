@@ -1,4 +1,5 @@
-use std::{fs, process::Command};
+use crate::support::FixtureCommand as Command;
+use std::fs;
 
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;

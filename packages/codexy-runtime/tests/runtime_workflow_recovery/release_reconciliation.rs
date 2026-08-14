@@ -1,5 +1,6 @@
 use std::fs;
-use std::process::Command;
+
+use crate::support::FixtureCommand as Command;
 
 use crate::support;
 use sha2::{Digest, Sha256};

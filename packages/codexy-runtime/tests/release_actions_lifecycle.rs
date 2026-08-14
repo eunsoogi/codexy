@@ -131,6 +131,25 @@ fn release_workflows_pin_every_third_party_action_to_a_reviewable_commit()
     Ok(())
 }
 
+#[test]
+fn release_script_fixtures_use_the_shared_cross_platform_command_dispatcher()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::runtime_package_root().join("tests");
+    for path in [
+        root.join("release_publication_recovery.rs"),
+        root.join("release_settings_admission.rs"),
+        root.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    ] {
+        let source = fs::read_to_string(&path)?;
+        assert!(
+            source.contains("use crate::support::FixtureCommand as Command;"),
+            "{} must dispatch shell fixtures through FixtureCommand",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows").join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)
