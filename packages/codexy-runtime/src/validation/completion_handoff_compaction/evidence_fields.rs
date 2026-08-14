@@ -117,8 +117,15 @@ fn field_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
         .map(str::trim)
 }
 
-#[rustfmt::skip]
-fn metadata_line(line: &str) -> &str { let line = line.trim().trim_start_matches(['-', '*']).trim_start(); let line = line.strip_prefix("[x]").or_else(|| line.strip_prefix("[X]")).unwrap_or(line).trim_start(); line.trim_start_matches('#').trim_start() }
+fn metadata_line(line: &str) -> &str {
+    let trimmed = line.trim().trim_start_matches(['-', '*']).trim_start();
+    let without_checkbox = trimmed
+        .strip_prefix("[x]")
+        .or_else(|| trimmed.strip_prefix("[X]"))
+        .unwrap_or(trimmed)
+        .trim_start();
+    without_checkbox.trim_start_matches('#').trim_start()
+}
 
 fn has_codexy_contract_phrase(text: &str) -> bool {
     has_any(text, CODEXY_CONTRACT_PHRASES)

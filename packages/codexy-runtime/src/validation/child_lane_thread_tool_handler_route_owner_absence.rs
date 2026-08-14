@@ -45,9 +45,15 @@ pub(super) fn has_route_owner_absence(tokens: &[&str]) -> bool {
     )
 }
 
-#[rustfmt::skip]
 pub(super) fn strip_actor_article<'a>(tokens: &'a [&'a str]) -> &'a [&'a str] {
-    let mut tokens = tokens; while matches!(tokens.first().copied(), Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")) { tokens = &tokens[1..]; } tokens
+    let mut remaining = tokens;
+    while matches!(
+        remaining.first().copied(),
+        Some("a" | "an" | "any" | "from" | "member" | "of" | "one" | "single" | "the")
+    ) {
+        remaining = &remaining[1..];
+    }
+    remaining
 }
 
 #[cfg(test)]

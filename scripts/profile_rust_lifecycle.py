@@ -58,14 +58,29 @@ def run_workload(
                         try:
                             status = process.wait(timeout=max(0, deadline - time.monotonic()))
                         except subprocess.TimeoutExpired:
-                            phases["windows-job-active-zero"] = "deadline"; phases.update(job.diagnostics(process)); job.terminate_and_wait(); status = 124; cleanup_allowed = True
+                            phases["windows-job-active-zero"] = "deadline"
+                            phases.update(job.diagnostics(process))
+                            job.terminate_and_wait()
+                            status = 124
+                            cleanup_allowed = True
                         else:
                             phases.update(job.diagnostics(process))
-                            if job.wait_for_empty_until(time.monotonic()): phases["windows-job-active-zero"] = "completed"; cleanup_allowed = True
-                            else: phases["windows-job-active-zero"] = "drained"; job.terminate_and_wait(); cleanup_allowed = True
+                            if job.wait_for_empty_until(time.monotonic()):
+                                phases["windows-job-active-zero"] = "completed"
+                                cleanup_allowed = True
+                            else:
+                                phases["windows-job-active-zero"] = "drained"
+                                job.terminate_and_wait()
+                                cleanup_allowed = True
                 except subprocess.TimeoutExpired:
-                    if sys.platform.startswith("linux"): phases["linux-cargo-descendants-json"] = json.dumps(linux_cargo_descendants_snapshot(process.pid), sort_keys=True)
-                    stop_workload(process, job); status = 124; cleanup_allowed = True
+                    if sys.platform.startswith("linux"):
+                        phases["linux-cargo-descendants-json"] = json.dumps(
+                            linux_cargo_descendants_snapshot(process.pid),
+                            sort_keys=True,
+                        )
+                    stop_workload(process, job)
+                    status = 124
+                    cleanup_allowed = True
                 except KeyboardInterrupt:
                     stop_workload(process, job); raise
                 finally:

@@ -4,6 +4,9 @@ mod validator_touched_loc_reconciliation_invariants;
 #[path = "../validator_touched_loc_reconciliation_provenance.rs"]
 mod validator_touched_loc_reconciliation_provenance;
 
+#[path = "../validator_touched_loc_density.rs"]
+mod validator_touched_loc_density;
+
 #[path = "../validator_touched_loc_remediation.rs"]
 mod validator_touched_loc_remediation;
 

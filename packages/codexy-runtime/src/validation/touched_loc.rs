@@ -19,6 +19,10 @@ pub(super) fn check(base_ref: &str) -> Vec<String> {
     }
 }
 
+pub(super) fn density_inventory() -> Result<Vec<String>> {
+    density::inventory_at(&git_top_level()?)
+}
+
 fn check_inner(base_ref: &str) -> Result<()> {
     let root = git_top_level()?;
     let errors = diagnostics_at(&root, base_ref)?;
@@ -42,19 +46,22 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
         ));
     }
     for file in changes::scoped(&root, base_ref)? {
-        if !is_governed_path(&file.path) {
+        if !density::is_governed_path(&file.path) {
             continue;
         }
         let path = root.join(&file.path);
         if !path.is_file() {
             continue;
         }
-        let line_count = count_lines(&path)?;
         let text = std::fs::read_to_string(&path)
             .with_context(|| format!("reading touched file {}", file.path.display()))?;
         if let Some(error) = density::error(&file.path, &text) {
             errors.push(error);
         }
+        if !is_governed_path(&file.path) {
+            continue;
+        }
+        let line_count = text.lines().count();
         if let Some(error) = touched_loc_remediation::formatting_only_error(
             &root,
             base_ref,

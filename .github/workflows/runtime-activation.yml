@@ -87,15 +87,39 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .agents/plugins plugins/codexy plugins/codexy-devtools packages/getcodexy/src/codexy_runtime_tools/component-manifest.json packages/codexy-runtime/src/version/bootstrap.rs packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock
           if test "$(cat activation-branch-state)" = existing; then
-            git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
+            if ! git diff --cached --quiet; then
+              echo "activation branch differs from verified contract" >&2
+              exit 1
+            fi
           else
             git commit -m "feat(runtime): activate v${BOOTSTRAP_VERSION}"
             git push origin "$branch"
           fi
           test "$(gh pr list --head "$branch" --state open --json number --jq 'length')" -le 1
           if ! gh pr list --head "$branch" --state open --json number --jq 'length' | grep -Fqx 1; then
-            {
-              printf '%s\n' '## Summary' 'Select the verified staged Windows runtime and version 1.3.0.' '' '## Rationale' 'The runtime archive is bound to an authenticated successful Actions run.' '' '## Changed Areas' '- Runtime selection and version metadata' '' '## Verification' '- Bootstrap, staging identity, digest, provenance, and attestation checks' '' '## Evidence' '- Exact source and run-attempt binding' '' '## Not Run' '- None' '' '## Follow-ups' '- Final version publisher runs after merge.' '' 'Fixes #502'
-            } > pr-body.md
+            cat > pr-body.md <<'EOF'
+            ## Summary
+            Select the verified staged Windows runtime and version 1.3.0.
+
+            ## Rationale
+            The runtime archive is bound to an authenticated successful Actions run.
+
+            ## Changed Areas
+            - Runtime selection and version metadata
+
+            ## Verification
+            - Bootstrap, staging identity, digest, provenance, and attestation checks
+
+            ## Evidence
+            - Exact source and run-attempt binding
+
+            ## Not Run
+            - None
+
+            ## Follow-ups
+            - Final version publisher runs after merge.
+
+            Fixes #502
+            EOF
             gh pr create --base main --head "$branch" --title "feat(runtime): activate v${BOOTSTRAP_VERSION}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body-file pr-body.md
           fi

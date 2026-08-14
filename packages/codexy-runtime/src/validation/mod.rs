@@ -150,6 +150,11 @@ pub fn touched_loc_diagnostics(root: &Path, base_ref: &str) -> Result<Vec<String
     touched_loc::diagnostics_at(root, base_ref)
 }
 
+/// Lists reproducible readability-audit classifications for governed sources.
+pub fn density_inventory() -> Result<Vec<String>> {
+    touched_loc::density_inventory()
+}
+
 /// Returns diagnostics for one authorization record and captured PR state.
 #[must_use]
 pub fn merge_authorization_diagnostics(authorization: &str, pr_state: &str) -> Vec<String> {
