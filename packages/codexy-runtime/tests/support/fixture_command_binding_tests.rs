@@ -180,7 +180,10 @@ fn declared_release_child_bindings_replace_once_or_preserve_fixture_source()
         (
             "mismatched",
             "#!/bin/sh\nscripts/verify-release-settings --require-pypi\n",
-            FixtureScriptBinding { invocation, child: "scripts/other-child" },
+            FixtureScriptBinding {
+                invocation,
+                child: "scripts/other-child",
+            },
             ErrorKind::InvalidData,
         ),
         (
@@ -197,7 +200,11 @@ fn declared_release_child_bindings_replace_once_or_preserve_fixture_source()
         let error = bind_posix_fixture_script_launchers(&script, launcher, &[binding])
             .expect_err("invalid declared child must fail closed");
         assert_eq!(error.kind(), expected_kind, "{name}");
-        assert_eq!(fs::read_to_string(&script)?, candidate, "{name} wrote fixture source");
+        assert_eq!(
+            fs::read_to_string(&script)?,
+            candidate,
+            "{name} wrote fixture source"
+        );
     }
     Ok(())
 }
