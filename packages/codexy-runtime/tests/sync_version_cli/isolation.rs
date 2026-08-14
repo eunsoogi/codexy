@@ -53,7 +53,10 @@ fn select_next_public_identities(root: &Path) -> Result<(), Box<dyn std::error::
     let mut contract: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
     contract["bootstrap"]["selectedVersion"] = json!("1.3.1");
     contract["runtime"]["selectedTag"] = json!("v1.3.1");
-    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
+    fs::write(
+        path,
+        format!("{}\n", serde_json::to_string_pretty(&contract)?),
+    )?;
     fs::write(
         root.join("packages/codexy-runtime/src/version/bootstrap.rs"),
         "pub(super) const VERSION: &str = \"1.3.1\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
@@ -72,6 +75,7 @@ pub(super) fn version_surface_contents(
             "packages/codexy-runtime/Cargo.lock",
             "packages/codexy-runtime/Cargo.toml",
             "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+            "package.json",
             "plugins/codexy/.codex-plugin/plugin.json",
             "plugins/codexy-devtools/.codex-plugin/plugin.json",
             "plugins/codexy-github/.codex-plugin/plugin.json",
