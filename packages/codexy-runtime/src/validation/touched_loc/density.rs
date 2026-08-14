@@ -4,6 +4,10 @@ use std::process::Command;
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
+mod syntax;
+
+use syntax::{is_extensionless_script, source_kind, visible_code};
+
 const PROVENANCE: &str = include_str!("density/provenance_manifest.json");
 
 /// Detects compact, executable structures in maintained changed source. This
@@ -14,7 +18,10 @@ pub(super) fn error(path: &Path, text: &str) -> Option<String> {
         return None;
     }
     text.lines().enumerate().find_map(|(index, line)| {
-        (admitted(path, line)).then(|| reason(path, line)).flatten().map(|reason| {
+        (admitted(path, text, line))
+            .then(|| reason(path, text, line))
+            .flatten()
+            .map(|reason| {
             format!(
                 "{}:{} contains {reason}; expand or extract the maintained source instead of compressing it",
                 path.display(),
@@ -72,16 +79,22 @@ pub(super) fn inventory_at(root: &Path) -> Result<Vec<String>> {
             continue;
         };
         let disposition = disposition(&path, &text);
+        if is_extensionless_script(&path) && source_kind(&path, &text).is_none() {
+            records.push(format!(
+                "{}:1\tmaintained-readable/manual-audit\taudit-input=unmodeled-extensionless-script",
+                path.display(),
+            ));
+        }
         for (index, line) in text.lines().enumerate() {
-            if reason(&path, line).is_none() {
+            if reason(&path, &text, line).is_none() {
                 continue;
             }
-            let classification = if disposition == Disposition::Maintained && !admitted(&path, line)
-            {
-                "maintained-readable/manual-audit"
-            } else {
-                disposition.name()
-            };
+            let classification =
+                if disposition == Disposition::Maintained && !admitted(&path, &text, line) {
+                    "maintained-readable/manual-audit"
+                } else {
+                    disposition.name()
+                };
             records.push(format!(
                 "{}:{}\t{}\taudit-input=structural-density",
                 path.display(),
@@ -152,10 +165,10 @@ fn matches_source(source: &Value, text: &str) -> bool {
             })
 }
 
-fn reason(path: &Path, line: &str) -> Option<&'static str> {
-    let extension = path.extension().and_then(|extension| extension.to_str())?;
-    let visible = visible_code(extension, line);
-    match extension {
+fn reason(path: &Path, text: &str, line: &str) -> Option<&'static str> {
+    let kind = source_kind(path, text)?;
+    let visible = visible_code(kind, line);
+    match kind {
         "rs" if visible.contains('{') && separators(&visible, ';') >= 3 => {
             Some("dense Rust statements")
         }
@@ -171,12 +184,12 @@ fn reason(path: &Path, line: &str) -> Option<&'static str> {
     }
 }
 
-fn admitted(path: &Path, line: &str) -> bool {
-    let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+fn admitted(path: &Path, text: &str, line: &str) -> bool {
+    let Some(kind) = source_kind(path, text) else {
         return false;
     };
     let trimmed = line.trim_start();
-    match extension {
+    match kind {
         "rs" => trimmed.starts_with("fn ") || trimmed.starts_with("pub fn "),
         "py" | "js" | "ts" | "tsx" | "jsx" => !line.contains(['\'', '"']),
         "sh" | "ps1" => simple_shell_chain(trimmed),
@@ -198,32 +211,6 @@ fn simple_shell_chain(line: &str) -> bool {
         && parts
             .iter()
             .all(|part| !part.trim().is_empty() && !part.trim().contains(char::is_whitespace))
-}
-
-fn visible_code(extension: &str, line: &str) -> String {
-    let slash_comments = matches!(extension, "rs" | "js" | "ts" | "tsx" | "jsx");
-    let hash_comments = matches!(extension, "py" | "sh" | "ps1" | "yml" | "yaml");
-    let mut visible = String::new();
-    let mut characters = line.chars().peekable();
-    let mut quote = None;
-    while let Some(character) = characters.next() {
-        if let Some(delimiter) = quote {
-            if character == '\\' {
-                characters.next();
-            } else if character == delimiter {
-                quote = None;
-            }
-        } else if matches!(character, '\'' | '"') {
-            quote = Some(character);
-        } else if (hash_comments && character == '#')
-            || (slash_comments && character == '/' && characters.peek() == Some(&'/'))
-        {
-            break;
-        } else {
-            visible.push(character);
-        }
-    }
-    visible
 }
 
 fn separators(line: &str, separator: char) -> usize {

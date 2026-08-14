@@ -50,6 +50,22 @@ fn packet_blocks_owned_defects_and_demotes_unowned_parser_scope() -> TestResult 
         follow_up["findings"][0]["owned_boundary"] = json!(null);
         follow_up["findings"][0]["repair_boundary"] = json!(null);
         follow_up["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+        let mut improper_repair = follow_up.clone();
+        improper_repair["event_id"] = json!(format!("{profile}-improper-repair"));
+        improper_repair["findings"][0]["resolved"] = json!(true);
+        improper_repair["resolution"] = json!({
+            "repaired_finding_ids":["f-1"],
+            "changed_boundaries":["validator"]
+        });
+        assert!(
+            !check_packet(
+                fixture.root(),
+                &temp.path().join(format!("{profile}-improper-repair.json")),
+                &improper_repair,
+            )?
+            .status
+            .success()
+        );
         assert!(
             check_packet(
                 fixture.root(),

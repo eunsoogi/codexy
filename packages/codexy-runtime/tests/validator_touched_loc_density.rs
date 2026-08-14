@@ -24,6 +24,16 @@ fn rejects_representative_compacted_maintained_source() -> TestResult {
             "Identify the owner; retain the evidence; avoid duplicate work.\n",
             "dense Markdown",
         ),
+        (
+            "scripts/profile-rust-tests",
+            "#!/usr/bin/env python3\nfirst; second; third\n",
+            "dense executable",
+        ),
+        (
+            "scripts/check-runtime",
+            "#!/bin/sh\nfirst && second && third\n",
+            "dense command",
+        ),
     ];
     for (path, text, expected) in cases {
         let repo = fixture(path, "readable\n".to_owned())?;
@@ -44,6 +54,11 @@ fn preserves_quoted_values_comments_and_small_constructs() -> TestResult {
             "const URL: &str = \"https://example.test/a;b;c\";\n",
         ),
         ("scripts/release.sh", "first && second\n"),
+        (
+            "scripts/profile-rust-tests",
+            "#!/usr/bin/env python3\nfirst; second\n",
+        ),
+        ("scripts/check-runtime", "#!/bin/sh\nfirst && second\n"),
         ("config/plugin.json", r#"{"one":1,"two":2,"three":3}"#),
         ("plugins/codexy/skills/example/SKILL.md", "MUST retain evidence.\n"),
     ];
