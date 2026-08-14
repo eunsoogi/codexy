@@ -1,4 +1,6 @@
-use crate::support::FixtureCommand as Command;
+use crate::support::{
+    FixtureCommand as Command, bind_posix_fixture_shell_launchers,
+};
 use std::fs;
 
 #[path = "release_publication_recovery/fixture.rs"]
@@ -136,6 +138,16 @@ impl Fixture {
         for path in fs::read_dir(root.join("scripts"))?.chain(fs::read_dir(root.join("bin"))?) {
             make_executable(&path?.path())?;
         }
+        for name in [
+            "publish-verified-release",
+            "reconcile-release-baseline",
+            "finalize-verified-release",
+        ] {
+            bind_posix_fixture_shell_launchers(
+                &root.join("scripts").join(name),
+                &[("git", "FIXTURE_GIT", "sh"), ("gh", "FIXTURE_GH", "python3")],
+            )?;
+        }
         Ok(Self { _temp: temp, root })
     }
 
@@ -173,10 +185,10 @@ impl Fixture {
         settings_allowed: bool,
         immutable: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        let path = format!("{}:{}", self.root.join("bin").display(), std::env::var("PATH")?);
         Ok(Command::new(self.root.join("scripts").join(name))
             .current_dir(&self.root)
-            .env("PATH", path)
+            .env_path("FIXTURE_GIT", self.root.join("bin/git"))
+            .env_path("FIXTURE_GH", self.root.join("bin/gh"))
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("STAGING_SOURCE_COMMIT", COMMIT)
             .env("ACTIVATION_COMMIT", COMMIT)

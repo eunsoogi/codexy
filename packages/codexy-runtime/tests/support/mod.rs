@@ -64,8 +64,8 @@ pub(crate) use fixture_command::{
     windows_static_python_fixture,
 };
 pub(crate) use fixture_command_bindings::{
-    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
-    write_single_posix_fixture_shell_runner,
+    bind_posix_fixture_shell_launchers, write_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner_with_scrub, write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;

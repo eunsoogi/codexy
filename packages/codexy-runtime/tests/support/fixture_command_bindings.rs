@@ -13,6 +13,40 @@ pub(crate) fn write_posix_fixture_shell_runner(
     write_posix_fixture_shell_runner_with_scrub(path, target_environment, bindings, &[], &[])
 }
 
+/// Sources a POSIX fixture script with an explicit interpreter for every bare
+/// command binding. This keeps shell and Python mocks deterministic under Git
+/// Bash, where an extensionless fixture on PATH can lose to a native `.exe`.
+pub(crate) fn bind_posix_fixture_shell_launchers(
+    path: &Path,
+    bindings: &[(&str, &str, &str)],
+) -> io::Result<()> {
+    let source = fs::read_to_string(path)?;
+    let Some((shebang, body)) = source.split_once('\n') else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "fixture script has no body",
+        ));
+    };
+    if shebang != "#!/bin/sh" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "fixture script is not POSIX shell",
+        ));
+    }
+    let mut bound = format!("{shebang}\n");
+    for (command, payload_environment, launcher) in bindings {
+        validate_identifier(command)?;
+        validate_identifier(payload_environment)?;
+        validate_identifier(launcher)?;
+        bound.push_str(&format!(
+            "{command}() {{ {launcher} \"${payload_environment}\" \"$@\"; }}\n"
+        ));
+    }
+    bound.push_str(body);
+    fs::write(path, bound)?;
+    crate::support::make_executable(path)
+}
+
 pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
     path: &Path,
     target_environment: &str,

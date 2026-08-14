@@ -1,6 +1,8 @@
 use std::fs;
 
-use crate::support::FixtureCommand as Command;
+use crate::support::{
+    FixtureCommand as Command, bind_posix_fixture_shell_launchers,
+};
 
 use crate::support;
 use sha2::{Digest, Sha256};
@@ -142,9 +144,14 @@ esac
         permissions.set_mode(0o755);
         fs::set_permissions(&gh, permissions)?;
     }
-    let run = |extra_attestation: bool| Command::new(scripts.join("verify-release-edit-baseline"))
+    for name in ["verify-release-edit-baseline", "verify-release-attestation-set", "verify-release-attestation-total"] {
+        bind_posix_fixture_shell_launchers(&scripts.join(name), &[("gh", "FIXTURE_GH", "sh")])?;
+    }
+    let script = scripts.join("verify-release-edit-baseline");
+    let run = |extra_attestation: bool| Command::new(&script)
         .current_dir(temp.path()).env("FIXTURE_DIR", &fixture).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string()).env("PATH", format!("{}:{}", bin.display(), std::env::var("PATH")?))
+        .env_path("FIXTURE_GH", &gh)
+        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;

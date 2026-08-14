@@ -24,6 +24,27 @@ expected = "suite_all::support::interleaved"
 if tests.get(expected) != 1 or outcomes.get("ok") != 1 or targets != {"suite_all"}:
     raise SystemExit(f"tests={tests!r} targets={targets!r} outcomes={outcomes!r}")
 
+ci_spliced = "\n".join((
+    "     Running tests/suites/system.rs (target/debug/deps/suite_system-ci)",
+    "test architecture_docs_inventory::architecture_inventory_rejects_omissions_duplicates_and_stale_fields ... okdone.",
+    "test another::completed ... ok",
+    "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+))
+tests, _, outcomes = module.observed_test_records(ci_spliced)
+if tests != Counter({
+    "suite_system::architecture_docs_inventory::architecture_inventory_rejects_omissions_duplicates_and_stale_fields": 1,
+    "suite_system::another::completed": 1,
+}) or outcomes != Counter({"ok": 2}):
+    raise SystemExit(f"CI-spliced completion was lost: tests={tests!r} outcomes={outcomes!r}")
+
+whitespace_suffix = "\n".join((
+    "     Running tests/suites/system.rs (target/debug/deps/suite_system-whitespace)",
+    "test architecture_docs_inventory::unconfirmed ... ok child output",
+))
+tests, _, outcomes = module.observed_test_records(whitespace_suffix)
+if tests or outcomes:
+    raise SystemExit(f"whitespace-suffixed non-outcome was accepted: tests={tests!r} outcomes={outcomes!r}")
+
 def assert_no_inference(label, lines):
     tests, _, outcomes = module.observed_test_records("\n".join(lines))
     if tests or outcomes:
