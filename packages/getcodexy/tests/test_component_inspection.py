@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import subprocess
 import unittest
+from pathlib import Path
 
 from codexy_runtime_tools.component_inspection import doctor, status
+from codexy_runtime_tools.component_registration_health import CATALOGS, LAUNCHERS
 
 from component_lifecycle_support import fixture
 
@@ -16,6 +18,7 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
         "devtools": (".codex-plugin/plugin.json", ".mcp.json", "mcp/codexy-mcp-devtools"),
     }
     plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
+    repository = Path(__file__).resolve().parents[3]
     for component in components:
         for relative in paths[component]:
             path = state.marketplace / "plugins" / plugins[component] / relative
@@ -23,15 +26,22 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
             if relative.endswith("plugin.json"):
                 contents = json.dumps({"name": plugins[component], "repository": "https://github.com/eunsoogi/codexy", "version": version})
             elif relative == ".mcp.json":
-                contents = json.dumps({"lsp": {"command": "./mcp/codexy-mcp-devtools"}, "codegraph": {"command": "./mcp/codexy-mcp-devtools"}})
-            elif relative.endswith("hooks.json"):
-                contents = json.dumps({"hooks": {"PreToolUse": []}})
-            elif relative.endswith("catalog.toml"):
-                contents = 'catalog_kind = "plugin-packaged-specialist-agent-files"\n'
+                contents = (repository / "plugins" / plugins[component] / relative).read_text(encoding="utf-8")
+            elif relative.endswith(("hooks.json", "catalog.toml")):
+                contents = (repository / "plugins" / plugins[component] / relative).read_text(encoding="utf-8")
             else:
                 contents = "#!/bin/sh\n"
             path.write_text(contents, encoding="utf-8")
             if relative == "mcp/codexy-mcp-devtools":
+                path.chmod(0o700)
+        if component in CATALOGS:
+            for agent in CATALOGS[component]["agent_files"]:
+                (state.marketplace / "plugins" / plugins[component] / "agents" / agent).write_text('model = "gpt-5.6-terra"\n', encoding="utf-8")
+        for launcher in LAUNCHERS[component]:
+            path = state.marketplace / "plugins" / plugins[component] / launcher
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("exit 0\n", encoding="utf-8")
+            if launcher == "mcp/codexy-mcp-devtools":
                 path.chmod(0o700)
 
 
@@ -82,6 +92,28 @@ class ComponentInspectionTests(unittest.TestCase):
             self.assertEqual(tuple(state.mutations), before)
         self.assertEqual(result["component_health"][0]["state"], "incompatible")
         self.assertEqual(result["component_health"][0]["repair"], "repair the Codexy registration, then rerun getcodexy doctor")
+
+    def test_doctor_rejects_noncanonical_catalog_hook_mcp_and_launcher_bindings(self) -> None:
+        cases = (
+            ("core", "agents/catalog.toml", 'catalog_kind = "plugin-packaged-specialist-agent-files"\n'),
+            ("core", "hooks/hooks.json", json.dumps({"hooks": {"PreToolUse": []}})),
+            ("devtools", ".mcp.json", json.dumps({"lsp": {"command": "./mcp/unrelated"}, "codegraph": {"command": "./mcp/unrelated"}})),
+        )
+        plugins = {"core": "codexy", "devtools": "codexy-devtools"}
+        for component, relative, contents in cases:
+            with self.subTest(component=component, relative=relative), fixture({"core", component}) as state:
+                materialize(state, "core", component)
+                (state.marketplace / "plugins" / plugins[component] / relative).write_text(contents, encoding="utf-8")
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+            health = {entry["component"]: entry["state"] for entry in result["component_health"]}
+            self.assertEqual(health[component], "incompatible")
+
+    def test_doctor_rejects_a_missing_canonical_hook_launcher(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            (state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh").unlink()
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+        self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
     def test_doctor_reports_host_requirement(self) -> None:
         with fixture() as state:

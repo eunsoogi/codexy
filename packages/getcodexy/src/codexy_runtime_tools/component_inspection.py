@@ -11,6 +11,7 @@ from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_observed_inventory import observe_installed_inventory
+from .component_registration_health import valid_registration
 from .component_resolver import ComponentResolutionError, admit_installed_inventory, canonical_components, classify_installed_inventory, compare_versions
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
@@ -222,11 +223,7 @@ def _regular(path: Path) -> bool:
 
 
 def _surface_is_valid(plugin: Path, component: str) -> bool:
-    if component == "devtools":
-        value = _json_value(plugin / ".mcp.json")
-        return isinstance(value, dict) and bool(value) and all(isinstance(entry, dict) and isinstance(entry.get("command"), str) and entry["command"] for entry in value.values())
-    value = _json_value(plugin / "hooks/hooks.json")
-    return isinstance(value, dict) and isinstance(value.get("hooks"), dict) and bool(value["hooks"])
+    return valid_registration(plugin, component)
 
 
 def _manifest_is_valid(plugin: Path, name: str, version: str | None) -> bool:
