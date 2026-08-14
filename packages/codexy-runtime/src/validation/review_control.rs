@@ -5,6 +5,7 @@ use anyhow::Result;
 mod capture;
 mod classification;
 mod economics;
+mod finding_disposition;
 mod history;
 mod ledger;
 mod packet;

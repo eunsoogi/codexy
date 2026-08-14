@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    ledger,
+    finding_disposition, ledger,
     policy::{self, Reviewer},
     repository,
 };
@@ -22,6 +22,7 @@ pub(super) struct Packet {
     pub(super) state: String,
     pub(super) reviewer: Option<Reviewer>,
     identity: Identity,
+    issue_contract: IssueContract,
     acceptance_criteria: Vec<Criterion>,
     changed_files: Vec<String>,
     direct_boundaries: Vec<String>,
@@ -42,6 +43,14 @@ struct Identity {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct IssueContract {
+    problem: String,
+    scope: String,
+    exclusions: Vec<String>,
+    adjacent_dependencies: Vec<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Criterion {
     id: String,
 }
@@ -58,10 +67,13 @@ struct Verification {
 pub(super) struct Finding {
     pub(super) id: String,
     pub(super) defect_class: String,
-    criterion_id: String,
-    counterexample: String,
-    head_oid: String,
-    pub(super) kind: String,
+    pub(super) criterion_id: Option<String>,
+    pub(super) owned_invariant: Option<String>,
+    pub(super) owned_boundary: Option<String>,
+    pub(super) repair_boundary: Option<String>,
+    pub(super) counterexample: String,
+    pub(super) head_oid: String,
+    pub(super) disposition: String,
     pub(super) reopen_count: u8,
     pub(super) resolved: bool,
 }
@@ -117,7 +129,7 @@ fn validate(
     repository_root: &Path,
     current: &repository::Current,
 ) -> Result<()> {
-    if packet.schema != "codexy.review-packet.v2"
+    if packet.schema != "codexy.review-packet.v3"
         || packet.event_id.is_empty()
         || packet.identity.base_oid != current.base_oid
         || packet.identity.head_oid != current.head_oid
@@ -137,7 +149,8 @@ fn validate(
     )?;
     let boundaries = unique(packet.direct_boundaries.iter(), "direct boundary")?;
     let findings = unique(packet.findings.iter().map(|item| &item.id), "finding")?;
-    if criteria.is_empty()
+    if !valid_issue_contract(&packet.issue_contract)
+        || criteria.is_empty()
         || boundaries.is_empty()
         || current.changed_files.is_empty()
         || packet.verification_results.is_empty()
@@ -158,24 +171,28 @@ fn validate(
     if packet
         .findings
         .iter()
-        .filter(|item| item.kind == "blocker")
+        .filter(|item| finding_disposition::is_blocker(item))
         .count()
         > usize::from(profile.max_blocking_findings)
         || packet.findings.iter().any(|item| {
-            !matches!(
-                item.kind.as_str(),
-                "blocker" | "evidence_only" | "github_metadata" | "follow_up"
-            ) || item.defect_class.is_empty()
-                || item.counterexample.is_empty()
-                || item.head_oid != current.head_oid
-                || !criteria.contains(item.criterion_id.as_str())
-                || item.reopen_count > 2
+            !finding_disposition::is_valid(item, &criteria, &boundaries, &current.head_oid)
         })
     {
         bail!("review packet finding is not a current-head in-scope bounded finding");
     }
     readiness::validate(packet, &findings, &boundaries, &current.head_oid)?;
     Ok(())
+}
+
+fn valid_issue_contract(contract: &IssueContract) -> bool {
+    !contract.problem.is_empty()
+        && !contract.scope.is_empty()
+        && [&contract.exclusions, &contract.adjacent_dependencies]
+            .iter()
+            .all(|items| {
+                items.iter().all(|item| !item.is_empty())
+                    && items.iter().collect::<BTreeSet<_>>().len() == items.len()
+            })
 }
 
 fn unique<'a>(items: impl Iterator<Item = &'a String>, label: &str) -> Result<BTreeSet<&'a str>> {

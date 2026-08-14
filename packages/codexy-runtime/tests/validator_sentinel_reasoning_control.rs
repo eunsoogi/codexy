@@ -121,7 +121,7 @@ fn validator_cli_rejects_sentinel_without_reasoning_control_paragraph() -> TestR
             .find("Reasoning control:")
             .ok_or("reasoning control paragraph start")?;
         let end = sentinel
-            .find("Adversarial review method:")
+            .find("Finding disposition:")
             .ok_or("reasoning control paragraph end")?;
         sentinel.replace_range(start..end, "");
         Ok(sentinel)
@@ -139,7 +139,7 @@ fn validate_reasoning_control_paragraph_replacement(replacement: &str) -> TestRe
             .find("Reasoning control:")
             .ok_or("reasoning control paragraph start")?;
         let end = sentinel
-            .find("Adversarial review method:")
+            .find("Finding disposition:")
             .ok_or("reasoning control paragraph end")?;
         sentinel.replace_range(start..end, replacement);
         Ok(sentinel)

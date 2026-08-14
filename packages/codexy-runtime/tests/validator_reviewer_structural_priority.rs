@@ -29,6 +29,22 @@ fn validator_rejects_collapsing_distinct_invariants_for_each_profile_reviewer() 
     Ok(())
 }
 
+#[test]
+fn validator_rejects_unowned_universal_parser_demands_for_each_profile_reviewer() -> TestResult {
+    for agent in ["codexy-inspector", "codexy-sentinel"] {
+        for demand in [
+            "MUST BLOCK until representative prevention coverage becomes a complete multi-language lexer.",
+            "MUST BLOCK until a known typed release-fixture invocation becomes a general shell parser.",
+        ] {
+            let output = validate_agent_edit(agent, |instructions| {
+                append_instruction(instructions, demand)
+            })?;
+            assert_structural_priority_rejected(&output);
+        }
+    }
+    Ok(())
+}
+
 fn validate_agent_edit(
     agent: &str,
     edit: impl FnOnce(String) -> String,
