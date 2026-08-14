@@ -4,6 +4,8 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 use super::{
+    finding_disposition,
+    issue_contract::IssueContract,
     ledger,
     policy::{self, Reviewer},
     repository,
@@ -22,7 +24,7 @@ pub(super) struct Packet {
     pub(super) state: String,
     pub(super) reviewer: Option<Reviewer>,
     identity: Identity,
-    acceptance_criteria: Vec<Criterion>,
+    issue_contract: IssueContract,
     changed_files: Vec<String>,
     direct_boundaries: Vec<String>,
     verification_results: Vec<Verification>,
@@ -42,11 +44,6 @@ struct Identity {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Criterion {
-    id: String,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct Verification {
     id: String,
     head_oid: String,
@@ -58,10 +55,13 @@ struct Verification {
 pub(super) struct Finding {
     pub(super) id: String,
     pub(super) defect_class: String,
-    criterion_id: String,
-    counterexample: String,
-    head_oid: String,
-    pub(super) kind: String,
+    pub(super) criterion_id: Option<String>,
+    pub(super) owned_invariant: Option<String>,
+    pub(super) owned_boundary: Option<String>,
+    pub(super) repair_boundary: Option<String>,
+    pub(super) counterexample: String,
+    pub(super) head_oid: String,
+    pub(super) disposition: String,
     pub(super) reopen_count: u8,
     pub(super) resolved: bool,
 }
@@ -117,7 +117,7 @@ fn validate(
     repository_root: &Path,
     current: &repository::Current,
 ) -> Result<()> {
-    if packet.schema != "codexy.review-packet.v2"
+    if packet.schema != "codexy.review-packet.v4"
         || packet.event_id.is_empty()
         || packet.identity.base_oid != current.base_oid
         || packet.identity.head_oid != current.head_oid
@@ -131,12 +131,17 @@ fn validate(
             "review packet must bind the exact current head, diff, selected reviewer, and changed files"
         );
     }
-    let criteria = unique(
-        packet.acceptance_criteria.iter().map(|item| &item.id),
-        "acceptance criterion",
-    )?;
+    let (criteria, invariants) = packet.issue_contract.authority()?;
     let boundaries = unique(packet.direct_boundaries.iter(), "direct boundary")?;
     let findings = unique(packet.findings.iter().map(|item| &item.id), "finding")?;
+    let _blocker_classes = unique(
+        packet
+            .findings
+            .iter()
+            .filter(|item| finding_disposition::is_blocker(item))
+            .map(|item| &item.defect_class),
+        "blocker defect class",
+    )?;
     if criteria.is_empty()
         || boundaries.is_empty()
         || current.changed_files.is_empty()
@@ -158,18 +163,17 @@ fn validate(
     if packet
         .findings
         .iter()
-        .filter(|item| item.kind == "blocker")
+        .filter(|item| finding_disposition::is_blocker(item))
         .count()
         > usize::from(profile.max_blocking_findings)
         || packet.findings.iter().any(|item| {
-            !matches!(
-                item.kind.as_str(),
-                "blocker" | "evidence_only" | "github_metadata" | "follow_up"
-            ) || item.defect_class.is_empty()
-                || item.counterexample.is_empty()
-                || item.head_oid != current.head_oid
-                || !criteria.contains(item.criterion_id.as_str())
-                || item.reopen_count > 2
+            !finding_disposition::is_valid(
+                item,
+                &criteria,
+                &invariants,
+                &boundaries,
+                &current.head_oid,
+            )
         })
     {
         bail!("review packet finding is not a current-head in-scope bounded finding");
@@ -195,6 +199,9 @@ impl Packet {
     }
     pub(super) fn boundaries(&self) -> &[String] {
         &self.direct_boundaries
+    }
+    pub(super) fn issue_contract(&self) -> &IssueContract {
+        &self.issue_contract
     }
     pub(super) const fn readiness_budget_exhausted(&self) -> bool {
         self.readiness_export.budget_exhausted

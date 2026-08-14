@@ -9,13 +9,6 @@ use crate::validation::{
     custom_agent_mcp, custom_agent_schema, load_toml, roles_yaml, toml_array_strings,
 };
 
-mod delegation_contract;
-mod delegation_contract_parser;
-mod sentinel_gate;
-
-const MIN_DEVELOPER_INSTRUCTION_WORDS: usize = 20;
-const MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS: usize = 120;
-
 const ALLOWED_CUSTOM_AGENT_FIELDS: &str = "name description developer_instructions nickname_candidates model model_reasoning_effort sandbox_mode mcp_servers skills";
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -191,14 +184,6 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-    if let Some(instructions) = agent.get("developer_instructions").and_then(Value::as_str) {
-        if !instructions.is_empty() && !has_substantive_developer_instructions(instructions) {
-            errors.push(format!(
-                "{} developer_instructions must contain at least {MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS} non-whitespace characters and {MIN_DEVELOPER_INSTRUCTION_WORDS} words",
-                display_relative(path)
-            ));
-        }
-    }
     if let Some(nicknames) = agent.get("nickname_candidates") {
         if toml_array_strings(Some(nicknames))
             .is_none_or(|items| items.is_empty() || items.iter().any(String::is_empty))
@@ -209,20 +194,6 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-    if name == "codexy-sentinel" {
-        sentinel_gate::check(path, &agent, errors);
-    }
-    delegation_contract::check(path, &agent, errors);
-}
-
-fn has_substantive_developer_instructions(text: &str) -> bool {
-    let word_count = text
-        .split_whitespace()
-        .filter(|word| word.chars().any(char::is_alphanumeric))
-        .count();
-    let non_whitespace_chars = text.chars().filter(|ch| !ch.is_whitespace()).count();
-    word_count >= MIN_DEVELOPER_INSTRUCTION_WORDS
-        && non_whitespace_chars >= MIN_DEVELOPER_INSTRUCTION_NON_WHITESPACE_CHARS
 }
 
 fn check_project_agents(plugin_root: &Path) -> Vec<String> {

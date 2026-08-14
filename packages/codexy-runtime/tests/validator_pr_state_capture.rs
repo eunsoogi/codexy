@@ -181,8 +181,8 @@ fn control(profile: &str, decision: &str, state: &str, name: &str, model: &str, 
         "schema":"codexy.review-control-state.v1", "profile":profile, "decision":decision,
         "evidence":{"schema":"codexy.review-readiness.v1","head_oid":"head","profile":profile,"reviewer":{"name":name,"model":model,"reasoning_effort":reasoning_effort},"state":state,"event_id":"e-passed","blockers":[]},
         "ledger":{"schema":"codexy.review-ledger.v1","events":[
-            {"id":"e-full","predecessor_event_id":null,"profile":profile,"base_oid":"base","head_oid":"head","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
-            {"id":"e-passed","predecessor_event_id":"e-full","profile":profile,"base_oid":"base","head_oid":"head","state":state,"full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null}
+            {"id":"e-full","predecessor_event_id":null,"profile":profile,"base_oid":"base","head_oid":"head","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"issue_contract":{"problem":"owned problem","scope":"owned scope","acceptance_criteria":[{"id":"ac-1"}],"owned_invariant_ids":[],"exclusions":[],"adjacent_dependencies":[]},"issue_contract_sha256":"30e2a0c55aa2db0a84e6924f5a4731f335ea652f79123af992903d8ec1c617e2","escalation":null},
+            {"id":"e-passed","predecessor_event_id":"e-full","profile":profile,"base_oid":"base","head_oid":"head","state":state,"full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"issue_contract":{"problem":"owned problem","scope":"owned scope","acceptance_criteria":[{"id":"ac-1"}],"owned_invariant_ids":[],"exclusions":[],"adjacent_dependencies":[]},"issue_contract_sha256":"30e2a0c55aa2db0a84e6924f5a4731f335ea652f79123af992903d8ec1c617e2","escalation":null}
         ]}
     })
 }
