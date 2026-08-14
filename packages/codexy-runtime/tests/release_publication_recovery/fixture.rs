@@ -36,6 +36,9 @@ case "$1" in fetch|merge-base) exit 0 ;; rev-parse) printf '%s\n' aaaaaaaaaaaaaa
 pub(crate) fn gh_fixture() -> &'static str { r#"#!/usr/bin/env python3
 import hashlib,json,os,pathlib,shutil,sys
 root=pathlib.Path.cwd(); remote=root/'remote'; exists=root/'exists'; draft=root/'draft'; log=root/'log'; tag='v9.9.9'; commit='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+def fixture_path(value):
+ if os.name == 'nt' and len(value) > 3 and value[0] == '/' and value[2] == '/': return pathlib.Path(value[1].upper()+':/'+value[3:])
+ return pathlib.Path(value)
 def assets():
  return [{'id':i+1,'name':p.name,'size':p.stat().st_size,'digest':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for i,p in enumerate(sorted(remote.iterdir()))]
 def state(api=False):
@@ -50,12 +53,12 @@ if args[:2]==['release','view']:
 if args[:2]==['release','create']:
  exists.write_text('yes'); draft.write_text('true'); log.write_text(log.read_text()+'create\n' if log.exists() else 'create\n'); sys.exit()
 if args[:2]==['release','download']:
- name=args[args.index('--pattern')+1]; directory=pathlib.Path(args[args.index('--dir')+1]); directory.mkdir(exist_ok=True); target=directory/name
+ name=args[args.index('--pattern')+1]; directory=fixture_path(args[args.index('--dir')+1]); directory.mkdir(exist_ok=True); target=directory/name
  if target.exists(): sys.exit(1)
  shutil.copy(remote/name,target); sys.exit()
 if args[:2]==['release','upload']:
  if draft.read_text().strip() != 'true': sys.exit(1)
- source=pathlib.Path(args[3]); shutil.copy(source,remote/source.name); log.write_text(log.read_text()+'upload '+source.name+'\n' if log.exists() else 'upload '+source.name+'\n'); sys.exit()
+ source=fixture_path(args[3]); shutil.copy(source,remote/source.name); log.write_text(log.read_text()+'upload '+source.name+'\n' if log.exists() else 'upload '+source.name+'\n'); sys.exit()
 if args[:2]==['release','edit']:
  if draft.read_text().strip() != 'true': sys.exit(1)
  draft.write_text('false'); log.write_text(log.read_text()+'publish\n'); sys.exit()
@@ -173,7 +176,7 @@ impl Fixture {
             .current_dir(&self.root)
             .path("FIXTURE_GIT", self.root.join("bin/git"))
             .path("FIXTURE_GIT_LAUNCHER", &self.git_launcher)
-            .path("FIXTURE_GH", self.root.join("bin/gh"))
+            .native_path("FIXTURE_GH", self.root.join("bin/gh"))
             .path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
             .path(
                 "FIXTURE_POSIX_SHELL",

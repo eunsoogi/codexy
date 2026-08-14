@@ -58,6 +58,20 @@ impl ReleaseFixtureCommand {
         self
     }
 
+    /// Preserves a native path for a declared native fixture payload.
+    ///
+    /// The surrounding release script still runs under a POSIX shell, so its
+    /// launcher is passed through `path`. A native payload receives this value
+    /// as an argument and must retain the host filesystem identity.
+    pub(crate) fn native_path(
+        &mut self,
+        key: impl AsRef<OsStr>,
+        value: impl AsRef<OsStr>,
+    ) -> &mut Self {
+        self.command.env(key, value);
+        self
+    }
+
     pub(crate) fn output(&mut self) -> io::Result<Output> {
         self.command.output()
     }

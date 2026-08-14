@@ -104,7 +104,11 @@ fn declared_release_child_launch_is_independent_of_the_shell_working_directory()
         .path("FIXTURE_POSIX_SHELL", fixture_script_interpreter_path(&parent)?)
         .path("FIXTURE_SCRIPT_ROOT", &fixture_root)
         .output()?;
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    ReleaseFixtureCommand::assert_outcome(
+        "declared release child",
+        ReleaseFixtureOutcome::Success,
+        &output,
+    );
     assert_eq!(String::from_utf8(output.stdout)?, "release:v9.9.9\n");
     Ok(())
 }
@@ -122,7 +126,11 @@ fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Bo
         .path("GITHUB_EVENT_PATH", &event)
         .path("GITHUB_ENV", &environment)
         .output()?;
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    ReleaseFixtureCommand::assert_outcome(
+        "release event/environment path bridge",
+        ReleaseFixtureOutcome::Success,
+        &output,
+    );
     assert_eq!(fs::read_to_string(environment)?, "event-body\n");
     Ok(())
 }
@@ -152,6 +160,8 @@ fn release_fixture_result_contract_keeps_success_and_expected_failure_distinct()
         ReleaseFixtureOutcome::Failure,
         &failed,
     );
+    assert_eq!(String::from_utf8_lossy(&failed.stdout), "fixture stdout\n");
+    assert_eq!(String::from_utf8_lossy(&failed.stderr), "fixture stderr\n");
     assert!(std::panic::catch_unwind(|| {
         ReleaseFixtureCommand::assert_outcome(
             "release result wrong expectation",
@@ -160,5 +170,36 @@ fn release_fixture_result_contract_keeps_success_and_expected_failure_distinct()
         );
     })
     .is_err());
+    assert!(std::panic::catch_unwind(|| {
+        ReleaseFixtureCommand::assert_outcome(
+            "release result inverse expectation",
+            ReleaseFixtureOutcome::Failure,
+            &succeeded,
+        );
+    })
+    .is_err());
+    Ok(())
+}
+
+#[test]
+fn release_fixture_native_payload_keeps_the_host_path_identity()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-native-payload");
+    let payload = temp.path().join("native payload");
+    write_posix_fixture_command(&script, "#!/bin/sh\nprintf '%s\\n' \"$FIXTURE_PAYLOAD\"\n")?;
+
+    let output = ReleaseFixtureCommand::new(&script)
+        .native_path("FIXTURE_PAYLOAD", &payload)
+        .output()?;
+    ReleaseFixtureCommand::assert_outcome(
+        "release native payload",
+        ReleaseFixtureOutcome::Success,
+        &output,
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout)?,
+        format!("{}\n", payload.display())
+    );
     Ok(())
 }
