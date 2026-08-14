@@ -159,6 +159,7 @@ esac
     bind_posix_fixture_script_launchers(
         &scripts.join("verify-release-edit-baseline"),
         "FIXTURE_POSIX_SHELL",
+        "FIXTURE_SCRIPT_ROOT",
         &[
             FixtureScriptBinding {
                 invocation: "scripts/verify-release-attestation-total release-baseline/release-baseline.json 1",
@@ -177,6 +178,7 @@ esac
         .env_path("FIXTURE_GH", &gh)
         .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
         .env_path("FIXTURE_POSIX_SHELL", &shell_launcher)
+        .env_path("FIXTURE_SCRIPT_ROOT", temp.path())
         .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string())
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;

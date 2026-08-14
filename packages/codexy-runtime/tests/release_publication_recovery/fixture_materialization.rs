@@ -93,7 +93,12 @@ pub(crate) fn bind_scripts(root: &Path) -> std::io::Result<()> {
     ] {
         let path = root.join("scripts").join(name);
         bind_posix_fixture_shell_launchers(&path, &shell_bindings)?;
-        bind_posix_fixture_script_launchers(&path, "FIXTURE_POSIX_SHELL", children)?;
+        bind_posix_fixture_script_launchers(
+            &path,
+            "FIXTURE_POSIX_SHELL",
+            "FIXTURE_SCRIPT_ROOT",
+            children,
+        )?;
     }
     Ok(())
 }

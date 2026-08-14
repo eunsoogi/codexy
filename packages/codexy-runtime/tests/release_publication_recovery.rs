@@ -1,6 +1,12 @@
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;
 use fixture::{ASSETS, Fixture};
+use std::fs;
+
+use crate::support::{
+    FixtureCommand, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    fixture_script_interpreter_path, write_posix_fixture_command,
+};
 
 #[test]
 fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_states()
@@ -55,5 +61,37 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
     let result = fixture.run("publish-verified-release")?;
     assert!(!result.status.success());
     assert!(fixture.log()?.is_empty(), "mismatch mutated release state");
+    Ok(())
+}
+
+#[test]
+fn declared_release_child_launch_is_independent_of_the_shell_working_directory()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let fixture_root = temp.path().join("release-fixture");
+    let scripts = fixture_root.join("scripts");
+    fs::create_dir_all(&scripts)?;
+    let parent = scripts.join("publisher");
+    let child = scripts.join("release-helper");
+    write_posix_fixture_command(&parent, "#!/bin/sh\nscripts/release-helper \"$1\"\n")?;
+    write_posix_fixture_command(&child, "#!/bin/sh\nprintf 'release:%s\\n' \"$1\"\n")?;
+    bind_posix_fixture_script_launchers(
+        &parent,
+        "FIXTURE_POSIX_SHELL",
+        "FIXTURE_SCRIPT_ROOT",
+        &[FixtureScriptBinding {
+            invocation: "scripts/release-helper \"$1\"",
+            child: "scripts/release-helper",
+        }],
+    )?;
+
+    let output = FixtureCommand::new(&parent)
+        .current_dir(temp.path())
+        .arg("v9.9.9")
+        .env_path("FIXTURE_POSIX_SHELL", fixture_script_interpreter_path(&parent)?)
+        .env_path("FIXTURE_SCRIPT_ROOT", &fixture_root)
+        .output()?;
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(String::from_utf8(output.stdout)?, "release:v9.9.9\n");
     Ok(())
 }

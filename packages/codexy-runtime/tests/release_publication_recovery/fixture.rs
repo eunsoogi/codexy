@@ -171,6 +171,7 @@ impl Fixture {
                 "FIXTURE_POSIX_SHELL",
                 fixture_script_interpreter_path(&self.root.join("scripts/publish-verified-release"))?,
             )
+            .env_path("FIXTURE_SCRIPT_ROOT", &self.root)
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("STAGING_SOURCE_COMMIT", COMMIT)
             .env("ACTIVATION_COMMIT", COMMIT)

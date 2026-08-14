@@ -157,11 +157,12 @@ fn declared_release_child_bindings_replace_once_or_preserve_fixture_source()
     bind_posix_fixture_script_launchers(
         &script,
         launcher,
+        "FIXTURE_SCRIPT_ROOT",
         &[FixtureScriptBinding { invocation, child }],
     )?;
     assert_eq!(
         fs::read_to_string(&script)?,
-        format!("#!/bin/sh\n\"${launcher}\" \"{child}\" --require-pypi\n")
+        format!("#!/bin/sh\n\"${launcher}\" \"${{FIXTURE_SCRIPT_ROOT}}/{child}\" --require-pypi\n")
     );
 
     for (name, candidate, binding, expected_kind) in [
@@ -197,8 +198,13 @@ fn declared_release_child_bindings_replace_once_or_preserve_fixture_source()
         ),
     ] {
         fs::write(&script, candidate)?;
-        let error = bind_posix_fixture_script_launchers(&script, launcher, &[binding])
-            .expect_err("invalid declared child must fail closed");
+        let error = bind_posix_fixture_script_launchers(
+            &script,
+            launcher,
+            "FIXTURE_SCRIPT_ROOT",
+            &[binding],
+        )
+        .expect_err("invalid declared child must fail closed");
         assert_eq!(error.kind(), expected_kind, "{name}");
         assert_eq!(
             fs::read_to_string(&script)?,

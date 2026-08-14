@@ -59,9 +59,11 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
 pub(crate) fn bind_posix_fixture_script_launchers(
     path: &Path,
     launcher_environment: &str,
+    fixture_root_environment: &str,
     bindings: &[FixtureScriptBinding],
 ) -> io::Result<()> {
     validate_identifier(launcher_environment)?;
+    validate_identifier(fixture_root_environment)?;
     let mut bound = fs::read_to_string(path)?;
     for binding in bindings {
         validate_fixture_script_path(binding.child)?;
@@ -81,7 +83,7 @@ pub(crate) fn bind_posix_fixture_script_launchers(
             .strip_prefix(binding.child)
             .unwrap_or_default();
         let replacement = format!(
-            "\"${launcher_environment}\" \"{}\"{arguments}",
+            "\"${launcher_environment}\" \"${{{fixture_root_environment}}}/{}\"{arguments}",
             binding.child
         );
         bound = bound.replacen(binding.invocation, &replacement, 1);
