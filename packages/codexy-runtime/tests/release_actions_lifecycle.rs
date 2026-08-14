@@ -131,7 +131,7 @@ fn release_script_fixtures_declare_their_known_windows_shell_children()
 }
 
 #[test]
-fn release_fixture_shell_boundaries_project_every_filesystem_input()
+fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
 -> Result<(), Box<dyn std::error::Error>> {
     let tests = codexy_runtime::paths::runtime_package_root().join("tests");
     let recovery = fs::read_to_string(tests.join("release_publication_recovery/fixture.rs"))?;
@@ -139,23 +139,20 @@ fn release_fixture_shell_boundaries_project_every_filesystem_input()
         tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
     )?;
     let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
-    for (fixture, input) in [
-        (&recovery, "FIXTURE_GH"),
-        (&reconciliation, "GITHUB_EVENT_PATH"),
-    ] {
+    for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&reconciliation, "GITHUB_EVENT_PATH")] {
         assert!(
             fixture.contains(&format!(".path(\"{input}\"")),
             "POSIX shell input must use its projected path: {input}"
         );
-        assert!(
-            !fixture.contains(&format!(".native_path(\"{input}\"")),
-            "POSIX shell input bypassed path projection: {input}"
-        );
     }
-    assert!(
-        !command.contains("native_path"),
-        "release fixture commands expose only projected filesystem inputs"
-    );
+    for (fixture, input) in [
+        (&recovery, "FIXTURE_GH"),
+        (&reconciliation, "FIXTURE_DIR"),
+        (&reconciliation, "FIXTURE_GH"),
+    ] {
+        assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
+    }
+    assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
 }
 

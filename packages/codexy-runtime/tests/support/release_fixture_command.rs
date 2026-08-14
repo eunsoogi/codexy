@@ -58,6 +58,19 @@ impl ReleaseFixtureCommand {
         self
     }
 
+    /// Preserves a path for a native payload launched by the POSIX fixture shell.
+    ///
+    /// The shell still receives projected paths for its own files. This channel is
+    /// only for an environment value that the shell forwards to a native payload.
+    pub(crate) fn payload_path(
+        &mut self,
+        key: impl AsRef<OsStr>,
+        value: impl AsRef<OsStr>,
+    ) -> &mut Self {
+        self.command.env(key, value);
+        self
+    }
+
     pub(crate) fn output(&mut self) -> io::Result<Output> {
         self.command.output()
     }

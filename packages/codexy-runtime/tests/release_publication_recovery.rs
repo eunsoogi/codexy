@@ -6,6 +6,7 @@ use std::fs;
 use crate::support::{
     FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
     bind_posix_fixture_script_launchers,
+    bind_posix_fixture_shell_launchers,
     fixture_script_interpreter_path, write_posix_fixture_command,
 };
 
@@ -132,6 +133,57 @@ fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Bo
         &output,
     );
     assert_eq!(fs::read_to_string(environment)?, "event-body\n");
+    Ok(())
+}
+
+#[test]
+fn release_fixture_preserves_native_payload_environment_after_posix_shell_entry()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-native-payload-bridge");
+    let payload = temp.path().join("payload.py");
+    let marker = temp.path().join("native payload marker");
+    fs::write(&marker, "native payload\n")?;
+    fs::write(
+        &payload,
+        "#!/usr/bin/env python3\nimport os, pathlib\nassert pathlib.Path(os.environ['FIXTURE_NATIVE_PAYLOAD_PATH']).read_text() == 'native payload\\n'\n",
+    )?;
+    crate::support::make_executable(&payload)?;
+    write_posix_fixture_command(
+        &script,
+        "#!/bin/sh\n\"$FIXTURE_PYTHON\" \"$FIXTURE_PAYLOAD\"\n",
+    )?;
+
+    let output = ReleaseFixtureCommand::new(&script)
+        .path("FIXTURE_PYTHON", fixture_script_interpreter_path(&payload)?)
+        .payload_path("FIXTURE_PAYLOAD", &payload)
+        .payload_path("FIXTURE_NATIVE_PAYLOAD_PATH", &marker)
+        .output()?;
+    ReleaseFixtureCommand::assert_outcome(
+        "release native payload bridge",
+        ReleaseFixtureOutcome::Success,
+        &output,
+    );
+    Ok(())
+}
+
+#[test]
+fn release_fixture_reports_a_nonzero_shell_exit() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-failure");
+    write_posix_fixture_command(&script, "#!/bin/sh\nexit 23\n")?;
+    bind_posix_fixture_shell_launchers(&script, &[])?;
+
+    let output = ReleaseFixtureCommand::new(&script).output()?;
+    ReleaseFixtureCommand::assert_outcome(
+        "release shell failure",
+        ReleaseFixtureOutcome::Failure,
+        &output,
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("fixture shell failure"),
+        "fixture failures must name their shell boundary"
+    );
     Ok(())
 }
 

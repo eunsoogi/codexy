@@ -40,6 +40,9 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
         ));
     }
     let mut bound = format!("{shebang}\n");
+    bound.push_str(
+        "fixture_finish() { fixture_status=$?; trap - 0; if test \"$fixture_status\" -ne 0; then printf 'fixture shell failure: %s exited %s\\n' \"$0\" \"$fixture_status\" >&2; fi; exit \"$fixture_status\"; }\ntrap fixture_finish 0\n",
+    );
     for (command, payload_environment, launcher_environment) in bindings {
         validate_identifier(command)?;
         validate_identifier(payload_environment)?;

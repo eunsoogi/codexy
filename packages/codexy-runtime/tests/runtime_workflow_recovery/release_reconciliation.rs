@@ -178,8 +178,8 @@ esac
     let shell_launcher = fixture_script_interpreter_path(&scripts.join("verify-release-edit-baseline"))?;
     let script = scripts.join("verify-release-edit-baseline");
     let run = |extra_attestation: bool| ReleaseFixtureCommand::new(&script)
-        .current_dir(temp.path()).path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .path("FIXTURE_GH", &gh)
+        .current_dir(temp.path()).payload_path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .payload_path("FIXTURE_GH", &gh)
         .path("FIXTURE_GH_LAUNCHER", &gh_launcher)
         .path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .path("FIXTURE_SCRIPT_ROOT", temp.path())
