@@ -80,6 +80,7 @@ class LintRepositoryTests(unittest.TestCase):
             plan = runner.build_plan(ROOT, "check", {"rust"})
 
         self.assertEqual(plan[0].command[:2], ("rustfmt", "+1.85.0"))
+        self.assertIn("skip_children=true", plan[0].command)
         self.assertEqual(plan[1].command[:2], (sys.executable, "scripts/lint-rust.py"))
         self.assertIn(source, plan[0].command)
         self.assertIn(source, plan[1].command)

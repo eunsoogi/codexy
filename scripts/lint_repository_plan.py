@@ -31,7 +31,14 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
     if "rust" in selected and (
         files := selected_files(root, ("*.rs",), INVENTORY_EXCLUSIONS)
     ):
-        fmt = ("rustfmt", "+1.85.0", "--edition", "2024")
+        fmt = (
+            "rustfmt",
+            "+1.85.0",
+            "--edition",
+            "2024",
+            "--config",
+            "skip_children=true",
+        )
         plan.append(
             Step("rust", fmt + (("--check",) if checking else ()) + files, checking)
         )

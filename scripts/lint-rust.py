@@ -10,18 +10,22 @@ import sys
 from pathlib import Path
 
 
-def relative_path(root: Path, file_name: str) -> str | None:
+def relative_path(root: Path, file_name: str, package_root: Path) -> str | None:
     candidate = Path(file_name)
     if not candidate.is_absolute():
-        candidate = root / candidate
-    try:
-        return candidate.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return None
+        candidates = (root / candidate, package_root / candidate)
+    else:
+        candidates = (candidate,)
+    for candidate in candidates:
+        try:
+            return candidate.resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            continue
+    return None
 
 
 def changed_diagnostics(
-    output: str, root: Path, changed: set[str]
+    output: str, root: Path, package_root: Path, changed: set[str]
 ) -> list[dict[str, object]]:
     diagnostics: list[dict[str, object]] = []
     for line in output.splitlines():
@@ -36,7 +40,7 @@ def changed_diagnostics(
             continue
         if any(
             span.get("is_primary")
-            and relative_path(root, span.get("file_name", "")) in changed
+            and relative_path(root, span.get("file_name", ""), package_root) in changed
             for span in message.get("spans", [])
         ):
             diagnostics.append(message)
@@ -54,6 +58,7 @@ def main() -> int:
     parser.add_argument("paths", nargs="+")
     args = parser.parse_args()
     root = Path.cwd()
+    package_root = (root / args.manifest_path).parent
     changed = set(args.paths)
     command = (
         "cargo",
@@ -69,7 +74,7 @@ def main() -> int:
         "--cap-lints=warn",
     )
     completed = subprocess.run(command, cwd=root, capture_output=True, text=True)
-    diagnostics = changed_diagnostics(completed.stdout, root, changed)
+    diagnostics = changed_diagnostics(completed.stdout, root, package_root, changed)
     if completed.returncode:
         print(completed.stderr, file=sys.stderr, end="")
         return completed.returncode
