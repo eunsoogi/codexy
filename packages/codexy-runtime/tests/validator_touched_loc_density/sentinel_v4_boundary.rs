@@ -23,6 +23,12 @@ fn touched_loc_preserves_prefixes_and_javascript_spans() -> TestResult {
         "const fixture = `first(); second(); third();`;\nconst x = 1; /* first(); second(); third(); */\n",
     )?;
     assert!(validate(javascript.path())?.status.success());
+    write(
+        javascript.path(),
+        "src/check.js",
+        "const pattern = /first; second; third/;\n",
+    )?;
+    assert!(validate(javascript.path())?.status.success());
     Ok(())
 }
 

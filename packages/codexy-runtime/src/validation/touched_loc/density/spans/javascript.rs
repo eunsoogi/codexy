@@ -7,6 +7,7 @@ enum State {
     Code,
     BlockComment,
     String(char),
+    Regex,
 }
 
 fn strip(line: &str, state: &mut State) -> Option<String> {
@@ -22,6 +23,13 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                 None => return Some(visible),
             },
             State::String(delimiter) => match skip_string(remainder, *delimiter) {
+                Some(tail) => {
+                    remainder = tail;
+                    *state = State::Code;
+                }
+                None => return Some(visible),
+            },
+            State::Regex => match skip_regex(remainder) {
                 Some(tail) => {
                     remainder = tail;
                     *state = State::Code;
@@ -44,10 +52,28 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                         remainder = &remainder[index + delimiter.len_utf8()..];
                         *state = State::String(delimiter);
                     }
+                    Span::Regex => {
+                        remainder = &remainder[index + 1..];
+                        *state = State::Regex;
+                    }
                 }
             }
         }
     }
+}
+
+fn skip_regex(line: &str) -> Option<&str> {
+    let mut escaped = false;
+    for (index, character) in line.char_indices() {
+        if escaped {
+            escaped = false;
+        } else if character == '\\' {
+            escaped = true;
+        } else if character == '/' {
+            return Some(&line[index + 1..]);
+        }
+    }
+    None
 }
 
 fn skip_string(line: &str, delimiter: char) -> Option<&str> {
@@ -68,6 +94,7 @@ enum Span {
     LineComment,
     BlockComment,
     String(char),
+    Regex,
 }
 
 fn next_span(line: &str) -> Option<(usize, Span)> {
@@ -79,9 +106,25 @@ fn next_span(line: &str) -> Option<(usize, Span)> {
         if tail.starts_with("/*") {
             return Some((index, Span::BlockComment));
         }
+        if character == '/' && regex_context(&line[..index]) {
+            return Some((index, Span::Regex));
+        }
         if matches!(character, '\'' | '"' | '`') {
             return Some((index, Span::String(character)));
         }
     }
     None
+}
+
+fn regex_context(prefix: &str) -> bool {
+    prefix
+        .trim_end()
+        .chars()
+        .next_back()
+        .is_none_or(|character| {
+            matches!(
+                character,
+                '=' | '(' | '[' | '{' | ',' | ':' | ';' | '!' | '&' | '|' | '?'
+            )
+        })
 }
