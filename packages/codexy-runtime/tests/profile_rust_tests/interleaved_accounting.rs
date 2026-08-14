@@ -16,7 +16,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 output = "\n".join((
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-a)",
-    "test support::interleaved ... okSyntax error from child stderr",
+    "test support::interleaved ... ok",
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
 tests, targets, outcomes = module.observed_test_records(output)
@@ -70,6 +70,11 @@ assert_no_inference("ignored summary", (
     "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
     "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
 ))
+for result, suffix in (("ok", "Oops"), ("ok", "!"), ("FAILED", "Maybe"), ("FAILED", "!"), ("ignored", "Maybe"), ("ignored", "!")):
+    assert_no_inference(f"ambiguous {result}{suffix}", (
+        "     Running tests/suites/all.rs (target/debug/deps/suite_all-suffix)",
+        f"test support::unconfirmed ... {result}{suffix}",
+    ))
 assert_no_inference("non-adjacent summary", (
     "     Running tests/suites/all.rs (target/debug/deps/suite_all-d)",
     "test support::non_adjacent ... child output",

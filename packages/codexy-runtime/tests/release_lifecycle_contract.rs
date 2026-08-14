@@ -31,8 +31,23 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
             .status()
             .map(|status| status.success())
     };
-    assert!(run(version)?);
-    assert_eq!(fs::read_to_string(&environment)?, "TARGET_VERSION=9.9.9\nRELEASE_TAG=v9.9.9\n");
+    for accepted in [version, "2147483647.0.0"] {
+        if accepted != version {
+            for relative in version_sources {
+                let path = target.join(relative);
+                fs::write(&path, fs::read_to_string(&path)?.replace(version, accepted))?;
+            }
+        }
+        fs::write(&environment, "")?;
+        assert!(run(accepted)?, "rejected canonical target version: {accepted}");
+        assert_eq!(fs::read_to_string(&environment)?, format!("TARGET_VERSION={accepted}\nRELEASE_TAG=v{accepted}\n"));
+        if accepted != version {
+            for relative in version_sources {
+                let path = target.join(relative);
+                fs::write(&path, fs::read_to_string(&path)?.replace(accepted, version))?;
+            }
+        }
+    }
     for invalid in ["01.0.0", "2147483648.0.0"] {
         for relative in version_sources {
             let path = target.join(relative);
