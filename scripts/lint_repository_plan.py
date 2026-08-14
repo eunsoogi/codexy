@@ -11,9 +11,9 @@ from pathlib import Path
 
 from lint_repository_inventory import (
     EXPECTED_LANGUAGES,
+    INVENTORY_EXCLUSIONS,
     LANGUAGES,
     Step,
-    TEXT_EXCLUSIONS,
     inventory_files,
     selected_files,
     shell_files,
@@ -121,9 +121,9 @@ def build_plan(root: Path, mode: str, selected: set[str]) -> list[Step]:
         )
     if "text" in selected:
         prettier = selected_files(
-            root, ("*.md", "*.json", "*.yaml", "*.yml"), TEXT_EXCLUSIONS
+            root, ("*.md", "*.json", "*.yaml", "*.yml"), INVENTORY_EXCLUSIONS
         )
-        toml = selected_files(root, ("*.toml",), TEXT_EXCLUSIONS)
+        toml = selected_files(root, ("*.toml",), INVENTORY_EXCLUSIONS)
         taplo = ("taplo", "fmt", "--check") if checking else ("taplo", "fmt")
         plan += [
             Step(
