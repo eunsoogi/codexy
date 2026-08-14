@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import errno
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -64,6 +66,39 @@ class ComponentCliTests(unittest.TestCase):
         self.assertEqual(receipt["outcome"], "rejected")
         self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
         self.assertTrue({error["code"] for error in receipt["errors"]}.issubset(load_component_manifest().domain_errors))
+
+    def test_bootstrap_json_unsafe_symlink_home_emits_one_closed_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            home.mkdir()
+            unsafe = Path(directory) / "unsafe-home"
+            os.symlink(home, unsafe, target_is_directory=True)
+            output, errors = io.StringIO(), io.StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
+                code = main(["--codex-home", str(unsafe), "bootstrap", "--json"])
+
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        self.assertEqual(errors.getvalue(), "")
+        self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
+
+    def test_bootstrap_json_busy_lifecycle_lock_emits_one_closed_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            codex = Path(directory) / "codex"
+            codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            codex.chmod(0o700)
+            output, errors = io.StringIO(), io.StringIO()
+            target = "msvcrt.locking" if os.name == "nt" else "fcntl.flock"
+            failure = OSError(errno.EACCES, "already locked") if os.name == "nt" else BlockingIOError()
+            with patch(target, side_effect=failure), redirect_stdout(output), redirect_stderr(errors):
+                code = main(["--codex", str(codex), "--codex-home", str(Path(directory) / "home"), "bootstrap", "--json"])
+
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(code, 2)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        self.assertEqual(errors.getvalue(), "")
+        self.assertEqual(receipt["errors"], [{"code": "inconsistent-installed-state"}])
 
     def test_bootstrap_json_does_not_relabel_a_post_mutation_runtime_failure(self) -> None:
         output, errors = io.StringIO(), io.StringIO()

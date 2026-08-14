@@ -13,7 +13,7 @@ from .component_lifecycle_preflight import existing_marketplace_root, recorded_s
 from .component_resolver import ComponentResolutionError, reconcile_installed_inventory, verify_post_operation_inventory
 from .component_transaction_identity import operation_id
 from .component_transaction_receipts import write_receipt
-from .component_transaction_state import InventorySnapshot, Journal, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
+from .component_transaction_state import InventorySnapshot, Journal, PreAdmissionError, clear_journal, decode_inventory, inventory_path, read_journal, transaction_lock, write_inventory, write_journal
 from .component_transition_model import OperationReceipt, Rejection, RejectionStage, StateFailure, plan_transition
 from .github_pre_session import trusted_codex
 from .pre_session import _find_codex, _json, _run, official_marketplace_root
@@ -23,7 +23,7 @@ from .updater import _absolute, _validate_real_path
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
-class HostExecutableError(RuntimeError):
+class HostExecutableError(PreAdmissionError):
     """The requested Codex executable was rejected before transaction admission."""
 
 
@@ -31,8 +31,11 @@ def run_operation(command: str, requested: tuple[str, ...], codex_home: str | os
     """Run a serialized operation, recovering any preceding interrupted operation first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
-    home = _absolute(codex_home)
-    _validate_real_path(home, require_exists=False)
+    try:
+        home = _absolute(codex_home)
+        _validate_real_path(home, require_exists=False)
+    except (OSError, RuntimeError, ValueError) as error:
+        raise PreAdmissionError(str(error)) from error
     executable, invoke = _host_executable(codex), runner or (lambda args: _run(args, home))
     manifest, identifier = load_component_manifest(), _operation_id(operation_id)
     with transaction_lock(home):
