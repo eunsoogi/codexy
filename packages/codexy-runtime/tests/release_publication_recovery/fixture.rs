@@ -147,6 +147,7 @@ impl Fixture {
             .path("FIXTURE_GIT", self.root.join("bin/git"))
             .path("FIXTURE_GIT_LAUNCHER", &self.git_launcher)
             .payload_path("FIXTURE_GH", self.root.join("bin/gh"))
+            .payload_path("FIXTURE_GH_STATE_ROOT", &self.root)
             .path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
             .path(
                 "FIXTURE_POSIX_SHELL",

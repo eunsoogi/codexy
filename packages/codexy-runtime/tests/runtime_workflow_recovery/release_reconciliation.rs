@@ -156,7 +156,7 @@ esac
     for name in ["verify-release-edit-baseline", "verify-release-attestation-set", "verify-release-attestation-total"] {
         bind_posix_fixture_shell_launchers(
             &scripts.join(name),
-            &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::Posix)],
+            &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi)],
         )?;
     }
     let gh_launcher = fixture_script_interpreter_path(&gh)?;

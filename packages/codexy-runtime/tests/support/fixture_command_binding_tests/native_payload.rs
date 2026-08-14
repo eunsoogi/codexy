@@ -55,7 +55,7 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
     )?;
     fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport os,pathlib,sys\nrepo='eunsoogi/codexy'\nassert os.environ['MSYS2_ARG_CONV_EXCL'] == f'repos/*;{repo}'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args[:2] == ['api', f'repos/{repo}/releases/tags/v9.9.9']\n assert args[2] == '--dir'\n pathlib.Path(args[3]).write_text('native state\\n')\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
+        "#!/usr/bin/env python3\nimport os,pathlib,sys\nrepo='eunsoogi/codexy'\nassert os.environ['MSYS2_ARG_CONV_EXCL'] == f'repos/*;{repo}'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args[:2] == ['api', f'repos/{repo}/releases/tags/v9.9.9']\n assert args[2] == '--dir'\n pathlib.Path(args[3]).write_bytes(b'native state\\r\\n')\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -86,7 +86,10 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
         normalize_fixture_text(&String::from_utf8(output.stdout)?),
         "release:eunsoogi/codexy\napi:repos/eunsoogi/codexy/releases/tags/v9.9.9\n"
     );
-    assert_eq!(fs::read_to_string(state)?, "native state\n");
+    assert_eq!(
+        normalize_fixture_text(&fs::read_to_string(state)?),
+        "native state\n"
+    );
     Ok(())
 }
 

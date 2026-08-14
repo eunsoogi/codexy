@@ -6,19 +6,28 @@ import os
 import pathlib
 import shutil
 import sys
+args = sys.argv[1:]
 
-root = pathlib.Path.cwd()
+def fail(message):
+    print(f'fixture gh contract: {message}; argv={args!r}; cwd={pathlib.Path.cwd()}; repository={os.environ.get("GITHUB_REPOSITORY")!r}', file=sys.stderr)
+    sys.exit(2)
+
+def state_root():
+    value = os.environ.get('FIXTURE_GH_STATE_ROOT')
+    if not value:
+        fail('native fixture state root')
+    root = pathlib.Path(value)
+    if not root.is_absolute():
+        fail('native fixture state root path')
+    return root
+
+root = state_root()
 remote = root / 'remote'
 exists = root / 'exists'
 draft = root / 'draft'
 log = root / 'log'
 tag = 'v9.9.9'
 commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-args = sys.argv[1:]
-
-def fail(message):
-    print(f'fixture gh contract: {message}; argv={args!r}; cwd={root}; repository={os.environ.get("GITHUB_REPOSITORY")!r}', file=sys.stderr)
-    sys.exit(2)
 
 def repository():
     repo = os.environ.get('GITHUB_REPOSITORY')
