@@ -1,4 +1,4 @@
-use super::javascript_template::strip_template;
+use super::javascript_template::Template;
 
 pub(super) fn lines(text: &str) -> Vec<Option<String>> {
     let mut state = State::Code;
@@ -10,11 +10,7 @@ enum State {
     BlockComment,
     String(char),
     Regex,
-    Template {
-        depth: usize,
-        quote: Option<char>,
-        escaped: bool,
-    },
+    Template(Template),
 }
 
 fn strip(line: &str, state: &mut State) -> Option<String> {
@@ -43,12 +39,8 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                 }
                 None => return Some(visible),
             },
-            State::Template {
-                depth,
-                quote,
-                escaped,
-            } => {
-                let (fragment, tail) = strip_template(remainder, depth, quote, escaped);
+            State::Template(template) => {
+                let (fragment, tail) = template.strip(remainder);
                 visible.push_str(&fragment);
                 if let Some(tail) = tail {
                     remainder = tail;
@@ -79,11 +71,7 @@ fn strip(line: &str, state: &mut State) -> Option<String> {
                     }
                     Span::Template => {
                         remainder = &remainder[index + 1..];
-                        *state = State::Template {
-                            depth: 0,
-                            quote: None,
-                            escaped: false,
-                        };
+                        *state = State::Template(Template::new());
                     }
                 }
             }

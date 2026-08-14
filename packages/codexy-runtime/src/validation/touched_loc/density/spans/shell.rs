@@ -43,27 +43,11 @@ fn strip_awk(line: &str, state: &mut State) -> Option<String> {
 }
 
 fn heredoc_span(line: &str) -> Option<(usize, usize, String, bool)> {
-    let start = unquoted_heredoc_start(line)?;
-    let after_operator = &line[start + 2..];
-    let strip_tabs = after_operator.starts_with('-');
-    let dash = strip_tabs as usize;
-    let after_operator = &after_operator[dash..];
+    let (start, operator_end, strip_tabs) = heredoc_operator(line)?;
+    let after_operator = &line[operator_end..];
     let leading = after_operator.len() - after_operator.trim_start().len();
-    let token = after_operator
-        .trim_start()
-        .split(|character: char| {
-            character.is_whitespace() || matches!(character, ';' | '&' | '|' | '<' | '>')
-        })
-        .next()?;
-    let end = token.trim_matches(|character| matches!(character, '\'' | '"'));
-    (!end.is_empty()).then(|| {
-        (
-            start,
-            start + 2 + dash + leading + token.len(),
-            end.to_owned(),
-            strip_tabs,
-        )
-    })
+    let (word_len, end) = heredoc_word(after_operator.trim_start())?;
+    Some((start, operator_end + leading + word_len, end, strip_tabs))
 }
 
 fn heredoc_terminates(line: &str, end: &str, strip_tabs: bool) -> bool {
@@ -74,18 +58,102 @@ fn heredoc_terminates(line: &str, end: &str, strip_tabs: bool) -> bool {
     }
 }
 
-fn unquoted_heredoc_start(line: &str) -> Option<usize> {
+fn heredoc_operator(line: &str) -> Option<(usize, usize, bool)> {
     let mut quote = None;
-    for (index, character) in line.char_indices() {
-        quote = match quote {
-            Some(delimiter) if character == delimiter => None,
-            Some(delimiter) => Some(delimiter),
-            None if matches!(character, '\'' | '"') => Some(character),
-            None if line[index..].starts_with("<<") => return Some(index),
-            None => None,
-        };
+    let mut escaped = false;
+    let mut index = 0;
+    while index < line.len() {
+        let tail = &line[index..];
+        let character = tail.chars().next()?;
+        if let Some(delimiter) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' && delimiter == '"' {
+                escaped = true;
+            } else if character == delimiter {
+                quote = None;
+            }
+            index += character.len_utf8();
+            continue;
+        }
+        if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        } else if character == '\\' {
+            index += character.len_utf8()
+                + tail[character.len_utf8()..]
+                    .chars()
+                    .next()
+                    .map_or(0, char::len_utf8);
+            continue;
+        } else if tail.starts_with("$((") {
+            index += arithmetic_end(tail)?;
+            continue;
+        } else if character == '#' && comment_start(line, index) {
+            return None;
+        } else if tail.starts_with("<<<") {
+            index += 3;
+            continue;
+        } else if tail.starts_with("<<") {
+            let strip_tabs = tail[2..].starts_with('-');
+            return Some((index, index + 2 + strip_tabs as usize, strip_tabs));
+        }
+        index += character.len_utf8();
     }
     None
+}
+
+fn heredoc_word(text: &str) -> Option<(usize, String)> {
+    let mut quote = None;
+    let mut escaped = false;
+    let mut end = String::new();
+    for (index, character) in text.char_indices() {
+        if escaped {
+            end.push(character);
+            escaped = false;
+        } else if let Some(delimiter) = quote {
+            if character == delimiter {
+                quote = None;
+            } else {
+                end.push(character);
+            }
+        } else if character == '\\' {
+            escaped = true;
+        } else if matches!(character, '\'' | '"') {
+            quote = Some(character);
+        } else if character.is_whitespace() || matches!(character, ';' | '&' | '|' | '<' | '>') {
+            return (quote.is_none() && !end.is_empty()).then(|| (index, end));
+        } else {
+            end.push(character);
+        }
+    }
+    (quote.is_none() && !escaped && !end.is_empty()).then(|| (text.len(), end))
+}
+
+fn arithmetic_end(text: &str) -> Option<usize> {
+    let mut depth = 1;
+    let mut index = 3;
+    while index < text.len() {
+        let tail = &text[index..];
+        if tail.starts_with("((") {
+            depth += 1;
+            index += 2;
+        } else if tail.starts_with("))") {
+            depth -= 1;
+            index += 2;
+            if depth == 0 {
+                return Some(index);
+            }
+        } else {
+            index += tail.chars().next()?.len_utf8();
+        }
+    }
+    None
+}
+
+fn comment_start(line: &str, index: usize) -> bool {
+    line[..index].chars().next_back().is_none_or(|character| {
+        character.is_whitespace() || matches!(character, ';' | '&' | '|' | '(' | ')')
+    })
 }
 
 fn awk_program_opener(line: &str) -> Option<usize> {
