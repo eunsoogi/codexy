@@ -37,7 +37,7 @@ jobs:
       name: pypi
       url: https://pypi.org/p/getcodexy
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -127,17 +127,17 @@ jobs:
         run: scripts/reconcile-release-attestations dist ATTEST_RECEIPT runtime-release-receipt.json
       - name: Attest marketplace archive
         if: env.ATTEST_MARKETPLACE == 'true'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-marketplace-plugin.tar.gz
       - name: Attest runtime archive
         if: env.ATTEST_RUNTIME == 'true'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-runtime-package.tar.gz
       - name: Attest release receipt
         if: env.ATTEST_RECEIPT == 'true'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/runtime-release-receipt.json
       - name: Create and verify the only public version release
@@ -155,7 +155,7 @@ jobs:
         run: scripts/reconcile-release-attestations dist ATTEST_BASELINE release-baseline.json
       - name: Attest immutable release baseline
         if: env.BASELINE_CREATED == 'true' && env.ATTEST_BASELINE == 'true'
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/release-baseline.json
       - name: Finalize authenticated public release
@@ -172,7 +172,7 @@ jobs:
       contents: read
       attestations: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.activation_commit }}
           persist-credentials: false

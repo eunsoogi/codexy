@@ -84,7 +84,7 @@ fn release_edit_verifier_allows_only_body_changes_and_rechecks_actions_baseline(
 }
 
 #[test]
-fn bootstrap_publication_uses_pinned_hashed_dependencies_and_protected_pypi_environment()
+fn bootstrap_publication_uses_minimal_build_dependencies_and_protected_pypi_environment()
 -> Result<(), Box<dyn std::error::Error>> {
     let bootstrap = workflow("bootstrap-package.yml")?;
     assert_eq!(bootstrap["concurrency"]["cancel-in-progress"], false);
@@ -94,40 +94,17 @@ fn bootstrap_publication_uses_pinned_hashed_dependencies_and_protected_pypi_envi
     let admission = named_run(job, "Admit current protected-main bootstrap source")?;
     assert!(admission.contains("scripts/verify-release-settings --require-pypi"));
     let build = named_run(job, "Build and publish bootstrap package")?;
-    assert!(build.contains("--require-hashes --requirement .github/requirements/release-build.txt"));
+    assert!(build.contains("python -m pip install --disable-pip-version-check build"));
+    assert!(build.contains("python -m build --outdir dist packages/getcodexy"));
+    for forbidden in ["--require-hashes", "release-build.txt", "--no-isolation"] {
+        assert!(!build.contains(forbidden), "bootstrap build retains {forbidden}");
+    }
     let publish = job["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["uses"].as_str().is_some_and(|value| value.starts_with("pypa/gh-action-pypi-publish@"))))
         .and_then(|step| step["uses"].as_str())
         .ok_or("pypi action")?;
-    let reference = publish.split_once('@').ok_or("pypi action reference")?.1;
-    assert_eq!(reference.len(), 40);
-    assert!(reference.bytes().all(|byte| byte.is_ascii_hexdigit()));
-    Ok(())
-}
-
-#[test]
-fn release_workflows_pin_every_third_party_action_to_a_reviewable_commit()
--> Result<(), Box<dyn std::error::Error>> {
-    for name in [
-        "bootstrap-package.yml",
-        "runtime-candidate.yml",
-        "runtime-activation.yml",
-        "plugin-runtime-binaries.yml",
-        "plugin-version-bump.yml",
-        "publish-version-release.yml",
-        "verify-release-edit.yml",
-    ] {
-        let document = workflow(name)?;
-        for job in document["jobs"].as_mapping().ok_or("workflow jobs")?.values() {
-            for step in job["steps"].as_sequence().ok_or("workflow steps")? {
-                let Some(uses) = step["uses"].as_str() else { continue };
-                let (_, reference) = uses.split_once('@').ok_or("action reference")?;
-                assert_eq!(reference.len(), 40, "{name} has mutable action: {uses}");
-                assert!(reference.bytes().all(|byte| byte.is_ascii_hexdigit()));
-            }
-        }
-    }
+    assert_eq!(publish, "pypa/gh-action-pypi-publish@release/v1");
     Ok(())
 }
 

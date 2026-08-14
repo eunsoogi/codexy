@@ -15,7 +15,7 @@ jobs:
   verify-source-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
           - platform: windows-x86_64
             runner: windows-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
@@ -169,7 +169,7 @@ jobs:
           Copy-Item -LiteralPath $dispatcher -Destination $destination
           $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
           if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ matrix.platform }}
           path: runtime
@@ -183,12 +183,12 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@v8
         with:
           pattern: runtime-staging-*
           path: staged-runtime
@@ -199,7 +199,7 @@ jobs:
           STAGING_RUN_ID: ${{ github.run_id }}
           STAGING_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: scripts/assemble-runtime-candidate
-      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-marketplace-plugin.tar.gz
       - name: Verify staged archive and receipt digests
@@ -208,7 +208,7 @@ jobs:
           tar -xOf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/runtime-candidate.json > staged-candidate.json
           sha256sum staged-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 dist/runtime-staging-receipt.json)"
       - name: Upload authenticated staging bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
