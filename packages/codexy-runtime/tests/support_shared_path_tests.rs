@@ -198,6 +198,18 @@ fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
         windows_fixture_environment_value("GIT_COMMON_DIR", "D:/work/common"),
         Ok("/d/work/common".into())
     );
+    for key in [
+        "FIXTURE_GIT",
+        "FIXTURE_GIT_LAUNCHER",
+        "FIXTURE_GH",
+        "FIXTURE_GH_LAUNCHER",
+    ] {
+        assert_eq!(
+            windows_fixture_environment_value(key, "C:\\fixture\\command.exe"),
+            Ok("/c/fixture/command.exe".into()),
+            "{key} must cross the Git Bash fixture boundary as a POSIX path"
+        );
+    }
 }
 
 #[test]
