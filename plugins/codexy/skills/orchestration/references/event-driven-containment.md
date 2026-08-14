@@ -11,27 +11,27 @@ failure MUST emit exactly one terminal unavailable report and MUST NOT retry the
 parent message. There MUST be no full conversation transfer and no full
 agent-tree listing.
 
-A parent or child MUST retain its active goal and plan during a nonterminal
-external-gate wait while an implementation obligation remains. For that wait,
-the child MUST use one nonterminal wait handoff with `goal state=active` and
-`goal transition=none`, retain ownership, and return control when no runtime
-monitor exists. It MUST NOT call `update_goal(complete)` or
-`update_goal(blocked)` merely for that wait.
+A parent or child MUST retain its active goal and plan only while an immediately
+executable in-scope obligation remains. For a nonterminal wait, the child MUST
+use one handoff with `goal state=active` and `goal transition=none`, retain
+ownership, and return control when no runtime monitor exists.
 
-Once every child-owned implementation, proof, push, review-response, and
-handoff obligation is actually complete, the child MAY complete its goal through
-the normal terminal receipt path before runtime-only monitoring. A runtime
-monitor remains runtime-owned rather than an autonomous model loop.
+When no immediately executable obligation remains and only an external event or
+explicit parent wake can advance work, the child MUST send the idle-wait handoff
+defined in `goal-transition-reporting.md`, complete its finite goal, and leave
+the task idle without claiming the issue complete. A runtime monitor remains
+runtime-owned rather than an autonomous model loop.
 
 A registered heartbeat automation route uses its automation id, target thread,
-bounded schedule, and state fingerprint; it MUST NOT require a persistent
+bounded schedule, and state fingerprint. It MUST NOT require a persistent
 exec/session id or same-process resume. A separate process-backed route requires
 those fields plus a next deadline. Both MUST suppress unchanged observations
-without assistant turns. A qualifying event MUST resume the retained goal and
-plan, or start a fresh short-lived execution goal only after an earlier valid
-completion. `blocked` is reserved only for an unanswered material user decision
-or missing user information and MUST NOT represent an asynchronous external-gate
-wait.
+without assistant turns.
+
+A qualifying event MUST create a fresh short-lived execution goal and current
+plan before any edit, proof, review response, publication, or merge work.
+`blocked` is reserved only for an unanswered material user decision or missing
+user information and MUST NOT represent an asynchronous external-gate wait.
 
 When a Material child event arrives—terminal child state, actionable review
 feedback, or replacement-owner availability—the parent MUST validate the stable
