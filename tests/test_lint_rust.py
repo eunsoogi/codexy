@@ -54,27 +54,32 @@ class RustLintTests(unittest.TestCase):
 
     def test_package_relative_primary_span_matches_a_changed_source(self) -> None:
         lint_rust = load_lint_rust()
-        message = json.dumps(
-            {
-                "reason": "compiler-message",
-                "message": {
-                    "level": "warning",
-                    "message": "package-relative warning",
-                    "spans": [{"file_name": "src/changed.rs", "is_primary": True}],
-                },
-            }
-        )
+        for level in ("warning", "error"):
+            with self.subTest(level=level):
+                message = json.dumps(
+                    {
+                        "reason": "compiler-message",
+                        "message": {
+                            "level": level,
+                            "message": f"package-relative {level}",
+                            "spans": [
+                                {"file_name": "src/changed.rs", "is_primary": True}
+                            ],
+                        },
+                    }
+                )
 
-        diagnostics = lint_rust.changed_diagnostics(
-            message,
-            ROOT,
-            ROOT / "packages/codexy-runtime",
-            {"packages/codexy-runtime/src/changed.rs"},
-        )
+                diagnostics = lint_rust.changed_diagnostics(
+                    message,
+                    ROOT,
+                    ROOT / "packages/codexy-runtime",
+                    {"packages/codexy-runtime/src/changed.rs"},
+                )
 
-        self.assertEqual(
-            [item["message"] for item in diagnostics], ["package-relative warning"]
-        )
+                self.assertEqual(
+                    [item["message"] for item in diagnostics],
+                    [f"package-relative {level}"],
+                )
 
 
 if __name__ == "__main__":
