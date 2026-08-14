@@ -193,9 +193,7 @@ def powershell() -> None:
         command(*base, "-Mode", "--fix", *module_arg, relative, succeeds=True)
         if target.read_bytes() != once:
             raise SystemExit("Invoke-Formatter is not idempotent")
-        command(
-            *base, "-Mode", "--check", *module_arg, relative, succeeds=True
-        )
+        command(*base, "-Mode", "--check", *module_arg, relative, succeeds=True)
     finally:
         shutil.rmtree(directory)
 

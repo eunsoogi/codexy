@@ -73,7 +73,11 @@ class LintFixtureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "unchanged.py").write_text("value = 1\n", encoding="utf-8")
-            subprocess.run(["git", "init", "--quiet"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "init", "--quiet", "--initial-branch=main"],
+                cwd=root,
+                check=True,
+            )
             subprocess.run(
                 ["git", "config", "user.email", "lint@example.invalid"],
                 cwd=root,
@@ -118,6 +122,49 @@ class LintFixtureTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "baseline is unavailable"):
                     runner.tracked_regular_files(root, "*.py")
 
+    def test_changed_scope_excludes_current_base_branch_edits(self) -> None:
+        runner = inventory_module()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "skill.md").write_text("original\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "init", "--quiet", "--initial-branch=main"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "lint@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Lint test"], cwd=root, check=True
+            )
+            subprocess.run(["git", "add", "skill.md"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "--quiet", "-m", "initial"], cwd=root, check=True
+            )
+            subprocess.run(["git", "branch", "feature"], cwd=root, check=True)
+            (root / "skill.md").write_text("base update\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "commit", "-am", "base update"], cwd=root, check=True
+            )
+            subprocess.run(
+                ["git", "switch", "--quiet", "feature"], cwd=root, check=True
+            )
+            (root / "feature.py").write_text("value = 1\n", encoding="utf-8")
+            subprocess.run(["git", "add", "feature.py"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "--quiet", "-m", "feature"], cwd=root, check=True
+            )
+
+            with mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "main"}):
+                self.assertEqual(
+                    runner.tracked_regular_files(root, "*.md", "*.py"),
+                    ("feature.py",),
+                )
+
     def test_workflow_exercises_real_failure_fixtures_for_every_route(self) -> None:
         workflow = (ROOT / ".github/workflows/language-lint.yml").read_text(
             encoding="utf-8"
@@ -138,6 +185,10 @@ class LintFixtureTests(unittest.TestCase):
 
         self.assertIn(
             "ref: ${{ github.event.pull_request.head.sha || github.sha }}", workflow
+        )
+        self.assertIn(
+            "github.event.pull_request && format('origin/{0}', github.event.pull_request.base.ref)",
+            workflow,
         )
 
     def test_shell_launcher_avoids_ambiguous_empty_environment_assignment(self) -> None:

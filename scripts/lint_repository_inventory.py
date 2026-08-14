@@ -103,7 +103,7 @@ def tracked_regular_files(
     if base:
         try:
             changed_output = subprocess.run(
-                ["git", "diff", "--name-only", "-z", base, "HEAD"],
+                ["git", "diff", "--name-only", "-z", f"{base}...HEAD"],
                 cwd=root,
                 check=True,
                 capture_output=True,
