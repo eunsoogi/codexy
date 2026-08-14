@@ -136,6 +136,13 @@ pub(super) fn too_many_blockers(value: &mut Value) {
     }
 }
 
+pub(super) fn set_profile(value: &mut Value, profile: &str, reviewer: Value) {
+    value["profile"] = json!(profile);
+    value["reviewer"] = reviewer.clone();
+    value["readiness_export"]["profile"] = json!(profile);
+    value["readiness_export"]["reviewer"] = reviewer;
+}
+
 fn run(root: &Path, flags: &[&str], value: Value) -> TestResult<std::process::Output> {
     let temp = tempfile::tempdir()?;
     let input = temp.path().join("input.json");

@@ -17,12 +17,19 @@ mod terminal_scope;
 mod handoff_decision;
 #[path = "validator_review_control/profile_classification.rs"]
 mod profile_classification;
+#[path = "validator_review_control/issue_contract.rs"]
+mod issue_contract;
+#[path = "validator_review_control/blocker_class.rs"]
+mod blocker_class;
+#[path = "validator_review_control/finding_disposition.rs"]
+mod finding_disposition;
 #[path = "validator_review_control/helpers.rs"]
 mod review_helpers;
 
 use review_helpers::{
     assert_profile, check_economics, check_packet, check_packet_at, child_routing, commit, git,
-    git_at, git_bytes_at, init_repository, packet_repository, resolve_profile, too_many_blockers,
+    git_at, git_bytes_at, init_repository, packet_repository, resolve_profile, set_profile,
+    too_many_blockers,
 };
 
 #[test]
@@ -130,11 +137,16 @@ fn packet_rejects_dual_unknown_inspector_overage_and_nonblocking_observations_pa
     strict["readiness_export"]["reviewer"] = strict["reviewer"].clone();
     assert!(check_packet(fixture.root(), &dual_ledger, &valid)?.status.success());
     assert!(!check_packet(fixture.root(), &dual_ledger, &strict)?.status.success());
-    for kind in ["evidence_only", "github_metadata"] {
-        let mut observed = packet(&format!("e-{kind}"), "full");
-        observed["findings"][0]["kind"] = json!(kind);
+    for disposition in ["in_scope_nonblocking", "out_of_scope_followup"] {
+        let mut observed = packet(&format!("e-{disposition}"), "full");
+        observed["findings"][0]["disposition"] = json!(disposition);
+        if disposition == "out_of_scope_followup" {
+            observed["findings"][0]["criterion_id"] = json!(null);
+            observed["findings"][0]["owned_boundary"] = json!(null);
+            observed["findings"][0]["repair_boundary"] = json!(null);
+        }
         observed["readiness_export"]["unresolved_blocker_ids"] = json!([]);
-        assert!(check_packet(fixture.root(), &temp.path().join(format!("{kind}.json")), &observed)?.status.success());
+        assert!(check_packet(fixture.root(), &temp.path().join(format!("{disposition}.json")), &observed)?.status.success());
     }
     Ok(())
 }
@@ -199,5 +211,40 @@ fn packet_for(root: &Path, base: &str, event: &str, state: &str) -> TestResult<V
         .lines().map(str::to_owned).collect::<Vec<_>>();
     let evidence_path = files.first().ok_or("current test head requires a changed file")?;
     let evidence = git_bytes_at(root, ["show", &format!("{head}:{evidence_path}")])?;
-    Ok(json!({"schema":"codexy.review-packet.v2","event_id":event,"predecessor_event_id":null,"profile":"standard","state":state,"reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":format!("{:x}",Sha256::digest(diff))},"acceptance_criteria":[{"id":"ac-1"}],"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":format!("{:x}",Sha256::digest(evidence))}],"findings":[{"id":"f-1","defect_class":"bounds","criterion_id":"ac-1","counterexample":"repro","head_oid":head,"kind":"blocker","reopen_count":0,"resolved":false}],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"unresolved_blocker_ids":["f-1"],"budget_exhausted":false,"parent_decision_required":false}}))
+    Ok(json!({
+        "schema":"codexy.review-packet.v4",
+        "event_id":event,
+        "predecessor_event_id":null,
+        "profile":"standard",
+        "state":state,
+        "reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},
+        "identity":{"base_oid":base,"head_oid":head,"diff_sha256":format!("{:x}",Sha256::digest(diff))},
+        "issue_contract":{
+            "problem":"owned problem",
+            "scope":"owned scope",
+            "acceptance_criteria":[{"id":"ac-1"}],
+            "owned_invariant_ids":[],
+            "exclusions":["universal parser"],
+            "adjacent_dependencies":["typed fixture"]
+        },
+        "changed_files":files,
+        "direct_boundaries":["validator"],
+        "verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":format!("{:x}",Sha256::digest(evidence))}],
+        "findings":[{
+            "id":"f-1",
+            "defect_class":"bounds",
+            "criterion_id":"ac-1",
+            "owned_invariant":null,
+            "owned_boundary":"validator",
+            "repair_boundary":"validator",
+            "counterexample":"repro",
+            "head_oid":head,
+            "disposition":"in_scope_blocker",
+            "reopen_count":0,
+            "resolved":false
+        }],
+        "resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},
+        "budget":{"full_used":1,"delta_used":0},
+        "readiness_export":{"head_oid":head,"profile":"standard","reviewer":{"name":"codexy-inspector","model":"gpt-5.6-terra","reasoning_effort":"max"},"unresolved_blocker_ids":["f-1"],"budget_exhausted":false,"parent_decision_required":false}
+    }))
 }
