@@ -138,6 +138,9 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     let reconciliation = fs::read_to_string(
         tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
     )?;
+    let materialization = fs::read_to_string(
+        tests.join("release_publication_recovery/fixture_materialization.rs"),
+    )?;
     let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
     for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&reconciliation, "GITHUB_EVENT_PATH")] {
         assert!(
@@ -145,13 +148,20 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
             "POSIX shell input must use its projected path: {input}"
         );
     }
-    for (fixture, input) in [
-        (&recovery, "FIXTURE_GH"),
-        (&reconciliation, "FIXTURE_DIR"),
-        (&reconciliation, "FIXTURE_GH"),
-    ] {
+    for (fixture, input) in [(&recovery, "FIXTURE_GH")] {
         assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
     }
+    for input in ["FIXTURE_DIR", "FIXTURE_GH"] {
+        assert!(reconciliation.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
+    }
+    assert!(
+        materialization.contains("FixtureArgumentDomain::GitHubApi"),
+        "the native release publisher mock must preserve logical GitHub API arguments"
+    );
+    assert!(
+        reconciliation.contains("FixtureArgumentDomain::Posix"),
+        "the POSIX edit-verifier mock must retain ordinary path conversion"
+    );
     assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
 }

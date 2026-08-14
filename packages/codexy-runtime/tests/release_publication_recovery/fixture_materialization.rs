@@ -1,7 +1,8 @@
 use std::{fs, path::Path};
 
 use crate::support::{
-    FixtureScriptBinding, bind_posix_fixture_script_launchers, bind_posix_fixture_shell_launchers,
+    FixtureArgumentDomain, FixtureScriptBinding, bind_posix_fixture_script_launchers,
+    bind_posix_fixture_shell_launchers,
 };
 
 pub(crate) fn copy_scripts(root: &Path) -> std::io::Result<()> {
@@ -39,8 +40,8 @@ pub(crate) fn copy_scripts(root: &Path) -> std::io::Result<()> {
 
 pub(crate) fn bind_scripts(root: &Path) -> std::io::Result<()> {
     let shell_bindings = [
-        ("git", "FIXTURE_GIT", "FIXTURE_GIT_LAUNCHER"),
-        ("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER"),
+        ("git", "FIXTURE_GIT", "FIXTURE_GIT_LAUNCHER", FixtureArgumentDomain::Posix),
+        ("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi),
     ];
     for (name, children) in [
         (

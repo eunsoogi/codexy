@@ -6,6 +6,12 @@ pub(crate) struct FixtureScriptBinding {
     pub(crate) child: &'static str,
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum FixtureArgumentDomain {
+    Posix,
+    GitHubApi,
+}
+
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
 /// Git Bash can reject an extensionless PATH script despite a valid shebang and
@@ -24,7 +30,7 @@ pub(crate) fn write_posix_fixture_shell_runner(
 /// Git Bash, where PATH lookup can lose to a native `.exe` or omit `python3`.
 pub(crate) fn bind_posix_fixture_shell_launchers(
     path: &Path,
-    bindings: &[(&str, &str, &str)],
+    bindings: &[(&str, &str, &str, FixtureArgumentDomain)],
 ) -> io::Result<()> {
     let source = fs::read_to_string(path)?;
     let Some((shebang, body)) = source.split_once('\n') else {
@@ -43,12 +49,16 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
     bound.push_str(
         "fixture_finish() { fixture_status=$?; trap - 0; if test \"$fixture_status\" -ne 0; then printf 'fixture shell failure: %s exited %s\\n' \"$0\" \"$fixture_status\" >&2; fi; exit \"$fixture_status\"; }\ntrap fixture_finish 0\n",
     );
-    for (command, payload_environment, launcher_environment) in bindings {
+    for (command, payload_environment, launcher_environment, domain) in bindings {
         validate_identifier(command)?;
         validate_identifier(payload_environment)?;
         validate_identifier(launcher_environment)?;
+        let conversion = match domain {
+            FixtureArgumentDomain::Posix => "",
+            FixtureArgumentDomain::GitHubApi => "MSYS2_ARG_CONV_EXCL='repos/*' ",
+        };
         bound.push_str(&format!(
-            "{command}() {{ MSYS_NO_PATHCONV=1 \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
+            "{command}() {{ {conversion}\"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
         ));
     }
     bound.push_str(body);

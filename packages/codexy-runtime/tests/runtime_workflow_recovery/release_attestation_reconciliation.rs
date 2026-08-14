@@ -1,8 +1,8 @@
 use std::fs;
 
 use crate::support::{
-    ReleaseFixtureCommand, ReleaseFixtureOutcome, bind_posix_fixture_shell_launchers,
-    fixture_script_interpreter_path,
+    FixtureArgumentDomain, ReleaseFixtureCommand, ReleaseFixtureOutcome,
+    bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
 
 #[test]
@@ -34,7 +34,7 @@ case "$*" in
 esac
 "#)?;
     crate::support::make_executable(&gh)?;
-    bind_posix_fixture_shell_launchers(&script, &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER")])?;
+    bind_posix_fixture_shell_launchers(&script, &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::Posix)])?;
     let launcher = fixture_script_interpreter_path(&gh)?;
     let environment = temp.path().join("release.env");
     let run = |state: &str| ReleaseFixtureCommand::new(&script)

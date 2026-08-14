@@ -1,7 +1,7 @@
 use std::fs;
 
 use crate::support::{
-    FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
+    FixtureArgumentDomain, FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
     bind_posix_fixture_script_launchers,
     bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
 };
@@ -156,7 +156,7 @@ esac
     for name in ["verify-release-edit-baseline", "verify-release-attestation-set", "verify-release-attestation-total"] {
         bind_posix_fixture_shell_launchers(
             &scripts.join(name),
-            &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER")],
+            &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::Posix)],
         )?;
     }
     let gh_launcher = fixture_script_interpreter_path(&gh)?;
@@ -178,8 +178,8 @@ esac
     let shell_launcher = fixture_script_interpreter_path(&scripts.join("verify-release-edit-baseline"))?;
     let script = scripts.join("verify-release-edit-baseline");
     let run = |extra_attestation: bool| ReleaseFixtureCommand::new(&script)
-        .current_dir(temp.path()).payload_path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .payload_path("FIXTURE_GH", &gh)
+        .current_dir(temp.path()).path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .path("FIXTURE_GH", &gh)
         .path("FIXTURE_GH_LAUNCHER", &gh_launcher)
         .path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .path("FIXTURE_SCRIPT_ROOT", temp.path())

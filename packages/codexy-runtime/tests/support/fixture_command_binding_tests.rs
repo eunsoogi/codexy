@@ -1,9 +1,10 @@
 use std::{fs, io::ErrorKind, process::Command};
 
 use crate::support::{
-    FixtureCommand, FixtureScriptBinding, bind_posix_fixture_script_launchers,
-    bind_posix_fixture_shell_launchers, fixture_script_interpreter_path, normalize_fixture_text,
-    write_posix_fixture_command, write_posix_fixture_shell_runner,
+    FixtureArgumentDomain, FixtureCommand, FixtureScriptBinding,
+    bind_posix_fixture_script_launchers, bind_posix_fixture_shell_launchers,
+    fixture_script_interpreter_path, normalize_fixture_text, write_posix_fixture_command,
+    write_posix_fixture_shell_runner,
 };
 
 #[path = "fixture_command_binding_tests/native_payload.rs"]
@@ -124,10 +125,15 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
         &script,
-        &[("gh", "CODEXY_FIXTURE_GH", "CODEXY_FIXTURE_GH_LAUNCHER")],
+        &[(
+            "gh",
+            "CODEXY_FIXTURE_GH",
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            FixtureArgumentDomain::GitHubApi,
+        )],
     )?;
     let output = FixtureCommand::new(&script)
-        .env_path("CODEXY_FIXTURE_GH", &gh)
+        .env("CODEXY_FIXTURE_GH", &gh)
         .env_path(
             "CODEXY_FIXTURE_GH_LAUNCHER",
             fixture_script_interpreter_path(&gh)?,
