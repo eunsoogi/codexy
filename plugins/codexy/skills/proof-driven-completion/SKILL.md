@@ -172,15 +172,20 @@ MUST include:
 - MUST stop and fix if proof contradicts the claim.
 - MUST stop and ask only when the missing proof requires a secret, account action,
   destructive operation, or human-only decision.
-- MUST NOT call `update_goal(status="complete")` until every requirement has
-  current matching proof and no required work remains.
+- MUST NOT call `update_goal(status="complete")` until every requirement in the
+  finite execution phase has current matching proof and no immediately executable
+  in-scope owner work remains. Goal completion MUST NOT claim that the issue,
+  implementation, or an external gate is complete.
 - MUST NOT call `update_goal(status="blocked")` merely because child-thread work,
-  queued worktree/thread setup, or asynchronous tool
-  completion is pending. Once code/proof/push/review-response work is finished and
-  an external gate remains while implementation obligations are unfinished, the
-  child MUST send one nonterminal wait handoff, retain its active goal, plan, and
-  ownership, and return control; it MUST NOT poll, complete, or block the goal for
-  that wait. A qualifying event resumes the retained goal and plan.
+  queued worktree/thread setup, or asynchronous tool completion is pending. While
+  an immediately executable in-scope obligation remains, the child MUST use one
+  nonterminal wait handoff and retain its active goal, plan, and ownership. Once
+  local code, proof, push, review-response, and handoff work is finished and only
+  an external gate or explicit parent wake remains, it MUST send one idle-wait
+  handoff, complete the finite goal, and leave the task idle without claiming the
+  issue complete. It MUST NOT poll, interrupt, duplicate, replace, or approve the
+  live producer or reviewer. A qualifying event creates a fresh short-lived goal
+  and current plan before any further execution.
 - MUST allow `update_goal(status="blocked")` only for an exact unanswered user
   decision or missing user information that materially changes the result and
   has no safe default or in-scope action.
@@ -202,8 +207,9 @@ MUST include:
   intentionally deferred.
 - Ignoring actionable top-level PR comments because they are not GitHub review
   objects.
-- Treating ordinary review or child-thread wait time as a blocker instead of an
-  active goal state.
+- Treating ordinary review or child-thread wait time as a blocker instead of a
+  non-blocking external state, with an active goal only when executable work
+  remains.
 - Treating generated files as valid without parsing or inspecting them.
 - Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale
   evidence.

@@ -110,8 +110,7 @@ uninstalling, diagnosing, or invoking a packaged specialist.
 - MUST maintain a visible todo list with real `update_plan` or todo-tool state for
   any non-trivial task when available. Prose-only todo text is insufficient
   unless the todo/plan tool is unavailable and the fallback is reported.
-- MUST follow [event-driven-waits.md](references/event-driven-waits.md) for
-  asynchronous waits, host-transition recovery, and live-Sentinel observation.
+- MUST treat asynchronous completion as event waits, not blockers. Parent orchestrators and child owners MUST use event-driven `wait_threads` with each target's latest cursor as the default for ordinary child completion or attention waits. They MUST reserve heartbeat scheduling for genuinely scheduled monitoring or when `wait_threads` is unavailable. After a host transition or `No handler registered` failure, the owner MUST treat the mismatch as host-transition exposure evidence, perform one fresh thread-tool discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded `read_thread`, and any bounded metadata fallback MUST consume the current parent-stage budget and record only returned size/token metadata. When an eligible external gate outlives the turn, they MUST follow `references/runtime-heartbeats.md`. Live Sentinel observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - In long multi-issue or multi-PR polling loops, MUST preserve all proof gates while carrying only current deltas.
 - Opening a PR is not completion when the requested outcome includes
   completion, merge, default Codexy merge flow, or no explicit stop/wait/
@@ -129,8 +128,7 @@ only active/waiting Codex app child threads against that cap and MUST NOT create
 Packaged specialist subagents MUST NOT be counted as active
 child Codex app threads.
 
-Before creating a new child Codex app thread, orchestration MUST follow
-[child owner reuse](references/child-owner-reuse.md).
+Before creating a new child Codex app thread, orchestration MUST check the ledger and current issue/PR state for an existing issue/PR owner thread, MUST treat it as the existing owner thread, and MUST reuse it when present. If that owner is usable, orchestration MUST reuse or continue it instead of creating a duplicate owner.
 Replacement child threads MUST be created only after existing owner evidence is inspected and the old owner is stopped, unusable, or explicitly superseded.
 Each ledger entry MUST include issue/PR, thread id, status, owner state,
 blocker, latest evidence, and next action. It MUST also include canonical
@@ -240,8 +238,13 @@ presenting a quiet fallback as normal.
 MUST follow `references/parent-stop-preflight.md` before implementation edits.
 MUST run `scripts/validate-plugin-config --check-child-lane-ownership --evidence-file <path>` when that reference requires ownership evidence.
 
-## Event-driven containment
+## Event-driven token and quota containment
 
-MUST follow [event-driven-containment.md](references/event-driven-containment.md)
-for child-event handling, nonterminal waits, archive decisions, and post-BLOCK
-repair/delta-review control.
+Event-driven refresh: The root/orchestrator MUST NOT autonomously poll and MUST process only compact deltas for terminal child state, selected-reviewer verdict, PR creation, new HEAD, GitHub check-state change, actionable review-feedback change, or review-thread resolution; ordinary progress and unchanged waiting MUST NOT wake the parent. Every delta MUST carry a stable event identity and exact task ids. Parent-message failure MUST emit exactly one terminal unavailable report and MUST NOT retry the parent message. There MUST be no full conversation transfer and no full agent-tree listing. A parent or child MUST retain its active goal and plan only while an immediately executable in-scope obligation remains. For that wait, the child MUST use one nonterminal wait handoff with `goal state=active` and `goal transition=none`, retain ownership, and return control when no runtime monitor exists. When no immediately executable obligation remains and only an external event or explicit parent wake can advance work, the child MUST send the idle-wait handoff defined in `references/goal-transition-reporting.md`, complete its finite goal, and leave the task idle without claiming the issue complete. A runtime monitor remains runtime-owned rather than an autonomous model loop. A registered heartbeat automation route uses its automation id, target thread, bounded schedule, and state fingerprint; a heartbeat automation route MUST NOT require a persistent exec/session id or same-process resume. A separate process-backed route requires those fields plus a next deadline. Both MUST suppress unchanged observations without assistant turns. A qualifying event MUST create a fresh short-lived execution goal and current plan before any edit, proof, review response, publication, or merge work. `blocked` is reserved only for an unanswered material user decision or missing user information and MUST NOT represent an asynchronous external-gate wait.
+
+When a Material child event arrives—terminal child state, actionable review feedback, or replacement-owner availability—the parent MUST validate the stable event identity and consume it in the same turn. To consume the event, the parent MUST perform the authorized parent-owned next action, such as route actionable review feedback, start a replacement owner, or resolve a verified gate, or MUST record a concrete execution blocker. An acknowledgement-only output MUST NOT satisfy consumption. Duplicate stable event identities MUST remain deduplicated with no parent action, and unchanged continuation observations MUST NOT create assistant turns.
+
+Orchestration MUST inspect archive candidates and the active reservation ledger before creating a child; MAY archive only terminal, unreferenced, clean and unreserved worktree lanes with no open PR or pending gate, MUST NOT archive PR owners or dirty/reserved candidates, and MUST record the decision in setup evidence. A child implementation lane MUST use a short-lived child implementation goal. After a selected-profile BLOCK, the usable existing owner MUST record the `block` and update the plan to a repair step, add faithful RED coverage when `engineering_tdd_required` is true or proportional boundary proof otherwise, repair, rerun terminal proof, then invoke only the permitted same-reviewer delta recheck. A second recurrence, timeout, or UNOBSERVABLE result requires parent decision and MUST NOT select or replace a reviewer.
+
+MUST NOT mark a plan step complete until its evidence has been inspected.
+MUST use `update_goal` only with an active or user-requested goal and current proof; MUST reserve `blocked` for unanswered material user decisions or missing user information.

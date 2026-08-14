@@ -31,4 +31,7 @@ gate with an exact question, material branches, and proof that no safe default
 or in-scope action exists. Before mutation, the child MUST compare the latest parent-direction
 version with the pre-delivery version; a newer direction or cancellation MUST
 stop the blocked call. A nonterminal wait handoff MUST retain ownership and an
-active goal state and MUST NOT have a complete or blocked goal transition.
+active goal state only while an immediately executable in-scope obligation
+remains. When only an external event or explicit parent wake can advance work,
+the child MUST use the idle-wait handoff, complete its finite goal, and leave the
+task idle; that transition MUST NOT use `update_goal(blocked)`.
