@@ -39,7 +39,11 @@ if ($Mode -eq "--fix") {
     }
 }
 
-$findings = @(Invoke-ScriptAnalyzer -Path $files -Recurse -Severity Error, Warning)
+$findings = @(
+    foreach ($file in $files) {
+        Invoke-ScriptAnalyzer -Path $file -Recurse -Severity Error, Warning
+    }
+)
 if ($findings.Count -gt 0) {
     $findings | Format-Table -AutoSize | Out-String | Write-Error
     exit 1

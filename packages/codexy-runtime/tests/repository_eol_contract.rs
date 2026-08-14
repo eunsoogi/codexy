@@ -23,10 +23,7 @@ fn repository_contract_inputs_check_out_with_lf() -> Result<(), Box<dyn std::err
 
         assert!(output.status.success(), "check attributes for {input}");
         let attributes = String::from_utf8(output.stdout)?;
-        let required = [
-            format!("{input}: text: set"),
-            format!("{input}: eol: lf"),
-        ];
+        let required = [format!("{input}: text: set"), format!("{input}: eol: lf")];
         let required: Vec<_> = required.iter().map(String::as_str).collect();
         crate::support::assert_structured_literals(
             &attributes,

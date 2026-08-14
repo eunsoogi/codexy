@@ -196,6 +196,13 @@ class LintFixtureTests(unittest.TestCase):
 
         self.assertNotIn("CDPATH= cd", launcher)
         self.assertIn('cd -- "$(dirname -- "$0")" || exit 1', launcher)
+        self.assertIn("\tCDPATH=''", launcher)
+
+    def test_powershell_analyzes_each_selected_path(self) -> None:
+        script = (ROOT / "scripts/lint-powershell.ps1").read_text(encoding="utf-8")
+
+        self.assertIn("foreach ($file in $files)", script)
+        self.assertIn("Invoke-ScriptAnalyzer -Path $file", script)
 
     def test_powershell_fixture_exercises_multiple_paths(self) -> None:
         fixtures = (ROOT / "scripts/verify-lint-fixtures.py").read_text(
