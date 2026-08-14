@@ -76,6 +76,14 @@ fn provenance_requires_declared_source_context() -> TestResult {
         r#"{"one":1,"two":2,"three":3,"four":4}"#,
     )?;
     assert!(!validate(maintained_repo.path())?.status.success());
+
+    let generated_repo = fixture("target/debug/output.json", "{}\n".to_owned())?;
+    write(
+        generated_repo.path(),
+        "target/debug/output.json",
+        r#"{"one":1,"two":2,"three":3,"four":4}"#,
+    )?;
+    assert!(validate(generated_repo.path())?.status.success());
     Ok(())
 }
 

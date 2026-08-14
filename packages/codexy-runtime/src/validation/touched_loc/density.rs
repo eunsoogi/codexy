@@ -118,6 +118,9 @@ fn disposition(path: &Path, text: &str) -> Disposition {
     if path_text.starts_with("vendor/") || path_text.contains("/vendor/") {
         return Disposition::Vendor;
     }
+    if path_text.starts_with("target/") || path_text.contains("/target/") {
+        return Disposition::Generated;
+    }
     provenance(path, text).unwrap_or(Disposition::Maintained)
 }
 
