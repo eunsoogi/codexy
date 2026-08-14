@@ -41,7 +41,7 @@ if ($Mode -eq "--fix") {
 
 $findings = @(
     foreach ($file in $files) {
-        Invoke-ScriptAnalyzer -Path $file -Recurse -Severity Error, Warning
+        Invoke-ScriptAnalyzer -Path $file -Recurse -Severity ParseError, Error, Warning
     }
 )
 if ($findings.Count -gt 0) {

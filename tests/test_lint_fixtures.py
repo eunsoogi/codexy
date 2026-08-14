@@ -203,6 +203,7 @@ class LintFixtureTests(unittest.TestCase):
 
         self.assertIn("foreach ($file in $files)", script)
         self.assertIn("Invoke-ScriptAnalyzer -Path $file", script)
+        self.assertIn("-Severity ParseError, Error, Warning", script)
 
     def test_powershell_fixture_exercises_multiple_paths(self) -> None:
         fixtures = (ROOT / "scripts/verify-lint-fixtures.py").read_text(

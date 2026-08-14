@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
+import os
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -110,9 +112,88 @@ class RustLintTests(unittest.TestCase):
 
         with (
             mock.patch.object(lint_rust.subprocess, "run", return_value=completed),
+            mock.patch.object(lint_rust, "changed_line_numbers", return_value=None),
             mock.patch("sys.argv", arguments),
         ):
             self.assertEqual(lint_rust.main(), 1)
+
+    def test_changed_line_scope_ignores_old_lines_in_a_changed_source(self) -> None:
+        lint_rust = load_lint_rust()
+        path = "packages/codexy-runtime/src/changed.rs"
+        messages = "\n".join(
+            json.dumps(
+                {
+                    "reason": "compiler-message",
+                    "message": {
+                        "level": "warning",
+                        "message": label,
+                        "spans": [
+                            {
+                                "file_name": "src/changed.rs",
+                                "is_primary": True,
+                                "line_start": line,
+                                "line_end": line,
+                            }
+                        ],
+                    },
+                }
+            )
+            for label, line in (("changed line", 10), ("old line", 2))
+        )
+
+        diagnostics = lint_rust.changed_diagnostics(
+            messages,
+            ROOT,
+            ROOT / "packages/codexy-runtime",
+            {path},
+            {path: {10}},
+        )
+
+        self.assertEqual([item["message"] for item in diagnostics], ["changed line"])
+
+    def test_changed_line_numbers_reads_merge_base_hunks(self) -> None:
+        lint_rust = load_lint_rust()
+        output = "\n".join(
+            (
+                "diff --git a/packages/codexy-runtime/src/changed.rs b/packages/codexy-runtime/src/changed.rs",
+                "+++ b/packages/codexy-runtime/src/changed.rs",
+                "@@ -3 +10,2 @@",
+                "@@ -20,2 +30 @@",
+            )
+        )
+        completed = SimpleNamespace(stdout=output)
+
+        with (
+            mock.patch.dict(os.environ, {"CODEXY_LINT_CHANGED_SINCE": "main"}),
+            mock.patch.object(lint_rust.subprocess, "run", return_value=completed),
+        ):
+            lines = lint_rust.changed_line_numbers(
+                ROOT, {"packages/codexy-runtime/src/changed.rs"}
+            )
+
+        self.assertEqual(
+            lines, {"packages/codexy-runtime/src/changed.rs": {10, 11, 30}}
+        )
+
+    def test_diagnostics_include_primary_source_locations(self) -> None:
+        lint_rust = load_lint_rust()
+        stream = io.StringIO()
+        diagnostic = {
+            "message": "changed lint",
+            "spans": [
+                {
+                    "file_name": "src/changed.rs",
+                    "is_primary": True,
+                    "line_start": 10,
+                    "column_start": 4,
+                }
+            ],
+        }
+
+        with mock.patch("sys.stderr", stream):
+            lint_rust.print_diagnostics([diagnostic])
+
+        self.assertEqual(stream.getvalue(), "src/changed.rs:10:4: changed lint\n")
 
 
 if __name__ == "__main__":
