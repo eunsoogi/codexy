@@ -9,6 +9,8 @@ pub(crate) struct FixtureScriptBinding {
 #[derive(Clone, Copy)]
 pub(crate) enum FixtureArgumentDomain {
     Posix,
+    /// A native GitHub CLI mock: repository/API identifiers stay logical while
+    /// filesystem operands retain Git Bash's normal native conversion.
     GitHubApi,
 }
 
@@ -55,7 +57,9 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
         validate_identifier(launcher_environment)?;
         let conversion = match domain {
             FixtureArgumentDomain::Posix => "",
-            FixtureArgumentDomain::GitHubApi => "MSYS2_ARG_CONV_EXCL='repos/*' ",
+            FixtureArgumentDomain::GitHubApi => {
+                "MSYS2_ARG_CONV_EXCL=\"repos/*;${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}\" "
+            }
         };
         bound.push_str(&format!(
             "{command}() {{ {conversion}\"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"

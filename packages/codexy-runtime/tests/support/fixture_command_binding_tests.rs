@@ -134,6 +134,7 @@ fn launcher_binding_uses_the_explicit_interpreter_after_path_is_scrubbed()
     )?;
     let output = FixtureCommand::new(&script)
         .env("CODEXY_FIXTURE_GH", &gh)
+        .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .env_path(
             "CODEXY_FIXTURE_GH_LAUNCHER",
             fixture_script_interpreter_path(&gh)?,
