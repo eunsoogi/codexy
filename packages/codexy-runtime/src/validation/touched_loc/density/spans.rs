@@ -7,6 +7,7 @@ mod powershell;
 mod python;
 mod rust;
 mod shell;
+mod shell_heredoc;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum Language {
