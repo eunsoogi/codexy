@@ -109,101 +109,27 @@ fn bootstrap_publication_uses_minimal_build_dependencies_and_protected_pypi_envi
 }
 
 #[test]
-fn release_script_fixtures_declare_their_known_windows_shell_children()
--> Result<(), Box<dyn std::error::Error>> {
-    let tests = codexy_runtime::paths::runtime_package_root().join("tests");
-    let materializer = fs::read_to_string(
-        tests.join("release_publication_recovery/fixture_materialization.rs"),
-    )?;
-    let edit_baseline = fs::read_to_string(
-        tests.join("runtime_workflow_recovery/release_reconciliation/edit_baseline.rs"),
-    )?;
-    for (fixture, invocation) in [
-        (&materializer, "scripts/generate-release-changelog"),
-        (&materializer, "scripts/reconcile-release-baseline"),
-        (&materializer, "scripts/verify-release-attestation-total"),
-        (&edit_baseline, "scripts/verify-release-attestation-total"),
+fn release_workflows_use_supported_action_version_tags() -> Result<(), Box<dyn std::error::Error>> {
+    for name in [
+        "bootstrap-package.yml",
+        "runtime-candidate.yml",
+        "runtime-activation.yml",
+        "plugin-runtime-binaries.yml",
+        "plugin-version-bump.yml",
+        "publish-version-release.yml",
+        "verify-release-edit.yml",
     ] {
-        assert!(fixture.contains("FixtureScriptBinding"));
-        assert!(fixture.contains(invocation), "missing typed fixture invocation: {invocation}");
+        let document = workflow(name)?;
+        for job in document["jobs"].as_mapping().ok_or("workflow jobs")?.values() {
+            for step in job["steps"].as_sequence().ok_or("workflow steps")? {
+                let Some(uses) = step["uses"].as_str() else { continue };
+                assert!(
+                    uses.rsplit_once('@').is_some_and(|(_, tag)| !tag.is_empty() && !tag.bytes().all(|byte| byte.is_ascii_hexdigit())),
+                    "workflow action must use a supported version tag: {uses}"
+                );
+            }
+        }
     }
-    Ok(())
-}
-
-#[test]
-fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
--> Result<(), Box<dyn std::error::Error>> {
-    let tests = codexy_runtime::paths::runtime_package_root().join("tests");
-    let recovery = fs::read_to_string(tests.join("release_publication_recovery/fixture.rs"))?;
-    let edit_baseline = fs::read_to_string(
-        tests.join("runtime_workflow_recovery/release_reconciliation/edit_baseline.rs"),
-    )?;
-    let materialization = fs::read_to_string(
-        tests.join("release_publication_recovery/fixture_materialization.rs"),
-    )?;
-    let settings = fs::read_to_string(tests.join("release_settings_admission.rs"))?;
-    let attestation = fs::read_to_string(
-        tests.join("runtime_workflow_recovery/release_attestation_reconciliation.rs"),
-    )?;
-    let bindings = fs::read_to_string(tests.join("support/fixture_command_bindings.rs"))?;
-    let github_adapter = fs::read_to_string(tests.join("support/fixture_github_argv_adapter.rs"))?;
-    let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
-    for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&edit_baseline, "GITHUB_EVENT_PATH")] {
-        assert!(
-            fixture.contains(&format!(".path(\"{input}\"")),
-            "POSIX shell input must use its projected path: {input}"
-        );
-    }
-    for (fixture, input) in [
-        (&recovery, "FIXTURE_GH"),
-        (&recovery, "FIXTURE_GH_LAUNCHER"),
-        (&recovery, "FIXTURE_GH_CYGPATH"),
-        (&recovery, "FIXTURE_GH_STATE_ROOT"),
-    ] {
-        assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
-    }
-    for input in ["FIXTURE_DIR"] {
-        assert!(edit_baseline.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
-    }
-    for (fixture, input) in [
-        (&edit_baseline, "FIXTURE_GH"),
-        (&edit_baseline, "FIXTURE_GH_LAUNCHER"),
-        (&edit_baseline, "FIXTURE_GH_CYGPATH"),
-        (&attestation, "FIXTURE_GH"),
-        (&attestation, "FIXTURE_GH_LAUNCHER"),
-        (&attestation, "FIXTURE_GH_CYGPATH"),
-    ] {
-        assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
-    }
-    for input in ["FIXTURE_GH", "FIXTURE_GH_LAUNCHER", "FIXTURE_GH_CYGPATH"] {
-        assert!(settings.contains(&format!(".env_native_path(\"{input}\"")), "settings native input must retain its host path: {input}");
-    }
-    for (fixture, name) in [
-        (&materialization, "publisher"),
-        (&edit_baseline, "edit verifier"),
-        (&settings, "settings verifier"),
-        (&attestation, "attestation reconciler"),
-    ] {
-        assert!(
-            fixture.contains("FixtureArgumentDomain::GitHubApi"),
-            "the {name} mock must preserve logical GitHub API arguments"
-        );
-        assert!(
-            fixture.contains("adapter_launcher_environment"),
-            "the {name} mock must declare the native GitHub argv adapter"
-        );
-    }
-    assert!(github_adapter.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
-    assert!(github_adapter.contains("FIXTURE_GH_CYGPATH"), "the typed adapter must receive its native filesystem converter explicitly");
-    assert!(github_adapter.contains("split(b'\\0')"), "GitHub argv transport must preserve multiline fields");
-    assert!(github_adapter.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
-    assert!(github_adapter.contains("posix_payload_path"), "the adapter must project only POSIX payload paths");
-    assert!(github_adapter.contains("subprocess.run([launcher, payload, *arguments]"), "the adapter must launch decoded native executables as typed argv");
-    assert!(!github_adapter.contains("os.execv"), "the adapter must not reparse the native launcher through execv");
-    assert!(bindings.contains("printf '%s\\\\0'"), "GitHub argv transport must be per invocation");
-    assert!(!bindings.contains("fixture_argv_transport"), "GitHub argv transport must not reuse a fixture file");
-    assert!(!bindings.contains("MSYS2_ARG_CONV_EXCL"), "GitHub fixture arguments must not rely on environment pattern suppression");
-    assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
 }
 

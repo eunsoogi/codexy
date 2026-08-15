@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::support::ReleaseFixtureCommand;
+use crate::support::FixtureCommand;
 
 #[test]
 fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
@@ -27,10 +27,10 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
     crate::support::make_executable(&lifecycle_script)?;
     let environment = target.join("release.env");
     let run = |value: &str| {
-        ReleaseFixtureCommand::new(&lifecycle_script)
+        FixtureCommand::new(&lifecycle_script)
             .arg(value)
             .current_dir(target)
-            .path("GITHUB_ENV", &environment)
+            .env_path("GITHUB_ENV", &environment)
             .output()
             .map(|output| output.status.success())
     };

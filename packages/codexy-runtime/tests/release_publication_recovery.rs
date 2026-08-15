@@ -1,14 +1,15 @@
+use std::{fs, process::Command};
+
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;
-use fixture::{ASSETS, Fixture};
-use std::fs;
+use fixture::{gh_fixture, git_fixture, make_executable};
 
-use crate::support::{
-    FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
-    bind_posix_fixture_script_launchers,
-    bind_posix_fixture_shell_launchers,
-    fixture_script_interpreter_path, write_posix_fixture_command,
-};
+const ASSETS: [&str; 3] = [
+    "codexy-marketplace-plugin.tar.gz",
+    "codexy-runtime-package.tar.gz",
+    "runtime-release-receipt.json",
+];
+const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
 fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_states()
@@ -33,15 +34,11 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
 fn finalizer_rejects_policy_drift_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    Fixture::assert_outcome("publish-verified-release", ReleaseFixtureOutcome::Success, &publish);
+    assert!(publish.status.success());
     let baseline_created = fixture.last_baseline_created()?;
     let before = fixture.log()?;
     let finalize = fixture.run_with_settings("finalize-verified-release", baseline_created, false)?;
-    Fixture::assert_outcome(
-        "finalize-verified-release policy drift",
-        ReleaseFixtureOutcome::Failure,
-        &finalize,
-    );
+    assert!(!finalize.status.success());
     assert!(fixture.log()?.starts_with(&before));
     assert!(!fixture.log()?.contains("publish\n"), "policy drift published the release");
     Ok(())
@@ -52,14 +49,10 @@ fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
-    Fixture::assert_outcome("publish-verified-release", ReleaseFixtureOutcome::Success, &publish);
+    assert!(publish.status.success());
     let baseline_created = fixture.last_baseline_created()?;
     let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, true, false)?;
-    Fixture::assert_outcome(
-        "finalize-verified-release immutable observation",
-        ReleaseFixtureOutcome::Failure,
-        &finalize,
-    );
+    assert!(!finalize.status.success());
     assert!(fixture.log()?.contains("publish\n"), "fixture did not exercise the post-publication observation");
     Ok(())
 }
@@ -69,166 +62,151 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&[ASSETS[1]], false, true)?;
     let result = fixture.run("publish-verified-release")?;
-    Fixture::assert_outcome(
-        "publish-verified-release mismatched asset",
-        ReleaseFixtureOutcome::Failure,
-        &result,
-    );
+    assert!(!result.status.success());
     assert!(fixture.log()?.is_empty(), "mismatch mutated release state");
     Ok(())
 }
 
-#[test]
-fn declared_release_child_launch_is_independent_of_the_shell_working_directory()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let fixture_root = temp.path().join("release-fixture");
-    let scripts = fixture_root.join("scripts");
-    fs::create_dir_all(&scripts)?;
-    let parent = scripts.join("publisher");
-    let child = scripts.join("release-helper");
-    write_posix_fixture_command(&parent, "#!/bin/sh\nscripts/release-helper \"$1\"\n")?;
-    write_posix_fixture_command(&child, "#!/bin/sh\nprintf 'release:%s\\n' \"$1\"\n")?;
-    bind_posix_fixture_script_launchers(
-        &parent,
-        "FIXTURE_POSIX_SHELL",
-        "FIXTURE_SCRIPT_ROOT",
-        &[FixtureScriptBinding {
-            invocation: "scripts/release-helper \"$1\"",
-            child: "scripts/release-helper",
-        }],
-    )?;
-
-    let output = ReleaseFixtureCommand::new(&parent)
-        .current_dir(temp.path())
-        .arg("v9.9.9")
-        .path("FIXTURE_POSIX_SHELL", fixture_script_interpreter_path(&parent)?)
-        .path("FIXTURE_SCRIPT_ROOT", &fixture_root)
-        .output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "declared release child",
-        ReleaseFixtureOutcome::Success,
-        &output,
-    );
-    assert_eq!(String::from_utf8(output.stdout)?, "release:v9.9.9\n");
-    Ok(())
+struct Fixture {
+    _temp: tempfile::TempDir,
+    root: std::path::PathBuf,
 }
 
-#[test]
-fn posix_release_fixture_projects_event_and_environment_paths() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-path-bridge");
-    let event = temp.path().join("event payload.json");
-    let environment = temp.path().join("release environment");
-    fs::write(&event, "event-body\n")?;
-    write_posix_fixture_command(&script, "#!/bin/sh\ncat \"$GITHUB_EVENT_PATH\" > \"$GITHUB_ENV\"\n")?;
+impl Fixture {
+    fn new(
+        existing: &[&str],
+        published: bool,
+        mismatch: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let root = temp.path().join("release recovery fixture");
+        fs::create_dir_all(root.join("bin"))?;
+        fs::create_dir_all(root.join("scripts"))?;
+        fs::create_dir_all(root.join("dist"))?;
+        fs::create_dir_all(root.join("remote"))?;
+        for asset in ASSETS {
+            let bytes = if asset == "runtime-release-receipt.json" {
+                format!("{{\"source\":{{\"stagingSourceCommit\":\"{COMMIT}\",\"activationCommit\":\"{COMMIT}\"}},\"staging\":{{\"runId\":\"42\"}}}}\n")
+            } else {
+                format!("verified {asset}\n")
+            };
+            fs::write(root.join("dist").join(asset), bytes)?;
+        }
+        for asset in existing {
+            let bytes = if mismatch {
+                b"wrong\n".to_vec()
+            } else {
+                fs::read(root.join("dist").join(asset))?
+            };
+            fs::write(root.join("remote").join(asset), bytes)?;
+        }
+        if !existing.is_empty() {
+            fs::write(root.join("exists"), "yes")?;
+        }
+        fs::write(root.join("draft"), if published { "false" } else { "true" })?;
+        for name in [
+            "publish-verified-release",
+            "reconcile-release-baseline",
+            "finalize-verified-release",
+        ] {
+            let source = codexy_runtime::paths::repository_root()
+                .join("scripts")
+                .join(name);
+            fs::copy(source, root.join("scripts").join(name))?;
+        }
+        fs::write(
+            root.join("scripts/generate-release-changelog"),
+            "#!/bin/sh\nprintf '%s\\n' notes\n",
+        )?;
+        fs::write(
+            root.join("scripts/verify-release-attestation-total"),
+            "#!/bin/sh\nexit 0\n",
+        )?;
+        fs::write(
+            root.join("scripts/verify-release-attestation-set"),
+            "#!/bin/sh\nprintf '[]\\n' > \"$2\"\n",
+        )?;
+        fs::write(
+            root.join("scripts/verify-release-settings"),
+            "#!/bin/sh\ntest \"${SETTINGS_ALLOWED:-true}\" = true\n",
+        )?;
+        fs::write(root.join("bin/git"), git_fixture())?;
+        fs::write(root.join("bin/gh"), gh_fixture())?;
+        for path in fs::read_dir(root.join("scripts"))?.chain(fs::read_dir(root.join("bin"))?) {
+            make_executable(&path?.path())?;
+        }
+        Ok(Self { _temp: temp, root })
+    }
 
-    let output = ReleaseFixtureCommand::new(&script)
-        .path("GITHUB_EVENT_PATH", &event)
-        .path("GITHUB_ENV", &environment)
-        .output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "release event/environment path bridge",
-        ReleaseFixtureOutcome::Success,
-        &output,
-    );
-    assert_eq!(fs::read_to_string(environment)?, "event-body\n");
-    Ok(())
-}
-
-#[test]
-fn release_fixture_preserves_native_payload_environment_after_posix_shell_entry()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-native-payload-bridge");
-    let payload = temp.path().join("payload.py");
-    let marker = temp.path().join("native payload marker");
-    fs::write(&marker, "native payload\n")?;
-    fs::write(
-        &payload,
-        "#!/usr/bin/env python3\nimport os, pathlib\nassert pathlib.Path(os.environ['FIXTURE_NATIVE_PAYLOAD_PATH']).read_text() == 'native payload\\n'\n",
-    )?;
-    crate::support::make_executable(&payload)?;
-    write_posix_fixture_command(
-        &script,
-        "#!/bin/sh\n\"$FIXTURE_PYTHON\" \"$FIXTURE_PAYLOAD\"\n",
-    )?;
-
-    let output = ReleaseFixtureCommand::new(&script)
-        .path("FIXTURE_PYTHON", fixture_script_interpreter_path(&payload)?)
-        .payload_path("FIXTURE_PAYLOAD", &payload)
-        .payload_path("FIXTURE_NATIVE_PAYLOAD_PATH", &marker)
-        .output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "release native payload bridge",
-        ReleaseFixtureOutcome::Success,
-        &output,
-    );
-    Ok(())
-}
-
-#[test]
-fn release_fixture_reports_a_nonzero_shell_exit() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-failure");
-    write_posix_fixture_command(&script, "#!/bin/sh\nexit 23\n")?;
-    bind_posix_fixture_shell_launchers(&script, &[])?;
-
-    let output = ReleaseFixtureCommand::new(&script).output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "release shell failure",
-        ReleaseFixtureOutcome::Failure,
-        &output,
-    );
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("fixture shell failure"),
-        "fixture failures must name their shell boundary"
-    );
-    Ok(())
-}
-
-#[test]
-fn release_fixture_result_contract_keeps_success_and_expected_failure_distinct()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-result-contract");
-    write_posix_fixture_command(
-        &script,
-        "#!/bin/sh\nprintf 'fixture stdout\\n'\nprintf 'fixture stderr\\n' >&2\nexit \"$1\"\n",
-    )?;
-
-    let succeeded = ReleaseFixtureCommand::new(&script).arg("0").output()?;
-    let observed = ReleaseFixtureCommand::assert_outcome(
-        "release result success",
-        ReleaseFixtureOutcome::Success,
-        &succeeded,
-    );
-    assert_eq!(String::from_utf8_lossy(&observed.stdout), "fixture stdout\n");
-    assert_eq!(String::from_utf8_lossy(&observed.stderr), "fixture stderr\n");
-
-    let failed = ReleaseFixtureCommand::new(&script).arg("7").output()?;
-    ReleaseFixtureCommand::assert_outcome(
-        "release result failure",
-        ReleaseFixtureOutcome::Failure,
-        &failed,
-    );
-    assert_eq!(String::from_utf8_lossy(&failed.stdout), "fixture stdout\n");
-    assert_eq!(String::from_utf8_lossy(&failed.stderr), "fixture stderr\n");
-    assert!(std::panic::catch_unwind(|| {
-        ReleaseFixtureCommand::assert_outcome(
-            "release result wrong expectation",
-            ReleaseFixtureOutcome::Success,
-            &failed,
+    fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let publish = self.run("publish-verified-release")?;
+        assert!(
+            publish.status.success(),
+            "stdout: {} stderr: {}",
+            String::from_utf8_lossy(&publish.stdout),
+            String::from_utf8_lossy(&publish.stderr)
         );
-    })
-    .is_err());
-    assert!(std::panic::catch_unwind(|| {
-        ReleaseFixtureCommand::assert_outcome(
-            "release result inverse expectation",
-            ReleaseFixtureOutcome::Failure,
-            &succeeded,
-        );
-    })
-    .is_err());
-    Ok(())
+        let baseline_created = self.last_baseline_created()?;
+        let finalize = self.run_with_settings("finalize-verified-release", baseline_created, true)?;
+        assert!(finalize.status.success(), "{}", String::from_utf8_lossy(&finalize.stderr));
+        Ok(())
+    }
+
+    fn run(&self, name: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        self.run_with_settings(name, false, true)
+    }
+
+    fn run_with_settings(
+        &self,
+        name: &str,
+        baseline_created: bool,
+        settings_allowed: bool,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        self.run_with_policy(name, baseline_created, settings_allowed, true)
+    }
+
+    fn run_with_policy(
+        &self,
+        name: &str,
+        baseline_created: bool,
+        settings_allowed: bool,
+        immutable: bool,
+    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+        let path = format!("{}:{}", self.root.join("bin").display(), std::env::var("PATH")?);
+        Ok(Command::new(self.root.join("scripts").join(name))
+            .current_dir(&self.root)
+            .env("PATH", path)
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("STAGING_SOURCE_COMMIT", COMMIT)
+            .env("ACTIVATION_COMMIT", COMMIT)
+            .env("STAGING_RUN_ID", "42")
+            .env("RELEASE_TAG", "v9.9.9")
+            .env("GITHUB_ENV", self.root.join("release.env"))
+            .env("BASELINE_CREATED", baseline_created.to_string())
+            .env("RELEASE_POLICY_TOKEN", "fixture-token")
+            .env("SETTINGS_ALLOWED", settings_allowed.to_string())
+            .env("FIXTURE_IMMUTABLE", immutable.to_string())
+            .output()?)
+    }
+
+    fn last_baseline_created(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join("release.env"))?
+            .lines()
+            .rev()
+            .find_map(|line| line.strip_prefix("BASELINE_CREATED="))
+            == Some("true"))
+    }
+
+    fn assets(&self) -> Result<Vec<&'static str>, Box<dyn std::error::Error>> {
+        let names = fs::read_dir(self.root.join("remote"))?
+            .map(|entry| {
+                entry?.file_name().into_string().map_err(|_| std::io::Error::other("asset"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ASSETS.into_iter().chain(["release-baseline.json"]).filter(|name| names.iter().any(|actual| actual == name)).collect())
+    }
+
+    fn log(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join("log")).unwrap_or_default())
+    }
 }

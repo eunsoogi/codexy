@@ -1,25 +1,5 @@
 use std::{fs, io, path::Path, process::Command};
 
-use super::fixture_github_argv_adapter::{GITHUB_ARGV_ADAPTER, fixture_github_argv_adapter_path};
-
-#[derive(Clone, Copy)]
-pub(crate) struct FixtureScriptBinding {
-    pub(crate) invocation: &'static str,
-    pub(crate) child: &'static str,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum FixtureArgumentDomain {
-    Posix,
-    /// A native GitHub CLI mock with a concrete adapter launcher. The adapter
-    /// carries API identifiers and argv in a NUL-framed, per-invocation pipe,
-    /// then translates only declared file operands before invoking the native
-    /// payload. The pipe is both lossless and uniquely owned by its invocation.
-    GitHubApi {
-        adapter_launcher_environment: &'static str,
-    },
-}
-
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
 /// Git Bash can reject an extensionless PATH script despite a valid shebang and
@@ -31,96 +11,6 @@ pub(crate) fn write_posix_fixture_shell_runner(
     bindings: &[(&str, &str)],
 ) -> io::Result<()> {
     write_posix_fixture_shell_runner_with_scrub(path, target_environment, bindings, &[], &[])
-}
-
-/// Sources a POSIX fixture script with an explicit interpreter path for every
-/// bare command binding. This keeps shell and Python mocks deterministic under
-/// Git Bash, where PATH lookup can lose to a native `.exe` or omit `python3`.
-pub(crate) fn bind_posix_fixture_shell_launchers(
-    path: &Path,
-    bindings: &[(&str, &str, &str, FixtureArgumentDomain)],
-) -> io::Result<()> {
-    let source = fs::read_to_string(path)?;
-    let Some((shebang, body)) = source.split_once('\n') else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "fixture script has no body",
-        ));
-    };
-    if shebang != "#!/bin/sh" {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "fixture script is not POSIX shell",
-        ));
-    }
-    let mut bound = format!("{shebang}\n");
-    bound.push_str(
-        "fixture_finish() { fixture_status=$?; trap - 0; if test \"$fixture_status\" -ne 0; then printf 'fixture shell failure: %s exited %s\\n' \"$0\" \"$fixture_status\" >&2; fi; exit \"$fixture_status\"; }\ntrap fixture_finish 0\n",
-    );
-    for (command, payload_environment, launcher_environment, domain) in bindings {
-        validate_identifier(command)?;
-        validate_identifier(payload_environment)?;
-        validate_identifier(launcher_environment)?;
-        match domain {
-            FixtureArgumentDomain::Posix => bound.push_str(&format!(
-                "{command}() {{ \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
-            )),
-            FixtureArgumentDomain::GitHubApi {
-                adapter_launcher_environment,
-            } => {
-                validate_identifier(adapter_launcher_environment)?;
-                let adapter = fixture_github_argv_adapter_path(path);
-                fs::write(&adapter, GITHUB_ARGV_ADAPTER)?;
-                crate::support::make_executable(&adapter)?;
-                let adapter =
-                    crate::support::fixture_path_text(&adapter).map_err(io::Error::other)?;
-                bound.push_str(&format!(
-                    "{command}() {{ {{ printf '%s\\0' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\" \"${{{payload_environment}:?fixture payload is required}}\" \"${{{launcher_environment}:?fixture launcher is required}}\" \"$@\"; }} | \"${adapter_launcher_environment}\" \"{adapter}\"; return \"$?\"; }}\n"
-                ));
-            }
-        }
-    }
-    bound.push_str(body);
-    fs::write(path, bound)?;
-    crate::support::make_executable(path)
-}
-
-/// Launches the known copied child scripts through the parent's concrete shell.
-/// These declarations are test-fixture contracts, not a parser for production
-/// shell: every child invocation is named explicitly by its owning fixture.
-pub(crate) fn bind_posix_fixture_script_launchers(
-    path: &Path,
-    launcher_environment: &str,
-    fixture_root_environment: &str,
-    bindings: &[FixtureScriptBinding],
-) -> io::Result<()> {
-    validate_identifier(launcher_environment)?;
-    validate_identifier(fixture_root_environment)?;
-    let mut bound = fs::read_to_string(path)?;
-    for binding in bindings {
-        validate_fixture_script_path(binding.child)?;
-        if !binding.invocation.starts_with(binding.child)
-            || bound.matches(binding.invocation).count() != 1
-        {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "fixture child invocation must occur once: {}",
-                    binding.invocation
-                ),
-            ));
-        }
-        let arguments = binding
-            .invocation
-            .strip_prefix(binding.child)
-            .unwrap_or_default();
-        let replacement = format!(
-            "\"${launcher_environment}\" \"${{{fixture_root_environment}}}/{}\"{arguments}",
-            binding.child
-        );
-        bound = bound.replacen(binding.invocation, &replacement, 1);
-    }
-    fs::write(path, bound)
 }
 
 pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
@@ -177,17 +67,4 @@ fn validate_identifier(value: &str) -> io::Result<()> {
     parser_accepts
         .then_some(())
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture shell identifier"))
-}
-
-fn validate_fixture_script_path(value: &str) -> io::Result<()> {
-    let valid = value.starts_with("scripts/")
-        && value.chars().all(|character| {
-            character == '/'
-                || character == '-'
-                || character == '_'
-                || character.is_ascii_alphanumeric()
-        });
-    valid
-        .then_some(())
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture script path"))
 }

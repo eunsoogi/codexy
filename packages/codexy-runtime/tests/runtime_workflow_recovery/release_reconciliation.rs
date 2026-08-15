@@ -1,13 +1,8 @@
 use std::fs;
+use std::process::Command;
 
 use crate::support;
-
-#[path = "release_attestation_reconciliation.rs"]
-mod release_attestation_reconciliation;
-#[path = "release_reconciliation_assertions.rs"]
-mod release_reconciliation_assertions;
-#[path = "release_reconciliation/edit_baseline.rs"]
-mod edit_baseline;
+use sha2::{Digest, Sha256};
 
 #[test]
 fn release_reconciliation_authenticates_a_draft_before_finalization()
@@ -70,5 +65,120 @@ fn finalization_verifies_all_attested_assets_before_publication()
 #[test]
 fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_baseline()
 -> Result<(), Box<dyn std::error::Error>> {
-    edit_baseline::verify()
+    let root = codexy_runtime::paths::repository_root();
+    let temp = tempfile::tempdir()?;
+    let scripts = temp.path().join("scripts");
+    fs::create_dir(&scripts)?;
+    for name in ["verify-release-edit-baseline", "verify-release-attestation-set", "verify-release-attestation-total"] {
+        let destination = scripts.join(name);
+        fs::copy(root.join("scripts").join(name), &destination)?;
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&destination)?.permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&destination, permissions)?;
+        }
+    }
+    let fixture = temp.path().join("fixture");
+    fs::create_dir(&fixture)?;
+    let commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let statement = r#"[{"subject":[{"name":"subject"}]}]"#;
+    let fingerprint = format!("{:x}", Sha256::digest(format!("{statement}\n").as_bytes()));
+    let assets = serde_json::json!([
+        {"id": 2, "name": "codexy-marketplace-plugin.tar.gz", "size": 1, "digest": "sha256:marketplace"},
+        {"id": 3, "name": "codexy-runtime-package.tar.gz", "size": 1, "digest": "sha256:runtime"},
+        {"id": 4, "name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"},
+        {"id": 1, "name": "release-baseline.json", "size": 1, "digest": "sha256:baseline"}
+    ]);
+    let baseline = serde_json::json!({
+        "schema": "codexy-release-baseline/v1",
+        "release": {"id": 42, "name": "v9.9.9", "tagName": "v9.9.9", "targetCommitish": commit, "isDraft": false, "isPrerelease": false},
+        "assets": [
+            {"name": "codexy-marketplace-plugin.tar.gz", "size": 1, "digest": "sha256:marketplace"},
+            {"name": "codexy-runtime-package.tar.gz", "size": 1, "digest": "sha256:runtime"},
+            {"name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"}
+        ],
+        "releaseReceiptSha256": "receipt",
+        "attestationPolicy": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true},
+        "attestations": [
+            {"name": "codexy-marketplace-plugin.tar.gz", "count": 1, "fingerprint": fingerprint},
+            {"name": "codexy-runtime-package.tar.gz", "count": 1, "fingerprint": fingerprint},
+            {"name": "runtime-release-receipt.json", "count": 1, "fingerprint": fingerprint}
+        ]
+    });
+    fs::write(fixture.join("baseline.json"), serde_json::to_vec(&baseline)?)?;
+    fs::write(fixture.join("state.json"), serde_json::to_vec(&serde_json::json!({
+        "id": 42, "name": "v9.9.9", "tag_name": "v9.9.9", "target_commitish": commit,
+        "draft": false, "prerelease": false, "assets": assets
+    }))?)?;
+    fs::write(temp.path().join("event.json"), r#"{"action":"edited","changes":{"body":{"from":"old"}},"release":{"id":42}}"#)?;
+    let bin = temp.path().join("bin"); fs::create_dir(&bin)?;
+    let gh = bin.join("gh");
+    fs::write(&gh, r#"#!/bin/sh
+case "$*" in
+  *releases/42*) cat "$FIXTURE_DIR/state.json" ;;
+  *releases/assets/1*) cat "$FIXTURE_DIR/baseline.json" ;;
+  *releases/assets/*) printf x ;;
+  *attestations/sha256*)
+    if test "${EXTRA_ATTESTATION:-false}" = true; then
+      printf '%s\n' '{"attestations":[{},{}]}'
+    else
+      printf '%s\n' '{"attestations":[{}]}'
+    fi ;;
+  *attestation*--format\ json*)
+    if test "${EXTRA_ATTESTATION:-false}" = true; then
+      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}},{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
+    else
+      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
+    fi ;;
+  *attestation*) exit 0 ;;
+  *) exit 1 ;;
+esac
+"#)?;
+    #[cfg(unix)] {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(&gh)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&gh, permissions)?;
+    }
+    let run = |extra_attestation: bool| Command::new(scripts.join("verify-release-edit-baseline"))
+        .current_dir(temp.path()).env("FIXTURE_DIR", &fixture).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string()).env("PATH", format!("{}:{}", bin.display(), std::env::var("PATH")?))
+        .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
+    let state = fs::read(fixture.join("state.json"))?;
+    let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
+    let verified = run(false)?;
+    assert!(verified.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&verified.stdout), String::from_utf8_lossy(&verified.stderr));
+    let rejected_states: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
+        ("release id", Box::new(|state| state["id"] = serde_json::json!(43))),
+        ("title", Box::new(|state| state["name"] = serde_json::json!("v9.9.8"))),
+        ("tag", Box::new(|state| state["tag_name"] = serde_json::json!("v9.9.8"))),
+        ("target", Box::new(|state| state["target_commitish"] = serde_json::json!("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))),
+        ("draft", Box::new(|state| state["draft"] = serde_json::json!(true))),
+        ("prerelease", Box::new(|state| state["prerelease"] = serde_json::json!(true))),
+        ("asset digest", Box::new(|state| state["assets"][0]["digest"] = serde_json::json!("sha256:changed"))),
+        ("receipt digest", Box::new(|state| state["assets"][2]["digest"] = serde_json::json!("sha256:changed"))),
+        ("asset removal", Box::new(|state| { state["assets"].as_array_mut().unwrap().remove(1); })),
+        ("extra asset", Box::new(|state| state["assets"].as_array_mut().unwrap().push(serde_json::json!({"id": 5, "name": "unexpected", "size": 1, "digest": "sha256:extra"})))),
+    ];
+    for (name, mutate) in rejected_states {
+        let mut tampered: serde_json::Value = serde_json::from_slice(&state)?;
+        mutate(&mut tampered);
+        fs::write(fixture.join("state.json"), serde_json::to_vec(&tampered)?)?;
+        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+    }
+    fs::write(fixture.join("state.json"), &state)?;
+    for (name, pointer, replacement) in [
+        ("baseline receipt", "/releaseReceiptSha256", serde_json::json!("changed")),
+        ("baseline signer", "/attestationPolicy/signerWorkflow", serde_json::json!("other/workflow")),
+        ("baseline fingerprint", "/attestations/0/fingerprint", serde_json::json!("changed")),
+    ] {
+        let mut tampered: serde_json::Value = serde_json::from_slice(&baseline_bytes)?;
+        *tampered.pointer_mut(pointer).ok_or("baseline field")? = replacement;
+        fs::write(fixture.join("baseline.json"), serde_json::to_vec(&tampered)?)?;
+        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+    }
+    fs::write(fixture.join("baseline.json"), &baseline_bytes)?;
+    assert!(!run(true)?.status.success());
+    Ok(())
 }

@@ -11,7 +11,6 @@ mod fixture_command;
 mod fixture_command_bindings;
 mod fixture_command_mock;
 mod fixture_command_windows;
-mod fixture_github_argv_adapter;
 pub(crate) mod fixture_hook_path;
 pub(crate) mod fixture_hook_path_windows;
 pub(crate) mod fixture_path;
@@ -32,7 +31,6 @@ mod release_cache_fixture;
 mod release_cache_git_fallback;
 mod release_cache_release_match;
 mod release_cache_resources;
-mod release_fixture_command;
 mod release_version;
 pub(crate) mod review_control_state;
 pub(crate) mod touched_loc;
@@ -62,18 +60,14 @@ pub(crate) use devtools_fixture::copy_into_with_mutable_files as copy_devtools_f
 pub(crate) use digest::sha256_file;
 pub(crate) use executable_path::executable_path;
 pub(crate) use fixture_command::{
-    FixtureCommand, fixture_native_launcher, fixture_script_interpreter_path,
-    fixture_script_launcher, windows_fixture_companion, windows_static_python_fixture,
+    FixtureCommand, fixture_native_launcher, fixture_script_launcher, windows_fixture_companion,
+    windows_static_python_fixture,
 };
 pub(crate) use fixture_command_bindings::{
-    FixtureArgumentDomain, FixtureScriptBinding, bind_posix_fixture_script_launchers,
-    bind_posix_fixture_shell_launchers, write_posix_fixture_shell_runner,
-    write_posix_fixture_shell_runner_with_scrub, write_single_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
+    write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
-pub(crate) use fixture_github_argv_adapter::{
-    fixture_github_argv_adapter_path, fixture_github_cygpath_path,
-};
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
@@ -117,7 +111,6 @@ pub(super) use release_cache_release_match::{
     assert_wrapper_rejects_stale_default_release_then_accepts_matching_release,
 };
 pub(super) use release_cache_resources::assert_wrapper_rejects_nonexecutable_helper_and_unavailable_manifest;
-pub(crate) use release_fixture_command::{ReleaseFixtureCommand, ReleaseFixtureOutcome};
 pub(crate) use wrapper::{
     WrapperCommandExt, WrapperFixture, assert_wrapper_uses_package_runtime_without_cargo,
     make_executable, run_wrapper, run_wrapper_command, run_wrapper_command_with_timeout,
