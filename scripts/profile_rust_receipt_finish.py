@@ -2,6 +2,7 @@
 
 import time
 
+from profile_rust_contract import BUDGET_SECONDS
 from profile_rust_receipts import SCHEMA, digest, write
 
 
@@ -28,7 +29,7 @@ def finish_receipt(
     if receipt_path is not None:
         receipt = {
             "schema": SCHEMA,
-            "state": "PASS" if success and elapsed <= 270 else "FAIL",
+            "state": "PASS" if success and elapsed <= BUDGET_SECONDS else "FAIL",
             "shard": spec.name,
             "platform": "windows" if arguments.windows else "posix",
             "argv": workload,

@@ -4,8 +4,9 @@ use std::{fs, process::Command};
 mod fixture;
 use fixture::{gh_fixture, git_fixture, make_executable};
 
-const ASSETS: [&str; 3] = [
+const ASSETS: [&str; 4] = [
     "codexy-marketplace-plugin.tar.gz",
+    "codexy-marketplace-bundle.tar.gz",
     "codexy-runtime-package.tar.gz",
     "runtime-release-receipt.json",
 ];

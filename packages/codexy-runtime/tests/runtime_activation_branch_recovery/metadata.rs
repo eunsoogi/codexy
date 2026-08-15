@@ -33,10 +33,12 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
+        ".agents/plugins/release-publish-contract.json",
         ".agents/plugins/marketplace.json",
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",
         "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+        "packages/getcodexy/uv.lock",
         "packages/getcodexy/tests/fixtures/component-installation-cases.json",
     ] {
         let target = repo.join(relative);
@@ -44,6 +46,22 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         fs::copy(root.join(relative), target)?;
     }
     reset_github_version(repo, &baseline_version)?;
+    Ok(())
+}
+
+pub(super) fn make_uv_lock_stale(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let lock = repo.join("packages/getcodexy/uv.lock");
+    let lock_text = fs::read_to_string(&lock)?;
+    let current_version = lock_text
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("version = \"")?.strip_suffix('"'))
+        .ok_or("getcodexy lock version")?;
+    let stale_lock = lock_text.replacen(
+        &format!("version = \"{current_version}\""),
+        "version = \"0.0.0\"",
+        1,
+    );
+    fs::write(lock, stale_lock)?;
     Ok(())
 }
 

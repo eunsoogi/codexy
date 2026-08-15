@@ -22,6 +22,8 @@ mod final_archive_fixture;
 mod final_archive_lifecycle;
 #[path = "runtime_publication_activation/legacy_core_archive.rs"]
 mod legacy_core_archive;
+#[path = "runtime_publication_activation/release_train.rs"]
+mod release_train;
 #[path = "runtime_publication_activation/shell_fixtures.rs"]
 mod shell_fixtures;
 #[path = "runtime_publication_activation/staging.rs"]

@@ -7,7 +7,7 @@ artifact_dir="${1:?artifact directory is required}"
 output="${2:?output path is required}"
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 
-for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
   artifact="$artifact_dir/$name"
   attestations="$artifact_dir/$name.attestations.json"
   digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"

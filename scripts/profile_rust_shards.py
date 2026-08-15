@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from profile_rust_accounting import declared_test_targets
+from profile_rust_contract import BUDGET_SECONDS
 from profile_rust_receipts import digest, load
 from profile_rust_targets import canonical_test_name
 
@@ -139,7 +140,10 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
             and provenance_windows_within_budget(receipts, platform, valid_timing)
             for platform in tests
         )
-        and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+        and all(
+            float(item.get("elapsed", BUDGET_SECONDS + 1)) <= BUDGET_SECONDS
+            for item in receipts
+        )
     )
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
     for platform, values in tests.items():
@@ -163,7 +167,7 @@ def provenance_windows_within_budget(
         )
     return bool(attempts) and all(
         max(finished for _, finished in spans) - min(started for started, _ in spans)
-        < 300
+        < BUDGET_SECONDS
         for spans in attempts.values()
     )
 

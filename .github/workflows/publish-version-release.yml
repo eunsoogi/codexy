@@ -104,12 +104,11 @@ jobs:
           mkdir -p dist final-inspect
           cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
           RELEASE_TAG="$RELEASE_TAG" scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
+          RELEASE_TAG="$RELEASE_TAG" scripts/assemble-release-train-archive.sh dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz
           tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
           scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
-          final_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
-          runtime_sha="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
-          run_attempt="$(jq -r .run_attempt staging/runtime-staging-run.json)"
-          jq -n --arg activationCommit "$ACTIVATION_COMMIT" --arg stagingSourceCommit "$STAGING_SOURCE_COMMIT" --arg releaseTag "$RELEASE_TAG" --arg finalSha "$final_sha" --arg runtimeSha "$runtime_sha" --argjson runId "$STAGING_RUN_ID" --argjson runAttempt "$run_attempt" --slurpfile stagingReceipt staging/runtime-staging-receipt.json '{schema: "codexy-runtime-release-receipt/v1", source: {activationCommit: $activationCommit, stagingSourceCommit: $stagingSourceCommit}, release: {tag: $releaseTag}, artifact: {name: "codexy-marketplace-plugin.tar.gz", sha256: $finalSha}, runtimeArtifact: {name: "codexy-runtime-package.tar.gz", sha256: $runtimeSha}, staging: {runId: $runId, runAttempt: $runAttempt, artifactName: ("runtime-staging-\($runId)-\($runAttempt)")}, provenance: $stagingReceipt[0].provenance}' > dist/runtime-release-receipt.json
+          scripts/inspect_release_train_archive.py dist/codexy-marketplace-bundle.tar.gz "$PWD" "$RELEASE_TAG"
+          scripts/create_release_train_receipt.py dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz dist/codexy-runtime-package.tar.gz staging/runtime-staging-receipt.json staging/runtime-staging-run.json dist/runtime-release-receipt.json
       - name: Reconcile marketplace archive attestation
         env:
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
@@ -120,6 +119,11 @@ jobs:
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_RUNTIME codexy-runtime-package.tar.gz
+      - name: Reconcile marketplace bundle attestation
+        env:
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/reconcile-release-attestations dist ATTEST_BUNDLE codexy-marketplace-bundle.tar.gz
       - name: Reconcile release receipt attestation
         env:
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
@@ -135,6 +139,11 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/codexy-runtime-package.tar.gz
+      - name: Attest marketplace bundle
+        if: env.ATTEST_BUNDLE == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/codexy-marketplace-bundle.tar.gz
       - name: Attest release receipt
         if: env.ATTEST_RECEIPT == 'true'
         uses: actions/attest-build-provenance@v4
@@ -188,10 +197,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
           base="https://github.com/eunsoogi/codexy/releases/download/$RELEASE_TAG"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
+          curl --fail --location "$base/codexy-marketplace-bundle.tar.gz" -o public-bundle.tar.gz
           curl --fail --location "$base/codexy-runtime-package.tar.gz" -o public-runtime.tar.gz
           curl --fail --location "$base/runtime-release-receipt.json" -o public-receipt.json
           curl --fail --location "$base/release-baseline.json" -o public-release-baseline.json
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
+          sha256sum public-bundle.tar.gz | grep "$(jq -r .bundleArtifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .runtimeArtifact.sha256 public-receipt.json)"
           test "$(jq -r .release.tag public-receipt.json)" = "$RELEASE_TAG"
           test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
@@ -199,6 +210,7 @@ jobs:
           mkdir -p public-inspect
           tar --no-same-owner --no-same-permissions -xzf public.tar.gz -C public-inspect
           scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools public-release
+          scripts/inspect_release_train_archive.py public-bundle.tar.gz "$PWD" "$RELEASE_TAG"
           test "$(jq -r .version public-inspect/plugins/codexy-devtools/.codex-plugin/plugin.json)" = "$TARGET_VERSION"
           test ! -e public-inspect/plugins/codexy-devtools/runtime-release.json
           test ! -e public-inspect/plugins/codexy-devtools/runtime-candidate.json
@@ -210,6 +222,7 @@ jobs:
         run: |
           mkdir public-attested
           cp public.tar.gz public-attested/codexy-marketplace-plugin.tar.gz
+          cp public-bundle.tar.gz public-attested/codexy-marketplace-bundle.tar.gz
           cp public-runtime.tar.gz public-attested/codexy-runtime-package.tar.gz
           cp public-receipt.json public-attested/runtime-release-receipt.json
           cp public-release-baseline.json public-attested/release-baseline.json

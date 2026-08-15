@@ -8,12 +8,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codexy_runtime_tools.pre_session import run_pre_session
+from codexy_runtime_tools.pre_session import official_marketplace_root, run_pre_session
 from codexy_runtime_tools.updater import SyncResult
+from codexy_runtime_tools.version_lock import default_package_version
 
 try:
     from .pre_session_support import (
         commands,
+        fresh_marketplace_commands,
         installed,
         make_plugin,
         marketplace,
@@ -22,6 +24,7 @@ try:
 except ImportError:
     from pre_session_support import (
         commands,
+        fresh_marketplace_commands,
         installed,
         make_plugin,
         marketplace,
@@ -30,15 +33,29 @@ except ImportError:
 
 
 class PreSessionInstallTests(unittest.TestCase):
-    def test_fresh_marketplace_is_added_before_preflight_and_sync(self) -> None:
+    def test_default_marketplace_ref_uses_the_packaged_lockfile_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            registered = False
             calls: list[tuple[str, ...]] = []
-            synchronized: list[tuple[Path, Path, str]] = []
-            marketplace_root = root / "marketplace"
-            plugin = make_plugin(marketplace_root / "plugins/codexy")
-            expected = [
-                commands()[0],
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                nonlocal registered
+                calls.append(tuple(command))
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    payload: object = {
+                        "marketplaces": [marketplace(root)] if registered else []
+                    }
+                else:
+                    registered = True
+                    payload = {"ok": True}
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+            self.assertEqual(
+                official_marketplace_root(Path("/trusted/codex"), runner),
+                root.resolve(),
+            )
+            self.assertIn(
                 (
                     "/trusted/codex",
                     "plugin",
@@ -46,12 +63,20 @@ class PreSessionInstallTests(unittest.TestCase):
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "main",
+                    f"v{default_package_version()}",
                     "--json",
                 ),
-                commands()[0],
-                *commands()[1:],
-            ]
+                calls,
+            )
+
+    def test_fresh_marketplace_is_added_before_preflight_and_sync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            calls: list[tuple[str, ...]] = []
+            synchronized: list[tuple[Path, Path, str]] = []
+            marketplace_root = root / "marketplace"
+            plugin = make_plugin(marketplace_root / "plugins/codexy")
+            expected = [*fresh_marketplace_commands(), *commands()[4:]]
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
                 calls.append(tuple(command))

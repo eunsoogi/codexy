@@ -21,6 +21,7 @@ mod mutation;
 mod mutation_inputs;
 mod runtime_selection;
 mod semver;
+mod uv_lock;
 mod wrappers;
 
 const PLUGIN_NAME: &str = "codexy";
@@ -128,6 +129,15 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
     let publish = load_json(&publish_path)?;
     let manifest_version = string_field(&manifest, "version", "plugin manifest")?;
     require_semver(manifest_version)?;
+    let lock_version = uv_lock::package_version()?;
+    require_semver(&lock_version)?;
+    require_matching_version(
+        manifest_version,
+        &display_relative(&manifest_path),
+        &lock_version,
+        "packages/getcodexy/uv.lock",
+    )?;
+    uv_lock::check_pyproject_projection(&lock_version)?;
     let marketplace_version = string_field(
         marketplace_plugin_mut(&mut marketplace)?,
         "version",
@@ -136,12 +146,12 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
     require_matching_version(
         marketplace_version,
         &display_relative(&market_path),
-        manifest_version,
-        &display_relative(&manifest_path),
+        &lock_version,
+        "packages/getcodexy/uv.lock",
     )?;
-    github_plugin::check(manifest_version)?;
-    devtools_plugin::check(manifest_version)?;
-    component_manifest::check(manifest_version)?;
+    github_plugin::check(&lock_version)?;
+    devtools_plugin::check(&lock_version)?;
+    component_manifest::check(&lock_version)?;
     let manifest_platforms = fields::string_array(
         &manifest,
         "supportedPlatforms",
@@ -165,8 +175,8 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
     require_matching_version(
         publish_version,
         &display_relative(&publish_path),
-        manifest_version,
-        &display_relative(&manifest_path),
+        &lock_version,
+        "packages/getcodexy/uv.lock",
     )?;
     let archive_platforms = publish
         .get("releaseArchive")
@@ -211,21 +221,21 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
         require_matching_version(
             package_version,
             &display_relative(&path),
-            manifest_version,
-            &display_relative(&manifest_path),
+            &lock_version,
+            "packages/getcodexy/uv.lock",
         )?;
     }
-    cargo::check_version(&repo_root()?, manifest_version)?;
+    cargo::check_version(&repo_root()?, &lock_version)?;
     if check_runtime_selection {
         wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     }
     if let Some(tag) = tag {
-        let expected_tag = format!("v{manifest_version}");
+        let expected_tag = format!("v{lock_version}");
         if tag != expected_tag {
             bail!("release tag must be {expected_tag:?}, got {tag:?}");
         }
     }
     Ok(format!(
-        "plugin version sync ok: codexy={manifest_version}, codexy-github={manifest_version}, codexy-devtools={manifest_version}"
+        "plugin version sync ok: codexy={lock_version}, codexy-github={lock_version}, codexy-devtools={lock_version}"
     ))
 }

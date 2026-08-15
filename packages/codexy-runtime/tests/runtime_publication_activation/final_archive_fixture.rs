@@ -34,7 +34,7 @@ impl FinalArchiveFixture {
         for (plugin, version) in [(&source, "1.3.0"), (&staged, "1.2.2")] {
             fs::write(
                 plugin.join(".codex-plugin/plugin.json"),
-                format!("{{\"name\":\"codexy\",\"version\":\"{version}\"}}\n"),
+                format!("{{\"name\":\"codexy-devtools\",\"version\":\"{version}\"}}\n"),
             )?;
         }
         fs::create_dir_all(source.join("hooks"))?;

@@ -12,9 +12,9 @@ if test "${BASELINE_CREATED:-false}" = true; then
 fi
 gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
 for name in $(jq -r '.assets[].name' release-state.json); do
-  case "$name" in codexy-marketplace-plugin.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json|release-baseline.json) ;; *) exit 1 ;; esac
+  case "$name" in codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json|release-baseline.json) ;; *) exit 1 ;; esac
 done
-for asset in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
+for asset in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null
   gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$final_release"
   if test "$asset" = release-baseline.json; then
@@ -45,5 +45,5 @@ jq -e --slurpfile baseline "$final_release/release-baseline.json" '
   ($release.target_commitish == $expected.release.targetCommitish) and
   ($release.draft == $expected.release.isDraft) and ($release.prerelease == $expected.release.isPrerelease) and
   ([.assets[] | select(.name != "release-baseline.json") | {name, size, digest}] | sort_by(.name) == $expected.assets) and
-  ([.assets[].name] | sort == ["codexy-marketplace-plugin.tar.gz", "codexy-runtime-package.tar.gz", "release-baseline.json", "runtime-release-receipt.json"])
+  ([.assets[].name] | sort == ["codexy-marketplace-bundle.tar.gz", "codexy-marketplace-plugin.tar.gz", "codexy-runtime-package.tar.gz", "release-baseline.json", "runtime-release-receipt.json"])
 ' final-release-state.json >/dev/null

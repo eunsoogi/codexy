@@ -25,6 +25,7 @@ for path in \
   plugins/codexy-devtools/.codex-plugin/plugin.json \
   plugins/codexy-github/.codex-plugin/plugin.json \
   packages/getcodexy/src/codexy_runtime_tools/component-manifest.json \
+  packages/getcodexy/uv.lock \
   plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
   plugins/codexy-devtools/mcp/codexy-mcp-lsp \
   packages/codexy-runtime/src/version/bootstrap.rs
@@ -42,7 +43,7 @@ pub(super) fn fake_sync_version(path: &Path) -> std::io::Result<()> {
         r##"#!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-for path in packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock; do
+for path in packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock packages/getcodexy/uv.lock; do
   cp "$EXPECTED_ROOT/$path" "$root/$path"
 done
 "##,

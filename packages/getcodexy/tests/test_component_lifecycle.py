@@ -71,7 +71,7 @@ class ComponentLifecycleTests(
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "main",
+                    "v1.3.0",
                     "--json",
                 ),
                 state.mutations,

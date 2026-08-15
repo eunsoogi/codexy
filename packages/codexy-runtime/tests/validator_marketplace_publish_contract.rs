@@ -32,13 +32,15 @@ fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Res
 fn contract_names_selected_and_authenticated_staging_identities() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
-    assert_eq!(contract["schema"], "codexy.internal.release-publish-contract.v1");
+    assert_eq!(contract["schema"], "codexy.internal.release-publish-contract.v2");
     assert_eq!(contract["version"], "1.3.0");
     assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
     assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(contract["sourceMarketplace"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));
     assert_eq!(contract["releaseArchive"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
+    assert_eq!(contract["releaseArchive"]["bundle"], "dist/codexy-marketplace-bundle.tar.gz");
+    assert_eq!(contract["currentMarketplace"]["ref"], "v1.3.0");
     assert_eq!(contract["runtime"]["artifactRetentionDays"], 14);
     assert!(contract["runtime"].get("candidateTagPrefix").is_none());
     for path in [contract["bootstrap"]["publicationWorkflow"].as_str(), contract["runtime"]["stagingWorkflow"].as_str(), contract["runtime"]["activationWorkflow"].as_str(), contract["runtime"]["finalPublisherWorkflow"].as_str()] { assert!(root.join(path.ok_or("workflow")?).is_file()); }

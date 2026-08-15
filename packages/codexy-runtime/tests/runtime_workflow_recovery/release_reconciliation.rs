@@ -24,7 +24,7 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
         &[
             "gh release create \"$RELEASE_TAG\" --verify-tag --draft --target \"$ACTIVATION_COMMIT\"",
             "scripts/reconcile-release-baseline",
-            "release_assets='codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'",
+            "release_assets='codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'",
         ],
     );
     support::assert_structured_absent_literals(
@@ -94,14 +94,16 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
     let fingerprint = format!("{:x}", Sha256::digest(format!("{statement}\n").as_bytes()));
     let assets = serde_json::json!([
         {"id": 2, "name": "codexy-marketplace-plugin.tar.gz", "size": 1, "digest": "sha256:marketplace"},
-        {"id": 3, "name": "codexy-runtime-package.tar.gz", "size": 1, "digest": "sha256:runtime"},
-        {"id": 4, "name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"},
+        {"id": 3, "name": "codexy-marketplace-bundle.tar.gz", "size": 1, "digest": "sha256:bundle"},
+        {"id": 4, "name": "codexy-runtime-package.tar.gz", "size": 1, "digest": "sha256:runtime"},
+        {"id": 5, "name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"},
         {"id": 1, "name": "release-baseline.json", "size": 1, "digest": "sha256:baseline"}
     ]);
     let baseline = serde_json::json!({
         "schema": "codexy-release-baseline/v1",
         "release": {"id": 42, "name": "v9.9.9", "tagName": "v9.9.9", "targetCommitish": commit, "isDraft": false, "isPrerelease": false},
         "assets": [
+            {"name": "codexy-marketplace-bundle.tar.gz", "size": 1, "digest": "sha256:bundle"},
             {"name": "codexy-marketplace-plugin.tar.gz", "size": 1, "digest": "sha256:marketplace"},
             {"name": "codexy-runtime-package.tar.gz", "size": 1, "digest": "sha256:runtime"},
             {"name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"}
@@ -109,6 +111,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
         "releaseReceiptSha256": "receipt",
         "attestationPolicy": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true},
         "attestations": [
+            {"name": "codexy-marketplace-bundle.tar.gz", "count": 1, "fingerprint": fingerprint},
             {"name": "codexy-marketplace-plugin.tar.gz", "count": 1, "fingerprint": fingerprint},
             {"name": "codexy-runtime-package.tar.gz", "count": 1, "fingerprint": fingerprint},
             {"name": "runtime-release-receipt.json", "count": 1, "fingerprint": fingerprint}
@@ -165,7 +168,7 @@ esac
         ("draft", Box::new(|state| state["draft"] = serde_json::json!(true))),
         ("prerelease", Box::new(|state| state["prerelease"] = serde_json::json!(true))),
         ("asset digest", Box::new(|state| state["assets"][0]["digest"] = serde_json::json!("sha256:changed"))),
-        ("receipt digest", Box::new(|state| state["assets"][2]["digest"] = serde_json::json!("sha256:changed"))),
+        ("receipt digest", Box::new(|state| state["assets"][3]["digest"] = serde_json::json!("sha256:changed"))),
         ("asset removal", Box::new(|state| { state["assets"].as_array_mut().unwrap().remove(1); })),
         ("extra asset", Box::new(|state| state["assets"].as_array_mut().unwrap().push(serde_json::json!({"id": 5, "name": "unexpected", "size": 1, "digest": "sha256:extra"})))),
     ];

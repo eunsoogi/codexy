@@ -1,5 +1,5 @@
 {
-  "schema": "codexy.internal.release-publish-contract.v1",
+  "schema": "codexy.internal.release-publish-contract.v2",
   "name": "codexy",
   "version": "1.3.0",
   "bootstrap": {
@@ -17,10 +17,10 @@
   },
   "currentMarketplace": {
     "repository": "https://github.com/eunsoogi/codexy",
-    "ref": "main",
+    "ref": "v1.3.0",
     "marketplacePath": ".agents/plugins/marketplace.json",
     "pluginPath": "./plugins/codexy",
-    "installCommand": "codex plugin marketplace add eunsoogi/codexy --ref main"
+    "installCommand": "codex plugin marketplace add eunsoogi/codexy --ref v1.3.0"
   },
   "package": {
     "workflow": ".github/workflows/plugin-runtime-binaries.yml",
@@ -34,6 +34,8 @@
     "platforms": ["darwin-arm64", "linux-x86_64"]
   },
   "releaseArchive": {
+    "bundle": "dist/codexy-marketplace-bundle.tar.gz",
+    "componentManifest": "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "platforms": ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
   }
 }

@@ -130,7 +130,7 @@ class PreSessionSafetyTests(unittest.TestCase):
                         package_version="1.2.2",
                     )
 
-                self.assertEqual(calls, commands()[:2])
+                self.assertEqual(calls, commands()[:5])
 
     def test_official_looking_plugin_outside_marketplace_root_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -196,7 +196,7 @@ class PreSessionSafetyTests(unittest.TestCase):
             marketplace_root.mkdir()
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
-                if command == list(commands()[2]):
+                if command == list(commands()[5]):
                     calls.append(tuple(command))
                     return subprocess.CompletedProcess(command, 1, "", "failed")
                 return respond(command, calls, [], [], marketplace_root)
@@ -210,4 +210,4 @@ class PreSessionSafetyTests(unittest.TestCase):
                     package_version="1.2.2",
                 )
 
-            self.assertEqual(calls, commands()[:3])
+            self.assertEqual(calls, commands()[:6])

@@ -17,6 +17,8 @@ mod admission;
 mod fixture_files;
 #[path = "sync_version_cli/strict_manifest.rs"]
 mod strict_manifest;
+#[path = "sync_version_cli/uv_lock.rs"]
+mod uv_lock;
 
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {

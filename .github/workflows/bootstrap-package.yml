@@ -56,7 +56,8 @@ jobs:
           git cat-file -e "$SOURCE_COMMIT^{commit}"
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          version="$(python3 -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
+          test "$version" = "$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           test "$version" = "$BOOTSTRAP_VERSION"
       - name: Build and publish bootstrap package
         run: |

@@ -1,4 +1,5 @@
 mod runtime;
+mod train;
 
 use std::path::Path;
 
@@ -9,10 +10,9 @@ use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, require_string};
 
 const CONTRACT_PATH: &str = ".agents/plugins/release-publish-contract.json";
-const CONTRACT_SCHEMA: &str = "codexy.internal.release-publish-contract.v1";
+const CONTRACT_SCHEMA: &str = "codexy.internal.release-publish-contract.v2";
 const WORKFLOW_PATH: &str = ".github/workflows/plugin-runtime-binaries.yml";
 const CHANGELOG_SCRIPT_PATH: &str = "scripts/generate-release-changelog";
-const CURRENT_INSTALL_REF: &str = "main";
 const MARKETPLACE_PATH: &str = ".agents/plugins/marketplace.json";
 const PLUGIN_PATH: &str = "./plugins/codexy";
 const PACKAGE_ARCHIVE: &str = "dist/codexy-marketplace-plugin.tar.gz";
@@ -31,6 +31,7 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     require_string(contract.get("name"), "name", &contract_path)?;
     check_current_marketplace_target(&contract, &contract_path)?;
     runtime::check(&contract, &contract_path)?;
+    train::check(&contract, &contract_path)?;
     check_package_contract(&contract, &contract_path)?;
     check_source_marketplace_mode(&contract, &contract_path, platforms)?;
     check_workflow_packages_release_artifacts(&repo_root.join(WORKFLOW_PATH))?;
@@ -47,11 +48,12 @@ fn check_current_marketplace_target(contract: &Value, path: &Path) -> Result<()>
                 display_relative(path)
             )
         })?;
+    let version = require_string(contract.get("version"), "version", path)?;
     require_exact(
         snapshot.get("ref"),
         "currentMarketplace.ref",
         path,
-        CURRENT_INSTALL_REF,
+        &format!("v{version}"),
     )?;
     require_exact(
         snapshot.get("marketplacePath"),
@@ -69,7 +71,7 @@ fn check_current_marketplace_target(contract: &Value, path: &Path) -> Result<()>
         snapshot.get("installCommand"),
         "currentMarketplace.installCommand",
         path,
-        "codex plugin marketplace add eunsoogi/codexy --ref main",
+        &format!("codex plugin marketplace add eunsoogi/codexy --ref v{version}"),
     )
 }
 

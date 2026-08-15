@@ -32,6 +32,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "plugins/codexy-devtools")));
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == ".agents/plugins")));
     assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json")));
+    assert!(lines(activation_pr).any(|line| line.starts_with("git add ") && line.split_ascii_whitespace().any(|word| word == "packages/getcodexy/uv.lock")));
     support::assert_structured_literals(
         activation_pr,
         "activation pull request metadata",
@@ -77,6 +78,12 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
             .split_ascii_whitespace()
             .any(|argument| argument == "packages/getcodexy/pyproject.toml"),
         "version-bump staging omits Python metadata"
+    );
+    assert!(
+        staging
+            .split_ascii_whitespace()
+            .any(|argument| argument == "packages/getcodexy/uv.lock"),
+        "version-bump staging omits the canonical Python version lock"
     );
     let admission = steps
         .iter()

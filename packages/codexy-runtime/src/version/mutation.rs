@@ -6,7 +6,7 @@ use serde_json::Value;
 use super::{
     MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, component_manifest,
     devtools_plugin, github_plugin, load_json, marketplace_plugin_mut, package_manifests,
-    repo_path,
+    repo_path, uv_lock,
 };
 
 /// A complete managed-file replacement prepared before the mutation commits.
@@ -53,6 +53,10 @@ fn prepare(version: &str) -> Result<Vec<Update>> {
     manifest["version"] = Value::String(version.to_owned());
     marketplace_plugin_mut(&mut marketplace)?["version"] = Value::String(version.to_owned());
     publish["version"] = Value::String(version.to_owned());
+    publish["currentMarketplace"]["ref"] = Value::String(format!("v{version}"));
+    publish["currentMarketplace"]["installCommand"] = Value::String(format!(
+        "codex plugin marketplace add eunsoogi/codexy --ref v{version}"
+    ));
     let mut updates = vec![
         Update::json(manifest_path, &manifest)?,
         Update::json(publish_path, &publish)?,
@@ -62,6 +66,8 @@ fn prepare(version: &str) -> Result<Vec<Update>> {
         updates.push(update);
     }
     updates.push(component_manifest::prepare_version(version)?);
+    updates.push(uv_lock::prepare_version(version)?);
+    updates.push(uv_lock::prepare_pyproject_version(version)?);
     updates.extend(cargo::prepare_version(&root, version)?);
     for path in package_manifests()? {
         let mut package = load_json(&path)?;

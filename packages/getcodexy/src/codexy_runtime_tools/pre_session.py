@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
-from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Callable
 
@@ -16,6 +15,7 @@ from .plugin_resolution import (
     preflight_install as _preflight,
 )
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
+from .version_lock import default_package_version
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
@@ -40,7 +40,10 @@ def run_pre_session(
     invoke = runner or (lambda command: _run(command, home))
     _validate_real_path(home, require_exists=False)
 
-    marketplace_root = official_marketplace_root(executable, invoke)
+    target_version = package_version or default_package_version()
+    marketplace_root = reconcile_official_marketplace_root(
+        executable, invoke, target_version
+    )
 
     before = _json(
         invoke([str(executable), "plugin", "list", "--json"]),
@@ -54,7 +57,12 @@ def run_pre_session(
         ),
         "marketplace upgrade",
     )
-    marketplace_root = official_marketplace_root(executable, invoke)
+    marketplace_root = _official_marketplace(
+        _json(
+            invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+            "marketplace list",
+        )
+    )
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",
@@ -62,7 +70,7 @@ def run_pre_session(
     plugin, version = _official_install(
         _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list"),
         marketplace_root,
-        package_version or distribution_version("getcodexy"),
+        target_version,
     )
     current = synchronize(plugin, home, "check")
     if current.status == "ready":
@@ -76,7 +84,9 @@ def run_pre_session(
     return PreSessionResult(plugin, version, applied.changed)
 
 
-def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
+def official_marketplace_root(
+    executable: Path, invoke: Runner, target_version: str | None = None
+) -> Path:
     market = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "marketplace list",
@@ -91,7 +101,7 @@ def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "main",
+                    f"v{target_version or default_package_version()}",
                     "--json",
                 ]
             ),
@@ -101,6 +111,43 @@ def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
             invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
             "marketplace list",
         )
+    return _official_marketplace(market)
+
+
+def reconcile_official_marketplace_root(
+    executable: Path, invoke: Runner, target_version: str
+) -> Path:
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
+    if _named_marketplace(market):
+        _official_marketplace(market)
+        _json(
+            invoke(
+                [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
+            ),
+            "marketplace remove",
+        )
+    _json(
+        invoke(
+            [
+                str(executable),
+                "plugin",
+                "marketplace",
+                "add",
+                "eunsoogi/codexy",
+                "--ref",
+                f"v{target_version}",
+                "--json",
+            ]
+        ),
+        "marketplace add",
+    )
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
     return _official_marketplace(market)
 
 

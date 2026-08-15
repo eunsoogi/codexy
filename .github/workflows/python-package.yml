@@ -40,10 +40,11 @@ jobs:
           python -m build --outdir dist packages/getcodexy
       - name: Verify installed wheel and console entrypoint
         run: |
-          version="$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          version="$(python -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
+          test "$version" = "$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           python -m venv .package-venv
           .package-venv/bin/python -m pip install --no-index --find-links dist "getcodexy==${version}"
-          .package-venv/bin/python -c 'import codexy_runtime_tools'
+          .package-venv/bin/python -c 'from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == "'"$version"'"'
           .package-venv/bin/codexy-mcp-runtime --help
       - uses: actions/upload-artifact@v7
         with:
@@ -81,12 +82,14 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH = "packages/getcodexy/src"
-          python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py
+          python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py packages/getcodexy/tests/test_version_lock.py
           python -m pip install --disable-pip-version-check build
           python -m build --outdir dist packages/getcodexy
           python -m venv .package-venv
-          $version = python -c "import tomllib; print(tomllib.load(open('packages/getcodexy/pyproject.toml', 'rb'))['project']['version'])"
+          $version = python -c "import tomllib; print(next(package['version'] for package in tomllib.load(open('packages/getcodexy/uv.lock', 'rb'))['package'] if package['name'] == 'getcodexy'))"
+          if ($version -ne (python -c "import tomllib; print(tomllib.load(open('packages/getcodexy/pyproject.toml', 'rb'))['project']['version'])")) { throw "getcodexy version projections are not synchronized" }
           .package-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$version"
+          .package-venv\Scripts\python -c "from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == '$version'"
           .package-venv\Scripts\getcodexy.exe --help
           .package-venv\Scripts\codexy-github-install.exe --help
           $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
