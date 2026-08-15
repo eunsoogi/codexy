@@ -20,7 +20,7 @@ WINDOWS_PREPARATION = "\n".join(
         "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
     )
 )
-WINDOWS_GATE = "python scripts/profile-rust-tests.py --windows"
+WINDOWS_GATE = "python scripts/profile_rust_tests.py --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20
 WorkflowStep = tuple[str, frozenset[str]]
 

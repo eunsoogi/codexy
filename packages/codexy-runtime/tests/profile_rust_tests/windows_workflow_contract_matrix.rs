@@ -63,11 +63,11 @@ fn matrix_cases() -> Vec<serde_json::Value> {
         ));
     }
 
-    let rust_matrix = "    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        include: [one]\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests.py\n";
+    let rust_matrix = "    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        include: [one]\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile_rust_tests.py\n";
     for (label, rust_job, runner, steps, diagnostic) in [
         (
             "macos-runner",
-            "    runs-on: macos-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests.py\n",
+            "    runs-on: macos-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile_rust_tests.py\n",
             "windows-latest",
             super::WINDOWS_STEPS,
             "Rust test job must run once on ubuntu-latest without a matrix",
@@ -83,7 +83,7 @@ fn matrix_cases() -> Vec<serde_json::Value> {
             "unapproved-windows-step",
             super::RUST_JOB,
             "windows-latest",
-            "      - run: scripts/unapproved-windows-step.ps1\n      - run: python scripts/profile-rust-tests.py --windows\n",
+            "      - run: scripts/unapproved-windows-step.ps1\n      - run: python scripts/profile_rust_tests.py --windows\n",
             "Windows Rust job must run the exact full workload once on windows-latest",
         ),
         (
@@ -97,14 +97,14 @@ fn matrix_cases() -> Vec<serde_json::Value> {
         cases.push(case(label, super::workflow(rust_job, runner, 20, steps), false, diagnostic));
     }
 
-    let no_fetch = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests.py --windows\n";
-    let no_toolchain = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests.py --windows\n";
+    let no_fetch = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
+    let no_toolchain = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
     let unlocked_fetch = no_fetch.replace(
         "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python",
         "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python",
     );
     let extra_fetch = format!("{}      - run: cargo fetch --locked\n", super::WINDOWS_STEPS);
-    let early_test = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo test --locked --all-targets\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests.py --windows\n";
+    let early_test = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          cargo test --locked --all-targets\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
     for (label, steps) in [
         ("missing-toolchain-bootstrap", no_toolchain.to_string()),
         ("missing-cargo-fetch", no_fetch.to_string()),
@@ -134,7 +134,7 @@ fn matrix_cases() -> Vec<serde_json::Value> {
         ),
     ] {
         let steps = format!(
-            "      - run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n{bootstrap}      - run: python scripts/profile-rust-tests.py --windows\n"
+            "      - run: scripts/install-windows-test-prerequisites.ps1\n      - name: Bootstrap\n{bootstrap}      - run: python scripts/profile_rust_tests.py --windows\n"
         );
         cases.push(case(
             label,
@@ -157,14 +157,14 @@ fn matrix_cases() -> Vec<serde_json::Value> {
         for (index, control) in controls.into_iter().enumerate() {
             let steps = if position == "pre-profile" {
                 super::WINDOWS_STEPS.replacen(
-                    "      - run: python scripts/profile-rust-tests.py --windows",
-                    &format!("        {control}\n      - run: python scripts/profile-rust-tests.py --windows"),
+                    "      - run: python scripts/profile_rust_tests.py --windows",
+                    &format!("        {control}\n      - run: python scripts/profile_rust_tests.py --windows"),
                     1,
                 )
             } else {
                 super::WINDOWS_STEPS.replacen(
-                    "      - run: python scripts/profile-rust-tests.py --windows",
-                    &format!("      - run: python scripts/profile-rust-tests.py --windows\n        {control}"),
+                    "      - run: python scripts/profile_rust_tests.py --windows",
+                    &format!("      - run: python scripts/profile_rust_tests.py --windows\n        {control}"),
                     1,
                 )
             };
@@ -191,7 +191,7 @@ fn matrix_cases() -> Vec<serde_json::Value> {
         ));
     }
 
-    let missing_failure_propagation = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests.py --windows\n";
+    let missing_failure_propagation = "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          cargo fetch --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
     cases.push(case(
         "missing-rustup-failure-propagation",
         super::workflow(

@@ -34,7 +34,7 @@ fn aggregate_resolves_the_repository_inventory_from_every_valid_root(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let repository = codexy_runtime::paths::repository_root();
     let runtime = codexy_runtime::paths::runtime_package_root();
-    let profiler = repository.join("scripts/profile-rust-tests.py");
+    let profiler = repository.join("scripts/profile_rust_tests.py");
     let index_path = String::from_utf8(
         Command::new("git")
             .args(["rev-parse", "--git-path", "index"])

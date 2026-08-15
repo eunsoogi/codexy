@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn archive_inspector_receipts_are_sorted_ranked_and_reported_without_workload_changes(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import io, json, pathlib, runpy, sys, tempfile
 script = pathlib.Path(sys.argv[1])
@@ -55,7 +55,7 @@ if status != 0 or lines.get("archive-inspector-receipts-json") != json.dumps(loa
 #[test]
 fn real_workload_renders_receipts_before_its_tempdir_is_deleted(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import io, json, os, pathlib, runpy, sys, types
 script = pathlib.Path(sys.argv[1])

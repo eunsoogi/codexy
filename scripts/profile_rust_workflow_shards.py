@@ -87,7 +87,7 @@ def aggregate(job: dict[str, object]) -> bool:
             },
         }
         and profiler
-        == {"run": "scripts/profile-rust-tests.py --aggregate-receipts receipts"}
+        == {"run": "scripts/profile_rust_tests.py --aggregate-receipts receipts"}
     )
 
 
@@ -101,14 +101,14 @@ def enforce_shard_workflow(
             "rust-test",
             "ubuntu-latest",
             "6",
-            "scripts/profile-rust-tests.py --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json",
+            "scripts/profile_rust_tests.py --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json",
             "receipts/posix-${{ matrix.shard }}.json",
         ),
         (
             "windows-rust-test",
             "windows-latest",
             "20",
-            "python scripts/profile-rust-tests.py --windows --shard ${{ matrix.shard }} --receipt receipts/windows-${{ matrix.shard }}.json",
+            "python scripts/profile_rust_tests.py --windows --shard ${{ matrix.shard }} --receipt receipts/windows-${{ matrix.shard }}.json",
             "receipts/windows-${{ matrix.shard }}.json",
         ),
     )

@@ -3,9 +3,9 @@ use std::process::Command;
 use super::super::GateFixture;
 
 const RUST_JOB: &str =
-    "    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests.py\n";
+    "    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile_rust_tests.py\n";
 const WINDOWS_STEPS: &str =
-    "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile-rust-tests.py --windows\n";
+    "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
 
 fn workflow(rust_job: &str, windows_runner: &str, timeout: u8, steps: &str) -> String {
     format!(
@@ -33,11 +33,11 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
             "timeout-minutes: 20",
             "max-parallel: 7",
             "ref: ${{ github.event.pull_request.head.sha }}",
-            "run: python scripts/profile-rust-tests.py --windows --shard ${{ matrix.shard }}",
+            "run: python scripts/profile_rust_tests.py --windows --shard ${{ matrix.shard }}",
         ],
     );
     assert_eq!(workflow.matches("windows-rust-profile").count(), 0);
-    assert_eq!(workflow.matches("scripts/profile-rust-tests.py").count(), 3);
+    assert_eq!(workflow.matches("scripts/profile_rust_tests.py").count(), 3);
     assert_eq!(
         workflow
             .matches("ref: ${{ github.event.pull_request.head.sha }}")
@@ -61,7 +61,7 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
         workflow.replacen("      - shell: pwsh\n        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1),
         workflow.replacen("    steps:\n", "    env:\n      RUST_TEST_THREADS: 1\n    steps:\n", 1),
         workflow.replacen("        shard: [support, agent, child, orchestration, governance, system, archive]\n", "        shard: [support, agent, child, orchestration, governance, system, archive]\n        extra: rejected\n", 1),
-        workflow.replacen("      - run: scripts/profile-rust-tests.py --shard", "      - env:\n          CARGO_PROFILE_TEST_INCREMENTAL: true\n        run: scripts/profile-rust-tests.py --shard", 1),
+        workflow.replacen("      - run: scripts/profile_rust_tests.py --shard", "      - env:\n          CARGO_PROFILE_TEST_INCREMENTAL: true\n        run: scripts/profile_rust_tests.py --shard", 1),
         workflow.replacen("      - uses: actions/download-artifact@v8\n", "      - uses: actions/download-artifact@v8\n        if: always()\n", 1),
         workflow.replacen("permissions:\n", "env:\n  RUST_TEST_THREADS: 1\npermissions:\n", 1),
         workflow.replacen("permissions:\n", "env:\n  CARGO_PROFILE_TEST_INCREMENTAL: true\npermissions:\n", 1),

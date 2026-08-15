@@ -80,6 +80,9 @@ codexy/
 - MUST keep distributable skill instructions under `plugins/codexy/skills/<skill>/SKILL.md`.
 - MUST keep repository-only skill instructions under `.agents/skills/<skill>/SKILL.md` and MUST NOT package them in `plugins/codexy`.
 - MUST keep MCP and LSP changes aligned with `scripts/validate-plugin-config.sh`.
+- MUST name new or renamed maintained Python executables with lowercase `snake_case` and a `.py` extension.
+- MUST name new or renamed maintained POSIX shell executables with lowercase `kebab-case` and a `.sh` extension.
+- MUST NOT add extensionless compatibility wrappers when a maintained executable is renamed; every tracked caller MUST use the canonical filename.
 - MUST use Codexy codegraph MCP for repository exploration when available, then MUST confirm exact files with direct reads before editing.
 - Prefer repository-specific guidance over generic agent advice.
 - MUST keep instructions actionable by reserving `MUST` and `MUST NOT` for hard requirements.

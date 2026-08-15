@@ -29,7 +29,7 @@ if payload.get("temp_cleanup") != "failed" or payload.get("temp_cleanup_error") 
 #[test]
 fn windows_profile_fails_closed_when_post_drain_cleanup_is_locked()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let launcher = codexy_runtime::paths::repository_root()
         .join("scripts/profile_rust_windows_launcher.py");
     let probe = r#"

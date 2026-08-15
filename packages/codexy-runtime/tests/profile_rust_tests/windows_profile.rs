@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn windows_profiler_preserves_the_default_cargo_environment()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r##"
 import json, os, pathlib, runpy, sys, tempfile
 

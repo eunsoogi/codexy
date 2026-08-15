@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn gate_flushes_the_first_live_line_and_batches_the_remaining_output(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import pathlib
 import runpy
