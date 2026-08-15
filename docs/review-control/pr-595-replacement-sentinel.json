@@ -343,13 +343,7 @@
       "remote_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
       "title": "feat(getcodexy): add component manifest resolver",
       "body_final_line": "Fixes #555",
-      "labels": [
-        "type/feature",
-        "status/review",
-        "priority/high",
-        "area/plugin",
-        "area/release"
-      ],
+      "labels": ["type/feature", "status/review", "priority/high", "area/plugin", "area/release"],
       "milestone": "1.4.0 Wave 5",
       "assignee": "eunsoogi",
       "ci": "21/21 SUCCESS on remote 6838f7a7 only; historical and stale for local repair heads"

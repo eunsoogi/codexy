@@ -1,6 +1,8 @@
 interface:
   display_name: "Wiki"
   short_description: "Build and query bounded, source-backed topic knowledge."
-  default_prompt: "You MUST use $wiki for an explicit bounded topic workflow: init, ingest, compile, query, refresh, or provenance and freshness verification."
+  default_prompt:
+    "You MUST use $wiki for an explicit bounded topic workflow: init, ingest, compile, query,
+    refresh, or provenance and freshness verification."
 policy:
   allow_implicit_invocation: true

@@ -41,10 +41,7 @@
       "asset": {
         "pluginId": "codexy-github@codexy",
         "packageRoot": "plugins/codexy-github",
-        "requiredPaths": [
-          ".codex-plugin/plugin.json",
-          "skills/git-workflow/SKILL.md"
-        ]
+        "requiredPaths": [".codex-plugin/plugin.json", "skills/git-workflow/SKILL.md"]
       }
     },
     {

@@ -99,10 +99,7 @@
     {
       "id": "skills.repository",
       "category": "skills",
-      "sources": [
-        ".agents/skills/plugin-marketplace-prep",
-        ".agents/skills/release-engineering"
-      ],
+      "sources": [".agents/skills/plugin-marketplace-prep", ".agents/skills/release-engineering"],
       "target": "repository-only",
       "disposition": "move"
     },
@@ -165,10 +162,7 @@
     {
       "id": "lsp.integration",
       "category": "lsp",
-      "sources": [
-        "plugins/codexy-devtools/.codex/lsp-client.json",
-        "plugins/codexy-devtools/lsp"
-      ],
+      "sources": ["plugins/codexy-devtools/.codex/lsp-client.json", "plugins/codexy-devtools/lsp"],
       "target": "codexy-devtools",
       "disposition": "move"
     },

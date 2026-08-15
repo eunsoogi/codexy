@@ -4,12 +4,7 @@
   "escalationOrder": ["light", "standard", "strict"],
   "profiles": {
     "light": {
-      "includes": [
-        "read-only",
-        "documentation",
-        "tiny fixes",
-        "ordinary single-owner mutations"
-      ],
+      "includes": ["read-only", "documentation", "tiny fixes", "ordinary single-owner mutations"],
       "doesNotRequire": [
         "formal classification table",
         "goal/plan receipts",
@@ -25,9 +20,7 @@
       "requiresFormalEvidence": false
     },
     "strict": {
-      "includes": [
-        "high-risk, security, release, multi-lane, and merge-sensitive work"
-      ],
+      "includes": ["high-risk, security, release, multi-lane, and merge-sensitive work"],
       "requiresFormalEvidence": true
     }
   },
@@ -49,11 +42,5 @@
     "current-head readiness proof",
     "every governed file at or below 250 LOC with no exceptions"
   ],
-  "authorizedMergeGates": [
-    "title",
-    "label",
-    "thread",
-    "connector",
-    "merge-message"
-  ]
+  "authorizedMergeGates": ["title", "label", "thread", "connector", "merge-message"]
 }

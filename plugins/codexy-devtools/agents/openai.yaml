@@ -1,6 +1,7 @@
 interface:
   display_name: "Codexy Devtools"
   short_description: "Add optional local Codegraph and LSP tooling to Codexy core."
-  default_prompt: "Use $developer-tools for optional local Codegraph exploration or LSP diagnostics."
+  default_prompt:
+    "Use $developer-tools for optional local Codegraph exploration or LSP diagnostics."
 policy:
   allow_implicit_invocation: true

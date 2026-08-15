@@ -61,7 +61,9 @@ jobs:
           }
       - name: Build candidate MCP runtimes
         working-directory: packages/codexy-runtime
-        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools
+        run:
+          cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin
+          codexy-mcp-devtools
       - name: Smoke platform-local MCP protocols
         if: matrix.platform != 'windows-x86_64'
         run: |
