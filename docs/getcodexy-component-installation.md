@@ -57,15 +57,15 @@ root. A stale or malformed record cannot be treated as an unrelated plugin.
 
 ## Commands
 
-| Command                                      | Selection rule                                                                                                                   | Mutation rule                                                                                                  |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `getcodexy install [COMPONENT ...]`          | No components selects all. Explicit components include their transitive dependencies.                                            | Adds the resolved selection to the installed selection; it never removes another installed component.          |
-| `getcodexy update [COMPONENT ...]`           | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection.                                                                             |
-| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component.                                                                                                 | Rejects a request if a retained component would still depend on a requested removal.                           |
-| `getcodexy status`                           | Reads the installed inventory.                                                                                                   | None.                                                                                                          |
-| `getcodexy doctor`                           | Reads inventory consistency, host readiness, and component health.                                                               | None.                                                                                                          |
-| `getcodexy bootstrap`                        | Selects the complete supported installation.                                                                                     | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
-| `getcodexy migrate [COMPONENT ...]`          | Only an exact supported monolith is eligible. No components selects all; explicit components include their dependencies.          | Journals the legacy configuration, requires a distinct split release, then requires exact healthy split inventory. |
+| Command                                      | Selection rule                                                                                                                   | Mutation rule                                                                                                      |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `getcodexy install [COMPONENT ...]`          | No components selects all. Explicit components include their transitive dependencies.                                            | Adds the resolved selection to the installed selection; it never removes another installed component.              |
+| `getcodexy update [COMPONENT ...]`           | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection.                                                                                 |
+| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component.                                                                                                 | Rejects a request if a retained component would still depend on a requested removal.                               |
+| `getcodexy status`                           | Reads the installed inventory.                                                                                                   | None.                                                                                                              |
+| `getcodexy doctor`                           | Reads inventory consistency, host readiness, and component health.                                                               | None.                                                                                                              |
+| `getcodexy bootstrap`                        | Selects the complete supported installation.                                                                                     | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation.     |
+| `getcodexy migrate [COMPONENT ...]`          | Only an exact supported monolith is eligible. No components selects all; explicit components include their dependencies.         | Journals the legacy configuration, requires a distinct split release, then requires exact healthy split inventory. |
 
 Unknown components fail with `unknown-component`. `update` without any recorded
 inventory fails with `no-recorded-selection`; a present but dependency-invalid
@@ -136,12 +136,11 @@ identity, host readback, and automatic rollback semantics.
 ## Monolithic migration
 
 `getcodexy migrate` is a separate legacy-to-split transaction. Its stable public
-contract is
-`packages/getcodexy/contracts/monolith-migration-contract.json`. It compares the
-installed legacy tree to a versioned complete-tree fingerprint before any host
-mutation. A changed, unknown, linked, unreadable, or otherwise ambiguous tree
-returns a closed JSON rejection with a recovery direction; it is never
-"repaired" in place.
+contract is `packages/getcodexy/contracts/monolith-migration-contract.json`. It
+compares the installed legacy tree to a versioned complete-tree fingerprint
+before any host mutation. A changed, unknown, linked, unreadable, or otherwise
+ambiguous tree returns a closed JSON rejection with a recovery direction; it is
+never "repaired" in place.
 
 The target must be a distinct release from the legacy source. This prevents a
 release tag that still contains the monolith from being treated as a migration
@@ -157,8 +156,8 @@ release, restores the legacy core and agent projection, then restores the
 pre-migration configuration snapshot. A failed recovery keeps its journal for a
 later trusted-host recovery rather than claiming success.
 
-Migration and normal component lifecycle commands share one lock. A malformed
-or conflicting migration journal is rejected before any host command, while an
+Migration and normal component lifecycle commands share one lock. A malformed or
+conflicting migration journal is rejected before any host command, while an
 interrupted valid journal remains durable until its exact legacy baseline,
 configuration snapshot, and absence of split extensions are all verified.
 
