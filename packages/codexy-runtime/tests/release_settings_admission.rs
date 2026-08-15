@@ -15,11 +15,13 @@ fn protected_release_settings_fail_closed_for_immutable_and_pypi_policy_drift()
     fs::write(
         &gh,
         r#"#!/bin/sh
+repo=eunsoogi/codexy
+header='X-GitHub-Api-Version: 2026-03-10'
 case "$*" in
-  *immutable-releases*) printf '%s\n' "$FIXTURE_IMMUTABLE" ;;
-  *environments/pypi*) printf '%s\n' "$FIXTURE_PYPI" ;;
-  *collaborators/*) printf '%s\n' "$FIXTURE_PERMISSION" ;;
-  *) exit 1 ;;
+  "api -H $header repos/$repo/immutable-releases") printf '%s\n' "$FIXTURE_IMMUTABLE" ;;
+  "api -H $header repos/$repo/environments/pypi") printf '%s\n' "$FIXTURE_PYPI" ;;
+  "api -H $header repos/$repo/collaborators/maintainer/permission --jq .permission") printf '%s\n' "$FIXTURE_PERMISSION" ;;
+  *) exit 2 ;;
 esac
 "#,
     )?;
@@ -43,15 +45,15 @@ esac
     fs::copy(root.join("scripts/verify-release-settings"), &script)?;
     bind_posix_fixture_shell_launchers(
         &script,
-        &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::Posix)],
+        &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi)],
     )?;
     let gh_launcher = fixture_script_interpreter_path(&gh)?;
-    let run = |immutable: &str, pypi: &str, permission: &str| {
+    let run = |repository: &str, immutable: &str, pypi: &str, permission: &str| {
         Command::new(&script)
             .arg("--require-pypi")
             .env_path("FIXTURE_GH", &gh)
             .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
-            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("GITHUB_REPOSITORY", repository)
             .env("RELEASE_POLICY_TOKEN", "test-token")
             .env("FIXTURE_IMMUTABLE", immutable)
             .env("FIXTURE_PYPI", pypi)
@@ -59,8 +61,8 @@ esac
             .status()
             .map(|status| status.success())
     };
-    assert!(run(r#"{"enabled":true}"#, protected, "maintain")?);
-    assert!(!run(r#"{"enabled":false}"#, protected, "maintain")?);
+    assert!(run("eunsoogi/codexy", r#"{"enabled":true}"#, protected, "maintain")?);
+    assert!(!run("eunsoogi/codexy", r#"{"enabled":false}"#, protected, "maintain")?);
     for (name, pypi) in [
         ("protected branches", protected.replace("\"protected_branches\": true", "\"protected_branches\": false")),
         ("custom branches", protected.replace("\"custom_branch_policies\": false", "\"custom_branch_policies\": true")),
@@ -69,8 +71,12 @@ esac
         ("reviewer", protected.replace("\"reviewers\": [{\"reviewer\": {\"login\": \"maintainer\"}}]", "\"reviewers\": []")),
         ("rule types", protected.replace("{\"type\": \"branch_policy\"}", "{\"type\": \"wait_timer\"}")),
     ] {
-        assert!(!run(r#"{"enabled":true}"#, &pypi, "maintain")?, "accepted weakened {name}");
+        assert!(!run("eunsoogi/codexy", r#"{"enabled":true}"#, &pypi, "maintain")?, "accepted weakened {name}");
     }
-    assert!(!run(r#"{"enabled":true}"#, protected, "write")?);
+    assert!(!run("eunsoogi/codexy", r#"{"enabled":true}"#, protected, "write")?);
+    assert!(
+        !run("/d/workspace/eunsoogi/codexy", r#"{"enabled":true}"#, protected, "maintain")?,
+        "accepted a converted logical repository"
+    );
     Ok(())
 }

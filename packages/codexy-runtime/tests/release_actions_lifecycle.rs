@@ -141,6 +141,10 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     let materialization = fs::read_to_string(
         tests.join("release_publication_recovery/fixture_materialization.rs"),
     )?;
+    let settings = fs::read_to_string(tests.join("release_settings_admission.rs"))?;
+    let attestation = fs::read_to_string(
+        tests.join("runtime_workflow_recovery/release_attestation_reconciliation.rs"),
+    )?;
     let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
     for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&reconciliation, "GITHUB_EVENT_PATH")] {
         assert!(
@@ -154,14 +158,17 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     for input in ["FIXTURE_DIR", "FIXTURE_GH"] {
         assert!(reconciliation.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
     }
-    assert!(
-        materialization.contains("FixtureArgumentDomain::GitHubApi"),
-        "the native release publisher mock must preserve logical GitHub API arguments"
-    );
-    assert!(
-        reconciliation.contains("FixtureArgumentDomain::GitHubApi"),
-        "the edit-verifier mock must preserve logical GitHub API arguments"
-    );
+    for (fixture, name) in [
+        (&materialization, "publisher"),
+        (&reconciliation, "edit verifier"),
+        (&settings, "settings verifier"),
+        (&attestation, "attestation reconciler"),
+    ] {
+        assert!(
+            fixture.contains("FixtureArgumentDomain::GitHubApi"),
+            "the {name} mock must preserve logical GitHub API arguments"
+        );
+    }
     assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
 }
