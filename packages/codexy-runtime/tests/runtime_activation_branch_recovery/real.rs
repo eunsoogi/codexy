@@ -113,6 +113,7 @@ impl Fixture {
         )?;
         for relative in [
             "scripts/activate-runtime-contract.sh",
+            "scripts/sync-plugin-version.sh",
             "scripts/verify-runtime-activation-branch",
         ] {
             fs::copy(
