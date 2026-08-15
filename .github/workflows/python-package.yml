@@ -6,6 +6,8 @@ on:
       - "packages/getcodexy/**"
       - "plugins/codexy/**"
       - "plugins/codexy-github/**"
+      - "plugins/codexy-devtools/**"
+      - ".agents/plugins/marketplace.json"
       - "docs/getcodexy-component-installation.md"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
@@ -15,6 +17,8 @@ on:
       - "packages/getcodexy/**"
       - "plugins/codexy/**"
       - "plugins/codexy-github/**"
+      - "plugins/codexy-devtools/**"
+      - ".agents/plugins/marketplace.json"
       - "docs/getcodexy-component-installation.md"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
@@ -24,7 +28,16 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Package lifecycle (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu
+            runner: ubuntu-latest
+          - platform: macos
+            runner: macos-14
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,9 +59,10 @@ jobs:
           .package-venv/bin/python -m pip install --no-index --find-links dist "getcodexy==${version}"
           .package-venv/bin/python -c 'from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == "'"$version"'"'
           .package-venv/bin/codexy-mcp-runtime --help
+          GETCODEXY_DISTRIBUTION_EXECUTABLE="$PWD/.package-venv/bin/getcodexy" PYTHONPATH=packages/getcodexy/tests .package-venv/bin/python -m unittest packages/getcodexy/tests/test_component_distribution.py
       - uses: actions/upload-artifact@v7
         with:
-          name: getcodexy-bootstrap-package
+          name: getcodexy-bootstrap-package-${{ matrix.platform }}
           path: dist/*
           if-no-files-found: error
   github-activation-windows:
@@ -91,6 +105,9 @@ jobs:
           .package-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$version"
           .package-venv\Scripts\python -c "from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == '$version'"
           .package-venv\Scripts\getcodexy.exe --help
+          $env:GETCODEXY_DISTRIBUTION_EXECUTABLE = "$PWD\.package-venv\Scripts\getcodexy.exe"
+          $env:PYTHONPATH = "packages/getcodexy/tests"
+          .package-venv\Scripts\python -m unittest packages/getcodexy/tests/test_component_distribution.py
           .package-venv\Scripts\codexy-github-install.exe --help
           $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
           New-Item -ItemType Directory -Force -Path $checkRoot | Out-Null

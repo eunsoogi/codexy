@@ -88,6 +88,30 @@ HOOKS = {
                     ]
                 }
             ],
+            "PermissionRequest": [
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh" PermissionRequest',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd" PermissionRequest',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh" PermissionRequest',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd" PermissionRequest',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+            ],
             "PreToolUse": [
                 {
                     "matcher": "^mcp__codex_apps__github_(create|update)_issue$",
@@ -107,6 +131,28 @@ HOOKS = {
                             "type": "command",
                             "command": '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule pr',
                             "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-github-admission-pr.cmd"',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh" PreToolUse',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd" PreToolUse',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh" PreToolUse',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd" PreToolUse',
                             "timeout": 5,
                         }
                     ],
@@ -135,6 +181,10 @@ LAUNCHERS = {
         "hooks/codexy-github-admission.sh",
         "hooks/codexy-github-admission-issue.cmd",
         "hooks/codexy-github-admission-pr.cmd",
+        "hooks/codexy-repository-github-command.sh",
+        "hooks/codexy-repository-github-command.cmd",
+        "hooks/codexy-destructive-command.sh",
+        "hooks/codexy-destructive-command.cmd",
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
