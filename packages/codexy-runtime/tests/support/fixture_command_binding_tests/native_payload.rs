@@ -48,19 +48,17 @@ fn launcher_binding_preserves_native_payload_arguments_across_the_posix_shell()
 }
 
 #[test]
-fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
--> Result<(), Box<dyn std::error::Error>> {
+fn launcher_binding_keeps_github_api_operands_logical() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let script = temp.path().join("release-helper");
     let gh = temp.path().join("gh");
-    let state = temp.path().join("native state.json");
     write_posix_fixture_command(
         &script,
-        "#!/bin/sh\ngh release view v9.9.9 --repo \"$GITHUB_REPOSITORY\"\ngh api \"repos/$GITHUB_REPOSITORY/releases/tags/v9.9.9\" --dir \"$FIXTURE_STATE\"\n",
+        "#!/bin/sh\ngh release view v9.9.9 --repo \"$GITHUB_REPOSITORY\"\ngh api \"repos/$GITHUB_REPOSITORY/releases/tags/v9.9.9\" --raw-field \"state=$FIXTURE_API_VALUE\"\n",
     )?;
     fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport os,pathlib,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args[:2] == ['api', f'repos/{repo}/releases/tags/v9.9.9']\n assert args[2] == '--dir'\n pathlib.Path(args[3]).write_bytes(b'native state\\r\\n')\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
+        "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args == ['api', f'repos/{repo}/releases/tags/v9.9.9', '--raw-field', 'state=literal-api-value']\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -84,7 +82,7 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
             "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
             fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
         )
-        .env_path("FIXTURE_STATE", &state)
+        .env("FIXTURE_API_VALUE", "literal-api-value")
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .output()?;
     assert!(
@@ -96,10 +94,6 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
     assert_eq!(
         normalize_fixture_text(&String::from_utf8(output.stdout)?),
         "release:eunsoogi/codexy\napi:repos/eunsoogi/codexy/releases/tags/v9.9.9\n"
-    );
-    assert_eq!(
-        normalize_fixture_text(&fs::read_to_string(state)?),
-        "native state\n"
     );
     Ok(())
 }
