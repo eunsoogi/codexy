@@ -18,9 +18,9 @@ class LifecycleFinalizationTests(unittest.TestCase):
         self,
     ) -> None:
         with fixture() as state:
-            import codexy_runtime_tools.component_lifecycle as lifecycle
+            import codexy_runtime_tools.component_lifecycle_recovery as recovery
 
-            original = lifecycle.write_journal
+            original = recovery.write_journal
 
             def reject_commit(home: object, journal: object) -> None:
                 if getattr(journal, "phase") == "committed":
@@ -28,7 +28,7 @@ class LifecycleFinalizationTests(unittest.TestCase):
                 original(home, journal)  # type: ignore[arg-type]
 
             with (
-                patch.object(lifecycle, "write_journal", side_effect=reject_commit),
+                patch.object(recovery, "write_journal", side_effect=reject_commit),
                 self.assertRaisesRegex(OSError, "committed journal"),
             ):
                 run_operation(
@@ -58,11 +58,11 @@ class LifecycleFinalizationTests(unittest.TestCase):
 
     def test_failed_cleanup_keeps_committed_state_for_idempotent_recovery(self) -> None:
         with fixture() as state:
-            import codexy_runtime_tools.component_lifecycle as lifecycle
+            import codexy_runtime_tools.component_lifecycle_recovery as recovery
 
             with (
                 patch.object(
-                    lifecycle, "clear_journal", side_effect=OSError("cleanup failed")
+                    recovery, "clear_journal", side_effect=OSError("cleanup failed")
                 ),
                 self.assertRaisesRegex(OSError, "cleanup failed"),
             ):
@@ -110,7 +110,7 @@ class LifecycleFinalizationTests(unittest.TestCase):
         with fixture() as state:
             with (
                 patch(
-                    "codexy_runtime_tools.component_lifecycle.write_receipt",
+                    "codexy_runtime_tools.component_lifecycle_terminal.write_receipt",
                     side_effect=ValueError("operation receipt already exists"),
                 ),
                 self.assertRaisesRegex(ValueError, "receipt already exists"),
@@ -146,11 +146,11 @@ class LifecycleFinalizationTests(unittest.TestCase):
         self,
     ) -> None:
         with fixture() as state:
-            import codexy_runtime_tools.component_lifecycle as lifecycle
+            import codexy_runtime_tools.component_lifecycle_recovery as recovery
 
             with (
                 patch.object(
-                    lifecycle, "clear_journal", side_effect=OSError("cleanup failed")
+                    recovery, "clear_journal", side_effect=OSError("cleanup failed")
                 ),
                 self.assertRaisesRegex(OSError, "cleanup failed"),
             ):
@@ -172,7 +172,7 @@ class LifecycleFinalizationTests(unittest.TestCase):
             receipt.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
 
             with (
-                patch.object(lifecycle, "write_inventory") as inventory,
+                patch.object(recovery, "write_inventory") as inventory,
                 self.assertRaisesRegex(ValueError, "operation receipt"),
             ):
                 run_operation(
