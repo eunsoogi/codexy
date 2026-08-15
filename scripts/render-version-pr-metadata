@@ -115,7 +115,7 @@ def render(
     if publication_phase == "proven":
         readiness_checks = f"""- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`
 - `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
-- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
+- `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
 - `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number>{merge_issue_flag} --merge-message-file <merge-message>`
 """
         readiness_evidence = "- Post-creation readiness gates passed before final body publication.\n"
