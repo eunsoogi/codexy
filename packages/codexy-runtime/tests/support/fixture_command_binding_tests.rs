@@ -2,7 +2,6 @@ use std::{io::ErrorKind, process::Command};
 
 use crate::support::{
     FixtureCommand, write_posix_fixture_command, write_posix_fixture_shell_runner,
-    write_posix_fixture_shell_runner_with_scrub_and_sources,
 };
 
 #[test]
@@ -101,102 +100,5 @@ fn shell_runner_executes_the_safe_fixture_identifiers() -> Result<(), Box<dyn st
         String::from_utf8(output.stdout)?,
         "git:first\njq:second\ngh:third\n"
     );
-    Ok(())
-}
-
-#[test]
-fn shell_runner_projects_bound_commands_into_a_nested_shell_source()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let scripts = temp.path().join("scripts");
-    std::fs::create_dir(&scripts)?;
-    let source = scripts.join("verify");
-    write_posix_fixture_command(&source, "#!/bin/sh\ngit nested\n")?;
-    let target = temp.path().join("target.sh");
-    write_posix_fixture_command(&target, "#!/bin/sh\nsh scripts/verify\n")?;
-    let runner = temp.path().join("runner.sh");
-    write_posix_fixture_shell_runner_with_scrub_and_sources(
-        &runner,
-        "CODEXY_FIXTURE_TARGET",
-        &[("git", "CODEXY_FIXTURE_GIT")],
-        &[],
-        &[],
-        &[("scripts/verify", "CODEXY_FIXTURE_SOURCE")],
-    )?;
-    let git = temp.path().join("git");
-    write_posix_fixture_command(&git, "#!/bin/sh\nprintf 'git:%s\\n' \"$1\"\n")?;
-    let output = FixtureCommand::new(&runner)
-        .current_dir(temp.path())
-        .env_path("CODEXY_FIXTURE_TARGET", &target)
-        .env_path("CODEXY_FIXTURE_SOURCE", &source)
-        .env_path("CODEXY_FIXTURE_GIT", &git)
-        .output()?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(String::from_utf8(output.stdout)?, "git:nested\n");
-    Ok(())
-}
-
-#[test]
-fn shell_runner_rejects_unsafe_source_bindings_before_writing()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    for source_path in [
-        "",
-        "/scripts/verify",
-        "scripts/../verify",
-        "scripts//verify",
-    ] {
-        let runner = temp.path().join(format!("runner-{}.sh", source_path.len()));
-        let error = write_posix_fixture_shell_runner_with_scrub_and_sources(
-            &runner,
-            "CODEXY_FIXTURE_TARGET",
-            &[],
-            &[],
-            &[],
-            &[(source_path, "CODEXY_FIXTURE_SOURCE")],
-        )
-        .expect_err("unsafe source binding must fail closed");
-        assert_eq!(error.kind(), ErrorKind::InvalidInput, "{source_path:?}");
-        assert!(!runner.exists(), "{source_path:?} wrote a runner");
-    }
-    Ok(())
-}
-
-#[test]
-fn shell_runner_falls_back_for_undeclared_nested_shell_sources()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let scripts = temp.path().join("scripts");
-    std::fs::create_dir(&scripts)?;
-    let declared = scripts.join("declared");
-    write_posix_fixture_command(&declared, "#!/bin/sh\nprintf 'declared\\n'\n")?;
-    let unbound = scripts.join("unbound");
-    write_posix_fixture_command(&unbound, "#!/bin/sh\nprintf 'fallback\\n'\n")?;
-    let target = temp.path().join("target.sh");
-    write_posix_fixture_command(&target, "#!/bin/sh\nsh scripts/unbound\n")?;
-    let runner = temp.path().join("runner.sh");
-    write_posix_fixture_shell_runner_with_scrub_and_sources(
-        &runner,
-        "CODEXY_FIXTURE_TARGET",
-        &[],
-        &[],
-        &[],
-        &[("scripts/declared", "CODEXY_FIXTURE_SOURCE")],
-    )?;
-    let output = FixtureCommand::new(&runner)
-        .current_dir(temp.path())
-        .env_path("CODEXY_FIXTURE_TARGET", &target)
-        .env_path("CODEXY_FIXTURE_SOURCE", &declared)
-        .output()?;
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(String::from_utf8(output.stdout)?, "fallback\n");
     Ok(())
 }

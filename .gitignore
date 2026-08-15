@@ -7,6 +7,3 @@ __pycache__/
 /target/
 /packages/codexy-runtime/target/
 **/*.rs.bk
-
-# Generated Rust shard receipts uploaded by CI
-/receipts/

@@ -26,10 +26,9 @@ git status --short
 git diff
 ```
 
-MUST stage only intended files.
-MUST preserve unrelated dirty work.
-MUST NOT revert or discard user changes unless explicitly asked.
-MUST NOT commit `.omo/**`, local logs, secrets, or scratch files by default.
+MUST stage only intended files. MUST preserve unrelated dirty work. MUST NOT
+revert or discard user changes unless explicitly asked. MUST NOT commit
+`.omo/**`, local logs, secrets, or scratch files by default.
 
 ## Commit Messages
 

@@ -240,7 +240,6 @@
         "packages/codexy-runtime/src/bin/codexy-session-audit",
         "packages/codexy-runtime/src/bin/codexy-sync-version.rs",
         "packages/codexy-runtime/src/bin/codexy-validate.rs",
-        "packages/codexy-runtime/src/bin/codexy-validate/input.rs",
         "packages/codexy-runtime/src/bin/codexy-validate/tdd.rs"
       ],
       "target": "repository-only",

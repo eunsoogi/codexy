@@ -209,15 +209,7 @@ pr-title)
     check_conventional_subject "$lc_issue_title" && fail "issue title must not use Conventional Commit style"
     issue_prefix=$(printf '%s\n' "$lc_issue_title" | awk '{ print $1; exit }')
     issue_token=$issue_prefix
-    case "$issue_prefix" in
-      *:*) issue_prefix=${issue_prefix%%:*} ;;
-    esac
-    while :; do
-      case "$issue_prefix" in
-        *:) issue_prefix=${issue_prefix%:} ;;
-        *) break ;;
-      esac
-    done
+    case "$issue_prefix" in *:*) issue_prefix=${issue_prefix%%:*} ;; esac; while :; do case "$issue_prefix" in *:) issue_prefix=${issue_prefix%:} ;; *) break ;; esac; done
     case "$issue_token" in *"("*")" | *! | *:*) check_conventional_subject "$issue_prefix: issue" && fail "issue title must not use Conventional Commit style" ;; esac
     case "$issue_title" in [ABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;; *) fail "issue title must start with an uppercase descriptive title" ;; esac
     ;;

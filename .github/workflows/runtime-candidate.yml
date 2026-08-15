@@ -91,16 +91,8 @@ jobs:
                   raise SystemExit(f"{binary} tool smoke failed: {responses[2]}")
 
           cases = [
-              {
-                  "binary": "packages/codexy-runtime/target/release/codexy-mcp-lsp",
-                  "name": "lsp_status",
-                  "arguments": {"root": ".", "path": "packages/codexy-runtime/Cargo.toml"},
-              },
-              {
-                  "binary": "packages/codexy-runtime/target/release/codexy-mcp-codegraph",
-                  "name": "codegraph_overview",
-                  "arguments": {"root": ".", "limit": 10},
-              },
+              {"binary": "packages/codexy-runtime/target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "packages/codexy-runtime/Cargo.toml"}},
+              {"binary": "packages/codexy-runtime/target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}},
           ]
           for case in cases:
               smoke(case["binary"], case["name"], case["arguments"])
@@ -110,16 +102,8 @@ jobs:
         shell: pwsh
         run: |
           $cases = @(
-            @{
-              Binary = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"
-              Tool = "lsp_status"
-              Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" }
-            },
-            @{
-              Binary = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"
-              Tool = "codegraph_overview"
-              Arguments = @{ root = "."; limit = 10 }
-            }
+            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" } },
+            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
           )
           foreach ($case in $cases) {
             $binary = (Resolve-Path -LiteralPath $case.Binary).Path
@@ -136,24 +120,9 @@ jobs:
               if (-not $process.Start()) { throw "failed to start $binary" }
               $stdoutTask = $process.StandardOutput.ReadToEndAsync()
               $stderrTask = $process.StandardError.ReadToEndAsync()
-              $initialize = @{
-                jsonrpc = "2.0"
-                id = 1
-                method = "initialize"
-                params = @{}
-              }
-              $toolCall = @{
-                jsonrpc = "2.0"
-                id = 2
-                method = "tools/call"
-                params = @{
-                  name = $case.Tool
-                  arguments = $case.Arguments
-                }
-              }
               $requests = @(
-                ($initialize | ConvertTo-Json -Compress),
-                ($toolCall | ConvertTo-Json -Compress)
+                (@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} } | ConvertTo-Json -Compress),
+                (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } } | ConvertTo-Json -Compress)
               )
               foreach ($request in $requests) { $process.StandardInput.WriteLine($request) }
               $process.StandardInput.Close()

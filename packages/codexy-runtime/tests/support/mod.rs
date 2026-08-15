@@ -65,7 +65,6 @@ pub(crate) use fixture_command::{
 };
 pub(crate) use fixture_command_bindings::{
     write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
-    write_posix_fixture_shell_runner_with_scrub_and_sources,
     write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;

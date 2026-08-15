@@ -21,10 +21,7 @@ if status or seen["TEMP"] != str(native) or seen["TMP"] != str(native): raise Sy
 if selected.parent != runner or selected.exists() or payload.get("temp") != str(native) or payload.get("tmp") != str(native): raise SystemExit(f"selected={selected!r} payload={payload!r}")
 if payload.get("selected_temp_root") != str(selected) or payload.get("temp_cleanup") != "removed": raise SystemExit(f"payload={payload!r}")
 "#;
-    let output = Command::new("python3")
-        .args(["-c", probe])
-        .arg(script)
-        .output()?;
+    let output = Command::new("python3").args(["-c", probe]).arg(script).output()?;
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }
@@ -32,8 +29,7 @@ if payload.get("selected_temp_root") != str(selected) or payload.get("temp_clean
 #[test]
 fn windows_profile_rejects_invalid_runner_temp_before_launch()
 -> Result<(), Box<dyn std::error::Error>> {
-    let launcher =
-        codexy_runtime::paths::repository_root().join("scripts/profile_rust_windows_launcher.py");
+    let launcher = codexy_runtime::paths::repository_root().join("scripts/profile_rust_windows_launcher.py");
     let probe = r#"
 import pathlib, runpy, sys, tempfile
 module = runpy.run_path(pathlib.Path(sys.argv[1])); root = pathlib.Path(tempfile.mkdtemp())
@@ -48,10 +44,7 @@ try:
     except PermissionError: pass
 finally: module["tempfile"].mkdtemp = saved
 "#;
-    let output = Command::new("python3")
-        .args(["-c", probe])
-        .arg(launcher)
-        .output()?;
+    let output = Command::new("python3").args(["-c", probe]).arg(launcher).output()?;
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }
@@ -59,8 +52,7 @@ finally: module["tempfile"].mkdtemp = saved
 #[test]
 fn telemetry_ranks_fixture_materializations_by_stable_identity()
 -> Result<(), Box<dyn std::error::Error>> {
-    let telemetry =
-        codexy_runtime::paths::repository_root().join("scripts/profile_rust_telemetry.py");
+    let telemetry = codexy_runtime::paths::repository_root().join("scripts/profile_rust_telemetry.py");
     let probe = r#"
 import importlib.util, json, pathlib, sys, tempfile
 path = pathlib.Path(sys.argv[1]); spec = importlib.util.spec_from_file_location("telemetry", path); module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
@@ -71,10 +63,7 @@ if payload.get("fixture_materialization_ranked") != expected: raise SystemExit(f
 if (payload.get("fixture_materializations"), payload.get("fixture_copied_files"), payload.get("fixture_copied_bytes")) != (2, 10, 100): raise SystemExit(f"totals={payload!r}")
 if payload.get("fixture_materialization_seconds") != 1.0: raise SystemExit(f"duration={payload!r}")
 "#;
-    let output = Command::new("python3")
-        .args(["-c", probe])
-        .arg(telemetry)
-        .output()?;
+    let output = Command::new("python3").args(["-c", probe]).arg(telemetry).output()?;
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }
@@ -82,8 +71,7 @@ if payload.get("fixture_materialization_seconds") != 1.0: raise SystemExit(f"dur
 #[test]
 fn telemetry_bounds_and_redacts_untrusted_fixture_identities()
 -> Result<(), Box<dyn std::error::Error>> {
-    let telemetry =
-        codexy_runtime::paths::repository_root().join("scripts/profile_rust_telemetry.py");
+    let telemetry = codexy_runtime::paths::repository_root().join("scripts/profile_rust_telemetry.py");
     let probe = r#"
 import importlib.util, json, pathlib, sys, tempfile
 path = pathlib.Path(sys.argv[1]); spec = importlib.util.spec_from_file_location("telemetry", path); module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
@@ -92,10 +80,7 @@ metrics.write_text("fixture-materialization\t/Users/private/secret\t1\t1\t0.1\n"
 ranked = json.loads(module.telemetry(None, {}, metrics))["fixture_materialization_ranked"]
 if len(ranked) != 16 or not any(item["identity"] == "invalid" for item in ranked) or any("/Users" in item["identity"] for item in ranked): raise SystemExit(f"ranked={ranked!r}")
 "#;
-    let output = Command::new("python3")
-        .args(["-c", probe])
-        .arg(telemetry)
-        .output()?;
+    let output = Command::new("python3").args(["-c", probe]).arg(telemetry).output()?;
     assert!(output.status.success(), "{output:?}");
     Ok(())
 }

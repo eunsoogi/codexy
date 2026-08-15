@@ -13,18 +13,10 @@ evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
 canonical_admission_suite="$checkout_root/packages/codexy-runtime/tests/suites/all.rs"
 admission_suite="$evidence_root/packages/codexy-runtime/tests/suites/all.rs"
 
-if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -r "$script_dir/archive-inspection-receipt.sh" ]; then
-  . "$script_dir/archive-inspection-receipt.sh"
-fi
+if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -r "$script_dir/archive-inspection-receipt.sh" ]; then . "$script_dir/archive-inspection-receipt.sh"; fi
 
-if ! command -v tar >/dev/null 2>&1; then
-  echo "tar is required" >&2
-  exit 127
-fi
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required" >&2
-  exit 127
-fi
+command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
 for digest_command in sha256sum 'shasum -a 256'; do
   command -v "${digest_command%% *}" >/dev/null 2>&1 && break
 done
@@ -157,10 +149,7 @@ if command -v rg >/dev/null 2>&1; then
   set -e
 else
   archive_inspection_receipt_marker "backend=grep" 2>/dev/null || :
-  if ! command -v grep >/dev/null 2>&1; then
-    echo "rg or grep is required" >&2
-    exit 127
-  fi
+  command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"
   hygiene_status=$?

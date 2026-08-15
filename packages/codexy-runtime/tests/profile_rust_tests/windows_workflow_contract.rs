@@ -58,11 +58,7 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
         workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "", 2).replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "          ref: refs/pull/516/merge\n", 1),
         workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n", "          fetch-depth: 0\n      - run: echo '${{ github.event.pull_request.head.sha }}'\n", 1),
         workflow.replacen("      - shell: pwsh\n        run: scripts/install-windows-test-prerequisites.ps1\n", "", 1),
-        workflow.replacen(
-            "      - shell: pwsh\n        run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) {\n            exit $LASTEXITCODE\n          }\n          cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked\n          if ($LASTEXITCODE -ne 0) {\n            exit $LASTEXITCODE\n          }\n",
-            "",
-            1,
-        ),
+        workflow.replacen("      - shell: pwsh\n        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1),
         workflow.replacen("    steps:\n", "    env:\n      RUST_TEST_THREADS: 1\n    steps:\n", 1),
         workflow.replacen("        shard: [support, agent, child, orchestration, governance, system, archive]\n", "        shard: [support, agent, child, orchestration, governance, system, archive]\n        extra: rejected\n", 1),
         workflow.replacen("      - run: scripts/profile-rust-tests --shard", "      - env:\n          CARGO_PROFILE_TEST_INCREMENTAL: true\n        run: scripts/profile-rust-tests --shard", 1),

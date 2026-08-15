@@ -1,4 +1,4 @@
-use std::{fs, io, io::Write as _, path::Path};
+use std::{fs, io, path::Path};
 
 /// Writes a POSIX command mock that a nested `sh` resolves by its bare name.
 ///
@@ -7,14 +7,16 @@ use std::{fs, io, io::Write as _, path::Path};
 /// `.cmd` companion.
 pub(crate) fn write_posix_fixture_command(path: &Path, source: &str) -> io::Result<()> {
     let source = traced_source(path, source)?;
-    let parent = path
-        .parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture command parent"))?;
-    let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
-    temporary.write_all(source.as_bytes())?;
-    temporary.flush()?;
-    drop(temporary.persist(path).map_err(|error| error.error)?);
-    super::make_executable(path)
+    #[cfg(windows)]
+    {
+        fs::write(path, source)?;
+        super::make_executable(path)
+    }
+    #[cfg(not(windows))]
+    {
+        fs::write(path, source)?;
+        super::make_executable(path)
+    }
 }
 
 fn traced_source(path: &Path, source: &str) -> io::Result<String> {

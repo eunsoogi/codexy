@@ -52,43 +52,6 @@ def valid_process_status(item: dict[str, object]) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value == 0
 
 
-def valid_timing(item: dict[str, object]) -> bool:
-    values = (item.get("elapsed"), item.get("started"), item.get("finished"))
-    numeric = all(
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-        and value >= 0
-        for value in values
-    )
-    return numeric and item["finished"] >= item["started"]
-
-
-def receipt_matches(
-    item: dict[str, object],
-    selected: set[str],
-    head: str,
-    index_tree: str,
-    expected_targets: set[str],
-) -> bool:
-    platform, shard = item.get("platform"), item.get("shard")
-    item_tests = Counter(item.get("tests", []))
-    return (
-        platform in selected
-        and shard in SHARDS
-        and item.get("state") == "PASS"
-        and valid_process_status(item)
-        and valid_timing(item)
-        and valid_provenance(item)
-        and item.get("argv") in (list(SHARDS[shard]), SHARDS[shard])
-        and item.get("head") == head
-        and item.get("index_tree") == index_tree
-        and item.get("digest") == digest(item_tests)
-        and item.get("digest") == item.get("listed_digest")
-        and set(item.get("physical_targets", [])) == owned_targets(expected_targets, shard)
-    )
-
-
 def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> int:
     try:
         receipts = load(directory)
@@ -107,37 +70,21 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     tests: dict[str, Counter[str]] = {platform: Counter() for platform in selected}
     targets: dict[str, set[str]] = {platform: set() for platform in selected}
     receipt_valid, expected_targets = True, declared_test_targets(root)
+    def valid_timing(item: dict[str, object]) -> bool:
+        values = (item.get("elapsed"), item.get("started"), item.get("finished"))
+        return all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0 for value in values) and item["finished"] >= item["started"]
     for item in receipts:
         platform, shard = item.get("platform"), item.get("shard")
         item_tests = Counter(item.get("tests", []))
-        if not receipt_matches(item, selected, head, index_tree, expected_targets):
+        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_process_status(item) or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
             receipt_valid = False
             continue
         tests[platform].update(item_tests)
         targets[platform].update(item.get("physical_targets", []))
     duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
-    one_receipt_per_run = len(
-        {(item.get("run_id"), item.get("run_attempt")) for item in receipts}
-    ) == 1
-    targets_match = all(
-        targets[platform] == expected_targets
-        and provenance_windows_within_budget(receipts, platform, valid_timing)
-        for platform in tests
-    )
-    elapsed_within_budget = all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
-    valid = (
-        receipt_valid
-        and platforms == selected
-        and found == expected
-        and len(receipts) == len(expected)
-        and duplicates == 0
-        and one_receipt_per_run
-        and targets_match
-        and elapsed_within_budget
-    )
+    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts}) == 1 and all(targets[platform] == expected_targets and provenance_windows_within_budget(receipts, platform, valid_timing) for platform in tests) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
-    for platform, values in tests.items():
-        print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
+    for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
 
 

@@ -128,10 +128,7 @@ jobs:
               plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin \
               plugins/codexy-devtools/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
               plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin \
-              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin
-            do
-              test -f "legacy/$path"
-            done
+              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do test -f "legacy/$path"; done
             cp -R legacy/plugins/codexy-devtools/runtime "$staged/"
             tar -C final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
             scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
