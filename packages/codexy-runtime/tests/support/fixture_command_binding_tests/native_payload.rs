@@ -53,19 +53,15 @@ fn launcher_binding_moves_spaced_native_launch_paths_through_transport()
     let temp = tempfile::tempdir()?;
     let script = temp.path().join("release-helper");
     let payload = temp.path().join("native payload");
-    let launcher = temp.path().join("native shell with spaces");
     let adapter_launcher = temp.path().join("native Python with spaces");
     let empty_path = temp.path().join("empty-path");
     fs::create_dir(&empty_path)?;
     write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
-    write_posix_fixture_command(&payload, "#!/bin/sh\nprintf 'gh:%s %s\\n' \"$1\" \"$2\"\n")?;
     write_posix_fixture_command(
-        &launcher,
-        &format!(
-            "#!/bin/sh\ntest \"$#\" = 3 || exit 62\nexec \"{}\" \"$@\"\n",
-            fixture_script_interpreter_path(&payload)?.display()
-        ),
+        &payload,
+        "#!/bin/sh\ntest \"$#\" = 2 || exit 62\nprintf 'gh:%s %s\\n' \"$1\" \"$2\"\n",
     )?;
+    let launcher = fixture_script_interpreter_path(&payload)?;
     bind_posix_fixture_shell_launchers(
         &script,
         &[(
