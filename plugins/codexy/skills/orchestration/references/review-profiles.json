@@ -1,5 +1,6 @@
 {
   "schema": "codexy.review-profiles.v1",
+  "issue_terminal_review_limit": 3,
   "profiles": {
     "light": {
       "reviewer": null,

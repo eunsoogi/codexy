@@ -102,6 +102,16 @@ edits.
   reviewer and wait for its natural terminal result. The child MUST NOT
   interrupt, replace, or duplicate it and MUST keep push/readiness blocked until
   that result arrives.
+- The owner MUST carry one issue-wide maximum of three terminal profile-selected
+  verdicts across fresh goals, repair stages, compaction, parent
+  reauthorization, and reviewer-route resets. A terminal `PASS`, `BLOCK`, or
+  `UNOBSERVABLE` counts; `PENDING` and `RUNNING` do not. After the third
+  verdict, the owner MUST NOT invoke another profile-selected reviewer. A third
+  `BLOCK` permits one bounded repair of its issue-contract/root-defect findings
+  and exact-head proof before handoff. A third `UNOBSERVABLE` requires a
+  maintainer-owned final disposition with current proof. Neither path waives
+  tests, validators, CI, review-thread, ownership, safety, LOC, or merge gates,
+  and neither may set a goal to `blocked` because of quota exhaustion or a wait.
 
 ## Completion-Handoff Validation
 

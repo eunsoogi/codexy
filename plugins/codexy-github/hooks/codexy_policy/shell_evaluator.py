@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import re
 import shlex
 from pathlib import Path
 from typing import Protocol
 
 from .execution_context import (
-    DYNAMIC_VALUE,
-    SINGLE_QUOTED_DOLLAR,
     CommandEffect,
     ExecutionContext,
     after_external_command,
@@ -17,21 +14,15 @@ from .execution_context import (
 )
 from .invocation import Invocation, resolve
 from .shell_context import changed_directory
-from .shell_git import explicit_owned
 from .shell_groups import GroupSyntaxError, parse
 from .shell_opaque import dynamic_control_executable, separate_lines
+from .shell_segments import opaque_syntax, segments
 from .shell_sequence import evaluate as evaluate_sequence
-
-OPAQUE = re.compile(r"\$\(|`|<<<?|\b(?:eval|if|for|while|until|case)\b")
-SUBCOMMAND = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
-CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 
 
 class Policy(Protocol):
     def owns_opaque(self, command: str, context: ExecutionContext) -> bool: ...
-    def opaque_invocation(
-        self, tokens: list[str], context: ExecutionContext
-    ) -> bool: ...
+    def opaque_invocation(self, invocation: Invocation) -> bool: ...
     def command(
         self, invocation: Invocation, outer: ExecutionContext, depth: int
     ) -> tuple[bool, CommandEffect] | None: ...
@@ -40,33 +31,13 @@ class Policy(Protocol):
 def evaluate(
     command: str, context: ExecutionContext, depth: int, policy: Policy
 ) -> bool:
-    if depth > 3 or SINGLE_QUOTED_DOLLAR in command:
-        return True
     lexical_command = command
-    if OPAQUE.search(command):
-        if context.cwd_owned is not False and policy.owns_opaque(command, context):
-            return True
-        try:
-            opaque_tokens = shlex.split(command)
-            if opaque_tokens and opaque_tokens[0].rsplit("/", 1)[-1].lower() == "eval":
-                evaluated = opaque_tokens[1:]
-                if evaluated[:1] == ["--"]:
-                    evaluated = evaluated[1:]
-                if evaluate(" ".join(evaluated), context, depth + 1, policy):
-                    return True
-            elif explicit_owned(opaque_tokens, context.policy_identity) is True:
-                return True
-        except ValueError:
-            return True
-        for match in SUBCOMMAND.finditer(command):
-            nested = match.group(1) if match.group(1) is not None else match.group(2)
+    syntax = opaque_syntax(command)
+    if syntax.substitutions or syntax.control:
+        for nested in syntax.substitutions:
             if evaluate(nested, context, depth + 1, policy):
                 return True
-        lexical_command = SUBCOMMAND.sub(DYNAMIC_VALUE, command)
-        if CONTROL.search(command):
-            return policy.owns_opaque(command, context) or dynamic_control_executable(
-                command
-            )
+        lexical_command = syntax.command
     try:
         lexer = shlex.shlex(
             separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}"
@@ -74,11 +45,15 @@ def evaluate(
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
     except ValueError:
-        return context.cwd_owned is not False
+        return context.cwd_owned is not False and policy.owns_opaque(command, context)
     try:
         sequence = parse(tokens)
     except GroupSyntaxError:
-        return True
+        if syntax.control:
+            return dynamic_control_executable(command) or _control_segments(
+                command, context, depth, policy
+            )
+        return context.cwd_owned is not False and policy.owns_opaque(command, context)
     return evaluate_sequence(
         sequence,
         context,
@@ -87,6 +62,32 @@ def evaluate(
             tokens, current, current_depth, policy
         ),
     )[0]
+
+
+class _CredentialPolicy:
+    """Detect a credential operation through the ordinary stateful effect walk."""
+
+    @staticmethod
+    def owns_opaque(command: str, context: ExecutionContext) -> bool:
+        return False
+
+    @staticmethod
+    def opaque_invocation(invocation: Invocation) -> bool:
+        return False
+
+    @staticmethod
+    def command(
+        invocation: Invocation, outer: ExecutionContext, depth: int
+    ) -> tuple[bool, CommandEffect] | None:
+        if invocation.executable != "gh":
+            return None
+        return invocation.arguments[:2] == ["auth", "token"], CommandEffect(outer)
+
+
+def credential_exposure(
+    command: str, context: ExecutionContext, depth: int = 0
+) -> bool:
+    return evaluate(command, context, depth, _CredentialPolicy())
 
 
 def _segment(
@@ -103,9 +104,18 @@ def _segment(
             invocation.script, invocation.context, depth + 1, policy
         ), CommandEffect(context)
     if invocation.opaque:
-        return policy.opaque_invocation(tokens, invocation.context), CommandEffect(None)
+        if policy.opaque_invocation(invocation):
+            return True, CommandEffect(None)
+        result = policy.command(invocation, context, depth)
+        if result is not None:
+            return result
+        return False, CommandEffect(None)
     if invocation.executable is None:
         return False, CommandEffect(invocation.context)
+    if invocation.executable == "eval":
+        return evaluate(
+            " ".join(invocation.arguments), invocation.context, depth + 1, policy
+        ), CommandEffect(context)
     if invocation.executable == "false":
         return False, CommandEffect(None, context)
     if invocation.executable == "true":
@@ -132,6 +142,22 @@ def _segment(
         context,
     )
     return (True, CommandEffect(None)) if effect is None else (False, effect)
+
+
+def _control_segments(
+    command: str, context: ExecutionContext, depth: int, policy: Policy
+) -> bool:
+    """Walk parsed control bodies through the same typed invocation classifier."""
+    parsed = segments(command)
+    if parsed is None:
+        return False
+    current = context
+    for tokens in parsed:
+        denied, effect = _segment(list(tokens), current, depth + 1, policy)
+        if denied:
+            return True
+        current = effect.success or effect.failure or current
+    return False
 
 
 def _test_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect:

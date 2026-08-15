@@ -19,19 +19,16 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
         self.assertIn(
             "commandWindows", hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]
         )
-        admissions = hooks["hooks"]["PreToolUse"]
-        self.assertEqual(len(admissions), 2)
-        for admission in admissions:
-            command = admission["hooks"][0]["command"]
-            self.assertIn("${PLUGIN_ROOT}/hooks/codexy-github-admission.sh", command)
-            self.assertIn("commandWindows", admission["hooks"][0])
+        self.assertEqual(
+            self._admission_contract(hooks["hooks"]["PreToolUse"]),
+            self.expected_pre_tool_use_admissions(),
+        )
         windows = (PLUGIN / "hooks/codexy-github-admission-issue.cmd").read_text(
             encoding="utf-8"
         )
         self.assertIn("DisableDelayedExpansion", windows)
         self.assertIn("%SystemRoot%\\System32\\WindowsPowerShell", windows)
         self.assertNotIn("%*", windows)
-        self.assertIn("commandWindows", hooks["hooks"]["PreToolUse"][0]["hooks"][0])
 
     def test_host_resolved_plugin_hook_adds_context_only_for_github_prompts(
         self,

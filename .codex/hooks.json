@@ -34,28 +34,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/codexy-repository-github-command.sh\" PermissionRequest",
-            "commandWindows": "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) { exit 1 }; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; & (Join-Path $root 'plugins/codexy-github/hooks/codexy-repository-github-command.cmd') PermissionRequest; exit $LASTEXITCODE\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/codexy-destructive-command.sh\" PermissionRequest",
-            "commandWindows": "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) { exit 1 }; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; & (Join-Path $root 'plugins/codexy-github/hooks/codexy-destructive-command.cmd') PermissionRequest; exit $LASTEXITCODE\"",
-            "timeout": 5
-          }
-        ]
       }
     ],
     "PreToolUse": [
@@ -88,28 +66,6 @@
             "type": "command",
             "command": "\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/codexy-repository-merge.sh\" PreToolUse",
             "commandWindows": "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) { exit 1 }; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; & (Join-Path $root 'plugins/codexy-github/hooks/codexy-repository-merge.cmd') PreToolUse; exit $LASTEXITCODE\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/codexy-repository-github-command.sh\" PreToolUse",
-            "commandWindows": "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) { exit 1 }; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; & (Join-Path $root 'plugins/codexy-github/hooks/codexy-repository-github-command.cmd') PreToolUse; exit $LASTEXITCODE\"",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/codexy-destructive-command.sh\" PreToolUse",
-            "commandWindows": "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) { exit 1 }; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) { exit 1 }; & (Join-Path $root 'plugins/codexy-github/hooks/codexy-destructive-command.cmd') PreToolUse; exit $LASTEXITCODE\"",
             "timeout": 5
           }
         ]

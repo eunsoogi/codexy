@@ -9,6 +9,7 @@ OPERATORS = {";", "&&", "||", "|", "&"}
 OPEN = {"(": ")", "{": "}"}
 CLOSE = set(OPEN.values())
 PUNCTUATION = set(";&|(){}")
+UNSUPPORTED_CONTROL_HEADS = {"case", "elif", "for", "until", "while"}
 
 
 class GroupSyntaxError(ValueError):
@@ -26,7 +27,14 @@ class Group:
     body: "Sequence"
 
 
-Node: TypeAlias = Command | Group
+@dataclass(frozen=True)
+class Conditional:
+    condition: "Sequence"
+    then_branch: "Sequence"
+    else_branch: "Sequence | None"
+
+
+Node: TypeAlias = Command | Conditional | Group
 
 
 @dataclass(frozen=True)
@@ -85,6 +93,14 @@ class _Parser:
                 if closing == "}" and current is not None:
                     raise GroupSyntaxError("brace group lacks a command terminator")
                 return self._finish(steps, current, grouped=True)
+            if token == "if" and current is None:
+                self.index += 1
+                current = self._conditional()
+                continue
+            if token in UNSUPPORTED_CONTROL_HEADS and current is None:
+                raise GroupSyntaxError("unsupported control head")
+            if token in {"then", "else", "fi"}:
+                raise GroupSyntaxError("unexpected conditional delimiter")
             if token in OPEN:
                 if (
                     isinstance(current, list)
@@ -121,7 +137,46 @@ class _Parser:
 
     @staticmethod
     def _node(value: Node | list[str]) -> Node:
-        return value if isinstance(value, (Command, Group)) else Command(tuple(value))
+        return (
+            value
+            if isinstance(value, (Command, Conditional, Group))
+            else Command(tuple(value))
+        )
+
+    def _conditional(self) -> Conditional:
+        condition, delimiter = self._control_chunk({"then"})
+        if delimiter != "then":
+            raise GroupSyntaxError("conditional lacks then")
+        then_branch, delimiter = self._control_chunk({"else", "fi"})
+        else_branch = None
+        if delimiter == "else":
+            else_branch, delimiter = self._control_chunk({"fi"})
+        if delimiter != "fi":
+            raise GroupSyntaxError("conditional lacks fi")
+        return Conditional(
+            parse(condition),
+            parse(then_branch),
+            parse(else_branch) if else_branch else None,
+        )
+
+    def _control_chunk(self, delimiters: set[str]) -> tuple[list[str], str]:
+        chunk: list[str] = []
+        nested = 0
+        while self.index < len(self.tokens):
+            token = self.tokens[self.index]
+            if token == "if":
+                nested += 1
+            elif token == "fi":
+                if nested == 0 and token in delimiters:
+                    self.index += 1
+                    return chunk, token
+                nested -= 1
+            elif token in delimiters and nested == 0:
+                self.index += 1
+                return chunk, token
+            chunk.append(token)
+            self.index += 1
+        raise GroupSyntaxError("unterminated conditional")
 
     def _finish(
         self, steps: list[Step], current: Node | list[str] | None, grouped: bool

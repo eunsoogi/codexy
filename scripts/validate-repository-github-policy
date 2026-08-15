@@ -66,8 +66,6 @@ launchers = [
     (r"^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue"),
     (r"^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request"),
     (r"^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge"),
-    (r"^Bash$", "codexy-repository-github-command"),
-    (r"^Bash$", "codexy-destructive-command"),
 ]
 events = value["hooks"]
 if set(events) != {"PermissionRequest", "PreToolUse"}:

@@ -34,8 +34,6 @@ fn write_config(root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>
         ("^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue"),
         ("^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request"),
         ("^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge"),
-        ("^Bash$", "codexy-repository-github-command"),
-        ("^Bash$", "codexy-destructive-command"),
     ];
     let event = |name: &str| groups.iter().map(|(matcher, launcher)| serde_json::json!({"matcher":matcher,"hooks":[{"type":"command","command":format!("\"$(git rev-parse --show-toplevel)/plugins/codexy-github/hooks/{launcher}.sh\" {name}"),"commandWindows":format!("\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -Command \"$git = Join-Path $env:ProgramFiles 'Git\\cmd\\git.exe'; if (-not (Test-Path -LiteralPath $git)) {{ exit 1 }}; $root = & $git rev-parse --show-toplevel; if ($LASTEXITCODE -ne 0 -or -not $root) {{ exit 1 }}; & (Join-Path $root 'plugins/codexy-github/hooks/{launcher}.cmd') {name}; exit $LASTEXITCODE\""),"timeout":5}]})).collect::<Vec<_>>();
     let hooks = serde_json::json!({"description":"Codexy repository GitHub governance hooks.","hooks":{"PermissionRequest":event("PermissionRequest"),"PreToolUse":event("PreToolUse")}});
