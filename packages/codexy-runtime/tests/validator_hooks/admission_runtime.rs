@@ -104,7 +104,7 @@ fn ordinary_launcher_variables_do_not_make_unrelated_commands_opaque() -> TestRe
     let workspace = tempfile::tempdir()?;
     let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
     assert_case(&root, &foreign, "printf '%s\\n' \"$HOME:$PATH:$USER\"", false, &[])?;
-    assert_case(&root, &foreign, "printf '%s\\n' \"$UNKNOWN_RUNTIME_VALUE\"", true, &[])
+    assert_case(&root, &foreign, "printf '%s\\n' \"$UNKNOWN_RUNTIME_VALUE\"", false, &[])
 }
 
 #[test]

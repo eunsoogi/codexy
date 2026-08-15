@@ -11,6 +11,77 @@ PLUGIN = ROOT / "plugins" / "codexy-github"
 
 class GithubNativeHookSupport:
     @staticmethod
+    def expected_pre_tool_use_admissions() -> tuple[
+        tuple[str, tuple[tuple[str, str, str, int], ...]], ...
+    ]:
+        return (
+            (
+                "^mcp__codex_apps__github_(create|update)_issue$",
+                (
+                    (
+                        "command",
+                        '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule issue',
+                        '"${PLUGIN_ROOT}/hooks/codexy-github-admission-issue.cmd"',
+                        5,
+                    ),
+                ),
+            ),
+            (
+                "^mcp__codex_apps__github_create_pull_request$",
+                (
+                    (
+                        "command",
+                        '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule pr',
+                        '"${PLUGIN_ROOT}/hooks/codexy-github-admission-pr.cmd"',
+                        5,
+                    ),
+                ),
+            ),
+            (
+                "^Bash$",
+                (
+                    (
+                        "command",
+                        '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh" PreToolUse',
+                        '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd" PreToolUse',
+                        5,
+                    ),
+                ),
+            ),
+            (
+                "^Bash$",
+                (
+                    (
+                        "command",
+                        '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh" PreToolUse',
+                        '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd" PreToolUse',
+                        5,
+                    ),
+                ),
+            ),
+        )
+
+    @staticmethod
+    def _admission_contract(
+        admissions: list[dict[str, object]],
+    ) -> tuple[tuple[str, tuple[tuple[str, str, str, int], ...]], ...]:
+        return tuple(
+            (
+                admission["matcher"],
+                tuple(
+                    (
+                        hook["type"],
+                        hook["command"],
+                        hook["commandWindows"],
+                        hook["timeout"],
+                    )
+                    for hook in admission["hooks"]
+                ),
+            )
+            for admission in admissions
+        )
+
+    @staticmethod
     def _admission(
         installed: Path,
         environment: dict[str, str],

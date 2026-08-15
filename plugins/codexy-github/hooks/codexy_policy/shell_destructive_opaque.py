@@ -1,14 +1,23 @@
 """Opaque-shell selector owned by destructive-command admission."""
 
-import re
-
 from .execution_context import ExecutionContext
-from .shell_opaque import contains_policy_executable
+from .invocation import Invocation
+from .shell_opaque import (
+    contains_policy_executable,
+    unresolved_alias_transition,
+    unresolved_protected_effect,
+    unresolved_invocation,
+)
 
 
 def owns(command: str, context: ExecutionContext) -> bool:
-    return re.search(
-        r"(?:^|[;&|()\s])(?:cd|source|\.|rm|pushd|popd)(?=$|[;&|()\s])"
-        r"|\b(?:GIT_DIR|GIT_COMMON_DIR)\s*=",
-        command,
-    ) is not None or contains_policy_executable(command, context, "git")
+    return (
+        unresolved_protected_effect(command, context)
+        or unresolved_alias_transition(command, context)
+        or contains_policy_executable(command, context, "git")
+    )
+
+
+def owns_invocation(invocation: Invocation) -> bool:
+    """Classify an already parsed opaque invocation without reparsing its data."""
+    return invocation.executable == "git" or unresolved_invocation(invocation)
