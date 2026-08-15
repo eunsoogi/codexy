@@ -68,10 +68,10 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                 calls,
                 [
                     (codex, "plugin", "marketplace", "list", "--json"),
+                    (codex, "plugin", "list", "--json"),
                     (codex, "plugin", "marketplace", "remove", "codexy", "--json"),
                     add,
                     (codex, "plugin", "marketplace", "list", "--json"),
-                    (codex, "plugin", "list", "--json"),
                     (codex, "plugin", "marketplace", "upgrade", "codexy", "--json"),
                     (codex, "plugin", "marketplace", "list", "--json"),
                     (codex, "plugin", "add", "codexy@codexy", "--json"),

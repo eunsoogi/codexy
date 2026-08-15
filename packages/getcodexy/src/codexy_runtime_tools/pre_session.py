@@ -42,15 +42,29 @@ def run_pre_session(
     _validate_real_path(home, require_exists=False)
 
     target_version = package_version or default_package_version()
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
+    marketplace_root = (
+        _official_marketplace(market) if _named_marketplace(market) else None
+    )
+    existing_marketplace = marketplace_root is not None
+    if existing_marketplace:
+        before = _json(
+            invoke([str(executable), "plugin", "list", "--json"]),
+            "plugin list",
+        )
+        _preflight(before, marketplace_root)
     marketplace_root = reconcile_official_marketplace_root(
-        executable, invoke, target_version, home
+        executable, invoke, target_version, home, market
     )
-
-    before = _json(
-        invoke([str(executable), "plugin", "list", "--json"]),
-        "plugin list",
-    )
-    _preflight(before, marketplace_root)
+    if not existing_marketplace:
+        before = _json(
+            invoke([str(executable), "plugin", "list", "--json"]),
+            "plugin list",
+        )
+        _preflight(before, marketplace_root)
 
     _json(
         invoke(
@@ -116,12 +130,17 @@ def official_marketplace_root(
 
 
 def reconcile_official_marketplace_root(
-    executable: Path, invoke: Runner, target_version: str, home: Path
+    executable: Path,
+    invoke: Runner,
+    target_version: str,
+    home: Path,
+    market: object | None = None,
 ) -> Path:
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
+    if market is None:
+        market = _json(
+            invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+            "marketplace list",
+        )
     if _named_marketplace(market):
         _official_marketplace(market)
         previous_ref, config_snapshot = _marketplace_ref(home)

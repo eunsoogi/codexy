@@ -76,7 +76,11 @@ class PreSessionInstallTests(unittest.TestCase):
             synchronized: list[tuple[Path, Path, str]] = []
             marketplace_root = root / "marketplace"
             plugin = make_plugin(marketplace_root / "plugins/codexy")
-            expected = [*fresh_marketplace_commands(), *commands()[4:]]
+            expected = [
+                *fresh_marketplace_commands(),
+                commands()[1],
+                *commands()[5:],
+            ]
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
                 calls.append(tuple(command))
@@ -175,6 +179,12 @@ class PreSessionInstallTests(unittest.TestCase):
         check: str,
         changed: bool = False,
     ) -> tuple[object, str, str]:
+        home = root / "home/.codex"
+        home.mkdir(parents=True)
+        (home / "config.toml").write_text(
+            '[marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+        )
+
         def synchronize(plugin_root: Path, home: Path, mode: str) -> SyncResult:
             synchronized.append((plugin_root, home, mode))
             return SyncResult(
@@ -192,7 +202,7 @@ class PreSessionInstallTests(unittest.TestCase):
         stderr = io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             result = run_pre_session(
-                root / "home/.codex",
+                home,
                 codex=Path("/trusted/codex"),
                 runner=lambda command: respond(
                     command,
