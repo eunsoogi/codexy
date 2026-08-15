@@ -9,6 +9,9 @@ from importlib.resources import files
 from itertools import combinations
 from typing import Any
 
+from .component_manifest_dependencies import compatible_combinations, has_cycle
+from .component_manifest_values import strings, unique_object
+
 
 SCHEMA = "getcodexy.component-manifest.v1"
 OFFICIAL = "https://github.com/eunsoogi/codexy.git"
@@ -229,50 +232,16 @@ def _combination(value: object, ids: tuple[str, ...], version: str) -> tuple[str
 
 
 def _compatible_combinations(components: tuple[Component, ...]) -> set[tuple[str, ...]]:
-    ids, dependencies = (
-        tuple(component.id for component in components),
-        {component.id: set(component.dependencies) for component in components},
-    )
-    return {
-        subset
-        for size in range(len(ids) + 1)
-        for subset in combinations(ids, size)
-        if all(dependencies[item].issubset(subset) for item in subset)
-    }
+    return compatible_combinations(components)
 
 
 def _has_cycle(components: tuple[Component, ...]) -> bool:
-    dependencies = {component.id: component.dependencies for component in components}
-    visiting, visited = set(), set()
-
-    def visit(component: str) -> bool:
-        if component in visiting:
-            return True
-        if component in visited:
-            return False
-        visiting.add(component)
-        cyclic = any(visit(dependency) for dependency in dependencies[component])
-        visiting.remove(component)
-        visited.add(component)
-        return cyclic
-
-    return any(visit(component) for component in dependencies)
+    return has_cycle(components)
 
 
 def _strings(value: Any, field: str, *, nonempty: bool = False) -> tuple[str, ...]:
-    if (
-        not isinstance(value, list)
-        or (nonempty and not value)
-        or any(not isinstance(item, str) or not item for item in value)
-    ):
-        raise ValueError(f"component manifest {field} must be strings")
-    return tuple(value)
+    return strings(value, field, nonempty=nonempty)
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"component manifest has duplicate key: {key}")
-        result[key] = value
-    return result
+    return unique_object(pairs)
