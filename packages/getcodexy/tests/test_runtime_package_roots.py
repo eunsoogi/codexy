@@ -101,7 +101,9 @@ class RuntimePackageRootTests(unittest.TestCase):
             installed = root / "cache/bin/codexy-mcp-lsp"
             install_package(self.config(archive, selected), root / "cache", installed)
             self.assertEqual(installed.read_bytes(), BINARIES["lsp"])
-            self.assertEqual((root / "cache/plugin.json").read_text(), '{"version":"1.3.0"}')
+            self.assertEqual(
+                (root / "cache/plugin.json").read_text(), '{"version":"1.3.0"}'
+            )
 
     def test_selected_candidate_bootstraps_into_a_fresh_runtime_cache(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -117,11 +119,21 @@ class RuntimePackageRootTests(unittest.TestCase):
             )
             cache = root / "fresh-cache"
             with (
-                mock.patch.dict(os.environ, {
-                    "CODEXY_RUNTIME_CACHE_DIR": str(cache),
-                    "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
-                }, clear=True),
-                mock.patch.object(package, "_download", side_effect=lambda _url, destination: shutil.copyfile(archive, destination)),
+                mock.patch.dict(
+                    os.environ,
+                    {
+                        "CODEXY_RUNTIME_CACHE_DIR": str(cache),
+                        "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
+                    },
+                    clear=True,
+                ),
+                mock.patch.object(
+                    package,
+                    "_download",
+                    side_effect=lambda _url, destination: shutil.copyfile(
+                        archive, destination
+                    ),
+                ),
                 mock.patch.object(runtime, "_execute", side_effect=Executed),
                 self.assertRaises(Executed),
             ):
@@ -134,21 +146,30 @@ class RuntimePackageRootTests(unittest.TestCase):
             root = Path(temporary)
             archive = root / "legacy.tar.gz"
             runtime_name = "codexy-mcp-lsp-linux-x86_64.bin"
-            self.write_archive(archive, {
-                f"plugins/codexy/runtime/{runtime_name}": BINARIES["lsp"],
-                "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
-                "plugins/codexy-github/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
-            })
+            self.write_archive(
+                archive,
+                {
+                    f"plugins/codexy/runtime/{runtime_name}": BINARIES["lsp"],
+                    "plugins/codexy/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
+                    "plugins/codexy-github/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
+                },
+            )
             installed = root / "cache/bin/codexy-mcp-lsp"
             config = SimpleNamespace(
-                package_path=str(archive), package_url="", artifacts_api="",
+                package_path=str(archive),
+                package_url="",
+                artifacts_api="",
                 package_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
-                package_override=True, runtime_name=runtime_name, manifest=root / "plugin.json",
+                package_override=True,
+                runtime_name=runtime_name,
+                manifest=root / "plugin.json",
             )
             install_package(config, root / "cache", installed)
             self.assertEqual(installed.read_bytes(), BINARIES["lsp"])
 
-    def test_candidate_proven_archive_rejects_mixed_core_and_devtools_roots(self) -> None:
+    def test_candidate_proven_archive_rejects_mixed_core_and_devtools_roots(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "mixed.tar.gz"
@@ -156,7 +177,9 @@ class RuntimePackageRootTests(unittest.TestCase):
             selected = self.selected_release(root)
             installed = root / "cache/bin/codexy-mcp-lsp"
             with self.assertRaisesRegex(RuntimeError, "mixed plugin roots"):
-                install_package(self.config(archive, selected), root / "cache", installed)
+                install_package(
+                    self.config(archive, selected), root / "cache", installed
+                )
             self.assertFalse(installed.exists())
 
     @staticmethod
@@ -169,19 +192,28 @@ class RuntimePackageRootTests(unittest.TestCase):
 
     @staticmethod
     def selected_release(root: Path) -> contract.RuntimeRelease:
-        (root / "runtime-release.json").write_text(json.dumps(release()), encoding="utf-8")
+        (root / "runtime-release.json").write_text(
+            json.dumps(release()), encoding="utf-8"
+        )
         return contract.load(root)
 
     @staticmethod
     def config(archive: Path, selected: contract.RuntimeRelease) -> SimpleNamespace:
         return SimpleNamespace(
-            package_path=str(archive), package_url="", artifacts_api="",
+            package_path=str(archive),
+            package_url="",
+            artifacts_api="",
             package_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
-            package_override=False, runtime_name="codexy-mcp-lsp-linux-x86_64.bin",
-            manifest=archive, platform="linux-x86_64", release_contract=selected,
+            package_override=False,
+            runtime_name="codexy-mcp-lsp-linux-x86_64.bin",
+            manifest=archive,
+            platform="linux-x86_64",
+            release_contract=selected,
             source_identity=RuntimeSourceIdentity.create(
-                explicit=None, package_sha256=selected.artifact.sha256,
-                package_url=selected.artifact.url, release=selected,
+                explicit=None,
+                package_sha256=selected.artifact.sha256,
+                package_url=selected.artifact.url,
+                release=selected,
             ),
         )
 

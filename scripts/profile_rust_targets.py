@@ -1,4 +1,5 @@
 """Recover physical Cargo targets and their canonical logical identities."""
+
 from __future__ import annotations
 
 from pathlib import Path

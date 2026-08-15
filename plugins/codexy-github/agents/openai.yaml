@@ -1,8 +1,6 @@
 interface:
   display_name: "Codexy GitHub"
   short_description: "Add generic GitHub workflow to Codexy core."
-  default_prompt:
-    "Use $git-workflow with the public $orchestration contract for GitHub issue, PR, review, and
-    merge work."
+  default_prompt: "Use $git-workflow with the public $orchestration contract for GitHub issue, PR, review, and merge work."
 policy:
   allow_implicit_invocation: true

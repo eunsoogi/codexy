@@ -83,7 +83,7 @@ impl FixtureMatrix {
             write(&expected, path, format!("base:{path}\n").as_bytes())?;
         }
         fs::create_dir_all(seed_repo.join("scripts"))?;
-        fake_sync_version(&seed_repo.join("scripts/sync-plugin-version"))?;
+        fake_sync_version(&seed_repo.join("scripts/sync-plugin-version.sh"))?;
         git(&seed_repo, &["add", "."], &git_starts)?;
         git(&seed_repo, &["commit", "-m", "base"], &git_starts)?;
         git(&seed_repo, &["switch", "-c", "activation"], &git_starts)?;

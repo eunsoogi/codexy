@@ -47,8 +47,17 @@ def has_platform_mutation(source: str) -> bool:
             target = dispatch_target(words, command + 1)
             if target is None or dynamic_executable(target) or target == "eval":
                 return True
-        if name in {"declare", "export", "local", "readonly", "typeset", "unset", "read"} and any(
-            word == "bundled_platforms" or word.startswith("bundled_platforms=") for word in words[command + 1:]
+        if name in {
+            "declare",
+            "export",
+            "local",
+            "readonly",
+            "typeset",
+            "unset",
+            "read",
+        } and any(
+            word == "bundled_platforms" or word.startswith("bundled_platforms=")
+            for word in words[command + 1 :]
         ):
             return True
         if any("${bundled_platforms:=" in word for word in words):
@@ -152,21 +161,25 @@ def heredoc_delimiters(line: str) -> list[tuple[str, bool]]:
             continue
         elif character == "#" and word_start:
             break
-        elif line[index:index + 2] == "<<":
+        elif line[index : index + 2] == "<<":
             index += 2
-            strip_tabs = line[index:index + 1] == "-"
+            strip_tabs = line[index : index + 1] == "-"
             index += int(strip_tabs)
-            while line[index:index + 1] in (" ", "\t"):
+            while line[index : index + 1] in (" ", "\t"):
                 index += 1
-            quoted = line[index:index + 1]
+            quoted = line[index : index + 1]
             if quoted in ("'", '"'):
                 end = line.find(quoted, index + 1)
                 if end < 0:
                     raise ValueError("unterminated heredoc delimiter")
-                delimiter, index = line[index + 1:end], end + 1
+                delimiter, index = line[index + 1 : end], end + 1
             else:
                 end = index
-                while end < len(line) and not line[end].isspace() and line[end] not in ";|&<>()":
+                while (
+                    end < len(line)
+                    and not line[end].isspace()
+                    and line[end] not in ";|&<>()"
+                ):
                     end += 1
                 delimiter, index = line[index:end], end
             if not delimiter or index < 0:

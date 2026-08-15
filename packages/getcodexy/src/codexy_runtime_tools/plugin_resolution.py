@@ -90,7 +90,9 @@ def official_named_install(
         data.get("repository"),
         data.get("version"),
     ) != (name, PLUGIN_REPOSITORY, version):
-        raise ValueError(f"official {name} install identity does not match its manifest")
+        raise ValueError(
+            f"official {name} install identity does not match its manifest"
+        )
     return root, version
 
 
@@ -111,10 +113,7 @@ def _enabled(payload: object, name: str) -> list[dict[str, object]]:
         for item in _items(payload, "installed")
         if isinstance(item, dict)
         and item.get("enabled") is True
-        and (
-            item.get("pluginId") == f"{name}@codexy"
-            or item.get("name") == name
-        )
+        and (item.get("pluginId") == f"{name}@codexy" or item.get("name") == name)
     ]
 
 
@@ -128,13 +127,14 @@ def _require_official(item: dict[str, object], name: str = "codexy") -> None:
         and item.get("enabled") is True
         and isinstance(source, dict)
         and source.get("source") == "local"
-        and item.get("marketplaceSource")
-        == {"sourceType": "git", "source": OFFICIAL}
+        and item.get("marketplaceSource") == {"sourceType": "git", "source": OFFICIAL}
     ):
         raise ValueError(_install_count_error(name, "zero or one"))
 
 
-def _source_root(item: dict[str, object], marketplace_root: Path, name: str = "codexy") -> Path:
+def _source_root(
+    item: dict[str, object], marketplace_root: Path, name: str = "codexy"
+) -> Path:
     source = item.get("source")
     path_value = source.get("path") if isinstance(source, dict) else None
     if not isinstance(path_value, str):

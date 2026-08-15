@@ -25,14 +25,22 @@ class ActivationSnapshot:
         if not home.exists():
             return cls(home, ())
         files: list[Entry] = []
-        for root in (Path("config.toml"), Path("agents/codexy"), Path("agents/codexy-github")):
+        for root in (
+            Path("config.toml"),
+            Path("agents/codexy"),
+            Path("agents/codexy-github"),
+        ):
             files.extend(_capture(home, root))
         for backup in home.glob("config.toml.codexy-backup-*"):
             files.extend(_capture(home, backup.relative_to(home)))
         return cls(home, tuple(files))
 
     def restore(self) -> None:
-        for root in (Path("agents/codexy-github"), Path("agents/codexy"), Path("config.toml")):
+        for root in (
+            Path("agents/codexy-github"),
+            Path("agents/codexy"),
+            Path("config.toml"),
+        ):
             _remove_tree(self.home / root)
         if self.home.exists():
             for backup in self.home.glob("config.toml.codexy-backup-*"):
@@ -45,7 +53,9 @@ class ActivationSnapshot:
                 path.mkdir(mode=entry.mode, exist_ok=True)
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, entry.mode)
+                descriptor = os.open(
+                    path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, entry.mode
+                )
                 with os.fdopen(descriptor, "wb") as output:
                     output.write(entry.data)
         _remove_if_empty(self.home / "agents")

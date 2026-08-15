@@ -34,12 +34,23 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                 },
             )
             for sources in cases:
-                with self.subTest(sources=sorted(sources)), mock.patch.dict(os.environ, {
-                    **sources, "CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64,
-                }, clear=True), self.assertRaisesRegex(SystemExit, "127"):
+                with (
+                    self.subTest(sources=sorted(sources)),
+                    mock.patch.dict(
+                        os.environ,
+                        {
+                            **sources,
+                            "CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64,
+                        },
+                        clear=True,
+                    ),
+                    self.assertRaisesRegex(SystemExit, "127"),
+                ):
                     runtime.Configuration.load("lsp", root, [])
 
-    def test_all_sha_pinned_override_sources_are_independent_and_cache_isolated(self) -> None:
+    def test_all_sha_pinned_override_sources_are_independent_and_cache_isolated(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self._write_selected_release(root)
@@ -48,8 +59,16 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
             digest = hashlib.sha256(archive.read_bytes()).hexdigest()
             for source_name, source_key, source in (
                 ("path", "CODEXY_RUNTIME_PACKAGE_PATH", str(archive)),
-                ("url", "CODEXY_RUNTIME_PACKAGE_URL", "https://example.test/override.tar.gz"),
-                ("artifacts", "CODEXY_RUNTIME_ARTIFACTS_API_URL", "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+                (
+                    "url",
+                    "CODEXY_RUNTIME_PACKAGE_URL",
+                    "https://example.test/override.tar.gz",
+                ),
+                (
+                    "artifacts",
+                    "CODEXY_RUNTIME_ARTIFACTS_API_URL",
+                    "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts",
+                ),
             ):
                 with self.subTest(source=source_name):
                     cache = root / f"cache-{source_name}"
@@ -59,25 +78,45 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                         "CODEXY_RUNTIME_PACKAGE_SHA256": digest,
                         "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
                     }
-                    download = (lambda _url, destination, _token="": shutil.copyfile(archive, destination))
-                    with mock.patch.dict(os.environ, environment, clear=True), \
-                         mock.patch.object(package, "_download", side_effect=download), \
-                         mock.patch.object(package, "_artifact_package", return_value=archive), \
-                         mock.patch.object(runtime, "_execute", side_effect=Executed), \
-                         self.assertRaises(Executed):
+                    download = lambda _url, destination, _token="": shutil.copyfile(
+                        archive, destination
+                    )
+                    with (
+                        mock.patch.dict(os.environ, environment, clear=True),
+                        mock.patch.object(package, "_download", side_effect=download),
+                        mock.patch.object(
+                            package, "_artifact_package", return_value=archive
+                        ),
+                        mock.patch.object(runtime, "_execute", side_effect=Executed),
+                        self.assertRaises(Executed),
+                    ):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
                     marker = next(cache.rglob("runtime-marker.json"))
-                    self.assertEqual(json.loads(marker.read_text())["identity"]["mode"],
-                                     "explicit-override")
-                    with mock.patch.dict(os.environ, {**environment, "UV_OFFLINE": "1"}, clear=True), \
-                         mock.patch.object(runtime, "_execute", side_effect=Executed), \
-                         self.assertRaises(Executed):
+                    self.assertEqual(
+                        json.loads(marker.read_text())["identity"]["mode"],
+                        "explicit-override",
+                    )
+                    with (
+                        mock.patch.dict(
+                            os.environ, {**environment, "UV_OFFLINE": "1"}, clear=True
+                        ),
+                        mock.patch.object(runtime, "_execute", side_effect=Executed),
+                        self.assertRaises(Executed),
+                    ):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
-                    with mock.patch.dict(os.environ, {
-                        "CODEXY_RUNTIME_CACHE_DIR": str(cache), "UV_OFFLINE": "1",
-                        "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
-                    }, clear=True), mock.patch.object(runtime, "_execute") as execute, \
-                         self.assertRaisesRegex(SystemExit, "127"):
+                    with (
+                        mock.patch.dict(
+                            os.environ,
+                            {
+                                "CODEXY_RUNTIME_CACHE_DIR": str(cache),
+                                "UV_OFFLINE": "1",
+                                "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
+                            },
+                            clear=True,
+                        ),
+                        mock.patch.object(runtime, "_execute") as execute,
+                        self.assertRaisesRegex(SystemExit, "127"),
+                    ):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
                     execute.assert_not_called()
 
@@ -90,8 +129,16 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
             digest = hashlib.sha256(archive.read_bytes()).hexdigest()
             for source_name, source_key, source in (
                 ("path", "CODEXY_RUNTIME_PACKAGE_PATH", str(archive)),
-                ("url", "CODEXY_RUNTIME_PACKAGE_URL", "https://example.test/override.tar.gz"),
-                ("artifacts", "CODEXY_RUNTIME_ARTIFACTS_API_URL", "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"),
+                (
+                    "url",
+                    "CODEXY_RUNTIME_PACKAGE_URL",
+                    "https://example.test/override.tar.gz",
+                ),
+                (
+                    "artifacts",
+                    "CODEXY_RUNTIME_ARTIFACTS_API_URL",
+                    "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts",
+                ),
             ):
                 with self.subTest(source=source_name):
                     environment = {
@@ -100,15 +147,25 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                         "CODEXY_RUNTIME_PACKAGE_SHA256": digest,
                         "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
                     }
-                    download = lambda _url, destination, _token="": shutil.copyfile(archive, destination)
-                    with mock.patch.dict(os.environ, environment, clear=True), \
-                         mock.patch.object(package, "_download", side_effect=download), \
-                         mock.patch.object(package, "_artifact_package", return_value=archive), \
-                         mock.patch.object(runtime, "_execute", side_effect=Executed), \
-                         self.assertRaises(Executed):
+                    download = lambda _url, destination, _token="": shutil.copyfile(
+                        archive, destination
+                    )
+                    with (
+                        mock.patch.dict(os.environ, environment, clear=True),
+                        mock.patch.object(package, "_download", side_effect=download),
+                        mock.patch.object(
+                            package, "_artifact_package", return_value=archive
+                        ),
+                        mock.patch.object(runtime, "_execute", side_effect=Executed),
+                        self.assertRaises(Executed),
+                    ):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
-                    installed = next((root / f"cache-{source_name}").rglob("bin/codexy-mcp-lsp"))
-                    self.assertEqual(installed.read_bytes(), b"devtools override runtime")
+                    installed = next(
+                        (root / f"cache-{source_name}").rglob("bin/codexy-mcp-lsp")
+                    )
+                    self.assertEqual(
+                        installed.read_bytes(), b"devtools override runtime"
+                    )
 
     def test_override_admission_failures_do_not_install_a_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -138,11 +195,15 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                     environment = {
                         "CODEXY_RUNTIME_CACHE_DIR": str(cache),
                         "CODEXY_RUNTIME_PACKAGE_PATH": str(archive),
-                        "CODEXY_RUNTIME_PACKAGE_SHA256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                        "CODEXY_RUNTIME_PACKAGE_SHA256": hashlib.sha256(
+                            archive.read_bytes()
+                        ).hexdigest(),
                         "CODEXY_RUNTIME_PLATFORM": "linux-x86_64",
                     }
-                    with mock.patch.dict(os.environ, environment, clear=True), \
-                         self.assertRaisesRegex(SystemExit, "127"):
+                    with (
+                        mock.patch.dict(os.environ, environment, clear=True),
+                        self.assertRaisesRegex(SystemExit, "127"),
+                    ):
                         runtime.run(runtime.Configuration.load("lsp", root, []))
                     self.assertEqual(list(cache.rglob("bin/codexy-mcp-lsp")), [])
 
@@ -185,7 +246,9 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
                 "payloadManifestSha256": hashlib.sha256(encoded).hexdigest(),
             },
         }
-        (root / "runtime-release.json").write_text(json.dumps(release), encoding="utf-8")
+        (root / "runtime-release.json").write_text(
+            json.dumps(release), encoding="utf-8"
+        )
 
     @staticmethod
     def _write_override(archive: Path) -> None:
@@ -197,10 +260,13 @@ class RuntimeSourceIdentityTests(unittest.TestCase):
 
     @staticmethod
     def _write_devtools_override(archive: Path) -> None:
-        RuntimeSourceIdentityTests._write_archive(archive, {
-            "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"name":"codexy-devtools","version":"77.0.0"}',
-            "plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"devtools override runtime",
-        })
+        RuntimeSourceIdentityTests._write_archive(
+            archive,
+            {
+                "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"name":"codexy-devtools","version":"77.0.0"}',
+                "plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin": b"devtools override runtime",
+            },
+        )
 
     @staticmethod
     def _write_archive(archive: Path, files: dict[str, bytes]) -> None:

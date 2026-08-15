@@ -6,6 +6,7 @@ BEGIN = "# BEGIN CODEXY MANAGED AGENTS"
 END = "# END CODEXY MANAGED AGENTS"
 MANAGED = "# CODEXY MANAGED AGENT\n"
 
+
 def find_conflicts(text: str, names: set[str]) -> set[str]:
     text = normalize_config_keys(text, names)
     found = set()
@@ -41,7 +42,9 @@ def normalize_config_keys(text: str, names: set[str]) -> str:
 def diagnostic_lines(
     config: str, installed: dict[str, str], expected: dict[str, str]
 ) -> list[str]:
-    managed = {name: text for name, text in installed.items() if text.startswith(MANAGED)}
+    managed = {
+        name: text for name, text in installed.items() if text.startswith(MANAGED)
+    }
     exact = sum(managed.get(name) == contents for name, contents in expected.items())
     discovery = (
         f"PASS ({exact} marker-owned standalone agents)"
@@ -52,7 +55,13 @@ def diagnostic_lines(
     v2 = multi_agent_v2_values(config)
     namespace = (v2 or {}).get("tool_namespace", "default/unobserved")
     metadata = (v2 or {}).get("hide_spawn_agent_metadata")
-    visible = "true" if metadata == "false" else "false" if metadata == "true" else "unconfirmed"
+    visible = (
+        "true"
+        if metadata == "false"
+        else "false"
+        if metadata == "true"
+        else "unconfirmed"
+    )
     schema = (
         f"CONFIGURED (namespace={namespace}, agent_type-visible={visible})"
         if v2 is not None
@@ -60,8 +69,7 @@ def diagnostic_lines(
     )
     return [
         f"A role-discovery: {discovery}",
-        f"B tool-schema: {schema}; "
-        "fresh-task schema observation is still required",
+        f"B tool-schema: {schema}; fresh-task schema observation is still required",
         "C fork-turns: explicit agent_type requires none or a positive integer; all is incompatible",
     ]
 
@@ -77,7 +85,9 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         if before is not None:
             container_depth += _container_delta(line[closed:]) if closed else 0
             continue
-        delta = _container_delta(line) + (_container_delta(line[closed:]) if closed else 0)
+        delta = _container_delta(line) + (
+            _container_delta(line[closed:]) if closed else 0
+        )
         if multiline is not None:
             container_depth += delta
             continue
@@ -86,7 +96,10 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         if table:
             array_table, key = table
             in_target = not array_table and bool(
-                re.fullmatch(r'''(?:"features"|'features'|features)\s*\.\s*(?:"multi_agent_v2"|'multi_agent_v2'|multi_agent_v2)''', key)
+                re.fullmatch(
+                    r"""(?:"features"|'features'|features)\s*\.\s*(?:"multi_agent_v2"|'multi_agent_v2'|multi_agent_v2)""",
+                    key,
+                )
             )
             found = found or in_target
             continue
@@ -106,6 +119,7 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         elif metadata:
             values["hide_spawn_agent_metadata"] = metadata.group(1)
     return values if found else None
+
 
 def _table_header(line: str) -> tuple[bool, str] | None:
     if not line.startswith("["):
@@ -138,7 +152,7 @@ def _valid_key_path(text: str) -> bool:
         if index == len(text):
             return False
         match = re.match(
-            r'''(?:(?:"(?:\\.|[^"\\])*")|'[^']*'|[A-Za-z0-9_-]+)''', text[index:]
+            r"""(?:(?:"(?:\\.|[^"\\])*")|'[^']*'|[A-Za-z0-9_-]+)""", text[index:]
         )
         if not match:
             return False

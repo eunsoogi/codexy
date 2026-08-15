@@ -112,7 +112,7 @@ impl Fixture {
             workflow_target,
         )?;
         for relative in [
-            "scripts/activate-runtime-contract",
+            "scripts/activate-runtime-contract.sh",
             "scripts/verify-runtime-activation-branch",
         ] {
             fs::copy(

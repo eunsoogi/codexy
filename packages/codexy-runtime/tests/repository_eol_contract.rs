@@ -7,11 +7,11 @@ fn repository_contract_inputs_check_out_with_lf() -> Result<(), Box<dyn std::err
         "README.md",
         "packages/codexy-runtime/Cargo.toml",
         ".github/workflows/rust-test.yml",
-        "scripts/validate-plugin-config",
+        "scripts/validate-plugin-config.sh",
         "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
         "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
         "plugins/codexy-devtools/runtime-release.json",
-        "plugins/codexy/skills/orchestration/scripts/register-codexy-agents",
+        "plugins/codexy/skills/orchestration/scripts/register-codexy-agents.py",
     ];
 
     for input in inputs {

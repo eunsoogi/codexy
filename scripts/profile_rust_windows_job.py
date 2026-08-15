@@ -21,10 +21,17 @@ _INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
 
 class _IoCounters(ctypes.Structure):
-    _fields_ = [(name, ctypes.c_ulonglong) for name in (
-        "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
-        "ReadTransferCount", "WriteTransferCount", "OtherTransferCount",
-    )]
+    _fields_ = [
+        (name, ctypes.c_ulonglong)
+        for name in (
+            "ReadOperationCount",
+            "WriteOperationCount",
+            "OtherOperationCount",
+            "ReadTransferCount",
+            "WriteTransferCount",
+            "OtherTransferCount",
+        )
+    ]
 
 
 class _BasicLimitInformation(ctypes.Structure):
@@ -69,15 +76,47 @@ def _kernel32() -> ctypes.WinDLL:
     handle = wintypes.HANDLE
     pointer = wintypes.LPVOID
     functions = (
-        (kernel32.CreateIoCompletionPort, (handle, handle, ctypes.c_size_t, wintypes.DWORD), handle),
+        (
+            kernel32.CreateIoCompletionPort,
+            (handle, handle, ctypes.c_size_t, wintypes.DWORD),
+            handle,
+        ),
         (kernel32.CreateJobObjectW, (pointer, wintypes.LPCWSTR), handle),
-        (kernel32.SetInformationJobObject, (handle, ctypes.c_int, pointer, wintypes.DWORD), wintypes.BOOL),
+        (
+            kernel32.SetInformationJobObject,
+            (handle, ctypes.c_int, pointer, wintypes.DWORD),
+            wintypes.BOOL,
+        ),
         (kernel32.AssignProcessToJobObject, (handle, handle), wintypes.BOOL),
         (kernel32.TerminateJobObject, (handle, wintypes.UINT), wintypes.BOOL),
-        (kernel32.GetQueuedCompletionStatus, (handle, ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(pointer), wintypes.DWORD), wintypes.BOOL),
-        (kernel32.QueryInformationJobObject, (handle, ctypes.c_int, pointer, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)), wintypes.BOOL),
+        (
+            kernel32.GetQueuedCompletionStatus,
+            (
+                handle,
+                ctypes.POINTER(wintypes.DWORD),
+                ctypes.POINTER(ctypes.c_size_t),
+                ctypes.POINTER(pointer),
+                wintypes.DWORD,
+            ),
+            wintypes.BOOL,
+        ),
+        (
+            kernel32.QueryInformationJobObject,
+            (
+                handle,
+                ctypes.c_int,
+                pointer,
+                wintypes.DWORD,
+                ctypes.POINTER(wintypes.DWORD),
+            ),
+            wintypes.BOOL,
+        ),
         (kernel32.OpenProcess, (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD), handle),
-        (kernel32.QueryFullProcessImageNameW, (handle, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)), wintypes.BOOL),
+        (
+            kernel32.QueryFullProcessImageNameW,
+            (handle, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)),
+            wintypes.BOOL,
+        ),
         (kernel32.CloseHandle, (handle,), wintypes.BOOL),
     )
     for function, argtypes, restype in functions:
@@ -101,7 +140,10 @@ class WindowsJob:
         association = _AssociateCompletionPort(None, self._port)
         _require(
             kernel32.SetInformationJobObject(
-                self._job, _ASSOCIATE_COMPLETION_PORT, ctypes.byref(association), ctypes.sizeof(association)
+                self._job,
+                _ASSOCIATE_COMPLETION_PORT,
+                ctypes.byref(association),
+                ctypes.sizeof(association),
             ),
             "SetInformationJobObject(completion port)",
         )
@@ -109,7 +151,10 @@ class WindowsJob:
         limits.BasicLimitInformation.LimitFlags = _KILL_ON_JOB_CLOSE
         _require(
             kernel32.SetInformationJobObject(
-                self._job, _EXTENDED_LIMIT_INFORMATION, ctypes.byref(limits), ctypes.sizeof(limits)
+                self._job,
+                _EXTENDED_LIMIT_INFORMATION,
+                ctypes.byref(limits),
+                ctypes.sizeof(limits),
             ),
             "SetInformationJobObject(kill on close)",
         )
@@ -121,9 +166,13 @@ class WindowsJob:
         )
 
     def terminate_and_wait(self) -> None:
-        _require(self._kernel32.TerminateJobObject(self._job, 124), "TerminateJobObject")
+        _require(
+            self._kernel32.TerminateJobObject(self._job, 124), "TerminateJobObject"
+        )
         if not self.wait_for_empty_until(time.monotonic() + _CLEANUP_SECONDS):
-            raise TimeoutError("Job Object did not reach active-process-zero after termination")
+            raise TimeoutError(
+                "Job Object did not reach active-process-zero after termination"
+            )
 
     def wait_for_empty_until(self, deadline: float) -> bool:
         transferred = wintypes.DWORD()
@@ -132,7 +181,11 @@ class WindowsJob:
         while True:
             remaining = max(0, int((deadline - time.monotonic()) * 1000))
             completed = self._kernel32.GetQueuedCompletionStatus(
-                self._port, ctypes.byref(transferred), ctypes.byref(key), ctypes.byref(overlapped), remaining
+                self._port,
+                ctypes.byref(transferred),
+                ctypes.byref(key),
+                ctypes.byref(overlapped),
+                remaining,
             )
             if not completed:
                 error = ctypes.get_last_error()
@@ -169,23 +222,35 @@ class WindowsJob:
             error = ctypes.get_last_error()
             if error != _MORE_DATA:
                 raise OSError(error, "QueryInformationJobObject(process ids)")
-            capacity = max(capacity * 2, (returned.value - offset + ctypes.sizeof(ctypes.c_size_t) - 1) // ctypes.sizeof(ctypes.c_size_t))
+            capacity = max(
+                capacity * 2,
+                (returned.value - offset + ctypes.sizeof(ctypes.c_size_t) - 1)
+                // ctypes.sizeof(ctypes.c_size_t),
+            )
 
     def _process_image(self, pid: int) -> dict[str, int | str]:
-        process = self._kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        process = self._kernel32.OpenProcess(
+            _PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+        )
         if not process:
             return {"pid": pid, "error": f"OpenProcess: {ctypes.get_last_error()}"}
         result: dict[str, int | str] = {"pid": pid}
         try:
             length = wintypes.DWORD(32768)
             buffer = ctypes.create_unicode_buffer(length.value)
-            if self._kernel32.QueryFullProcessImageNameW(process, 0, buffer, ctypes.byref(length)):
+            if self._kernel32.QueryFullProcessImageNameW(
+                process, 0, buffer, ctypes.byref(length)
+            ):
                 result["image"] = buffer.value
             else:
-                result["error"] = f"QueryFullProcessImageNameW: {ctypes.get_last_error()}"
+                result["error"] = (
+                    f"QueryFullProcessImageNameW: {ctypes.get_last_error()}"
+                )
         finally:
             if not self._kernel32.CloseHandle(process):
-                result.setdefault("error", f"CloseHandle(process): {ctypes.get_last_error()}")
+                result.setdefault(
+                    "error", f"CloseHandle(process): {ctypes.get_last_error()}"
+                )
         return result
 
     def close(self) -> None:

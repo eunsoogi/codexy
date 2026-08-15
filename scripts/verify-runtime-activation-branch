@@ -41,7 +41,7 @@ verify_case() {
     }
     activator="$CODEXY_TEST_ACTIVATE_RUNTIME"
   else
-    activator="$expected_root/scripts/activate-runtime-contract"
+    activator="$expected_root/scripts/activate-runtime-contract.sh"
     test -f "$activator" && test ! -L "$activator" && test -x "$activator" || {
       printf '%s\n' "verified base is missing its activation contract" >&2
       exit 1
@@ -51,7 +51,7 @@ verify_case() {
     --repo-root "$expected_root" \
     --bootstrap-version "$bootstrap_version" \
     --candidate-receipt "$receipt"
-  sync_version="$expected_root/scripts/sync-plugin-version"
+  sync_version="$expected_root/scripts/sync-plugin-version.sh"
   test -f "$sync_version" && test ! -L "$sync_version" && test -x "$sync_version" || {
     printf '%s\n' "verified base is missing its version-selection contract" >&2
     exit 1

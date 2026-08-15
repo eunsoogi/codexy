@@ -28,7 +28,9 @@ class StagingIdentityTests(unittest.TestCase):
         embedded = candidate()
         embedded["artifact"][field] = value  # type: ignore[index]
         document = release()
-        document["artifact"]["payloadManifestSha256"] = hashlib.sha256(encoded(embedded)).hexdigest()  # type: ignore[index]
+        document["artifact"]["payloadManifestSha256"] = hashlib.sha256(
+            encoded(embedded)
+        ).hexdigest()  # type: ignore[index]
         root, parsed = harness.load(document)
         try:
             with tempfile.TemporaryDirectory() as directory:

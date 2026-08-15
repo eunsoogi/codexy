@@ -50,8 +50,8 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
     let root = repo.path();
     assert_workflow_extraction_with_script(
         root,
-        r#"scripts/validate-plugin-config --check-touched-loc --base-ref "origin/${{ github.base_ref }}""#,
-        "scripts/validate-plugin-config",
+        r#"scripts/validate-plugin-config.sh --check-touched-loc --base-ref "origin/${{ github.base_ref }}""#,
+        "scripts/validate-plugin-config.sh",
         true,
     )?;
     assert_multiline_workflow_extraction(

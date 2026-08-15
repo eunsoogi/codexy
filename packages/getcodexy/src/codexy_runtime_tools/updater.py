@@ -10,7 +10,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
-
 @dataclass(frozen=True)
 class SyncResult:
     mode: str
@@ -84,7 +83,7 @@ def sync_agents(
     _validate_real_path(root, require_exists=True)
     _validate_real_path(home, require_exists=False)
     identity = _identity(root)
-    script = root / "skills/orchestration/scripts/register-codexy-agents"
+    script = root / "skills/orchestration/scripts/register-codexy-agents.py"
     _validate_real_path(script, require_exists=True)
     command = [
         sys.executable,
@@ -165,7 +164,9 @@ def main() -> int:
             return 0
 
         if not args.plugin_root or not args.mode:
-            parser.error("--plugin-root and --mode are required unless --pre-session is used")
+            parser.error(
+                "--plugin-root and --mode are required unless --pre-session is used"
+            )
         result = sync_agents(args.plugin_root, args.codex_home, args.mode)
         print(json.dumps(result.as_dict(), sort_keys=True))
         return 0 if result.status not in {"error", "update_required"} else 1

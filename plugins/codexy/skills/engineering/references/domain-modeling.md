@@ -2,9 +2,8 @@
 
 ## Purpose
 
-Model domain meaning before code shape. MUST keep names, invariants, and ownership boundaries
-aligned with the actual workflow so transport, storage, UI, or framework details MUST NOT leak into
-core decisions.
+Model domain meaning before code shape. MUST keep names, invariants, and ownership boundaries aligned with the actual workflow so transport, storage, UI, or framework details MUST NOT leak into core
+decisions.
 
 ## Workflow
 
@@ -26,8 +25,7 @@ core decisions.
    - UI label or state mapping in presentation,
    - persistence rules in repository or schema code.
 5. MUST choose the smallest change that preserves the model.
-6. MUST prove behavior at the domain boundary and at one crossing surface when data moves through
-   CLI, API, UI, database, queue, filesystem, GitHub, or plugin metadata.
+6. MUST prove behavior at the domain boundary and at one crossing surface when data moves through CLI, API, UI, database, queue, filesystem, GitHub, or plugin metadata.
 
 ## Required Output
 
@@ -46,17 +44,14 @@ Risks:
 - MUST NOT introduce a generic helper if it hides a domain rule.
 - MUST NOT validate the same invariant in many places without naming the owner.
 - MUST NOT rename domain concepts from UI copy alone.
-- MUST NOT refactor across bounded contexts inside a narrow feature branch unless the issue
-  explicitly requires it.
+- MUST NOT refactor across bounded contexts inside a narrow feature branch unless the issue explicitly requires it.
 
 ## Evidence Rules
 
 - Domain tests MUST name the rule, transition, or invariant being protected.
 - Boundary tests MUST prove translation between external shape and domain shape.
-- MUST run integration or real-surface checks when the risk lives at a boundary rather than in pure
-  logic.
-- If a domain term is ambiguous, MUST preserve the ambiguity in notes instead of silently choosing a
-  meaning.
+- MUST run integration or real-surface checks when the risk lives at a boundary rather than in pure logic.
+- If a domain term is ambiguous, MUST preserve the ambiguity in notes instead of silently choosing a meaning.
 
 ## Failure Modes
 

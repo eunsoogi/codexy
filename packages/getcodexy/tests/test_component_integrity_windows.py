@@ -29,9 +29,7 @@ class ComponentIntegrityWindowsTests(unittest.TestCase):
                 return_value=True,
             ):
                 with frozen_component(component, "codexy-github") as frozen:
-                    self.assertTrue(
-                        (frozen / "agents/codexy-weaver.toml").is_file()
-                    )
+                    self.assertTrue((frozen / "agents/codexy-weaver.toml").is_file())
 
     def test_reparse_point_attribute_is_rejected_without_a_windows_host(self) -> None:
         metadata = SimpleNamespace(

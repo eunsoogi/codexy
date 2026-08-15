@@ -25,7 +25,7 @@ fn archive_fixture_reuses_cargo_built_test_binaries() {
 #[test]
 fn validator_wrapper_keeps_its_default_production_cargo_route() {
     let wrapper = std::fs::read_to_string(
-        codexy_runtime::paths::repository_root().join("scripts/validate-plugin-config"),
+        codexy_runtime::paths::repository_root().join("scripts/validate-plugin-config.sh"),
     )
     .expect("validator wrapper");
     assert_eq!(
@@ -59,7 +59,7 @@ fn validator_fixture_uses_cargo_built_binary_when_cargo_is_a_failing_shim()
     if std::env::var_os(CHILD_ENV).is_some() {
         let temp = tempfile::tempdir()?;
         let wrapper =
-            codexy_runtime::paths::repository_root().join("scripts/validate-plugin-config");
+            codexy_runtime::paths::repository_root().join("scripts/validate-plugin-config.sh");
         let output = FixtureCommand::new(&wrapper).arg("--check").output()?;
         assert!(output.status.success(), "{output:?}");
 

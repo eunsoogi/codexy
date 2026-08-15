@@ -40,7 +40,7 @@ jobs:
       - name: Admit selected runtime version advance
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version --admit-version "$VERSION"
+        run: scripts/sync-plugin-version.sh --admit-version "$VERSION"
 
       - name: Validate governing release issue
         env:
@@ -76,12 +76,12 @@ jobs:
       - name: Synchronize plugin version
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version --version "$VERSION"
+        run: scripts/sync-plugin-version.sh --version "$VERSION"
 
       - name: Validate release candidate
         run: |
-          scripts/sync-plugin-version --check
-          scripts/validate-plugin-config --check
+          scripts/sync-plugin-version.sh --check
+          scripts/validate-plugin-config.sh --check
           cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked
           git diff --check
 

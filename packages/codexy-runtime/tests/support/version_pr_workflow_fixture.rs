@@ -149,7 +149,7 @@ fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> 
         "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$*\" >> \"$FIXTURE_STATE/gates.log\"\n",
     )?;
     fs::write(
-        repo.join("scripts/validate-plugin-config"),
+        repo.join("scripts/validate-plugin-config.sh"),
         "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$*\" >> \"$FIXTURE_STATE/gates.log\"\n",
     )?;
     copy_executable(
@@ -158,7 +158,7 @@ fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> 
     )?;
     for path in [
         repo.join("plugins/codexy-github/hooks/codexy-readiness-guard.sh"),
-        repo.join("scripts/validate-plugin-config"),
+        repo.join("scripts/validate-plugin-config.sh"),
     ] {
         executable(&path)?;
     }

@@ -25,19 +25,27 @@ class ObservedInstalledInventory:
     error: str | None
 
 
-def observe_installed_inventory(manifest: ComponentManifest, inventory: object) -> ObservedInstalledInventory:
+def observe_installed_inventory(
+    manifest: ComponentManifest, inventory: object
+) -> ObservedInstalledInventory:
     """Read-only fallback admission when marketplace discovery failed after plugin-list."""
     classified: ClassifiedInstalledInventory | None = None
     records: dict[str, dict[str, object]] = {}
     try:
         classified = classify_installed_inventory(manifest, inventory)
         records = _recognized_records(manifest, classified)
-        return ObservedInstalledInventory(_admit(manifest, classified, records), records, None)
+        return ObservedInstalledInventory(
+            _admit(manifest, classified, records), records, None
+        )
     except ComponentResolutionError as error:
-        return ObservedInstalledInventory(_recognized_selection(manifest, classified), records, error.code)
+        return ObservedInstalledInventory(
+            _recognized_selection(manifest, classified), records, error.code
+        )
 
 
-def _recognized_records(manifest: ComponentManifest, classified: ClassifiedInstalledInventory) -> dict[str, dict[str, object]]:
+def _recognized_records(
+    manifest: ComponentManifest, classified: ClassifiedInstalledInventory
+) -> dict[str, dict[str, object]]:
     records = {}
     for record in classified.records:
         if record.component is not None:
@@ -45,13 +53,26 @@ def _recognized_records(manifest: ComponentManifest, classified: ClassifiedInsta
     return records
 
 
-def _recognized_selection(manifest: ComponentManifest, classified: ClassifiedInstalledInventory | None) -> tuple[str, ...]:
+def _recognized_selection(
+    manifest: ComponentManifest, classified: ClassifiedInstalledInventory | None
+) -> tuple[str, ...]:
     if classified is None:
         return ()
-    return canonical_components(manifest, {record.component.id for record in classified.records if record.component is not None})
+    return canonical_components(
+        manifest,
+        {
+            record.component.id
+            for record in classified.records
+            if record.component is not None
+        },
+    )
 
 
-def _admit(manifest: ComponentManifest, classified: ClassifiedInstalledInventory, records: dict[str, dict[str, object]]) -> tuple[str, ...]:
+def _admit(
+    manifest: ComponentManifest,
+    classified: ClassifiedInstalledInventory,
+    records: dict[str, dict[str, object]],
+) -> tuple[str, ...]:
     for record in classified.records:
         if record.identity is InstalledIdentity.MALFORMED:
             raise ComponentResolutionError("invalid-installed-inventory")
@@ -60,7 +81,12 @@ def _admit(manifest: ComponentManifest, classified: ClassifiedInstalledInventory
         if record.identity is InstalledIdentity.UNKNOWN:
             raise ComponentResolutionError("unknown-installed-component")
         component = record.component
-        if component is None or not record.canonical or not valid_observed_record(record.entry, component, manifest) or sum(item.component is component for item in classified.records) != 1:
+        if (
+            component is None
+            or not record.canonical
+            or not valid_observed_record(record.entry, component, manifest)
+            or sum(item.component is component for item in classified.records) != 1
+        ):
             raise ComponentResolutionError("conflicting-installed-state")
     versions = {str(record["version"]) for record in records.values()}
     if len(versions) > 1:

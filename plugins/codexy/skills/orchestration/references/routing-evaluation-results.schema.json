@@ -13,20 +13,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "task_id",
-          "prompt",
-          "acceptance_oracle",
-          "model",
-          "thinking",
-          "acceptance",
-          "p0_p1_misses",
-          "proof_complete",
-          "repairs_retries",
-          "tokens",
-          "wall_time_ms",
-          "observed_cost_usd"
-        ],
+        "required": ["task_id", "prompt", "acceptance_oracle", "model", "thinking", "acceptance", "p0_p1_misses", "proof_complete", "repairs_retries", "tokens", "wall_time_ms", "observed_cost_usd"],
         "properties": {
           "task_id": { "type": "string" },
           "prompt": { "type": "string" },

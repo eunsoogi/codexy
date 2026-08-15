@@ -180,7 +180,7 @@ cat > "$state_dir/handoff.md" <<EOF
 Verification completed: full release-candidate checks passed before mutation.
 PR #${pr_number} is open for CI and review. This automation does not claim completion or merge readiness.
 EOF
-scripts/validate-plugin-config --check-completion-handoff \
+scripts/validate-plugin-config.sh --check-completion-handoff \
   --handoff-file "$state_dir/handoff.md" \
   --pr-state-file "$state_dir/pr-state.json"
 merge_subject="${title} (#${pr_number})"

@@ -1,15 +1,13 @@
 # Plain-Language User Replies
 
-MUST use this contract for Codexy user-facing progress updates, blockers, completion summaries, and
-next actions in English or Korean. MUST keep exact workflow control and proof in their separate
+MUST use this contract for Codexy user-facing progress updates, blockers, completion summaries, and next actions in English or Korean. MUST keep exact workflow control and proof in their separate
 evidence surfaces.
 
 ## User Summary
 
 - MUST lead with the outcome, problem, or next action.
 - MUST replace unnecessary internal workflow terms with the concrete event they represent.
-- An essential internal term MUST receive a brief adjacent explanation when the exact term
-  materially affects the user's decision or next action.
+- An essential internal term MUST receive a brief adjacent explanation when the exact term materially affects the user's decision or next action.
 - MUST NOT expose an unexplained internal term merely because it appears in the source contract.
 - MUST NOT weaken or omit the underlying requirement when simplifying the summary.
 - MUST keep next-action claims faithful to verified evidence.
@@ -17,8 +15,7 @@ evidence surfaces.
 ## English
 
 - MUST prefer short, direct sentences and ordinary workflow language.
-- MUST describe what changed, what is waiting, or what the user should do rather than naming the
-  internal orchestration mechanism.
+- MUST describe what changed, what is waiting, or what the user should do rather than naming the internal orchestration mechanism.
 
 | Internal term           | Prefer in an English user summary |
 | ----------------------- | --------------------------------- |
@@ -33,8 +30,7 @@ evidence surfaces.
 
 ## Korean
 
-- MUST use natural Korean word order, context-appropriate honorific tone, short sentences, and
-  ordinary connective phrases.
+- MUST use natural Korean word order, context-appropriate honorific tone, short sentences, and ordinary connective phrases.
 - MUST translate the concrete event, not the English workflow noun.
 
 | Internal term           | Prefer in a Korean user summary |
@@ -50,12 +46,9 @@ evidence surfaces.
 
 ## Protected Evidence
 
-- Exact schema names, validator fields, commands, identifiers, and machine-readable evidence MUST
-  remain complete and unchanged.
-- Code, paths, issue/PR numbers, product names, structured receipt fields, and `MUST/MUST NOT`
-  semantics MUST remain exact when they are evidence or copyable technical text.
-- MUST keep protected evidence separate from the user summary. This boundary changes presentation
-  only; it MUST NOT rename internal contracts.
+- Exact schema names, validator fields, commands, identifiers, and machine-readable evidence MUST remain complete and unchanged.
+- Code, paths, issue/PR numbers, product names, structured receipt fields, and `MUST/MUST NOT` semantics MUST remain exact when they are evidence or copyable technical text.
+- MUST keep protected evidence separate from the user summary. This boundary changes presentation only; it MUST NOT rename internal contracts.
 
 ## Examples
 

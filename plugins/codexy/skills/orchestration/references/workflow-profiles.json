@@ -5,13 +5,7 @@
   "profiles": {
     "light": {
       "includes": ["read-only", "documentation", "tiny fixes", "ordinary single-owner mutations"],
-      "doesNotRequire": [
-        "formal classification table",
-        "goal/plan receipts",
-        "multi-agent decisions",
-        "specialist skip rationales",
-        "unavailable-tool explanations"
-      ],
+      "doesNotRequire": ["formal classification table", "goal/plan receipts", "multi-agent decisions", "specialist skip rationales", "unavailable-tool explanations"],
       "requiresFormalEvidence": false
     },
     "standard": {
@@ -24,12 +18,7 @@
       "requiresFormalEvidence": true
     }
   },
-  "formalEvidenceTriggers": [
-    "strict",
-    "durable delegation",
-    "multi-lane ownership",
-    "explicit audit evidence"
-  ],
+  "formalEvidenceTriggers": ["strict", "durable delegation", "multi-lane ownership", "explicit audit evidence"],
   "proofAndReview": {
     "light": "proportionate to the requested mutation and invariant floor",
     "standard": "proportionate planning and proof for non-trivial single-owner work",

@@ -1,4 +1,5 @@
 """Indentation-aware, fail-closed Rust workflow job and step contexts."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -29,7 +30,15 @@ def job_context(
         if indent == 4 and entry is not None:
             key, value = entry
             section, step, step_section = (key if value == "" else ""), None, ""
-            put(job, key, [] if key == "steps" and value == "" else {} if value == "" else scalar(value))
+            put(
+                job,
+                key,
+                []
+                if key == "steps" and value == ""
+                else {}
+                if value == ""
+                else scalar(value),
+            )
             continue
         if section == "steps" and dash:
             step = {}

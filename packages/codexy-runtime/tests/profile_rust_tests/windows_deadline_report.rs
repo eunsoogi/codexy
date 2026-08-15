@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn deadline_report_keeps_unresolved_long_running_test_context(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
     let probe = r#"
 import io
 import pathlib

@@ -74,7 +74,7 @@ if events!=['assign','write','control-close','terminate','wait','job-close']: ra
 #[cfg(windows)]
 #[test]
 fn job_owns_immediate_spawn_before_root_returns() -> Result<(), Box<dyn std::error::Error>> {
-    let profile = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let profile = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
     let probe = r#"
 import json,pathlib,runpy,shutil,subprocess,sys,tempfile,time,types
 profile=pathlib.Path(sys.argv[1]); sys.path.insert(0,str(profile.parent)); module=runpy.run_path(profile)

@@ -17,8 +17,16 @@ from .component_transition_rejections import Rejection, RejectionStage, StateFai
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="getcodexy", allow_abbrev=False)
-    parser.add_argument("--codex", type=Path, help="optional absolute path supplied by the trusted Codex host")
-    parser.add_argument("--codex-home", type=Path, default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")))
+    parser.add_argument(
+        "--codex",
+        type=Path,
+        help="optional absolute path supplied by the trusted Codex host",
+    )
+    parser.add_argument(
+        "--codex-home",
+        type=Path,
+        default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")),
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     for command in ("install", "update", "remove"):
         child = commands.add_parser(command, allow_abbrev=False)
@@ -37,7 +45,12 @@ def main(argv: list[str] | None = None) -> int:
         elif arguments.command == "doctor":
             receipt = doctor(arguments.codex_home, codex=arguments.codex)
         else:
-            receipt = run_operation(arguments.command, tuple(getattr(arguments, "components", ())), arguments.codex_home, arguments.codex)
+            receipt = run_operation(
+                arguments.command,
+                tuple(getattr(arguments, "components", ())),
+                arguments.codex_home,
+                arguments.codex,
+            )
     except PreAdmissionError as error:
         if arguments.command == "bootstrap" and arguments.json_output:
             print(json.dumps(_bootstrap_host_failure(), sort_keys=True))
@@ -51,7 +64,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(receipt, sort_keys=True))
     else:
         print(_human(arguments.command, receipt))
-    unhealthy = arguments.command in {"status", "doctor"} and bool(receipt.get("errors"))
+    unhealthy = arguments.command in {"status", "doctor"} and bool(
+        receipt.get("errors")
+    )
     return 0 if receipt["outcome"] == "completed" and not unhealthy else 2
 
 
@@ -59,24 +74,44 @@ def _human(command: str, receipt: dict[str, object]) -> str:
     if command == "status":
         return "getcodexy status: installed={installed}; inventory={inventory}; consistency={consistency}; errors={errors}".format(
             installed=",".join(receipt.get("installed_components", [])) or "none",
-            inventory=receipt.get("inventory", {}).get("state", "unknown") if isinstance(receipt.get("inventory"), dict) else "unknown",
+            inventory=receipt.get("inventory", {}).get("state", "unknown")
+            if isinstance(receipt.get("inventory"), dict)
+            else "unknown",
             consistency=receipt.get("inventory_consistency", "unknown"),
-            errors=",".join(error.get("code", "unknown") for error in receipt.get("errors", []) if isinstance(error, dict)) or "none",
+            errors=",".join(
+                error.get("code", "unknown")
+                for error in receipt.get("errors", [])
+                if isinstance(error, dict)
+            )
+            or "none",
         )
     if command == "doctor":
         health = receipt.get("component_health", [])
-        summary = ",".join(f"{entry.get('component')}={entry.get('state')}:{entry.get('repair', 'none')}" for entry in health if isinstance(entry, dict)) or "none"
+        summary = (
+            ",".join(
+                f"{entry.get('component')}={entry.get('state')}:{entry.get('repair', 'none')}"
+                for entry in health
+                if isinstance(entry, dict)
+            )
+            or "none"
+        )
         readiness = receipt.get("host_readiness", {})
-        missing = ",".join(readiness.get("missing_requirements", [])) if isinstance(readiness, dict) else "unknown"
+        missing = (
+            ",".join(readiness.get("missing_requirements", []))
+            if isinstance(readiness, dict)
+            else "unknown"
+        )
         return f"getcodexy doctor: health={summary}; missing={missing or 'none'}; errors={','.join(error.get('code', 'unknown') for error in receipt.get('errors', []) if isinstance(error, dict)) or 'none'}"
     return f"getcodexy {command}: {receipt['outcome']}"
 
 
 def _bootstrap_host_failure() -> dict[str, object]:
-    rejection = Rejection.from_failure(RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE)
-    return OperationReceipt.rejected(operation_id(None), "bootstrap", (), (), rejection).encode()
-
-
+    rejection = Rejection.from_failure(
+        RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE
+    )
+    return OperationReceipt.rejected(
+        operation_id(None), "bootstrap", (), (), rejection
+    ).encode()
 
 
 if __name__ == "__main__":

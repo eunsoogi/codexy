@@ -80,28 +80,8 @@
       "source_of_truth",
       "errors"
     ],
-    "required_status_fields": [
-      "schema",
-      "command",
-      "outcome",
-      "inventory",
-      "inventory_consistency",
-      "selected_components",
-      "installed_components",
-      "source_of_truth",
-      "errors"
-    ],
-    "required_doctor_fields": [
-      "schema",
-      "command",
-      "outcome",
-      "inventory",
-      "inventory_consistency",
-      "host_readiness",
-      "component_health",
-      "source_of_truth",
-      "errors"
-    ]
+    "required_status_fields": ["schema", "command", "outcome", "inventory", "inventory_consistency", "selected_components", "installed_components", "source_of_truth", "errors"],
+    "required_doctor_fields": ["schema", "command", "outcome", "inventory", "inventory_consistency", "host_readiness", "component_health", "source_of_truth", "errors"]
   },
   "domain_errors": {
     "unknown-component": "A named component is not core, github, or devtools.",

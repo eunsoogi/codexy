@@ -16,6 +16,7 @@ from .plugin_resolution import (
     preflight_install as _preflight,
 )
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
+
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
@@ -109,7 +110,9 @@ def _find_codex() -> Path:
         raise RuntimeError("official Codex CLI is not on PATH")
     path = Path(candidate).resolve(strict=True)
     if not path.is_absolute() or not path.is_file():
-        raise RuntimeError("official Codex CLI must resolve to an absolute regular file")
+        raise RuntimeError(
+            "official Codex CLI must resolve to an absolute regular file"
+        )
     return path
 
 

@@ -20,13 +20,20 @@ class GitInstallTests(unittest.TestCase):
             ):
                 with self.subTest(repository=repository, revision=revision):
                     config = SimpleNamespace(
-                        server="lsp", manifest=root / "plugin.json",
-                        git_repository=repository, git_ref=revision,
+                        server="lsp",
+                        manifest=root / "plugin.json",
+                        git_repository=repository,
+                        git_ref=revision,
                     )
-                    with mock.patch(
-                        "codexy_runtime_tools.installer.subprocess.run"
-                    ) as cargo, self.assertRaisesRegex(RuntimeError, "Git fallback requires"):
-                        install_git(config, root / "cache", root / "cache/bin/codexy-mcp-lsp")
+                    with (
+                        mock.patch(
+                            "codexy_runtime_tools.installer.subprocess.run"
+                        ) as cargo,
+                        self.assertRaisesRegex(RuntimeError, "Git fallback requires"),
+                    ):
+                        install_git(
+                            config, root / "cache", root / "cache/bin/codexy-mcp-lsp"
+                        )
                     cargo.assert_not_called()
 
     def test_clean_git_ref_can_install_the_module_owned_runtime_package(self) -> None:
@@ -42,21 +49,39 @@ class GitInstallTests(unittest.TestCase):
                 ),
             )
             subprocess.run(["git", "init", "-b", "main"], cwd=source, check=True)
-            subprocess.run(["git", "config", "user.name", "test"], cwd=source, check=True)
             subprocess.run(
-                ["git", "config", "user.email", "test@example.com"], cwd=source, check=True
+                ["git", "config", "user.name", "test"], cwd=source, check=True
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=source,
+                check=True,
             )
             subprocess.run(["git", "add", "."], cwd=source, check=True)
-            subprocess.run(["git", "commit", "-m", "clean module package"], cwd=source, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "clean module package"], cwd=source, check=True
+            )
             revision = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=source, text=True
             ).strip()
             install_root = root / "installed"
             command = [
-                "cargo", "install", "--locked", "--git", source.as_uri(), "--rev", revision,
-                "--root", str(install_root), "--bin", "codexy-mcp-lsp", "codexy-runtime",
+                "cargo",
+                "install",
+                "--locked",
+                "--git",
+                source.as_uri(),
+                "--rev",
+                revision,
+                "--root",
+                str(install_root),
+                "--bin",
+                "codexy-mcp-lsp",
+                "codexy-runtime",
             ]
-            completed = subprocess.run(command, text=True, capture_output=True, timeout=240)
+            completed = subprocess.run(
+                command, text=True, capture_output=True, timeout=240
+            )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertTrue((install_root / "bin/codexy-mcp-lsp").is_file())
             wrong_package = subprocess.run(

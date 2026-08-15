@@ -11,7 +11,7 @@ fn installed_readiness_guard_validates_merge_bodies() -> Result<(), Box<dyn std:
         codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &plugin_root,
     )?;
-    assert!(!plugin_root.join("scripts/validate-plugin-config").exists());
+    assert!(!plugin_root.join("scripts/validate-plugin-config.sh").exists());
     let script = plugin_root.join("hooks/codexy-readiness-guard.sh");
 
     let bad = Command::new(&script)
@@ -98,7 +98,7 @@ fn installed_readiness_guard_validates_pr_labels() -> Result<(), Box<dyn std::er
         codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &plugin_root,
     )?;
-    assert!(!plugin_root.join("scripts/validate-plugin-config").exists());
+    assert!(!plugin_root.join("scripts/validate-plugin-config.sh").exists());
     let script = plugin_root.join("hooks/codexy-readiness-guard.sh");
     let configured = temp.path().join("configured");
     std::fs::create_dir_all(configured.join(".git"))?;

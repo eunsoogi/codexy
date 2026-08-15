@@ -6,7 +6,7 @@ mod archive_inspection_receipts;
 #[test]
 fn windows_timeout_job_releases_writer_before_capture_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests.py");
     let probe = r#"
 import contextlib
 import io

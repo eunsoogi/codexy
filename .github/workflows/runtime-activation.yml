@@ -76,7 +76,7 @@ jobs:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: |
           scripts/activate-runtime-contract --repo-root "$GITHUB_WORKSPACE" --bootstrap-version "$BOOTSTRAP_VERSION" --candidate-receipt "$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json"
-          scripts/sync-plugin-version --version "$BOOTSTRAP_VERSION"
+          scripts/sync-plugin-version.sh --version "$BOOTSTRAP_VERSION"
       - name: Create exactly one activation pull request
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}

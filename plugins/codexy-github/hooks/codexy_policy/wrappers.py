@@ -4,8 +4,46 @@ from __future__ import annotations
 
 
 def sudo_command(args: list[str]) -> list[str] | None:
-    value_options = {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--close-from", "-D", "--chdir", "-R", "--chroot", "-T", "--command-timeout"}
-    flag_options = {"-A", "--askpass", "-b", "--background", "-E", "--preserve-env", "-H", "--set-home", "-K", "--remove-timestamp", "-k", "--reset-timestamp", "-n", "--non-interactive", "-S", "--stdin", "-V", "--version", "-v", "--validate"}
+    value_options = {
+        "-u",
+        "--user",
+        "-g",
+        "--group",
+        "-h",
+        "--host",
+        "-p",
+        "--prompt",
+        "-C",
+        "--close-from",
+        "-D",
+        "--chdir",
+        "-R",
+        "--chroot",
+        "-T",
+        "--command-timeout",
+    }
+    flag_options = {
+        "-A",
+        "--askpass",
+        "-b",
+        "--background",
+        "-E",
+        "--preserve-env",
+        "-H",
+        "--set-home",
+        "-K",
+        "--remove-timestamp",
+        "-k",
+        "--reset-timestamp",
+        "-n",
+        "--non-interactive",
+        "-S",
+        "--stdin",
+        "-V",
+        "--version",
+        "-v",
+        "--validate",
+    }
     while args and args[0].startswith("-"):
         option = args[0]
         if option == "--":
@@ -14,9 +52,24 @@ def sudo_command(args: list[str]) -> list[str] | None:
             if len(args) < 2:
                 return None
             args = args[2:]
-        elif option in flag_options or option.startswith(tuple(item + "=" for item in value_options if item.startswith("--"))) or option.startswith("--preserve-env="):
+        elif (
+            option in flag_options
+            or option.startswith(
+                tuple(item + "=" for item in value_options if item.startswith("--"))
+            )
+            or option.startswith("--preserve-env=")
+        ):
             args = args[1:]
-        elif len(option) > 2 and option[:2] in {"-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T"}:
+        elif len(option) > 2 and option[:2] in {
+            "-u",
+            "-g",
+            "-h",
+            "-p",
+            "-C",
+            "-D",
+            "-R",
+            "-T",
+        }:
             args = args[1:]
         else:
             return None
@@ -53,7 +106,9 @@ def timeout_command(args: list[str]) -> list[str] | None:
             if len(args) < 2:
                 return None
             args = args[2:]
-        elif option in flag_options or option.startswith(("--kill-after=", "--signal=")):
+        elif option in flag_options or option.startswith(
+            ("--kill-after=", "--signal=")
+        ):
             args = args[1:]
         else:
             return None
@@ -107,7 +162,22 @@ def sudo_directory(args: list[str]) -> str | None:
             return option[2:]
         if option == "--":
             return None
-        if option in {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "--close-from", "-R", "--chroot", "-T", "--command-timeout"}:
+        if option in {
+            "-u",
+            "--user",
+            "-g",
+            "--group",
+            "-h",
+            "--host",
+            "-p",
+            "--prompt",
+            "-C",
+            "--close-from",
+            "-R",
+            "--chroot",
+            "-T",
+            "--command-timeout",
+        }:
             args = args[2:]
         else:
             args = args[1:]

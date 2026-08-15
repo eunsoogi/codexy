@@ -55,14 +55,22 @@ def run_github_pre_session(
         reject_disabled(before, name)
     added = [
         identity
-        for identity, name in (("codexy@codexy", "codexy"), ("codexy-github@codexy", "codexy-github"))
+        for identity, name in (
+            ("codexy@codexy", "codexy"),
+            ("codexy-github@codexy", "codexy-github"),
+        )
         if not enabled(before, name)
     ]
     snapshot = ActivationSnapshot.capture(home)
     try:
         for identity in ("codexy@codexy", "codexy-github@codexy"):
-            _json(invoke([str(executable), "plugin", "add", identity, "--json"]), "plugin add")
-        installed = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
+            _json(
+                invoke([str(executable), "plugin", "add", identity, "--json"]),
+                "plugin add",
+            )
+        installed = _json(
+            invoke([str(executable), "plugin", "list", "--json"]), "plugin list"
+        )
         core_root, core_version = official_named_install(
             installed, marketplace_root, release, "codexy"
         )
@@ -71,9 +79,12 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
-        with frozen_component(core_root, "codexy", core_version) as trusted_core, frozen_component(
-            github_root, "codexy-github", github_version
-        ) as trusted_github:
+        with (
+            frozen_component(core_root, "codexy", core_version) as trusted_core,
+            frozen_component(
+                github_root, "codexy-github", github_version
+            ) as trusted_github,
+        ):
             core_changed = activate_core(trusted_core, home, synchronize)
             activate = activate_github or sync_github_agent
             github_changed = activate(trusted_github, home)
@@ -86,9 +97,13 @@ def run_github_pre_session(
         failures.extend(rollback_install(executable, invoke, added))
         if failures:
             joined = ", ".join(failures)
-            raise RuntimeError(f"GitHub activation failed; rollback also failed: {joined}") from error
+            raise RuntimeError(
+                f"GitHub activation failed; rollback also failed: {joined}"
+            ) from error
         raise
-    return GithubPreSessionResult(core_root, github_root, core_version, core_changed or github_changed)
+    return GithubPreSessionResult(
+        core_root, github_root, core_version, core_changed or github_changed
+    )
 
 
 def trusted_codex(path: Path) -> Path:
@@ -125,7 +140,9 @@ def reject_disabled(payload: object, name: str) -> None:
         raise ValueError(f"refusing to change a disabled {name} install")
 
 
-def rollback_install(executable: Path, invoke: Runner, identities: list[str]) -> list[str]:
+def rollback_install(
+    executable: Path, invoke: Runner, identities: list[str]
+) -> list[str]:
     failures = []
     for identity in reversed(identities):
         try:
@@ -152,20 +169,34 @@ def activate_core(root: Path, home: Path, synchronize: CoreSynchronizer) -> bool
 
 def sync_github_agent(root: Path, home: Path) -> bool:
     root = _absolute(root)
-    script = root / "skills/git-workflow/scripts/bootstrap-codexy-github-agent"
+    script = root / "skills/git-workflow/scripts/bootstrap-codexy-github-agent.py"
     _validate_real_path(script, require_exists=True)
     environment = os.environ.copy()
     environment.pop("PYTHONHOME", None)
     environment.pop("PYTHONPATH", None)
     environment["PYTHONNOUSERSITE"] = "1"
     command = [sys.executable, "-B", str(script), "--codex-home", str(home)]
-    current = subprocess.run(command + ["--diagnose"], text=True, capture_output=True, check=False, env=environment)
+    current = subprocess.run(
+        command + ["--diagnose"],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
     if current.returncode == 0 and "D role-discovery: PASS" in current.stdout:
         return False
-    applied = subprocess.run(command, text=True, capture_output=True, check=False, env=environment)
+    applied = subprocess.run(
+        command, text=True, capture_output=True, check=False, env=environment
+    )
     if applied.returncode or "D bootstrap: RESTART_REQUIRED" not in applied.stdout:
         raise RuntimeError("GitHub specialist activation failed")
-    verified = subprocess.run(command + ["--diagnose"], text=True, capture_output=True, check=False, env=environment)
+    verified = subprocess.run(
+        command + ["--diagnose"],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
     if verified.returncode or "D role-discovery: PASS" not in verified.stdout:
         raise RuntimeError("GitHub specialist activation was not verified")
     return True
@@ -174,7 +205,9 @@ def sync_github_agent(root: Path, home: Path) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="codexy-github-install", allow_abbrev=False)
     parser.add_argument(
-        "--codex", type=Path, required=True,
+        "--codex",
+        type=Path,
+        required=True,
         help="absolute path supplied by the trusted Codex host",
     )
     parser.add_argument(

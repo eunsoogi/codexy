@@ -69,18 +69,18 @@ class PreSessionInstallTests(unittest.TestCase):
                 root / "home/.codex",
                 codex=Path("/trusted/codex"),
                 runner=runner,
-                synchronize=lambda root, home, mode: synchronized.append(
-                    (root, home, mode)
-                )
-                or SyncResult(
-                    mode,
-                    "ready",
-                    "codexy",
-                    str(root),
-                    str(home),
-                    False,
-                    False,
-                    (),
+                synchronize=lambda root, home, mode: (
+                    synchronized.append((root, home, mode))
+                    or SyncResult(
+                        mode,
+                        "ready",
+                        "codexy",
+                        str(root),
+                        str(home),
+                        False,
+                        False,
+                        (),
+                    )
                 ),
                 package_version="1.2.2",
             )

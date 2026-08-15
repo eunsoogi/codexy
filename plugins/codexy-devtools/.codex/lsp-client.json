@@ -36,18 +36,7 @@
       "command": ["docker-langserver", "--stdio"]
     },
     "emmet-language-server": {
-      "extensions": [
-        ".html",
-        ".htm",
-        ".css",
-        ".scss",
-        ".less",
-        ".jsx",
-        ".tsx",
-        ".vue",
-        ".svelte",
-        ".astro"
-      ],
+      "extensions": [".html", ".htm", ".css", ".scss", ".less", ".jsx", ".tsx", ".vue", ".svelte", ".astro"],
       "priority": 40,
       "command": ["emmet-language-server", "--stdio"]
     },
@@ -99,13 +88,7 @@
     "julia-language-server": {
       "extensions": [".jl"],
       "priority": 80,
-      "command": [
-        "julia",
-        "--startup-file=no",
-        "--history-file=no",
-        "-e",
-        "using LanguageServer; runserver()"
-      ]
+      "command": ["julia", "--startup-file=no", "--history-file=no", "-e", "using LanguageServer; runserver()"]
     },
     "kotlin-language-server": {
       "extensions": [".kt", ".kts"],
@@ -173,20 +156,7 @@
       "command": ["taplo", "lsp", "stdio"]
     },
     "tailwindcss-language-server": {
-      "extensions": [
-        ".html",
-        ".htm",
-        ".css",
-        ".scss",
-        ".less",
-        ".js",
-        ".jsx",
-        ".ts",
-        ".tsx",
-        ".vue",
-        ".svelte",
-        ".astro"
-      ],
+      "extensions": [".html", ".htm", ".css", ".scss", ".less", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".astro"],
       "priority": 30,
       "command": ["tailwindcss-language-server", "--stdio"]
     },

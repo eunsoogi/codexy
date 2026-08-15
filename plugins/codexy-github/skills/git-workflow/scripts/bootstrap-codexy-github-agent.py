@@ -17,7 +17,11 @@ CORE_SENTINEL = "codexy-sentinel.toml"
 
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument("--codex-home", type=Path, default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")))
+    parser.add_argument(
+        "--codex-home",
+        type=Path,
+        default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")),
+    )
     parser.add_argument("--diagnose", action="store_true")
     parser.add_argument("--uninstall", action="store_true")
     return parser.parse_args()
@@ -36,14 +40,23 @@ def plugin_root() -> Path:
     manifest = root / ".codex-plugin/plugin.json"
     catalog = root / "agents/catalog.toml"
     source = root / "agents" / ROLE
-    for path, label in [(manifest, "manifest"), (catalog, "catalog"), (source, "specialist")]:
+    for path, label in [
+        (manifest, "manifest"),
+        (catalog, "catalog"),
+        (source, "specialist"),
+    ]:
         regular(path, label)
     if '"name": "codexy-github"' not in manifest.read_text(encoding="utf-8"):
         raise ValueError("installed manifest is not codexy-github")
-    if 'agent_files = ["codexy-weaver.toml"]' not in catalog.read_text(encoding="utf-8"):
+    if 'agent_files = ["codexy-weaver.toml"]' not in catalog.read_text(
+        encoding="utf-8"
+    ):
         raise ValueError("installed catalog does not declare the GitHub specialist")
     source_text = source.read_text(encoding="utf-8")
-    if not source_text.startswith('name = "codexy-weaver"\n') or "developer_instructions = \"\"\"" not in source_text:
+    if (
+        not source_text.startswith('name = "codexy-weaver"\n')
+        or 'developer_instructions = """' not in source_text
+    ):
         raise ValueError("installed specialist has an invalid identity")
     return root
 
@@ -52,7 +65,9 @@ def directory(path: Path) -> None:
     if path.exists():
         metadata = path.lstat()
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
-            raise ValueError(f"discovery path must be a directory, not a symlink: {path}")
+            raise ValueError(
+                f"discovery path must be a directory, not a symlink: {path}"
+            )
         return
     directory(path.parent)
     path.mkdir()
@@ -86,11 +101,15 @@ def projection() -> str:
 def require_core(home: Path) -> None:
     sentinel = home.expanduser().absolute() / "agents" / "codexy" / CORE_SENTINEL
     if not sentinel.exists():
-        raise ValueError("Codexy core is not activated; install and bootstrap codexy first")
+        raise ValueError(
+            "Codexy core is not activated; install and bootstrap codexy first"
+        )
     regular(sentinel, "core sentinel projection")
     contents = sentinel.read_text(encoding="utf-8")
-    if not contents.startswith("# CODEXY MANAGED AGENT\nname = \"codexy-sentinel\"\n"):
-        raise ValueError("Codexy core is not activated; install and bootstrap codexy first")
+    if not contents.startswith('# CODEXY MANAGED AGENT\nname = "codexy-sentinel"\n'):
+        raise ValueError(
+            "Codexy core is not activated; install and bootstrap codexy first"
+        )
 
 
 def lock(path: Path) -> int:
@@ -98,7 +117,9 @@ def lock(path: Path) -> int:
     try:
         return os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError as error:
-        raise ValueError(f"another GitHub specialist projection is active: {lock_path}") from error
+        raise ValueError(
+            f"another GitHub specialist projection is active: {lock_path}"
+        ) from error
 
 
 def install(path: Path, expected: str) -> None:
@@ -110,7 +131,11 @@ def install(path: Path, expected: str) -> None:
     try:
         if temporary.exists():
             raise ValueError(f"refusing existing projection temporary: {temporary}")
-        with os.fdopen(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as output:
+        with os.fdopen(
+            os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600),
+            "w",
+            encoding="utf-8",
+        ) as output:
             output.write(expected)
             output.flush()
             os.fsync(output.fileno())
@@ -147,7 +172,11 @@ def main() -> int:
     path = destination(args.codex_home)
     current = read_destination(path)
     if args.diagnose:
-        print("D role-discovery: PASS" if current == expected else "D role-discovery: UPDATE_REQUIRED")
+        print(
+            "D role-discovery: PASS"
+            if current == expected
+            else "D role-discovery: UPDATE_REQUIRED"
+        )
         return 0 if current == expected else 1
     if args.uninstall:
         remove(path)

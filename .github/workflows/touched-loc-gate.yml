@@ -20,6 +20,4 @@ jobs:
         run: git fetch origin "${{ github.base_ref }}"
 
       - name: Validate touched implementation LOC
-        run:
-          scripts/validate-plugin-config --check-touched-loc --base-ref "origin/${{ github.base_ref
-          }}"
+        run: scripts/validate-plugin-config.sh --check-touched-loc --base-ref "origin/${{ github.base_ref }}"

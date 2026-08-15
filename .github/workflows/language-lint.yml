@@ -37,13 +37,10 @@ jobs:
           python-version: "3.12"
       - name: Install Ruff
         if: matrix.language == 'Python'
-        run:
-          "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r
-          tooling/lint-requirements.txt"
+        run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
       - name: Install Rust tools
         if: matrix.language == 'Rust'
-        run:
-          rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
+        run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
       - uses: actions/setup-node@v5
         if: matrix.language == 'Text'
         with:
@@ -92,6 +89,4 @@ jobs:
       - name: Lint PowerShell
         if: matrix.language == 'PowerShell'
         shell: pwsh
-        run:
-          Get-ChildItem -Recurse -Filter *.ps1 | Invoke-ScriptAnalyzer -Severity
-          ParseError,Error,Warning
+        run: Get-ChildItem -Recurse -Filter *.ps1 | Invoke-ScriptAnalyzer -Severity ParseError,Error,Warning

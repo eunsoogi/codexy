@@ -37,7 +37,10 @@ def location(value: str, cwd: str) -> str:
 
 
 def resolved_location(
-    value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], follow_final: bool = True,
+    value: str,
+    cwd: str,
+    paths: tuple[tuple[str, PathState], ...],
+    follow_final: bool = True,
 ) -> str | None:
     """Resolve only modeled symlink traversal for later command-state effects."""
     source = value if os.path.isabs(value) else os.path.join(cwd, value)
@@ -45,7 +48,9 @@ def resolved_location(
     if cursor is None:
         return None
     indexed = dict(paths)
-    for segment in (part for part in source.split(os.path.sep) if part not in {"", "."}):
+    for segment in (
+        part for part in source.split(os.path.sep) if part not in {"", "."}
+    ):
         cursor = _follow_modeled_symlink(cursor, indexed)
         if cursor is None:
             return None
@@ -68,11 +73,17 @@ def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
         return ABSENT
     if stat.S_ISDIR(metadata.st_mode):
         return DIRECTORY
-    return PathState("executable" if stat.S_ISREG(metadata.st_mode) and metadata.st_mode & 0o111 else "regular")
+    return PathState(
+        "executable"
+        if stat.S_ISREG(metadata.st_mode) and metadata.st_mode & 0o111
+        else "regular"
+    )
 
 
 def replace_path_state(
-    paths: tuple[tuple[str, PathState], ...], destination: str, replacement: PathState,
+    paths: tuple[tuple[str, PathState], ...],
+    destination: str,
+    replacement: PathState,
 ) -> tuple[tuple[str, PathState], ...]:
     """Propagate replacement state through dependent links to a fixed point."""
     indexed = dict(paths)
@@ -82,7 +93,10 @@ def replace_path_state(
     while pending:
         ancestor = pending.pop()
         for path, cached in tuple(indexed.items()):
-            if path == ancestor or not (_descends_from(path, ancestor) or _descends_from(cached.target, ancestor)):
+            if path == ancestor or not (
+                _descends_from(path, ancestor)
+                or _descends_from(cached.target, ancestor)
+            ):
                 continue
             dependency = (ancestor, path)
             if dependency in traversed:
@@ -94,15 +108,24 @@ def replace_path_state(
     return tuple(indexed.items())
 
 
-def _dependent_state(path: str, cached: PathState, ancestor: str, paths: dict[str, PathState]) -> PathState:
+def _dependent_state(
+    path: str, cached: PathState, ancestor: str, paths: dict[str, PathState]
+) -> PathState:
     if _descends_from(path, ancestor):
         return OPAQUE
     target = _follow_modeled_symlink(cached.target or "", paths)
     if target is None:
         return OPAQUE
     current = state(target, tuple(paths.items()))
-    return OPAQUE if current.kind == "absent" else PathState(
-        current.kind, current.identity, cached.symlink, cached.target,
+    return (
+        OPAQUE
+        if current.kind == "absent"
+        else PathState(
+            current.kind,
+            current.identity,
+            cached.symlink,
+            cached.target,
+        )
     )
 
 
@@ -115,7 +138,9 @@ def _descends_from(value: str | None, ancestor: str) -> bool:
         return False
 
 
-def mkdir(arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ...]) -> MkdirOutcome:
+def mkdir(
+    arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ...]
+) -> MkdirOutcome:
     parents = False
     while arguments[:1] and arguments[0].startswith("-"):
         option = arguments.pop(0)
@@ -134,12 +159,20 @@ def mkdir(arguments: list[str], cwd: str, paths: tuple[tuple[str, PathState], ..
     return _mkdir_trace(arguments[0], cwd, paths, parents)
 
 
-def _mkdir_trace(value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], parents: bool) -> MkdirOutcome:
+def _mkdir_trace(
+    value: str, cwd: str, paths: tuple[tuple[str, PathState], ...], parents: bool
+) -> MkdirOutcome:
     """Trace mkdir operands lexically: ``x/../y`` creates x before visiting y."""
     source = value if os.path.isabs(value) else os.path.join(cwd, value)
-    segments = [segment for segment in source.split(os.path.sep) if segment not in {"", "."}]
+    segments = [
+        segment for segment in source.split(os.path.sep) if segment not in {"", "."}
+    ]
     if not segments:
-        return MkdirOutcome(SUCCESS, paths) if parents and state(location(value, cwd), paths).kind == "directory" else MkdirOutcome(FAILURE)
+        return (
+            MkdirOutcome(SUCCESS, paths)
+            if parents and state(location(value, cwd), paths).kind == "directory"
+            else MkdirOutcome(FAILURE)
+        )
     indexed = dict(paths)
     cursor = _traversal_root(source)
     if cursor is None:
@@ -199,7 +232,11 @@ def _follow_modeled_symlink(
         current = paths.get(str(link))
         if current is None or not current.symlink:
             continue
-        if current.target is None or str(link) in visited or hops >= MAX_MODELED_LINK_HOPS:
+        if (
+            current.target is None
+            or str(link) in visited
+            or hops >= MAX_MODELED_LINK_HOPS
+        ):
             return None
         suffix = candidate.relative_to(link)
         target = str(Path(current.target) / suffix)

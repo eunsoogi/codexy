@@ -31,29 +31,55 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                 nonlocal marketplace_registered, plugin_adds
                 calls.append(tuple(command))
                 if command[1:4] == ["plugin", "marketplace", "list"]:
-                    payload: object = {"marketplaces": [marketplace(market)] if marketplace_registered else []}
+                    payload: object = {
+                        "marketplaces": [marketplace(market)]
+                        if marketplace_registered
+                        else []
+                    }
                 elif command[1:4] == ["plugin", "marketplace", "add"]:
                     marketplace_registered = True
                     payload = {"ok": True}
                 elif command[1:3] == ["plugin", "list"]:
-                    payload = {"installed": [] if plugin_adds == 0 else [installed(core, "codexy"), installed(github, "codexy-github")]}
+                    payload = {
+                        "installed": []
+                        if plugin_adds == 0
+                        else [
+                            installed(core, "codexy"),
+                            installed(github, "codexy-github"),
+                        ]
+                    }
                 else:
                     plugin_adds += 1
                     payload = {"ok": True}
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
             run_github_pre_session(
-                root / "fresh Codex home", codex=codex, runner=runner,
+                root / "fresh Codex home",
+                codex=codex,
+                runner=runner,
                 synchronize=lambda _root, home, mode: sync_result(mode, home),
-                activate_github=lambda *_: True, package_version="1.3.0",
+                activate_github=lambda *_: True,
+                package_version="1.3.0",
             )
 
-            self.assertEqual(calls[:4], [
-                (str(codex), "plugin", "marketplace", "list", "--json"),
-                (str(codex), "plugin", "marketplace", "add", "eunsoogi/codexy", "--ref", "main", "--json"),
-                (str(codex), "plugin", "marketplace", "list", "--json"),
-                (str(codex), "plugin", "list", "--json"),
-            ])
+            self.assertEqual(
+                calls[:4],
+                [
+                    (str(codex), "plugin", "marketplace", "list", "--json"),
+                    (
+                        str(codex),
+                        "plugin",
+                        "marketplace",
+                        "add",
+                        "eunsoogi/codexy",
+                        "--ref",
+                        "main",
+                        "--json",
+                    ),
+                    (str(codex), "plugin", "marketplace", "list", "--json"),
+                    (str(codex), "plugin", "list", "--json"),
+                ],
+            )
 
 
 def copy_plugin(marketplace_root: Path, name: str) -> Path:
@@ -71,16 +97,38 @@ def executable(root: Path) -> Path:
 
 
 def marketplace(root: Path) -> dict[str, object]:
-    return {"name": "codexy", "root": str(root), "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}
+    return {
+        "name": "codexy",
+        "root": str(root),
+        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+    }
 
 
 def installed(root: Path, name: str) -> dict[str, object]:
-    return {"pluginId": f"{name}@codexy", "name": name, "marketplaceName": "codexy", "version": "1.3.0", "installed": True, "enabled": True, "source": {"source": "local", "path": str(root)}, "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}
+    return {
+        "pluginId": f"{name}@codexy",
+        "name": name,
+        "marketplaceName": "codexy",
+        "version": "1.3.0",
+        "installed": True,
+        "enabled": True,
+        "source": {"source": "local", "path": str(root)},
+        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+    }
 
 
 def sync_result(mode: str, home: Path) -> SyncResult:
     status = "update_required" if mode == "check" else "completed"
-    return SyncResult(mode, status, "codexy", "test", str(home), mode == "install", mode == "install", ())
+    return SyncResult(
+        mode,
+        status,
+        "codexy",
+        "test",
+        str(home),
+        mode == "install",
+        mode == "install",
+        (),
+    )
 
 
 if __name__ == "__main__":

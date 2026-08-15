@@ -46,7 +46,9 @@ def receipt_environment(root: Path):
             os.environ[RECEIPT_DIRECTORY_ENV] = previous
 
 
-def receipt_report(directory: Path) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+def receipt_report(
+    directory: Path,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     receipts = load_archive_inspection_receipts(directory)
     return receipts, rank_archive_inspection_receipts(receipts)
 
@@ -85,13 +87,20 @@ def load_archive_inspection_receipts(directory: Path) -> list[dict[str, object]]
     )
 
 
-def rank_archive_inspection_receipts(receipts: list[dict[str, object]]) -> list[dict[str, object]]:
+def rank_archive_inspection_receipts(
+    receipts: list[dict[str, object]],
+) -> list[dict[str, object]]:
     groups: dict[tuple[object, ...], dict[str, object]] = {}
     for receipt in receipts:
         key = tuple(receipt[name] for name in GROUP_FIELDS)
         group = groups.setdefault(
             key,
-            {**dict(zip(GROUP_FIELDS, key)), "invocations": 0, "total_duration_us": 0, "max_duration_us": 0},
+            {
+                **dict(zip(GROUP_FIELDS, key)),
+                "invocations": 0,
+                "total_duration_us": 0,
+                "max_duration_us": 0,
+            },
         )
         duration = int(receipt["duration_us"])
         group["invocations"] = int(group["invocations"]) + 1
@@ -110,5 +119,7 @@ def valid_receipt(receipt: object) -> bool:
     return (
         isinstance(receipt, dict)
         and receipt.get("schema") == SCHEMA
-        and all(type(receipt.get(name)) is expected for name, expected in FIELDS.items())
+        and all(
+            type(receipt.get(name)) is expected for name, expected in FIELDS.items()
+        )
     )

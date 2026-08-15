@@ -20,7 +20,11 @@ def forbidden(request: Request) -> bool:
         os.environ.get("GH_REPO") or None,
         os.environ.get("GIT_DIR") or None,
         os.environ.get("GIT_COMMON_DIR") or None,
-        tuple((key, value) for key, value in os.environ.items() if key.startswith("GIT_CONFIG_")),
+        tuple(
+            (key, value)
+            for key, value in os.environ.items()
+            if key.startswith("GIT_CONFIG_")
+        ),
         runtime_environment=tuple(
             (key, os.environ.get(key, "")) for key in ("HOME", "PATH", "USER")
         ),

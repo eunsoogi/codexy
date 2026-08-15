@@ -84,7 +84,11 @@ def policy_identity(cwd: str | None = None) -> tuple[str, str, str] | None:
         data = json.loads(text, object_pairs_hook=_unique_object)
     except (ValueError, json.JSONDecodeError):
         return None
-    repository = data.get("repository") if set(data) == {"schema", "repository"} and data.get("schema") == POLICY_SCHEMA else None
+    repository = (
+        data.get("repository")
+        if set(data) == {"schema", "repository"} and data.get("schema") == POLICY_SCHEMA
+        else None
+    )
     if not isinstance(repository, str) or REPOSITORY_NAME.fullmatch(repository) is None:
         return None
     owner, name = repository.split("/", 1)

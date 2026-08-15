@@ -74,8 +74,13 @@ def _string(query: str, index: int) -> int | None:
             escape = query[index + 1]
             if escape in '"\\/bfnrt':
                 index += 2
-            elif escape == "u" and index + 5 < len(query) and all(
-                digit in "0123456789abcdefABCDEF" for digit in query[index + 2 : index + 6]
+            elif (
+                escape == "u"
+                and index + 5 < len(query)
+                and all(
+                    digit in "0123456789abcdefABCDEF"
+                    for digit in query[index + 2 : index + 6]
+                )
             ):
                 index += 6
             else:
@@ -123,4 +128,8 @@ def _number(query: str, index: int) -> int | None:
             index += 1
         if index == exponent:
             return None
-    return index if index == len(query) or not (query[index].isalnum() or query[index] == "_") else None
+    return (
+        index
+        if index == len(query) or not (query[index].isalnum() or query[index] == "_")
+        else None
+    )

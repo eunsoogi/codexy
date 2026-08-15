@@ -41,7 +41,9 @@ def deny(event: str, diagnostic: str, code: str) -> bytes:
             "permissionDecision": "deny",
             "permissionDecisionReason": reason,
         }
-    return (json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n").encode()
+    return (
+        json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n"
+    ).encode()
 
 
 def evaluate(

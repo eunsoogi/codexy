@@ -22,6 +22,7 @@ _UNOBSERVED = "not-observed"
 _FAMILIES = ("git", "python", "shell", "validator", "other")
 _POLL_SECONDS = 0.02
 
+
 def stop_workload(process: object, job: object | None) -> None:
     if job is not None:
         job.terminate_and_wait()
@@ -29,6 +30,7 @@ def stop_workload(process: object, job: object | None) -> None:
     if process.poll() is None:
         os.killpg(process.pid, signal.SIGKILL)
         process.wait()
+
 
 class RuntimeTelemetry:
     def __init__(
@@ -58,7 +60,16 @@ class RuntimeTelemetry:
             self._thread.join()
         if self._error is not None:
             raise self._error
-        return json.dumps(receipt(self._declared, self._events, self._environment, [], family_max=self._families), sort_keys=True)
+        return json.dumps(
+            receipt(
+                self._declared,
+                self._events,
+                self._environment,
+                [],
+                family_max=self._families,
+            ),
+            sort_keys=True,
+        )
 
     def _observe(
         self, capture_path: Path, process: object, snapshot: Callable[[], object]
@@ -90,7 +101,10 @@ class RuntimeTelemetry:
             target = target_name(line)
             self._events.append((target, "started", elapsed(self._started)))
         elif line.lstrip().startswith("test result: "):
-            started = next((event for event in reversed(self._events) if event[1] == "started"), None)
+            started = next(
+                (event for event in reversed(self._events) if event[1] == "started"),
+                None,
+            )
             if started is not None:
                 self._events.append((started[0], "ended", elapsed(self._started)))
 
@@ -115,7 +129,9 @@ def receipt(
         existing = seen.setdefault(pid, image)
         if existing != image:
             raise ValueError(f"duplicate process pid with different image: {pid}")
-    families = family_max if family_max is not None else family_counts(list(seen.items()))
+    families = (
+        family_max if family_max is not None else family_counts(list(seen.items()))
+    )
     targets = target_records(declared, parsed)
     return {
         "schema": "codexy.rust-runtime-telemetry/v1",
@@ -123,7 +139,10 @@ def receipt(
         "targets": targets,
         "ranked_completed_targets": sorted(
             (record for record in targets if record["state"] == "completed"),
-            key=lambda record: (-float(record["elapsed_seconds"]), str(record["target"])),
+            key=lambda record: (
+                -float(record["elapsed_seconds"]),
+                str(record["target"]),
+            ),
         ),
         "process_families": families,
         "process_observation": "bounded-snapshot-max-family-concurrency",
@@ -141,7 +160,11 @@ def parse_events(
         target, state, moment = event
         if not isinstance(target, str) or not valid_target(target, known):
             raise ValueError(f"unknown target record: {target!r}")
-        if state not in {"started", "ended"} or not isinstance(moment, (int, float)) or moment < 0:
+        if (
+            state not in {"started", "ended"}
+            or not isinstance(moment, (int, float))
+            or moment < 0
+        ):
             raise ValueError("malformed target record")
         values = parsed.setdefault(target, {})
         if state in values or (state == "ended" and "started" not in values):
@@ -158,7 +181,13 @@ def target_records(
     for target in ordered:
         values = parsed.get(target, {})
         started, ended = values.get("started"), values.get("ended")
-        state = "completed" if ended is not None else "started" if started is not None else "not-started"
+        state = (
+            "completed"
+            if ended is not None
+            else "started"
+            if started is not None
+            else "not-started"
+        )
         records.append(
             {
                 "target": target,
@@ -189,7 +218,11 @@ def process_records(value: object) -> list[tuple[int, str]]:
         if not isinstance(entry, dict):
             raise ValueError("unknown process record")
         if set(entry) == {"pid", "error"}:
-            if not isinstance(entry["pid"], int) or entry["pid"] <= 0 or not isinstance(entry["error"], str):
+            if (
+                not isinstance(entry["pid"], int)
+                or entry["pid"] <= 0
+                or not isinstance(entry["error"], str)
+            ):
                 raise ValueError("malformed process records")
             continue
         if set(entry) == {"pid", "ppid", "command"}:
@@ -198,7 +231,12 @@ def process_records(value: object) -> list[tuple[int, str]]:
             pid, image = entry["pid"], entry["image"]
         else:
             raise ValueError("unknown process record")
-        if not isinstance(pid, int) or pid <= 0 or not isinstance(image, str) or not image:
+        if (
+            not isinstance(pid, int)
+            or pid <= 0
+            or not isinstance(image, str)
+            or not image
+        ):
             raise ValueError("malformed process records")
         records.append((pid, image))
     if len({pid for pid, _ in records}) != len(records):
@@ -223,7 +261,16 @@ def process_family(image: str) -> str:
         return "git"
     if name in {"python", "python.exe", "python3", "python3.exe", "py", "py.exe"}:
         return "python"
-    if name in {"sh", "sh.exe", "bash", "bash.exe", "cmd", "cmd.exe", "pwsh", "pwsh.exe"}:
+    if name in {
+        "sh",
+        "sh.exe",
+        "bash",
+        "bash.exe",
+        "cmd",
+        "cmd.exe",
+        "pwsh",
+        "pwsh.exe",
+    }:
         return "shell"
     if name.startswith("codexy-validate"):
         return "validator"

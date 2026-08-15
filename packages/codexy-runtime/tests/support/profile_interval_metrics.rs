@@ -221,7 +221,7 @@ pub(crate) fn command_family(program: &OsStr) -> &'static str {
         "sh" | "sh.exe" | "bash" | "bash.exe" | "cmd" | "cmd.exe" | "pwsh" | "pwsh.exe"
     ) {
         "shell"
-    } else if name.starts_with("codexy-validate") || name == "validate-plugin-config" {
+    } else if name.starts_with("codexy-validate") || name == "validate-plugin-config.sh" {
         "validator"
     } else {
         "other"

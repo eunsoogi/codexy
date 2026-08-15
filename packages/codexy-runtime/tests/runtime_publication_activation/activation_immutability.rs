@@ -7,7 +7,7 @@ use super::activation_bytes;
 #[test]
 fn invalid_activation_is_byte_identical() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
-    let gate = root.join("scripts/activate-runtime-contract");
+    let gate = root.join("scripts/activate-runtime-contract.sh");
     assert!(
         gate.is_file(),
         "missing activation gate entrypoint: {}",

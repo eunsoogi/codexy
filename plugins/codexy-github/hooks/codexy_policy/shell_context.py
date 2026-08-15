@@ -25,7 +25,13 @@ def changed_directory(tokens: list[str], cwd: str) -> DirectoryChange:
     command = name(tokens[0])
     if command in {"popd", "pushd"}:
         args = _without_redirections(tokens[1:])
-        if command == "popd" or args is None or len(args) != 1 or not args[0] or args[0].startswith(("+", "-")):
+        if (
+            command == "popd"
+            or args is None
+            or len(args) != 1
+            or not args[0]
+            or args[0].startswith(("+", "-"))
+        ):
             return DirectoryChange(cwd, True)
         return DirectoryChange(resolve_cwd(cwd, args[0]))
     if command != "cd":
@@ -75,11 +81,20 @@ def _without_redirections(args: list[str]) -> list[str] | None:
 
 
 def command_option(value: str) -> bool:
-    return value.lower() in {"-command", "/c"} or (value.startswith("-") and not value.startswith("--") and "c" in value.lower()[1:])
+    return value.lower() in {"-command", "/c"} or (
+        value.startswith("-")
+        and not value.startswith("--")
+        and "c" in value.lower()[1:]
+    )
 
 
 def flag(args: list[str], short: str, long: str) -> bool:
-    return any(arg == long or arg.startswith(long + "=") or (arg.startswith("-") and not arg.startswith("--") and short in arg[1:]) for arg in args)
+    return any(
+        arg == long
+        or arg.startswith(long + "=")
+        or (arg.startswith("-") and not arg.startswith("--") and short in arg[1:])
+        for arg in args
+    )
 
 
 def name(value: str) -> str:

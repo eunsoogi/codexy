@@ -15,7 +15,11 @@ class PullRequestSelector:
 def pull_request(value: str) -> PullRequestSelector | None:
     if value.isascii() and value.isdigit() and int(value) > 0:
         return PullRequestSelector(None, int(value))
-    match = re.fullmatch(r"https://github\.com/([^/\s]+)/([^/\s]+)/pull/([1-9][0-9]*)/?", value)
+    match = re.fullmatch(
+        r"https://github\.com/([^/\s]+)/([^/\s]+)/pull/([1-9][0-9]*)/?", value
+    )
     if match is None:
         return None
-    return PullRequestSelector(f"{match.group(1)}/{match.group(2)}", int(match.group(3)))
+    return PullRequestSelector(
+        f"{match.group(1)}/{match.group(2)}", int(match.group(3))
+    )

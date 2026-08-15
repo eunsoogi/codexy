@@ -106,7 +106,9 @@ def parse_body_closing_references(
         else:
             owner_repository, marker, number_text = token.rpartition("#")
             if not marker:
-                raise ValueError("observed PR body contains a malformed closing reference")
+                raise ValueError(
+                    "observed PR body contains a malformed closing reference"
+                )
             try:
                 owner, name = parse_repository(owner_repository)
             except ValueError as error:
@@ -171,12 +173,21 @@ class ObservedVersionPrIdentity:
         return cls(branch, issue, labels, body)
 
     @staticmethod
-    def _validate_reference_repository(reference: dict[str, object], repository: str) -> None:
+    def _validate_reference_repository(
+        reference: dict[str, object], repository: str
+    ) -> None:
         expected_owner, expected_name = parse_repository(repository)
-        observed = require_object(reference.get("repository"), "closing issue repository")
+        observed = require_object(
+            reference.get("repository"), "closing issue repository"
+        )
         owner = require_object(observed.get("owner"), "closing issue repository owner")
-        if observed.get("name") != expected_name or owner.get("login") != expected_owner:
-            raise ValueError(f"observed closing issue reference must belong to {repository}")
+        if (
+            observed.get("name") != expected_name
+            or owner.get("login") != expected_owner
+        ):
+            raise ValueError(
+                f"observed closing issue reference must belong to {repository}"
+            )
 
     @staticmethod
     def _labels(value: object) -> tuple[str, ...]:

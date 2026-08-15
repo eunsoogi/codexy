@@ -58,7 +58,7 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
         .and_then(Value::as_sequence)
         .ok_or("version-bump steps")?;
     let sync = named_step_run(steps, "Synchronize plugin version")?;
-    assert_eq!(sync, "scripts/sync-plugin-version --version \"$VERSION\"");
+    assert_eq!(sync, "scripts/sync-plugin-version.sh --version \"$VERSION\"");
     let open_pr = named_step_run(steps, "Open version bump pull request")?;
     assert_eq!(open_pr, "scripts/reconcile-version-pr");
     let adapter = std::fs::read_to_string(root.join(open_pr))?;
@@ -84,7 +84,7 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
     assert!(admission < mutation);
     assert_eq!(
         steps[admission]["run"],
-        "scripts/sync-plugin-version --admit-version \"$VERSION\""
+        "scripts/sync-plugin-version.sh --admit-version \"$VERSION\""
     );
     assert!(
         staging

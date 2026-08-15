@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory() as directory:
     else:
         raise SystemExit("receipt schema omission was accepted")
 repository = path.parent.parent
-profiler = repository / "scripts" / "profile-rust-tests"
+profiler = repository / "scripts" / "profile-rust-tests.py"
 profiler_source = profiler.read_text(encoding="utf-8")
 if "if \"--shard\" in sys.argv or \"--aggregate-receipts\" in sys.argv:" in profiler_source:
     raise SystemExit("registered shards bypass the profiler lifecycle")

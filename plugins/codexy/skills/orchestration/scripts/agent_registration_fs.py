@@ -49,7 +49,9 @@ class Transaction:
     def _mutated(self) -> None:
         self.mutations += 1
         if self.fail_after and self.mutations == self.fail_after:
-            raise RuntimeError(f"injected registration failure after {self.mutations} mutations")
+            raise RuntimeError(
+                f"injected registration failure after {self.mutations} mutations"
+            )
 
     def rollback(self) -> None:
         errors = []
@@ -140,7 +142,9 @@ def directory(path: Path, missing_ok: bool = False) -> None:
             return
         raise
     if is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
-        raise ValueError(f"{path} must be a real directory, not a symlink or reparse point")
+        raise ValueError(
+            f"{path} must be a real directory, not a symlink or reparse point"
+        )
 
 
 def directory_path(path: Path, missing_ok: bool = False) -> list[Path]:
@@ -198,9 +202,13 @@ def _trusted_parts(path: Path) -> tuple[Path, tuple[str, ...]]:
     top_level = boundary / parts[1]
     metadata = os.lstat(top_level)
     if os.name == "nt" and is_link(metadata):
-        raise ValueError(f"trusted registration boundary cannot be a reparse point: {top_level}")
+        raise ValueError(
+            f"trusted registration boundary cannot be a reparse point: {top_level}"
+        )
     if os.name != "nt" and metadata.st_uid != 0:
-        raise ValueError(f"trusted registration boundary must be root-owned: {top_level}")
+        raise ValueError(
+            f"trusted registration boundary must be root-owned: {top_level}"
+        )
     boundary = top_level.resolve(strict=True)
     directory(boundary)
     return boundary, parts[2:]

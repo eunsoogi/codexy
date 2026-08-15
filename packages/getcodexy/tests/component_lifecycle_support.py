@@ -10,11 +10,48 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 
 class fixture:
-    def __init__(self, selection: set[str] | None = None, *, fail_add: str | None = None, fail_remove: str | None = None, fail_upgrade: bool = False, interrupt_add: str | None = None, marketplace_present: bool = True, inventory_override: object | None = None, inventory_responses: list[object] | None = None, versions: dict[str, str] | None = None) -> None:
-        self.selection, self.fail_add, self.fail_remove, self.fail_upgrade, self.interrupt_add, self.marketplace_present, self.inventory_override, self.inventory_responses, self.versions = selection or set(), fail_add, fail_remove, fail_upgrade, interrupt_add, marketplace_present, inventory_override, list(inventory_responses or ()), versions or {}
+    def __init__(
+        self,
+        selection: set[str] | None = None,
+        *,
+        fail_add: str | None = None,
+        fail_remove: str | None = None,
+        fail_upgrade: bool = False,
+        interrupt_add: str | None = None,
+        marketplace_present: bool = True,
+        inventory_override: object | None = None,
+        inventory_responses: list[object] | None = None,
+        versions: dict[str, str] | None = None,
+    ) -> None:
+        (
+            self.selection,
+            self.fail_add,
+            self.fail_remove,
+            self.fail_upgrade,
+            self.interrupt_add,
+            self.marketplace_present,
+            self.inventory_override,
+            self.inventory_responses,
+            self.versions,
+        ) = (
+            selection or set(),
+            fail_add,
+            fail_remove,
+            fail_upgrade,
+            interrupt_add,
+            marketplace_present,
+            inventory_override,
+            list(inventory_responses or ()),
+            versions or {},
+        )
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
-        self.home, self.marketplace, self.calls, self.mutations = self.root / "home", self.root / "marketplace", [], []
+        self.home, self.marketplace, self.calls, self.mutations = (
+            self.root / "home",
+            self.root / "marketplace",
+            [],
+            [],
+        )
         self.marketplace.mkdir()
         self.codex = self.root / "trusted/codex"
         self.codex.parent.mkdir(parents=True)
@@ -31,7 +68,17 @@ class fixture:
         tail = tuple(command[1:])
         self.calls.append(tail)
         if tail == ("plugin", "marketplace", "list", "--json"):
-            entries = [] if not self.marketplace_present else [{"name": "codexy", "root": str(self.marketplace), "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}]
+            entries = (
+                []
+                if not self.marketplace_present
+                else [
+                    {
+                        "name": "codexy",
+                        "root": str(self.marketplace),
+                        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+                    }
+                ]
+            )
             payload: object = {"marketplaces": entries}
         elif tail[:3] == ("plugin", "marketplace", "add"):
             self.marketplace_present = True
@@ -45,7 +92,23 @@ class fixture:
             self.versions = {component: "1.3.0" for component in self.selection}
             payload = {"ok": True}
         elif tail == ("plugin", "list", "--json"):
-            payload = self.inventory_responses.pop(0) if self.inventory_responses else self.inventory_override if self.inventory_override is not None else {"installed": [installed(self.marketplace, component, self.versions.get(component, "1.3.0")) for component in ("core", "github", "devtools") if component in self.selection]}
+            payload = (
+                self.inventory_responses.pop(0)
+                if self.inventory_responses
+                else self.inventory_override
+                if self.inventory_override is not None
+                else {
+                    "installed": [
+                        installed(
+                            self.marketplace,
+                            component,
+                            self.versions.get(component, "1.3.0"),
+                        )
+                        for component in ("core", "github", "devtools")
+                        if component in self.selection
+                    ]
+                }
+            )
         elif tail[:2] == ("plugin", "add"):
             plugin = tail[2].split("@", 1)[0]
             self.selection.add(component_id(plugin))
@@ -74,9 +137,24 @@ class fixture:
 
 
 def component_id(plugin: str) -> str:
-    return {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}[plugin]
+    return {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}[
+        plugin
+    ]
 
 
 def installed(root: Path, component: str, version: str = "1.3.0") -> dict[str, object]:
-    plugin = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}[component]
-    return {"pluginId": f"{plugin}@codexy", "name": plugin, "marketplaceName": "codexy", "version": version, "installed": True, "enabled": True, "source": {"source": "local", "path": str(root / "plugins" / plugin)}, "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}
+    plugin = {
+        "core": "codexy",
+        "github": "codexy-github",
+        "devtools": "codexy-devtools",
+    }[component]
+    return {
+        "pluginId": f"{plugin}@codexy",
+        "name": plugin,
+        "marketplaceName": "codexy",
+        "version": version,
+        "installed": True,
+        "enabled": True,
+        "source": {"source": "local", "path": str(root / "plugins" / plugin)},
+        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+    }

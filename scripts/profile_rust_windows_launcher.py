@@ -15,7 +15,9 @@ from typing import Iterator
 _RELEASE = b"R"
 
 
-def retry_readonly_removal(function: object, path: str | Path, error: tuple[object, BaseException, object]) -> None:
+def retry_readonly_removal(
+    function: object, path: str | Path, error: tuple[object, BaseException, object]
+) -> None:
     if not isinstance(error[1], PermissionError):
         raise error[1]
     os.chmod(path, stat.S_IWRITE)
@@ -53,7 +55,9 @@ class WindowsTempRoot:
 
 
 @contextmanager
-def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsTempRoot]:
+def isolated_windows_test_root(
+    environment: dict[str, str],
+) -> Iterator[WindowsTempRoot]:
     runner_temp = environment.get("RUNNER_TEMP")
     if runner_temp is None:
         raise OSError("RUNNER_TEMP is required for the Windows Rust workload")
@@ -61,7 +65,9 @@ def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsT
     if not runner_root.is_absolute():
         raise OSError("RUNNER_TEMP must be absolute for the Windows Rust workload")
     if not runner_root.is_dir():
-        raise OSError("RUNNER_TEMP must name an existing directory for the Windows Rust workload")
+        raise OSError(
+            "RUNNER_TEMP must name an existing directory for the Windows Rust workload"
+        )
     child_root = Path(
         tempfile.mkdtemp(prefix=f"codexy-profile-{os.getpid()}-", dir=runner_root)
     )
@@ -87,7 +93,9 @@ def isolated_windows_test_root(environment: dict[str, str]) -> Iterator[WindowsT
                 state.cleanup = "removed"
 
 
-def configure_windows_test_runner(environment: dict[str, str], temp_root: WindowsTempRoot) -> None:
+def configure_windows_test_runner(
+    environment: dict[str, str], temp_root: WindowsTempRoot
+) -> None:
     if "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER" in environment:
         raise OSError("Windows Rust test runner is already configured")
     runner = Path(__file__).with_name("profile_rust_windows_test_runner.py")
@@ -126,7 +134,11 @@ def _release(process: object) -> None:
 
 
 def launch_windows_workload(
-    job: object, root: Path, capture: object, workload: tuple[str, ...], spawn: object = None,
+    job: object,
+    root: Path,
+    capture: object,
+    workload: tuple[str, ...],
+    spawn: object = None,
     environment: dict[str, str] | None = None,
 ) -> object:
     import subprocess
@@ -135,20 +147,33 @@ def launch_windows_workload(
     spawn = spawn or subprocess.Popen
     try:
         process = spawn(
-            command, cwd=root, stdin=subprocess.PIPE, stdout=capture, stderr=subprocess.STDOUT, env=environment
+            command,
+            cwd=root,
+            stdin=subprocess.PIPE,
+            stdout=capture,
+            stderr=subprocess.STDOUT,
+            env=environment,
         )
     except Exception as error:
         _raise_after(error, (job.close,))
     try:
         job.assign(process)
     except Exception as error:
-        _raise_after(error, (lambda: _close_control(process), process.kill, process.wait, job.close))
+        _raise_after(
+            error,
+            (lambda: _close_control(process), process.kill, process.wait, job.close),
+        )
     try:
         _release(process)
     except Exception as error:
         _raise_after(
             error,
-            (lambda: _close_control(process), job.terminate_and_wait, process.wait, job.close),
+            (
+                lambda: _close_control(process),
+                job.terminate_and_wait,
+                process.wait,
+                job.close,
+            ),
         )
     return process
 

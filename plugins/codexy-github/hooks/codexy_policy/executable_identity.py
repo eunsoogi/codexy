@@ -10,7 +10,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .filesystem_state import PathState, location as filesystem_location, resolved_location, state as path_state
+from .filesystem_state import (
+    PathState,
+    location as filesystem_location,
+    resolved_location,
+    state as path_state,
+)
 from .shell_context import name
 
 MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
@@ -35,7 +40,12 @@ class AliasOperands:
     executable: str
 
 
-def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] = (), path: str | None = None) -> str | None:
+def resolve(
+    command: str,
+    cwd: str,
+    aliases: tuple[tuple[str, PathState], ...] = (),
+    path: str | None = None,
+) -> str | None:
     """Return a sensitive executable identity when one can be proven."""
     lexical = name(command)
     if lexical in SENSITIVE_EXECUTABLES:
@@ -50,7 +60,10 @@ def resolve(command: str, cwd: str, aliases: tuple[tuple[str, PathState], ...] =
                 return modeled.identity or lexical
             continue
         candidate = _path(location, cwd)
-        if candidate is not None and path_state(str(candidate), ()).kind == "executable":
+        if (
+            candidate is not None
+            and path_state(str(candidate), ()).kind == "executable"
+        ):
             return _identity(candidate) or lexical
     candidate = _path(command, cwd, path)
     if candidate is None:
@@ -65,7 +78,10 @@ def available(command: str, cwd: str, path: str | None = None) -> bool:
 
 
 def alias_transition(
-    executable: str, arguments: list[str], cwd: str, aliases: tuple[tuple[str, PathState], ...],
+    executable: str,
+    arguments: list[str],
+    cwd: str,
+    aliases: tuple[tuple[str, PathState], ...],
 ) -> AliasTransition | None:
     """Parse one supported ``ln``/``cp`` transition, or reject ambiguity."""
     operands = _alias_operands(executable, arguments)
@@ -75,15 +91,27 @@ def alias_transition(
     destination = _final_destination(operands, cwd, aliases)
     if destination is None:
         return None
-    target = filesystem_location(operands.source, str(Path(destination).parent)) if operands.symbolic else None
+    target = (
+        filesystem_location(operands.source, str(Path(destination).parent))
+        if operands.symbolic
+        else None
+    )
     result = PathState(source.kind, source.identity, operands.symbolic, target)
-    return AliasTransition(destination, result, known, _effect(operands, destination, aliases))
+    return AliasTransition(
+        destination, result, known, _effect(operands, destination, aliases)
+    )
 
 
 def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:
     grammar = {
-        "ln": (frozenset("sfnv"), frozenset({"--symbolic", "--force", "--no-dereference", "--verbose"})),
-        "cp": (frozenset("Ppfv"), frozenset({"--preserve", "--force", "--no-dereference", "--verbose"})),
+        "ln": (
+            frozenset("sfnv"),
+            frozenset({"--symbolic", "--force", "--no-dereference", "--verbose"}),
+        ),
+        "cp": (
+            frozenset("Ppfv"),
+            frozenset({"--preserve", "--force", "--no-dereference", "--verbose"}),
+        ),
     }.get(executable)
     if grammar is None:
         return None
@@ -106,25 +134,41 @@ def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | No
     if len(arguments) != 2 or not all(arguments):
         return None
     return AliasOperands(
-        arguments[0], arguments[1], "s" in selected or "--symbolic" in selected,
+        arguments[0],
+        arguments[1],
+        "s" in selected or "--symbolic" in selected,
         "f" in selected or "--force" in selected,
-        "n" in selected or "P" in selected or "--no-dereference" in selected, executable,
+        "n" in selected or "P" in selected or "--no-dereference" in selected,
+        executable,
     )
 
 
-def _command_locations(command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]) -> tuple[str, ...] | None:
+def _command_locations(
+    command: str, cwd: str, path: str | None, aliases: tuple[tuple[str, PathState], ...]
+) -> tuple[str, ...] | None:
     if _path_operand(command):
         location = resolved_location(command, cwd, aliases)
         return None if location is None else (location,)
     if path is None:
         return ()
-    locations = tuple(resolved_location(os.path.join(directory or ".", command), cwd, aliases) for directory in path.split(os.pathsep))
-    return None if any(location is None for location in locations) else tuple(location for location in locations if location is not None)
+    locations = tuple(
+        resolved_location(os.path.join(directory or ".", command), cwd, aliases)
+        for directory in path.split(os.pathsep)
+    )
+    return (
+        None
+        if any(location is None for location in locations)
+        else tuple(location for location in locations if location is not None)
+    )
 
 
-def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> str | None:
+def _final_destination(
+    operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]
+) -> str | None:
     no_dereference = operands.executable == "ln" and operands.no_dereference
-    result = resolved_location(operands.destination, cwd, aliases, follow_final=not no_dereference)
+    result = resolved_location(
+        operands.destination, cwd, aliases, follow_final=not no_dereference
+    )
     if result is None:
         return None
     if no_dereference or path_state(result, aliases).kind != "directory":
@@ -134,7 +178,9 @@ def _final_destination(operands: AliasOperands, cwd: str, aliases: tuple[tuple[s
 
 
 def _effect(
-    operands: AliasOperands, destination: str, aliases: tuple[tuple[str, PathState], ...],
+    operands: AliasOperands,
+    destination: str,
+    aliases: tuple[tuple[str, PathState], ...],
 ) -> bool | None:
     if path_state(str(Path(destination).parent), aliases).kind != "directory":
         return False
@@ -146,7 +192,9 @@ def _effect(
     return False if exists else None
 
 
-def _filesystem_state(value: str, cwd: str, aliases: tuple[tuple[str, PathState], ...]) -> tuple[PathState, bool]:
+def _filesystem_state(
+    value: str, cwd: str, aliases: tuple[tuple[str, PathState], ...]
+) -> tuple[PathState, bool]:
     location = resolved_location(value, cwd, aliases)
     if location is None:
         return PathState("absent"), False
@@ -157,7 +205,9 @@ def _filesystem_state(value: str, cwd: str, aliases: tuple[tuple[str, PathState]
     if candidate is None:
         return PathState("absent"), False
     real = path_state(str(candidate), ())
-    return PathState(real.kind, _identity(candidate) if real.kind == "executable" else None), True
+    return PathState(
+        real.kind, _identity(candidate) if real.kind == "executable" else None
+    ), True
 
 
 def _identity(candidate: Path) -> str | None:

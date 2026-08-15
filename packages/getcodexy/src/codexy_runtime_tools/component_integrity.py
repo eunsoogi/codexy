@@ -27,12 +27,12 @@ COMPONENT_FILES = {
         "skills/orchestration/scripts/agent_registration_fs.py": "7fb2a425b1e6fad29c99d7a56b4e8cef47faf3a098577bef2e8a5938931acdf5",
         "skills/orchestration/scripts/agent_registration_lifecycle.py": "814616c78beea769cb81dc5480f86f1176020ce188408d3d757b695a197d0804",
         "skills/orchestration/scripts/agent_registration_support.py": "6866b0f8d18a7910788ab8d5f8772f03d1e8b660dc9accdb5f6cbdd278e23e70",
-        "skills/orchestration/scripts/register-codexy-agents": "f5b405a49525f9b66a735050f9ca3d22feb594ae42aeee94f480bb23ca3f4112",
+        "skills/orchestration/scripts/register-codexy-agents.py": "f5b405a49525f9b66a735050f9ca3d22feb594ae42aeee94f480bb23ca3f4112",
     },
     "codexy-github": {
         "agents/catalog.toml": "a40af1007d226569b0856f8a1f64e022b473644092f355df21d9468e3107880d",
         "agents/codexy-weaver.toml": "2c88b22c48eb63400d207989e98a5919479737fba2cfb855992104217a0a2353",
-        "skills/git-workflow/scripts/bootstrap-codexy-github-agent": "cc18f2a19e9784c6616c57a7d79d470e59b17cec6801b05bd94249d8c38dbedf",
+        "skills/git-workflow/scripts/bootstrap-codexy-github-agent.py": "cc18f2a19e9784c6616c57a7d79d470e59b17cec6801b05bd94249d8c38dbedf",
     },
 }
 
@@ -42,7 +42,9 @@ MANIFEST_CONTENT_DIGESTS = {
 }
 
 
-def verify_component(root: Path, name: str, version: str | None = None) -> dict[Path, bytes]:
+def verify_component(
+    root: Path, name: str, version: str | None = None
+) -> dict[Path, bytes]:
     try:
         expected = COMPONENT_FILES[name]
     except KeyError as error:
@@ -65,14 +67,18 @@ def verify_component(root: Path, name: str, version: str | None = None) -> dict[
 
 
 @contextmanager
-def frozen_component(root: Path, name: str, version: str | None = None) -> Iterator[Path]:
+def frozen_component(
+    root: Path, name: str, version: str | None = None
+) -> Iterator[Path]:
     contents = verify_component(root, name, version)
     with tempfile.TemporaryDirectory(prefix=f"{name}-verified-") as temporary:
         target = Path(temporary)
         for relative, data in contents.items():
             destination = target / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            descriptor = os.open(
+                destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+            )
             with os.fdopen(descriptor, "wb") as output:
                 output.write(data)
         yield target
@@ -84,7 +90,8 @@ def _verify_manifest(contents: bytes, name: str, version: str | None) -> None:
     except (json.JSONDecodeError, ValueError) as error:
         raise ValueError(f"component manifest is invalid JSON: {name}") from error
     if not isinstance(manifest, dict) or (
-        manifest.get("name"), manifest.get("repository")
+        manifest.get("name"),
+        manifest.get("repository"),
     ) != (name, "https://github.com/eunsoogi/codexy"):
         raise ValueError(f"component manifest identity mismatch: {name}")
     if version is not None and manifest.get("version") != version:
@@ -125,10 +132,14 @@ def _read_regular_posix(root: Path, relative: Path) -> bytes:
             next_descriptor = os.open(part, directory_flags, dir_fd=descriptor)
             os.close(descriptor)
             descriptor = next_descriptor
-        with os.fdopen(os.open(relative.name, flags, dir_fd=descriptor), "rb") as source:
+        with os.fdopen(
+            os.open(relative.name, flags, dir_fd=descriptor), "rb"
+        ) as source:
             metadata = os.fstat(source.fileno())
             if not stat.S_ISREG(metadata.st_mode):
-                raise ValueError(f"component integrity requires regular files: {root / relative}")
+                raise ValueError(
+                    f"component integrity requires regular files: {root / relative}"
+                )
             return source.read()
     finally:
         os.close(descriptor)
@@ -143,7 +154,9 @@ def _read_regular_windows(root: Path, relative: Path) -> bytes:
             raise ValueError(f"component integrity requires regular files: {target}")
         _, final = _windows_safe_path(root, relative)
         if (opened.st_dev, opened.st_ino) != (final.st_dev, final.st_ino):
-            raise ValueError(f"component integrity path changed while reading: {target}")
+            raise ValueError(
+                f"component integrity path changed while reading: {target}"
+            )
         with os.fdopen(descriptor, "rb", closefd=False) as source:
             return source.read()
     finally:
@@ -151,7 +164,9 @@ def _read_regular_windows(root: Path, relative: Path) -> bytes:
 
 
 def _windows_safe_path(root: Path, relative: Path) -> tuple[Path, os.stat_result]:
-    if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+    if relative.is_absolute() or any(
+        part in {"", ".", ".."} for part in relative.parts
+    ):
         raise ValueError(f"component integrity path is invalid: {relative}")
     current = root
     _windows_regular_path(current, directory=True)
@@ -165,7 +180,9 @@ def _windows_safe_path(root: Path, relative: Path) -> tuple[Path, os.stat_result
 def _windows_regular_path(path: Path, directory: bool) -> os.stat_result:
     metadata = path.lstat()
     if stat.S_ISLNK(metadata.st_mode) or _has_windows_reparse_point(metadata):
-        raise ValueError(f"component integrity path must not traverse link or reparse point: {path}")
+        raise ValueError(
+            f"component integrity path must not traverse link or reparse point: {path}"
+        )
     if stat.S_ISDIR(metadata.st_mode) != directory:
         kind = "directory" if directory else "regular file"
         raise ValueError(f"component integrity requires {kind}: {path}")

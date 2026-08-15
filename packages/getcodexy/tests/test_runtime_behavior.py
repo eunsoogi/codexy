@@ -32,13 +32,22 @@ def configuration(root: Path, **overrides: object) -> runtime.Configuration:
     manifest.parent.mkdir(parents=True, exist_ok=True)
     manifest.write_text(json.dumps({"version": "1.2.1"}), encoding="utf-8")
     values: dict[str, object] = {
-        "server": "lsp", "plugin_root": plugin_root, "arguments": ["--stdio"],
-        "platform": "linux-x86_64", "manifest": manifest, "release": "1.2.1",
-        "runtime_name": "codexy-mcp-lsp-linux-x86_64.bin", "package_path": "",
-        "package_url": "https://example.test/package.tar.gz", "artifacts_api": "",
-        "package_override": False, "package_sha256": "",
-        "git_repository": "https://example.test/codexy.git", "git_ref": "a" * 40,
-        "offline": False, "git_fallback": False,
+        "server": "lsp",
+        "plugin_root": plugin_root,
+        "arguments": ["--stdio"],
+        "platform": "linux-x86_64",
+        "manifest": manifest,
+        "release": "1.2.1",
+        "runtime_name": "codexy-mcp-lsp-linux-x86_64.bin",
+        "package_path": "",
+        "package_url": "https://example.test/package.tar.gz",
+        "artifacts_api": "",
+        "package_override": False,
+        "package_sha256": "",
+        "git_repository": "https://example.test/codexy.git",
+        "git_ref": "a" * 40,
+        "offline": False,
+        "git_fallback": False,
     }
     values.update(overrides)
     return runtime.Configuration(**values)  # type: ignore[arg-type]
@@ -46,12 +55,29 @@ def configuration(root: Path, **overrides: object) -> runtime.Configuration:
 
 def install_paths(config: runtime.Configuration, cache: Path) -> tuple[Path, Path]:
     source = (
-        "\n".join(("package-override", config.package_path, config.package_url, config.artifacts_api, config.package_sha256))
-        if config.package_override else "\n".join(("package-default", config.package_sha256))
+        "\n".join(
+            (
+                "package-override",
+                config.package_path,
+                config.package_url,
+                config.artifacts_api,
+                config.package_sha256,
+            )
+        )
+        if config.package_override
+        else "\n".join(("package-default", config.package_sha256))
     )
     key = runtime_cache_key(
-        manifest=config.manifest, package_override=config.package_override,
-        identity=[config.git_repository, config.git_ref, config.platform, runtime.PROTOCOL, source, "codexy-mcp-lsp"],
+        manifest=config.manifest,
+        package_override=config.package_override,
+        identity=[
+            config.git_repository,
+            config.git_ref,
+            config.platform,
+            runtime.PROTOCOL,
+            source,
+            "codexy-mcp-lsp",
+        ],
     )
     root = cache / key
     return root / "bin" / "codexy-mcp-lsp", root / "plugin.json"
@@ -76,7 +102,9 @@ class RuntimeBehaviorTests(unittest.TestCase):
             ):
                 runtime.run(config)
             acquire.assert_not_called()
-            execute.assert_called_once_with(installed, ["--stdio"], {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)})
+            execute.assert_called_once_with(
+                installed, ["--stdio"], {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)}
+            )
 
     def test_default_digest_partitions_offline_caches(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -84,7 +112,9 @@ class RuntimeBehaviorTests(unittest.TestCase):
             cache = root / "cache"
             unsigned = configuration(root, offline=True)
             pinned = configuration(root, offline=True, package_sha256="a" * 64)
-            self.assertNotEqual(install_paths(unsigned, cache), install_paths(pinned, cache))
+            self.assertNotEqual(
+                install_paths(unsigned, cache), install_paths(pinned, cache)
+            )
             installed, marker = install_paths(unsigned, cache)
             installed.parent.mkdir(parents=True)
             installed.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -98,9 +128,13 @@ class RuntimeBehaviorTests(unittest.TestCase):
             manifest = root / ".codex-plugin" / "plugin.json"
             manifest.parent.mkdir(exist_ok=True)
             manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
-            with mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "A" * 64}, clear=True):
+            with mock.patch.dict(
+                "os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "A" * 64}, clear=True
+            ):
                 uppercase = runtime.Configuration.load("lsp", root, [])
-            with mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64}, clear=True):
+            with mock.patch.dict(
+                "os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "a" * 64}, clear=True
+            ):
                 lowercase = runtime.Configuration.load("lsp", root, [])
             self.assertEqual(uppercase.package_sha256, lowercase.package_sha256)
 
@@ -114,7 +148,9 @@ class RuntimeBehaviorTests(unittest.TestCase):
                 self.assertRaisesRegex(SystemExit, "127"),
             ):
                 runtime.run(configuration(root, offline=True))
-            self.assertIn("offline mode has no cached or bundled runtime", error.getvalue())
+            self.assertIn(
+                "offline mode has no cached or bundled runtime", error.getvalue()
+            )
 
     def test_explicit_package_source_requires_a_digest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -123,7 +159,11 @@ class RuntimeBehaviorTests(unittest.TestCase):
             manifest.parent.mkdir()
             manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
-                mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_PATH": str(root / "package")}, clear=True),
+                mock.patch.dict(
+                    "os.environ",
+                    {"CODEXY_RUNTIME_PACKAGE_PATH": str(root / "package")},
+                    clear=True,
+                ),
                 self.assertRaisesRegex(SystemExit, "127"),
             ):
                 runtime.Configuration.load("lsp", root, [])
@@ -135,7 +175,9 @@ class RuntimeBehaviorTests(unittest.TestCase):
             manifest.parent.mkdir()
             manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
-                mock.patch.dict("os.environ", {"CODEXY_RUNTIME_PACKAGE_PATH": ""}, clear=True),
+                mock.patch.dict(
+                    "os.environ", {"CODEXY_RUNTIME_PACKAGE_PATH": ""}, clear=True
+                ),
                 self.assertRaisesRegex(SystemExit, "127"),
             ):
                 runtime.Configuration.load("lsp", root, [])
@@ -146,7 +188,13 @@ class RuntimeBehaviorTests(unittest.TestCase):
             source = root / "source.tar.gz"
             source.write_bytes(b"not the expected package")
             with self.assertRaisesRegex(ValueError, "SHA-256"):
-                acquire_package(path=str(source), url="", artifacts_api="", expected_sha256="0" * 64, work=root / "work")
+                acquire_package(
+                    path=str(source),
+                    url="",
+                    artifacts_api="",
+                    expected_sha256="0" * 64,
+                    work=root / "work",
+                )
 
     def test_tar_symlinks_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -178,21 +226,49 @@ class RuntimeBehaviorTests(unittest.TestCase):
 
             def download(url: str, destination: Path, token: str = "") -> None:
                 if url == api:
-                    destination.write_text(json.dumps({"artifacts": [
-                        {"expired": False, "workflow_run": None},
-                        {"expired": False, "workflow_run": "main"},
-                        {"expired": False, "workflow_run": {"head_branch": "main", "head_repository_id": 1}, "archive_download_url": "https://api.github.com/fork.zip"},
-                        {"expired": False, "workflow_run": {"head_branch": "main", "head_repository_id": 1_269_350_143}, "archive_download_url": "https://api.github.com/valid.zip"},
-                    ]}), encoding="utf-8")
+                    destination.write_text(
+                        json.dumps(
+                            {
+                                "artifacts": [
+                                    {"expired": False, "workflow_run": None},
+                                    {"expired": False, "workflow_run": "main"},
+                                    {
+                                        "expired": False,
+                                        "workflow_run": {
+                                            "head_branch": "main",
+                                            "head_repository_id": 1,
+                                        },
+                                        "archive_download_url": "https://api.github.com/fork.zip",
+                                    },
+                                    {
+                                        "expired": False,
+                                        "workflow_run": {
+                                            "head_branch": "main",
+                                            "head_repository_id": 1_269_350_143,
+                                        },
+                                        "archive_download_url": "https://api.github.com/valid.zip",
+                                    },
+                                ]
+                            }
+                        ),
+                        encoding="utf-8",
+                    )
                 else:
                     with zipfile.ZipFile(destination, "w") as archive:
                         archive.writestr("codexy-marketplace-plugin.tar.gz", b"package")
 
             with (
-                mock.patch("codexy_runtime_tools.package._github_token_for", return_value=""),
-                mock.patch("codexy_runtime_tools.package._download", side_effect=download),
+                mock.patch(
+                    "codexy_runtime_tools.package._github_token_for", return_value=""
+                ),
+                mock.patch(
+                    "codexy_runtime_tools.package._download", side_effect=download
+                ),
             ):
-                self.assertEqual(_artifact_package(api, root), root / "artifact" / "codexy-marketplace-plugin.tar.gz")
+                self.assertEqual(
+                    _artifact_package(api, root),
+                    root / "artifact" / "codexy-marketplace-plugin.tar.gz",
+                )
 
     def test_truncated_archives_fail_with_runtime_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -214,14 +290,21 @@ class RuntimeBehaviorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "corrupt-deflate.zip"
-            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
+            with zipfile.ZipFile(
+                archive, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zipped:
                 zipped.writestr("codexy-marketplace-plugin.tar.gz", b"payload-" * 1_000)
             with zipfile.ZipFile(archive) as zipped:
                 info = zipped.infolist()[0]
-                offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+                offset = (
+                    info.header_offset
+                    + 30
+                    + len(info.filename.encode())
+                    + len(info.extra)
+                )
                 compressed_size = info.compress_size
             contents = bytearray(archive.read_bytes())
-            contents[offset:offset + compressed_size] = b"\0" * compressed_size
+            contents[offset : offset + compressed_size] = b"\0" * compressed_size
             archive.write_bytes(contents)
             with self.assertRaises(zlib.error):
                 _extract_zip(archive, root / "raw")

@@ -104,13 +104,13 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     assert_eq!(
         markdown_section_lines(&body, "## Verification"),
         [
-            "- `scripts/sync-plugin-version --check`",
-            "- `scripts/validate-plugin-config --check`",
+            "- `scripts/sync-plugin-version.sh --check`",
+            "- `scripts/validate-plugin-config.sh --check`",
             "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
             "- `git diff --check`",
             "- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`",
             "- `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`",
-            "- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`",
+            "- `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`",
             "- `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`",
         ]
     );
@@ -173,8 +173,8 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     assert_eq!(
         markdown_section_lines(&provisional_body, "## Verification"),
         [
-            "- `scripts/sync-plugin-version --check`",
-            "- `scripts/validate-plugin-config --check`",
+            "- `scripts/sync-plugin-version.sh --check`",
+            "- `scripts/validate-plugin-config.sh --check`",
             "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
             "- `git diff --check`",
         ]
