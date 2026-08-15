@@ -3,9 +3,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::contract::validate_contract;
 use super::inventory::files;
 use super::support::{
-    agent_requires_github_skill, assert_invalid, contract, product, record, validate_import,
+    agent_requires_github_skill, contract, product, record, validate_import,
 };
 use crate::support::TestResult;
+
+fn assert_invalid(root: &std::path::Path, value: &serde_json::Value) {
+    assert!(
+        validate_contract(root, value).is_err(),
+        "invalid contract was accepted: {value}"
+    );
+}
 
 #[test]
 fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {

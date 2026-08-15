@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use super::contract::validate_contract;
 use super::model::{Product, SurfaceRecord};
 use crate::support::TestResult;
 
@@ -36,12 +35,6 @@ pub(super) fn record<'a>(value: &'a mut serde_json::Value, id: &str) -> &'a mut 
         .iter_mut()
         .find(|entry| entry["id"] == id)
         .unwrap()
-}
-pub(super) fn assert_invalid(root: &Path, value: &serde_json::Value) {
-    assert!(
-        validate_contract(root, value).is_err(),
-        "invalid contract was accepted: {value}"
-    );
 }
 pub(super) fn assert_sources(records: &[SurfaceRecord], id: &str, expected: &[&str]) -> TestResult {
     let actual = records
