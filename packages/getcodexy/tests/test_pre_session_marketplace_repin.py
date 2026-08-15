@@ -122,7 +122,9 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                 )
             self.assertEqual(state, {"registered": True, "ref": "main"})
 
-    def test_failed_post_add_verification_restores_the_exact_config_snapshot(self) -> None:
+    def test_failed_post_add_verification_restores_the_exact_config_snapshot(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             home = root / "home/.codex"
@@ -148,7 +150,9 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                         if state["registered"]
                         else []
                     }
-                    return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+                    return subprocess.CompletedProcess(
+                        command, 0, json.dumps(payload), ""
+                    )
                 if command[1:4] == ["plugin", "marketplace", "remove"]:
                     state["registered"] = False
                 elif command[1:4] == ["plugin", "marketplace", "add"]:
@@ -157,7 +161,9 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                     state.update(registered=True, ref=ref)
                 return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
 
-            with self.assertRaisesRegex(ValueError, "marketplace list returned invalid JSON"):
+            with self.assertRaisesRegex(
+                ValueError, "marketplace list returned invalid JSON"
+            ):
                 run_pre_session(
                     home,
                     codex=Path("/trusted/codex"),
