@@ -122,6 +122,54 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                 )
             self.assertEqual(state, {"registered": True, "ref": "main"})
 
+    def test_failed_post_add_verification_restores_the_exact_config_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            home = root / "home/.codex"
+            home.mkdir(parents=True)
+            snapshot = (
+                '[marketplaces.other]\nref = "wrong-ref"\n\n'
+                '[marketplaces.codexy]\nsource = "https://github.com/eunsoogi/codexy.git"\n'
+                'ref = "main"\n'
+            ).encode()
+            (home / "config.toml").write_bytes(snapshot)
+            marketplace_root = root / "marketplace"
+            make_plugin(marketplace_root / "plugins/codexy")
+            state = {"registered": True, "ref": "main", "lists_after_target": 0}
+            adds: list[str] = []
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    if state["ref"] == "v1.2.2":
+                        state["lists_after_target"] += 1
+                        return subprocess.CompletedProcess(command, 0, "not-json", "")
+                    payload: object = {
+                        "marketplaces": [marketplace(marketplace_root)]
+                        if state["registered"]
+                        else []
+                    }
+                    return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+                if command[1:4] == ["plugin", "marketplace", "remove"]:
+                    state["registered"] = False
+                elif command[1:4] == ["plugin", "marketplace", "add"]:
+                    ref = command[command.index("--ref") + 1]
+                    adds.append(ref)
+                    state.update(registered=True, ref=ref)
+                return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+
+            with self.assertRaisesRegex(ValueError, "marketplace list returned invalid JSON"):
+                run_pre_session(
+                    home,
+                    codex=Path("/trusted/codex"),
+                    runner=runner,
+                    synchronize=_ready,
+                    package_version="1.2.2",
+                )
+            self.assertEqual(adds, ["v1.2.2", "main"])
+            self.assertEqual(state["ref"], "main")
+            self.assertGreater(state["lists_after_target"], 0)
+            self.assertEqual((home / "config.toml").read_bytes(), snapshot)
+
     @unittest.skipUnless(shutil.which("codex"), "Codex host is required")
     def test_real_cli_replaces_a_legacy_main_registration_with_the_target_tag(
         self,
