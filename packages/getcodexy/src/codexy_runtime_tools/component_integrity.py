@@ -24,15 +24,16 @@ COMPONENT_FILES = {
         "agents/codexy-sentinel.toml": "b6d724656084ca8b2200d80b2e47121485052360d9d4801df6a7f019c5dcb82b",
         "agents/codexy-shipwright.toml": "f2f22cd0b857ae40aeb7d5a91d49653f2e87f48a752508f601308f0ac2cae508",
         "agents/codexy-warden.toml": "f58f37cedbc1f56ce8ba8a3ac2f60a55560d7903fc915d2df2457f0263b2db86",
-        "skills/orchestration/scripts/agent_registration_fs.py": "7fb2a425b1e6fad29c99d7a56b4e8cef47faf3a098577bef2e8a5938931acdf5",
-        "skills/orchestration/scripts/agent_registration_lifecycle.py": "814616c78beea769cb81dc5480f86f1176020ce188408d3d757b695a197d0804",
-        "skills/orchestration/scripts/agent_registration_support.py": "6866b0f8d18a7910788ab8d5f8772f03d1e8b660dc9accdb5f6cbdd278e23e70",
-        "skills/orchestration/scripts/register_codexy_agents.py": "f5b405a49525f9b66a735050f9ca3d22feb594ae42aeee94f480bb23ca3f4112",
+        "skills/orchestration/scripts/agent_registration_blocks.py": "d9fee4e722e6595a29aa038d3db1404f134763c80df618593f82ecc54089069b",
+        "skills/orchestration/scripts/agent_registration_fs.py": "c5f1952770d4c83d662a719d24a7d30da7a266c105f9b981b99d730a8c03298e",
+        "skills/orchestration/scripts/agent_registration_lifecycle.py": "9b1762d6fa066ac118c04ca61e6181997b84bf7e924ebf255703954f4e25e871",
+        "skills/orchestration/scripts/agent_registration_support.py": "6aeae4d9107de34d9b79cb4c3e8898d0129b0e1f74fa57bf0825f34dd940371f",
+        "skills/orchestration/scripts/register_codexy_agents.py": "3364d7bae75c351ce89aea4cbfadb46dab6260854db76851a2f13559cd8ccd7d",
     },
     "codexy-github": {
         "agents/catalog.toml": "a40af1007d226569b0856f8a1f64e022b473644092f355df21d9468e3107880d",
         "agents/codexy-weaver.toml": "2c88b22c48eb63400d207989e98a5919479737fba2cfb855992104217a0a2353",
-        "skills/git-workflow/scripts/bootstrap_codexy_github_agent.py": "cc18f2a19e9784c6616c57a7d79d470e59b17cec6801b05bd94249d8c38dbedf",
+        "skills/git-workflow/scripts/bootstrap_codexy_github_agent.py": "49983a120fd999ffc0e47e1211ecbdcb5e94a838c8c5abe833f6f4b9fb39363f",
     },
 }
 
