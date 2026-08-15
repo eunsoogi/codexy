@@ -5,6 +5,16 @@ begin. The budget MUST name finite implementation, repair, and reviewer cycle
 limits. Continuation MUST consume budget and record either an explicit
 acceptance criterion newly satisfied or an existing blocker removed.
 
+The profile-selected reviewer budget is additionally capped issue-wide at three
+terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` verdicts. The cap survives fresh
+goals, repair stages, compaction, reauthorization, and route resets; `PENDING`
+and `RUNNING` observations do not consume it. After the third `BLOCK`, repair
+only in-scope root findings and rerun exact-head proof without a fourth profile
+review. After the third `UNOBSERVABLE`, use the maintainer-owned final
+disposition path with current proof. This waiver applies only to a fourth
+profile review: all remaining verification, CI, review-thread, safety,
+ownership, LOC, and merge obligations remain active.
+
 Every non-trivial parent-owned orchestration stage MUST declare finite
 implementation, repair, fanout, and reviewer-cycle limits before work begins. A
 parent-owned stage MUST NOT use more than three non-Sentinel specialists in

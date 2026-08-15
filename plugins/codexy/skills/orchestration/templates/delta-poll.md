@@ -18,6 +18,15 @@
 - changed ids:
 - stale or demoted:
 
+## Issue Review Ledger
+
+- issue:
+- terminal_review_count (PASS/BLOCK/UNOBSERVABLE only):
+- reviewer task / exact head / terminal verdict for each counted review:
+- remaining_reviews:
+- final-repair-no-review state after a third BLOCK:
+- compaction, fresh-goal, and reauthorization carry-forward confirmed:
+
 ## External Gate Wait
 
 - external gate wait:
@@ -63,10 +72,14 @@ task/thread
 
 - BLOCK receipt:
 - repair plan:
+- in-scope issue-contract/root-defect findings:
 - engineering_tdd_required:
 - RED/GREEN or proportional boundary proof:
 - terminal proof:
-- one same-profile delta recheck for the repaired head:
+- post-third disposition (not applicable, PASS, final repair, or maintainer
+  disposition):
+- fourth profile review: prohibited after the third terminal verdict
+- remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
 ## New Child Setup
 

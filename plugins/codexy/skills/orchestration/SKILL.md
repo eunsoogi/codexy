@@ -45,6 +45,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/review-profiles.json` and
   `references/workflow-review-classification.json` for structured review budgets
   and exhaustive typed profile selection.
+- `references/review-lifecycle.md` for profile-selected multi-agent terminal
+  review, post-cap completion, and remaining proof gates.
 
 ## Classification Gate
 
@@ -115,11 +117,12 @@ planning and parent integration; a child owns only its assigned atomic lane.
 Subagents are helpers, never worktree owners. Every delegated helper MUST NOT
 spawn, delegate to, or create another agent, task, or thread.
 
-MUST select exactly the reviewer specified by `references/review-profiles.json`.
-Its terminal result is `PASS`, `BLOCK`, or `UNOBSERVABLE`; a live reviewer is
-retained and observed read-only. After a `BLOCK`, record the repair plan and run
-only the allowed same-reviewer delta recheck. Parent decision is required for a
-second recurrence, timeout, or `UNOBSERVABLE` result.
+MUST follow `references/review-lifecycle.md` for profile-selected multi-agent
+review selection, terminal verdict accounting, post-cap completion, repair, and
+proof gates. A finding MAY block only when it maps to the issue contract or a
+root correctness, safety, or readiness defect; adjacent edge cases, syntax
+variants, and speculative hardening are non-blocking follow-up candidates and
+MUST use approved issue intake if tracked.
 
 MUST follow `references/parent-stop-preflight.md` before implementation edits,
 including its child-lane ownership validation when required. `blocked` is only

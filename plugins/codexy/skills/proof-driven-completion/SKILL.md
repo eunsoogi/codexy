@@ -131,6 +131,18 @@ MUST also follow
   fallback-eligible. The owning lane MUST retain the same reviewer and wait for
   its natural terminal result. A live Sentinel MUST report its own terminal
   `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- The lane MUST retain one issue-wide count of terminal profile-selected `PASS`,
+  `BLOCK`, and `UNOBSERVABLE` verdicts across goals, repair stages, compaction,
+  reauthorization, and route resets. `PENDING` and `RUNNING` do not count. The
+  count MUST NOT exceed three. After a third `BLOCK`, readiness may accept the
+  typed final-repair disposition only after every in-scope issue-contract/root
+  finding is repaired and exact-head proof is current; a fourth profile review
+  is prohibited. After a third `UNOBSERVABLE`, use the equivalent
+  maintainer-owned final-disposition path with current proof. This exception
+  waives only the fourth profile review: local tests, validators, current-head
+  CI, actionable human and connector review threads, ownership, safety, LOC, and
+  merge gates MUST still pass. Review quota exhaustion or an external wait MUST
+  NOT cause `update_goal(status="blocked")`.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST
   verify the child reported actual goal-tool usage or an unavailable-goal-tool

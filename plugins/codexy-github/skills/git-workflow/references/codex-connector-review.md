@@ -1,22 +1,33 @@
-# Manual Codex Connector Review
+# Optional Manual Codex Connector Review
 
-Codex connector automatic review MUST remain disabled.
+## Applicability
 
-## Required Procedure
+This procedure applies only when the Codex connector is available to the
+parent/orchestrator and active repository policy requires one explicit manual
+connector review. Otherwise, it is not a merge gate and an agent MUST NOT
+invent, emulate, or wait for `@codex review` evidence. When applicable, Codex
+connector automatic review MUST remain disabled.
+
+## Procedure When Applicable
 
 1. [automatic-disabled] Codex connector automatic review MUST remain disabled.
 2. [proof-ci-before-review] Before requesting review, parent/orchestrator MUST
    complete local affected proof and wait for required CI readiness on the
    frozen exact head.
 3. [exactly-one-review] After local proof and required CI readiness,
-   parent/orchestrator MUST request exactly one `@codex review` after an owning
-   child profile-selected reviewer PASS on a frozen exact head and before merge.
+   parent/orchestrator MUST request exactly one `@codex review` before merge
+   after an owning child returns the packaged multi-agent review policy's
+   merge-eligible disposition on the frozen exact head.
 4. [wait-batch] Parent/orchestrator MUST wait for the requested review's
    terminal output and batch every actionable connector finding into one repair
    cycle.
-5. [child-repair-profile] Owning child MUST repair the batch and run only the
-   permitted same-profile delta recheck on the repaired exact head without
-   requesting another connector review.
+5. [child-repair-profile] Owning child MUST repair the batch. When a terminal
+   profile-review slot remains, it MUST run only the permitted same-profile
+   delta recheck on the repaired exact head. When the issue-wide terminal
+   profile-review quota is exhausted, it MUST instead record the typed post-cap
+   connector-repair disposition, repair every in-scope connector finding, and
+   produce current exact-head proof without fabricating `PASS`, requesting a
+   fourth profile review, or requesting another connector review.
 6. [no-automatic-or-duplicate] Automatic, per-push, duplicate, unchanged-head,
    and piecemeal Codex connector review requests MUST NOT be made.
 7. [material-expansion-exception] Another connector review MUST NOT be requested
@@ -32,7 +43,8 @@ no-change rationale covers them.
 
 Only the parent/orchestrator requests the one connector review and waits for its
 terminal output. The owning child receives the batched actionable findings, owns
-any repair and permitted same-profile delta recheck, and MUST NOT request a
-connector review. This procedure does not enable automatic connector review or
-replace any existing human, selected-profile, title, label, completion-handoff,
-CI, or merge-message gate.
+any repair and the quota-permitted delta recheck or typed post-cap
+connector-repair disposition, and MUST NOT request a connector review. This
+procedure does not enable automatic connector review or replace any existing
+human, selected-profile, title, label, completion-handoff, CI, or merge-message
+gate.

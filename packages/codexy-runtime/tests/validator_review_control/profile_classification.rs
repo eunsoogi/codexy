@@ -1,6 +1,8 @@
+use std::{fs, path::Path};
+
 use serde_json::{Value, json};
 
-use crate::support::TestResult;
+use crate::support::{self, TestResult};
 
 use super::resolve_profile;
 
@@ -17,6 +19,7 @@ const STRICT_TRIGGERS: [&str; 11] = [
     "multi_lane_ownership",
     "explicit_audit_evidence",
 ];
+const POLICY: &str = "skills/orchestration/references/review-profiles.json";
 
 #[test]
 fn review_profile_is_derived_from_exhaustive_typed_classification() -> TestResult {
@@ -79,6 +82,30 @@ fn classification_validates_the_base_record_before_strict_escalation() -> TestRe
             !resolve_profile(fixture.root(), request.take())?.status.success(),
             "an invalid classification must fail before strict escalation"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn policy_requires_the_declared_issue_terminal_review_limit() -> TestResult {
+    let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY)])?;
+    assert_eq!(
+        support::fixture_mutable_files(fixture.root()),
+        Some(vec![Path::new(POLICY).to_path_buf()])
+    );
+    let policy_path = fixture.root().join(POLICY);
+    let policy: Value = serde_json::from_slice(&fs::read(&policy_path)?)?;
+
+    let mut accepted = policy.clone();
+    accepted["issue_terminal_review_limit"] = json!(3);
+    fs::write(&policy_path, serde_json::to_vec(&accepted)?)?;
+    assert!(resolve_profile(fixture.root(), classified("middle", false, None))?.status.success());
+
+    for value in [json!(0), json!(4), json!("3")] {
+        let mut invalid = policy.clone();
+        invalid["issue_terminal_review_limit"] = value;
+        fs::write(&policy_path, serde_json::to_vec(&invalid)?)?;
+        assert!(!resolve_profile(fixture.root(), classified("middle", false, None))?.status.success());
     }
     Ok(())
 }

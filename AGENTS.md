@@ -67,13 +67,13 @@ codexy/
 - MUST keep both README files scoped to the current implemented state of the
   project.
 - `LICENSE` MUST remain the standard English MIT license text.
-- MUST put executable Git, issue, PR, review, and merge rules in
+- MUST put executable Git, issue, PR, review, connector, and merge procedures in
   `plugins/codexy-github/skills/git-workflow/SKILL.md`, not in this file.
-- Codex connector automatic review MUST remain disabled. Before merge, the
-  parent/orchestrator MUST request one explicit `@codex review` after the owning
-  child returns the profile-selected reviewer PASS on a frozen head; the
-  executable review and repair procedure lives in the canonical Git workflow
-  skill.
+- Manual Codex connector review is enabled for this repository; automatic
+  connector review MUST remain disabled. Before merge, the parent/orchestrator
+  MUST request exactly one explicit `@codex review` after the owning child
+  satisfies the packaged multi-agent review policy on the frozen head, following
+  the packaged connector procedure.
 
 ## Release/version-only orchestration
 

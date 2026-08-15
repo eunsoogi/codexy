@@ -101,6 +101,11 @@ Remember:
 - Durable policy, scope, owner boundaries, exact IDs, and current refs.
 - Active/waiting child thread ledger entries, each with issue/PR, thread id,
   status, owner state, blocker, latest evidence, and next action.
+- Issue review ledger entries: issue, terminal review count, each counted
+  reviewer task/head/verdict, remaining reviews, and any post-third
+  final-repair-no-review or maintainer-disposition state. Carry these entries
+  through compaction, fresh goals, and reauthorization; only terminal `PASS`,
+  `BLOCK`, and `UNOBSERVABLE` verdicts count, never `PENDING` or `RUNNING`.
 
 Fix:
 - Current unresolved obligations only, each with current evidence and next
@@ -133,6 +138,12 @@ Next action:
 - If a handoff names a branch, SHA, PR state, or review result that does not
   match the current surface, demote the inherited claim and continue from the
   refreshed surface.
+- MUST preserve a current issue review ledger as `Remember`, not a new review
+  budget. A compaction, fresh goal, reauthorization, or reviewer-route reset
+  MUST NOT reset its terminal count. After the third terminal verdict, retain
+  the final-repair-no-review or maintainer-disposition state and all remaining
+  proof gates; do not make review quota or a wait a `Fix` that authorizes a
+  blocked goal.
 
 ## Common Mistakes
 
