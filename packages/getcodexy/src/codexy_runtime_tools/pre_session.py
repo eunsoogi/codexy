@@ -133,6 +133,11 @@ def reconcile_official_marketplace_root(
         )
         try:
             _add_marketplace(executable, invoke, f"v{target_version}")
+            market = _json(
+                invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+                "marketplace list",
+            )
+            return _official_marketplace(market)
         except Exception:
             try:
                 _add_marketplace(executable, invoke, previous_ref)
@@ -176,16 +181,14 @@ def _marketplace_ref(home: Path) -> tuple[str, bytes]:
         ) from error
     contents = snapshot.decode("utf-8")
     section = re.search(
-        r"(?ms)^\[plugin_marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)", contents
+        r"(?ms)^\[(?:plugin_)?marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)",
+        contents,
     )
     match = (
         None
         if section is None
         else re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', section.group())
     )
-    if match is None:
-        matches = re.findall(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', contents)
-        match = re.match(r"(.+)", matches[0]) if len(matches) == 1 else None
     if match is None:
         raise RuntimeError("existing marketplace has no recoverable registration")
     return match.group(1), snapshot
