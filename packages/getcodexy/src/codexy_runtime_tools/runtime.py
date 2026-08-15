@@ -4,21 +4,18 @@ import argparse
 import hashlib
 import json
 import os
-import platform as host_platform
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 
-from .cache import plugin_release, releases_match, runtime_cache_key
-from .contract import RuntimeRelease, load as load_runtime_release
+from .cache import releases_match, runtime_cache_key
 from .installer import executable, execute, install_git, install_package
+from .runtime_configuration import Configuration
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
 SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64")
 PROTOCOL = "stdio-newline-v1"
-REPOSITORY = "https://github.com/eunsoogi/codexy"
 
 
 def _fail(message: str) -> NoReturn:
@@ -30,23 +27,6 @@ def _notice(message: str) -> None:
     print(f"codexy runtime: {message}", file=sys.stderr)
 
 
-def _host_platform() -> str:
-    override = os.environ.get("CODEXY_RUNTIME_PLATFORM")
-    if override:
-        return override
-    os_name = {"Darwin": "darwin", "Linux": "linux", "Windows": "windows"}.get(
-        host_platform.system(), "unknown"
-    )
-    architecture = {
-        "arm64": "arm64",
-        "aarch64": "arm64",
-        "x86_64": "x86_64",
-        "amd64": "x86_64",
-        "AMD64": "x86_64",
-    }.get(host_platform.machine(), "unknown")
-    return f"{os_name}-{architecture}"
-
-
 def _absolute_env_path(name: str) -> Path | None:
     value = os.environ.get(name)
     if not value:
@@ -55,107 +35,6 @@ def _absolute_env_path(name: str) -> Path | None:
     if not path.is_absolute():
         _fail(f"{name} must be absolute: {path}")
     return path
-
-
-@dataclass(frozen=True)
-class Configuration:
-    server: str
-    plugin_root: Path
-    arguments: list[str]
-    platform: str
-    manifest: Path
-    release: str
-    runtime_name: str
-    package_path: str
-    package_url: str
-    artifacts_api: str
-    package_override: bool
-    package_sha256: str
-    git_repository: str
-    git_ref: str
-    offline: bool
-    git_fallback: bool
-    release_contract: RuntimeRelease | None = None
-    source_identity: RuntimeSourceIdentity | None = None
-
-    @classmethod
-    def load(
-        cls, server: str, plugin_root: Path, arguments: list[str]
-    ) -> "Configuration":
-        manifest = plugin_root / ".codex-plugin/plugin.json"
-        try:
-            release = plugin_release(manifest)
-        except (OSError, ValueError) as error:
-            _fail(f"codexy-mcp-{server} cannot read plugin release: {error}")
-        package_path_was_set = "CODEXY_RUNTIME_PACKAGE_PATH" in os.environ
-        package_path = os.environ.get("CODEXY_RUNTIME_PACKAGE_PATH", "")
-        package_url_was_set = "CODEXY_RUNTIME_PACKAGE_URL" in os.environ
-        artifacts_was_set = "CODEXY_RUNTIME_ARTIFACTS_API_URL" in os.environ
-        package_url = os.environ.get("CODEXY_RUNTIME_PACKAGE_URL", "")
-        artifacts_api = os.environ.get("CODEXY_RUNTIME_ARTIFACTS_API_URL", "")
-        explicit_requested = bool(
-            package_path_was_set or package_url_was_set or artifacts_was_set
-        )
-        package_sha256 = os.environ.get("CODEXY_RUNTIME_PACKAGE_SHA256", "").lower()
-        try:
-            explicit_source = ExplicitRuntimeSource.select(
-                requested=explicit_requested,
-                package_path=package_path,
-                package_url=package_url,
-                artifacts_api=artifacts_api,
-                package_sha256=package_sha256,
-            )
-        except ValueError as error:
-            _fail(str(error))
-        package_override = explicit_source is not None
-        release_path = plugin_root / "runtime-release.json"
-        try:
-            release_contract = (
-                load_runtime_release(plugin_root) if release_path.is_file() else None
-            )
-        except ValueError as error:
-            _fail(f"codexy-mcp-{server} cannot read runtime release: {error}")
-        if release_contract and not package_override:
-            package_url, package_sha256 = (
-                release_contract.artifact.url,
-                release_contract.artifact.sha256,
-            )
-        elif not package_override:
-            package_url = f"{REPOSITORY}/releases/download/v{release}/codexy-marketplace-plugin.tar.gz"
-        source_identity = RuntimeSourceIdentity.create(
-            explicit=explicit_source,
-            package_sha256=package_sha256,
-            package_url=package_url,
-            release=release_contract,
-        )
-        return cls(
-            server=server,
-            plugin_root=plugin_root,
-            arguments=arguments,
-            platform=_host_platform(),
-            manifest=manifest,
-            release=release,
-            runtime_name=f"codexy-mcp-{server}-{_host_platform()}.bin",
-            package_path=package_path,
-            package_url=package_url,
-            artifacts_api=artifacts_api,
-            package_override=package_override,
-            package_sha256=package_sha256,
-            git_repository=(
-                os.environ.get("CODEXY_RUNTIME_GIT_REPOSITORY", REPOSITORY)
-                if not release_contract
-                else release_contract.source.repository
-            ),
-            git_ref=(
-                os.environ.get("CODEXY_RUNTIME_GIT_REF", "")
-                if not release_contract
-                else release_contract.source.commit
-            ),
-            offline=os.environ.get("UV_OFFLINE", "").lower() in {"1", "true", "yes"},
-            git_fallback=os.environ.get("CODEXY_RUNTIME_GIT_FALLBACK") == "1",
-            release_contract=release_contract,
-            source_identity=source_identity,
-        )
 
 
 def _cache_root(server: str) -> Path:
