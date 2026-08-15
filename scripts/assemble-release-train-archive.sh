@@ -18,7 +18,7 @@ mkdir "$tmp_dir/extracted"
 tar --no-same-owner --no-same-permissions -xzf "$runtime_archive" -C "$tmp_dir/extracted"
 
 ROOT="$root" EXTRACTED="$tmp_dir/extracted" OUTPUT="$bundle_archive" RELEASE_TAG="$RELEASE_TAG" \
-COMPONENT_MANIFEST="$component_manifest" MARKETPLACE="$marketplace" python3 - <<'PY'
+	COMPONENT_MANIFEST="$component_manifest" MARKETPLACE="$marketplace" python3 - <<'PY'
 import gzip, json, os, shutil, tarfile
 from pathlib import Path
 
