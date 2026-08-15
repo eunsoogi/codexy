@@ -57,9 +57,11 @@ mod release_actions_lifecycle;
 #[path = "../release_lifecycle_contract.rs"]
 mod release_lifecycle_contract;
 
+#[cfg(unix)]
 #[path = "../release_publication_recovery.rs"]
 mod release_publication_recovery;
 
+#[cfg(unix)]
 #[path = "../release_settings_admission.rs"]
 mod release_settings_admission;
 

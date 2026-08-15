@@ -1,8 +1,15 @@
 use std::fs;
-use std::process::Command;
 
 use crate::support;
+
+#[cfg(unix)]
+use std::process::Command;
+#[cfg(unix)]
 use sha2::{Digest, Sha256};
+
+#[cfg(unix)]
+#[path = "release_reconciliation/release_attestation_reconciliation.rs"]
+mod release_attestation_reconciliation;
 
 #[test]
 fn release_reconciliation_authenticates_a_draft_before_finalization()
@@ -62,6 +69,7 @@ fn finalization_verifies_all_attested_assets_before_publication()
     Ok(())
 }
 
+#[cfg(unix)]
 #[test]
 fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_baseline()
 -> Result<(), Box<dyn std::error::Error>> {
