@@ -5,8 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from .component_inventory_classification import (
+    ClassifiedInstalledRecord,
     ClassifiedInstalledInventory,
     ComponentResolutionError,
+    InstalledIdentity,
     classify_installed_inventory,
     preflight_unregistered_inventory,
 )
