@@ -20,8 +20,12 @@
     "contentProof": {
       "sourceManifestSha256": "<sha256>",
       "installedManifestSha256": "<sha256>",
-      "sourceChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }],
-      "installedChangedFiles": [{ "path": "<relative-path>", "sha256": "<sha256>" }]
+      "sourceChangedFiles": [
+        { "path": "<relative-path>", "sha256": "<sha256>" }
+      ],
+      "installedChangedFiles": [
+        { "path": "<relative-path>", "sha256": "<sha256>" }
+      ]
     }
   },
   "audit": {
@@ -98,7 +102,9 @@
     "eventIds": ["<kind>|<lane>|<subject>"]
   },
   "goalPlanReceipts": ["<create_goal-or-update_plan-event-id>"],
-  "helpers": [{ "id": "<agent-id>", "ownedSlice": "<read-only-or-disjoint-slice>" }],
+  "helpers": [
+    { "id": "<agent-id>", "ownedSlice": "<read-only-or-disjoint-slice>" }
+  ],
   "commandReceipts": [
     {
       "commandId": "<safe-command-id>",

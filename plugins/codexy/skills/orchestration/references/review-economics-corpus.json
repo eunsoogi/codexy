@@ -1,10 +1,25 @@
 {
   "schema": "codexy.review-economics-corpus.v1",
   "lanes": [
-    {"id":"tiny","kind":"tiny","profile":"standard","seeds":[]},
-    {"id":"security","kind":"security","profile":"strict","seeds":[{"id":"seed-p0-authz","severity":"p0"}]},
-    {"id":"standard","kind":"standard","profile":"standard","seeds":[{"id":"seed-p1-boundary","severity":"p1"}]},
-    {"id":"response","kind":"review_response","profile":"strict","seeds":[{"id":"seed-p1-regression","severity":"p1"}]},
-    {"id":"release","kind":"release","profile":"strict","seeds":[]}
+    { "id": "tiny", "kind": "tiny", "profile": "standard", "seeds": [] },
+    {
+      "id": "security",
+      "kind": "security",
+      "profile": "strict",
+      "seeds": [{ "id": "seed-p0-authz", "severity": "p0" }]
+    },
+    {
+      "id": "standard",
+      "kind": "standard",
+      "profile": "standard",
+      "seeds": [{ "id": "seed-p1-boundary", "severity": "p1" }]
+    },
+    {
+      "id": "response",
+      "kind": "review_response",
+      "profile": "strict",
+      "seeds": [{ "id": "seed-p1-regression", "severity": "p1" }]
+    },
+    { "id": "release", "kind": "release", "profile": "strict", "seeds": [] }
   ]
 }

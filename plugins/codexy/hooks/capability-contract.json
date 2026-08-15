@@ -8,7 +8,11 @@
       "events": ["PermissionRequest", "PreToolUse"],
       "inputContract": "codexy.hooks.thread-delivery.v1",
       "preventive": true,
-      "entrypoints": ["codexy-thread-delivery.sh", "codexy-thread-delivery.cmd", "codexy-thread-delivery.py"],
+      "entrypoints": [
+        "codexy-thread-delivery.sh",
+        "codexy-thread-delivery.cmd",
+        "codexy-thread-delivery.py"
+      ],
       "diagnosticFamily": "CODEXY_THREAD_DELIVERY_",
       "contentDigest": "103d7a8ebac72ebe"
     }

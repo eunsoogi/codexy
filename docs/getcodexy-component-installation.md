@@ -55,14 +55,14 @@ root. A stale or malformed record cannot be treated as an unrelated plugin.
 
 ## Commands
 
-| Command | Selection rule | Mutation rule |
-| --- | --- | --- |
-| `getcodexy install [COMPONENT ...]` | No components selects all. Explicit components include their transitive dependencies. | Adds the resolved selection to the installed selection; it never removes another installed component. |
-| `getcodexy update [COMPONENT ...]` | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection. |
-| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component. | Rejects a request if a retained component would still depend on a requested removal. |
-| `getcodexy status` | Reads the installed inventory. | None. |
-| `getcodexy doctor` | Reads inventory consistency, host readiness, and component health. | None. |
-| `getcodexy bootstrap` | Selects the complete supported installation. | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
+| Command                                      | Selection rule                                                                                                                   | Mutation rule                                                                                                  |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `getcodexy install [COMPONENT ...]`          | No components selects all. Explicit components include their transitive dependencies.                                            | Adds the resolved selection to the installed selection; it never removes another installed component.          |
+| `getcodexy update [COMPONENT ...]`           | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection.                                                                             |
+| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component.                                                                                                 | Rejects a request if a retained component would still depend on a requested removal.                           |
+| `getcodexy status`                           | Reads the installed inventory.                                                                                                   | None.                                                                                                          |
+| `getcodexy doctor`                           | Reads inventory consistency, host readiness, and component health.                                                               | None.                                                                                                          |
+| `getcodexy bootstrap`                        | Selects the complete supported installation.                                                                                     | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
 
 Unknown components fail with `unknown-component`. `update` without any recorded
 inventory fails with `no-recorded-selection`; a present but dependency-invalid
@@ -74,18 +74,18 @@ validation additionally reports `unknown-installed-component`,
 
 ## State transitions
 
-| Before | Command | After | Outcome |
-| --- | --- | --- | --- |
-| none | `install` | core, github, devtools | completed |
-| none | `install core` | core | completed |
-| none | `install github` | core, github | completed |
-| none | `install devtools` | core, devtools | completed |
-| core, devtools | `install github` | core, github, devtools | completed |
-| core, devtools | `update` | core, devtools | completed |
-| core, github, devtools | `remove github` | core, devtools | completed |
-| core, github | `remove core` | core, github | rejected: dependency-protected-removal |
-| core, github | `remove core github` | none | completed |
-| any consistent selection | a mutating operation fails | exact pre-operation selection | rolled-back |
+| Before                   | Command                    | After                         | Outcome                                |
+| ------------------------ | -------------------------- | ----------------------------- | -------------------------------------- |
+| none                     | `install`                  | core, github, devtools        | completed                              |
+| none                     | `install core`             | core                          | completed                              |
+| none                     | `install github`           | core, github                  | completed                              |
+| none                     | `install devtools`         | core, devtools                | completed                              |
+| core, devtools           | `install github`           | core, github, devtools        | completed                              |
+| core, devtools           | `update`                   | core, devtools                | completed                              |
+| core, github, devtools   | `remove github`            | core, devtools                | completed                              |
+| core, github             | `remove core`              | core, github                  | rejected: dependency-protected-removal |
+| core, github             | `remove core github`       | none                          | completed                              |
+| any consistent selection | a mutating operation fails | exact pre-operation selection | rolled-back                            |
 
 ## Rollback
 

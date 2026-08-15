@@ -167,16 +167,16 @@ For strict work or a formal-evidence trigger, MUST emit the authoritative
 ownership record, then render exactly one ordered two-column GFM table before
 the first workflow action:
 
-| Field | Value |
-| --- | --- |
-| Lane type | One primary taxonomy entry. |
-| Secondary surfaces | Relevant secondary surfaces or `None`. |
-| Owner decision | `affirmative <owner>` with an optional `because <rationale>`, or `denied <owner>`. |
-| Atomic scope | Whether the request is issue-sized, bundled, or needs splitting before setup. |
-| Required skills | The Codexy skills to read before acting. |
-| Required tools/evidence | Lane-relevant required evidence and unavailable-tool fallbacks. |
-| First allowed action | The next concrete action allowed only after classification. |
-| Stop/blocker | `None` or the exact blocker that prevents proceeding. |
+| Field                   | Value                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| Lane type               | One primary taxonomy entry.                                                        |
+| Secondary surfaces      | Relevant secondary surfaces or `None`.                                             |
+| Owner decision          | `affirmative <owner>` with an optional `because <rationale>`, or `denied <owner>`. |
+| Atomic scope            | Whether the request is issue-sized, bundled, or needs splitting before setup.      |
+| Required skills         | The Codexy skills to read before acting.                                           |
+| Required tools/evidence | Lane-relevant required evidence and unavailable-tool fallbacks.                    |
+| First allowed action    | The next concrete action allowed only after classification.                        |
+| Stop/blocker            | `None` or the exact blocker that prevents proceeding.                              |
 
 ## Formal Classification Output
 
@@ -202,7 +202,7 @@ the first workflow action:
   creating or switching to an implementation branch or worktree. Handoff
   evidence MUST NOT report child-created branch/worktree setup before that
   table; `scripts/validate-plugin-config --check-child-lane-ownership
-  --evidence-file <path>` catches this workflow defect. Issue #231 tracks the
+--evidence-file <path>` catches this workflow defect. Issue #231 tracks the
   exact dogfood evidence from issue #228: child branch
   `codexy/228-reject-generic-reviewer-gate-sentinel-proof` was created
   immediately after thread rename and before formal `$orchestration`

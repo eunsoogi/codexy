@@ -1,18 +1,12 @@
 {
   "lsp": {
     "command": "./mcp/codexy-mcp-devtools",
-    "args": [
-      "lsp",
-      "--stdio"
-    ],
+    "args": ["lsp", "--stdio"],
     "cwd": "."
   },
   "codegraph": {
     "command": "./mcp/codexy-mcp-devtools",
-    "args": [
-      "codegraph",
-      "--stdio"
-    ],
+    "args": ["codegraph", "--stdio"],
     "cwd": "."
   }
 }

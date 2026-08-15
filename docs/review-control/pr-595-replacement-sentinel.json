@@ -109,7 +109,7 @@
     "implementation_head_oid": "f620c59db4bfb7057c8cb3ad905d119ea9d65bce",
     "commit": "fix(runtime): validate markerless component archives",
     "goal_receipts": {
-      "get_goal": {"status": "null"},
+      "get_goal": { "status": "null" },
       "create_goal": {
         "objective": "Repair #555 markerless component compatibility preflight, prove no mutation on the actual producer path at the exact final head, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
         "createdAt": 1786601152
@@ -166,7 +166,7 @@
     "implementation_head_oid": "db75cd4b377b0dc0a07ff5d9c7abd3e74f0634f0",
     "commit": "test(runtime): cover malformed markerless semver",
     "goal_receipts": {
-      "get_goal": {"status": "null"},
+      "get_goal": { "status": "null" },
       "create_goal": {
         "objective": "Close the #555 markerless SemVer coverage gap in the actual no-mutation producer matrix, prove the exact final head, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
         "createdAt": 1786602039
@@ -218,7 +218,7 @@
     "implementation_head_oid": "37c131a2bd5f408c0afefea9cd202fc06f555ee9",
     "commit": "fix(runtime): prepare version updates before writes",
     "goal_receipts": {
-      "get_goal": {"status": "null"},
+      "get_goal": { "status": "null" },
       "create_goal": {
         "objective": "Repair the #555 version-mutation late-rewriter atomicity defect with a prepared transformation set, prove exact-current-head behavior, obtain one fresh packaged Sentinel verdict, and return clean-head evidence to parent without GitHub mutation.",
         "createdAt": 1786603100
@@ -280,7 +280,7 @@
     "implementation_head_oid": "005d6e63017f40cb63febd3979b2a8b93a847dd5",
     "commit": "test(runtime): cover CRLF mutation fixtures",
     "goal_receipts": {
-      "get_goal": {"status": "null"},
+      "get_goal": { "status": "null" },
       "create_goal": {
         "objective": "Diagnose and repair the exact #555 Windows CI Cargo.lock fixture portability failure, establish exact-current-head local proof and one fresh packaged Sentinel PASS, commit cleanly, and return to the parent without GitHub mutation.",
         "createdAt": 1786604781
@@ -343,7 +343,13 @@
       "remote_head_oid": "6838f7a7028c583eb5744f7c162fbc31557cd245",
       "title": "feat(getcodexy): add component manifest resolver",
       "body_final_line": "Fixes #555",
-      "labels": ["type/feature", "status/review", "priority/high", "area/plugin", "area/release"],
+      "labels": [
+        "type/feature",
+        "status/review",
+        "priority/high",
+        "area/plugin",
+        "area/release"
+      ],
       "milestone": "1.4.0 Wave 5",
       "assignee": "eunsoogi",
       "ci": "21/21 SUCCESS on remote 6838f7a7 only; historical and stale for local repair heads"
@@ -376,7 +382,10 @@
         "kind": "maintainer-authorized packaged Sentinel",
         "reviewer_task": "/root/sentinel_pr595_authorized_review",
         "verdict": "BLOCK",
-        "findings": ["producer/consumer strict JSON and bounded SemVer divergence", "stale assertion-only current-head proof"]
+        "findings": [
+          "producer/consumer strict JSON and bounded SemVer divergence",
+          "stale assertion-only current-head proof"
+        ]
       },
       {
         "id": "pr595-authorized-delta-ad304194",

@@ -19,16 +19,14 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
   },
   "ownership": {
     "decision": "cannot_own",
-    "existing_owner": {"kind": "issue", "number": 195},
+    "existing_owner": { "kind": "issue", "number": 195 },
     "rationale": "REPLACE"
   },
   "duplicate_search": {
     "states": ["open", "closed"],
     "search_terms": ["REPLACE"],
-    "results": [
-      {"issue": 195, "state": "closed", "match_kind": "related"}
-    ],
-    "conclusion": {"decision": "no_duplicate"}
+    "results": [{ "issue": 195, "state": "closed", "match_kind": "related" }],
+    "conclusion": { "decision": "no_duplicate" }
   },
   "necessity": {
     "decision": "thin_harness_change_required",
@@ -55,9 +53,9 @@ invalid. The replacement `body` MUST contain real `## Problem`, `## Scope`,
 - Duplicate search MUST cover `open` and `closed`. Each result uses
   `match_kind: exact` or `related`.
 - An exact result MUST use `conclusion: {"decision":"duplicate",
-  "canonical_issue":NUMBER}` and MUST be rejected before issue creation.
+"canonical_issue":NUMBER}` and MUST be rejected before issue creation.
 - `classification: unsupported_synthetic`, `classification:
-  same_class_observation`, `ownership.decision: can_own`, and
+same_class_observation`, `ownership.decision: can_own`, and
   `necessity.decision: no_change` are handoff-only outcomes.
 - Rationale wording MUST NOT override typed decisions. Reproduction, ownership,
   duplicate-search terms, and necessity evidence MUST be substantive.

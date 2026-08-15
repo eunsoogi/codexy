@@ -17,7 +17,8 @@ jobs:
       fail-fast: false
       max-parallel: 7
       matrix:
-        shard: [support, agent, child, orchestration, governance, system, archive]
+        shard:
+          [support, agent, child, orchestration, governance, system, archive]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,7 +42,8 @@ jobs:
       fail-fast: false
       max-parallel: 7
       matrix:
-        shard: [support, agent, child, orchestration, governance, system, archive]
+        shard:
+          [support, agent, child, orchestration, governance, system, archive]
     steps:
       - uses: actions/checkout@v7
         with:

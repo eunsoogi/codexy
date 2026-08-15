@@ -122,6 +122,7 @@ uninstalling, diagnosing, or invoking a packaged specialist.
   MUST include GraphQL `reviewThreads.nodes`.
 
 ## Active Child Thread Ledger
+
 Orchestration MUST maintain a durable active/waiting child thread ledger across normal polling, compaction recovery, dreaming rehydration, and parent handoffs.
 Active child Codex app threads MUST be capped at 5. Orchestrators MUST count
 only active/waiting Codex app child threads against that cap and MUST NOT create, continue, or resume a sixth active child thread until another active child thread has finished, stopped, or been explicitly removed from the ledger.

@@ -43,21 +43,21 @@ codexy/
 
 ## Where To Look
 
-| Task | Location | Notes |
-| --- | --- | --- |
-| Git, issue, PR, review, merge, labels | `plugins/codexy-github/skills/git-workflow/SKILL.md` | Optional executable workflow source of truth. |
-| Plugin identity and install surface | `plugins/codexy/.codex-plugin/plugin.json` | MUST keep metadata current. |
-| Marketplace registration | `.agents/plugins/marketplace.json` | Version MUST stay synced with the plugin manifest. |
-| Version bump automation | `.github/workflows/plugin-version-bump.yml` | Uses `scripts/sync-plugin-version`. |
-| Plugin config validation | `scripts/validate-plugin-config` | Covers manifest, MCP, LSP, skills, and agent contracts. |
-| Version synchronization | `scripts/sync-plugin-version` | Checks or updates plugin and marketplace versions. |
-| Specialist agents | `plugins/codexy/agents/*.toml` | One agent per file plus `catalog.toml` and `openai.yaml`. |
-| Orchestration behavior | `plugins/codexy/skills/orchestration/SKILL.md` | Classification, thread, goal, todo, multi-agent, worktree, and token-discipline policy. |
-| Review gate contract | `plugins/codexy/skills/orchestration/references/review-profiles.json` | Closed light/standard/strict reviewer selection; Sentinel is strict-only. |
-| MCP/LSP integration | `plugins/codexy-devtools/.mcp.json`, `plugins/codexy-devtools/.codex/lsp-client.json`, `plugins/codexy-devtools/lsp/server-catalog.toml` | MUST keep these validator-compatible together. |
-| User-facing docs | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md` | Root README files stay concise; skills carry executable usage detail. |
-| Repository-only skills | `.agents/skills/**/SKILL.md` | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy. |
-| Visual assets | `assets/`, `plugins/codexy/assets/` | MUST keep plugin-local assets available from the manifest. |
+| Task                                  | Location                                                                                                                                 | Notes                                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Git, issue, PR, review, merge, labels | `plugins/codexy-github/skills/git-workflow/SKILL.md`                                                                                     | Optional executable workflow source of truth.                                                             |
+| Plugin identity and install surface   | `plugins/codexy/.codex-plugin/plugin.json`                                                                                               | MUST keep metadata current.                                                                               |
+| Marketplace registration              | `.agents/plugins/marketplace.json`                                                                                                       | Version MUST stay synced with the plugin manifest.                                                        |
+| Version bump automation               | `.github/workflows/plugin-version-bump.yml`                                                                                              | Uses `scripts/sync-plugin-version`.                                                                       |
+| Plugin config validation              | `scripts/validate-plugin-config`                                                                                                         | Covers manifest, MCP, LSP, skills, and agent contracts.                                                   |
+| Version synchronization               | `scripts/sync-plugin-version`                                                                                                            | Checks or updates plugin and marketplace versions.                                                        |
+| Specialist agents                     | `plugins/codexy/agents/*.toml`                                                                                                           | One agent per file plus `catalog.toml` and `openai.yaml`.                                                 |
+| Orchestration behavior                | `plugins/codexy/skills/orchestration/SKILL.md`                                                                                           | Classification, thread, goal, todo, multi-agent, worktree, and token-discipline policy.                   |
+| Review gate contract                  | `plugins/codexy/skills/orchestration/references/review-profiles.json`                                                                    | Closed light/standard/strict reviewer selection; Sentinel is strict-only.                                 |
+| MCP/LSP integration                   | `plugins/codexy-devtools/.mcp.json`, `plugins/codexy-devtools/.codex/lsp-client.json`, `plugins/codexy-devtools/lsp/server-catalog.toml` | MUST keep these validator-compatible together.                                                            |
+| User-facing docs                      | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md`                                                                         | Root README files stay concise; skills carry executable usage detail.                                     |
+| Repository-only skills                | `.agents/skills/**/SKILL.md`                                                                                                             | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy. |
+| Visual assets                         | `assets/`, `plugins/codexy/assets/`                                                                                                      | MUST keep plugin-local assets available from the manifest.                                                |
 
 ## Documentation
 

@@ -19,12 +19,20 @@
   },
   "platforms": {
     "darwin-arm64": {
-      "lsp": { "sha256": "0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706" },
-      "codegraph": { "sha256": "f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6" }
+      "lsp": {
+        "sha256": "0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706"
+      },
+      "codegraph": {
+        "sha256": "f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6"
+      }
     },
     "linux-x86_64": {
-      "lsp": { "sha256": "7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663" },
-      "codegraph": { "sha256": "218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2" }
+      "lsp": {
+        "sha256": "7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663"
+      },
+      "codegraph": {
+        "sha256": "218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2"
+      }
     }
   }
 }

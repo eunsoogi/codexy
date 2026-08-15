@@ -82,7 +82,7 @@ extensions only when they preserve these rules.
 
 - 100% of source-backed articles MUST have at least one resolvable `sources:`
   entry. 100% of conversation-only articles MUST state `compiled-from:
-  conversation`.
+conversation`.
 - 100% of generated outputs with factual dependencies MUST have resolvable
   `sources:`. Audits MUST classify a broken or missing chain as `provenance-gap`,
   rather than clean.
@@ -145,37 +145,37 @@ This table is the closed current workflow inventory for this skill. Every row
 MUST occur exactly once with one `Keep`, `Merge`, or `Remove` disposition.
 Before a new current workflow can claim contract coverage, it MUST add one row.
 
-| Current workflow | Disposition | Contract role |
-| --- | --- | --- |
-| `init` | Keep | Establishes a topic root and its source-of-truth/index layout. |
-| `ingest` | Keep | Admits immutable, provenance-bearing source material. |
-| `ingest-collection` | Merge | Uses ingest's immutable/provenance contract for bounded source collections. |
-| `collect` | Remove | Candidate discovery is outside the minimal factual pipeline; it may hand off to inventory. |
-| `compile` | Keep | Produces synthesized, provenance-linked knowledge from raw sources. |
-| `query` | Keep | Reads bounded indexes and cited articles, reporting knowledge gaps. |
-| `refresh` | Keep | Rechecks fetchable provenance and creates new raw revisions when changed. |
-| `lint` | Keep | Checks structural and freshness-rule conformance. |
-| `librarian` | Merge | Maintains the wiki layer under refresh, provenance, and freshness criteria. |
-| `audit` | Merge | Performs umbrella trust inspection using provenance and freshness results. |
-| `research` | Merge | Acquires evidence through ingest before it can affect compiled knowledge. |
-| `output` | Merge | Generates derivative artifacts with resolvable source chains. |
-| `plan` | Remove | Planning is orchestration, not a minimal knowledge-path operation. |
-| `project` | Remove | Project organization is optional output management. |
-| `inventory` | Remove | Candidate/decision policy is adjacent operational state, owned separately from this contract. |
-| `dataset` | Remove | Registry management is an optional boundary for large or mutable data. |
-| `archive` | Remove | Lifecycle preservation is not part of the active knowledge path. |
-| `ll` | Remove | Compatibility/status shorthand is not a contract capability. |
-| `assess` | Merge | Assessment consumes the same bounded, traceable, fresh evidence as query and audit. |
-| `retract` | Merge | Retracts or repairs knowledge through the same provenance and log rules. |
-| `thesis` | Merge | Research variant that MUST ingest evidence before compiled use. |
-| `status` | Remove | Status inspection is not a minimal knowledge-path operation. |
-| `session` | Remove | Operational session routing is not compiled topic knowledge. |
-| `session-capture` | Remove | Redacted operational memory stays outside topic facts by default. |
-| `rehydrate` | Remove | Session-context recovery is operational memory, not compiled knowledge. |
-| `session-promote` | Merge | Explicit promotion admits a session learning through the raw-note boundary. |
-| `feedback` | Remove | Feedback routing is candidate-memory operation, not a factual source. |
-| `feedback-capture` | Remove | Candidate feedback remains reviewable operational memory. |
-| `feedback-promote` | Merge | Explicit promotion writes a bounded raw note with provenance. |
+| Current workflow    | Disposition | Contract role                                                                                 |
+| ------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `init`              | Keep        | Establishes a topic root and its source-of-truth/index layout.                                |
+| `ingest`            | Keep        | Admits immutable, provenance-bearing source material.                                         |
+| `ingest-collection` | Merge       | Uses ingest's immutable/provenance contract for bounded source collections.                   |
+| `collect`           | Remove      | Candidate discovery is outside the minimal factual pipeline; it may hand off to inventory.    |
+| `compile`           | Keep        | Produces synthesized, provenance-linked knowledge from raw sources.                           |
+| `query`             | Keep        | Reads bounded indexes and cited articles, reporting knowledge gaps.                           |
+| `refresh`           | Keep        | Rechecks fetchable provenance and creates new raw revisions when changed.                     |
+| `lint`              | Keep        | Checks structural and freshness-rule conformance.                                             |
+| `librarian`         | Merge       | Maintains the wiki layer under refresh, provenance, and freshness criteria.                   |
+| `audit`             | Merge       | Performs umbrella trust inspection using provenance and freshness results.                    |
+| `research`          | Merge       | Acquires evidence through ingest before it can affect compiled knowledge.                     |
+| `output`            | Merge       | Generates derivative artifacts with resolvable source chains.                                 |
+| `plan`              | Remove      | Planning is orchestration, not a minimal knowledge-path operation.                            |
+| `project`           | Remove      | Project organization is optional output management.                                           |
+| `inventory`         | Remove      | Candidate/decision policy is adjacent operational state, owned separately from this contract. |
+| `dataset`           | Remove      | Registry management is an optional boundary for large or mutable data.                        |
+| `archive`           | Remove      | Lifecycle preservation is not part of the active knowledge path.                              |
+| `ll`                | Remove      | Compatibility/status shorthand is not a contract capability.                                  |
+| `assess`            | Merge       | Assessment consumes the same bounded, traceable, fresh evidence as query and audit.           |
+| `retract`           | Merge       | Retracts or repairs knowledge through the same provenance and log rules.                      |
+| `thesis`            | Merge       | Research variant that MUST ingest evidence before compiled use.                               |
+| `status`            | Remove      | Status inspection is not a minimal knowledge-path operation.                                  |
+| `session`           | Remove      | Operational session routing is not compiled topic knowledge.                                  |
+| `session-capture`   | Remove      | Redacted operational memory stays outside topic facts by default.                             |
+| `rehydrate`         | Remove      | Session-context recovery is operational memory, not compiled knowledge.                       |
+| `session-promote`   | Merge       | Explicit promotion admits a session learning through the raw-note boundary.                   |
+| `feedback`          | Remove      | Feedback routing is candidate-memory operation, not a factual source.                         |
+| `feedback-capture`  | Remove      | Candidate feedback remains reviewable operational memory.                                     |
+| `feedback-promote`  | Merge       | Explicit promotion writes a bounded raw note with provenance.                                 |
 
 Cross-cutting index maintenance and append-only `log.md` entries are kept as
 required behavior inside every applicable core write or read, rather than as

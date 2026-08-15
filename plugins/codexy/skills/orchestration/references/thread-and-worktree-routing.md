@@ -9,7 +9,7 @@ child-owned implementation lane through another surface.
 1. MUST search the actual callable tool surface for true Codex thread/worktree tool
    names and namespaces. MUST include exact and broad terms such as
    `codex_app create_thread fork_thread list_threads read_thread
-   send_message_to_thread set_thread_title`, `thread/start`, `turn/start`,
+send_message_to_thread set_thread_title`, `thread/start`, `turn/start`,
    `Thread Coordination`, `Codex managed worktree`, `worktree`, and
    `child thread`.
 2. MUST separately record `tool_search` results and actual thread-event evidence. A

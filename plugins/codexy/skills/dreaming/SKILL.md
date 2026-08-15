@@ -35,11 +35,11 @@ no evidence.
 
 MUST separate every carried fact into exactly one bucket:
 
-| Bucket | Retention condition | Required evidence |
-| --- | --- | --- |
-| Remember | It is durable project policy, issue scope, owner boundary, exact IDs, current refs, or a stop condition the next agent MUST preserve. | Current instruction, issue, PR, git, or tool output. |
-| Fix | It is an unresolved obligation that still needs action on the current lane. | Current failing check, unresolved review thread, open issue, dirty worktree, or explicit maintainer request. |
-| Forget or demote | It is resolved, superseded, stale, duplicated, only historical, or useful as background but not action-driving work. | Current state proves it is no longer active, or it lacks current evidence. |
+| Bucket           | Retention condition                                                                                                                   | Required evidence                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Remember         | It is durable project policy, issue scope, owner boundary, exact IDs, current refs, or a stop condition the next agent MUST preserve. | Current instruction, issue, PR, git, or tool output.                                                         |
+| Fix              | It is an unresolved obligation that still needs action on the current lane.                                                           | Current failing check, unresolved review thread, open issue, dirty worktree, or explicit maintainer request. |
+| Forget or demote | It is resolved, superseded, stale, duplicated, only historical, or useful as background but not action-driving work.                  | Current state proves it is no longer active, or it lacks current evidence.                                   |
 
 MUST NOT carry an item as `Fix` only because it appears in a summary. MUST verify it
 against the authoritative surface first.
@@ -133,14 +133,14 @@ Next action:
 
 ## Common Mistakes
 
-| Mistake | Correction |
-| --- | --- |
-| Keeping every compacted bullet as active work. | Reclassify by current evidence. |
-| Losing the stop condition. | Put it in `Current anchors` before any next action. |
-| Treating resolved review feedback as still open. | Demote it after current GitHub evidence confirms resolution. |
-| Treating stale checks or old review output as current. | Compare timestamps and head SHAs before acting. |
-| Forgetting ownership after compaction. | MUST preserve parent/child owner boundary as a `Remember` item. |
-| Writing a continuation from memory alone. | Refresh current anchors first, then classify. |
+| Mistake                                                | Correction                                                      |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| Keeping every compacted bullet as active work.         | Reclassify by current evidence.                                 |
+| Losing the stop condition.                             | Put it in `Current anchors` before any next action.             |
+| Treating resolved review feedback as still open.       | Demote it after current GitHub evidence confirms resolution.    |
+| Treating stale checks or old review output as current. | Compare timestamps and head SHAs before acting.                 |
+| Forgetting ownership after compaction.                 | MUST preserve parent/child owner boundary as a `Remember` item. |
+| Writing a continuation from memory alone.              | Refresh current anchors first, then classify.                   |
 
 ## Stop Conditions
 

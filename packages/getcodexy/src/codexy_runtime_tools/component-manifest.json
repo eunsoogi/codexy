@@ -1,6 +1,9 @@
 {
   "schema": "getcodexy.component-manifest.v1",
-  "marketplace": {"name": "codexy", "source": "https://github.com/eunsoogi/codexy.git"},
+  "marketplace": {
+    "name": "codexy",
+    "source": "https://github.com/eunsoogi/codexy.git"
+  },
   "domainErrors": {
     "component-version-mismatch": "Installed versions must match the post-operation manifest target.",
     "components-not-accepted": "The command does not accept component arguments.",
@@ -19,15 +22,48 @@
     "unknown-installed-component": "The official Codexy marketplace inventory contains an unrecognized product."
   },
   "components": [
-    {"id": "core", "plugin": "codexy", "version": "1.3.0", "dependencies": [], "asset": {"pluginId": "codexy@codexy", "packageRoot": "plugins/codexy", "requiredPaths": [".codex-plugin/plugin.json", "assets/codexy-icon.png"]}},
-    {"id": "github", "plugin": "codexy-github", "version": "1.3.0", "dependencies": ["core"], "asset": {"pluginId": "codexy-github@codexy", "packageRoot": "plugins/codexy-github", "requiredPaths": [".codex-plugin/plugin.json", "skills/git-workflow/SKILL.md"]}},
-    {"id": "devtools", "plugin": "codexy-devtools", "version": "1.3.0", "dependencies": ["core"], "asset": {"pluginId": "codexy-devtools@codexy", "packageRoot": "plugins/codexy-devtools", "requiredPaths": [".codex-plugin/plugin.json", ".mcp.json"]}}
+    {
+      "id": "core",
+      "plugin": "codexy",
+      "version": "1.3.0",
+      "dependencies": [],
+      "asset": {
+        "pluginId": "codexy@codexy",
+        "packageRoot": "plugins/codexy",
+        "requiredPaths": [".codex-plugin/plugin.json", "assets/codexy-icon.png"]
+      }
+    },
+    {
+      "id": "github",
+      "plugin": "codexy-github",
+      "version": "1.3.0",
+      "dependencies": ["core"],
+      "asset": {
+        "pluginId": "codexy-github@codexy",
+        "packageRoot": "plugins/codexy-github",
+        "requiredPaths": [
+          ".codex-plugin/plugin.json",
+          "skills/git-workflow/SKILL.md"
+        ]
+      }
+    },
+    {
+      "id": "devtools",
+      "plugin": "codexy-devtools",
+      "version": "1.3.0",
+      "dependencies": ["core"],
+      "asset": {
+        "pluginId": "codexy-devtools@codexy",
+        "packageRoot": "plugins/codexy-devtools",
+        "requiredPaths": [".codex-plugin/plugin.json", ".mcp.json"]
+      }
+    }
   ],
   "compatibleCombinations": [
-    {"components": [], "version": "1.3.0"},
-    {"components": ["core"], "version": "1.3.0"},
-    {"components": ["core", "github"], "version": "1.3.0"},
-    {"components": ["core", "devtools"], "version": "1.3.0"},
-    {"components": ["core", "github", "devtools"], "version": "1.3.0"}
+    { "components": [], "version": "1.3.0" },
+    { "components": ["core"], "version": "1.3.0" },
+    { "components": ["core", "github"], "version": "1.3.0" },
+    { "components": ["core", "devtools"], "version": "1.3.0" },
+    { "components": ["core", "github", "devtools"], "version": "1.3.0" }
   ]
 }

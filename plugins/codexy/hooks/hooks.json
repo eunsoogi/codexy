@@ -3,13 +3,27 @@
     "PermissionRequest": [
       {
         "matcher": "^codex_app__send_message_to_thread$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PermissionRequest", "timeout": 5}]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PermissionRequest",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PermissionRequest",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
         "matcher": "^codex_app__send_message_to_thread$",
-        "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PreToolUse", "timeout": 5}]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PreToolUse",
+            "timeout": 5
+          }
+        ]
       }
     ]
   }
