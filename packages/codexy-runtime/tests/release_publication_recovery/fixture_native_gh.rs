@@ -46,10 +46,10 @@ def route():
 
 def fixture_path(value):
     path = pathlib.Path(value)
+    if os.name == 'nt' and len(value) > 3 and value[0] == '/' and value[2] == '/':
+        fail('unconverted native filesystem path')
     if path.is_absolute():
         return path
-    if os.name == 'nt' and len(value) > 3 and value[0] == '/' and value[2] == '/':
-        return pathlib.Path(value[1].upper() + ':/' + value[3:])
     return path
 
 def download_directory():

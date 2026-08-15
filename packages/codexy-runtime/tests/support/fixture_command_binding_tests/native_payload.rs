@@ -105,6 +105,66 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
 }
 
 #[test]
+fn launcher_binding_converts_only_declared_native_release_filesystem_operands()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let bin = temp.path().join("bin");
+    fs::create_dir(&bin)?;
+    let script = temp.path().join("release-helper");
+    let gh = temp.path().join("gh");
+    let cygpath = bin.join("cygpath");
+    write_posix_fixture_command(
+        &script,
+        "#!/bin/sh\ngh release download v9.9.9 --repo \"$GITHUB_REPOSITORY\" --dir /d/download\ngh release upload v9.9.9 /d/upload\ngh attestation verify /d/artifact --repo \"$GITHUB_REPOSITORY\"\n",
+    )?;
+    write_posix_fixture_command(
+        &cygpath,
+        "#!/bin/sh\ntest \"$1\" = -w && test \"$2\" = -- || exit 2\ncase \"$3\" in /d/*) printf 'D:/%s\\n' \"${3#/d/}\" ;; *) exit 3 ;; esac\n",
+    )?;
+    fs::write(
+        &gh,
+        "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nexpected=[['release','download','v9.9.9','--repo',repo,'--dir','D:/download'],['release','upload','v9.9.9','D:/upload'],['attestation','verify','D:/artifact','--repo',repo]]\nassert args in expected, args\nprint(':'.join(args))\n",
+    )?;
+    crate::support::make_executable(&gh)?;
+    bind_posix_fixture_shell_launchers(
+        &script,
+        &[(
+            "gh",
+            "CODEXY_FIXTURE_GH",
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            FixtureArgumentDomain::GitHubApi {
+                adapter_launcher_environment: "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            },
+        )],
+    )?;
+    let output = FixtureCommand::new(&script)
+        .env_path("CODEXY_FIXTURE_GH", &gh)
+        .env_path(
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            fixture_script_interpreter_path(&gh)?,
+        )
+        .env_path(
+            "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
+        )
+        .env_path("PATH", &bin)
+        .env("CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS", "1")
+        .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "stdout: {} stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout)?,
+        "release:download:v9.9.9:--repo:eunsoogi/codexy:--dir:D:/download\nrelease:upload:v9.9.9:D:/upload\nattestation:verify:D:/artifact:--repo:eunsoogi/codexy\n"
+    );
+    Ok(())
+}
+
+#[test]
 fn launcher_binding_leaves_posix_filesystem_operands_under_default_conversion()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

@@ -38,7 +38,7 @@ def read_transport(path):
     return lines[0], lines[1:]
 
 def native_path(value):
-    if os.name != 'nt':
+    if os.name != 'nt' and os.environ.get('CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS') != '1':
         return value
     try:
         return subprocess.check_output(
