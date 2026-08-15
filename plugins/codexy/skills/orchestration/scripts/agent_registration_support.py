@@ -2,6 +2,13 @@
 
 import re
 
+from agent_registration_blocks import (
+    escaped as _escaped,
+    multiline_state as _multiline_state,
+    quoted_end as _quoted_end,
+    strip_managed_block,
+)
+
 BEGIN = "# BEGIN CODEXY MANAGED AGENTS"
 END = "# END CODEXY MANAGED AGENTS"
 MANAGED = "# CODEXY MANAGED AGENT\n"
@@ -199,66 +206,3 @@ def _container_delta(line: str) -> int:
             delta -= 1
         index += 1
     return delta
-
-
-def strip_managed_block(text: str) -> tuple[str, bool]:
-    lines = text.splitlines(keepends=True)
-    kept: list[str] = []
-    multiline: str | None = None
-    in_block = False
-    found = False
-    for line in lines:
-        marker = line.rstrip("\r\n")
-        if multiline is None and marker == BEGIN:
-            if in_block:
-                return text, False
-            in_block = True
-            found = True
-            continue
-        if multiline is None and marker == END:
-            if not in_block:
-                return text, False
-            in_block = False
-            continue
-        if not in_block:
-            kept.append(line)
-        multiline, _ = _multiline_state(line, multiline)
-    if in_block:
-        return text, False
-    return "".join(kept), found
-
-
-def _multiline_state(line: str, state: str | None) -> tuple[str | None, int | None]:
-    index, closed = 0, None
-    while index < len(line):
-        if state:
-            if line.startswith(state, index) and (
-                state == "'''" or not _escaped(line, index)
-            ):
-                state = None
-                index += 3
-                closed = closed or index
-            else:
-                index += 1
-            continue
-        if line[index] == "#":
-            break
-        triple = next(
-            (quote for quote in ('"""', "'''") if line.startswith(quote, index)),
-            None,
-        )
-        if triple:
-            state = triple
-            index += 3
-        elif line[index] in ('"', "'"):
-            index = _quoted_end(line, index) or len(line)
-        else:
-            index += 1
-    return state, closed
-
-
-def _escaped(line: str, index: int) -> bool:
-    slashes = 0
-    while index > slashes and line[index - slashes - 1] == "\\":
-        slashes += 1
-    return slashes % 2 == 1
