@@ -3,7 +3,7 @@ use std::fs;
 use crate::support::{
     FixtureArgumentDomain, FixtureScriptBinding, ReleaseFixtureCommand, ReleaseFixtureOutcome,
     bind_posix_fixture_script_launchers, bind_posix_fixture_shell_launchers,
-    fixture_github_argv_adapter_path, fixture_script_interpreter_path,
+    fixture_github_argv_adapter_path, fixture_github_cygpath_path, fixture_script_interpreter_path,
 };
 use sha2::{Digest, Sha256};
 
@@ -121,6 +121,7 @@ esac
         .current_dir(temp.path()).path("FIXTURE_DIR", &fixture).scalar("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .payload_path("FIXTURE_GH", &gh)
         .payload_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
+        .payload_path("FIXTURE_GH_CYGPATH", fixture_github_cygpath_path(temp.path())?)
         .path("FIXTURE_GH_ADAPTER_LAUNCHER", &gh_adapter_launcher)
         .path("FIXTURE_POSIX_SHELL", &shell_launcher)
         .path("FIXTURE_SCRIPT_ROOT", temp.path())

@@ -1,5 +1,5 @@
 use super::*;
-use crate::support::fixture_github_argv_adapter_path;
+use crate::support::{fixture_github_argv_adapter_path, fixture_github_cygpath_path};
 
 #[test]
 fn launcher_binding_preserves_native_payload_arguments_across_the_posix_shell()
@@ -115,9 +115,12 @@ fn launcher_binding_converts_only_declared_native_release_filesystem_operands()
         &cygpath,
         "#!/bin/sh\ntest \"$1\" = -w && test \"$2\" = -- || exit 2\ncase \"$3\" in /d/*) printf 'D:/%s\\n' \"${3#/d/}\" ;; *) exit 3 ;; esac\n",
     )?;
+    let native_prefix = if cfg!(windows) { "D:\\\\" } else { "D:/" };
     fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nexpected=[['release','download','v9.9.9','--repo',repo,'--dir','D:/download'],['release','upload','v9.9.9','D:/upload'],['attestation','verify','D:/artifact','--repo',repo]]\nassert args in expected, args\nprint(':'.join(args))\n",
+        format!(
+            "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nexpected=[['release','download','v9.9.9','--repo',repo,'--dir','{native_prefix}download'],['release','upload','v9.9.9','{native_prefix}upload'],['attestation','verify','{native_prefix}artifact','--repo',repo]]\nassert args in expected, args\nprint(':'.join(args))\n"
+        ),
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -141,7 +144,10 @@ fn launcher_binding_converts_only_declared_native_release_filesystem_operands()
             "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
             fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
         )
-        .env_path("PATH", &bin)
+        .env_native_path(
+            "FIXTURE_GH_CYGPATH",
+            fixture_github_cygpath_path(temp.path())?,
+        )
         .env("CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS", "1")
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .output()?;
@@ -153,7 +159,9 @@ fn launcher_binding_converts_only_declared_native_release_filesystem_operands()
     );
     assert_eq!(
         String::from_utf8(output.stdout)?,
-        "release:download:v9.9.9:--repo:eunsoogi/codexy:--dir:D:/download\nrelease:upload:v9.9.9:D:/upload\nattestation:verify:D:/artifact:--repo:eunsoogi/codexy\n"
+        format!(
+            "release:download:v9.9.9:--repo:eunsoogi/codexy:--dir:{native_prefix}download\nrelease:upload:v9.9.9:{native_prefix}upload\nattestation:verify:{native_prefix}artifact:--repo:eunsoogi/codexy\n"
+        )
     );
     Ok(())
 }

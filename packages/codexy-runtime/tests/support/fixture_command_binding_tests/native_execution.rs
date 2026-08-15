@@ -1,5 +1,7 @@
 use super::*;
-use crate::support::fixture_github_argv_adapter_path;
+use crate::support::{
+    fixture_github_argv_adapter_path, fixture_github_cygpath_path, fixture_path_text,
+};
 
 #[test]
 fn launcher_binding_projects_posix_payload_before_native_execution()
@@ -9,15 +11,14 @@ fn launcher_binding_projects_posix_payload_before_native_execution()
     fs::create_dir(&bin)?;
     let script = temp.path().join("release-helper");
     let payload = temp.path().join("gh-payload");
-    let projection = temp.path().join("payload-projection");
     write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
     write_posix_fixture_command(
         &payload,
-        "#!/bin/sh\ntest \"$#\" = 2 || exit 62\nprintf 'gh:%s %s\\n' \"$1\" \"$2\"\n",
+        "#!/bin/sh\ntest \"$#\" = 2 || exit 62\nprintf 'gh:%s:%s %s\\n' \"$0\" \"$1\" \"$2\"\n",
     )?;
     write_posix_fixture_command(
         &bin.join("cygpath"),
-        "#!/bin/sh\ntest \"$1\" = -u && test \"$2\" = -- || exit 63\nprintf '%s\\n' \"$3\" > \"$FIXTURE_PAYLOAD_PROJECTION\"\nprintf '%s\\n' \"$3\"\n",
+        "#!/bin/sh\ntest \"$1\" = -u && test \"$2\" = -- || exit 63\nprintf '%s\\n' \"$3\"\n",
     )?;
     bind_posix_fixture_shell_launchers(
         &script,
@@ -40,8 +41,10 @@ fn launcher_binding_projects_posix_payload_before_native_execution()
             "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
             fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
         )
-        .env_path("FIXTURE_PAYLOAD_PROJECTION", &projection)
-        .env_path("PATH", &bin)
+        .env_native_path(
+            "FIXTURE_GH_CYGPATH",
+            fixture_github_cygpath_path(temp.path())?,
+        )
         .env("CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS", "1")
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .output()?;
@@ -51,14 +54,50 @@ fn launcher_binding_projects_posix_payload_before_native_execution()
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(String::from_utf8(output.stdout)?, "gh:release view\n");
-    assert!(
-        projection.is_file(),
-        "the native adapter must project a POSIX payload before launch"
-    );
     assert_eq!(
-        fs::read_to_string(projection)?,
-        format!("{}\n", payload.display())
+        normalize_fixture_text(&String::from_utf8(output.stdout)?),
+        format!("gh:{}:release view\n", fixture_path_text(&payload)?)
+    );
+    Ok(())
+}
+
+#[test]
+fn launcher_binding_rejects_ambient_filesystem_converter_lookup()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = temp.path().join("release-helper");
+    let payload = temp.path().join("gh-payload");
+    write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
+    write_posix_fixture_command(&payload, "#!/bin/sh\nexit 61\n")?;
+    bind_posix_fixture_shell_launchers(
+        &script,
+        &[(
+            "gh",
+            "CODEXY_FIXTURE_GH",
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            FixtureArgumentDomain::GitHubApi {
+                adapter_launcher_environment: "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            },
+        )],
+    )?;
+    let output = FixtureCommand::new(&script)
+        .env_native_path("CODEXY_FIXTURE_GH", &payload)
+        .env_native_path(
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            fixture_script_interpreter_path(&payload)?,
+        )
+        .env_path(
+            "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
+        )
+        .env("CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS", "1")
+        .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+        .output()?;
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("missing native filesystem converter"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }

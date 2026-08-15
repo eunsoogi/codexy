@@ -2,7 +2,8 @@ use std::fs;
 
 use crate::support::{
     FixtureArgumentDomain, ReleaseFixtureCommand, ReleaseFixtureOutcome,
-    bind_posix_fixture_shell_launchers, fixture_script_interpreter_path,
+    bind_posix_fixture_shell_launchers, fixture_github_cygpath_path,
+    fixture_script_interpreter_path,
 };
 
 #[test]
@@ -51,6 +52,7 @@ esac
     let launcher = fixture_script_interpreter_path(&gh)?;
     let adapter = crate::support::fixture_github_argv_adapter_path(&script);
     let adapter_launcher = fixture_script_interpreter_path(&adapter)?;
+    let cygpath = fixture_github_cygpath_path(temp.path()).map_err(std::io::Error::other)?;
     let environment = temp.path().join("release.env");
     let run = |repository: &str, state: &str| ReleaseFixtureCommand::new(&script)
         .arg_path(&artifacts).args(["ATTEST_ORIGINAL", "release-baseline.json"])
@@ -58,6 +60,7 @@ esac
         .scalar("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         .path("GITHUB_ENV", &environment).scalar("ATTESTATION_STATE", state)
         .payload_path("FIXTURE_GH", &gh).payload_path("FIXTURE_GH_LAUNCHER", &launcher)
+        .payload_path("FIXTURE_GH_CYGPATH", &cygpath)
         .path("FIXTURE_GH_ADAPTER_LAUNCHER", &adapter_launcher).output();
     let absent = run("eunsoogi/codexy", "absent")?;
     ReleaseFixtureCommand::assert_outcome(

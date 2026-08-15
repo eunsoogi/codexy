@@ -4,7 +4,10 @@ use std::{
     process::Output,
 };
 
-use crate::support::{ReleaseFixtureCommand, ReleaseFixtureOutcome, fixture_script_interpreter_path};
+use crate::support::{
+    ReleaseFixtureCommand, ReleaseFixtureOutcome, fixture_github_cygpath_path,
+    fixture_script_interpreter_path,
+};
 
 #[path = "fixture_materialization.rs"]
 mod fixture_materialization;
@@ -149,6 +152,7 @@ impl Fixture {
             .payload_path("FIXTURE_GH", self.root.join("bin/gh"))
             .payload_path("FIXTURE_GH_STATE_ROOT", &self.root)
             .payload_path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
+            .payload_path("FIXTURE_GH_CYGPATH", fixture_github_cygpath_path(&self.root)?)
             .path(
                 "FIXTURE_GH_ADAPTER_LAUNCHER",
                 fixture_script_interpreter_path(&crate::support::fixture_github_argv_adapter_path(

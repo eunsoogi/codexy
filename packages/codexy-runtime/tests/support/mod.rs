@@ -71,7 +71,9 @@ pub(crate) use fixture_command_bindings::{
     write_posix_fixture_shell_runner_with_scrub, write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
-pub(crate) use fixture_github_argv_adapter::fixture_github_argv_adapter_path;
+pub(crate) use fixture_github_argv_adapter::{
+    fixture_github_argv_adapter_path, fixture_github_cygpath_path,
+};
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};

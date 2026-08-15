@@ -28,9 +28,12 @@ def fixture_native_windows():
 def projected_path(option, value):
     if not fixture_native_windows():
         return value
+    converter = os.environ.get('FIXTURE_GH_CYGPATH')
+    if not converter:
+        fail('missing native filesystem converter')
     try:
         return subprocess.check_output(
-            ['cygpath', option, '--', value], text=True, stderr=subprocess.PIPE
+            [converter, option, '--', value], text=True, stderr=subprocess.PIPE
         ).rstrip('\r\n')
     except (OSError, subprocess.CalledProcessError) as error:
         fail(f'filesystem conversion: {error}')
@@ -72,4 +75,18 @@ pub(crate) fn fixture_github_argv_adapter_path(path: &Path) -> PathBuf {
     path.parent()
         .expect("fixture script parent")
         .join(".codexy-fixture-github-argv.py")
+}
+
+/// Returns the executable that projects fixture filesystem paths at the native
+/// GitHub-mock boundary. On Windows this is the host `cygpath.exe`; elsewhere
+/// a fixture may provide its own POSIX test double at `bin/cygpath`.
+pub(crate) fn fixture_github_cygpath_path(root: &Path) -> Result<PathBuf, String> {
+    #[cfg(windows)]
+    {
+        crate::support::executable_path("cygpath")
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(root.join("bin/cygpath"))
+    }
 }

@@ -1,6 +1,6 @@
 use crate::support::{
     FixtureArgumentDomain, FixtureCommand as Command, bind_posix_fixture_shell_launchers,
-    fixture_script_interpreter_path,
+    fixture_github_cygpath_path, fixture_script_interpreter_path,
 };
 use std::fs;
 
@@ -53,11 +53,13 @@ esac
     let gh_launcher = fixture_script_interpreter_path(&gh)?;
     let gh_adapter = crate::support::fixture_github_argv_adapter_path(&script);
     let gh_adapter_launcher = fixture_script_interpreter_path(&gh_adapter)?;
+    let cygpath = fixture_github_cygpath_path(temp.path())?;
     let run = |repository: &str, immutable: &str, pypi: &str, permission: &str| {
         Command::new(&script)
             .arg("--require-pypi")
             .env_native_path("FIXTURE_GH", &gh)
             .env_native_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
+            .env_native_path("FIXTURE_GH_CYGPATH", &cygpath)
             .env_path("FIXTURE_GH_ADAPTER_LAUNCHER", &gh_adapter_launcher)
             .env("GITHUB_REPOSITORY", repository)
             .env("RELEASE_POLICY_TOKEN", "test-token")

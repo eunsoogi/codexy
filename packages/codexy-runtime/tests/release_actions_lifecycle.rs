@@ -157,6 +157,7 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     for (fixture, input) in [
         (&recovery, "FIXTURE_GH"),
         (&recovery, "FIXTURE_GH_LAUNCHER"),
+        (&recovery, "FIXTURE_GH_CYGPATH"),
         (&recovery, "FIXTURE_GH_STATE_ROOT"),
     ] {
         assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
@@ -167,12 +168,14 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     for (fixture, input) in [
         (&edit_baseline, "FIXTURE_GH"),
         (&edit_baseline, "FIXTURE_GH_LAUNCHER"),
+        (&edit_baseline, "FIXTURE_GH_CYGPATH"),
         (&attestation, "FIXTURE_GH"),
         (&attestation, "FIXTURE_GH_LAUNCHER"),
+        (&attestation, "FIXTURE_GH_CYGPATH"),
     ] {
         assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
     }
-    for input in ["FIXTURE_GH", "FIXTURE_GH_LAUNCHER"] {
+    for input in ["FIXTURE_GH", "FIXTURE_GH_LAUNCHER", "FIXTURE_GH_CYGPATH"] {
         assert!(settings.contains(&format!(".env_native_path(\"{input}\"")), "settings native input must retain its host path: {input}");
     }
     for (fixture, name) in [
@@ -191,6 +194,7 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
         );
     }
     assert!(github_adapter.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
+    assert!(github_adapter.contains("FIXTURE_GH_CYGPATH"), "the typed adapter must receive its native filesystem converter explicitly");
     assert!(github_adapter.contains("split(b'\\0')"), "GitHub argv transport must preserve multiline fields");
     assert!(github_adapter.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
     assert!(github_adapter.contains("posix_payload_path"), "the adapter must project only POSIX payload paths");
