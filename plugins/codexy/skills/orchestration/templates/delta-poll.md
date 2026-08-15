@@ -18,6 +18,15 @@
 - changed ids:
 - stale or demoted:
 
+## Issue Review Ledger
+
+- issue:
+- terminal_review_count (PASS/BLOCK/UNOBSERVABLE only):
+- reviewer task / exact head / terminal verdict for each counted review:
+- remaining_reviews:
+- final-repair-no-review state after a third BLOCK:
+- compaction, fresh-goal, and reauthorization carry-forward confirmed:
+
 ## External Gate Wait
 
 - external gate wait:
@@ -62,7 +71,6 @@ task/thread
 ## Sentinel BLOCK Repair
 
 - BLOCK receipt:
-- issue-wide terminal profile-review count (0-3):
 - repair plan:
 - in-scope issue-contract/root-defect findings:
 - engineering_tdd_required:
