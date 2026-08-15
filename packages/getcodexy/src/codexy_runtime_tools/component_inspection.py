@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from enum import Enum
@@ -11,13 +10,12 @@ from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_observed_inventory import observe_installed_inventory
-from .component_registration_health import valid_registration
+from .component_health import health as _health
 from .component_resolver import (
     ComponentResolutionError,
     admit_installed_inventory,
     canonical_components,
     classify_installed_inventory,
-    compare_versions,
 )
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
@@ -29,11 +27,6 @@ from .updater import _absolute, _validate_real_path
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 STATUS_SCHEMA = "getcodexy.status.v1"
 DOCTOR_SCHEMA = "getcodexy.doctor.v1"
-SURFACE_PATHS = {
-    "core": ("agents/catalog.toml", "hooks/hooks.json"),
-    "github": ("agents/catalog.toml", "hooks/hooks.json"),
-    "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
-}
 
 
 class ProbeStage(str, Enum):
@@ -214,144 +207,3 @@ def _actual(
         return actual, records, error.code
     except (OSError, ValueError):
         return actual, records, "invalid-installed-inventory"
-
-
-def _health(
-    manifest: ComponentManifest,
-    actual: tuple[str, ...],
-    recorded: tuple[str, ...] | None,
-    records: dict[str, dict[str, object]],
-    admission_error: str | None,
-    host_error: bool,
-) -> list[dict[str, str]]:
-    expected, result = set(recorded or ()) | set(actual), []
-    for component in manifest.component_ids:
-        if component not in expected:
-            continue
-        if admission_error or host_error:
-            result.append(_entry(component, "incompatible"))
-        elif component not in actual:
-            result.append(_entry(component, "missing"))
-        elif _version_relation(manifest, records.get(component)) < 0:
-            result.append(_entry(component, "stale"))
-        elif _version_relation(manifest, records.get(component)) > 0:
-            result.append(_entry(component, "incompatible"))
-        elif _corrupt_registration(manifest, component, records.get(component)):
-            result.append(_entry(component, "incompatible"))
-        elif _stale(manifest, component, records.get(component)):
-            result.append(_entry(component, "stale"))
-        elif not set(manifest.component(component).dependencies).issubset(actual):
-            result.append(_entry(component, "incompatible"))
-        else:
-            result.append({"component": component, "state": "healthy"})
-    return result
-
-
-def _entry(component: str, state: str) -> dict[str, str]:
-    repair = (
-        "getcodexy bootstrap"
-        if state in {"missing", "stale"}
-        else "repair the Codexy registration, then rerun getcodexy doctor"
-    )
-    return {"component": component, "state": state, "repair": repair}
-
-
-def _version_relation(
-    manifest: ComponentManifest, record: dict[str, object] | None
-) -> int:
-    version = record.get("version") if record else None
-    try:
-        return (
-            compare_versions(version, manifest.version)
-            if isinstance(version, str)
-            else 1
-        )
-    except ComponentResolutionError:
-        return 1
-
-
-def _stale(
-    manifest: ComponentManifest, component: str, record: dict[str, object] | None
-) -> bool:
-    source = record.get("source") if record else None
-    root = source.get("path") if isinstance(source, dict) else None
-    if not isinstance(root, str) or not Path(root).is_absolute():
-        return True
-    plugin = Path(root)
-    required = (
-        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
-    )
-    if any(not _regular(plugin / path) for path in required):
-        return True
-    if component == "devtools" and not os.access(
-        plugin / "mcp/codexy-mcp-devtools", os.X_OK
-    ):
-        return True
-    return _has_legacy_core_monolith(plugin, component)
-
-
-def _corrupt_registration(
-    manifest: ComponentManifest, component: str, record: dict[str, object] | None
-) -> bool:
-    source = record.get("source") if record else None
-    root = source.get("path") if isinstance(source, dict) else None
-    if not isinstance(root, str) or not Path(root).is_absolute():
-        return False
-    plugin = Path(root)
-    required = (
-        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
-    )
-    return all(_regular(plugin / path) for path in required) and (
-        not _manifest_is_valid(
-            plugin, manifest.component(component).plugin, _record_version(record)
-        )
-        or not _surface_is_valid(plugin, component)
-    )
-
-
-def _record_version(record: dict[str, object] | None) -> str | None:
-    version = record.get("version") if record else None
-    return version if isinstance(version, str) else None
-
-
-def _regular(path: Path) -> bool:
-    try:
-        return path.is_file() and not path.is_symlink()
-    except OSError:
-        return False
-
-
-def _surface_is_valid(plugin: Path, component: str) -> bool:
-    return valid_registration(plugin, component)
-
-
-def _manifest_is_valid(plugin: Path, name: str, version: str | None) -> bool:
-    value = _json_value(plugin / ".codex-plugin/plugin.json")
-    return (
-        isinstance(value, dict)
-        and value.get("name") == name
-        and value.get("repository") == "https://github.com/eunsoogi/codexy"
-        and version is not None
-        and value.get("version") == version
-    )
-
-
-def _has_legacy_core_monolith(plugin: Path, component: str) -> bool:
-    return component == "core" and any(
-        os.path.lexists(plugin / path)
-        for path in (
-            ".mcp.json",
-            ".codex/lsp-client.json",
-            "lsp",
-            "mcp",
-            "runtime-release.json",
-        )
-    )
-
-
-def _json_value(path: Path) -> object | None:
-    try:
-        with path.open("r", encoding="utf-8") as source:
-            return json.load(source)
-    except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
-        return None
