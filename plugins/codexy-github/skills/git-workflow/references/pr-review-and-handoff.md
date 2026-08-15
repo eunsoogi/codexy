@@ -2,9 +2,7 @@
 
 ## Completion-Handoff PR State
 
-Before a PR-readiness handoff or final answer claims completion, validate that
-the claim does not stop at an open PR when the requested outcome includes
-completion or the default Codexy merge flow. MUST capture current PR state first:
+Before a PR-readiness handoff or final answer claims completion, validate that the claim does not stop at an open PR when the requested outcome includes completion or the default Codexy merge flow. MUST capture current PR state first:
 
 ```sh
 pr=<pr>
@@ -114,60 +112,20 @@ Ask the installed `$orchestration` skill to apply its **completion-handoff**
 contract to the captured report and PR state.
 ```
 
-For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
-GitHub does not populate PR `closingIssuesReferences` from closing keywords. The
-PR state file MUST still include comparable authoritative issue evidence before
-readiness. It MUST keep the PR `body` final closing-keyword line and MUST add
-`linkedIssueReferences.nodes[]` for that issue, including `number`, `url`, and
-`labels.nodes[].name`, captured from the same GitHub repository's issue or
-GraphQL API output.
+For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`, GitHub does not populate PR `closingIssuesReferences` from closing keywords. The PR state file MUST still include comparable authoritative issue evidence before readiness. It MUST keep the PR `body` final closing-keyword line and MUST add `linkedIssueReferences.nodes[]` for that issue, including `number`, `url`, and `labels.nodes[].name`, captured from the same GitHub repository's issue or GraphQL API output.
 
-For review-response handoffs, the PR state file MUST include GraphQL
-`reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and
-comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file
-MUST include PR `headRefName`, PR `labels`, and
-`closingIssuesReferences` with issue labels for default-branch PRs. For
-non-default-base stacked PRs where GitHub ignores closing keywords, the PR state
-file MUST include
-`linkedIssueReferences` with issue labels instead. When repository labels exist,
-the PR state file MUST also include the repository label taxonomy as
-`repositoryLabels`; an unlabeled PR is not ready merely because handoff prose
-says no labels apply.
-For child handoffs that claim pushed or synced branch state, the PR state file
-MUST include the local `git status --short --branch` output as `worktreeStatus`;
-missing branch-status evidence blocks the handoff because stale local branches
-MUST NOT be ruled out without local branch-status evidence.
-For child handoffs that claim parent acceptance, merge evaluation, or PR
-readiness, the PR state file MUST include captured local `HEAD` as
-`localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
+For review-response handoffs, the PR state file MUST include GraphQL `reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and comment URLs. For PR-readiness or merge-readiness handoffs, the PR state file MUST include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with issue labels for default-branch PRs. For non-default-base stacked PRs where GitHub ignores closing keywords, the PR state file MUST include `linkedIssueReferences` with issue labels instead. When repository labels exist, the PR state file MUST also include the repository label taxonomy as `repositoryLabels`; an unlabeled PR is not ready merely because handoff prose says no labels apply. For child handoffs that claim pushed or synced branch state, the PR state file MUST include the local `git status --short --branch` output as `worktreeStatus`; missing branch-status evidence blocks the handoff because stale local branches MUST NOT be ruled out without local branch-status evidence. For child handoffs that claim parent acceptance, merge evaluation, or PR readiness, the PR state file MUST include captured local `HEAD` as `localHeadOid` and the PR branch remote-tracking ref as `remoteHeadOid`.
 
-The installed GitHub plugin's host-resolved generic admission hooks handle their
-matching lifecycle checks. Preserve the exact GitHub PR title and captured state
-with `repositoryLabels`; skill-authored commands MUST NOT resolve repository,
-source-checkout, cache, or ambient executable paths.
+The installed GitHub plugin's host-resolved generic admission hooks handle their matching lifecycle checks. Preserve the exact GitHub PR title and captured state with `repositoryLabels`; skill-authored commands MUST NOT resolve repository, source-checkout, cache, or ambient executable paths.
 
-Completion-handoff validation MUST run in the same readiness path. Linked issue
-labels and repository label evidence MUST NOT be skipped after the label hook
-passes:
+Completion-handoff validation MUST run in the same readiness path. Linked issue labels and repository label evidence MUST NOT be skipped after the label hook passes:
 
-Ask `$orchestration` to apply its named `completion-handoff` public contract
-to the captured report and PR state.
+Ask `$orchestration` to apply its named `completion-handoff` public contract to the captured report and PR state.
 
 ## Child-Owned Review Feedback
 
-The parent handoff MUST include PR number, latest head SHA, relevant comments
-or review thread URLs, allowed files, expected return evidence, and stop
-condition. For non-trivial lanes it MUST require goal tool usage,
-todo/plan tool usage, multi-agent usage or concrete not-useful rationale,
-unavailable-tool fallbacks, current-diff selected-profile review findings, codegraph
-evidence, and LSP status.
+The parent handoff MUST include PR number, latest head SHA, relevant comments or review thread URLs, allowed files, expected return evidence, and stop condition. For non-trivial lanes it MUST require goal tool usage, todo/plan tool usage, multi-agent usage or concrete not-useful rationale, unavailable-tool fallbacks, current-diff selected-profile review findings, codegraph evidence, and LSP status.
 
-After the owning child pushes a review-response commit, the parent MUST inspect
-unresolved review threads after child fixes and refreshed thread capture, then
-MUST verify that the current head addresses each completed review thread before
-resolving it in GitHub.
+After the owning child pushes a review-response commit, the parent MUST inspect unresolved review threads after child fixes and refreshed thread capture, then MUST verify that the current head addresses each completed review thread before resolving it in GitHub.
 
-Fixed or accepted review threads MUST be resolved in GitHub before the PR is
-claimed PR-ready, merge-ready, or merged. The parent MUST NOT resolve a thread
-merely because a child said it was fixed, a commit was pushed, or a fresh review
-was requested.
+Fixed or accepted review threads MUST be resolved in GitHub before the PR is claimed PR-ready, merge-ready, or merged. The parent MUST NOT resolve a thread merely because a child said it was fixed, a commit was pushed, or a fresh review was requested.

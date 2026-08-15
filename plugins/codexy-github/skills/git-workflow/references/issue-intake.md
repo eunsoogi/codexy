@@ -1,7 +1,6 @@
 # Issue Intake
 
-Before a child creates a GitHub issue, it MUST send its parent one JSON receipt
-with this exact shape, receive approval, and pass `--check-issue-intake`:
+Before a child creates a GitHub issue, it MUST send its parent one JSON receipt with this exact shape, receive approval, and pass `--check-issue-intake`:
 
 ```json
 {
@@ -43,21 +42,12 @@ with this exact shape, receive approval, and pass `--check-issue-intake`:
 }
 ```
 
-Every `REPLACE` value MUST be replaced with actual source-task or evidence data
-before running `--check-issue-intake`; the literal template is intentionally
-invalid. The replacement `body` MUST contain real `## Problem`, `## Scope`,
-`## Acceptance Criteria`, and `## Verification` sections.
+Every `REPLACE` value MUST be replaced with actual source-task or evidence data before running `--check-issue-intake`; the literal template is intentionally invalid. The replacement `body` MUST contain real `## Problem`, `## Scope`, `## Acceptance Criteria`, and `## Verification` sections.
 
 - `surface_kind` MUST be `real_producer` or `user_facing`.
 - `existing_owner.kind` MUST be `issue` or `pull_request`.
-- Duplicate search MUST cover `open` and `closed`. Each result uses
-  `match_kind: exact` or `related`.
-- An exact result MUST use `conclusion: {"decision":"duplicate",
-"canonical_issue":NUMBER}` and MUST be rejected before issue creation.
-- `classification: unsupported_synthetic`, `classification:
-same_class_observation`, `ownership.decision: can_own`, and
-  `necessity.decision: no_change` are handoff-only outcomes.
-- Rationale wording MUST NOT override typed decisions. Reproduction, ownership,
-  duplicate-search terms, and necessity evidence MUST be substantive.
-- Repository label, milestone, and assignee taxonomies MUST be non-empty, and
-  every selected value MUST belong to its taxonomy.
+- Duplicate search MUST cover `open` and `closed`. Each result uses `match_kind: exact` or `related`.
+- An exact result MUST use `conclusion: {"decision":"duplicate", "canonical_issue":NUMBER}` and MUST be rejected before issue creation.
+- `classification: unsupported_synthetic`, `classification: same_class_observation`, `ownership.decision: can_own`, and `necessity.decision: no_change` are handoff-only outcomes.
+- Rationale wording MUST NOT override typed decisions. Reproduction, ownership, duplicate-search terms, and necessity evidence MUST be substantive.
+- Repository label, milestone, and assignee taxonomies MUST be non-empty, and every selected value MUST belong to its taxonomy.

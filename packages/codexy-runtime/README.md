@@ -1,12 +1,8 @@
 # Codexy runtime
 
-`codexy-runtime` is the Rust package that provides Codexy's runtime binaries,
-including the MCP LSP and Codegraph servers, the plugin validator, and release
-support tools.
+`codexy-runtime` is the Rust package that provides Codexy's runtime binaries, including the MCP LSP and Codegraph servers, the plugin validator, and release support tools.
 
-This package is owned by the `packages/codexy-runtime` module root. For the
-plugin, repository workflows, and user-facing setup, see the
-[repository guide](../../README.md).
+This package is owned by the `packages/codexy-runtime` module root. For the plugin, repository workflows, and user-facing setup, see the [repository guide](../../README.md).
 
 ## Local development
 
