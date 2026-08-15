@@ -122,19 +122,19 @@ terminal profile-selected verdicts across goals, repair stages, compaction,
 reauthorization, and route resets. `PENDING` and `RUNNING` do not count. The
 count MUST NOT exceed three: a third `PASS` proceeds normally; after a third
 `BLOCK`, repair only in-scope root findings, rerun exact-head proof, and hand
-off without a fourth profile review; after a third `UNOBSERVABLE`, take the
-same maintainer-owned final-disposition path without another profile review.
-Every final disposition requires all in-scope blockers to be resolved and
-current proof. Review-cap exhaustion MUST NOT block a goal: complete the finite
-phase, use the idle-wait handoff when appropriate, and start a fresh goal only
-for a later authorized phase. The cap waives only a fourth profile-selected
-review; tests, validators, exact-head CI, actionable human or connector
-threads, ownership, safety, LOC, and merge gates remain mandatory. The
-separately required connector review is outside this counter and MUST NOT
-reopen an exhausted profile-review loop. A finding MAY block only when it maps
-to the issue contract or a root correctness, safety, or readiness defect;
-adjacent edge cases, syntax variants, and speculative hardening are
-non-blocking follow-up candidates and MUST use approved issue intake if tracked.
+off without a fourth profile review; after a third `UNOBSERVABLE`, take the same
+maintainer-owned final-disposition path without another profile review. Every
+final disposition requires all in-scope blockers to be resolved and current
+proof. Review-cap exhaustion MUST NOT block a goal: complete the finite phase,
+use the idle-wait handoff when appropriate, and start a fresh goal only for a
+later authorized phase. The cap waives only a fourth profile-selected review;
+tests, validators, exact-head CI, actionable human or connector threads,
+ownership, safety, LOC, and merge gates remain mandatory. The separately
+required connector review is outside this counter and MUST NOT reopen an
+exhausted profile-review loop. A finding MAY block only when it maps to the
+issue contract or a root correctness, safety, or readiness defect; adjacent edge
+cases, syntax variants, and speculative hardening are non-blocking follow-up
+candidates and MUST use approved issue intake if tracked.
 
 MUST follow `references/parent-stop-preflight.md` before implementation edits,
 including its child-lane ownership validation when required. `blocked` is only

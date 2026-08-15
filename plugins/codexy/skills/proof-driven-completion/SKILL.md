@@ -140,9 +140,9 @@ MUST also follow
   is prohibited. After a third `UNOBSERVABLE`, use the equivalent
   maintainer-owned final-disposition path with current proof. This exception
   waives only the fourth profile review: local tests, validators, current-head
-  CI, actionable human and connector review threads, ownership, safety, LOC,
-  and merge gates MUST still pass. Review quota exhaustion or an external wait
-  MUST NOT cause `update_goal(status="blocked")`.
+  CI, actionable human and connector review threads, ownership, safety, LOC, and
+  merge gates MUST still pass. Review quota exhaustion or an external wait MUST
+  NOT cause `update_goal(status="blocked")`.
 - MUST re-run verification after addressing review feedback.
 - For delegated non-trivial or multi-step child implementation lanes, MUST
   verify the child reported actual goal-tool usage or an unavailable-goal-tool

@@ -76,7 +76,8 @@ task/thread
 - engineering_tdd_required:
 - RED/GREEN or proportional boundary proof:
 - terminal proof:
-- post-third disposition (not applicable, PASS, final repair, or maintainer disposition):
+- post-third disposition (not applicable, PASS, final repair, or maintainer
+  disposition):
 - fourth profile review: prohibited after the third terminal verdict
 - remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
