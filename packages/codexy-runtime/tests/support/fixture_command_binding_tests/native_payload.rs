@@ -48,55 +48,6 @@ fn launcher_binding_preserves_native_payload_arguments_across_the_posix_shell()
 }
 
 #[test]
-fn launcher_binding_moves_spaced_native_launch_paths_through_transport()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let script = temp.path().join("release-helper");
-    let payload = temp.path().join("native payload");
-    let adapter_launcher = temp.path().join("native Python with spaces");
-    let empty_path = temp.path().join("empty-path");
-    fs::create_dir(&empty_path)?;
-    write_posix_fixture_command(&script, "#!/bin/sh\ngh release view\n")?;
-    write_posix_fixture_command(
-        &payload,
-        "#!/bin/sh\ntest \"$#\" = 2 || exit 62\nprintf 'gh:%s %s\\n' \"$1\" \"$2\"\n",
-    )?;
-    let launcher = fixture_script_interpreter_path(&payload)?;
-    bind_posix_fixture_shell_launchers(
-        &script,
-        &[(
-            "gh",
-            "CODEXY_FIXTURE_GH",
-            "CODEXY_FIXTURE_GH_LAUNCHER",
-            FixtureArgumentDomain::GitHubApi {
-                adapter_launcher_environment: "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
-            },
-        )],
-    )?;
-    write_posix_fixture_command(
-        &adapter_launcher,
-        &format!(
-            "#!/bin/sh\ntest \"$#\" = 1 || exit 61\nexec \"{}\" \"$@\"\n",
-            fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?.display()
-        ),
-    )?;
-    let output = FixtureCommand::new(&script)
-        .env_native_path("CODEXY_FIXTURE_GH", &payload)
-        .env_native_path("CODEXY_FIXTURE_GH_LAUNCHER", &launcher)
-        .env_path("CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER", &adapter_launcher)
-        .env_path("PATH", &empty_path)
-        .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .output()?;
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(String::from_utf8(output.stdout)?, "gh:release view\n");
-    Ok(())
-}
-
-#[test]
 fn launcher_binding_keeps_github_api_operands_logical() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let script = temp.path().join("release-helper");
@@ -107,7 +58,7 @@ fn launcher_binding_keeps_github_api_operands_logical() -> Result<(), Box<dyn st
     )?;
     fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args == ['api', f'repos/{repo}/releases/tags/v9.9.9', '--raw-field', 'state=literal-api-value']\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
+        "#!/usr/bin/env python3\nimport os,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args == ['api', f'repos/{repo}/releases/tags/v9.9.9', '--raw-field', 'state=literal\\\\backslash']\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -131,7 +82,7 @@ fn launcher_binding_keeps_github_api_operands_logical() -> Result<(), Box<dyn st
             "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
             fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
         )
-        .env("FIXTURE_API_VALUE", "literal-api-value")
+        .env("FIXTURE_API_VALUE", r"literal\backslash")
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .output()?;
     assert!(

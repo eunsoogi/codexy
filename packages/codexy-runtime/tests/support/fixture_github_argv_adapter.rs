@@ -22,15 +22,24 @@ def read_transport():
         fail('missing typed launch transport')
     return repository, payload, launcher, arguments
 
-def native_path(value):
-    if os.name != 'nt' and os.environ.get('CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS') != '1':
+def fixture_native_windows():
+    return os.name == 'nt' or os.environ.get('CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS') == '1'
+
+def projected_path(option, value):
+    if not fixture_native_windows():
         return value
     try:
         return subprocess.check_output(
-            ['cygpath', '-w', '--', value], text=True, stderr=subprocess.PIPE
+            ['cygpath', option, '--', value], text=True, stderr=subprocess.PIPE
         ).rstrip('\r\n')
     except (OSError, subprocess.CalledProcessError) as error:
         fail(f'filesystem conversion: {error}')
+
+def native_path(value):
+    return projected_path('-w', value)
+
+def posix_payload_path(value):
+    return projected_path('-u', value)
 
 def native_arguments(args):
     file_indices = set()
@@ -48,9 +57,15 @@ def payload_is_posix(path):
 repository, payload, launcher, arguments = read_transport()
 os.environ['GITHUB_REPOSITORY'] = repository
 os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] = '1'
-if not payload_is_posix(payload):
+if payload_is_posix(payload):
+    payload = posix_payload_path(payload)
+else:
     arguments = native_arguments(arguments)
-os.execv(launcher, [launcher, payload, *arguments])
+try:
+    result = subprocess.run([launcher, payload, *arguments], check=False)
+except OSError as error:
+    fail(f'native launch: {error}')
+sys.exit(result.returncode)
 "##;
 
 pub(crate) fn fixture_github_argv_adapter_path(path: &Path) -> PathBuf {

@@ -193,6 +193,9 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     assert!(github_adapter.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
     assert!(github_adapter.contains("split(b'\\0')"), "GitHub argv transport must preserve multiline fields");
     assert!(github_adapter.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
+    assert!(github_adapter.contains("posix_payload_path"), "the adapter must project only POSIX payload paths");
+    assert!(github_adapter.contains("subprocess.run([launcher, payload, *arguments]"), "the adapter must launch decoded native executables as typed argv");
+    assert!(!github_adapter.contains("os.execv"), "the adapter must not reparse the native launcher through execv");
     assert!(bindings.contains("printf '%s\\\\0'"), "GitHub argv transport must be per invocation");
     assert!(!bindings.contains("fixture_argv_transport"), "GitHub argv transport must not reuse a fixture file");
     assert!(!bindings.contains("MSYS2_ARG_CONV_EXCL"), "GitHub fixture arguments must not rely on environment pattern suppression");

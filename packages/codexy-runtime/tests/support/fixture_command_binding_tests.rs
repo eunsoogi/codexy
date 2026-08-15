@@ -10,6 +10,9 @@ use crate::support::{
 #[path = "fixture_command_binding_tests/native_payload.rs"]
 mod native_payload;
 
+#[path = "fixture_command_binding_tests/native_execution.rs"]
+mod native_execution;
+
 #[path = "fixture_command_binding_tests/native_transport.rs"]
 mod native_transport;
 
