@@ -62,11 +62,15 @@ task/thread
 ## Sentinel BLOCK Repair
 
 - BLOCK receipt:
+- issue-wide terminal profile-review count (0-3):
 - repair plan:
+- in-scope issue-contract/root-defect findings:
 - engineering_tdd_required:
 - RED/GREEN or proportional boundary proof:
 - terminal proof:
-- one same-profile delta recheck for the repaired head:
+- post-third disposition (not applicable, PASS, final repair, or maintainer disposition):
+- fourth profile review: prohibited after the third terminal verdict
+- remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
 ## New Child Setup
 
