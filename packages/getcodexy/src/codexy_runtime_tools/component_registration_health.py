@@ -201,9 +201,10 @@ def valid_registration(plugin: Path, component: str) -> bool:
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
             and all(
-                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
+                _specialist(plugin / f"agents/{name}")
+                for name in AGENT_FILES[component]
             )
-            and all(_regular(plugin / path) for path in LAUNCHERS[component])
+            and all(_launcher(plugin / path) for path in LAUNCHERS[component])
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False
@@ -223,6 +224,25 @@ def _regular(path: Path) -> bool:
         return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
     except OSError:
         return False
+
+
+def _specialist(path: Path) -> bool:
+    try:
+        return _regular(path) and 'model = "' in path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+def _launcher(path: Path) -> bool:
+    try:
+        contents = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    return _regular(path) and (
+        contents.startswith("#!")
+        or path.suffix == ".cmd"
+        and contents.lower().startswith("@echo off")
+    )
 
 
 def _executable(path: Path) -> bool:

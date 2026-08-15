@@ -57,7 +57,7 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
                 contents = (
                     repository / "plugins" / plugins[component] / relative
                 ).read_text(encoding="utf-8")
-            elif relative.endswith(("hooks.json", "catalog.toml")):
+            elif relative.endswith(("hooks.json", "catalog.toml", "SKILL.md")):
                 contents = (
                     repository / "plugins" / plugins[component] / relative
                 ).read_text(encoding="utf-8")
@@ -78,7 +78,10 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
         for launcher in LAUNCHERS[component]:
             path = state.marketplace / "plugins" / plugins[component] / launcher
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("exit 0\n", encoding="utf-8")
+            path.write_text(
+                "@echo off\r\n" if launcher.endswith(".cmd") else "#!/bin/sh\n",
+                encoding="utf-8",
+            )
             if launcher == "mcp/codexy-mcp-devtools":
                 path.chmod(0o700)
 

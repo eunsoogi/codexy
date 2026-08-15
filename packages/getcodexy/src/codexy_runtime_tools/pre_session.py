@@ -124,7 +124,7 @@ def reconcile_official_marketplace_root(
     )
     if _named_marketplace(market):
         _official_marketplace(market)
-        previous_ref = _marketplace_ref(home)
+        previous_ref, config_snapshot = _marketplace_ref(home)
         _json(
             invoke(
                 [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
@@ -134,7 +134,10 @@ def reconcile_official_marketplace_root(
         try:
             _add_marketplace(executable, invoke, f"v{target_version}")
         except Exception:
-            _add_marketplace(executable, invoke, previous_ref)
+            try:
+                _add_marketplace(executable, invoke, previous_ref)
+            finally:
+                _restore_config(home, config_snapshot)
             raise
     else:
         _add_marketplace(executable, invoke, f"v{target_version}")
@@ -163,18 +166,33 @@ def _add_marketplace(executable: Path, invoke: Runner, ref: str) -> None:
     )
 
 
-def _marketplace_ref(home: Path) -> str:
+def _marketplace_ref(home: Path) -> tuple[str, bytes]:
     config = home / "config.toml"
     try:
-        contents = config.read_text(encoding="utf-8")
+        snapshot = config.read_bytes()
     except OSError as error:
         raise RuntimeError(
             "existing marketplace has no recoverable registration"
         ) from error
-    match = re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', contents)
+    contents = snapshot.decode("utf-8")
+    section = re.search(
+        r"(?ms)^\[plugin_marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)", contents
+    )
+    match = (
+        None
+        if section is None
+        else re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', section.group())
+    )
+    if match is None:
+        matches = re.findall(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', contents)
+        match = re.match(r"(.+)", matches[0]) if len(matches) == 1 else None
     if match is None:
         raise RuntimeError("existing marketplace has no recoverable registration")
-    return match.group(1)
+    return match.group(1), snapshot
+
+
+def _restore_config(home: Path, snapshot: bytes) -> None:
+    (home / "config.toml").write_bytes(snapshot)
 
 
 def _find_codex() -> Path:

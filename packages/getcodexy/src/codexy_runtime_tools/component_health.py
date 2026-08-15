@@ -86,6 +86,8 @@ def stale(
     )
     if any(not regular(plugin / path) for path in required):
         return True
+    if component == "core" and not wiki_is_valid(plugin / "skills/wiki/SKILL.md"):
+        return True
     if component == "devtools" and not os.access(
         plugin / "mcp/codexy-mcp-devtools", os.X_OK
     ):
@@ -121,6 +123,13 @@ def regular(path: Path) -> bool:
     try:
         return path.is_file() and not path.is_symlink()
     except OSError:
+        return False
+
+
+def wiki_is_valid(path: Path) -> bool:
+    try:
+        return path.read_text(encoding="utf-8").startswith("---\n")
+    except (OSError, UnicodeDecodeError):
         return False
 
 
