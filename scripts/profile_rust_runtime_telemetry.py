@@ -18,9 +18,9 @@ from profile_rust_process_families import (
     test_threads,
     valid_target,
 )
+from profile_rust_timing import elapsed
 import signal
 import threading
-import time
 from typing import Callable, Iterable, Sequence
 
 
@@ -248,7 +248,3 @@ def process_records(value: object) -> list[tuple[int, str]]:
     if len({pid for pid, _ in records}) != len(records):
         raise ValueError("duplicate process record")
     return records
-
-
-def elapsed(started: float) -> float:
-    return round(max(0.0, time.perf_counter() - started), 6)

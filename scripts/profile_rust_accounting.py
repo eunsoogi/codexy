@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 import tomllib
@@ -14,23 +13,13 @@ if SCRIPT_DIRECTORY not in sys.path:
     sys.path.insert(0, SCRIPT_DIRECTORY)
 
 from profile_rust_targets import canonical_test_name, target_name
-
-LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
-RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
-RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
-RUNNING_NOTICE_PATTERN = re.compile(
-    r"^test (?P<name>.+) has been running for over 60 seconds$"
-)
-RUNNING_BINARY_PATTERN = re.compile(r"^\s*Running .+ \((?P<binary>.+)\)$")
-RESULT_SUMMARY_PATTERN = re.compile(r"^test result: (?:ok|FAILED)\.")
-RESULT_COUNTS_PATTERN = re.compile(
-    r"^test result: (?:ok|FAILED)\. (?P<passed>\d+) passed; (?P<failed>\d+) failed; (?P<ignored>\d+) ignored;"
-)
+from profile_rust_test_output import LIST_PATTERN, RUNNING_BINARY_PATTERN
 
 from profile_rust_output_accounting import (
     deadline_report_lines,
     observed_test_inventory,
     observed_test_outcomes,
+    observed_test_records,
     parse_inventory,
 )
 
