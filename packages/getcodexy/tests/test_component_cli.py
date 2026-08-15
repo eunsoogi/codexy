@@ -210,6 +210,32 @@ class ComponentCliTests(ComponentCliBasicCases, unittest.TestCase):
             self.assertEqual(main(["install", "--json"]), 0)
         self.assertIsNone(operation.call_args.args[3])
 
+    def test_migrate_routes_to_the_separate_monolith_transaction(self) -> None:
+        receipt = {
+            "outcome": "completed",
+            "selection_after": ["core", "devtools"],
+            "errors": [],
+        }
+        with (
+            patch(
+                "codexy_runtime_tools.component_cli.migrate", return_value=receipt
+            ) as operation,
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(
+                main(["--codex", "/trusted/codex", "migrate", "devtools", "--json"]),
+                0,
+            )
+        self.assertEqual(operation.call_args.args[3], ("devtools",))
+
+    def test_migrate_without_a_trusted_host_emits_a_closed_json_receipt(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["migrate", "--json"]), 2)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["outcome"], "rejected")
+        self.assertEqual(receipt["errors"], [{"code": "trusted-codex-required"}])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import nullcontext
 from pathlib import Path
 
 from .component_lifecycle_admission import (
@@ -68,6 +69,7 @@ def run_operation(
     runner: Runner | None = None,
     *,
     operation_id: str | None = None,
+    lock_held: bool = False,
 ) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
@@ -82,7 +84,7 @@ def run_operation(
         runner or (lambda args: _run(args, home)),
     )
     manifest, identifier = load_component_manifest(), operation_identifier(operation_id)
-    with transaction_lock(home):
+    with nullcontext() if lock_held else transaction_lock(home):
         pending = read_journal(home)
         if pending is not None:
             pending.validate(manifest, decode_inventory)

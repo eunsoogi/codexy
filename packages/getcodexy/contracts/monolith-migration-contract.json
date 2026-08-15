@@ -1,0 +1,58 @@
+{
+  "schema": "getcodexy.monolith-migration-contract.v1",
+  "contract_version": 1,
+  "command": {
+    "usage": "getcodexy migrate [COMPONENT ...] [--json]",
+    "default_selection": ["core", "github", "devtools"],
+    "explicit_selection": "resolve-component-dependencies"
+  },
+  "admission": {
+    "supported_source": "exact-versioned-monolith-baseline",
+    "modified_or_ambiguous": "reject-before-host-mutation",
+    "target": "distinct-lockstep-split-release",
+    "target_verification": [
+      "official-marketplace-source",
+      "plugin-manifest-identity",
+      "exact-installed-component-inventory",
+      "healthy-component-surfaces"
+    ]
+  },
+  "idempotency": {
+    "same_resolved_selection": "return-completed-without-host-mutation",
+    "different_selection": "requires-a-new-component-lifecycle-operation"
+  },
+  "rollback": {
+    "journal": "codex-home/getcodexy/monolith-migration.json",
+    "recovery_order": [
+      "remove-selected-split-extensions",
+      "repin-legacy-release",
+      "restore-legacy-core-and-agent-projection",
+      "restore-config-and-agent-snapshot"
+    ],
+    "interruption": "recover-before-admitting-a-new-migration"
+  },
+  "receipt": {
+    "schema": "getcodexy.monolith-migration-receipt.v1",
+    "required_fields": [
+      "schema",
+      "command",
+      "outcome",
+      "source_version",
+      "target_version",
+      "selection_after",
+      "errors",
+      "recovery"
+    ],
+    "outcomes": ["completed", "rejected", "rolled-back"]
+  },
+  "error_codes": [
+    "ambiguous-monolith",
+    "corrupt-migration-journal",
+    "interrupted-migration",
+    "migration-in-progress",
+    "modified-monolith",
+    "operation-failed",
+    "target-release-unavailable",
+    "trusted-codex-required"
+  ]
+}
