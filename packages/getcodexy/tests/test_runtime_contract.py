@@ -13,85 +13,23 @@ from pathlib import Path
 from unittest import mock
 
 
-TAG = "v1.3.0"
-COMMIT = "a" * 40
-ARCHIVE_DIGEST = "b" * 64
-URL = f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/codexy-runtime-package.tar.gz"
-LEGACY_URL = (
-    f"https://github.com/eunsoogi/codexy/releases/download/{TAG}/"
-    "codexy-marketplace-plugin.tar.gz"
+from runtime_contract_support import (
+    ARCHIVE_DIGEST,
+    BINARIES,
+    COMMIT,
+    LEGACY_URL,
+    TAG,
+    URL,
+    candidate,
+    contract_module,
+    encoded,
+    legacy,
+    release,
 )
-BINARIES = {"lsp": b"lsp binary", "codegraph": b"codegraph binary"}
+from runtime_contract_runtime_cases import RuntimeContractRuntimeCases
 
 
-def contract_module():
-    """Import per test so the future module fails in test execution, not collection."""
-    return importlib.import_module("codexy_runtime_tools.contract")
-
-
-def encoded(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-
-
-def candidate() -> dict[str, object]:
-    platforms = {
-        platform: {
-            name: {
-                "path": f"runtime/codexy-mcp-{name}-{platform}.bin",
-                "sha256": hashlib.sha256(data).hexdigest(),
-            }
-            for name, data in BINARIES.items()
-        }
-        for platform in ("darwin-arm64", "linux-x86_64")
-    }
-    return {
-        "schema": "codexy-runtime-candidate/v1",
-        "source": {
-            "repository": "https://github.com/eunsoogi/codexy",
-            "commit": COMMIT,
-        },
-        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
-        "compatibility": {
-            "bootstrapApi": 1,
-            "pluginRuntimeApi": 1,
-            "transport": "stdio-newline-v1",
-            "mcpProtocol": "2024-11-05",
-        },
-        "platforms": platforms,
-    }
-
-
-def release() -> dict[str, object]:
-    embedded = candidate()
-    return {
-        "schema": "codexy-runtime-release/v1",
-        "state": "candidate-proven",
-        "source": embedded["source"],
-        "artifact": {
-            "tag": TAG,
-            "url": URL,
-            "sha256": ARCHIVE_DIGEST,
-            "payloadManifestSha256": hashlib.sha256(encoded(embedded)).hexdigest(),
-        },
-        "compatibility": embedded["compatibility"],
-        "platforms": embedded["platforms"],
-    }
-
-
-def legacy() -> dict[str, object]:
-    value = release()
-    value["state"] = "legacy-public"
-    value["artifact"]["url"] = LEGACY_URL
-    value["platforms"] = {
-        platform: {
-            server: {"sha256": binary["sha256"]} for server, binary in inventory.items()
-        }
-        for platform, inventory in candidate()["platforms"].items()  # type: ignore[union-attr]
-    }
-    return value
-
-
-class RuntimeContractTests(unittest.TestCase):
+class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
     def load(self, contents: dict[str, object], *, plugin_version: str = "9.9.9"):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -232,49 +170,6 @@ class RuntimeContractTests(unittest.TestCase):
             protocol_changed.cache_key(platform="linux-x86_64", server="lsp"),
         )
 
-    def test_explicit_override_cannot_poison_selected_release_cache(self) -> None:
-        root, _ = self.load(legacy())
-        runtime = importlib.import_module("codexy_runtime_tools.runtime")
-        cache = root / "cache"
-        override = root / "override.tar.gz"
-        override.write_bytes(b"override archive")
-        installed_roots: list[Path] = []
-
-        def install_override(_config, install_root: Path, installed: Path) -> None:
-            installed.parent.mkdir(parents=True)
-            installed.write_bytes(b"override controlled runtime")
-            installed.chmod(0o755)
-            installed_roots.append(install_root)
-
-        environment = {
-            "CODEXY_RUNTIME_CACHE_DIR": str(cache),
-            "CODEXY_RUNTIME_PACKAGE_PATH": str(override),
-            "CODEXY_RUNTIME_PACKAGE_SHA256": hashlib.sha256(
-                override.read_bytes()
-            ).hexdigest(),
-        }
-        with (
-            mock.patch.dict(os.environ, environment, clear=True),
-            mock.patch.object(runtime, "install_package", side_effect=install_override),
-            mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)),
-            self.assertRaises(SystemExit),
-        ):
-            runtime.run(runtime.Configuration.load("lsp", root, []))
-        self.assertEqual(len(installed_roots), 1)
-
-        with (
-            mock.patch.dict(
-                os.environ,
-                {"CODEXY_RUNTIME_CACHE_DIR": str(cache), "UV_OFFLINE": "1"},
-                clear=True,
-            ),
-            mock.patch.object(runtime, "_execute") as execute,
-            self.assertRaises(SystemExit) as failure,
-        ):
-            runtime.run(runtime.Configuration.load("lsp", root, []))
-        self.assertEqual(failure.exception.code, 127)
-        execute.assert_not_called()
-
     def test_marker_rejects_stale_identity_and_binary_digest(self) -> None:
         _, parsed = self.load(release())
         binary = BINARIES["lsp"]
@@ -333,45 +228,6 @@ class RuntimeContractTests(unittest.TestCase):
         self.assertTrue(
             parsed.verify_archive(root / "missing.tar.gz", platform="linux-x86_64")
         )
-
-    def test_runtime_boundary_never_invokes_cargo_without_explicit_exact_fallback(
-        self,
-    ) -> None:
-        root, _ = self.load(release())
-        runtime = importlib.import_module("codexy_runtime_tools.runtime")
-        environment = {"CODEXY_RUNTIME_CACHE_DIR": str(root / "cache")}
-        with (
-            mock.patch.dict(os.environ, environment, clear=True),
-            mock.patch.object(
-                runtime,
-                "install_package",
-                side_effect=RuntimeError("missing public artifact"),
-            ),
-            mock.patch.object(runtime, "install_git") as cargo,
-            self.assertRaises(SystemExit),
-        ):
-            runtime.run(runtime.Configuration.load("lsp", root, []))
-        cargo.assert_not_called()
-        with (
-            mock.patch.dict(
-                os.environ,
-                {**environment, "CODEXY_RUNTIME_GIT_FALLBACK": "1"},
-                clear=True,
-            ),
-            mock.patch.object(
-                runtime,
-                "install_package",
-                side_effect=RuntimeError("missing public artifact"),
-            ),
-            mock.patch.object(
-                runtime, "install_git", side_effect=RuntimeError("cargo failed")
-            ) as cargo,
-            self.assertRaises(SystemExit),
-        ):
-            configuration = runtime.Configuration.load("lsp", root, [])
-            self.assertEqual(configuration.git_ref, COMMIT)
-            runtime.run(configuration)
-        cargo.assert_called_once()
 
     @staticmethod
     def archive(path: Path, embedded: dict[str, object]) -> None:
