@@ -15,6 +15,7 @@ from .repository import (
     repository_owned,
     repository_owned_with_rewrites,
 )
+from .git_command_options import VALUE_OPTIONS, alias_option, option_value, url_rewrite
 from .shell_context import resolve_cwd
 
 NO_ARGUMENT_OPTIONS = {
@@ -36,16 +37,6 @@ NO_ARGUMENT_OPTIONS = {
     "--html-path",
     "--man-path",
     "--info-path",
-}
-VALUE_OPTIONS = {
-    "-C",
-    "-c",
-    "--git-dir",
-    "--work-tree",
-    "--namespace",
-    "--super-prefix",
-    "--config-env",
-    "--exec-path",
 }
 MAX_ALIAS_DEPTH = 8
 
@@ -76,8 +67,8 @@ def normalize(
         rewrites: list[UrlRewrite] = []
         for key, value in environment_config.items():
             config = f"{key}={value}"
-            alias = _alias_option(config)
-            is_url_config, rewrite = _url_rewrite(config)
+            alias = alias_option(config)
+            is_url_config, rewrite = url_rewrite(config)
             if alias is not None:
                 alias_name, command = alias
                 aliases[alias_name] = command
@@ -121,7 +112,7 @@ def _normalize(
             break
         if option in NO_ARGUMENT_OPTIONS:
             continue
-        name, value = _option_value(option, arguments)
+        name, value = option_value(option, arguments)
         if name not in VALUE_OPTIONS or value is None:
             return None
         if option == name:
@@ -134,8 +125,8 @@ def _normalize(
                 else repository_owned(cwd)
             )
         elif name == "-c":
-            alias = _alias_option(value)
-            is_url_config, rewrite = _url_rewrite(value)
+            alias = alias_option(value)
+            is_url_config, rewrite = url_rewrite(value)
             if alias is not None:
                 key, command = alias
                 inline_aliases[key] = command
@@ -226,58 +217,3 @@ def _operation(value: str, cwd: str) -> str | None:
     if first is None:
         return value
     return first if next(matches, None) is None else None
-
-
-def _alias_option(value: str) -> tuple[str, str] | None:
-    if "=" not in value:
-        return None
-    variable, command = value.split("=", 1)
-    section, separator, key = variable.partition(".")
-    if section.casefold() != "alias" or not separator:
-        return None
-    canonical = key.casefold()
-    return (
-        (canonical, command)
-        if canonical
-        and all(
-            part and part.replace("_", "").isalnum() for part in canonical.split(".")
-        )
-        else None
-    )
-
-
-def _url_rewrite(value: str) -> tuple[bool, UrlRewrite | None]:
-    variable, separator, prefix = value.partition("=")
-    canonical = variable.casefold()
-    if not canonical.startswith("url."):
-        return False, None
-    if not separator or not prefix or any(char in value for char in "\0\r\n"):
-        return True, None
-    if canonical.endswith(".pushinsteadof"):
-        replacement = variable[4 : -len(".pushinsteadof")]
-        push_only = True
-    elif canonical.endswith(".insteadof"):
-        replacement = variable[4 : -len(".insteadof")]
-        push_only = False
-    else:
-        return True, None
-    return True, UrlRewrite(prefix, replacement, push_only) if replacement else None
-
-
-def _option_value(option: str, arguments: list[str]) -> tuple[str, str | None]:
-    if option in VALUE_OPTIONS:
-        return option, arguments[0] if arguments else None
-    for name in (
-        "--git-dir",
-        "--work-tree",
-        "--namespace",
-        "--super-prefix",
-        "--config-env",
-        "--exec-path",
-    ):
-        if option.startswith(name + "="):
-            return name, option[len(name) + 1 :]
-    for name in ("-C", "-c"):
-        if option.startswith(name) and len(option) > len(name):
-            return name, option[len(name) :].removeprefix("=")
-    return option, None
