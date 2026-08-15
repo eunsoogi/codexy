@@ -65,6 +65,16 @@ jobs:
         if: matrix.language == 'PowerShell'
         shell: pwsh
         run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+      - name: Verify PowerShell lint failure propagation
+        if: matrix.language == 'PowerShell'
+        shell: pwsh
+        run: |
+          $probe = Join-Path $env:RUNNER_TEMP "codexy-language-lint-negative.ps1"
+          Set-Content -LiteralPath $probe -Value "function {" -NoNewline
+          & pwsh -NoProfile -NonInteractive -Command "Invoke-ScriptAnalyzer -Path '$probe' -Severity ParseError -EnableExit"
+          $status = $LASTEXITCODE
+          Remove-Item -LiteralPath $probe -Force
+          if ($status -eq 0) { throw "PSScriptAnalyzer accepted the invalid PowerShell probe" }
       - name: Lint Rust
         if: matrix.language == 'Rust'
         run: |
