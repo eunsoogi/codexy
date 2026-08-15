@@ -1,16 +1,23 @@
-# Manual Codex Connector Review
+# Optional Manual Codex Connector Review
 
-Codex connector automatic review MUST remain disabled.
+## Applicability
 
-## Required Procedure
+This procedure applies only when the Codex connector is available to the
+parent/orchestrator and active repository policy requires one explicit manual
+connector review. Otherwise, it is not a merge gate and an agent MUST NOT
+invent, emulate, or wait for `@codex review` evidence. When applicable, Codex
+connector automatic review MUST remain disabled.
+
+## Procedure When Applicable
 
 1. [automatic-disabled] Codex connector automatic review MUST remain disabled.
 2. [proof-ci-before-review] Before requesting review, parent/orchestrator MUST
    complete local affected proof and wait for required CI readiness on the
    frozen exact head.
 3. [exactly-one-review] After local proof and required CI readiness,
-   parent/orchestrator MUST request exactly one `@codex review` after an owning
-   child profile-selected reviewer PASS on a frozen exact head and before merge.
+   parent/orchestrator MUST request exactly one `@codex review` before merge
+   after an owning child returns the packaged multi-agent review policy's
+   merge-eligible disposition on the frozen exact head.
 4. [wait-batch] Parent/orchestrator MUST wait for the requested review's
    terminal output and batch every actionable connector finding into one repair
    cycle.

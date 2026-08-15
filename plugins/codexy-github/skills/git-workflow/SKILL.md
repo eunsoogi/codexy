@@ -19,8 +19,8 @@ MUST read these relative references before acting on the matching surface:
 - `references/pr-review-and-handoff.md` for PR bodies, review-thread handling,
   child-owned review feedback, and completion-handoff PR state capture,
   including review thread comment `commit { oid }` evidence.
-- `references/codex-connector-review.md` for the one explicit pre-merge Codex
-  connector review and its bounded repair cycle.
+- `references/codex-connector-review.md` when the Codex connector is available
+  and repository policy requires its one explicit pre-merge review.
 - `references/merge-and-main-sync.md` and `references/merge-authorization.md`
   for merge gates, squash merge body preservation, branch deletion, post-merge
   main sync, and the
@@ -183,8 +183,10 @@ valid only when captured PR state shows labels, or repository label taxonomy
 proves none exist. Before PR readiness, MUST preserve the captured PR state for
 the installed generic admission hooks and evidence handoff.
 
-Before merge, the parent/orchestrator MUST follow the manual Codex connector
-review procedure in `references/codex-connector-review.md`.
+Before merge, the parent/orchestrator MUST follow
+`references/codex-connector-review.md` only when the Codex connector is
+available and repository policy requires its manual review. The connector MUST
+NOT become a merge gate for repositories or users without that integration.
 
 ## Child-Owned Review Feedback
 
