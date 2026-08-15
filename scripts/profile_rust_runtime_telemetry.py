@@ -12,6 +12,12 @@ if SCRIPT_DIRECTORY not in sys.path:
     sys.path.insert(0, SCRIPT_DIRECTORY)
 
 from profile_rust_targets import target_name
+from profile_rust_process_families import (
+    family_counts,
+    process_family,
+    test_threads,
+    valid_target,
+)
 import signal
 import threading
 import time
@@ -242,48 +248,6 @@ def process_records(value: object) -> list[tuple[int, str]]:
     if len({pid for pid, _ in records}) != len(records):
         raise ValueError("duplicate process record")
     return records
-
-
-def family_counts(records: Iterable[tuple[int, str]]) -> dict[str, int]:
-    counts = {name: 0 for name in _FAMILIES}
-    for _, image in records:
-        counts[process_family(image)] += 1
-    return counts
-
-
-def valid_target(target: str, known: set[str]) -> bool:
-    return target in known or target.startswith("other:")
-
-
-def process_family(image: str) -> str:
-    name = image.replace("\\", "/").rsplit("/", 1)[-1].casefold()
-    if name in {"git", "git.exe"}:
-        return "git"
-    if name in {"python", "python.exe", "python3", "python3.exe", "py", "py.exe"}:
-        return "python"
-    if name in {
-        "sh",
-        "sh.exe",
-        "bash",
-        "bash.exe",
-        "cmd",
-        "cmd.exe",
-        "pwsh",
-        "pwsh.exe",
-    }:
-        return "shell"
-    if name.startswith("codexy-validate"):
-        return "validator"
-    return "other"
-
-
-def test_threads(environment: dict[str, str]) -> dict[str, str]:
-    value = environment.get("RUST_TEST_THREADS")
-    if value is None:
-        return {"state": "default/unobserved", "value": _UNOBSERVED}
-    if not value.isascii() or not value.isdecimal() or int(value) < 1:
-        raise ValueError("malformed configured test-thread value")
-    return {"state": "configured", "value": value}
 
 
 def elapsed(started: float) -> float:
