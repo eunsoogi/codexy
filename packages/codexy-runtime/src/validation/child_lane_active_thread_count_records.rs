@@ -173,14 +173,12 @@ fn count_kind(line: &str) -> CountKind {
             .to_ascii_lowercase()
             .replace("rate limited", "rate-limited")
             .contains("rate-limited");
-    if has_active && has_waiting {
-        if value_has_active != value_has_waiting {
-            return if value_has_active {
-                CountKind::Active
-            } else {
-                CountKind::Waiting
-            };
-        }
+    if has_active && has_waiting && value_has_active != value_has_waiting {
+        return if value_has_active {
+            CountKind::Active
+        } else {
+            CountKind::Waiting
+        };
     }
     if has_active && value_has_waiting || has_waiting && value_has_active {
         return CountKind::Total;

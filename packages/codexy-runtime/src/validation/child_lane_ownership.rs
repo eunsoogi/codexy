@@ -219,10 +219,11 @@ fn line_has_explicit_maintainer_reassignment(lines: &[&str], index: usize) -> bo
     let Some(value) = field_value(line, "maintainer reassignment") else {
         return false;
     };
-    let value = value
-        .is_empty()
-        .then(|| next_line_reassignment_value(lines, index).unwrap_or(value))
-        .unwrap_or(value);
+    let value = if value.is_empty() {
+        next_line_reassignment_value(lines, index).unwrap_or(value)
+    } else {
+        value
+    };
     is_positive_reassignment_value(value) && !is_negative_reassignment_value(value)
 }
 fn next_line_reassignment_value<'a>(lines: &'a [&str], index: usize) -> Option<&'a str> {

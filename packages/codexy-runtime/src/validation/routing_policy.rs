@@ -92,8 +92,8 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             let results = plugin_root
                 .join("skills/orchestration/references")
                 .join(&policy.general.measurement_results);
-            let errors = routing_measurement::check_canonical(plugin_root, &results);
-            errors
+
+            routing_measurement::check_canonical(plugin_root, &results)
         },
     )
 }

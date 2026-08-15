@@ -72,9 +72,9 @@ fn semantic(version: &str) -> (u64, u64, u64) {
         .split('.')
         .map(|part| part.parse().unwrap_or(u64::MAX));
     (
-        parts.next().unwrap(),
-        parts.next().unwrap(),
-        parts.next().unwrap(),
+        parts.next().unwrap_or(u64::MAX),
+        parts.next().unwrap_or(u64::MAX),
+        parts.next().unwrap_or(u64::MAX),
     )
 }
 

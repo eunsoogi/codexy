@@ -31,9 +31,7 @@ fn current_issue_numbers(pr_state: &Value) -> Option<Vec<u64>> {
 }
 
 fn current_issue_values(pr_state: &Value) -> Option<Vec<&Value>> {
-    let Some(issues) = pr_state.get("closingIssuesReferences") else {
-        return None;
-    };
+    let issues = pr_state.get("closingIssuesReferences")?;
     Some(
         issues
             .as_array()

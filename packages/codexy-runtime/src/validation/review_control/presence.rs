@@ -37,15 +37,11 @@ impl RequiredNullable<String> {
     }
 }
 
+#[derive(Default)]
 pub(super) enum OptionalField<T> {
+    #[default]
     Absent,
     Present(T),
-}
-
-impl<T> Default for OptionalField<T> {
-    fn default() -> Self {
-        Self::Absent
-    }
 }
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for OptionalField<T> {

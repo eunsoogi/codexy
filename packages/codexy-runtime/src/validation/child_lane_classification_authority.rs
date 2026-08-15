@@ -61,7 +61,7 @@ impl LaneAuthority {
     fn new(source: AuthoritySource, owner: OwnerSelection) -> Option<Self> {
         matches!(
             (source, owner),
-            (AuthoritySource::ParentSupplied, OwnerSelection::ChildOwned)
+            (AuthoritySource::ParentSupplied, OwnerSelection::Child)
                 | (AuthoritySource::CurrentThreadClassified, _)
         )
         .then_some(Self { owner, source })
@@ -74,14 +74,14 @@ impl LaneAuthority {
     pub(super) fn authorizes_child_setup(self) -> bool {
         matches!(
             (self.source, self.owner),
-            (AuthoritySource::ParentSupplied, OwnerSelection::ChildOwned)
+            (AuthoritySource::ParentSupplied, OwnerSelection::Child)
                 | (
                     AuthoritySource::CurrentThreadClassified,
-                    OwnerSelection::ChildOwned
+                    OwnerSelection::Child
                 )
                 | (
                     AuthoritySource::CurrentThreadClassified,
-                    OwnerSelection::CurrentThreadOwned
+                    OwnerSelection::CurrentThread
                 )
         )
     }
@@ -89,7 +89,7 @@ impl LaneAuthority {
     fn is_non_child_owner(self) -> bool {
         matches!(
             self.owner,
-            OwnerSelection::ParentOwned | OwnerSelection::ExternalHumanOwned
+            OwnerSelection::Parent | OwnerSelection::ExternalHuman
         )
     }
 }

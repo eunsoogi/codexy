@@ -9,10 +9,11 @@ use super::child_lane_ownership_setup_markers::{
 pub(super) fn line_has_parent_implementation_setup(lines: &[&str], index: usize) -> bool {
     let line = lines[index];
     if let Some((key, value)) = setup_field_value(line) {
-        return value
-            .is_empty()
-            .then(|| setup_continuation_has_parent_implementation_setup(lines, index, key))
-            .unwrap_or_else(|| setup_value_has_parent_implementation_setup(key, value));
+        return if value.is_empty() {
+            setup_continuation_has_parent_implementation_setup(lines, index, key)
+        } else {
+            setup_value_has_parent_implementation_setup(key, value)
+        };
     }
     line_value_has_parent_implementation_setup(line)
 }
@@ -78,7 +79,7 @@ fn has_actor_read_phrase(value: &str) -> bool {
         })
 }
 
-fn setup_field_value<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
+fn setup_field_value(line: &str) -> Option<(&str, &str)> {
     line.split_once(':').and_then(|(key, value)| {
         let key = metadata_key(key);
         [

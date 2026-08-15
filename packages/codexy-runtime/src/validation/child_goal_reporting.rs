@@ -104,10 +104,10 @@ fn check_lane(lines: &[&str]) -> Vec<String> {
             continue;
         }
         if let Some(operation) = event_operation(line, "parent goal post-result: operation=") {
-            if pending == Some(operation) {
-                if post_result_is_confirmed(line, operation, source, key, &mut errors) {
-                    pending = None;
-                }
+            if pending == Some(operation)
+                && post_result_is_confirmed(line, operation, source, key, &mut errors)
+            {
+                pending = None;
             }
         }
     }

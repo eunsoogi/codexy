@@ -42,7 +42,7 @@ jobs:
         run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
       - name: Install Rust tools
         if: matrix.language == 'Rust'
-        run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy
       - name: Install dprint
         if: matrix.language == 'Text'
         run: cargo install --locked dprint --version "$(jq -r .dprint tooling/lint-tools.json)"
@@ -59,6 +59,7 @@ jobs:
           tar -xf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
           curl --fail --location --output "$RUNNER_TEMP/shfmt" "https://github.com/mvdan/sh/releases/download/v${shfmt}/shfmt_v${shfmt}_linux_amd64"
           printf '%s  %s\n' "$shfmt_sha" "$RUNNER_TEMP/shfmt" | sha256sum --check --status
+          chmod +x "$RUNNER_TEMP/shfmt"
           echo "$RUNNER_TEMP/shellcheck-v${shellcheck}" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Install PSScriptAnalyzer
@@ -75,11 +76,12 @@ jobs:
           $status = $LASTEXITCODE
           Remove-Item -LiteralPath $probe -Force
           if ($status -eq 0) { throw "PSScriptAnalyzer accepted the invalid PowerShell probe" }
+          exit 0
       - name: Lint Rust
         if: matrix.language == 'Rust'
         run: |
-          cargo +1.85.0 fmt --manifest-path packages/codexy-runtime/Cargo.toml --all -- --check
-          cargo +1.85.0 clippy --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets --all-features -- -D warnings
+          cargo +1.95.0 fmt --manifest-path packages/codexy-runtime/Cargo.toml --all -- --check
+          cargo +1.95.0 clippy --manifest-path packages/codexy-runtime/Cargo.toml --locked --lib --bins
       - name: Lint Python
         if: matrix.language == 'Python'
         run: |

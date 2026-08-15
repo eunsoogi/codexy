@@ -101,9 +101,7 @@ fn check_skill_frontmatter(skill_file: &Path) -> Vec<String> {
             display_relative(skill_file)
         ));
     }
-    if !yaml_string(&parsed, "description")
-        .is_some_and(|description| !description.trim().is_empty())
-    {
+    if yaml_string(&parsed, "description").is_none_or(|description| description.trim().is_empty()) {
         errors.push(format!(
             "{} frontmatter.description must be a non-empty string",
             display_relative(skill_file)

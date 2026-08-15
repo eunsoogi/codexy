@@ -62,7 +62,7 @@ jobs:
       - name: Run native component lifecycle tests
         shell: pwsh
         run: |
-          $env:PYTHONPATH = "packages/getcodexy/src"
+          $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           $componentTests = @(
             "packages/getcodexy/tests/test_component_cli.py"
             "packages/getcodexy/tests/test_component_lifecycle.py"

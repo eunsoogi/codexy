@@ -148,7 +148,7 @@ fn modifier_coordination(words: &[&str], conjunction: usize) -> bool {
 fn clause_end(words: &[&str], action: usize, end: usize) -> usize {
     words[action + 1..end]
         .iter()
-        .position(|word| is_clause_boundary(word))
+        .position(is_clause_boundary)
         .map(|offset| action + offset + 1)
         .unwrap_or(end)
 }
@@ -226,7 +226,7 @@ fn is_negated_finite_auxiliary(word: &str) -> bool {
 
 fn has_negated_setup_object(words: &[&str], start: usize, action: usize, end: usize) -> bool {
     let object = action + usize::from(matches!(words.get(action + 1), Some(&"up" | &"out"))) + 1;
-    let negates_object = |before: &[&str]| before.iter().any(|word| *word == "no");
+    let negates_object = |before: &[&str]| before.contains(&"no");
     words[object..end]
         .iter()
         .position(|word| matches!(*word, "branch" | "worktree"))

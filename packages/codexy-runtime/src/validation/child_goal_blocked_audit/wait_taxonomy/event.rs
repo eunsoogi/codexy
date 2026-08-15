@@ -176,9 +176,11 @@ fn coordination(words: &[&str], subjects: &[Subject], index: usize) -> Coordinat
     let shared_negation = first < index
         && before(subjects[first].start) == Some(&"neither")
         && before(subjects[index].start) == Some(&"nor");
-    shared_negation
-        .then_some(Coordination::SharedNegation)
-        .unwrap_or(Coordination::Independent)
+    if shared_negation {
+        Coordination::SharedNegation
+    } else {
+        Coordination::Independent
+    }
 }
 
 fn subject_group(kind: SubjectKind) -> SubjectGroup {

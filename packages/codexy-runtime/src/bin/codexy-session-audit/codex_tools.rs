@@ -5,13 +5,24 @@ use serde_json::Value;
 
 use super::{SessionReport, checked_add, is_safe_id};
 
+#[derive(Default)]
+pub(super) struct ToolLedger {
+    seen_calls: BTreeSet<String>,
+    seen_outputs: BTreeSet<String>,
+    call_names: BTreeMap<String, String>,
+    duplicates: u64,
+}
+
+impl ToolLedger {
+    pub(super) fn duplicates(&self) -> u64 {
+        self.duplicates
+    }
+}
+
 pub(super) fn record(
     object: &serde_json::Map<String, Value>,
     report: &mut SessionReport,
-    seen_calls: &mut BTreeSet<String>,
-    seen_outputs: &mut BTreeSet<String>,
-    call_names: &mut BTreeMap<String, String>,
-    duplicates: &mut u64,
+    ledger: &mut ToolLedger,
     line_number: usize,
 ) -> Result<()> {
     let item_type = nested_str(object, &["payload", "type"]).unwrap_or_default();
@@ -26,9 +37,9 @@ pub(super) fn record(
         record_call(
             object,
             report,
-            seen_calls,
-            call_names,
-            duplicates,
+            &mut ledger.seen_calls,
+            &mut ledger.call_names,
+            &mut ledger.duplicates,
             line_number,
             item_type,
             call_id,
@@ -38,9 +49,9 @@ pub(super) fn record(
         record_output(
             object,
             report,
-            seen_outputs,
-            call_names,
-            duplicates,
+            &mut ledger.seen_outputs,
+            &ledger.call_names,
+            &mut ledger.duplicates,
             item_type,
             call_id,
             call_key,

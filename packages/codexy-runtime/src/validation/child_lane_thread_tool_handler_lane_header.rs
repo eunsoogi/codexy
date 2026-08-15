@@ -22,12 +22,9 @@ pub(super) fn include_preceding_lane_header(evidence: &str, start: usize) -> usi
 fn lane_header_label(line: &str) -> Option<String> {
     let trimmed = line.trim();
     let line = strip_markdown_heading_prefix(trimmed).trim();
-    let Some(rest) = line
+    let rest = line
         .strip_prefix("lane ")
-        .or_else(|| line.strip_prefix("Lane "))
-    else {
-        return None;
-    };
+        .or_else(|| line.strip_prefix("Lane "))?;
     let label = rest.trim_end_matches([':', '.', '-']).trim();
     ((trimmed != line || line.ends_with(':'))
         && !label.is_empty()

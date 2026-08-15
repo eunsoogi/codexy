@@ -38,12 +38,10 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
     }
     let closure = runtime_closure(&hooks, &sources)?;
     for path in closure {
-        check_pinned(
-            &hooks,
-            sources
-                .get(path.as_str())
-                .expect("closure is manifest-backed"),
-        )?;
+        let source = sources
+            .get(path.as_str())
+            .context("runtime closure source must be manifest-backed")?;
+        check_pinned(&hooks, source)?;
     }
     Ok(())
 }

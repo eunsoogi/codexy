@@ -1,8 +1,7 @@
 pub(crate) fn is_negated_lane_marker(lower: &str, start: usize) -> bool {
     lower[..start]
         .split(|ch: char| !ch.is_ascii_alphanumeric())
-        .filter(|token| !token.is_empty())
-        .next_back()
+        .rfind(|token| !token.is_empty())
         .is_some_and(|token| matches!(token, "not" | "never" | "without"))
 }
 

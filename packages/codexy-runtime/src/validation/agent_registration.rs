@@ -29,7 +29,13 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         ));
         return errors;
     }
-    let scripts = script.parent().expect("registration script parent");
+    let Some(scripts) = script.parent() else {
+        errors.push(format!(
+            "{} must have a parent directory",
+            display_relative(&script)
+        ));
+        return errors;
+    };
     for module in [
         "agent_registration_support.py",
         "agent_registration_lifecycle.py",

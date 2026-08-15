@@ -143,11 +143,13 @@ impl GfmClassificationTable {
         };
         let key = metadata_key(key);
         if ClassificationTableSchema::accepts(next_field, key, value) {
-            self.state = (next_field + 1 == ClassificationTableSchema::field_count())
-                .then_some(GfmClassificationTableState::Complete)
-                .unwrap_or(GfmClassificationTableState::Classification {
+            self.state = if next_field + 1 == ClassificationTableSchema::field_count() {
+                GfmClassificationTableState::Complete
+            } else {
+                GfmClassificationTableState::Classification {
                     next_field: next_field + 1,
-                });
+                }
+            };
             return GfmClassificationTableEvent::Record(key, value);
         }
         self.invalidate()

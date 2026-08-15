@@ -15,7 +15,7 @@ fn prefix_negates_marker(prefix: &str) -> bool {
         .rsplit(|word| is_clause_boundary(word))
         .next()
         .unwrap_or(&[]);
-    words.iter().any(|word| matches!(*word, "not" | "no")) || without_targets_marker(&words)
+    words.iter().any(|word| matches!(*word, "not" | "no")) || without_targets_marker(words)
 }
 
 fn without_targets_marker(words: &[&str]) -> bool {

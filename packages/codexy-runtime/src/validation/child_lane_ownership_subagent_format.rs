@@ -28,12 +28,11 @@ pub(super) fn has_helper_only_purpose(value: &str) -> bool {
         && ["qa", "QA", "verification", "validation"]
             .into_iter()
             .any(|marker| value.contains(marker));
-    if has_review_response_purpose {
-        if !has_review_response_validation_purpose
-            || has_review_response_implementation_purpose(value)
-        {
-            return false;
-        }
+    if has_review_response_purpose
+        && (!has_review_response_validation_purpose
+            || has_review_response_implementation_purpose(value))
+    {
+        return false;
     }
     [
         "helper",

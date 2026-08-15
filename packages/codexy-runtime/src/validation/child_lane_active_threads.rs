@@ -17,14 +17,14 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         .enumerate()
         .map(|(index, operation)| {
             let lookup_bound = last_matching_operation(&operations[..index], operation);
-            let lookup = matching_owner_lookup_before(
+
+            matching_owner_lookup_before(
                 evidence,
                 &operation.owner,
                 operation.line_number,
                 operation.segment_number,
                 lookup_bound,
-            );
-            lookup
+            )
         })
         .collect::<Vec<_>>();
     let existing_owners = owner_lookups

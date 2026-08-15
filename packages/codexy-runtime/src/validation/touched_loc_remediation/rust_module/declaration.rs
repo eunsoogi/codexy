@@ -100,9 +100,9 @@ pub(super) fn declarations(source: &str) -> Vec<Declaration> {
                 }
                 attributed_path = Some(path);
                 line = remainder.trim_start();
-            } else if is_path_attribute_start(line) && scope.is_outer_scope() {
-                return Vec::new();
-            } else if scope.is_outer_scope() && has_cfg_attr_path(line) {
+            } else if scope.is_outer_scope()
+                && (is_path_attribute_start(line) || has_cfg_attr_path(line))
+            {
                 return Vec::new();
             }
             let Some(remainder) = outer_attribute_remainder(line) else {
