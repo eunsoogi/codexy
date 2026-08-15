@@ -8,71 +8,48 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  CODEXY_LINT_CHANGED_SINCE: ${{ github.event.pull_request && format('origin/{0}', github.event.pull_request.base.ref) || github.event.before }}
-
 jobs:
   lint:
-    name: ${{ matrix.language }} lint
+    name: ${{ matrix.language }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
         include:
-          - language: rust
+          - language: Rust
             os: ubuntu-latest
-          - language: python
+          - language: Python
             os: ubuntu-latest
-          - language: shell
+          - language: Shell
             os: ubuntu-latest
-          - language: text
+          - language: Text
             os: ubuntu-latest
-          - language: powershell
-            os: windows-latest
-          - language: windows-command
+          - language: PowerShell
             os: windows-latest
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
           persist-credentials: false
-      - name: Fetch pull request base
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: git fetch origin "${{ github.event.pull_request.base.ref }}"
       - uses: actions/setup-python@v7
-        if: matrix.language == 'python' || matrix.os == 'windows-latest'
+        if: matrix.language == 'Python'
         with:
           python-version: "3.12"
       - name: Install Ruff
-        if: matrix.language == 'python'
+        if: matrix.language == 'Python'
         run: python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt
       - name: Install Rust tools
-        if: matrix.language == 'rust'
+        if: matrix.language == 'Rust'
         run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
       - uses: actions/setup-node@v5
-        if: matrix.language == 'text'
+        if: matrix.language == 'Text'
         with:
           node-version: "22"
-      - name: Install Prettier and Taplo
-        if: matrix.language == 'text'
-        shell: bash
-        run: |
-          npm ci --ignore-scripts
-          version="$(jq -r .taplo.version tooling/lint-tools.json)"
-          sha="$(jq -r .taplo.linuxX64Sha256 tooling/lint-tools.json)"
-          curl --fail --location --output "$RUNNER_TEMP/taplo.gz" "https://github.com/tamasfe/taplo/releases/download/${version}/taplo-linux-x86_64.gz"
-          printf '%s  %s\n' "$sha" "$RUNNER_TEMP/taplo.gz" | sha256sum --check --status
-          gzip --decompress "$RUNNER_TEMP/taplo.gz"
-          chmod 755 "$RUNNER_TEMP/taplo"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Install Prettier
+        if: matrix.language == 'Text'
+        run: npm ci --ignore-scripts
       - name: Install ShellCheck and shfmt
-        if: matrix.language == 'shell'
+        if: matrix.language == 'Shell'
         shell: bash
         run: |
           shellcheck="$(jq -r .shellcheck.version tooling/lint-tools.json)"
@@ -84,20 +61,32 @@ jobs:
           tar -xf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
           curl --fail --location --output "$RUNNER_TEMP/shfmt" "https://github.com/mvdan/sh/releases/download/v${shfmt}/shfmt_v${shfmt}_linux_amd64"
           printf '%s  %s\n' "$shfmt_sha" "$RUNNER_TEMP/shfmt" | sha256sum --check --status
-          chmod 755 "$RUNNER_TEMP/shfmt"
           echo "$RUNNER_TEMP/shellcheck-v${shellcheck}" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Install PSScriptAnalyzer
-        if: matrix.language == 'powershell'
+        if: matrix.language == 'PowerShell'
         shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+      - name: Lint Rust
+        if: matrix.language == 'Rust'
         run: |
-          $tools = Get-Content -Raw tooling/lint-tools.json | ConvertFrom-Json
-          $archive = Join-Path $env:RUNNER_TEMP "PSScriptAnalyzer.nupkg"
-          Invoke-WebRequest -UseBasicParsing -Uri "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$($tools.PSScriptAnalyzer)" -OutFile $archive
-          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant() -ne $tools.psScriptAnalyzerNupkgSha256) { throw "PSScriptAnalyzer package hash mismatch" }
-          $zip = "$archive.zip"
-          Copy-Item -LiteralPath $archive -Destination $zip
-          Expand-Archive -LiteralPath $zip -DestinationPath $env:RUNNER_TEMP -Force
-          "CODEXY_PSSCRIPTANALYZER_PATH=$env:RUNNER_TEMP" | Add-Content $env:GITHUB_ENV
-      - name: Check tracked ${{ matrix.language }} source
-        run: python scripts/lint-repository.py --check --language ${{ matrix.language }}
+          cargo +1.85.0 fmt --all -- --check
+          cargo +1.85.0 clippy --locked --all-targets --all-features -- -D warnings
+      - name: Lint Python
+        if: matrix.language == 'Python'
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Lint shell scripts
+        if: matrix.language == 'Shell'
+        shell: bash
+        run: |
+          git ls-files -z '*.sh' | xargs -0r shellcheck
+          git ls-files -z '*.sh' | xargs -0r shfmt -d
+      - name: Lint supported text formats
+        if: matrix.language == 'Text'
+        run: npm run lint
+      - name: Lint PowerShell
+        if: matrix.language == 'PowerShell'
+        shell: pwsh
+        run: Invoke-ScriptAnalyzer -Path scripts -Recurse -Severity ParseError,Error,Warning

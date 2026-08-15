@@ -10,10 +10,6 @@
     "version": "3.12.0",
     "linuxX64Sha256": "d9fbb2a9c33d13f47e7618cf362a914d029d02a6df124064fff04fd688a745ea"
   },
-  "taplo": {
-    "version": "0.10.0",
-    "linuxX64Sha256": "8fe196b894ccf9072f98d4e1013a180306e17d244830b03986ee5e8eabeb6156"
-  },
   "PSScriptAnalyzer": "1.25.0",
   "psScriptAnalyzerNupkgSha256": "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
 }
