@@ -5,6 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable
 
 SHARDS = "[support, agent, child, orchestration, governance, system, archive]"
+FORMATTED_SHARDS = [
+    "support",
+    "agent",
+    "child",
+    "orchestration",
+    "governance",
+    "system",
+    "archive",
+]
 JOBS = {"rust-test", "windows-rust-test", "rust-test-aggregate"}
 CHECKOUT = {
     "uses": "actions/checkout@v7",
@@ -32,8 +41,7 @@ def producer(
         set(job) != {"name", "runs-on", "timeout-minutes", "strategy", "steps"}
         or job.get("name") != f"Rust shard ({platform}, ${{{{ matrix.shard }}}})"
         or not isinstance(strategy, dict)
-        or strategy
-        != {"fail-fast": "false", "max-parallel": "7", "matrix": {"shard": SHARDS}}
+        or not shard_strategy(strategy)
     ):
         return False
     steps = job.get("steps")
@@ -60,6 +68,17 @@ def producer(
         },
     }
     return tuple(steps) == (CHECKOUT, *setup, {"run": command}, upload)
+
+
+def shard_strategy(strategy: object) -> bool:
+    return strategy in (
+        {"fail-fast": "false", "max-parallel": "7", "matrix": {"shard": SHARDS}},
+        {
+            "fail-fast": "false",
+            "max-parallel": "7",
+            "matrix": {"shard": FORMATTED_SHARDS},
+        },
+    )
 
 
 def aggregate(job: dict[str, object]) -> bool:

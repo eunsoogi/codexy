@@ -6,6 +6,7 @@ const RUST_JOB: &str =
     "    runs-on: ubuntu-latest\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile_rust_tests.py\n";
 const WINDOWS_STEPS: &str =
     "      - run: scripts/install-windows-test-prerequisites.ps1\n      - run: |\n          rustup toolchain install\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n      - run: python scripts/profile_rust_tests.py --windows\n";
+const SHARD_MATRIX: &str = "        shard: [\n          support,\n          agent,\n          child,\n          orchestration,\n          governance,\n          system,\n          archive,\n        ]\n";
 
 fn workflow(rust_job: &str, windows_runner: &str, timeout: u8, steps: &str) -> String {
     format!(
@@ -47,10 +48,10 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
 
     for invalid_workflow in [
         workflow.replacen("max-parallel: 7", "max-parallel: 6", 1),
-        workflow.replacen("shard: [support, agent, child, orchestration, governance, system, archive]", "shard: [support] # [support, agent, child, orchestration, governance, system, archive]", 1),
+        workflow.replacen(SHARD_MATRIX, "        shard: [support] # [support, agent, child, orchestration, governance, system, archive]\n", 1),
         workflow.replacen("          persist-credentials: false\n", "", 1).replacen("          merge-multiple: true\n", "          merge-multiple: true\n          persist-credentials: false\n", 1),
         workflow.replacen("      - if: always()\n        uses: actions/upload-artifact@v7", "      - uses: actions/upload-artifact@v7\n        # if: always()", 1),
-        workflow.replacen("        shard: [support, agent, child, orchestration, governance, system, archive]", "        include:\n          - shard: support\n        # shard: [support, agent, child, orchestration, governance, system, archive]", 1),
+        workflow.replacen(SHARD_MATRIX, "        include:\n          - shard: support\n        # shard: [support, agent, child, orchestration, governance, system, archive]\n", 1),
         workflow.replacen("      - uses: actions/checkout@v7\n        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n          fetch-depth: 0\n          persist-credentials: false\n", "", 1),
         workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}\n", "", 1),
         workflow.replacen("          ref: ${{ github.event.pull_request.head.sha }}", "          ref: ${{ github.sha }}", 1),
@@ -60,7 +61,7 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
         workflow.replacen("      - shell: pwsh\n        run: scripts/install-windows-test-prerequisites.ps1\n", "", 1),
         workflow.replacen("      - shell: pwsh\n        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1),
         workflow.replacen("    steps:\n", "    env:\n      RUST_TEST_THREADS: 1\n    steps:\n", 1),
-        workflow.replacen("        shard: [support, agent, child, orchestration, governance, system, archive]\n", "        shard: [support, agent, child, orchestration, governance, system, archive]\n        extra: rejected\n", 1),
+        workflow.replacen(SHARD_MATRIX, &format!("{SHARD_MATRIX}        extra: rejected\n"), 1),
         workflow.replacen("      - run: scripts/profile_rust_tests.py --shard", "      - env:\n          CARGO_PROFILE_TEST_INCREMENTAL: true\n        run: scripts/profile_rust_tests.py --shard", 1),
         workflow.replacen("      - uses: actions/download-artifact@v8\n", "      - uses: actions/download-artifact@v8\n        if: always()\n", 1),
         workflow.replacen("permissions:\n", "env:\n  RUST_TEST_THREADS: 1\npermissions:\n", 1),

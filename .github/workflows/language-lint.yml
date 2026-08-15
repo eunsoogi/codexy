@@ -42,7 +42,9 @@ jobs:
         run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
       - name: Install Rust tools
         if: matrix.language == 'Rust'
-        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy
+        run: |
+          rust="$(jq -r .rust tooling/lint-tools.json)"
+          rustup toolchain install "$rust" --profile minimal --component rustfmt --component clippy
       - name: Install dprint
         if: matrix.language == 'Text'
         run: cargo install --locked dprint --version "$(jq -r .dprint tooling/lint-tools.json)"
@@ -80,8 +82,9 @@ jobs:
       - name: Lint Rust
         if: matrix.language == 'Rust'
         run: |
-          cargo +1.95.0 fmt --manifest-path packages/codexy-runtime/Cargo.toml --all -- --check
-          cargo +1.95.0 clippy --manifest-path packages/codexy-runtime/Cargo.toml --locked --lib --bins
+          rust="$(jq -r .rust tooling/lint-tools.json)"
+          cargo +"$rust" fmt --manifest-path packages/codexy-runtime/Cargo.toml --all -- --check
+          cargo +"$rust" clippy --manifest-path packages/codexy-runtime/Cargo.toml --locked --lib --bins
       - name: Lint Python
         if: matrix.language == 'Python'
         run: |

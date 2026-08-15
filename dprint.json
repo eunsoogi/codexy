@@ -4,7 +4,6 @@
   "includes": ["**/*.{json,md,yaml,yml}"],
   "excludes": [
     ".git/**",
-    ".github/workflows/rust-test.yml",
     "packages/codexy-runtime/target/**"
   ],
   "plugins": [
