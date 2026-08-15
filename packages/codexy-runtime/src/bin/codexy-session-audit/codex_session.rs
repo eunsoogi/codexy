@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use anyhow::{Result, bail};
 use serde_json::Value;
@@ -14,9 +14,7 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
     let mut session_id = None;
     let mut session = None;
     let mut seen_events = BTreeSet::new();
-    let mut seen_calls = BTreeSet::new();
-    let mut seen_outputs = BTreeSet::new();
-    let mut call_names = BTreeMap::new();
+    let mut tool_ledger = codex_tools::ToolLedger::default();
     let mut per_turn_tokens = Vec::new();
     let mut duplicates = 0;
     let mut records_observed = 0;
@@ -87,15 +85,7 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
                 duplicates += 1;
             }
         } else if kind == "response_item" {
-            codex_tools::record(
-                object,
-                report,
-                &mut seen_calls,
-                &mut seen_outputs,
-                &mut call_names,
-                &mut duplicates,
-                line_number,
-            )?;
+            codex_tools::record(object, report, &mut tool_ledger, line_number)?;
         }
     }
     let Some(mut session) = session else {
@@ -106,6 +96,11 @@ pub(super) fn audit(input: &str, recent_turns: usize) -> Result<Report> {
     session.recent_turn_average_tokens = recent_direct_average(&per_turn_tokens, recent_turns)?;
     session.event_ids.sort();
     session.finalize_tool_families()?;
+    duplicates = checked_add(
+        duplicates,
+        tool_ledger.duplicates(),
+        "duplicate event count",
+    )?;
     Ok(Report {
         session_count: 1,
         duplicate_events_skipped: duplicates,

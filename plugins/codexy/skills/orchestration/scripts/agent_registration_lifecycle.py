@@ -56,9 +56,10 @@ class RegistrationStore:
         for name, contents in projections.items():
             basename(name)
             state = states.get(name, FileState(None))
-            if state.data not in (None, contents.encode("utf-8")) and not state.data.startswith(
-                MANAGED
-            ):
+            if state.data not in (
+                None,
+                contents.encode("utf-8"),
+            ) and not state.data.startswith(MANAGED):
                 raise ValueError(
                     f"{self.agents_root / name} is not owned by Codexy; "
                     "move or remove it before registration"
@@ -79,7 +80,11 @@ class RegistrationStore:
                 try:
                     for name in sorted(states):
                         state = states[name]
-                        if name not in projections and state.data and state.data.startswith(MANAGED):
+                        if (
+                            name not in projections
+                            and state.data
+                            and state.data.startswith(MANAGED)
+                        ):
                             transaction.delete(self.agents_root / name, state)
                     for name, contents in projections.items():
                         transaction.write(
@@ -136,7 +141,9 @@ class RegistrationStore:
         if current.data != original.encode("utf-8"):
             raise RuntimeError("config changed during registration; retry")
         backup = self.home / self._backup_name()
-        transaction.write(backup, original.encode("utf-8"), FileState(None), current.mode)
+        transaction.write(
+            backup, original.encode("utf-8"), FileState(None), current.mode
+        )
         transaction.write(config, updated.encode("utf-8"), current, current.mode)
 
     def _backup_name(self) -> str:
@@ -186,7 +193,10 @@ class RegistrationStore:
             os.close(descriptor)
             try:
                 current = os.lstat(path)
-                if (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino):
+                if (current.st_dev, current.st_ino) == (
+                    identity.st_dev,
+                    identity.st_ino,
+                ):
                     path.unlink()
             except FileNotFoundError:
                 pass

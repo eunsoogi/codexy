@@ -19,5 +19,7 @@ def rm_forbidden(args: list[str]) -> bool:
     return (
         flag(args, "r", "--recursive")
         and flag(args, "f", "--force")
-        and any(target in broad or target.rstrip("/").endswith("/..") for target in targets)
+        and any(
+            target in broad or target.rstrip("/").endswith("/..") for target in targets
+        )
     )

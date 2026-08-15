@@ -13,9 +13,14 @@ from profile_rust_workflow_context import job_context
 WORKFLOW_KEY_PATTERN = re.compile(r"^(?P<key>[^:#][^:]*):(?P<value>.*)$")
 WINDOWS_PREREQUISITE = "scripts/install-windows-test-prerequisites.ps1"
 WINDOWS_PREPARATION = "\n".join(
-    ("rustup toolchain install", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }", "cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked", "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }")
+    (
+        "rustup toolchain install",
+        "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked",
+        "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    )
 )
-WINDOWS_GATE = "python scripts/profile-rust-tests --windows"
+WINDOWS_GATE = "python scripts/profile_rust_tests.py --windows"
 WINDOWS_JOB_TIMEOUT_MINUTES = 20
 WorkflowStep = tuple[str, frozenset[str]]
 
@@ -27,15 +32,23 @@ def yaml_mapping_entry(line: str) -> tuple[str, str] | None:
     match = WORKFLOW_KEY_PATTERN.match(stripped)
     if match is None:
         return None
-    return yaml_scalar_value(match.group("key").strip()), yaml_value_without_comment(match.group("value")).strip()
+    return yaml_scalar_value(match.group("key").strip()), yaml_value_without_comment(
+        match.group("value")
+    ).strip()
 
 
 def yaml_value_without_comment(value: str) -> str:
     quote: str | None = None
     for index, character in enumerate(value):
         if character in "'\"":
-            quote = None if character == quote else character if quote is None else quote
-        elif character == "#" and quote is None and (index == 0 or value[index - 1].isspace()):
+            quote = (
+                None if character == quote else character if quote is None else quote
+            )
+        elif (
+            character == "#"
+            and quote is None
+            and (index == 0 or value[index - 1].isspace())
+        ):
             return value[:index]
     return value
 
@@ -45,7 +58,9 @@ def step_run_command(line: str) -> str | None:
     if stripped.startswith("-"):
         stripped = stripped[1:].lstrip()
     entry = yaml_mapping_entry(stripped)
-    return yaml_scalar_value(entry[1]) if entry is not None and entry[0] == "run" else None
+    return (
+        yaml_scalar_value(entry[1]) if entry is not None and entry[0] == "run" else None
+    )
 
 
 def yaml_scalar_value(value: str) -> str:
@@ -98,7 +113,9 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
         (len(line) - len(line.lstrip(" ")) for line in lines if line.strip()), default=0
     )
     if style == "|":
-        return "\n".join(line[content_indentation:] if line.strip() else "" for line in lines).strip()
+        return "\n".join(
+            line[content_indentation:] if line.strip() else "" for line in lines
+        ).strip()
     paragraphs: list[list[str]] = []
     paragraph: list[str] = []
     for line in lines:
@@ -113,7 +130,9 @@ def block_scalar_command(style: str, lines: list[str]) -> str:
         paragraph.append(line)
     if paragraph:
         paragraphs.append(paragraph)
-    return "\n".join(" ".join(line[content_indentation:] for line in lines) for lines in paragraphs).strip()
+    return "\n".join(
+        " ".join(line[content_indentation:] for line in lines) for lines in paragraphs
+    ).strip()
 
 
 def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
@@ -173,7 +192,11 @@ def job_contract(lines: list[str]) -> tuple[list[str], list[WorkflowStep]]:
                 step_keys.add(step_entry[0].casefold())
             command = step_run_command(line)
             if command in {"|", "|-", "|+", ">", ">-", ">+"}:
-                block_run = indentation + (2 if line.lstrip().startswith("-") else 0), command[0], []
+                block_run = (
+                    indentation + (2 if line.lstrip().startswith("-") else 0),
+                    command[0],
+                    [],
+                )
             elif command is not None:
                 step_command = command
     if block_run is not None:
@@ -194,6 +217,13 @@ def enforce_workflow_contract(
     except (OSError, ValueError) as error:
         sys.stderr.write(f"Rust workflow is invalid: {workflow}: {error}\n")
         raise SystemExit(1) from None
-    if root != {"name": "Rust tests", "on": "", "permissions": "", "jobs": ""} or not enforce_shard_workflow(jobs, lambda lines: job_context(lines, yaml_mapping_entry, yaml_scalar_value)):
+    if root != {
+        "name": "Rust tests",
+        "on": "",
+        "permissions": "",
+        "jobs": "",
+    } or not enforce_shard_workflow(
+        jobs, lambda lines: job_context(lines, yaml_mapping_entry, yaml_scalar_value)
+    ):
         sys.stderr.write("Rust shard workflow has an invalid platform matrix\n")
         raise SystemExit(1)

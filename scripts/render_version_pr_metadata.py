@@ -8,15 +8,17 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from typing import NoReturn
 
 sys.dont_write_bytecode = True
 
 from version_pr_identity import CanonicalIssueIdentity, VERSION_PATTERN
+
 STATUS_PREFIX = "status/"
 REVIEW_LABEL = "status/review"
 
 
-def fail(message: str) -> "NoReturn":
+def fail(message: str) -> NoReturn:
     raise ValueError(message)
 
 
@@ -43,7 +45,9 @@ def named_values(items: object, field: str, context: str) -> list[str]:
     return values
 
 
-def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, list[str]]:
+def validate_issue(
+    issue: object, repository_labels: object
+) -> tuple[int, str, list[str]]:
     if not isinstance(issue, dict):
         fail("issue JSON must be an object")
     number = issue.get("number")
@@ -62,8 +66,12 @@ def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, 
         or not milestone["title"].strip()
     ):
         fail(f"governing issue #{number} requires a milestone")
-    named_values(issue.get("assignees"), "login", f"governing issue #{number} assignees")
-    issue_labels = named_values(issue.get("labels"), "name", f"governing issue #{number} labels")
+    named_values(
+        issue.get("assignees"), "login", f"governing issue #{number} assignees"
+    )
+    issue_labels = named_values(
+        issue.get("labels"), "name", f"governing issue #{number} labels"
+    )
     taxonomy = set(named_values(repository_labels, "name", "repository labels"))
     unknown = sorted(set(issue_labels) - taxonomy)
     if unknown:
@@ -74,7 +82,8 @@ def validate_issue(issue: object, repository_labels: object) -> tuple[int, str, 
         if not any(label.startswith(prefix) for label in issue_labels):
             fail(f"governing issue #{number} requires a {prefix} label")
     pr_labels = sorted(
-        {label for label in issue_labels if not label.startswith(STATUS_PREFIX)} | {REVIEW_LABEL}
+        {label for label in issue_labels if not label.startswith(STATUS_PREFIX)}
+        | {REVIEW_LABEL}
     )
     return number, url, pr_labels
 
@@ -105,20 +114,29 @@ def changed_files(path: Path) -> list[str]:
 
 
 def render(
-    version: str, number: int, url: str, files: list[str], publication_phase: str, issue_link_mode: str
+    version: str,
+    number: int,
+    url: str,
+    files: list[str],
+    publication_phase: str,
+    issue_link_mode: str,
 ) -> tuple[str, str]:
     title = f"chore(plugin): bump version to {version}\n"
     changed = "\n".join(f"- `{name}`" for name in files)
     readiness_checks = ""
     readiness_evidence = "- Post-creation readiness gates are pending.\n"
-    merge_issue_flag = " --expected-issue <issue-number>" if issue_link_mode == "closing" else ""
+    merge_issue_flag = (
+        " --expected-issue <issue-number>" if issue_link_mode == "closing" else ""
+    )
     if publication_phase == "proven":
         readiness_checks = f"""- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`
 - `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
-- `scripts/validate-plugin-config --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
+- `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`
 - `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number>{merge_issue_flag} --merge-message-file <merge-message>`
 """
-        readiness_evidence = "- Post-creation readiness gates passed before final body publication.\n"
+        readiness_evidence = (
+            "- Post-creation readiness gates passed before final body publication.\n"
+        )
     body = f"""## Summary
 
 - Bump Codexy version sources to {version}.
@@ -134,8 +152,8 @@ def render(
 
 ## Verification
 
-- `scripts/sync-plugin-version --check`
-- `scripts/validate-plugin-config --check`
+- `scripts/sync-plugin-version.sh --check`
+- `scripts/validate-plugin-config.sh --check`
 - `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`
 - `git diff --check`
 {readiness_checks}
@@ -182,8 +200,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--changed-files-file", type=Path)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--validate-only", action="store_true")
-    parser.add_argument("--publication-phase", choices=("provisional", "proven"), required=True)
-    parser.add_argument("--issue-link-mode", choices=("closing", "nonclosing"), default="closing")
+    parser.add_argument(
+        "--publication-phase", choices=("provisional", "proven"), required=True
+    )
+    parser.add_argument(
+        "--issue-link-mode", choices=("closing", "nonclosing"), default="closing"
+    )
     return parser.parse_args()
 
 
@@ -202,11 +224,18 @@ def main() -> int:
         if args.changed_files_file is None or args.output_dir is None:
             fail("rendering requires --changed-files-file and --output-dir")
         files = changed_files(args.changed_files_file)
-        title, body = render(args.version, number, url, files, args.publication_phase, args.issue_link_mode)
+        title, body = render(
+            args.version,
+            number,
+            url,
+            files,
+            args.publication_phase,
+            args.issue_link_mode,
+        )
         write_outputs(args.output_dir, title, body, labels)
         return 0
     except ValueError as error:
-        print(f"render-version-pr-metadata: {error}", file=sys.stderr)
+        print(f"render_version_pr_metadata.py: {error}", file=sys.stderr)
         return 1
 
 

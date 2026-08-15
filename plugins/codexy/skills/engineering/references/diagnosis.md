@@ -5,7 +5,11 @@
 MUST find the cause before applying the fix. Debugging is reproduction, evidence
 collection, hypothesis testing, minimal repair, and regression proof.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md) while preserving exact debugging evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow
+[Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md)
+while preserving exact debugging evidence separately. When replying in Korean,
+MUST also follow
+[Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
 
 ## Workflow
 
@@ -17,8 +21,8 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../../o
    - versions,
    - environment details,
    - timestamp or commit when relevant.
-3. MUST preserve the failing proof. MUST NOT edit production files until the failure is
-   reproducible or the blocker is recorded.
+3. MUST preserve the failing proof. MUST NOT edit production files until the
+   failure is reproducible or the blocker is recorded.
 4. MUST generate hypotheses from evidence, not guesses.
 5. MUST test one hypothesis at a time:
    - logs or traces around suspected boundary,
@@ -29,8 +33,8 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../../o
 6. MUST apply the smallest fix that explains all observed evidence.
 7. MUST re-run the original reproduction, targeted regression proof, and broader
    verification sized to blast radius.
-8. MUST remove temporary instrumentation, debug logs, local-only flags, and scratch
-   artifacts.
+8. MUST remove temporary instrumentation, debug logs, local-only flags, and
+   scratch artifacts.
 
 ## Required Output
 
@@ -52,7 +56,8 @@ Cleanup:
 - MUST NOT fix before reproducing unless reproduction is impossible and the
   blocker is explicitly recorded.
 - MUST NOT call a test flaky before proving the failure mode.
-- MUST NOT hide the symptom with retries, sleeps, broad catches, or skipped tests.
+- MUST NOT hide the symptom with retries, sleeps, broad catches, or skipped
+  tests.
 - MUST NOT leave instrumentation in the final diff unless it is intentional
   product behavior.
 
@@ -60,10 +65,10 @@ Cleanup:
 
 - The final fix MUST explain every observed symptom.
 - The original reproduction MUST pass after the fix.
-- A regression proof MUST fail on the old behavior or be justified when that
-  is impossible.
-- If the bug is externally observable, MUST verify the external surface after the
-  local fix.
+- A regression proof MUST fail on the old behavior or be justified when that is
+  impossible.
+- If the bug is externally observable, MUST verify the external surface after
+  the local fix.
 
 ## Failure Modes
 

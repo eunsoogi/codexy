@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 CATALOGS = {
-    "core": '''# Codexy packaged-agent discovery/registration contract. Validators and the
+    "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
 # registration script load agent_files from this catalog; native Codex agent
 # use is through marker-owned standalone files under the Codex home agents directory.
 version = "0.1.0"
@@ -25,11 +25,11 @@ agent_files = [
   "codexy-sentinel.toml",
   "codexy-warden.toml",
 ]
-''',
-    "github": '''version = "0.1.0"
+""",
+    "github": """version = "0.1.0"
 catalog_kind = "plugin-packaged-specialist-agent-files"
 agent_files = ["codexy-weaver.toml"]
-''',
+""",
 }
 AGENT_FILES = {
     "core": (
@@ -44,25 +44,98 @@ AGENT_FILES = {
     "github": ("codexy-weaver.toml",),
 }
 HOOKS = {
-    "core": {"hooks": {
-        "PermissionRequest": [{"matcher": "^codex_app__send_message_to_thread$", "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PermissionRequest", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PermissionRequest", "timeout": 5}]}],
-        "PreToolUse": [{"matcher": "^codex_app__send_message_to_thread$", "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PreToolUse", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PreToolUse", "timeout": 5}]}],
-    }},
-    "github": {"hooks": {
-        "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-github-workflow-context.sh\"", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-github-workflow-context.cmd\"", "timeout": 5}]}],
-        "PreToolUse": [
-            {"matcher": "^mcp__codex_apps__github_(create|update)_issue$", "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh\" --rule issue", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-github-admission-issue.cmd\"", "timeout": 5}]},
-            {"matcher": "^mcp__codex_apps__github_create_pull_request$", "hooks": [{"type": "command", "command": "\"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh\" --rule pr", "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-github-admission-pr.cmd\"", "timeout": 5}]},
-        ],
-    }},
+    "core": {
+        "hooks": {
+            "PermissionRequest": [
+                {
+                    "matcher": "^codex_app__send_message_to_thread$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh" PermissionRequest',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd" PermissionRequest',
+                            "timeout": 5,
+                        }
+                    ],
+                }
+            ],
+            "PreToolUse": [
+                {
+                    "matcher": "^codex_app__send_message_to_thread$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh" PreToolUse',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd" PreToolUse',
+                            "timeout": 5,
+                        }
+                    ],
+                }
+            ],
+        }
+    },
+    "github": {
+        "hooks": {
+            "UserPromptSubmit": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-github-workflow-context.sh"',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-github-workflow-context.cmd"',
+                            "timeout": 5,
+                        }
+                    ]
+                }
+            ],
+            "PreToolUse": [
+                {
+                    "matcher": "^mcp__codex_apps__github_(create|update)_issue$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule issue',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-github-admission-issue.cmd"',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^mcp__codex_apps__github_create_pull_request$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule pr',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-github-admission-pr.cmd"',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+            ],
+        }
+    },
 }
 MCP = {
-    "lsp": {"command": "./mcp/codexy-mcp-devtools", "args": ["lsp", "--stdio"], "cwd": "."},
-    "codegraph": {"command": "./mcp/codexy-mcp-devtools", "args": ["codegraph", "--stdio"], "cwd": "."},
+    "lsp": {
+        "command": "./mcp/codexy-mcp-devtools",
+        "args": ["lsp", "--stdio"],
+        "cwd": ".",
+    },
+    "codegraph": {
+        "command": "./mcp/codexy-mcp-devtools",
+        "args": ["codegraph", "--stdio"],
+        "cwd": ".",
+    },
 }
 LAUNCHERS = {
     "core": ("hooks/codexy-thread-delivery.sh", "hooks/codexy-thread-delivery.cmd"),
-    "github": ("hooks/codexy-github-workflow-context.sh", "hooks/codexy-github-workflow-context.cmd", "hooks/codexy-github-admission.sh", "hooks/codexy-github-admission-issue.cmd", "hooks/codexy-github-admission-pr.cmd"),
+    "github": (
+        "hooks/codexy-github-workflow-context.sh",
+        "hooks/codexy-github-workflow-context.cmd",
+        "hooks/codexy-github-admission.sh",
+        "hooks/codexy-github-admission-issue.cmd",
+        "hooks/codexy-github-admission-pr.cmd",
+    ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
 
@@ -71,11 +144,15 @@ def valid_registration(plugin: Path, component: str) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
         if component == "devtools":
-            return _json(plugin / ".mcp.json") == MCP and _executable(plugin / LAUNCHERS[component][0])
+            return _json(plugin / ".mcp.json") == MCP and _executable(
+                plugin / LAUNCHERS[component][0]
+            )
         return (
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
-            and all(_regular(plugin / f"agents/{name}") for name in AGENT_FILES[component])
+            and all(
+                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
+            )
             and all(_regular(plugin / path) for path in LAUNCHERS[component])
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):

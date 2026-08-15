@@ -6,18 +6,18 @@ from pathlib import Path
 import re
 import secrets
 
+from profile_rust_interval_owner_metrics import metrics as owner_metrics
+from profile_rust_interval_values import aggregate
 
 MAX_FILES = 256
 MAX_BYTES = 1_048_576
 MAX_RECORDS = 4096
 MAX_RANKS = 16
-MAX_OWNER_RANKS = 256
 MAX_INTERVAL_NANOSECONDS = 300_000_000_000
 FAMILIES = {"git", "python", "shell", "validator", "other"}
 TARGETS = {"suite_all", "suite_archive", "other"}
 SESSION = re.compile(r"^[0-9a-f]{32}$")
 FILE = re.compile(r"^interval-(p[1-9][0-9]*-[1-9][0-9]*)\.metrics$")
-OWNER_FILE = re.compile(r"^owner-interval-(p[1-9][0-9]*-[1-9][0-9]*)\.metrics$")
 
 
 def configure(environment: dict[str, str], directory: Path) -> Path:
@@ -30,76 +30,57 @@ def configure(environment: dict[str, str], directory: Path) -> Path:
     return path
 
 
-def metrics(path: Path | None, session: str | None) -> tuple[list[dict], list[dict], dict]:
+def metrics(
+    path: Path | None, session: str | None
+) -> tuple[list[dict], list[dict], dict]:
     coverage = {
         "covered_boundaries": [
-            "fixture-command-terminal", "wrapper-timeout-output", "wrapper-spawn",
-            "wrapper-child-wait", "mcp-response", "mcp-final-wait",
+            "fixture-command-terminal",
+            "wrapper-timeout-output",
+            "wrapper-spawn",
+            "wrapper-child-wait",
+            "mcp-response",
+            "mcp-final-wait",
         ],
         "uncovered_raw_command": ["package-cache-non-wrapper", "runtime-helper"],
     }
     if path is None or not path.is_dir():
         return [], [], coverage
     rows = read_rows(path, session)
-    ranked = [aggregate(target, key, family, producers) for (target, key, family), producers in rows.items()]
-    ranked.sort(key=lambda item: (-item["conservative_union_occupancy_seconds"], -item["count"], item["target"], item["key"]))
+    ranked = [
+        aggregate(target, key, family, producers)
+        for (target, key, family), producers in rows.items()
+    ]
+    ranked.sort(
+        key=lambda item: (
+            -item["conservative_union_occupancy_seconds"],
+            -item["count"],
+            item["target"],
+            item["key"],
+        )
+    )
     families: dict[tuple[str, str], dict[str, list[tuple[int, int]]]] = {}
     for (target, _, family), producers in rows.items():
         current = families.setdefault((target, family), {})
         for producer, intervals in producers.items():
             current.setdefault(producer, []).extend(intervals)
-    family_ranked = [aggregate(target, family, family, producers) for (target, family), producers in families.items()]
-    family_ranked.sort(key=lambda item: (-item["conservative_union_occupancy_seconds"], item["target"], item["family"]))
+    family_ranked = [
+        aggregate(target, family, family, producers)
+        for (target, family), producers in families.items()
+    ]
+    family_ranked.sort(
+        key=lambda item: (
+            -item["conservative_union_occupancy_seconds"],
+            item["target"],
+            item["family"],
+        )
+    )
     return ranked[:MAX_RANKS], family_ranked[:MAX_RANKS], coverage
 
 
-def owner_metrics(
-    path: Path | None,
-    session: str | None,
-    legacy_path: Path | None = None,
-) -> tuple[list[dict], dict]:
-    expected = None
-    if legacy_path is not None and legacy_path.is_dir():
-        legacy = read_rows(legacy_path, session)
-        expected = sum(
-            len(intervals)
-            for (target, key, _), producers in legacy.items()
-            if key == "fixture-command.output"
-            for intervals in producers.values()
-        )
-    coverage = {
-        "records": 0,
-        "expected_records": expected if expected is not None else "not-observed",
-        "groups": 0,
-        "unattributed": expected if expected is not None else "not-observed",
-        "truncated": False,
-    }
-    if path is None or not path.is_dir():
-        return [], coverage
-    rows = read_owner_rows(path, session)
-    ranked = []
-    for (target, key, family, owner), producers in rows.items():
-        item = aggregate(target, key, family, producers)
-        item["owner"] = owner
-        ranked.append(item)
-    ranked.sort(key=lambda item: (
-        -item["conservative_union_occupancy_seconds"],
-        -item["count"],
-        item["target"],
-        item["key"],
-        item["owner"],
-    ))
-    records = sum(item["count"] for item in ranked)
-    coverage.update({
-        "records": records,
-        "groups": len(ranked),
-        "unattributed": max(0, expected - records) if expected is not None else 0,
-        "truncated": len(ranked) > MAX_OWNER_RANKS,
-    })
-    return ranked[:MAX_OWNER_RANKS], coverage
-
-
-def read_rows(path: Path, session: str | None) -> dict[tuple[str, str, str], dict[str, list[tuple[int, int]]]]:
+def read_rows(
+    path: Path, session: str | None
+) -> dict[tuple[str, str, str], dict[str, list[tuple[int, int]]]]:
     if session is not None and not SESSION.fullmatch(session):
         raise ValueError("invalid interval session")
     files = sorted(path.iterdir())
@@ -124,47 +105,26 @@ def read_rows(path: Path, session: str | None) -> dict[tuple[str, str, str], dic
             if identity in seen:
                 raise ValueError("duplicate interval sequence")
             seen.add(identity)
-            rows.setdefault((target, key, family), {}).setdefault(producer, []).append(interval)
+            rows.setdefault((target, key, family), {}).setdefault(producer, []).append(
+                interval
+            )
     return rows
 
 
-def read_owner_rows(path: Path, session: str | None) -> dict[tuple[str, str, str, str], dict[str, list[tuple[int, int]]]]:
-    if session is not None and not SESSION.fullmatch(session):
-        raise ValueError("invalid interval session")
-    files = sorted(path.iterdir())
-    if len(files) > MAX_FILES:
-        raise ValueError("owner interval metric file overflow")
-    rows: dict[tuple[str, str, str, str], dict[str, list[tuple[int, int]]]] = {}
-    seen: set[tuple[str, int]] = set()
-    count = 0
-    for file in files:
-        match = OWNER_FILE.fullmatch(file.name)
-        if not match or not file.is_file():
-            raise ValueError("unknown owner interval metric file")
-        if file.stat().st_size > MAX_BYTES:
-            raise ValueError("owner interval metric byte overflow")
-        producer = match.group(1)
-        for line in file.open(encoding="utf-8"):
-            count += 1
-            if count > MAX_RECORDS:
-                raise ValueError("owner interval metric record overflow")
-            target, key, family, owner, sequence, interval = parse_owner_row(line, session, producer)
-            identity = (producer, sequence)
-            if identity in seen:
-                raise ValueError("duplicate owner interval sequence")
-            seen.add(identity)
-            rows.setdefault((target, key, family, owner), {}).setdefault(producer, []).append(interval)
-    return rows
-
-
-def parse_row(line: str, session: str | None, producer: str) -> tuple[str, str, str, int, tuple[int, int]]:
+def parse_row(
+    line: str, session: str | None, producer: str
+) -> tuple[str, str, str, int, tuple[int, int]]:
     if not line.endswith("\n"):
         raise ValueError("partial interval metric")
     fields = line.rstrip("\n").split("\t")
     if len(fields) != 10 or fields[:2] != ["command-interval", "v2"]:
         raise ValueError("malformed interval metric")
     _, _, row_session, target, row_producer, sequence, key, family, start, end = fields
-    if not SESSION.fullmatch(row_session) or session is not None and row_session != session:
+    if (
+        not SESSION.fullmatch(row_session)
+        or session is not None
+        and row_session != session
+    ):
         raise ValueError("invalid interval session")
     if row_producer != producer or target not in TARGETS or not valid_key(key, family):
         raise ValueError("unknown interval identity")
@@ -177,69 +137,14 @@ def parse_row(line: str, session: str | None, producer: str) -> tuple[str, str, 
     return target, key, family, sequence, (start, end)
 
 
-def parse_owner_row(line: str, session: str | None, producer: str) -> tuple[str, str, str, str, int, tuple[int, int]]:
-    if not line.endswith("\n"):
-        raise ValueError("partial owner interval metric")
-    fields = line.rstrip("\n").split("\t")
-    if len(fields) != 12 or fields[:2] != ["fixture-command-owner", "v1"]:
-        raise ValueError("malformed owner interval metric")
-    _, _, row_session, target, row_producer, sequence, key, family, source, line_number, start, end = fields
-    if not SESSION.fullmatch(row_session) or session is not None and row_session != session:
-        raise ValueError("invalid interval session")
-    if row_producer != producer or target not in TARGETS or key != "fixture-command.output" or family not in FAMILIES:
-        raise ValueError("unknown owner interval identity")
-    try:
-        sequence, line_number, start, end = (int(value) for value in (sequence, line_number, start, end))
-    except ValueError as error:
-        raise ValueError("malformed owner interval metric") from error
-    if sequence < 1 or line_number < 1 or start < 0 or end < start or end > MAX_INTERVAL_NANOSECONDS:
-        raise ValueError("invalid owner interval bounds")
-    owner = normalize_owner(source, line_number)
-    return target, key, family, owner, sequence, (start, end)
-
-
-def normalize_owner(source: str, line_number: int) -> str:
-    parts = source.split("/")
-    if any(part in {"", ".", ".."} for part in parts) or not re.fullmatch(
-        r"tests/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*", source
-    ):
-        raise ValueError("out-of-repository owner")
-    return f"{source}:{line_number}"
-
-
 def valid_key(key: str, family: str) -> bool:
     if family not in FAMILIES:
         return False
     fixture = re.fullmatch(r"fixture-command\.(output|status|spawn)", key)
-    wrapper = re.fullmatch(r"wrapper\.(output|spawn|child-wait)\.(git|python|shell|validator|other)", key)
+    wrapper = re.fullmatch(
+        r"wrapper\.(output|spawn|child-wait)\.(git|python|shell|validator|other)", key
+    )
     mcp = re.fullmatch(r"mcp-client\.(response|final-wait)", key)
-    return bool(fixture or wrapper and wrapper.group(2) == family or mcp and family == "other")
-
-
-def aggregate(target: str, key: str, family: str, producers: dict[str, list[tuple[int, int]]]) -> dict:
-    cumulative = sum(end - start for intervals in producers.values() for start, end in intervals)
-    unions = [union(intervals) for intervals in producers.values()]
-    conservative = max(unions, default=0)
-    return {
-        "target": target,
-        "key": key,
-        "family": family,
-        "count": sum(len(intervals) for intervals in producers.values()),
-        "producer_count": len(producers),
-        "cumulative_wait_seconds": round(cumulative / 1_000_000_000, 6),
-        "conservative_union_occupancy_seconds": round(conservative / 1_000_000_000, 6),
-        "overlap_ratio_upper_bound": round(1 - conservative / cumulative, 6) if cumulative else 0.0,
-    }
-
-
-def union(intervals: list[tuple[int, int]]) -> int:
-    total = 0
-    end = None
-    for start, current_end in sorted(intervals):
-        if end is None or start > end:
-            total += current_end - start
-            end = current_end
-        elif current_end > end:
-            total += current_end - end
-            end = current_end
-    return total
+    return bool(
+        fixture or wrapper and wrapper.group(2) == family or mcp and family == "other"
+    )

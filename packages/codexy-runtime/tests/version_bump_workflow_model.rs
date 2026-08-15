@@ -137,7 +137,7 @@ fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
             command.starts_with("plugins/codexy-github/hooks/codexy-pr-label-check.sh ")
         })?),
         ("completion gate", command_position(&commands, |command| {
-            command.starts_with("scripts/validate-plugin-config --check-completion-handoff ")
+            command.starts_with("scripts/validate-plugin-config.sh --check-completion-handoff ")
         })?),
         ("merge-message gate", command_position(&commands, |command| {
             command.starts_with("plugins/codexy-github/hooks/codexy-merge-message-check.sh ")

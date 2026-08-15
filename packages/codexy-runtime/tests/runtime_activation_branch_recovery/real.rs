@@ -12,7 +12,9 @@ use crate::support::{
 mod metadata;
 mod receipt;
 mod shell_runner;
+mod command;
 
+use command::run as command;
 use receipt::receipt_value;
 
 #[test]
@@ -112,7 +114,8 @@ impl Fixture {
             workflow_target,
         )?;
         for relative in [
-            "scripts/activate-runtime-contract",
+            "scripts/activate-runtime-contract.sh",
+            "scripts/sync-plugin-version.sh",
             "scripts/verify-runtime-activation-branch",
         ] {
             fs::copy(
@@ -238,13 +241,4 @@ impl Fixture {
 
 fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     command(Command::new("git").args(args).current_dir(root))
-}
-
-fn command(command: &mut Command) -> Result<(), Box<dyn std::error::Error>> {
-    let output = command.output()?;
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(String::from_utf8_lossy(&output.stderr).into_owned().into())
-    }
 }

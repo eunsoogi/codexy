@@ -48,7 +48,9 @@ def executable_name(token: str) -> str:
 def cargo_test_workload(tokens: list[str], invocation: tuple[str, ...]) -> bool:
     if not tokens or executable_name(tokens[0]) != "cargo":
         return False
-    execution_arguments = tokens[1 : tokens.index("--")] if "--" in tokens else tokens[1:]
+    execution_arguments = (
+        tokens[1 : tokens.index("--")] if "--" in tokens else tokens[1:]
+    )
     return (
         not CARGO_NON_EXECUTING_OPTIONS.intersection(execution_arguments)
         and cargo_subcommand(execution_arguments) == "test"

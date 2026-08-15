@@ -1,11 +1,12 @@
 # getcodexy component installation contract
 
-This is the target public contract for the 1.4.0 component-installation CLI.
-Its complete component lifecycle is not implemented by the current 1.3.0
-`getcodexy` distribution. The executable component source is the packaged
+This is the target public contract for the 1.4.0 component-installation CLI. Its
+complete component lifecycle is not implemented by the current 1.3.0 `getcodexy`
+distribution. The executable component source is the packaged
 `codexy_runtime_tools/component-manifest.json`; the public contract references
-that resource from `packages/getcodexy/contracts/component-installation-contract.json`.
-Examples live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
+that resource from
+`packages/getcodexy/contracts/component-installation-contract.json`. Examples
+live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
 
 `codexy-github-install` is an optional 1.3.0 getcodexy transaction helper. A
 trusted host may call it with its absolute executable path to install and verify
@@ -31,16 +32,17 @@ projection that differs from it. `github` and `devtools` each depend on `core`.
 
 The successful installed component inventory is the source of truth. A command
 request expresses intent and a receipt records the result, but neither replaces
-the inventory. A present installed inventory that does not satisfy the dependency
-graph is inconsistent and commands report `inconsistent-installed-state` before a
-mutation. An absent inventory is distinct: `update` reports
-`no-recorded-selection` because there is no selection to preserve.
+the inventory. A present installed inventory that does not satisfy the
+dependency graph is inconsistent and commands report
+`inconsistent-installed-state` before a mutation. An absent inventory is
+distinct: `update` reports `no-recorded-selection` because there is no selection
+to preserve.
 
 The resolver validates requests and the manifest before any installer mutation.
-After a future operation, it reconciles only the fresh `codex plugin list --json`
-inventory; a requested selection or a pre-operation receipt is never substituted
-for that installed-state source of truth. Transaction storage and mutation
-execution remain owned by Issue #557.
+After a future operation, it reconciles only the fresh
+`codex plugin list --json` inventory; a requested selection or a pre-operation
+receipt is never substituted for that installed-state source of truth.
+Transaction storage and mutation execution remain owned by Issue #557.
 
 The resolver accepts a coherent earlier lockstep installed version for update
 planning, but a successful post-operation reconciliation requires the manifest's
@@ -55,14 +57,14 @@ root. A stale or malformed record cannot be treated as an unrelated plugin.
 
 ## Commands
 
-| Command | Selection rule | Mutation rule |
-| --- | --- | --- |
-| `getcodexy install [COMPONENT ...]` | No components selects all. Explicit components include their transitive dependencies. | Adds the resolved selection to the installed selection; it never removes another installed component. |
-| `getcodexy update [COMPONENT ...]` | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection. |
-| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component. | Rejects a request if a retained component would still depend on a requested removal. |
-| `getcodexy status` | Reads the installed inventory. | None. |
-| `getcodexy doctor` | Reads inventory consistency, host readiness, and component health. | None. |
-| `getcodexy bootstrap` | Selects the complete supported installation. | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
+| Command                                      | Selection rule                                                                                                                   | Mutation rule                                                                                                  |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `getcodexy install [COMPONENT ...]`          | No components selects all. Explicit components include their transitive dependencies.                                            | Adds the resolved selection to the installed selection; it never removes another installed component.          |
+| `getcodexy update [COMPONENT ...]`           | With no components, updates all installed components. With components, updates their resolved subset of the installed selection. | Preserves the installed selection.                                                                             |
+| `getcodexy remove COMPONENT [COMPONENT ...]` | Requires at least one component.                                                                                                 | Rejects a request if a retained component would still depend on a requested removal.                           |
+| `getcodexy status`                           | Reads the installed inventory.                                                                                                   | None.                                                                                                          |
+| `getcodexy doctor`                           | Reads inventory consistency, host readiness, and component health.                                                               | None.                                                                                                          |
+| `getcodexy bootstrap`                        | Selects the complete supported installation.                                                                                     | Delegates to the transactional default install, whose enabled-plugin readback is the required host activation. |
 
 Unknown components fail with `unknown-component`. `update` without any recorded
 inventory fails with `no-recorded-selection`; a present but dependency-invalid
@@ -74,18 +76,18 @@ validation additionally reports `unknown-installed-component`,
 
 ## State transitions
 
-| Before | Command | After | Outcome |
-| --- | --- | --- | --- |
-| none | `install` | core, github, devtools | completed |
-| none | `install core` | core | completed |
-| none | `install github` | core, github | completed |
-| none | `install devtools` | core, devtools | completed |
-| core, devtools | `install github` | core, github, devtools | completed |
-| core, devtools | `update` | core, devtools | completed |
-| core, github, devtools | `remove github` | core, devtools | completed |
-| core, github | `remove core` | core, github | rejected: dependency-protected-removal |
-| core, github | `remove core github` | none | completed |
-| any consistent selection | a mutating operation fails | exact pre-operation selection | rolled-back |
+| Before                   | Command                    | After                         | Outcome                                |
+| ------------------------ | -------------------------- | ----------------------------- | -------------------------------------- |
+| none                     | `install`                  | core, github, devtools        | completed                              |
+| none                     | `install core`             | core                          | completed                              |
+| none                     | `install github`           | core, github                  | completed                              |
+| none                     | `install devtools`         | core, devtools                | completed                              |
+| core, devtools           | `install github`           | core, github, devtools        | completed                              |
+| core, devtools           | `update`                   | core, devtools                | completed                              |
+| core, github, devtools   | `remove github`            | core, devtools                | completed                              |
+| core, github             | `remove core`              | core, github                  | rejected: dependency-protected-removal |
+| core, github             | `remove core github`       | none                          | completed                              |
+| any consistent selection | a mutating operation fails | exact pre-operation selection | rolled-back                            |
 
 ## Rollback
 
@@ -101,8 +103,8 @@ replay, and recovery authorization belong to Issue #557's transaction engine.
 
 ## Machine-readable output
 
-All public commands accept `--json`. In JSON mode, stdout contains exactly one JSON
-object and no human-oriented output. Mutation receipts use
+All public commands accept `--json`. In JSON mode, stdout contains exactly one
+JSON object and no human-oriented output. Mutation receipts use
 `getcodexy.operation-receipt.v1`; `status` uses the distinct
 `getcodexy.status.v1` schema; and `doctor` uses `getcodexy.doctor.v1`.
 

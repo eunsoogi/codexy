@@ -14,9 +14,10 @@ pub(super) fn moved_line_coverage(removed: &str, extracted: &str) -> usize {
             }
         }
     }
-    (total > 0)
-        .then_some(moved.saturating_mul(4) / total)
-        .unwrap_or(0)
+    moved
+        .saturating_mul(4)
+        .checked_div(total)
+        .unwrap_or_default()
 }
 
 pub(super) fn nonempty_line_count(text: &str) -> usize {

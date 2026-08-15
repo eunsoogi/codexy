@@ -33,19 +33,35 @@ def deny(event: str, diagnostic: str, code: str) -> bytes:
     output = (
         {"hookEventName": event, "decision": {"behavior": "deny", "message": reason}}
         if event == "PermissionRequest"
-        else {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": reason}
+        else {
+            "hookEventName": event,
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
     )
-    return (json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n").encode()
+    return (
+        json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n"
+    ).encode()
 
 
-def evaluate(event: str, payload: bytes, tools: frozenset[str], diagnostic: str, forbidden: Callable[[Request], bool]) -> bytes:
+def evaluate(
+    event: str,
+    payload: bytes,
+    tools: frozenset[str],
+    diagnostic: str,
+    forbidden: Callable[[Request], bool],
+) -> bytes:
     if event not in EVENTS or len(payload) > MAX_INPUT:
         return deny(event, diagnostic, "ENVELOPE")
     try:
         data = json.loads(payload.decode("utf-8", "strict"), object_pairs_hook=_pairs)
     except (UnicodeError, ValueError, json.JSONDecodeError):
         return deny(event, diagnostic, "ENVELOPE")
-    if not isinstance(data, dict) or data.get("hook_event_name") != event or data.get("tool_name") not in tools:
+    if (
+        not isinstance(data, dict)
+        or data.get("hook_event_name") != event
+        or data.get("tool_name") not in tools
+    ):
         return deny(event, diagnostic, "ENVELOPE")
     request = Request(event, data["tool_name"], data.get("tool_input"), data.get("cwd"))
     try:

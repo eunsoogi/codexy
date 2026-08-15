@@ -5,6 +5,7 @@ import re
 from .execution_context import ExecutionContext
 from .shell_opaque import contains_policy_executable
 
+
 def owns(command: str, context: ExecutionContext) -> bool:
     return re.search(
         r"\bGH_REPO\s*=", command

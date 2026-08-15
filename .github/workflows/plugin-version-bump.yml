@@ -40,7 +40,7 @@ jobs:
       - name: Admit selected runtime version advance
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version --admit-version "$VERSION"
+        run: scripts/sync-plugin-version.sh --admit-version "$VERSION"
 
       - name: Validate governing release issue
         env:
@@ -66,7 +66,7 @@ jobs:
           printf 'ISSUE=%s\n' "$canonical_issue" >> "$GITHUB_ENV"
           gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
             --json name > "$state_dir/repository-labels.json"
-          scripts/render-version-pr-metadata \
+          scripts/render_version_pr_metadata.py \
             --version "$VERSION" \
             --issue-json "$state_dir/issue.json" \
             --repository-labels-json "$state_dir/repository-labels.json" \
@@ -77,12 +77,12 @@ jobs:
       - name: Synchronize plugin version
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version --version "$VERSION"
+        run: scripts/sync-plugin-version.sh --version "$VERSION"
 
       - name: Validate release candidate
         run: |
-          scripts/sync-plugin-version --check
-          scripts/validate-plugin-config --check
+          scripts/sync-plugin-version.sh --check
+          scripts/validate-plugin-config.sh --check
           cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked
           git diff --check
 

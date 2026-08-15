@@ -43,7 +43,9 @@ def _selection(tokens: list[str], index: int) -> int | None:
         return None
     index += 1
     while index < end - 1:
-        index = _spread(tokens, index) if tokens[index] == "..." else _field(tokens, index)
+        index = (
+            _spread(tokens, index) if tokens[index] == "..." else _field(tokens, index)
+        )
         if index is None or index >= end:
             return None
     return end if index == end - 1 else None
@@ -133,7 +135,11 @@ def _field(tokens: list[str], index: int) -> int | None:
     index = _directives(tokens, index) if index is not None else None
     if index is None:
         return None
-    return _selection(tokens, index) if index < len(tokens) and tokens[index] == "{" else index
+    return (
+        _selection(tokens, index)
+        if index < len(tokens) and tokens[index] == "{"
+        else index
+    )
 
 
 def _arguments(tokens: list[str], index: int) -> int | None:
@@ -155,7 +161,9 @@ def _value(tokens: list[str], index: int) -> int | None:
         return None
     token = tokens[index]
     if token == "$":
-        return index + 2 if index + 1 < len(tokens) and _name(tokens[index + 1]) else None
+        return (
+            index + 2 if index + 1 < len(tokens) and _name(tokens[index + 1]) else None
+        )
     if token in "[{":
         end = _balanced(tokens, index)
         if end is None:
@@ -163,7 +171,11 @@ def _value(tokens: list[str], index: int) -> int | None:
         index += 1
         while index < end - 1:
             if token == "{":
-                if index + 1 >= end or not _name(tokens[index]) or tokens[index + 1] != ":":
+                if (
+                    index + 1 >= end
+                    or not _name(tokens[index])
+                    or tokens[index + 1] != ":"
+                ):
                     return None
                 index += 2
             index = _value(tokens, index)

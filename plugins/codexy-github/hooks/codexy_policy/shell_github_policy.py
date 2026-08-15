@@ -20,23 +20,32 @@ class GithubPolicy:
             _, remote, alias = evaluate_git(invocation.arguments, invocation.context)
             if alias is not None:
                 from .shell_evaluator import evaluate
+
                 denied = evaluate(alias.command, alias.context, depth + 1, self)
                 return denied, CommandEffect(outer)
             if remote is None:
                 return False, CommandEffect(outer)
-            if invocation.context.cwd != outer.cwd or invocation.context.git_dir != outer.git_dir:
+            if (
+                invocation.context.cwd != outer.cwd
+                or invocation.context.git_dir != outer.git_dir
+            ):
                 return True, CommandEffect(None)
             return False, CommandEffect(remote_url(outer, *remote))
         if invocation.executable == "gh":
             gh_owned = (
-                github_identity(invocation.context.gh_repo) == invocation.context.policy_identity
-                if invocation.context.gh_repo is not None else None
+                github_identity(invocation.context.gh_repo)
+                == invocation.context.policy_identity
+                if invocation.context.gh_repo is not None
+                else None
             )
             arguments = expand_gh_alias(invocation.arguments)
             denied = arguments is None or gh_forbidden(
-                arguments, invocation.context.cwd,
-                invocation.context.cwd_owned, gh_owned,
-                invocation.context.policy_identity, invocation.context.policy_status,
+                arguments,
+                invocation.context.cwd,
+                invocation.context.cwd_owned,
+                gh_owned,
+                invocation.context.policy_identity,
+                invocation.context.policy_status,
                 policy_bound=True,
             )
             return denied, CommandEffect(outer)

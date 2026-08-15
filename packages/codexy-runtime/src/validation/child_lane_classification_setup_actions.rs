@@ -57,7 +57,7 @@ fn is_governing_progressive_setup(words: &[&str], action: usize) -> bool {
     let analysis = analyze_setup_clause(words, 0, action, words.len());
     let Some(auxiliary) = words[analysis.start..action]
         .iter()
-        .rposition(|word| is_progressive_auxiliary(word))
+        .rposition(is_progressive_auxiliary)
         .map(|offset| analysis.start + offset)
         .or_else(|| shared_progressive_auxiliary(words, analysis.start))
     else {
@@ -79,7 +79,7 @@ fn shared_progressive_auxiliary(words: &[&str], clause_start: usize) -> Option<u
     (connector != SENTENCE_BOUNDARY).then(|| {
         words[sentence_start..clause_start - 1]
             .iter()
-            .rposition(|word| is_progressive_auxiliary(word))
+            .rposition(is_progressive_auxiliary)
             .map(|offset| sentence_start + offset)
     })?
 }

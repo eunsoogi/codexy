@@ -41,12 +41,25 @@ def main():
     parser.add_argument("--rule", choices=("issue", "pr"), required=True)
     selected = parser.parse_args().rule
     title = title_from_stdin()
-    invalid = not title or (
-        selected == "issue" and (not title[0].isupper() or CONVENTIONAL.match(title))
-    ) or (selected == "pr" and not CONVENTIONAL.match(title))
+    invalid = (
+        not title
+        or (
+            selected == "issue"
+            and (not title[0].isupper() or CONVENTIONAL.match(title))
+        )
+        or (selected == "pr" and not CONVENTIONAL.match(title))
+    )
     if invalid:
-        reason = "issue title must be uppercase descriptive prose, not Conventional Commit syntax" if selected == "issue" else "PR title must use Conventional Commit syntax"
-        print('{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_GITHUB_ADMISSION: ' + reason + '"}}')
+        reason = (
+            "issue title must be uppercase descriptive prose, not Conventional Commit syntax"
+            if selected == "issue"
+            else "PR title must use Conventional Commit syntax"
+        )
+        print(
+            '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_GITHUB_ADMISSION: '
+            + reason
+            + '"}}'
+        )
     return 0
 
 

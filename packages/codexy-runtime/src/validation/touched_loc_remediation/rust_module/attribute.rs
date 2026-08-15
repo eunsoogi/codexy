@@ -46,10 +46,8 @@ pub(super) fn has_cfg_attr_path(line: &str) -> bool {
                     && !disabled
                     && cfg_attr_path_argument(&arguments[argument_start..index]);
             }
-            b')' | b']' | b'}' => {
-                if delimiters.pop() != Some(arguments.as_bytes()[index]) {
-                    return true;
-                }
+            b')' | b']' | b'}' if delimiters.pop() != Some(arguments.as_bytes()[index]) => {
+                return true;
             }
             b',' if delimiters.is_empty() => {
                 if argument_index == 0

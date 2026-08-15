@@ -3,7 +3,10 @@ use super::super::child_lane_thread_tool_handler_scope_labels::strip_list_prefix
 use super::ownership_boundaries::{previous_nonempty_block_start, scope_start_until_blank};
 
 pub(crate) fn lane_label_for_scope(evidence: &str, start: usize, end: usize) -> Option<String> {
-    evidence[start..end].lines().filter_map(lane_label).last()
+    evidence[start..end]
+        .lines()
+        .filter_map(lane_label)
+        .next_back()
 }
 
 pub(crate) fn lane_label_for_current_scope(

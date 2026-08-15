@@ -3,11 +3,10 @@
 Before any child-created issue mutation, MUST send the parent one canonical
 machine-readable receipt, receive explicit approval, and pass
 `--check-issue-intake`. MUST require the intake gate and explicit parent
-approval before separate tracking.
-Automatic creation MUST NOT be authorized. Unsupported synthetic or
-same-class variants MUST remain handoff observations. MUST use typed decisions rather
-than infer approval, support, ownership, necessity, or classification from
-rationale wording.
+approval before separate tracking. Automatic creation MUST NOT be authorized.
+Unsupported synthetic or same-class variants MUST remain handoff observations.
+MUST use typed decisions rather than infer approval, support, ownership,
+necessity, or classification from rationale wording.
 
 ## Loop
 
@@ -27,48 +26,52 @@ rationale wording.
      child-thread, implementation, PR, or review-response actions.
    - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
-   - MUST mark each lane as parent-owned or child-owned before any implementation
-     patch is made.
+   - MUST mark each lane as parent-owned or child-owned before any
+     implementation patch is made.
 3. Dispatch:
    - MUST NOT dispatch until classification proves lane type, owner, atomicity,
      required skills, required tools, and first allowed action.
-   - The root orchestrator MUST start specialist subagents only for bounded lanes without their own
-     branch or PR.
-   - Every helper or Sentinel assignment MUST include the nonrecursive delegation prohibition.
+   - The root orchestrator MUST start specialist subagents only for bounded
+     lanes without their own branch or PR.
+   - Every helper or Sentinel assignment MUST include the nonrecursive
+     delegation prohibition.
      `MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.`
    - For bounded helper work, the owning thread MUST route to the packaged
      Codexy specialist whose stated scope clearly matches the task, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
-   - For issue-sized implementation lanes, the root orchestrator MUST start or fork a separate Codex
-     thread in a worktree when the tool is available.
-   - MUST complete lane assignment before implementation edits begin. A parent may
-     prepare issue text, branch name, worktree path, and handoff text, but MUST
-     NOT patch implementation files for the child-owned lane.
-   - MUST give each lane an assignment, issue, branch, worktree path, allowed paths,
-     read-first files, deliverable, required evidence, verification command or
-     surface, stop condition, and return format.
+   - For issue-sized implementation lanes, the root orchestrator MUST start or
+     fork a separate Codex thread in a worktree when the tool is available.
+   - MUST complete lane assignment before implementation edits begin. A parent
+     may prepare issue text, branch name, worktree path, and handoff text, but
+     MUST NOT patch implementation files for the child-owned lane.
+   - MUST give each lane an assignment, issue, branch, worktree path, allowed
+     paths, read-first files, deliverable, required evidence, verification
+     command or surface, stop condition, and return format.
 4. Integrate:
    - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
    - MUST resolve cross-lane conflicts in the orchestrator thread.
    - MUST route child-owned review feedback back to the owning child thread.
-   - If the child owner stops responding, MUST stop and report the PR head, owner,
-     last contact, and required evidence. MUST NOT recover by patching the branch
-     unless a maintainer explicitly reassigns implementation ownership.
+   - If the child owner stops responding, MUST stop and report the PR head,
+     owner, last contact, and required evidence. MUST NOT recover by patching
+     the branch unless a maintainer explicitly reassigns implementation
+     ownership.
 5. MUST verify:
    - MUST run local checks in the owning worktree.
-   - MUST drive external surfaces directly when the task changes GitHub, browser,
-     CLI, desktop, plugin, marketplace, or repository settings behavior.
-   - MUST keep evidence tied to the exact commit, PR head, file state, or runtime
-     surface being claimed.
+   - MUST drive external surfaces directly when the task changes GitHub,
+     browser, CLI, desktop, plugin, marketplace, or repository settings
+     behavior.
+   - MUST keep evidence tied to the exact commit, PR head, file state, or
+     runtime surface being claimed.
 6. Finish:
-   - MUST confirm no running sessions, open child lanes, untracked required files,
-     or unverified claims remain.
+   - MUST confirm no running sessions, open child lanes, untracked required
+     files, or unverified claims remain.
    - MUST confirm no final-answer or handoff artifact claims completion while a
      matching clean PR remains open unless the maintainer explicitly requested
      stop, wait, draft-only, or leave-open behavior.
-   - MUST report what changed, what proved it, what was not run, and remaining risk.
+   - MUST report what changed, what proved it, what was not run, and remaining
+     risk.
 
 ## Failure Modes
 

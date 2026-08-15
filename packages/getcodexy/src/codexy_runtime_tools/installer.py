@@ -91,10 +91,16 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
         elif release_contract is not None:
             release_contract.verify_archive(archive, platform=config.platform)
         packaged_runtime, package_manifest = unpack_runtime(
-            archive=archive, work=work, runtime_name=config.runtime_name,
-            plugin_root=(source_identity.package_plugin_root() if source_identity is not None
-                         else release_contract.package_plugin_root()
-                         if release_contract is not None else "codexy"),
+            archive=archive,
+            work=work,
+            runtime_name=config.runtime_name,
+            plugin_root=(
+                source_identity.package_plugin_root()
+                if source_identity is not None
+                else release_contract.package_plugin_root()
+                if release_contract is not None
+                else "codexy"
+            ),
         )
         if not config.package_override and release_contract is None:
             matches, message = releases_match(config.manifest, package_manifest)
@@ -111,8 +117,13 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     cargo = shutil.which("cargo")
     if not cargo:
         raise RuntimeError("cargo is unavailable for the configured Git runtime source")
-    if config.git_repository != "https://github.com/eunsoogi/codexy" or not re.fullmatch(r"[0-9a-f]{40}", config.git_ref):
-        raise RuntimeError("Git fallback requires the canonical repository and lowercase 40-hex commit")
+    if (
+        config.git_repository != "https://github.com/eunsoogi/codexy"
+        or not re.fullmatch(r"[0-9a-f]{40}", config.git_ref)
+    ):
+        raise RuntimeError(
+            "Git fallback requires the canonical repository and lowercase 40-hex commit"
+        )
     install_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="git-", dir=install_root) as temporary:
         staged_root = Path(temporary) / "root"
@@ -132,10 +143,16 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
             f"codexy-mcp-{config.server}",
             "codexy-runtime",
         ]
-        environment = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "GITHUB_TOKEN"}}
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"GH_TOKEN", "GITHUB_TOKEN"}
+        }
         completed = subprocess.run(command, check=False, env=environment)
         if completed.returncode:
-            raise RuntimeError(f"cargo install exited with status {completed.returncode}")
+            raise RuntimeError(
+                f"cargo install exited with status {completed.returncode}"
+            )
         try:
             _publish_executable(staged_runtime, installed)
         except RuntimeError as error:

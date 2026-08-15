@@ -34,7 +34,11 @@ def visible_headings(value: str) -> set[str]:
                     visible += rest
                     rest = ""
                 else:
-                    visible, rest, in_comment = visible + rest[:start], rest[start + 4 :], True
+                    visible, rest, in_comment = (
+                        visible + rest[:start],
+                        rest[start + 4 :],
+                        True,
+                    )
         trimmed = visible.lstrip(" ")
         marker = re.match(r"(`{3,}|~{3,})", trimmed)
         if marker:

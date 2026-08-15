@@ -86,10 +86,16 @@ class _Parser:
                     raise GroupSyntaxError("brace group lacks a command terminator")
                 return self._finish(steps, current, grouped=True)
             if token in OPEN:
-                if isinstance(current, list) and current and all(value == "!" for value in current):
+                if (
+                    isinstance(current, list)
+                    and current
+                    and all(value == "!" for value in current)
+                ):
                     current = None
                 elif current is not None:
-                    raise GroupSyntaxError("group cannot be embedded in a simple command")
+                    raise GroupSyntaxError(
+                        "group cannot be embedded in a simple command"
+                    )
                 self.index += 1
                 body = self.sequence(OPEN[token])
                 current = Group("subshell" if token == "(" else "brace", body)
@@ -102,7 +108,9 @@ class _Parser:
                 self.index += 1
                 continue
             if isinstance(current, Group):
-                raise GroupSyntaxError("redirection or suffix after group is unsupported")
+                raise GroupSyntaxError(
+                    "redirection or suffix after group is unsupported"
+                )
             if current is None:
                 current = []
             current.append(token)
@@ -115,7 +123,9 @@ class _Parser:
     def _node(value: Node | list[str]) -> Node:
         return value if isinstance(value, (Command, Group)) else Command(tuple(value))
 
-    def _finish(self, steps: list[Step], current: Node | list[str] | None, grouped: bool) -> Sequence:
+    def _finish(
+        self, steps: list[Step], current: Node | list[str] | None, grouped: bool
+    ) -> Sequence:
         if current is not None:
             steps.append(Step(self._node(current), ""))
         elif not steps or steps[-1].following not in ({";"} if grouped else {";", "&"}):

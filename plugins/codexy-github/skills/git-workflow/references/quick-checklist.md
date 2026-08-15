@@ -12,7 +12,8 @@
 - Non-trivial work has the `$orchestration` review-profile-selected review.
 - PR body has structured sections and one final `Fixes #<issue-number>` line.
 - No actionable review feedback or review threads remain.
-- Squash merge bodies preserve the PR body; branch deletion and main sync are proven.
+- Squash merge bodies preserve the PR body; branch deletion and main sync are
+  proven.
 
 A checked contract is the sole merge authorization; generic completion signals
 and a ready PR are non-authoritative.

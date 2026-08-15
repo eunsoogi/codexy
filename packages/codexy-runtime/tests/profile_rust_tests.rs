@@ -179,7 +179,7 @@ fn gate_rejects_timeout_or_profiler_in_an_unrelated_job() -> Result<(), Box<dyn 
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n  rust-test:\n    timeout-minutes: 10\n    steps:\n      - run: echo not-the-gate\n",
+        "jobs:\n  unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile_rust_tests.py\n  rust-test:\n    timeout-minutes: 10\n    steps:\n      - run: echo not-the-gate\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -192,7 +192,7 @@ fn gate_rejects_a_second_profiler_invocation_in_another_job(
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile-rust-tests\n  unrelated:\n    steps:\n      - run: scripts/profile-rust-tests\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    steps:\n      - run: scripts/profile_rust_tests.py\n  unrelated:\n    steps:\n      - run: scripts/profile_rust_tests.py\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -205,7 +205,7 @@ fn gate_rejects_contract_fields_leaked_from_an_underscore_job(
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    steps:\n      - run: echo not-the-gate\n  _unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile-rust-tests\n",
+        "jobs:\n  rust-test:\n    steps:\n      - run: echo not-the-gate\n  _unrelated:\n    timeout-minutes: 4\n    steps:\n      - run: scripts/profile_rust_tests.py\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -218,7 +218,7 @@ fn gate_rejects_a_block_scalar_that_only_mentions_the_profiler(
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
         &fixture.workflow,
-        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    env: |\n      run: scripts/profile-rust-tests\n    steps:\n      - run: echo not-the-gate\n",
+        "jobs:\n  rust-test:\n    timeout-minutes: 6\n    env: |\n      run: scripts/profile_rust_tests.py\n    steps:\n      - run: echo not-the-gate\n",
     )?;
     assert!(!fixture.run(&[])?.status.success());
     Ok(())
@@ -232,7 +232,7 @@ fn gate_accepts_the_profiler_step_after_a_blank_line() -> Result<(), Box<dyn std
     std::fs::write(&fixture.workflow, workflow.replacen("      - run: sudo", "\n      - run: sudo", 1))?;
     assert!(fixture.run(&[])?.status.success());
     let workflow = std::fs::read_to_string(&fixture.workflow)?;
-    std::fs::write(&fixture.workflow, workflow.replacen("      - run: scripts/profile-rust-tests --shard", "\n      - run: scripts/profile-rust-tests --shard", 1))?;
+    std::fs::write(&fixture.workflow, workflow.replacen("      - run: scripts/profile_rust_tests.py --shard", "\n      - run: scripts/profile_rust_tests.py --shard", 1))?;
     assert!(fixture.run(&[])?.status.success());
     Ok(())
 }

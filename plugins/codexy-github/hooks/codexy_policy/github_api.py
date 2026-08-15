@@ -6,7 +6,12 @@ import json
 import re
 
 from .graphql import mutation
-from .repository import github_identity, read_text, repository_identity, repository_policy_status
+from .repository import (
+    github_identity,
+    read_text,
+    repository_identity,
+    repository_policy_status,
+)
 
 TYPED_FIELD_OPTIONS = {"-F", "--field"}
 FIELD_OPTIONS = {"-f", "--raw-field"} | TYPED_FIELD_OPTIONS
@@ -21,8 +26,11 @@ class _UnsafeQueryFile(Exception):
 
 
 def forbidden(
-    args: list[str], default_owned: bool, cwd: str,
-    owned_identity: tuple[str, str, str] | None = None, policy_status: bool | None = None,
+    args: list[str],
+    default_owned: bool,
+    cwd: str,
+    owned_identity: tuple[str, str, str] | None = None,
+    policy_status: bool | None = None,
     policy_bound: bool = False,
 ) -> bool:
     if not policy_bound and owned_identity is None:
@@ -54,7 +62,9 @@ def forbidden(
     return github_identity(f"{match.group(1)}/{match.group(2)}") == owned_identity
 
 
-def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str], str | None] | None:
+def _parse(
+    args: list[str], cwd: str
+) -> tuple[str, str, dict[str, str], str | None] | None:
     method, fields, input_file, positionals, index = None, {}, None, [], 0
     while index < len(args):
         token = args[index]
@@ -71,11 +81,15 @@ def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str], str | N
                 return None
             method, index = token[2:].upper(), index + 1
         elif token in FIELD_OPTIONS:
-            if index + 1 >= len(args) or not _field(fields, args[index + 1], cwd if token in TYPED_FIELD_OPTIONS else None):
+            if index + 1 >= len(args) or not _field(
+                fields, args[index + 1], cwd if token in TYPED_FIELD_OPTIONS else None
+            ):
                 return None
             index += 2
         elif any(token.startswith(option + "=") for option in FIELD_OPTIONS):
-            typed = any(token.startswith(option + "=") for option in TYPED_FIELD_OPTIONS)
+            typed = any(
+                token.startswith(option + "=") for option in TYPED_FIELD_OPTIONS
+            )
             if not _field(fields, token.split("=", 1)[1], cwd if typed else None):
                 return None
             index += 1
@@ -110,7 +124,12 @@ def _parse(args: list[str], cwd: str) -> tuple[str, str, dict[str, str], str | N
             index += 1
     if len(positionals) != 1 or not positionals[0]:
         return None
-    return positionals[0], method or ("POST" if fields or input_file is not None else "GET"), fields, input_file
+    return (
+        positionals[0],
+        method or ("POST" if fields or input_file is not None else "GET"),
+        fields,
+        input_file,
+    )
 
 
 def _field(fields: dict[str, str], value: str, typed_cwd: str | None) -> bool:

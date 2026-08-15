@@ -10,8 +10,18 @@ from pathlib import Path
 
 
 CONVENTIONAL = re.compile(r"^[a-z0-9-]+(?:!|\([a-z0-9_/-]+\)!?)?:\s+\S.*$")
-CLOSING = {"close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved"}
-REFERENCE = re.compile(r"(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#[0-9]+[,.]?$" )
+CLOSING = {
+    "close",
+    "closes",
+    "closed",
+    "fix",
+    "fixes",
+    "fixed",
+    "resolve",
+    "resolves",
+    "resolved",
+}
+REFERENCE = re.compile(r"(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#[0-9]+[,.]?$")
 
 
 def fail(message: str) -> None:
@@ -51,9 +61,15 @@ def check_pr_labels(path: Path) -> None:
         fail(f"could not read PR state: {error}")
     if not isinstance(state, dict) or not isinstance(state.get("state"), str):
         fail("PR state malformed JSON evidence")
-    if not any(isinstance(state.get(field), str) and state[field] for field in (
-        "repository", "nameWithOwner", "headRepository", "url",
-    )):
+    if not any(
+        isinstance(state.get(field), str) and state[field]
+        for field in (
+            "repository",
+            "nameWithOwner",
+            "headRepository",
+            "url",
+        )
+    ):
         fail("PR state missing repository identity evidence")
     if state["state"].lower() != "open":
         return
@@ -71,16 +87,22 @@ def _references(message: str) -> int:
     for line in message.splitlines():
         words = line.split()
         for index, word in enumerate(words[:-1]):
-            if word.rstrip(":").lower() in CLOSING and REFERENCE.fullmatch(words[index + 1]):
+            if word.rstrip(":").lower() in CLOSING and REFERENCE.fullmatch(
+                words[index + 1]
+            ):
                 count += 1
     return count
 
 
-def check_merge_message(message: str, expected_pr: int, expected_issue: int | None) -> None:
+def check_merge_message(
+    message: str, expected_pr: int, expected_issue: int | None
+) -> None:
     subject = message.splitlines()[0] if message.splitlines() else ""
     suffix = f" (#{expected_pr})"
     if not subject.endswith(suffix):
-        fail(f"merge commit subject must end with the expected PR suffix: (#{expected_pr})")
+        fail(
+            f"merge commit subject must end with the expected PR suffix: (#{expected_pr})"
+        )
     if not conventional(subject.removesuffix(suffix)):
         fail("merge commit subject must use Conventional Commit style")
     references = _references(message)
@@ -90,7 +112,10 @@ def check_merge_message(message: str, expected_pr: int, expected_issue: int | No
         return
     final = next((line for line in reversed(message.splitlines()) if line.strip()), "")
     if references != 1 or final != f"Fixes #{expected_issue}":
-        fail("merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #" + str(expected_issue))
+        fail(
+            "merge commit message must contain exactly one closing reference, and the final closing line must be exactly: Fixes #"
+            + str(expected_issue)
+        )
 
 
 def parse() -> argparse.Namespace:

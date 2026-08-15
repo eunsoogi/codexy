@@ -137,7 +137,7 @@ fn lifecycle_hooks_do_not_run_the_registration_bootstrap() -> TestResult {
     let hooks = std::fs::read_to_string(root.join("plugins/codexy/hooks/hooks.json"))?;
     TextShape::new(&hooks).assert_absent_concepts(
         "registration lifecycle hook boundary",
-        &["bootstrap-codexy-agents", "register-codexy-agents"],
+        &["bootstrap-codexy-agents", "register_codexy_agents.py"],
     );
     Ok(())
 }

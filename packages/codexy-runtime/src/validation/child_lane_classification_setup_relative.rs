@@ -100,9 +100,11 @@ fn relative_parse(words: &[&str], start: usize, predicate: usize) -> RelativePar
         return RelativeParse::Absent;
     };
     let end = relative_predicate + 1;
-    (predicate < end)
-        .then_some(RelativeParse::Valid { end })
-        .unwrap_or(RelativeParse::Absent)
+    if predicate < end {
+        RelativeParse::Valid { end }
+    } else {
+        RelativeParse::Absent
+    }
 }
 
 fn malformed_direct_relative(words: &[&str], relative: usize, predicate: usize) -> bool {

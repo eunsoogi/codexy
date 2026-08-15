@@ -168,7 +168,7 @@ fn fixture(root: &Path) -> std::io::Result<PathBuf> {
 
 fn command(plugin: &Path, home: &Path) -> Command {
     let mut command =
-        Command::new(plugin.join("skills/orchestration/scripts/register-codexy-agents"));
+        Command::new(plugin.join("skills/orchestration/scripts/register_codexy_agents.py"));
     command
         .args(["--plugin-root"])
         .arg(plugin)

@@ -40,7 +40,7 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
             "{EXCEPTIONS_PATH} is not supported; every governed file must stay at or below {LOC_LIMIT} lines"
         ));
     }
-    for file in changes::scoped(&root, base_ref)? {
+    for file in changes::scoped(root, base_ref)? {
         if !is_governed_path(&file.path) {
             continue;
         }
@@ -50,7 +50,7 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
         }
         let line_count = count_lines(&path)?;
         if let Some(error) = touched_loc_remediation::formatting_only_error(
-            &root,
+            root,
             base_ref,
             &file.baseline,
             &file.path,
@@ -61,7 +61,7 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
             continue;
         }
     }
-    for path in governed_files(&root)? {
+    for path in governed_files(root)? {
         let line_count = count_lines(&root.join(&path))?;
         if line_count > LOC_LIMIT {
             errors.push(format!(

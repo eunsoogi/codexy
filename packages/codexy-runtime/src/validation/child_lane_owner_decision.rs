@@ -2,10 +2,10 @@ use super::child_lane_ownership_phrases::{has_absent_field_value, metadata_key, 
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OwnerSelection {
-    ParentOwned,
-    ChildOwned,
-    CurrentThreadOwned,
-    ExternalHumanOwned,
+    Parent,
+    Child,
+    CurrentThread,
+    ExternalHuman,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -31,7 +31,7 @@ pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
     is_affirmative_child_owner_decision(value)
         || matches!(
             owner_prefix(value),
-            Some(OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned)
+            Some(OwnerSelection::Child | OwnerSelection::CurrentThread)
         ) && (value.contains("child implementation lane")
             || value.contains("implementation lane"))
         || (!has_negated_child_routing_requirement(value)
@@ -53,7 +53,7 @@ pub(super) fn is_affirmative_child_owner_decision(value: &str) -> bool {
     matches!(
         parse_owner_decision(value),
         Some(OwnerDecision {
-            selection: OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned,
+            selection: OwnerSelection::Child | OwnerSelection::CurrentThread,
             affirmation: OwnerAffirmation::Affirmative,
         })
     )
@@ -73,10 +73,10 @@ pub(super) fn parse_lane_ownership_metadata(line: &str) -> LaneOwnershipMetadata
 /// Parses the complete normalized authoritative metadata value, never an owner prefix.
 pub(super) fn parse_owner_selection(value: &str) -> Option<OwnerSelection> {
     match trimmed_value(value) {
-        "parent-owned" => Some(OwnerSelection::ParentOwned),
-        "child-owned" => Some(OwnerSelection::ChildOwned),
-        "current-thread-owned" => Some(OwnerSelection::CurrentThreadOwned),
-        "external/human-owned" => Some(OwnerSelection::ExternalHumanOwned),
+        "parent-owned" => Some(OwnerSelection::Parent),
+        "child-owned" => Some(OwnerSelection::Child),
+        "current-thread-owned" => Some(OwnerSelection::CurrentThread),
+        "external/human-owned" => Some(OwnerSelection::ExternalHuman),
         _ => None,
     }
 }
@@ -99,9 +99,9 @@ fn parse_explicit_owner_decision(value: &str) -> Option<OwnerDecision> {
             (selection, Some(remainder))
         });
     if rationale.is_some_and(|rationale| {
-        !rationale
+        rationale
             .strip_prefix("because ")
-            .is_some_and(|text| !text.trim().is_empty())
+            .is_none_or(|text| text.trim().is_empty())
     }) {
         return None;
     }
@@ -133,14 +133,14 @@ fn owner_prefix(value: &str) -> Option<OwnerSelection> {
 
 pub(super) fn is_affirmative_child_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    owner_prefix(value) == Some(OwnerSelection::ChildOwned)
+    owner_prefix(value) == Some(OwnerSelection::Child)
         && !value.contains("not child-owned")
         && !has_absent_field_value(value, "child-owned")
 }
 
 pub(super) fn is_parent_owned_value(value: &str) -> bool {
     let value = trimmed_value(value);
-    owner_prefix(value) == Some(OwnerSelection::ParentOwned) && !value.contains("not parent-owned")
+    owner_prefix(value) == Some(OwnerSelection::Parent) && !value.contains("not parent-owned")
 }
 
 fn has_child_delegation(value: &str) -> bool {

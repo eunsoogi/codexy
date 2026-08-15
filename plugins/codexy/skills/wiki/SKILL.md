@@ -19,17 +19,18 @@ initialize a topic root implicitly.
 
 ## Core workflow
 
-MUST read [Minimal Contract](references/minimal-contract.md) before freshness verification,
-compilation, or query. It is the normative source for workflow dispositions, provenance,
-freshness, and measurable limits.
+MUST read [Minimal Contract](references/minimal-contract.md) before freshness
+verification, compilation, or query. It is the normative source for workflow
+dispositions, provenance, freshness, and measurable limits.
 
 MUST use the core path `init → ingest → compile → query → refresh`.
 
 ### Init
 
-MUST create or confirm one topic root with `raw/`, `wiki/`, `_index.md`, `log.md`,
-and `config.md`. `config.md` MAY set `freshness_threshold`; its default is 70.
-Markdown frontmatter is the source of truth and indexes are derived caches.
+MUST create or confirm one topic root with `raw/`, `wiki/`, `_index.md`,
+`log.md`, and `config.md`. `config.md` MAY set `freshness_threshold`; its
+default is 70. Markdown frontmatter is the source of truth and indexes are
+derived caches.
 
 ### Ingest
 
@@ -63,23 +64,24 @@ why and obtain the user's explicit broader-scope intent.
 MUST compare fetchable sources against recorded provenance. A change creates a
 new raw revision and marks affected knowledge for recompilation; an unchanged
 source stays unchanged. MUST inspect source chains, freshness, and index
-staleness. MUST report broken, weak, drifted, contradictory, missing,
-malformed, or future metadata rather than hiding it. `lint` is the verification
-step for this core workflow.
+staleness. MUST report broken, weak, drifted, contradictory, missing, malformed,
+or future metadata rather than hiding it. `lint` is the verification step for
+this core workflow.
 
 ## Merged work
 
 MUST use the core steps above for bounded batch ingestion, trust inspection,
 evidence acquisition, derivative writing, assessment, correction, and explicit
-promotion of a supported learning through the raw boundary. These activities
-are not separate commands or contexts. They MUST preserve the same provenance,
-log, freshness, and bounded-context rules.
+promotion of a supported learning through the raw boundary. These activities are
+not separate commands or contexts. They MUST preserve the same provenance, log,
+freshness, and bounded-context rules.
 
 ## Migration
 
-For existing supported topic data, MUST read [Migration](references/migration.md)
-before changing derived files. Migration is additive and fail-closed: it
-preserves source history and MUST NOT turn missing provenance into a fact.
+For existing supported topic data, MUST read
+[Migration](references/migration.md) before changing derived files. Migration is
+additive and fail-closed: it preserves source history and MUST NOT turn missing
+provenance into a fact.
 
 ## Safety
 

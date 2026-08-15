@@ -16,7 +16,9 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 
 class GithubPreSessionDefaultActivationTests(unittest.TestCase):
-    def test_frozen_bundle_rejects_a_manifest_version_not_matching_host_inventory(self) -> None:
+    def test_frozen_bundle_rejects_a_manifest_version_not_matching_host_inventory(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             component = copy_plugin(Path(temporary), "codexy-github")
             with self.assertRaisesRegex(ValueError, "manifest version mismatch"):
@@ -38,28 +40,53 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
                     payload: object = {"marketplaces": [marketplace_entry(marketplace)]}
                 elif command[1:3] == ["plugin", "list"]:
                     list_calls += 1
-                    payload = {"installed": [] if list_calls == 1 else [installed(core, "codexy"), installed(github, "codexy-github")]}
+                    payload = {
+                        "installed": []
+                        if list_calls == 1
+                        else [
+                            installed(core, "codexy"),
+                            installed(github, "codexy-github"),
+                        ]
+                    }
                 else:
                     payload = {"ok": True}
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
             home = root / "fresh Codex home"
-            result = run_github_pre_session(home, codex=codex, runner=runner, package_version="1.3.0")
+            result = run_github_pre_session(
+                home, codex=codex, runner=runner, package_version="1.3.0"
+            )
 
             self.assertTrue(result.changed)
             self.assertTrue((home / "agents/codexy/codexy-sentinel.toml").is_file())
-            self.assertTrue((home / "agents/codexy-github/codexy-weaver.toml").is_file())
+            self.assertTrue(
+                (home / "agents/codexy-github/codexy-weaver.toml").is_file()
+            )
 
     def test_tampered_host_manifest_content_fails_and_rolls_back(self) -> None:
         cases = (
-            ("core MCP", "codexy", lambda data: data.__setitem__("mcpServers", "/tmp/untrusted-mcp.json")),
-            ("GitHub skills", "codexy-github", lambda data: data.__setitem__("skills", "/tmp/untrusted-skills")),
-            ("unknown field", "codexy", lambda data: data.__setitem__("unexpected", True)),
+            (
+                "core MCP",
+                "codexy",
+                lambda data: data.__setitem__("mcpServers", "/tmp/untrusted-mcp.json"),
+            ),
+            (
+                "GitHub skills",
+                "codexy-github",
+                lambda data: data.__setitem__("skills", "/tmp/untrusted-skills"),
+            ),
+            (
+                "unknown field",
+                "codexy",
+                lambda data: data.__setitem__("unexpected", True),
+            ),
         )
         for label, component, mutate in cases:
             with self.subTest(label), tempfile.TemporaryDirectory() as temporary:
                 root, core, github = activation_fixture(Path(temporary))
-                manifest = (core if component == "codexy" else github) / ".codex-plugin/plugin.json"
+                manifest = (
+                    core if component == "codexy" else github
+                ) / ".codex-plugin/plugin.json"
                 contents = json.loads(manifest.read_text(encoding="utf-8"))
                 mutate(contents)
                 manifest.write_text(json.dumps(contents), encoding="utf-8")
@@ -71,8 +98,11 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
             manifest = core / ".codex-plugin/plugin.json"
             manifest.write_text(
                 manifest.read_text(encoding="utf-8").replace(
-                    '"name": "codexy",', '"name": "codexy",\n  "name": "codexy",', 1,
-                ), encoding="utf-8",
+                    '"name": "codexy",',
+                    '"name": "codexy",\n  "name": "codexy",',
+                    1,
+                ),
+                encoding="utf-8",
             )
             self._assert_rollback(root, core, github)
 
@@ -84,21 +114,33 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
             nonlocal list_calls
             calls.append(tuple(command))
             if command[1:4] == ["plugin", "marketplace", "list"]:
-                payload: object = {"marketplaces": [marketplace_entry(root / "marketplace")]}
+                payload: object = {
+                    "marketplaces": [marketplace_entry(root / "marketplace")]
+                }
             elif command[1:3] == ["plugin", "list"]:
                 list_calls += 1
-                payload = {"installed": [] if list_calls == 1 else [installed(core, "codexy"), installed(github, "codexy-github")]}
+                payload = {
+                    "installed": []
+                    if list_calls == 1
+                    else [installed(core, "codexy"), installed(github, "codexy-github")]
+                }
             else:
                 payload = {"ok": True}
             return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
         home = root / "fresh Codex home"
         with self.assertRaisesRegex(ValueError, "component manifest"):
-            run_github_pre_session(home, codex=executable(root), runner=runner, package_version="1.3.0")
+            run_github_pre_session(
+                home, codex=executable(root), runner=runner, package_version="1.3.0"
+            )
         self.assertFalse((home / "agents").exists())
-        self.assertEqual([call[1:4] for call in calls[-2:]], [
-            ("plugin", "remove", "codexy-github@codexy"), ("plugin", "remove", "codexy@codexy"),
-        ])
+        self.assertEqual(
+            [call[1:4] for call in calls[-2:]],
+            [
+                ("plugin", "remove", "codexy-github@codexy"),
+                ("plugin", "remove", "codexy@codexy"),
+            ],
+        )
 
 
 def copy_plugin(marketplace: Path, name: str) -> Path:
@@ -109,7 +151,11 @@ def copy_plugin(marketplace: Path, name: str) -> Path:
 
 def activation_fixture(root: Path) -> tuple[Path, Path, Path]:
     marketplace = root / "marketplace"
-    return root, copy_plugin(marketplace, "codexy"), copy_plugin(marketplace, "codexy-github")
+    return (
+        root,
+        copy_plugin(marketplace, "codexy"),
+        copy_plugin(marketplace, "codexy-github"),
+    )
 
 
 def executable(root: Path) -> Path:
@@ -121,11 +167,24 @@ def executable(root: Path) -> Path:
 
 
 def marketplace_entry(root: Path) -> dict[str, object]:
-    return {"name": "codexy", "root": str(root), "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}
+    return {
+        "name": "codexy",
+        "root": str(root),
+        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+    }
 
 
 def installed(root: Path, name: str) -> dict[str, object]:
-    return {"pluginId": f"{name}@codexy", "name": name, "marketplaceName": "codexy", "version": "1.3.0", "installed": True, "enabled": True, "source": {"source": "local", "path": str(root)}, "marketplaceSource": {"sourceType": "git", "source": OFFICIAL}}
+    return {
+        "pluginId": f"{name}@codexy",
+        "name": name,
+        "marketplaceName": "codexy",
+        "version": "1.3.0",
+        "installed": True,
+        "enabled": True,
+        "source": {"source": "local", "path": str(root)},
+        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
+    }
 
 
 if __name__ == "__main__":

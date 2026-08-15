@@ -11,7 +11,9 @@ from .shell_groups import Command, Group, Sequence
 Segment = Callable[[list[str], ExecutionContext, int], tuple[bool, CommandEffect]]
 
 
-def evaluate(sequence: Sequence, context: ExecutionContext, depth: int, segment: Segment) -> tuple[bool, ExecutionContext]:
+def evaluate(
+    sequence: Sequence, context: ExecutionContext, depth: int, segment: Segment
+) -> tuple[bool, ExecutionContext]:
     """Evaluate supported connector lists without discarding result branches."""
     contexts, index = (context,), 0
     while index < len(sequence.steps):
@@ -37,14 +39,19 @@ def evaluate(sequence: Sequence, context: ExecutionContext, depth: int, segment:
 
 
 def _list(
-    nodes: list[Command | Group], connectors: list[str], contexts: tuple[ExecutionContext, ...],
-    depth: int, segment: Segment,
+    nodes: list[Command | Group],
+    connectors: list[str],
+    contexts: tuple[ExecutionContext, ...],
+    depth: int,
+    segment: Segment,
 ) -> tuple[bool, list[ExecutionContext], list[ExecutionContext]]:
     denied, success, failure = _apply(nodes[0], contexts, depth, segment)
     if denied:
         return True, [], []
     for connector, node in zip(connectors, nodes[1:]):
-        carried, active = (failure, success) if connector == "&&" else (success, failure)
+        carried, active = (
+            (failure, success) if connector == "&&" else (success, failure)
+        )
         denied, next_success, next_failure = _apply(node, tuple(active), depth, segment)
         if denied:
             return True, [], []
@@ -56,7 +63,10 @@ def _list(
 
 
 def _apply(
-    node: Command | Group, contexts: tuple[ExecutionContext, ...], depth: int, segment: Segment,
+    node: Command | Group,
+    contexts: tuple[ExecutionContext, ...],
+    depth: int,
+    segment: Segment,
 ) -> tuple[bool, list[ExecutionContext], list[ExecutionContext]]:
     success, failure = [], []
     for context in contexts:
@@ -70,7 +80,9 @@ def _apply(
     return False, success, failure
 
 
-def _node(node: Command | Group, context: ExecutionContext, depth: int, segment: Segment) -> tuple[bool, CommandEffect]:
+def _node(
+    node: Command | Group, context: ExecutionContext, depth: int, segment: Segment
+) -> tuple[bool, CommandEffect]:
     if isinstance(node, Command):
         return segment(list(node.tokens), context, depth)
     denied, nested = evaluate(node.body, context, depth + 1, segment)
@@ -83,7 +95,9 @@ def _unique(contexts: list[ExecutionContext]) -> list[ExecutionContext]:
     return list(dict.fromkeys(contexts))
 
 
-def _join(contexts: tuple[ExecutionContext, ...], fallback: ExecutionContext) -> ExecutionContext:
+def _join(
+    contexts: tuple[ExecutionContext, ...], fallback: ExecutionContext
+) -> ExecutionContext:
     if not contexts:
         return fallback
     aliases: dict[str, str] = {}

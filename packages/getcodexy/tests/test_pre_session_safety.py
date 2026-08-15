@@ -31,7 +31,9 @@ except ImportError:
 
 
 class PreSessionSafetyTests(unittest.TestCase):
-    def test_codex_subprocess_ignores_inherited_git_redirect_configuration(self) -> None:
+    def test_codex_subprocess_ignores_inherited_git_redirect_configuration(
+        self,
+    ) -> None:
         inherited = {
             "GIT_CONFIG_GLOBAL": "/attacker/config",
             "GIT_CONFIG_NOSYSTEM": "0",
@@ -107,9 +109,12 @@ class PreSessionSafetyTests(unittest.TestCase):
             ]
             for installed_plugins in variants:
                 calls: list[tuple[str, ...]] = []
-                with self.subTest(installed=installed_plugins), self.assertRaisesRegex(
-                    ValueError,
-                    "enabled official Codexy install",
+                with (
+                    self.subTest(installed=installed_plugins),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "enabled official Codexy install",
+                    ),
                 ):
                     run_pre_session(
                         root / "home/.codex",

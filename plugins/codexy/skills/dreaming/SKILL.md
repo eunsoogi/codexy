@@ -1,6 +1,8 @@
 ---
 name: dreaming
-description: MUST use when a Codexy lane resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active fixes, and stale details before continuing.
+description:
+  MUST use when a Codexy lane resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active
+  fixes, and stale details before continuing.
 ---
 
 # Dreaming
@@ -13,8 +15,8 @@ anchored in current evidence instead of in whatever the compacted summary made
 most prominent.
 
 This skill is a thinking and handoff discipline. It does not write durable
-memory by itself, close review threads, update branches, or replace the
-workflow skill that owns the lane.
+memory by itself, close review threads, update branches, or replace the workflow
+skill that owns the lane.
 
 ## Use When
 
@@ -35,28 +37,28 @@ no evidence.
 
 MUST separate every carried fact into exactly one bucket:
 
-| Bucket | Retention condition | Required evidence |
-| --- | --- | --- |
-| Remember | It is durable project policy, issue scope, owner boundary, exact IDs, current refs, or a stop condition the next agent MUST preserve. | Current instruction, issue, PR, git, or tool output. |
-| Fix | It is an unresolved obligation that still needs action on the current lane. | Current failing check, unresolved review thread, open issue, dirty worktree, or explicit maintainer request. |
-| Forget or demote | It is resolved, superseded, stale, duplicated, only historical, or useful as background but not action-driving work. | Current state proves it is no longer active, or it lacks current evidence. |
+| Bucket           | Retention condition                                                                                                                   | Required evidence                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Remember         | It is durable project policy, issue scope, owner boundary, exact IDs, current refs, or a stop condition the next agent MUST preserve. | Current instruction, issue, PR, git, or tool output.                                                         |
+| Fix              | It is an unresolved obligation that still needs action on the current lane.                                                           | Current failing check, unresolved review thread, open issue, dirty worktree, or explicit maintainer request. |
+| Forget or demote | It is resolved, superseded, stale, duplicated, only historical, or useful as background but not action-driving work.                  | Current state proves it is no longer active, or it lacks current evidence.                                   |
 
-MUST NOT carry an item as `Fix` only because it appears in a summary. MUST verify it
-against the authoritative surface first.
+MUST NOT carry an item as `Fix` only because it appears in a summary. MUST
+verify it against the authoritative surface first.
 
 ## Dream Pass
 
 1. MUST re-read the governing instruction source for the lane.
-2. MUST capture current anchors: `pwd`, branch, `HEAD`, base ref, issue, PR, owner,
-   and stop condition.
+2. MUST capture current anchors: `pwd`, branch, `HEAD`, base ref, issue, PR,
+   owner, and stop condition.
 3. MUST compare inherited claims with current evidence.
 4. MUST move each claim into `Remember`, `Fix`, or `Forget or demote`, with one
    evidence note per active `Fix`.
 5. MUST continue only from the `Fix` bucket, the `Remember` constraints, and the
    current stop condition.
 
-For Codexy GitHub lanes, current evidence usually means `git status`, `git log
---graph`, PR head SHA, checks, review threads, and child owner state.
+For Codexy GitHub lanes, current evidence usually means `git status`,
+`git log --graph`, PR head SHA, checks, review threads, and child owner state.
 
 ## Active Child Thread Ledger
 
@@ -66,18 +68,19 @@ child work to a one-time summary. The dream pass MUST collect the full
 in-progress/waiting child thread list from current issue, PR, thread, worktree,
 and handoff evidence before deciding whether new child work is needed.
 
-Each active or waiting Codex app child thread entry MUST include issue/PR, thread
-id, status, owner state, blocker, latest evidence, next action, canonical
+Each active or waiting Codex app child thread entry MUST include issue/PR,
+thread id, status, owner state, blocker, latest evidence, next action, canonical
 worktree CWD, frozen HEAD, clean/index state, referencing specialist or Sentinel
-task ids, and explicit release/archive state. Blocked or rate-limited child lanes
-MUST stay in the ledger with the current blocker and next recheck action until
-current evidence proves they are complete, reassigned, or intentionally
+task ids, and explicit release/archive state. Blocked or rate-limited child
+lanes MUST stay in the ledger with the current blocker and next recheck action
+until current evidence proves they are complete, reassigned, or intentionally
 abandoned by a maintainer.
 
-Completed child lanes MUST remain as worktree reservations until every referencing
-task is terminal and explicitly archived or released. If archive/delete tooling
-is unavailable, the dream pass MUST record that unavailable-tool evidence and
-MUST NOT recycle the worktree or remove its reservation.
+Completed child lanes MUST remain as worktree reservations until every
+referencing task is terminal and explicitly archived or released. If
+archive/delete tooling is unavailable, the dream pass MUST record that
+unavailable-tool evidence and MUST NOT recycle the worktree or remove its
+reservation.
 
 ## Compact Handoff Shape
 
@@ -117,12 +120,12 @@ Next action:
 
 ## Review And PR Hygiene
 
-- MUST treat resolved review threads as `Forget or demote`, unless a current review
-  reopens the same concern.
+- MUST treat resolved review threads as `Forget or demote`, unless a current
+  review reopens the same concern.
 - MUST treat outdated-but-fixed threads as history after they are resolved in
   GitHub and current-head evidence proves the fix.
-- MUST treat old branch heads, old check failures, old review output, old CI state,
-  and old PR mergeability as stale when a newer commit exists.
+- MUST treat old branch heads, old check failures, old review output, old CI
+  state, and old PR mergeability as stale when a newer commit exists.
 - MUST keep active only the latest unresolved review threads, pending checks,
   dirty worktree changes, or maintainer requests that match the current head.
 - If a summary says something was fixed, MUST verify the current PR thread state
@@ -133,14 +136,14 @@ Next action:
 
 ## Common Mistakes
 
-| Mistake | Correction |
-| --- | --- |
-| Keeping every compacted bullet as active work. | Reclassify by current evidence. |
-| Losing the stop condition. | Put it in `Current anchors` before any next action. |
-| Treating resolved review feedback as still open. | Demote it after current GitHub evidence confirms resolution. |
-| Treating stale checks or old review output as current. | Compare timestamps and head SHAs before acting. |
-| Forgetting ownership after compaction. | MUST preserve parent/child owner boundary as a `Remember` item. |
-| Writing a continuation from memory alone. | Refresh current anchors first, then classify. |
+| Mistake                                                | Correction                                                      |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| Keeping every compacted bullet as active work.         | Reclassify by current evidence.                                 |
+| Losing the stop condition.                             | Put it in `Current anchors` before any next action.             |
+| Treating resolved review feedback as still open.       | Demote it after current GitHub evidence confirms resolution.    |
+| Treating stale checks or old review output as current. | Compare timestamps and head SHAs before acting.                 |
+| Forgetting ownership after compaction.                 | MUST preserve parent/child owner boundary as a `Remember` item. |
+| Writing a continuation from memory alone.              | Refresh current anchors first, then classify.                   |
 
 ## Stop Conditions
 

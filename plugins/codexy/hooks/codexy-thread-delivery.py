@@ -15,9 +15,17 @@ TOOLS = frozenset({"codex_app__send_message_to_thread"})
 
 def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument("--event", required=True, choices=("PreToolUse", "PermissionRequest"))
+    parser.add_argument(
+        "--event", required=True, choices=("PreToolUse", "PermissionRequest")
+    )
     event = parser.parse_args().event
-    output = evaluate(event, sys.stdin.buffer.read(1024 * 1024 + 1), TOOLS, "CODEXY_THREAD_DELIVERY_", forbidden)
+    output = evaluate(
+        event,
+        sys.stdin.buffer.read(1024 * 1024 + 1),
+        TOOLS,
+        "CODEXY_THREAD_DELIVERY_",
+        forbidden,
+    )
     if output:
         sys.stdout.buffer.write(output)
     return 0

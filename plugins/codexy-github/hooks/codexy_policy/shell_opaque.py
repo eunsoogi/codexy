@@ -31,7 +31,11 @@ def separate_lines(command: str) -> str:
             result.append(char)
         elif quote == "'" and char == "$":
             result.append(SINGLE_QUOTED_DOLLAR)
-        elif quote is None and char == "#" and (not result or result[-1].isspace() or result[-1] in ";&|(){}"):
+        elif (
+            quote is None
+            and char == "#"
+            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
+        ):
             while index < len(command) and command[index] != "\n":
                 index += 1
             continue
@@ -42,11 +46,16 @@ def separate_lines(command: str) -> str:
 
 
 def dynamic_control_executable(command: str) -> bool:
-    lexer = shlex.shlex(separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+    lexer = shlex.shlex(
+        separate_lines(command), posix=True, punctuation_chars=";&|(){}"
+    )
     lexer.whitespace_split, lexer.commenters = True, ""
     command_start = True
     for token in lexer:
-        if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
+        if (
+            token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}
+            or token.casefold() in CONTROL_COMMAND_START
+        ):
             command_start = True
         elif command_start and (token == "!" or assignment(token)):
             continue
@@ -58,11 +67,15 @@ def dynamic_control_executable(command: str) -> bool:
 
 
 def contains_policy_executable(
-    command: str, context: ExecutionContext, expected: str,
+    command: str,
+    context: ExecutionContext,
+    expected: str,
 ) -> bool:
     """Recognize a policy executable at an opaque command boundary."""
     try:
-        lexer = shlex.shlex(separate_lines(command), posix=True, punctuation_chars=";&|(){}")
+        lexer = shlex.shlex(
+            separate_lines(command), posix=True, punctuation_chars=";&|(){}"
+        )
         lexer.whitespace_split, lexer.commenters = True, ""
         tokens = list(lexer)
         command_start = True
@@ -70,22 +83,41 @@ def contains_policy_executable(
         index = 0
         while index < len(tokens):
             token = tokens[index]
-            if token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"} or token.casefold() in CONTROL_COMMAND_START:
+            if (
+                token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}
+                or token.casefold() in CONTROL_COMMAND_START
+            ):
                 command_start = True
                 segment_start = index + 1
             elif command_start and (token == "!" or assignment(token)):
                 pass
             elif command_start:
                 end = index + 1
-                while end < len(tokens) and tokens[end] not in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}:
+                while end < len(tokens) and tokens[end] not in {
+                    ";",
+                    "&&",
+                    "||",
+                    "|",
+                    "&",
+                    "(",
+                    ")",
+                    "{",
+                    "}",
+                }:
                     end += 1
                 invocation = resolve_invocation(tokens[segment_start:end], context)
                 if invocation is not None and invocation.executable == expected:
                     return True
-                if invocation is not None and (invocation.opaque or invocation.context.opaque_environment):
+                if invocation is not None and (
+                    invocation.opaque or invocation.context.opaque_environment
+                ):
                     prefix_free = _without_prefix(tokens[segment_start:end])
                     fallback = resolve_invocation(prefix_free, context)
-                    if fallback is None or fallback.opaque or fallback.executable == expected:
+                    if (
+                        fallback is None
+                        or fallback.opaque
+                        or fallback.executable == expected
+                    ):
                         return True
                     if not fallback.available:
                         return True

@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
-    text.split(|ch| matches!(ch, '\n' | ';'))
+    text.split(['\n', ';'])
         .flat_map(|line| line.split(". "))
         .filter(|sentence| {
             let lower = sentence.to_ascii_lowercase();

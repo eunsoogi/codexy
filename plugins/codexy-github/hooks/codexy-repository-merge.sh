@@ -1,16 +1,16 @@
 #!/bin/sh
 event=${1-}
 case "$event" in
-  PreToolUse|PermissionRequest) ;;
-  *) event=PreToolUse ;;
+PreToolUse | PermissionRequest) ;;
+*) event=PreToolUse ;;
 esac
 plugin_root=${PLUGIN_ROOT-}
 [ -n "$plugin_root" ] || plugin_root=${0%/hooks/codexy-repository-merge.sh}
 if "${plugin_root}/hooks/codexy-hook-runtime.sh" codexy-repository-merge.py "$event"; then
-  exit 0
+	exit 0
 fi
 if [ "$event" = PermissionRequest ]; then
-  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_REPOSITORY_MERGE_RUNTIME: Codexy policy MUST NOT execute this operation."}}}'
+	printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_REPOSITORY_MERGE_RUNTIME: Codexy policy MUST NOT execute this operation."}}}'
 else
-  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_REPOSITORY_MERGE_RUNTIME: Codexy policy MUST NOT execute this operation."}}'
+	printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_REPOSITORY_MERGE_RUNTIME: Codexy policy MUST NOT execute this operation."}}'
 fi

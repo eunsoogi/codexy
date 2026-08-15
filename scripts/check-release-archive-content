@@ -64,7 +64,9 @@ def file_digest(path: pathlib.Path, relative: pathlib.PurePosixPath) -> bytes:
 
 def main(argv: list[str]) -> None:
     if len(argv) != 4:
-        raise SystemExit("usage: check-release-archive-content EXPECTED SOURCE EXTRACTED")
+        raise SystemExit(
+            "usage: check-release-archive-content EXPECTED SOURCE EXTRACTED"
+        )
     expected, source, extracted = map(pathlib.Path, argv[1:])
     try:
         entries = expected.read_bytes().splitlines()

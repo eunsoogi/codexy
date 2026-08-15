@@ -149,9 +149,7 @@ def run_matrix() -> None:
     for name, payload, expected in PARSER_MATRIX:
         actual = check_text(payload, "lsp")
         if actual != expected:
-            raise AssertionError(
-                f"{name}: expected {expected!r}, got {actual!r}"
-            )
+            raise AssertionError(f"{name}: expected {expected!r}, got {actual!r}")
 
 
 def main(argv: list[str] | None = None) -> int:

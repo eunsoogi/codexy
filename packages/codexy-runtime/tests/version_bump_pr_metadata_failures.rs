@@ -31,7 +31,7 @@ fn invalid_issue_fails_without_mutating_existing_output() -> TestResult {
         ]))?,
     )?;
     fs::write(&changes, "Cargo.toml\n")?;
-    let result = Command::new(root.join("scripts/render-version-pr-metadata"))
+    let result = Command::new(root.join("scripts/render_version_pr_metadata.py"))
         .args([
             "--version", "1.3.1", "--issue-json", text(&issue)?,
             "--repository-labels-json", text(&taxonomy)?,
@@ -92,7 +92,7 @@ fn pull_request_url_cannot_impersonate_governing_issue_without_mutation() -> Tes
             ]))?,
         )?;
         fs::write(&changes, "Cargo.toml\n")?;
-        let result = Command::new(root.join("scripts/render-version-pr-metadata"))
+        let result = Command::new(root.join("scripts/render_version_pr_metadata.py"))
             .args([
                 "--version", "1.3.1", "--issue-json", text(&issue)?,
                 "--repository-labels-json", text(&taxonomy)?,

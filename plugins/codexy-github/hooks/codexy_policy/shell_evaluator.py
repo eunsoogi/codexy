@@ -8,8 +8,12 @@ from pathlib import Path
 from typing import Protocol
 
 from .execution_context import (
-    DYNAMIC_VALUE, SINGLE_QUOTED_DOLLAR, CommandEffect, ExecutionContext,
-    after_external_command, at as context_at,
+    DYNAMIC_VALUE,
+    SINGLE_QUOTED_DOLLAR,
+    CommandEffect,
+    ExecutionContext,
+    after_external_command,
+    at as context_at,
 )
 from .invocation import Invocation, resolve
 from .shell_context import changed_directory
@@ -25,7 +29,9 @@ CONTROL = re.compile(r"<<<?|\b(?:if|for|while|until|case)\b")
 
 class Policy(Protocol):
     def owns_opaque(self, command: str, context: ExecutionContext) -> bool: ...
-    def opaque_invocation(self, tokens: list[str], context: ExecutionContext) -> bool: ...
+    def opaque_invocation(
+        self, tokens: list[str], context: ExecutionContext
+    ) -> bool: ...
     def command(
         self, invocation: Invocation, outer: ExecutionContext, depth: int
     ) -> tuple[bool, CommandEffect] | None: ...
@@ -58,7 +64,9 @@ def evaluate(
                 return True
         lexical_command = SUBCOMMAND.sub(DYNAMIC_VALUE, command)
         if CONTROL.search(command):
-            return policy.owns_opaque(command, context) or dynamic_control_executable(command)
+            return policy.owns_opaque(command, context) or dynamic_control_executable(
+                command
+            )
     try:
         lexer = shlex.shlex(
             separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}"
@@ -72,7 +80,9 @@ def evaluate(
     except GroupSyntaxError:
         return True
     return evaluate_sequence(
-        sequence, context, depth,
+        sequence,
+        context,
+        depth,
         lambda tokens, current, current_depth: _segment(
             tokens, current, current_depth, policy
         ),
@@ -80,7 +90,10 @@ def evaluate(
 
 
 def _segment(
-    tokens: list[str], context: ExecutionContext, depth: int, policy: Policy,
+    tokens: list[str],
+    context: ExecutionContext,
+    depth: int,
+    policy: Policy,
 ) -> tuple[bool, CommandEffect]:
     invocation = resolve(tokens, context, depth)
     if invocation is None:
@@ -103,8 +116,10 @@ def _segment(
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd
         )
-        return (True, CommandEffect(None)) if directory.opaque else (
-            False, CommandEffect(context_at(invocation.context, directory.cwd))
+        return (
+            (True, CommandEffect(None))
+            if directory.opaque
+            else (False, CommandEffect(context_at(invocation.context, directory.cwd)))
         )
     if invocation.executable in {".", "source"}:
         return True, CommandEffect(None)
@@ -112,7 +127,9 @@ def _segment(
     if result is not None:
         return result
     effect = after_external_command(
-        invocation.executable, invocation.arguments, context,
+        invocation.executable,
+        invocation.arguments,
+        context,
     )
     return (True, CommandEffect(None)) if effect is None else (False, effect)
 
@@ -122,4 +139,6 @@ def _test_effect(arguments: list[str], context: ExecutionContext) -> CommandEffe
         return CommandEffect(context, context)
     path = Path(arguments[1])
     candidate = path if path.is_absolute() else Path(context.cwd) / path
-    return CommandEffect(context) if candidate.exists() else CommandEffect(None, context)
+    return (
+        CommandEffect(context) if candidate.exists() else CommandEffect(None, context)
+    )

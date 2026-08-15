@@ -14,8 +14,8 @@ git worktree add -b <policy-prefix><issue-or-scope> ../<repo>-worktrees/<issue-o
 ```
 
 MUST NOT force-push task branches. If push is rejected because the remote branch
-changed, MUST inspect the remote changes and bring required adjustments in with a
-new commit.
+changed, MUST inspect the remote changes and bring required adjustments in with
+a new commit.
 
 ## Local Change Discipline
 
@@ -39,9 +39,9 @@ MUST use Conventional Commit style:
 ```
 
 Common types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, and
-`revert`. Installed plugin skill changes change
-agent behavior, so prefer non-`docs` types. MUST NOT use vague messages such as
-`update`, `fix`, `WIP`, or `misc`.
+`revert`. Installed plugin skill changes change agent behavior, so prefer
+non-`docs` types. MUST NOT use vague messages such as `update`, `fix`, `WIP`, or
+`misc`.
 
 ## Conflict Resolution
 

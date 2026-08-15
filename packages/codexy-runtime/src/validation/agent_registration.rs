@@ -7,7 +7,7 @@ use crate::paths::display_relative;
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let root_bootstrap = plugin_root.join("bootstrap-codexy-agents");
     let update_checker = plugin_root.join("check-codexy-agents");
-    let script = plugin_root.join("skills/orchestration/scripts/register-codexy-agents");
+    let script = plugin_root.join("skills/orchestration/scripts/register_codexy_agents.py");
     let bootstrap = plugin_root.join("skills/orchestration/scripts/bootstrap-codexy-agents");
     let mut errors = Vec::new();
     if !root_bootstrap.is_file() {
@@ -29,7 +29,13 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         ));
         return errors;
     }
-    let scripts = script.parent().expect("registration script parent");
+    let Some(scripts) = script.parent() else {
+        errors.push(format!(
+            "{} must have a parent directory",
+            display_relative(&script)
+        ));
+        return errors;
+    };
     for module in [
         "agent_registration_support.py",
         "agent_registration_lifecycle.py",

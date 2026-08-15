@@ -1,0 +1,15 @@
+{
+  "rust": "1.95.0",
+  "dprint": "0.55.2",
+  "ruff": "0.15.2",
+  "shellcheck": {
+    "version": "0.11.0",
+    "linuxX64Sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
+  },
+  "shfmt": {
+    "version": "3.12.0",
+    "linuxX64Sha256": "d9fbb2a9c33d13f47e7618cf362a914d029d02a6df124064fff04fd688a745ea"
+  },
+  "PSScriptAnalyzer": "1.25.0",
+  "psScriptAnalyzerNupkgSha256": "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
+}

@@ -47,11 +47,11 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     assert_eq!(reconcile_path, "scripts/reconcile-version-pr");
     let reconcile = fs::read_to_string(root.join(reconcile_path))?;
     assert!(has_trimmed_line_start(validate_issue, "gh issue view "));
-    assert!(has_trimmed_line_start(validate_issue, "scripts/render-version-pr-metadata "));
-    assert_eq!(synchronize, "scripts/sync-plugin-version --version \"$VERSION\"");
+    assert!(has_trimmed_line_start(validate_issue, "scripts/render_version_pr_metadata.py "));
+    assert_eq!(synchronize, "scripts/sync-plugin-version.sh --version \"$VERSION\"");
     for command in [
-        "scripts/sync-plugin-version --check",
-        "scripts/validate-plugin-config --check",
+        "scripts/sync-plugin-version.sh --check",
+        "scripts/validate-plugin-config.sh --check",
         "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked",
         "git diff --check",
     ] {
@@ -65,7 +65,7 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         "scripts/plan-version-pr-reconciliation ",
         "plugins/codexy-github/hooks/codexy-pr-title-check.sh ",
         "plugins/codexy-github/hooks/codexy-pr-label-check.sh ",
-        "scripts/validate-plugin-config --check-completion-handoff ",
+        "scripts/validate-plugin-config.sh --check-completion-handoff ",
     ] {
         assert!(has_trimmed_line_start(&reconcile, start), "missing reconciliation: {start}");
     }

@@ -52,8 +52,8 @@ Open questions:
 - MUST NOT edit production files until the atomic outcome and proof plan are
   clear.
 - MUST NOT widen scope because a nearby improvement is tempting.
-- MUST NOT open a PR until every changed file maps to the spec or a named support
-  requirement.
+- MUST NOT open a PR until every changed file maps to the spec or a named
+  support requirement.
 - MUST NOT merge until review feedback and spec evidence both pass on the latest
   head.
 

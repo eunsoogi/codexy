@@ -4,7 +4,17 @@ from .titles import pr_title
 from .github_target import PullRequestSelector, pull_request
 from .repository import read_text
 
-CLOSING = {"close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved"}
+CLOSING = {
+    "close",
+    "closes",
+    "closed",
+    "fix",
+    "fixes",
+    "fixed",
+    "resolve",
+    "resolves",
+    "resolved",
+}
 
 
 def positive_int(value: object) -> bool:
@@ -12,32 +22,52 @@ def positive_int(value: object) -> bool:
 
 
 def valid_sha(value: object) -> bool:
-    return isinstance(value, str) and len(value) == 40 and all(char in "0123456789abcdefABCDEF" for char in value)
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(char in "0123456789abcdefABCDEF" for char in value)
+    )
 
 
 def valid(tool_input: dict[str, object]) -> bool:
     number = tool_input.get("pr_number")
     title = tool_input.get("commit_title")
     message = tool_input.get("commit_message")
-    if not positive_int(number) or tool_input.get("merge_method") != "squash" or not valid_sha(tool_input.get("expected_head_sha")):
+    if (
+        not positive_int(number)
+        or tool_input.get("merge_method") != "squash"
+        or not valid_sha(tool_input.get("expected_head_sha"))
+    ):
         return False
     return message_valid(number, title, message)
 
 
 def message_valid(number: object, title: object, message: object) -> bool:
-    if not positive_int(number) or not isinstance(title, str) or not title.endswith(f" (#{number})"):
+    if (
+        not positive_int(number)
+        or not isinstance(title, str)
+        or not title.endswith(f" (#{number})")
+    ):
         return False
-    return pr_title(title[: -len(f" (#{number})")]) and isinstance(message, str) and _unique_final_reference(message)
+    return (
+        pr_title(title[: -len(f" (#{number})")])
+        and isinstance(message, str)
+        and _unique_final_reference(message)
+    )
 
 
-def cli(args: list[str], cwd: str) -> tuple[PullRequestSelector, str, str | None, str | None] | None:
+def cli(
+    args: list[str], cwd: str
+) -> tuple[PullRequestSelector, str, str | None, str | None] | None:
     methods, positionals, subject, body, index = [], [], None, None, 0
     while index < len(args):
         if args[index] in {"--squash", "--merge", "--rebase"}:
             methods.append(args[index][2:])
             index += 1
             continue
-        matched, value, next_index = _option(args, index, ("--match-head-commit", "--subject", "--body", "--body-file"))
+        matched, value, next_index = _option(
+            args, index, ("--match-head-commit", "--subject", "--body", "--body-file")
+        )
         if matched:
             if value is None or not value:
                 return None
@@ -61,12 +91,18 @@ def cli(args: list[str], cwd: str) -> tuple[PullRequestSelector, str, str | None
             return None
         positionals.append(args[index])
         index += 1
-    if len(methods) != 1 or len(positionals) != 1 or (selector := pull_request(positionals[0])) is None:
+    if (
+        len(methods) != 1
+        or len(positionals) != 1
+        or (selector := pull_request(positionals[0])) is None
+    ):
         return None
     return selector, methods[0], subject, body
 
 
-def _option(args: list[str], index: int, options: tuple[str, ...]) -> tuple[bool, str | None, int]:
+def _option(
+    args: list[str], index: int, options: tuple[str, ...]
+) -> tuple[bool, str | None, int]:
     for option in options:
         if args[index] == option:
             return True, args[index + 1] if index + 1 < len(args) else None, index + 2
@@ -105,8 +141,15 @@ def _issue_ref(value: str) -> bool:
         return False
     owner_repo, issue = value.rsplit("#", 1)
     parts = owner_repo.split("/", 1)
-    return len(parts) == 2 and all(parts) and _positive_digits(issue) and all(
-        char.isascii() and (char.isalnum() or char in "-_ .".replace(" ", "")) for part in parts for char in part
+    return (
+        len(parts) == 2
+        and all(parts)
+        and _positive_digits(issue)
+        and all(
+            char.isascii() and (char.isalnum() or char in "-_ .".replace(" ", ""))
+            for part in parts
+            for char in part
+        )
     )
 
 

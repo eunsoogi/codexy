@@ -139,7 +139,7 @@ fn changed_file_map(files: &[ChangedFile]) -> Result<BTreeMap<&str, &str>> {
     let mut mapped = BTreeMap::new();
     for changed in files {
         let path = safe_packaged_path(&changed.path)?;
-        if !mapped.insert(path, changed.sha256.as_str()).is_none() {
+        if mapped.insert(path, changed.sha256.as_str()).is_some() {
             bail!("receipt changed-file paths must be unique");
         }
         validate_digest(&changed.sha256)?;

@@ -23,7 +23,9 @@ def wrapper_paths(root: Path) -> tuple[Path, ...]:
     shared = root / "mcp/codexy-mcp-devtools"
     if shared.is_file():
         return (shared,)
-    return tuple(root / "mcp" / f"codexy-mcp-{server}" for server in ("lsp", "codegraph"))
+    return tuple(
+        root / "mcp" / f"codexy-mcp-{server}" for server in ("lsp", "codegraph")
+    )
 
 
 def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> str:
@@ -37,7 +39,9 @@ def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> 
 
 
 def source_projection(root: Path) -> None:
-    contracts = [root / name for name in ("runtime-release.json", "runtime-candidate.json")]
+    contracts = [
+        root / name for name in ("runtime-release.json", "runtime-candidate.json")
+    ]
     if not all(path.is_file() for path in contracts):
         raise SystemExit("candidate source projection requires runtime contracts")
     manifest_path = root / ".codex-plugin/plugin.json"
@@ -47,8 +51,11 @@ def source_projection(root: Path) -> None:
     wrappers = []
     for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
-        wrappers.append((path, rewritten_wrapper(text, (CANDIDATE_WRAPPER,), SOURCE_WRAPPER)))
-    for path in contracts: path.unlink()
+        wrappers.append(
+            (path, rewritten_wrapper(text, (CANDIDATE_WRAPPER,), SOURCE_WRAPPER))
+        )
+    for path in contracts:
+        path.unlink()
     manifest["supportedPlatforms"] = PUBLIC_PLATFORMS
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     for path, wrapper in wrappers:
@@ -69,12 +76,16 @@ def source_projection_batch(root: Path) -> None:
         try:
             source_projection(root)
         except SystemExit as error:
-            results.append({"id": case["id"], "success": False, "diagnostic": str(error)})
+            results.append(
+                {"id": case["id"], "success": False, "diagnostic": str(error)}
+            )
         else:
             results.append({"id": case["id"], "success": True, "diagnostic": None})
     restore_batch_snapshot(root, snapshots)
     if len(results) != document["expectedCaseCount"]:
-        raise SystemExit("candidate source projection batch produced incomplete results")
+        raise SystemExit(
+            "candidate source projection batch produced incomplete results"
+        )
     print(json.dumps(results, separators=(",", ":"), sort_keys=True))
 
 
@@ -83,21 +94,31 @@ def batch_document(root: Path) -> dict:
     try:
         document = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as error:
-        raise SystemExit("candidate source projection batch input is invalid") from error
+        raise SystemExit(
+            "candidate source projection batch input is invalid"
+        ) from error
     if not isinstance(document, dict):
         raise SystemExit("candidate source projection batch input is invalid")
     if document.get("resetPaths") != list(BATCH_RESET_PATHS):
         raise SystemExit("candidate source projection batch reset paths are invalid")
     cases = document.get("cases")
     expected = document.get("expectedCaseCount")
-    if not isinstance(cases, list) or type(expected) is not int or expected != len(cases):
+    if (
+        not isinstance(cases, list)
+        or type(expected) is not int
+        or expected != len(cases)
+    ):
         raise SystemExit("candidate source projection batch results are incomplete")
     seen = set()
     for case in cases:
         if not isinstance(case, dict):
             raise SystemExit("candidate source projection batch input is invalid")
         identifier, appended = case.get("id"), case.get("append")
-        if not isinstance(identifier, str) or not identifier or not isinstance(appended, str):
+        if (
+            not isinstance(identifier, str)
+            or not identifier
+            or not isinstance(appended, str)
+        ):
             raise SystemExit("candidate source projection batch input is invalid")
         if identifier in seen:
             raise SystemExit("candidate source projection batch IDs must be unique")
@@ -110,7 +131,9 @@ def batch_snapshots(root: Path) -> dict[str, bytes]:
     for relative in BATCH_RESET_PATHS:
         path = root / relative
         if not path.is_file():
-            raise SystemExit("candidate source projection batch reset material is missing")
+            raise SystemExit(
+                "candidate source projection batch reset material is missing"
+            )
         snapshots[relative] = path.read_bytes()
     return snapshots
 
@@ -123,7 +146,11 @@ def restore_batch_snapshot(root: Path, snapshots: dict[str, bytes]) -> None:
 def candidate_assembly(root: Path) -> None:
     for path in wrapper_paths(root):
         text = open(path, encoding="utf-8", newline="").read()
-        open(path, "w", encoding="utf-8", newline="").write(rewritten_wrapper(text, (SOURCE_WRAPPER, CANDIDATE_WRAPPER), CANDIDATE_WRAPPER))
+        open(path, "w", encoding="utf-8", newline="").write(
+            rewritten_wrapper(
+                text, (SOURCE_WRAPPER, CANDIDATE_WRAPPER), CANDIDATE_WRAPPER
+            )
+        )
 
 
 def main() -> None:
@@ -139,10 +166,14 @@ def main() -> None:
         full = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
         legacy = ["darwin-arm64", "linux-x86_64"]
         if platforms not in (full, legacy):
-            raise SystemExit("public release archive must declare supported runtime platforms")
+            raise SystemExit(
+                "public release archive must declare supported runtime platforms"
+            )
         dispatcher = root / "mcp/codexy-mcp-devtools.exe"
         if platforms == full and not dispatcher.is_file():
-            raise SystemExit("public Windows package requires the shared native dispatcher")
+            raise SystemExit(
+                "public Windows package requires the shared native dispatcher"
+            )
         for server in ("lsp", "codegraph"):
             legacy_native = root / "mcp" / f"codexy-mcp-{server}.exe"
             if legacy_native.exists():
@@ -157,12 +188,22 @@ def main() -> None:
             if platforms == full and (
                 not delegate.is_file() or delegate.read_bytes() != expected
             ):
-                raise SystemExit(f"public Windows package requires the thin {server} delegate")
+                raise SystemExit(
+                    f"public Windows package requires the thin {server} delegate"
+                )
         if platforms == legacy:
-            if (dispatcher.exists() or any((root / "runtime").glob("*-windows-x86_64.exe"))
-                or any((root / "mcp" / f"codexy-mcp-{server}.{extension}").exists()
-                       for server in ("lsp", "codegraph") for extension in ("cmd", "exe"))):
-                raise SystemExit("dispatcher-free legacy projection must not package Windows runtime files")
+            if (
+                dispatcher.exists()
+                or any((root / "runtime").glob("*-windows-x86_64.exe"))
+                or any(
+                    (root / "mcp" / f"codexy-mcp-{server}.{extension}").exists()
+                    for server in ("lsp", "codegraph")
+                    for extension in ("cmd", "exe")
+                )
+            ):
+                raise SystemExit(
+                    "dispatcher-free legacy projection must not package Windows runtime files"
+                )
         for platform in platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):
@@ -179,7 +220,11 @@ def main() -> None:
         release = json.loads((root / "runtime-release.json").read_text())
         state = release.get("state")
         platforms = release.get("platforms", {})
-        expected = ("darwin-arm64", "linux-x86_64") if state == "legacy-public" else ("darwin-arm64", "linux-x86_64", "windows-x86_64")
+        expected = (
+            ("darwin-arm64", "linux-x86_64")
+            if state == "legacy-public"
+            else ("darwin-arm64", "linux-x86_64", "windows-x86_64")
+        )
         if set(platforms) != set(expected):
             raise SystemExit("runtime release artifact contract is invalid")
         for platform in expected:

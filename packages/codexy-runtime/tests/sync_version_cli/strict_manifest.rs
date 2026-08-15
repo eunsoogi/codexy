@@ -18,7 +18,7 @@ fn sync_version_check_rejects_duplicate_component_manifest_keys_without_mutating
         let before = fs::read_to_string(&path)?;
         fs::write(&path, before.replacen(needle, &format!("{needle} {needle}"), 1))?;
 
-        let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version"))
+        let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
             .arg("--check")
             .current_dir(&repo)
             .output()?;

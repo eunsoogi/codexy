@@ -50,10 +50,10 @@ pub(super) fn check(manifest: &Value, contract: &Value) -> Result<(), String> {
     if versions.len() != 1 {
         return Err("component manifest component versions must be lockstep".to_owned());
     }
-    check_combinations(
-        manifest.get("compatibleCombinations"),
-        versions.into_iter().next().unwrap(),
-    )
+    let Some(version) = versions.into_iter().next() else {
+        return Err("component manifest component versions must be lockstep".to_owned());
+    };
+    check_combinations(manifest.get("compatibleCombinations"), version)
 }
 
 fn check_errors(value: Option<&Value>, expected: &Map<String, Value>) -> Result<(), String> {

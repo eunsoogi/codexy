@@ -75,7 +75,7 @@ pub(super) fn has_authoritative_stop_condition(text: &str) -> bool {
     })
 }
 
-fn codexy_contract_value<'a>(line: &'a str) -> Option<&'a str> {
+fn codexy_contract_value(line: &str) -> Option<&str> {
     [
         "codexy orchestration contract",
         "codexy plugin workflow",
@@ -85,7 +85,7 @@ fn codexy_contract_value<'a>(line: &'a str) -> Option<&'a str> {
     .find_map(|label| field_value(line, label))
 }
 
-fn duplicate_state_value<'a>(line: &'a str) -> Option<&'a str> {
+fn duplicate_state_value(line: &str) -> Option<&str> {
     [
         "duplicate/no-active-work state",
         "duplicate state",
@@ -96,7 +96,7 @@ fn duplicate_state_value<'a>(line: &'a str) -> Option<&'a str> {
     .find_map(|label| field_value(line, label))
 }
 
-fn ownership_boundary_value<'a>(line: &'a str) -> Option<&'a str> {
+fn ownership_boundary_value(line: &str) -> Option<&str> {
     [
         "parent/child ownership boundary",
         "parent-child ownership boundary",

@@ -1,4 +1,5 @@
 """Registered Rust acceptance shards and fail-closed receipt aggregation."""
+
 from __future__ import annotations
 
 import math
@@ -12,6 +13,7 @@ from profile_rust_accounting import declared_test_targets
 from profile_rust_receipts import digest, load
 from profile_rust_targets import canonical_test_name
 
+
 @dataclass(frozen=True)
 class WorkloadSpec:
     name: str
@@ -19,11 +21,18 @@ class WorkloadSpec:
 
 
 SPECS = tuple(
-    WorkloadSpec(name, argv) for name, argv in (
-        ("support", ("cargo", "test", "--locked", "--lib", "--bins", "--test", "suite_support")),
+    WorkloadSpec(name, argv)
+    for name, argv in (
+        (
+            "support",
+            ("cargo", "test", "--locked", "--lib", "--bins", "--test", "suite_support"),
+        ),
         ("agent", ("cargo", "test", "--locked", "--test", "suite_agent")),
         ("child", ("cargo", "test", "--locked", "--test", "suite_child")),
-        ("orchestration", ("cargo", "test", "--locked", "--test", "suite_orchestration")),
+        (
+            "orchestration",
+            ("cargo", "test", "--locked", "--test", "suite_orchestration"),
+        ),
         ("governance", ("cargo", "test", "--locked", "--test", "suite_governance")),
         ("system", ("cargo", "test", "--locked", "--test", "suite_system")),
         ("archive", ("cargo", "test", "--locked", "--test", "suite_archive")),
@@ -44,7 +53,10 @@ def shard_spec(name: str | None) -> WorkloadSpec | None:
 
 def valid_provenance(item: dict[str, object]) -> bool:
     values = (item.get("run_id"), item.get("run_attempt"))
-    return all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in values)
+    return all(
+        isinstance(value, int) and not isinstance(value, bool) and value > 0
+        for value in values
+    )
 
 
 def valid_process_status(item: dict[str, object]) -> bool:
@@ -63,53 +75,119 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     if platform_only not in {None, "posix"}:
         print(f"aggregate-receipts\t0\tFAIL\tlocal platform aggregate must be posix")
         return 1
-    head = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=root, text=True).strip()
-    index_tree = subprocess.check_output(("git", "write-tree"), cwd=root, text=True).strip()
+    head = subprocess.check_output(
+        ("git", "rev-parse", "HEAD"), cwd=root, text=True
+    ).strip()
+    index_tree = subprocess.check_output(
+        ("git", "write-tree"), cwd=root, text=True
+    ).strip()
     expected = {(platform, shard) for platform in selected for shard in SHARDS}
     found = {(item.get("platform"), item.get("shard")) for item in receipts}
     tests: dict[str, Counter[str]] = {platform: Counter() for platform in selected}
     targets: dict[str, set[str]] = {platform: set() for platform in selected}
     receipt_valid, expected_targets = True, declared_test_targets(root)
+
     def valid_timing(item: dict[str, object]) -> bool:
         values = (item.get("elapsed"), item.get("started"), item.get("finished"))
-        return all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0 for value in values) and item["finished"] >= item["started"]
+        return (
+            all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                and value >= 0
+                for value in values
+            )
+            and item["finished"] >= item["started"]
+        )
+
     for item in receipts:
         platform, shard = item.get("platform"), item.get("shard")
         item_tests = Counter(item.get("tests", []))
-        if platform not in selected or shard not in SHARDS or item.get("state") != "PASS" or not valid_process_status(item) or not valid_timing(item) or not valid_provenance(item) or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard]) or item.get("head") != head or item.get("index_tree") != index_tree or item.get("digest") != digest(item_tests) or item.get("digest") != item.get("listed_digest") or set(item.get("physical_targets", [])) != owned_targets(expected_targets, shard):
+        if (
+            platform not in selected
+            or shard not in SHARDS
+            or item.get("state") != "PASS"
+            or not valid_process_status(item)
+            or not valid_timing(item)
+            or not valid_provenance(item)
+            or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard])
+            or item.get("head") != head
+            or item.get("index_tree") != index_tree
+            or item.get("digest") != digest(item_tests)
+            or item.get("digest") != item.get("listed_digest")
+            or set(item.get("physical_targets", []))
+            != owned_targets(expected_targets, shard)
+        ):
             receipt_valid = False
             continue
         tests[platform].update(item_tests)
         targets[platform].update(item.get("physical_targets", []))
-    duplicates = sum(sum(count - 1 for count in values.values() if count > 1) for values in tests.values())
-    valid = receipt_valid and platforms == selected and found == expected and len(receipts) == len(expected) and duplicates == 0 and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts}) == 1 and all(targets[platform] == expected_targets and provenance_windows_within_budget(receipts, platform, valid_timing) for platform in tests) and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    duplicates = sum(
+        sum(count - 1 for count in values.values() if count > 1)
+        for values in tests.values()
+    )
+    valid = (
+        receipt_valid
+        and platforms == selected
+        and found == expected
+        and len(receipts) == len(expected)
+        and duplicates == 0
+        and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts})
+        == 1
+        and all(
+            targets[platform] == expected_targets
+            and provenance_windows_within_budget(receipts, platform, valid_timing)
+            for platform in tests
+        )
+        and all(float(item.get("elapsed", 271)) <= 270 for item in receipts)
+    )
     print(f"aggregate-receipts\t{len(receipts)}\t{'PASS' if valid else 'FAIL'}")
-    for platform, values in tests.items(): print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
+    for platform, values in tests.items():
+        print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
 
 
-def provenance_windows_within_budget(receipts: list[dict[str, object]], platform: str, valid_timing: Callable[[dict[str, object]], bool]) -> bool:
+def provenance_windows_within_budget(
+    receipts: list[dict[str, object]],
+    platform: str,
+    valid_timing: Callable[[dict[str, object]], bool],
+) -> bool:
     attempts: dict[int, list[tuple[float, float]]] = {}
     for item in receipts:
         if item.get("platform") != platform:
             continue
         if not valid_timing(item) or not valid_provenance(item):
             return False
-        attempts.setdefault(item["run_attempt"], []).append((float(item["started"]), float(item["finished"])))
-    return bool(attempts) and all(max(finished for _, finished in spans) - min(started for started, _ in spans) < 300 for spans in attempts.values())
+        attempts.setdefault(item["run_attempt"], []).append(
+            (float(item["started"]), float(item["finished"]))
+        )
+    return bool(attempts) and all(
+        max(finished for _, finished in spans) - min(started for started, _ in spans)
+        < 300
+        for spans in attempts.values()
+    )
 
 
 def owned_targets(targets: set[str], shard: str) -> set[str]:
-    return {f"suite_{shard}"} if shard != "support" else targets - {f"suite_{name}" for name in SHARDS if name != "support"}
+    return (
+        {f"suite_{shard}"}
+        if shard != "support"
+        else targets - {f"suite_{name}" for name in SHARDS if name != "support"}
+    )
 
 
 def canonical_tests(output: str) -> Counter[str]:
     target, tests = "", Counter()
     for line in output.splitlines():
         if "Running " in line:
-            target = next((value for value in CANONICAL if value in line), "lib" if "src/lib.rs" in line else target)
+            target = next(
+                (value for value in CANONICAL if value in line),
+                "lib" if "src/lib.rs" in line else target,
+            )
         elif target and line.startswith("test ") and " ... ok" in line:
-            tests[f"{CANONICAL.get(target, target)}::{canonical_test_name(line[5:].split(' ...', 1)[0])}"] += 1
+            tests[
+                f"{CANONICAL.get(target, target)}::{canonical_test_name(line[5:].split(' ...', 1)[0])}"
+            ] += 1
     return tests
 
 

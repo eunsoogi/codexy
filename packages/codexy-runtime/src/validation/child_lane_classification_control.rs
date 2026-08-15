@@ -23,12 +23,12 @@ fn is_control_call(line: &str) -> bool {
 
 pub(super) fn normalize_metadata_prefix(line: &str) -> &str {
     let line = without_metadata_prefix(line);
-    let line = line
+
+    (line
         .strip_prefix("[ ] ")
         .or_else(|| line.strip_prefix("[x] "))
         .or_else(|| line.strip_prefix("[X] "))
-        .unwrap_or(line);
-    line
+        .unwrap_or(line)) as _
 }
 
 pub(super) fn normalized_metadata_lines<'a>(

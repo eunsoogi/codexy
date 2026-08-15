@@ -133,7 +133,7 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
     }
     (has_lifecycle_state(words)
         || subjects.iter().all(|subject| subject.negated)
-        || contains_any_phrase(&words, &["no actionable feedback", "no review feedback"]))
+        || contains_any_phrase(words, &["no actionable feedback", "no review feedback"]))
     .then_some(WaitDisposition::Nonterminal)
 }
 

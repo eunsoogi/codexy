@@ -81,8 +81,8 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     let archive = shared_repository_archive()?;
     let repo = archive_repository(archive, &temp, "repo")?;
     fs::copy(
-        codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version"),
-        repo.join("scripts/sync-plugin-version"),
+        codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version.sh"),
+        repo.join("scripts/sync-plugin-version.sh"),
     )?;
 
     let lock_path = repo.join("packages/codexy-runtime/Cargo.lock");
@@ -91,7 +91,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     assert_ne!(lock_text, stale_lock, "lock fixture did not change");
     fs::write(&lock_path, stale_lock)?;
 
-    let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version"))
+    let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
         .arg("--check")
         .current_dir(&repo)
         .output()?;

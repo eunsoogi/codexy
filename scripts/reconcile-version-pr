@@ -26,7 +26,7 @@ refresh_version_pr_snapshot() {
     --repository "$GITHUB_REPOSITORY")
   gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
     --json name > "$state_dir/repository-labels.json"
-  scripts/render-version-pr-metadata \
+  scripts/render_version_pr_metadata.py \
     --version "$VERSION" \
     --issue-json "$state_dir/issue.json" \
     --repository-labels-json "$state_dir/repository-labels.json" \
@@ -37,7 +37,7 @@ refresh_version_pr_snapshot() {
 
 render_version_pr_metadata() {
   phase=$1
-  scripts/render-version-pr-metadata \
+  scripts/render_version_pr_metadata.py \
     --version "$VERSION" \
     --issue-json "$state_dir/issue.json" \
     --repository-labels-json "$state_dir/repository-labels.json" \
@@ -184,7 +184,7 @@ cat > "$state_dir/handoff.md" <<EOF
 Verification completed: full release-candidate checks passed before mutation.
 PR #${pr_number} is open for CI and review. This automation does not claim completion or merge readiness.
 EOF
-scripts/validate-plugin-config --check-completion-handoff \
+scripts/validate-plugin-config.sh --check-completion-handoff \
   --handoff-file "$state_dir/handoff.md" \
   --pr-state-file "$state_dir/pr-state.json"
 merge_subject="${title} (#${pr_number})"

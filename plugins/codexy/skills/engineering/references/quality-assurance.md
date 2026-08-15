@@ -2,11 +2,15 @@
 
 ## Purpose
 
-QA turns claims into observable evidence. Automated tests are
-useful, but work is not proven until the surface users, maintainers, or
-automation depend on has been driven and inspected.
+QA turns claims into observable evidence. Automated tests are useful, but work
+is not proven until the surface users, maintainers, or automation depend on has
+been driven and inspected.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md) while preserving exact QA evidence separately. When replying in Korean, MUST also follow [Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow
+[Plain-Language User Replies](../../orchestration/references/plain-language-user-replies.md)
+while preserving exact QA evidence separately. When replying in Korean, MUST
+also follow
+[Natural Korean User Replies](../../orchestration/references/natural-korean-responses.md).
 
 ## Workflow
 
@@ -23,15 +27,15 @@ For every user-facing summary, MUST follow [Plain-Language User Replies](../../o
    - GitHub: PR, issue, review, branch, settings, or ruleset API state.
    - Completion handoff: final-answer or handoff artifact plus current
      `gh pr view` JSON through
-     `scripts/validate-plugin-config --check-completion-handoff` when a
+     `scripts/validate-plugin-config.sh --check-completion-handoff` when a
      completion claim could otherwise stop at an open PR; MUST include GraphQL
      `reviewThreads.nodes` when the artifact reports review feedback was
      addressed.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
-   - Codexy architecture: `scripts/validate-plugin-config --check` when
-     present, plus focused evidence for LSP config, MCP config, role metadata
-     or custom agent TOMLs, and thread/worktree orchestration wording.
+   - Codexy architecture: `scripts/validate-plugin-config.sh --check` when
+     present, plus focused evidence for LSP config, MCP config, role metadata or
+     custom agent TOMLs, and thread/worktree orchestration wording.
    - Code exploration: Codexy `codegraph` MCP output when the MCP is available,
      followed by direct file-read confirmation for edited files.
    - Child-owned PR review: owning child thread response, new head SHA, rerun
@@ -69,8 +73,8 @@ Cleanup:
 - MUST NOT pass code-touching lane QA without Codexy `codegraph` MCP exploration
   evidence when the MCP is available, or an explicit unavailable-tool fallback.
 - MUST NOT pass a child-owned lane when review feedback was fixed only in the
-  parent thread. The owning child thread MUST validate the response or provide
-  a documented non-change rationale.
+  parent thread. The owning child thread MUST validate the response or provide a
+  documented non-change rationale.
 - MUST NOT pass a completion handoff that claims done while a matching clean PR
   remains open unless the artifact states the explicit stop, wait, draft-only,
   no-merge, or leave-open instruction.
@@ -81,7 +85,7 @@ Cleanup:
 - GitHub API output proves repository state only for the returned PR, issue,
   branch, ruleset, or comment.
 - Parser/schema checks prove syntax and shape, not semantic intent.
-- `scripts/validate-plugin-config --check` proves the Codexy validator's
+- `scripts/validate-plugin-config.sh --check` proves the Codexy validator's
   configured contract for the current revision; pair it with direct file
   inspection for any newly added architecture claim.
 - Child-thread review-response evidence proves only the lane and head it names;

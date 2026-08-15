@@ -46,7 +46,7 @@ impl IssueContract {
     pub(super) fn digest(&self) -> String {
         format!(
             "{:x}",
-            Sha256::digest(serde_json::to_vec(self).expect("issue contract is serializable"))
+            Sha256::digest(serde_json::to_vec(self).unwrap_or_default())
         )
     }
 }

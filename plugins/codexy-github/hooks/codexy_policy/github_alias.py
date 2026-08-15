@@ -6,10 +6,31 @@ import shlex
 import subprocess
 
 BUILTINS = {
-    "alias", "api", "attestation", "auth", "browse", "cache", "codespace",
-    "config", "extension", "gist", "issue", "label", "org", "pr", "project",
-    "release", "repo", "ruleset", "run", "search", "secret", "ssh-key",
-    "status", "variable", "workflow",
+    "alias",
+    "api",
+    "attestation",
+    "auth",
+    "browse",
+    "cache",
+    "codespace",
+    "config",
+    "extension",
+    "gist",
+    "issue",
+    "label",
+    "org",
+    "pr",
+    "project",
+    "release",
+    "repo",
+    "ruleset",
+    "run",
+    "search",
+    "secret",
+    "ssh-key",
+    "status",
+    "variable",
+    "workflow",
 }
 MAX_DEPTH = 8
 
@@ -42,7 +63,10 @@ def expand(arguments: list[str]) -> list[str] | None:
 def _aliases() -> dict[str, str] | None:
     try:
         result = subprocess.run(
-            ["gh", "alias", "list"], capture_output=True, check=False, timeout=1,
+            ["gh", "alias", "list"],
+            capture_output=True,
+            check=False,
+            timeout=1,
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -53,7 +77,12 @@ def _aliases() -> dict[str, str] | None:
         for line in result.stdout.decode("utf-8", "strict").splitlines():
             name, separator, command = line.partition(":")
             canonical = name.strip().casefold()
-            if not separator or not canonical or canonical in aliases or not command.strip():
+            if (
+                not separator
+                or not canonical
+                or canonical in aliases
+                or not command.strip()
+            ):
                 return None
             aliases[canonical] = command.strip()
     except UnicodeError:

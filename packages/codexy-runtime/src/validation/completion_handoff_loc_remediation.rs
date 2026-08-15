@@ -155,14 +155,13 @@ fn has_unclosed_straight_quote(prefix: &str, suffix: &str, quote: char) -> bool 
             let contraction = quote == '\''
                 && index > 0
                 && chars[index - 1].is_alphanumeric()
-                && ((!open && chars[index - 1] == 's')
-                    || (open
-                        && chars[index - 1] == 's'
-                        && (chars[index + 1..]
+                && ((chars[index - 1] == 's'
+                    && (!open
+                        || chars[index + 1..]
                             .iter()
                             .all(|character| character.is_whitespace())
-                            || suffix.contains(quote)
-                            || quote_opened_after_said(&chars, index, quote)))
+                        || suffix.contains(quote)
+                        || quote_opened_after_said(&chars, index, quote)))
                     || chars
                         .get(index + 1)
                         .is_some_and(|next| next.is_alphanumeric()));

@@ -26,7 +26,7 @@ fn gate_streams_workload_output_before_the_child_completes()
         std::iter::once(bin).chain(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)),
     )?;
     let mut child = Command::new("python3")
-        .arg(codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests"))
+        .arg(codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py"))
         .current_dir(codexy_runtime::paths::repository_root())
         .env("PATH", path)
         .env("PROFILE_RELEASE", &release)
@@ -73,7 +73,7 @@ fn gate_spools_large_crlf_utf8_output_without_losing_live_order()
         std::iter::once(bin).chain(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)),
     )?;
     let mut child = Command::new("python3")
-        .arg(codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests"))
+        .arg(codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py"))
         .current_dir(codexy_runtime::paths::repository_root())
         .env("PATH", path)
         .env("PROFILE_RELEASE", &release)

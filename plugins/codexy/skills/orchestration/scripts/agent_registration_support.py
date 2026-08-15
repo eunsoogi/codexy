@@ -2,9 +2,17 @@
 
 import re
 
+from agent_registration_blocks import (
+    escaped as _escaped,
+    multiline_state as _multiline_state,
+    quoted_end as _quoted_end,
+    strip_managed_block,
+)
+
 BEGIN = "# BEGIN CODEXY MANAGED AGENTS"
 END = "# END CODEXY MANAGED AGENTS"
 MANAGED = "# CODEXY MANAGED AGENT\n"
+
 
 def find_conflicts(text: str, names: set[str]) -> set[str]:
     text = normalize_config_keys(text, names)
@@ -41,7 +49,9 @@ def normalize_config_keys(text: str, names: set[str]) -> str:
 def diagnostic_lines(
     config: str, installed: dict[str, str], expected: dict[str, str]
 ) -> list[str]:
-    managed = {name: text for name, text in installed.items() if text.startswith(MANAGED)}
+    managed = {
+        name: text for name, text in installed.items() if text.startswith(MANAGED)
+    }
     exact = sum(managed.get(name) == contents for name, contents in expected.items())
     discovery = (
         f"PASS ({exact} marker-owned standalone agents)"
@@ -52,7 +62,13 @@ def diagnostic_lines(
     v2 = multi_agent_v2_values(config)
     namespace = (v2 or {}).get("tool_namespace", "default/unobserved")
     metadata = (v2 or {}).get("hide_spawn_agent_metadata")
-    visible = "true" if metadata == "false" else "false" if metadata == "true" else "unconfirmed"
+    visible = (
+        "true"
+        if metadata == "false"
+        else "false"
+        if metadata == "true"
+        else "unconfirmed"
+    )
     schema = (
         f"CONFIGURED (namespace={namespace}, agent_type-visible={visible})"
         if v2 is not None
@@ -60,8 +76,7 @@ def diagnostic_lines(
     )
     return [
         f"A role-discovery: {discovery}",
-        f"B tool-schema: {schema}; "
-        "fresh-task schema observation is still required",
+        f"B tool-schema: {schema}; fresh-task schema observation is still required",
         "C fork-turns: explicit agent_type requires none or a positive integer; all is incompatible",
     ]
 
@@ -77,7 +92,9 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         if before is not None:
             container_depth += _container_delta(line[closed:]) if closed else 0
             continue
-        delta = _container_delta(line) + (_container_delta(line[closed:]) if closed else 0)
+        delta = _container_delta(line) + (
+            _container_delta(line[closed:]) if closed else 0
+        )
         if multiline is not None:
             container_depth += delta
             continue
@@ -86,7 +103,10 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         if table:
             array_table, key = table
             in_target = not array_table and bool(
-                re.fullmatch(r'''(?:"features"|'features'|features)\s*\.\s*(?:"multi_agent_v2"|'multi_agent_v2'|multi_agent_v2)''', key)
+                re.fullmatch(
+                    r"""(?:"features"|'features'|features)\s*\.\s*(?:"multi_agent_v2"|'multi_agent_v2'|multi_agent_v2)""",
+                    key,
+                )
             )
             found = found or in_target
             continue
@@ -106,6 +126,7 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
         elif metadata:
             values["hide_spawn_agent_metadata"] = metadata.group(1)
     return values if found else None
+
 
 def _table_header(line: str) -> tuple[bool, str] | None:
     if not line.startswith("["):
@@ -138,7 +159,7 @@ def _valid_key_path(text: str) -> bool:
         if index == len(text):
             return False
         match = re.match(
-            r'''(?:(?:"(?:\\.|[^"\\])*")|'[^']*'|[A-Za-z0-9_-]+)''', text[index:]
+            r"""(?:(?:"(?:\\.|[^"\\])*")|'[^']*'|[A-Za-z0-9_-]+)""", text[index:]
         )
         if not match:
             return False
@@ -185,66 +206,3 @@ def _container_delta(line: str) -> int:
             delta -= 1
         index += 1
     return delta
-
-
-def strip_managed_block(text: str) -> tuple[str, bool]:
-    lines = text.splitlines(keepends=True)
-    kept: list[str] = []
-    multiline: str | None = None
-    in_block = False
-    found = False
-    for line in lines:
-        marker = line.rstrip("\r\n")
-        if multiline is None and marker == BEGIN:
-            if in_block:
-                return text, False
-            in_block = True
-            found = True
-            continue
-        if multiline is None and marker == END:
-            if not in_block:
-                return text, False
-            in_block = False
-            continue
-        if not in_block:
-            kept.append(line)
-        multiline, _ = _multiline_state(line, multiline)
-    if in_block:
-        return text, False
-    return "".join(kept), found
-
-
-def _multiline_state(line: str, state: str | None) -> tuple[str | None, int | None]:
-    index, closed = 0, None
-    while index < len(line):
-        if state:
-            if line.startswith(state, index) and (
-                state == "'''" or not _escaped(line, index)
-            ):
-                state = None
-                index += 3
-                closed = closed or index
-            else:
-                index += 1
-            continue
-        if line[index] == "#":
-            break
-        triple = next(
-            (quote for quote in ('"""', "'''") if line.startswith(quote, index)),
-            None,
-        )
-        if triple:
-            state = triple
-            index += 3
-        elif line[index] in ('"', "'"):
-            index = _quoted_end(line, index) or len(line)
-        else:
-            index += 1
-    return state, closed
-
-
-def _escaped(line: str, index: int) -> bool:
-    slashes = 0
-    while index > slashes and line[index - slashes - 1] == "\\":
-        slashes += 1
-    return slashes % 2 == 1

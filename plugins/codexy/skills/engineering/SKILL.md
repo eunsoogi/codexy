@@ -59,8 +59,8 @@ or PR readiness.
   concrete.
 - MUST apply domain modeling before a change crosses a named ownership or
   invariant boundary.
-- MUST use test-driven development to establish RED, GREEN, and regression
-  proof only for boundaries with `engineering_tdd_required`.
+- MUST use test-driven development to establish RED, GREEN, and regression proof
+  only for boundaries with `engineering_tdd_required`.
 - MUST use refactoring only for behavior-preserving structural work.
 - MUST use quality assurance to inspect the observable surface after automated
   proof.

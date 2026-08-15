@@ -1,5 +1,6 @@
+# shellcheck shell=sh
 json_is_structurally_complete_object() {
-  printf '%s\n' "$1" | LC_ALL=C awk '
+	printf '%s\n' "$1" | LC_ALL=C awk '
 BEGIN { RS = "\034" }
 function ws() { while (i <= n && substr(s, i, 1) ~ /[[:space:]]/) i++ }
 function str(    c, e, h) {
@@ -100,8 +101,9 @@ END {
 '
 }
 top_level_json_field_value() {
-  json_text="$1"; field_name="$2"
-  printf '%s\n' "$json_text" | LC_ALL=C awk -v key="$field_name" '
+	json_text="$1"
+	field_name="$2"
+	printf '%s\n' "$json_text" | LC_ALL=C awk -v key="$field_name" '
 function skip_spaces(pos) { while (substr($0, pos, 1) ~ /[[:space:]]/) pos++; return pos }
 function emit_value(start,    i, c, depth, in_string, escape, seen) {
   depth = 0
@@ -175,8 +177,9 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 '
 }
 top_level_json_object_field_value() {
-  json_text="$1"; field_name="$2"
-  printf '%s\n' "$json_text" | LC_ALL=C awk -v key="$field_name" '
+	json_text="$1"
+	field_name="$2"
+	printf '%s\n' "$json_text" | LC_ALL=C awk -v key="$field_name" '
 function skip_spaces(pos) { while (substr($0, pos, 1) ~ /[[:space:]]/) pos++; return pos }
 function emit_object(start,    i, c, depth, in_string, escape) {
   depth = 0
@@ -239,11 +242,4 @@ function emit_object(start,    i, c, depth, in_string, escape) {
   }
 }
 '
-}
-json_string_field_value() {
-  value=$(top_level_json_field_value "$1" "$2")
-  case "$value" in
-    \"*) printf '%s\n' "$value" | sed 's/^[[:space:]]*"\([^"]*\)".*/\1/; s#\\/#/#g; s#\\u002[fF]#/#g' | tr '[:upper:]' '[:lower:]' ;;
-    *) printf '\n' ;;
-  esac
 }

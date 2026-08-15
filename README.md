@@ -15,9 +15,9 @@
 </p>
 
 Codexy is a Codex harness plugin for repository work that needs more structure
-than a single prompt. It helps developers and teams turn broad work into
-owned, reviewable lanes; use the right worker or reviewer surface; and retain
-the evidence needed to finish safely.
+than a single prompt. It helps developers and teams turn broad work into owned,
+reviewable lanes; use the right worker or reviewer surface; and retain the
+evidence needed to finish safely.
 
 ## When Codexy helps
 
@@ -51,7 +51,8 @@ codex plugin add codexy@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-Verify that Codex can see the installed plugins and optional devtools MCP servers:
+Verify that Codex can see the installed plugins and optional devtools MCP
+servers:
 
 ```sh
 codex plugin list
@@ -79,7 +80,7 @@ and reviewer agents can assist without becoming branch owners.
 
 Codexy is plugin-first. Repository governance, packaging, release, and
 contributor rules stay in the canonical [agent instructions](AGENTS.md),
-[plugin configuration validator](scripts/validate-plugin-config), and
+[plugin configuration validator](scripts/validate-plugin-config.sh), and
 [release workflow](.github/workflows/plugin-version-bump.yml), rather than in
 this introduction.
 

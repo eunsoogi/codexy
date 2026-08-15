@@ -35,7 +35,11 @@ def string(value, field):
 
 def positive_number(value, field):
     item = value.get(field) if isinstance(value, dict) else None
-    return item if isinstance(item, int) and not isinstance(item, bool) and item > 0 else None
+    return (
+        item
+        if isinstance(item, int) and not isinstance(item, bool) and item > 0
+        else None
+    )
 
 
 def authoritative(comment):
@@ -48,19 +52,24 @@ def matching_comment(state, identifier, url, body):
     comments = state.get("comments") if isinstance(state, dict) else None
     if not isinstance(comments, list):
         return False
-    return sum(
-        string(comment, "id") == identifier
-        and string(comment, "url") == url
-        and authoritative(comment)
-        and string(comment, "body") == body
-        for comment in comments
-    ) == 1
+    return (
+        sum(
+            string(comment, "id") == identifier
+            and string(comment, "url") == url
+            and authoritative(comment)
+            and string(comment, "body") == body
+            for comment in comments
+        )
+        == 1
+    )
 
 
 def current(authorization, state, field, state_field=None):
     state_field = state_field or field
     if field == "prNumber":
-        return positive_number(authorization, field) == positive_number(state, state_field)
+        return positive_number(authorization, field) == positive_number(
+            state, state_field
+        )
     return string(authorization, field) == string(state, state_field)
 
 
@@ -79,7 +88,10 @@ def valid_comment(state, identifier, url, body):
 def validate(authorization, state):
     if not isinstance(authorization, dict) or not isinstance(state, dict):
         fail("authorization and PR state must be JSON objects")
-    if authorization.get("negated") is not False or authorization.get("revoked") is not False:
+    if (
+        authorization.get("negated") is not False
+        or authorization.get("revoked") is not False
+    ):
         fail("negated and revoked must be boolean false")
     if (
         string(authorization, "intent") != "merge"
@@ -91,18 +103,31 @@ def validate(authorization, state):
         fail("authorization must match the current squash PR state")
     kind = string(authorization, "kind")
     if kind in {"explicit-user-intent", "explicit-maintainer-intent"}:
-        if any(field in authorization for field in ("actor", "recordIssuer", "sourceReference")):
+        if any(
+            field in authorization
+            for field in ("actor", "recordIssuer", "sourceReference")
+        ):
             fail("authorization intent must cite a PR comment")
-        identifier, url = string(authorization, "commentId"), string(authorization, "commentUrl")
+        identifier, url = (
+            string(authorization, "commentId"),
+            string(authorization, "commentUrl"),
+        )
         body = "AUTHORIZE SQUASH MERGE: PR #{} BASE {} HEAD {}".format(
-            authorization["prNumber"], authorization["baseRefName"], authorization["headRefOid"]
+            authorization["prNumber"],
+            authorization["baseRefName"],
+            authorization["headRefOid"],
         )
     elif kind == "repository-workflow-contract":
         if string(authorization, "target") != "current-pull-request":
             fail("authorization target must be current-pull-request")
-        identifier, url = string(authorization, "contractCommentId"), string(authorization, "contractCommentUrl")
+        identifier, url = (
+            string(authorization, "contractCommentId"),
+            string(authorization, "contractCommentUrl"),
+        )
         body = "AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #{} BASE {} HEAD {}".format(
-            authorization["prNumber"], authorization["baseRefName"], authorization["headRefOid"]
+            authorization["prNumber"],
+            authorization["baseRefName"],
+            authorization["headRefOid"],
         )
     else:
         fail("authorization kind is not authoritative")
@@ -115,7 +140,10 @@ def main():
     parser.add_argument("--authorization-file", required=True)
     parser.add_argument("--pr-state-file", required=True)
     args = parser.parse_args()
-    validate(read(args.authorization_file, "merge authorization"), read(args.pr_state_file, "merge authorization PR state"))
+    validate(
+        read(args.authorization_file, "merge authorization"),
+        read(args.pr_state_file, "merge authorization PR state"),
+    )
 
 
 if __name__ == "__main__":

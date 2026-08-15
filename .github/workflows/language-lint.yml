@@ -1,0 +1,114 @@
+name: Language lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: ${{ matrix.language }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: Rust
+            os: ubuntu-latest
+          - language: Python
+            os: ubuntu-latest
+          - language: Shell
+            os: ubuntu-latest
+          - language: Text
+            os: ubuntu-latest
+          - language: PowerShell
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        if: matrix.language == 'Python'
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.language == 'Python'
+      - name: Install Ruff
+        if: matrix.language == 'Python'
+        run: "python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt"
+      - name: Install Rust tools
+        if: matrix.language == 'Rust'
+        run: |
+          rust="$(jq -r .rust tooling/lint-tools.json)"
+          rustup toolchain install "$rust" --profile minimal --component rustfmt --component clippy
+      - name: Install dprint
+        if: matrix.language == 'Text'
+        run: cargo install --locked dprint --version "$(jq -r .dprint tooling/lint-tools.json)"
+      - name: Install ShellCheck and shfmt
+        if: matrix.language == 'Shell'
+        shell: bash
+        run: |
+          shellcheck="$(jq -r .shellcheck.version tooling/lint-tools.json)"
+          shellcheck_sha="$(jq -r .shellcheck.linuxX64Sha256 tooling/lint-tools.json)"
+          shfmt="$(jq -r .shfmt.version tooling/lint-tools.json)"
+          shfmt_sha="$(jq -r .shfmt.linuxX64Sha256 tooling/lint-tools.json)"
+          curl --fail --location --output "$RUNNER_TEMP/shellcheck.tar.xz" "https://github.com/koalaman/shellcheck/releases/download/v${shellcheck}/shellcheck-v${shellcheck}.linux.x86_64.tar.xz"
+          printf '%s  %s\n' "$shellcheck_sha" "$RUNNER_TEMP/shellcheck.tar.xz" | sha256sum --check --status
+          tar -xf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
+          curl --fail --location --output "$RUNNER_TEMP/shfmt" "https://github.com/mvdan/sh/releases/download/v${shfmt}/shfmt_v${shfmt}_linux_amd64"
+          printf '%s  %s\n' "$shfmt_sha" "$RUNNER_TEMP/shfmt" | sha256sum --check --status
+          chmod +x "$RUNNER_TEMP/shfmt"
+          echo "$RUNNER_TEMP/shellcheck-v${shellcheck}" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Install PSScriptAnalyzer
+        if: matrix.language == 'PowerShell'
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+      - name: Verify PowerShell lint failure propagation
+        if: matrix.language == 'PowerShell'
+        shell: pwsh
+        run: |
+          $probe = Join-Path $env:RUNNER_TEMP "codexy-language-lint-negative.ps1"
+          Set-Content -LiteralPath $probe -Value "function {" -NoNewline
+          & pwsh -NoProfile -NonInteractive -Command "Invoke-ScriptAnalyzer -Path '$probe' -Severity ParseError -EnableExit"
+          $status = $LASTEXITCODE
+          Remove-Item -LiteralPath $probe -Force
+          if ($status -eq 0) { throw "PSScriptAnalyzer accepted the invalid PowerShell probe" }
+          exit 0
+      - name: Lint Rust
+        if: matrix.language == 'Rust'
+        run: |
+          rust="$(jq -r .rust tooling/lint-tools.json)"
+          cargo +"$rust" fmt --manifest-path packages/codexy-runtime/Cargo.toml --all -- --check
+          cargo +"$rust" clippy --manifest-path packages/codexy-runtime/Cargo.toml --locked --lib --bins
+      - name: Lint Python
+        if: matrix.language == 'Python'
+        run: |
+          uv lock --check --directory packages/getcodexy
+          ruff check .
+          git grep -lz '^#!.*python' | xargs -0r ruff check
+          ruff format --check .
+          git grep -lz '^#!.*python' | xargs -0r ruff format --check
+      - name: Lint shell scripts
+        if: matrix.language == 'Shell'
+        shell: bash
+        run: |
+          git ls-files -z '*.sh' | xargs -0r shellcheck
+          git ls-files -z '*.sh' | xargs -0r shfmt -d
+      - name: Check JSON, YAML, and Markdown formatting
+        if: matrix.language == 'Text'
+        run: dprint check
+      - name: Lint PowerShell
+        if: matrix.language == 'PowerShell'
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
+          if ($files.Count -gt 0) {
+            foreach ($file in $files) {
+              Invoke-ScriptAnalyzer -Path $file -Severity ParseError,Error,Warning -EnableExit
+            }
+          }

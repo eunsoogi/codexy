@@ -177,7 +177,7 @@ fn run_case_with_commands(
         std::iter::once(bin).chain(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?)),
     )?;
     let output = Command::new("python3")
-        .arg(codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests"))
+        .arg(codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py"))
         .args(["--root", root.to_str().ok_or("fixture root")?, "--windows"])
         .env("PATH", path)
         .env("PROFILE_CASE", case)

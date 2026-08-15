@@ -169,5 +169,5 @@ fn last_clause_boundary(text: &str) -> Option<usize> {
     text.char_indices()
         .filter(|(_, character)| matches!(character, '.' | '!' | '?' | ';' | ':' | ',' | '\n'))
         .map(|(index, character)| index + character.len_utf8())
-        .last()
+        .next_back()
 }

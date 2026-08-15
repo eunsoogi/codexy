@@ -6,8 +6,8 @@ Make the desired engineering behavior fail for the right reason before changing
 production code. Then make the smallest change that turns the proof green and
 MUST keep broader verification proportional to risk.
 
-Documentation, README, instruction-only skill prose, and reference Markdown
-MUST NOT use manufactured RED tests, phrase mutations, or prose TDD. MUST verify
+Documentation, README, instruction-only skill prose, and reference Markdown MUST
+NOT use manufactured RED tests, phrase mutations, or prose TDD. MUST verify
 those edits by direct diff and readback plus applicable existence, link, render,
 frontmatter, or package-structure checks.
 
@@ -21,8 +21,8 @@ frontmatter, or package-structure checks.
    - parser, schema, or command-output check for structured config, plugin
      metadata, or workflow rules.
 3. MUST run the proof before implementation and capture RED.
-4. MUST confirm RED fails because the behavior is missing or wrong, not because the
-   harness is broken.
+4. MUST confirm RED fails because the behavior is missing or wrong, not because
+   the harness is broken.
 5. Implement the smallest change that satisfies the proof.
 6. MUST run the same proof and capture GREEN.
 7. Refactor only after GREEN, keeping proofs green after each cleanup.
@@ -31,16 +31,18 @@ frontmatter, or package-structure checks.
 ## Root-Cause And Harness Discipline
 
 - MUST identify the root-cause boundary before selecting a repair RED.
-- MUST place permutation cases at the pure or unit layer when observable behavior
-  does not require filesystem, process, network, or UI wiring.
+- MUST place permutation cases at the pure or unit layer when observable
+  behavior does not require filesystem, process, network, or UI wiring.
 - MUST keep one faithful boundary test when observable CLI, process, discovery,
   persistence, network, or UI behavior requires that boundary.
-- A new standalone integration crate MUST document required isolation. Otherwise,
-  MUST add the case to an existing domain integration target.
+- A new standalone integration crate MUST document required isolation.
+  Otherwise, MUST add the case to an existing domain integration target.
 - Performance RED MUST measure the original required workload exactly once.
 - Performance RED evidence MUST record compile cost, execution cost,
   integration-target count, and nested subprocess or build count.
-- MUST NOT satisfy performance acceptance with skips, filters, retries, sleeps, relaxed budgets, cache or runner upgrades as the sole fix, sharding alone, or a representative subset.
+- MUST NOT satisfy performance acceptance with skips, filters, retries, sleeps,
+  relaxed budgets, cache or runner upgrades as the sole fix, sharding alone, or
+  a representative subset.
 
 ## Required Output
 

@@ -67,7 +67,10 @@ fn finish_token(clauses: &mut Vec<Vec<Token>>, token: &mut String, joined_to_pre
     if !*joined_to_previous && matches!(token.as_str(), "but" | "yet" | "however") {
         start_clause(clauses);
     } else {
-        clauses.last_mut().expect("one clause exists").push(Token {
+        let Some(clause) = clauses.last_mut() else {
+            return;
+        };
+        clause.push(Token {
             text: std::mem::take(token),
             joined_to_previous: std::mem::take(joined_to_previous),
         });

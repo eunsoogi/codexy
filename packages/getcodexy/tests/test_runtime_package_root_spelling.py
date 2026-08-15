@@ -29,11 +29,13 @@ class RuntimePackageRootSpellingTests(unittest.TestCase):
                 self.write_archive(archive, {member_name: b"runtime"})
                 work = Path(temporary) / "work"
                 work.mkdir()
-                with mock.patch.object(package, "_safe_extract_tar") as extract, self.assertRaisesRegex(
-                    RuntimeError, "non-canonical|ambiguous"
+                with (
+                    mock.patch.object(package, "_safe_extract_tar") as extract,
+                    self.assertRaisesRegex(RuntimeError, "non-canonical|ambiguous"),
                 ):
                     package.unpack_runtime(
-                        archive=archive, work=work,
+                        archive=archive,
+                        work=work,
                         runtime_name=RUNTIME_NAME,
                     )
                 extract.assert_not_called()
@@ -41,17 +43,22 @@ class RuntimePackageRootSpellingTests(unittest.TestCase):
     def test_mixed_canonical_roots_are_rejected_before_extraction(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / "runtime.tar.gz"
-            self.write_archive(archive, {
-                f"plugins/codexy/runtime/{RUNTIME_NAME}": b"core",
-                f"plugins/codexy-devtools/runtime/{RUNTIME_NAME}": b"devtools",
-            })
+            self.write_archive(
+                archive,
+                {
+                    f"plugins/codexy/runtime/{RUNTIME_NAME}": b"core",
+                    f"plugins/codexy-devtools/runtime/{RUNTIME_NAME}": b"devtools",
+                },
+            )
             work = Path(temporary) / "work"
             work.mkdir()
-            with mock.patch.object(package, "_safe_extract_tar") as extract, self.assertRaisesRegex(
-                RuntimeError, "mixed plugin roots"
+            with (
+                mock.patch.object(package, "_safe_extract_tar") as extract,
+                self.assertRaisesRegex(RuntimeError, "mixed plugin roots"),
             ):
                 package.unpack_runtime(
-                    archive=archive, work=work,
+                    archive=archive,
+                    work=work,
                     runtime_name=RUNTIME_NAME,
                 )
             extract.assert_not_called()

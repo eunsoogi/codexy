@@ -3,13 +3,16 @@
 MUST also follow [Plain-Language User Replies](plain-language-user-replies.md)
 for the shared English and Korean boundary around unexplained workflow terms.
 MUST use this contract when a Codexy skill produces a Korean user-facing update,
-answer, blocker, or completion summary. MUST keep workflow control and proof exact
-in their own evidence surfaces while making the main reply useful to a general user.
+answer, blocker, or completion summary. MUST keep workflow control and proof
+exact in their own evidence surfaces while making the main reply useful to a
+general user.
 
 ## User Summary
 
-- MUST lead with the outcome, problem, or next action in natural Korean word order.
-- The user summary MUST use context-appropriate honorific tone without sounding stiff or ceremonial.
+- MUST lead with the outcome, problem, or next action in natural Korean word
+  order.
+- The user summary MUST use context-appropriate honorific tone without sounding
+  stiff or ceremonial.
 - MUST prefer short sentences, ordinary connective phrases, and context-specific
   Korean over literal translations of English workflow nouns.
 - The user summary MUST NOT expose unnecessary internal workflow vocabulary.
@@ -32,7 +35,8 @@ in their own evidence surfaces while making the main reply useful to a general u
 
 ## Protected Technical Text
 
-- MUST preserve code, commands, paths, identifiers, issue/PR numbers, and product names.
+- MUST preserve code, commands, paths, identifiers, issue/PR numbers, and
+  product names.
 - Protected source semantics include `MUST/MUST NOT` requirements.
 - MUST NOT translate or paraphrase protected technical text when doing so could
   change its meaning or prevent the user from copying it exactly.
@@ -42,8 +46,8 @@ in their own evidence surfaces while making the main reply useful to a general u
 MUST prefer the right-hand wording in a normal user summary. MUST keep the
 left-hand details only in internal or machine-readable evidence when required.
 
-| Avoid | Prefer |
-| --- | --- |
-| 재현 게이트가 통과되지 않아 현재 lane은 BLOCK 상태입니다. | 문제를 아직 재현하지 못해 수정을 시작할 수 없습니다. |
-| packaged Sentinel gate가 PASS했고 handoff가 준비되었습니다. | 최종 검토를 통과해 결과를 전달할 준비가 됐습니다. |
+| Avoid                                                                               | Prefer                                                                                |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 재현 게이트가 통과되지 않아 현재 lane은 BLOCK 상태입니다.                           | 문제를 아직 재현하지 못해 수정을 시작할 수 없습니다.                                  |
+| packaged Sentinel gate가 PASS했고 handoff가 준비되었습니다.                         | 최종 검토를 통과해 결과를 전달할 준비가 됐습니다.                                     |
 | intake receipt 승인 후 lane을 시작했고 terminal receipt를 parent에 handoff했습니다. | 이슈 생성 전 확인을 마치고 작업을 시작했습니다. 종료 기록은 별도 증거에 보관했습니다. |

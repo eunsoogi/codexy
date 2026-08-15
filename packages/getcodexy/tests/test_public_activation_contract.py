@@ -11,7 +11,9 @@ from codexy_runtime_tools.pre_session import run_pre_session
 
 
 class PublicActivationContractTests(unittest.TestCase):
-    def test_github_component_has_a_public_dependency_aware_activation_command(self) -> None:
+    def test_github_component_has_a_public_dependency_aware_activation_command(
+        self,
+    ) -> None:
         repository = Path(__file__).resolve().parents[3]
         metadata = (repository / "packages/getcodexy/pyproject.toml").read_text(
             encoding="utf-8"
@@ -75,7 +77,8 @@ class PublicActivationContractTests(unittest.TestCase):
             repository / ".github/workflows/python-package.yml",
             repository / "packages/getcodexy/src/codexy_runtime_tools/runtime.py",
             repository / "plugins/codexy/check-codexy-agents",
-            repository / "plugins/codexy/skills/orchestration/references/agent-registration.md",
+            repository
+            / "plugins/codexy/skills/orchestration/references/agent-registration.md",
         ):
             text = path.read_text(encoding="utf-8")
             self.assertNotIn("chmod +x install && ./install", text)

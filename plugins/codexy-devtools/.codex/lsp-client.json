@@ -1,347 +1,159 @@
 {
   "lsp": {
     "astro": {
-      "extensions": [
-        ".astro"
-      ],
+      "extensions": [".astro"],
       "priority": 80,
-      "command": [
-        "astro-ls"
-      ]
+      "command": ["astro-ls"]
     },
     "bash-language-server": {
-      "extensions": [
-        ".sh",
-        ".bash",
-        ".zsh",
-        ".ksh"
-      ],
+      "extensions": [".sh", ".bash", ".zsh", ".ksh"],
       "priority": 80,
-      "command": [
-        "bash-language-server",
-        "start"
-      ]
+      "command": ["bash-language-server", "start"]
     },
     "basedpyright": {
-      "extensions": [
-        ".py",
-        ".pyi"
-      ],
+      "extensions": [".py", ".pyi"],
       "priority": 80,
-      "command": [
-        "basedpyright-langserver",
-        "--stdio"
-      ]
+      "command": ["basedpyright-langserver", "--stdio"]
     },
     "clangd": {
-      "extensions": [
-        ".c",
-        ".cc",
-        ".cpp",
-        ".cxx",
-        ".h",
-        ".hh",
-        ".hpp",
-        ".hxx"
-      ],
+      "extensions": [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"],
       "priority": 80,
-      "command": [
-        "clangd"
-      ]
+      "command": ["clangd"]
     },
     "clojure-lsp": {
-      "extensions": [
-        ".clj",
-        ".cljs",
-        ".cljc",
-        ".edn"
-      ],
+      "extensions": [".clj", ".cljs", ".cljc", ".edn"],
       "priority": 80,
-      "command": [
-        "clojure-lsp"
-      ]
+      "command": ["clojure-lsp"]
     },
     "css-language-server": {
-      "extensions": [
-        ".css",
-        ".scss",
-        ".less"
-      ],
+      "extensions": [".css", ".scss", ".less"],
       "priority": 80,
-      "command": [
-        "vscode-css-language-server",
-        "--stdio"
-      ]
+      "command": ["vscode-css-language-server", "--stdio"]
     },
     "docker-language-server": {
-      "extensions": [
-        ".dockerfile",
-        "Dockerfile"
-      ],
+      "extensions": [".dockerfile", "Dockerfile"],
       "priority": 80,
-      "command": [
-        "docker-langserver",
-        "--stdio"
-      ]
+      "command": ["docker-langserver", "--stdio"]
     },
     "emmet-language-server": {
-      "extensions": [
-        ".html",
-        ".htm",
-        ".css",
-        ".scss",
-        ".less",
-        ".jsx",
-        ".tsx",
-        ".vue",
-        ".svelte",
-        ".astro"
-      ],
+      "extensions": [".html", ".htm", ".css", ".scss", ".less", ".jsx", ".tsx", ".vue", ".svelte", ".astro"],
       "priority": 40,
-      "command": [
-        "emmet-language-server",
-        "--stdio"
-      ]
+      "command": ["emmet-language-server", "--stdio"]
     },
     "elixir-ls": {
-      "extensions": [
-        ".ex",
-        ".exs"
-      ],
+      "extensions": [".ex", ".exs"],
       "priority": 80,
-      "command": [
-        "elixir-ls"
-      ]
+      "command": ["elixir-ls"]
     },
     "fsautocomplete": {
-      "extensions": [
-        ".fs",
-        ".fsi",
-        ".fsx"
-      ],
+      "extensions": [".fs", ".fsi", ".fsx"],
       "priority": 80,
-      "command": [
-        "fsautocomplete"
-      ]
+      "command": ["fsautocomplete"]
     },
     "gleam": {
-      "extensions": [
-        ".gleam"
-      ],
+      "extensions": [".gleam"],
       "priority": 80,
-      "command": [
-        "gleam",
-        "lsp"
-      ]
+      "command": ["gleam", "lsp"]
     },
     "gopls": {
-      "extensions": [
-        ".go"
-      ],
+      "extensions": [".go"],
       "priority": 80,
-      "command": [
-        "gopls"
-      ]
+      "command": ["gopls"]
     },
     "graphql-language-service": {
-      "extensions": [
-        ".graphql",
-        ".gql"
-      ],
+      "extensions": [".graphql", ".gql"],
       "priority": 80,
-      "command": [
-        "graphql-lsp",
-        "server",
-        "-m",
-        "stream"
-      ]
+      "command": ["graphql-lsp", "server", "-m", "stream"]
     },
     "haskell-language-server": {
-      "extensions": [
-        ".hs",
-        ".lhs"
-      ],
+      "extensions": [".hs", ".lhs"],
       "priority": 80,
-      "command": [
-        "haskell-language-server-wrapper",
-        "--lsp"
-      ]
+      "command": ["haskell-language-server-wrapper", "--lsp"]
     },
     "html-language-server": {
-      "extensions": [
-        ".html",
-        ".htm"
-      ],
+      "extensions": [".html", ".htm"],
       "priority": 80,
-      "command": [
-        "vscode-html-language-server",
-        "--stdio"
-      ]
+      "command": ["vscode-html-language-server", "--stdio"]
     },
     "jdtls": {
-      "extensions": [
-        ".java"
-      ],
+      "extensions": [".java"],
       "priority": 80,
-      "command": [
-        "jdtls"
-      ]
+      "command": ["jdtls"]
     },
     "json-language-server": {
-      "extensions": [
-        ".json",
-        ".jsonc"
-      ],
+      "extensions": [".json", ".jsonc"],
       "priority": 80,
-      "command": [
-        "vscode-json-language-server",
-        "--stdio"
-      ]
+      "command": ["vscode-json-language-server", "--stdio"]
     },
     "julia-language-server": {
-      "extensions": [
-        ".jl"
-      ],
+      "extensions": [".jl"],
       "priority": 80,
-      "command": [
-        "julia",
-        "--startup-file=no",
-        "--history-file=no",
-        "-e",
-        "using LanguageServer; runserver()"
-      ]
+      "command": ["julia", "--startup-file=no", "--history-file=no", "-e", "using LanguageServer; runserver()"]
     },
     "kotlin-language-server": {
-      "extensions": [
-        ".kt",
-        ".kts"
-      ],
+      "extensions": [".kt", ".kts"],
       "priority": 80,
-      "command": [
-        "kotlin-language-server"
-      ]
+      "command": ["kotlin-language-server"]
     },
     "lua-language-server": {
-      "extensions": [
-        ".lua"
-      ],
+      "extensions": [".lua"],
       "priority": 80,
-      "command": [
-        "lua-language-server"
-      ]
+      "command": ["lua-language-server"]
     },
     "marksman": {
-      "extensions": [
-        ".md",
-        ".markdown"
-      ],
+      "extensions": [".md", ".markdown"],
       "priority": 80,
-      "command": [
-        "marksman",
-        "server"
-      ]
+      "command": ["marksman", "server"]
     },
     "nixd": {
-      "extensions": [
-        ".nix"
-      ],
+      "extensions": [".nix"],
       "priority": 80,
-      "command": [
-        "nixd"
-      ]
+      "command": ["nixd"]
     },
     "ocamllsp": {
-      "extensions": [
-        ".ml",
-        ".mli"
-      ],
+      "extensions": [".ml", ".mli"],
       "priority": 80,
-      "command": [
-        "ocamllsp"
-      ]
+      "command": ["ocamllsp"]
     },
     "omnisharp": {
-      "extensions": [
-        ".cs",
-        ".csx"
-      ],
+      "extensions": [".cs", ".csx"],
       "priority": 80,
-      "command": [
-        "OmniSharp",
-        "--languageserver"
-      ]
+      "command": ["OmniSharp", "--languageserver"]
     },
     "phpactor": {
-      "extensions": [
-        ".php"
-      ],
+      "extensions": [".php"],
       "priority": 80,
-      "command": [
-        "phpactor",
-        "language-server"
-      ]
+      "command": ["phpactor", "language-server"]
     },
     "prisma-language-server": {
-      "extensions": [
-        ".prisma"
-      ],
+      "extensions": [".prisma"],
       "priority": 80,
-      "command": [
-        "prisma-language-server",
-        "--stdio"
-      ]
+      "command": ["prisma-language-server", "--stdio"]
     },
     "rust-analyzer": {
-      "extensions": [
-        ".rs"
-      ],
+      "extensions": [".rs"],
       "priority": 80,
-      "command": [
-        "rust-analyzer"
-      ]
+      "command": ["rust-analyzer"]
     },
     "solargraph": {
-      "extensions": [
-        ".rb",
-        ".rake",
-        ".gemspec",
-        ".ru"
-      ],
+      "extensions": [".rb", ".rake", ".gemspec", ".ru"],
       "priority": 80,
-      "command": [
-        "solargraph",
-        "stdio"
-      ]
+      "command": ["solargraph", "stdio"]
     },
     "sourcekit-lsp": {
-      "extensions": [
-        ".swift"
-      ],
+      "extensions": [".swift"],
       "priority": 80,
-      "command": [
-        "sourcekit-lsp"
-      ]
+      "command": ["sourcekit-lsp"]
     },
     "svelte-language-server": {
-      "extensions": [
-        ".svelte"
-      ],
+      "extensions": [".svelte"],
       "priority": 80,
-      "command": [
-        "svelteserver",
-        "--stdio"
-      ]
+      "command": ["svelteserver", "--stdio"]
     },
     "taplo": {
-      "extensions": [
-        ".toml"
-      ],
+      "extensions": [".toml"],
       "priority": 80,
-      "command": [
-        "taplo",
-        "lsp",
-        "stdio"
-      ]
+      "command": ["taplo", "lsp", "stdio"]
     },
     "tailwindcss-language-server": {
       "extensions": [
@@ -359,88 +171,42 @@
         ".astro"
       ],
       "priority": 30,
-      "command": [
-        "tailwindcss-language-server",
-        "--stdio"
-      ]
+      "command": ["tailwindcss-language-server", "--stdio"]
     },
     "terraform-ls": {
-      "extensions": [
-        ".tf",
-        ".tfvars"
-      ],
+      "extensions": [".tf", ".tfvars"],
       "priority": 80,
-      "command": [
-        "terraform-ls",
-        "serve"
-      ]
+      "command": ["terraform-ls", "serve"]
     },
     "texlab": {
-      "extensions": [
-        ".tex",
-        ".bib"
-      ],
+      "extensions": [".tex", ".bib"],
       "priority": 80,
-      "command": [
-        "texlab"
-      ]
+      "command": ["texlab"]
     },
     "tinymist": {
-      "extensions": [
-        ".typ"
-      ],
+      "extensions": [".typ"],
       "priority": 80,
-      "command": [
-        "tinymist"
-      ]
+      "command": ["tinymist"]
     },
     "typescript": {
-      "extensions": [
-        ".ts",
-        ".tsx",
-        ".js",
-        ".jsx",
-        ".mjs",
-        ".cjs",
-        ".mts",
-        ".cts"
-      ],
+      "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
       "priority": 80,
-      "command": [
-        "typescript-language-server",
-        "--stdio"
-      ]
+      "command": ["typescript-language-server", "--stdio"]
     },
     "vue-language-server": {
-      "extensions": [
-        ".vue"
-      ],
+      "extensions": [".vue"],
       "priority": 80,
-      "command": [
-        "vue-language-server",
-        "--stdio"
-      ]
+      "command": ["vue-language-server", "--stdio"]
     },
     "yaml-ls": {
-      "extensions": [
-        ".yaml",
-        ".yml"
-      ],
+      "extensions": [".yaml", ".yml"],
       "priority": 80,
-      "command": [
-        "yaml-language-server",
-        "--stdio"
-      ]
+      "command": ["yaml-language-server", "--stdio"]
     },
     "zls": {
-      "extensions": [
-        ".zig",
-        ".zon"
-      ],
+      "extensions": [".zig", ".zon"],
       "priority": 80,
-      "command": [
-        "zls"
-      ]
+      "command": ["zls"]
     }
   }
 }

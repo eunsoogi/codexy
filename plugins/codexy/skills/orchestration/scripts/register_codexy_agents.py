@@ -17,11 +17,14 @@ from agent_registration_support import (
     find_conflicts,
     strip_managed_block,
 )
+
 REQUIRED = {"codexy-sentinel"}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         allow_abbrev=False,
-        description="Install Codexy agents in Codex's standalone-agent discovery directory."
+        description="Install Codexy agents in Codex's standalone-agent discovery directory.",
     )
     parser.add_argument("--plugin-root", type=Path, default=default_plugin_root())
     parser.add_argument("--codex-home", type=Path, default=default_codex_home())
@@ -58,9 +61,7 @@ def main() -> int:
                             f"would remove legacy Codexy managed agent block from {config_path}"
                         )
                     return 0
-                removed = store.uninstall(
-                    current, stripped if had_block else None
-                )
+                removed = store.uninstall(current, stripped if had_block else None)
                 print(f"removed {removed} Codexy managed agent(s) from {agents_root}")
                 return 0
             agents = load_agents(plugin_root)
@@ -75,7 +76,9 @@ def main() -> int:
                 )
             store.validate_install(projections)
             if args.dry_run:
-                print(f"would install {len(projections)} Codexy agents in {agents_root}")
+                print(
+                    f"would install {len(projections)} Codexy agents in {agents_root}"
+                )
                 if had_block:
                     print(
                         f"would remove legacy Codexy managed agent block from {config_path}"
@@ -88,15 +91,21 @@ def main() -> int:
     except Exception as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
+
+
 def default_plugin_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
 def default_codex_home() -> Path:
     if os.environ.get("CODEX_HOME"):
         return Path(os.environ["CODEX_HOME"])
     return Path.home() / ".codex"
 
+
 def absolute(path: Path) -> Path:
     return Path(os.path.abspath(path.expanduser()))
+
 
 def build_projections(agents: list[dict[str, object]]) -> dict[str, str]:
     projections = {}
@@ -105,6 +114,7 @@ def build_projections(agents: list[dict[str, object]]) -> dict[str, str]:
         contents = MANAGED + Path(str(agent["_path"])).read_text(encoding="utf-8")
         projections[filename] = contents
     return projections
+
 
 def load_agents(plugin_root: Path) -> list[dict[str, object]]:
     agents_root = plugin_root / "agents"
@@ -122,7 +132,9 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
             or "\\" in filename
             or filename.startswith(".")
         ):
-            raise ValueError(f"{catalog_path} contains invalid agent file entry {filename!r}")
+            raise ValueError(
+                f"{catalog_path} contains invalid agent file entry {filename!r}"
+            )
         resolved_root = agents_root.resolve()
         path = (resolved_root / filename).resolve()
         try:
@@ -141,16 +153,22 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
     names = {str(agent["name"]) for agent in agents}
     missing = REQUIRED - names
     if missing:
-        raise ValueError(f"{agents_root} missing required Codexy agents: {', '.join(sorted(missing))}")
+        raise ValueError(
+            f"{agents_root} missing required Codexy agents: {', '.join(sorted(missing))}"
+        )
     return agents
+
+
 def required_str(agent: dict[str, object], field: str, path: Path) -> str:
     value = agent.get(field)
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{path} must define non-empty {field}")
     return value
 
+
 def load_agent_toml(path: Path) -> dict[str, object]:
     return parse_toml_subset(path.read_text(encoding="utf-8"), path)
+
 
 def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
     values: dict[str, object] = {}
@@ -190,14 +208,19 @@ def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
                     break
                 body.append(raw)
             else:
-                raise ValueError(f"{path}:{lineno} unterminated TOML multiline string for {key}")
+                raise ValueError(
+                    f"{path}:{lineno} unterminated TOML multiline string for {key}"
+                )
             values[key] = "\n".join(body) + ("\n" if body else "")
         elif value.startswith("[") and value.endswith("]"):
             items = (item.strip() for item in value[1:-1].split(","))
-            values[key] = [parse_basic_string(item, path, lineno) for item in items if item]
+            values[key] = [
+                parse_basic_string(item, path, lineno) for item in items if item
+            ]
         else:
             values[key] = parse_basic_string(value.rstrip(","), path, lineno)
     return values
+
 
 def parse_basic_string(value: str, path: Path, lineno: int) -> str:
     try:
@@ -207,6 +230,7 @@ def parse_basic_string(value: str, path: Path, lineno: int) -> str:
     if not isinstance(parsed, str):
         raise ValueError(f"{path}:{lineno} expected TOML string")
     return parsed
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

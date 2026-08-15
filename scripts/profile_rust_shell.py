@@ -106,13 +106,17 @@ def env_tokens(tokens: list[str], index: int) -> list[str]:
         elif option in VALUE_OPTIONS:
             index += 2
         elif option in {"-S", "--split-string"}:
-            return executable_tokens(["env"] + shlex.split(tokens[index + 1]) + tokens[index + 2 :])
+            return executable_tokens(
+                ["env"] + shlex.split(tokens[index + 1]) + tokens[index + 2 :]
+            )
         elif option.startswith("--split-string="):
             return executable_tokens(
                 ["env"] + shlex.split(option.partition("=")[2]) + tokens[index + 1 :]
             )
         elif option.startswith("-S") and len(option) > 2:
-            return executable_tokens(["env"] + shlex.split(option[2:]) + tokens[index + 1 :])
+            return executable_tokens(
+                ["env"] + shlex.split(option[2:]) + tokens[index + 1 :]
+            )
         elif option.startswith(("--chdir=", "--unset=", "--argv0=")):
             index += 1
         elif option.startswith("-") and option != "-":
@@ -145,7 +149,11 @@ def exec_index(tokens: list[str], index: int) -> int:
             index += 2
         elif option.startswith("-a") and len(option) > 2:
             index += 1
-        elif option != "-" and option.startswith("-") and set(option[1:]).issubset({"c", "l"}):
+        elif (
+            option != "-"
+            and option.startswith("-")
+            and set(option[1:]).issubset({"c", "l"})
+        ):
             index += 1
         elif option in {"-c", "-l"}:
             index += 1
@@ -161,7 +169,9 @@ def timeout_index(tokens: list[str], index: int) -> int:
             return index + 1
         if option in TIMEOUT_VALUE_OPTIONS:
             index += 2
-        elif option.startswith(("--kill-after=", "--signal=")) or option.startswith("-"):
+        elif option.startswith(("--kill-after=", "--signal=")) or option.startswith(
+            "-"
+        ):
             index += 1
         else:
             return index + 1

@@ -127,9 +127,7 @@ fn is_child_owned_lane_evidence(line: &str) -> bool {
             && field_value(line, "owner decision").is_some_and(is_child_delegation_owner_decision))
         || matches!(
             parse_lane_ownership_metadata(line),
-            LaneOwnershipMetadata::Valid(
-                OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
-            )
+            LaneOwnershipMetadata::Valid(OwnerSelection::Child | OwnerSelection::CurrentThread)
         )
         || ["owner", "lane owner"].into_iter().any(|field| {
             field_value(line, field).is_some_and(|value| {
@@ -142,9 +140,7 @@ fn requires_child_setup_validation(line: &str) -> bool {
     matches!(
         parse_lane_ownership_metadata(line),
         LaneOwnershipMetadata::Invalid
-            | LaneOwnershipMetadata::Valid(
-                OwnerSelection::ChildOwned | OwnerSelection::CurrentThreadOwned
-            )
+            | LaneOwnershipMetadata::Valid(OwnerSelection::Child | OwnerSelection::CurrentThread)
     ) || is_child_owned_lane_evidence(line)
 }
 
@@ -177,7 +173,7 @@ fn is_parent_owned_lane_evidence(line: &str) -> bool {
     }
     matches!(
         parse_lane_ownership_metadata(line),
-        LaneOwnershipMetadata::Valid(OwnerSelection::ParentOwned)
+        LaneOwnershipMetadata::Valid(OwnerSelection::Parent)
     ) || ["owner", "lane owner"].into_iter().any(|field| {
         field_value(line, field).is_some_and(|value| trimmed_value(value) == "parent-owned")
     })
@@ -190,7 +186,7 @@ fn has_authoritative_non_child_owner(line: &str) -> bool {
 fn has_authoritative_external_owner(line: &str) -> bool {
     matches!(
         parse_lane_ownership_metadata(metadata_key(line)),
-        LaneOwnershipMetadata::Valid(OwnerSelection::ExternalHumanOwned)
+        LaneOwnershipMetadata::Valid(OwnerSelection::ExternalHuman)
     )
 }
 

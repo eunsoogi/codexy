@@ -7,34 +7,23 @@
       "packageRoot": "plugins/codexy",
       "responsibility": "Core orchestration, evidence, shared agent and skill contracts, instruction enforcement, engineering, dreaming, Wiki, and shared validation.",
       "dependsOn": [],
-      "forbiddenDependencies": [
-        "codexy-github",
-        "codexy-devtools"
-      ]
+      "forbiddenDependencies": ["codexy-github", "codexy-devtools"]
     },
     {
       "id": "codexy-github",
       "publicName": "Codexy GitHub",
       "packageRoot": "plugins/codexy-github",
       "responsibility": "GitHub-specific issue, pull request, review, and repository integration built only on the published Codexy core contract.",
-      "dependsOn": [
-        "codexy"
-      ],
-      "forbiddenDependencies": [
-        "codexy-devtools"
-      ]
+      "dependsOn": ["codexy"],
+      "forbiddenDependencies": ["codexy-devtools"]
     },
     {
       "id": "codexy-devtools",
       "publicName": "Codexy Devtools",
       "packageRoot": "plugins/codexy-devtools",
       "responsibility": "Local developer-tool, Codegraph, LSP, editor, CLI, runtime wrapper, and diagnostic integration built only on the published Codexy core contract.",
-      "dependsOn": [
-        "codexy"
-      ],
-      "forbiddenDependencies": [
-        "codexy-github"
-      ]
+      "dependsOn": ["codexy"],
+      "forbiddenDependencies": ["codexy-github"]
     }
   ],
   "repositoryTopology": {
@@ -64,9 +53,7 @@
     {
       "id": "hooks.github",
       "category": "hooks",
-      "sources": [
-        "plugins/codexy-github/hooks"
-      ],
+      "sources": ["plugins/codexy-github/hooks"],
       "target": "codexy-github",
       "disposition": "move"
     },
@@ -98,28 +85,21 @@
     {
       "id": "skills.github",
       "category": "skills",
-      "sources": [
-        "plugins/codexy-github/skills/git-workflow"
-      ],
+      "sources": ["plugins/codexy-github/skills/git-workflow"],
       "target": "codexy-github",
       "disposition": "move"
     },
     {
       "id": "skills.devtools",
       "category": "skills",
-      "sources": [
-        "plugins/codexy-devtools/skills"
-      ],
+      "sources": ["plugins/codexy-devtools/skills"],
       "target": "codexy-devtools",
       "disposition": "retain"
     },
     {
       "id": "skills.repository",
       "category": "skills",
-      "sources": [
-        ".agents/skills/plugin-marketplace-prep",
-        ".agents/skills/release-engineering"
-      ],
+      "sources": [".agents/skills/plugin-marketplace-prep", ".agents/skills/release-engineering"],
       "target": "repository-only",
       "disposition": "move"
     },
@@ -154,64 +134,49 @@
     {
       "id": "agents.devtools",
       "category": "agents",
-      "sources": [
-        "plugins/codexy-devtools/agents/openai.yaml"
-      ],
+      "sources": ["plugins/codexy-devtools/agents/openai.yaml"],
       "target": "codexy-devtools",
       "disposition": "retain"
     },
     {
       "id": "mcp.codegraph",
       "category": "mcp",
-      "sources": [
-        "plugins/codexy-devtools/.mcp.json#codegraph"
-      ],
+      "sources": ["plugins/codexy-devtools/.mcp.json#codegraph"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
     {
       "id": "mcp.lsp",
       "category": "mcp",
-      "sources": [
-        "plugins/codexy-devtools/.mcp.json#lsp"
-      ],
+      "sources": ["plugins/codexy-devtools/.mcp.json#lsp"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
     {
       "id": "mcp.runtimes",
       "category": "mcp",
-      "sources": [
-        "plugins/codexy-devtools/mcp"
-      ],
+      "sources": ["plugins/codexy-devtools/mcp"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
     {
       "id": "lsp.integration",
       "category": "lsp",
-      "sources": [
-        "plugins/codexy-devtools/.codex/lsp-client.json",
-        "plugins/codexy-devtools/lsp"
-      ],
+      "sources": ["plugins/codexy-devtools/.codex/lsp-client.json", "plugins/codexy-devtools/lsp"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
     {
       "id": "runtime.codegraph",
       "category": "mcp",
-      "sources": [
-        "packages/codexy-runtime/src/codegraph"
-      ],
+      "sources": ["packages/codexy-runtime/src/codegraph"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
     {
       "id": "runtime.lsp",
       "category": "lsp",
-      "sources": [
-        "packages/codexy-runtime/src/lsp"
-      ],
+      "sources": ["packages/codexy-runtime/src/lsp"],
       "target": "codexy-devtools",
       "disposition": "move"
     },
@@ -248,39 +213,28 @@
     {
       "id": "assets.repository",
       "category": "assets",
-      "sources": [
-        "assets"
-      ],
+      "sources": ["assets"],
       "target": "repository-only",
       "disposition": "retain"
     },
     {
       "id": "assets.plugin",
       "category": "assets",
-      "sources": [
-        "plugins/codexy/assets"
-      ],
+      "sources": ["plugins/codexy/assets"],
       "target": "codexy",
       "disposition": "retain"
     },
     {
       "id": "repository.governance",
       "category": "validators",
-      "sources": [
-        ".codex",
-        "scripts",
-        "packages/codexy-runtime/src/validation",
-        "packages/codexy-runtime/tests"
-      ],
+      "sources": [".codex", "scripts", "packages/codexy-runtime/src/validation", "packages/codexy-runtime/tests"],
       "target": "repository-only",
       "disposition": "retain"
     },
     {
       "id": "repository.workflows",
       "category": "workflows",
-      "sources": [
-        ".github/workflows"
-      ],
+      "sources": [".github/workflows"],
       "target": "repository-only",
       "disposition": "retain"
     },
@@ -316,28 +270,21 @@
     {
       "id": "runtime.release",
       "category": "packaging",
-      "sources": [
-        "plugins/codexy-devtools/runtime-release.json"
-      ],
+      "sources": ["plugins/codexy-devtools/runtime-release.json"],
       "target": "codexy-devtools",
       "disposition": "retain"
     },
     {
       "id": "public.devtools",
       "category": "public-entrypoints",
-      "sources": [
-        "plugins/codexy-devtools/.codex-plugin/plugin.json"
-      ],
+      "sources": ["plugins/codexy-devtools/.codex-plugin/plugin.json"],
       "target": "codexy-devtools",
       "disposition": "retain"
     },
     {
       "id": "public.repository",
       "category": "public-entrypoints",
-      "sources": [
-        "README.md",
-        "README.ko.md"
-      ],
+      "sources": ["README.md", "README.ko.md"],
       "target": "repository-only",
       "disposition": "retain"
     }

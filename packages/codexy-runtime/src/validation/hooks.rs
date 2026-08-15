@@ -102,10 +102,7 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
         .as_object()
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
     if let Some(matcher) = object.get("matcher") {
-        if !matcher
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-        {
+        if matcher.as_str().is_none_or(|value| value.trim().is_empty()) {
             bail!(
                 "{} {event}.matcher must be a non-empty string when present",
                 display_relative(path)
@@ -177,11 +174,10 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
         })?;
     command::check_command(path, plugin_root, event, command_windows)?;
     check_timeout(path, event, object)?;
-    if object.get("statusMessage").is_some_and(|status| {
-        !status
-            .as_str()
-            .is_some_and(|value| !value.trim().is_empty())
-    }) {
+    if object
+        .get("statusMessage")
+        .is_some_and(|status| status.as_str().is_none_or(|value| value.trim().is_empty()))
+    {
         bail!(
             "{} {event} hook statusMessage must be a non-empty string when present",
             display_relative(path)

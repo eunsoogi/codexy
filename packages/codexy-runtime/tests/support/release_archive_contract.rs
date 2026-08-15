@@ -55,7 +55,7 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str) {
         workflow,
         "runtime workflow coverage",
         &[
-            "scripts/validate-plugin-config --plugin-root plugins/codexy --check\n          rsync -a",
+            "scripts/validate-plugin-config.sh --plugin-root plugins/codexy --check\n          rsync -a",
             "Smoke test native POSIX MCP runtimes",
             "Smoke test native Windows MCP runtimes",
             "Verify clean native Windows plugin MCP install",

@@ -4,17 +4,18 @@ pub(super) fn child_thread_operations(evidence: &str) -> Vec<ThreadOperation> {
         .lines()
         .enumerate()
         .flat_map(|(line_number, line)| {
-            operation_segments(line).filter_map(move |segment| {
-                (is_child_thread_operation_line(segment) && !operation_claim_is_negated(segment))
-                    .then(|| ThreadOperation {
-                        line_number,
-                        segment_number: segment.as_ptr() as usize - line.as_ptr() as usize,
-                        reuses_existing_owner: is_reuse_operation_line(segment),
-                        replaces_existing_owner: normalized_operation_line(segment)
-                            .contains("replacement child thread"),
-                        owner: ThreadOwner::from_line(segment),
-                    })
-            })
+            operation_segments(line)
+                .filter(|&segment| {
+                    is_child_thread_operation_line(segment) && !operation_claim_is_negated(segment)
+                })
+                .map(move |segment| ThreadOperation {
+                    line_number,
+                    segment_number: segment.as_ptr() as usize - line.as_ptr() as usize,
+                    reuses_existing_owner: is_reuse_operation_line(segment),
+                    replaces_existing_owner: normalized_operation_line(segment)
+                        .contains("replacement child thread"),
+                    owner: ThreadOwner::from_line(segment),
+                })
         })
         .collect::<Vec<_>>();
     operations.dedup_by(|right, left| duplicate_operation_record(left, right));
@@ -145,7 +146,7 @@ fn thread_tool_reference_is_negated(line: &str, tool: &str) -> bool {
 fn has_negated_thread_tool_use(line: &str, tool: &str) -> bool {
     format!("{tool} was not used|{tool} wasn't used|{tool} is not used|{tool} not used|did not use {tool}|didn't use {tool}|do not use {tool}|must not use {tool}|not using {tool}|without using {tool}")
         .split('|')
-        .any(|marker| line.contains(&marker))
+        .any(|marker| line.contains(marker))
 }
 fn has_negated_thread_tool_call(line: &str, tool: &str) -> bool {
     [tool.to_owned(), format!("codex_app.{tool}")]

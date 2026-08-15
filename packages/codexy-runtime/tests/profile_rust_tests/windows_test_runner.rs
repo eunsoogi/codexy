@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn cargo_keeps_native_temp_while_configuring_a_windows_test_runner()
 -> Result<(), Box<dyn std::error::Error>> {
-    let profile = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let profile = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import atexit, contextlib, json, pathlib, runpy, shutil, sys, tempfile
 
@@ -82,7 +82,7 @@ finally:
 #[test]
 fn windows_job_drains_test_root_before_outer_cleanup()
 -> Result<(), Box<dyn std::error::Error>> {
-    let profile = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let profile = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import atexit, contextlib, pathlib, runpy, shutil, sys, tempfile, types
 

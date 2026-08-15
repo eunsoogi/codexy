@@ -1,16 +1,16 @@
 {
   "contentEquivalent": true,
   "contentProof": {
-    "sourceManifestSha256": "7f6521385fcf642ec25d3554427bc75b29d0d99ca163969140b0acf12f5a0cdf",
-    "installedManifestSha256": "7f6521385fcf642ec25d3554427bc75b29d0d99ca163969140b0acf12f5a0cdf",
+    "sourceManifestSha256": "7ca495beb1ebf7ac458e3689c40aa4353f5a4d0aefee8166baee134293141a97",
+    "installedManifestSha256": "7ca495beb1ebf7ac458e3689c40aa4353f5a4d0aefee8166baee134293141a97",
     "sourceChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "2f19a72a6f38145f9ac9187c62cb3c9e949ba7af888c58aaebdacbaa2fed9752"
+        "sha256": "8f4ad788757d409212adb8574d7fd0c199bacf6f0c89544d4939e4466f612376"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "e3ec1f2e832f930cc6931bbbba3012bb34642ab777d6bf2226ef8bd925fb15f0"
+        "sha256": "e49939472442ecee4052c1cbde86cfc34624c37adb7c259fa1aa8e87c5327b7b"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
@@ -20,11 +20,11 @@
     "installedChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "2f19a72a6f38145f9ac9187c62cb3c9e949ba7af888c58aaebdacbaa2fed9752"
+        "sha256": "8f4ad788757d409212adb8574d7fd0c199bacf6f0c89544d4939e4466f612376"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-          "sha256": "e3ec1f2e832f930cc6931bbbba3012bb34642ab777d6bf2226ef8bd925fb15f0"
+        "sha256": "e49939472442ecee4052c1cbde86cfc34624c37adb7c259fa1aa8e87c5327b7b"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",

@@ -212,7 +212,7 @@ fn installed_fixture(root: &std::path::Path) -> std::io::Result<std::path::PathB
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {
-    Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents"))
+    Command::new(plugin_root.join("skills/orchestration/scripts/register_codexy_agents.py"))
 }
 
 fn path(path: &std::path::Path) -> Result<&str, Box<dyn std::error::Error>> {

@@ -44,7 +44,7 @@ for key in ("logical_cpus", "available_parallelism"):
 #[test]
 fn mocked_workloads_without_telemetry_preserve_existing_output()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import io, pathlib, runpy, sys
 script = pathlib.Path(sys.argv[1])
@@ -81,7 +81,7 @@ if status != 0 or "windows-telemetry-json" in output or "result\tPASS" not in ou
 #[test]
 fn non_windows_profile_emits_bounded_fixture_rank_telemetry()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import io, pathlib, runpy, sys
 script = pathlib.Path(sys.argv[1])

@@ -16,9 +16,7 @@ emit_input_root = False
 if len(sys.argv) == 6:
     with open(sys.argv[5], encoding="utf-8") as source:
         required_wrappers = {
-            f"plugins/codexy-devtools/{line.strip()}"
-            for line in source
-            if line.strip()
+            f"plugins/codexy-devtools/{line.strip()}" for line in source if line.strip()
         }
 elif len(sys.argv) == 7 and sys.argv[5] == "--input-plugin-root":
     requested_root = tuple(sys.argv[6].split("/"))

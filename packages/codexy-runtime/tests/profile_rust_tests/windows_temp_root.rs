@@ -3,7 +3,7 @@ use std::process::Command;
 #[test]
 fn windows_profile_uses_a_unique_runner_temp_child_and_cleans_after_capture()
 -> Result<(), Box<dyn std::error::Error>> {
-    let script = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let script = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import json, pathlib, runpy, sys, tempfile
 script = pathlib.Path(sys.argv[1]); sys.path.insert(0, str(script.parent)); module = runpy.run_path(script)

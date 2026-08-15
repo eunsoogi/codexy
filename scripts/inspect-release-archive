@@ -73,7 +73,7 @@ PY
   *) echo "invalid runtime-release state: $release_state" >&2; exit 1 ;;
 esac
 fi
-"$script_dir/validate-plugin-config" --plugin-root "$extract_root/plugins/codexy-devtools" --check-runtime-artifacts
+"$script_dir/validate-plugin-config.sh" --plugin-root "$extract_root/plugins/codexy-devtools" --check-runtime-artifacts
 "$script_dir/require-regular-file" "$canonical_admission_suite" "canonical checkout admission suite"
 "$script_dir/require-regular-file" "$admission_suite" "checkout admission suite"
 cmp -s "$canonical_admission_suite" "$admission_suite" || {
@@ -103,7 +103,7 @@ tar -C "$extract_root/plugins/codexy-devtools" --exclude=runtime -cf - . | tar -
 if [ "$release_state" = candidate-proven ]; then
   python3 "$contract_checker" source-projection "$source_check_root"
 fi
-"$script_dir/validate-plugin-config" --plugin-root "$source_check_root" --check
+"$script_dir/validate-plugin-config.sh" --plugin-root "$source_check_root" --check
 fi
 hygiene_pattern='(BEGIN( [A-Z0-9]+)* PRIVATE KEY|(AKIA|ASIA)[0-9A-Z]{16})'
 # A leading slash is an MSYS path-conversion candidate when this reaches native

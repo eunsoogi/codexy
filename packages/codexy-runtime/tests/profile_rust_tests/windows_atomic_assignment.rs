@@ -74,7 +74,7 @@ if events!=['assign','write','control-close','terminate','wait','job-close']: ra
 #[cfg(windows)]
 #[test]
 fn job_owns_immediate_spawn_before_root_returns() -> Result<(), Box<dyn std::error::Error>> {
-    let profile = codexy_runtime::paths::repository_root().join("scripts/profile-rust-tests");
+    let profile = codexy_runtime::paths::repository_root().join("scripts/profile_rust_tests.py");
     let probe = r#"
 import json,pathlib,runpy,shutil,subprocess,sys,tempfile,time,types
 profile=pathlib.Path(sys.argv[1]); sys.path.insert(0,str(profile.parent)); module=runpy.run_path(profile)
@@ -106,9 +106,10 @@ finally:
  if marker.exists(): real.run(('taskkill','/F','/T','/PID',marker.read_text()),stdout=real.DEVNULL,stderr=real.DEVNULL)
  for path in paths: shutil.rmtree(path,ignore_errors=True)
 if not locked: raise SystemExit('predecessor direct Popen did not leave the immediate writer outside the Job')
-module['run_workload'].__globals__['WORKLOAD']=(sys.executable,'-c',source,str(marker))
+runtime_root=profile.parent.parent/'packages'/'codexy-runtime'
+workload=(sys.executable,'-c',source,str(marker))
 marker.unlink()
-result=module['run_workload'](work,1.0)
+result=module['run_workload'](runtime_root,1.0,workload=workload)
 output,_elapsed,status,phases=result; pids=json.loads(phases['windows-job-pids-json']); images=json.loads(phases['windows-job-images-json'])
 if output!='first\r\nμ-tail\r\n' or status!=7 or phases['windows-job-active-zero']!='drained' or phases['cargo-root-status']!='7' or not pids or not all(any(image.get('pid')==pid for image in images) for pid in pids): raise SystemExit(f'result={result!r}')
 shutil.rmtree(work)

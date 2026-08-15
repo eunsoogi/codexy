@@ -22,7 +22,9 @@ def isolated_test_temp(environment: dict[str, str]) -> Path:
     if not root.is_absolute():
         raise OSError(f"{_TEMP_ROOT} must be absolute for the Windows Rust test runner")
     if not root.is_dir():
-        raise OSError(f"{_TEMP_ROOT} must name an existing directory for the Windows Rust test runner")
+        raise OSError(
+            f"{_TEMP_ROOT} must name an existing directory for the Windows Rust test runner"
+        )
     child = Path(tempfile.mkdtemp(prefix=f"codexy-test-{os.getpid()}-", dir=root))
     environment["TEMP"] = str(child)
     environment["TMP"] = str(child)

@@ -5,7 +5,13 @@
   "profiles": {
     "light": {
       "includes": ["read-only", "documentation", "tiny fixes", "ordinary single-owner mutations"],
-      "doesNotRequire": ["formal classification table", "goal/plan receipts", "multi-agent decisions", "specialist skip rationales", "unavailable-tool explanations"],
+      "doesNotRequire": [
+        "formal classification table",
+        "goal/plan receipts",
+        "multi-agent decisions",
+        "specialist skip rationales",
+        "unavailable-tool explanations"
+      ],
       "requiresFormalEvidence": false
     },
     "standard": {

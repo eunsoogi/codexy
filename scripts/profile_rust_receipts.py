@@ -1,4 +1,5 @@
 """Atomic shard receipt serialization and deterministic inventory digests."""
+
 from __future__ import annotations
 
 import hashlib

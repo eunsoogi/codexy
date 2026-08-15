@@ -1,4 +1,5 @@
 """Indentation-aware, fail-closed Rust workflow job and step contexts."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -20,6 +21,7 @@ def job_context(
     section = ""
     step: dict[str, object] | None = None
     step_section = ""
+    matrix_sequence: list[str] | None = None
     for line in lines:
         if not line.strip() or line.lstrip().startswith("#"):
             continue
@@ -29,7 +31,15 @@ def job_context(
         if indent == 4 and entry is not None:
             key, value = entry
             section, step, step_section = (key if value == "" else ""), None, ""
-            put(job, key, [] if key == "steps" and value == "" else {} if value == "" else scalar(value))
+            put(
+                job,
+                key,
+                []
+                if key == "steps" and value == ""
+                else {}
+                if value == ""
+                else scalar(value),
+            )
             continue
         if section == "steps" and dash:
             step = {}
@@ -65,9 +75,21 @@ def job_context(
         if section == "matrix" and indent == 8 and entry is not None:
             matrix = job.get("strategy", {}).get("matrix")  # type: ignore[union-attr]
             if isinstance(matrix, dict):
-                put(matrix, entry[0], scalar(entry[1]))
+                if entry[1] == "[":
+                    matrix_sequence = []
+                    put(matrix, entry[0], matrix_sequence)
+                else:
+                    put(matrix, entry[0], scalar(entry[1]))
             else:
                 job["__invalid__"] = True
             continue
+        if section == "matrix" and matrix_sequence is not None:
+            value = line.strip()
+            if indent == 10 and value.endswith(","):
+                matrix_sequence.append(scalar(value.removesuffix(",")))
+                continue
+            if indent == 8 and value == "]":
+                matrix_sequence = None
+                continue
         job["__invalid__"] = True
     return job

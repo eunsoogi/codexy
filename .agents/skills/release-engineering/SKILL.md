@@ -46,20 +46,19 @@ aligned before publishing or tagging.
    - codegraph MCP registration checks when the release advertises code
      exploration or thread/agent repository discovery,
    - for Codexy plugin releases specifically,
-     `scripts/validate-plugin-config --check` when the validator
-     exists,
-   - child-owned PR review feedback routed to the owning child thread with
-     fresh verification before the parent thread merges,
+     `scripts/validate-plugin-config.sh --check` when the validator exists,
+   - child-owned PR review feedback routed to the owning child thread with fresh
+     verification before the parent thread merges,
    - skill metadata checks,
    - asset existence checks,
    - workflow syntax checks when GitHub Actions changed,
    - release notes or changelog when a user-facing version changes.
 6. Validate artifact or package shape from the release unit, not only source
    files.
-7. MUST inspect artifacts for secrets, local paths, debug files, oversized files,
-   and unintended dependencies.
-8. Publish, tag, or create GitHub releases only when explicitly requested by
-   the active workflow.
+7. MUST inspect artifacts for secrets, local paths, debug files, oversized
+   files, and unintended dependencies.
+8. Publish, tag, or create GitHub releases only when explicitly requested by the
+   active workflow.
 
 ## Required Output
 
@@ -98,8 +97,8 @@ Not publishing because:
 - Version sync MUST include direct file inspection or parser output.
 - Architecture validation MUST include parser output for structured config and
   surface-specific checks for only the plugin surfaces that exist. For Codexy
-  plugin releases, MUST run `scripts/validate-plugin-config --check`
-  when present.
+  plugin releases, MUST run `scripts/validate-plugin-config.sh --check` when
+  present.
 - GitHub Actions changes MUST require syntax or command-level validation where
   possible.
 - Release notes MUST match the actual diff and merged PRs.
