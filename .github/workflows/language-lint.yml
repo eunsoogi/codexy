@@ -103,5 +103,7 @@ jobs:
         run: |
           $files = @(Get-ChildItem -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
           if ($files.Count -gt 0) {
-            Invoke-ScriptAnalyzer -Path $files -Severity ParseError,Error,Warning -EnableExit
+            foreach ($file in $files) {
+              Invoke-ScriptAnalyzer -Path $file -Severity ParseError,Error,Warning -EnableExit
+            }
           }
