@@ -1,3 +1,5 @@
+use std::fs;
+
 use serde_json::{Value, json};
 
 use crate::support::TestResult;
@@ -79,6 +81,28 @@ fn classification_validates_the_base_record_before_strict_escalation() -> TestRe
             !resolve_profile(fixture.root(), request.take())?.status.success(),
             "an invalid classification must fail before strict escalation"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn policy_requires_the_declared_issue_terminal_review_limit() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let policy_path = fixture
+        .root()
+        .join("skills/orchestration/references/review-profiles.json");
+    let policy: Value = serde_json::from_slice(&fs::read(&policy_path)?)?;
+
+    let mut accepted = policy.clone();
+    accepted["issue_terminal_review_limit"] = json!(3);
+    fs::write(&policy_path, serde_json::to_vec(&accepted)?)?;
+    assert!(resolve_profile(fixture.root(), classified("middle", false, None))?.status.success());
+
+    for value in [json!(0), json!(4), json!("3")] {
+        let mut invalid = policy.clone();
+        invalid["issue_terminal_review_limit"] = value;
+        fs::write(&policy_path, serde_json::to_vec(&invalid)?)?;
+        assert!(!resolve_profile(fixture.root(), classified("middle", false, None))?.status.success());
     }
     Ok(())
 }

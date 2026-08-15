@@ -13,6 +13,7 @@ const REQUEST_SCHEMA: &str = "codexy.review-profile-request.v1";
 #[serde(deny_unknown_fields)]
 struct Policy {
     schema: String,
+    issue_terminal_review_limit: u8,
     profiles: BTreeMap<String, Profile>,
 }
 
@@ -125,7 +126,10 @@ fn validate(policy: &Policy) -> Result<()> {
             },
         ),
     ]);
-    if policy.schema != "codexy.review-profiles.v1" || policy.profiles != expected {
+    if policy.schema != "codexy.review-profiles.v1"
+        || policy.issue_terminal_review_limit != 3
+        || policy.profiles != expected
+    {
         bail!(
             "review-profile policy must retain the closed light/standard/strict reviewer contract"
         );
