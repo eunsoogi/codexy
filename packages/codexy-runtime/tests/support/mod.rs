@@ -66,8 +66,9 @@ pub(crate) use fixture_command::{
 };
 pub(crate) use fixture_command_bindings::{
     FixtureArgumentDomain, FixtureScriptBinding, bind_posix_fixture_script_launchers,
-    bind_posix_fixture_shell_launchers, write_posix_fixture_shell_runner,
-    write_posix_fixture_shell_runner_with_scrub, write_single_posix_fixture_shell_runner,
+    bind_posix_fixture_shell_launchers, fixture_github_argv_adapter_path,
+    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
+    write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;

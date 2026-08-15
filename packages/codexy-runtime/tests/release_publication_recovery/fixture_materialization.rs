@@ -41,7 +41,9 @@ pub(crate) fn copy_scripts(root: &Path) -> std::io::Result<()> {
 pub(crate) fn bind_scripts(root: &Path) -> std::io::Result<()> {
     let shell_bindings = [
         ("git", "FIXTURE_GIT", "FIXTURE_GIT_LAUNCHER", FixtureArgumentDomain::Posix),
-        ("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi),
+        ("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi {
+            adapter_launcher_environment: "FIXTURE_GH_ADAPTER_LAUNCHER",
+        }),
     ];
     for (name, children) in [
         (

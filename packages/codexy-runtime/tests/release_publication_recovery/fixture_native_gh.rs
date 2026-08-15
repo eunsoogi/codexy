@@ -33,6 +33,8 @@ def repository():
     repo = os.environ.get('GITHUB_REPOSITORY')
     if repo != 'eunsoogi/codexy':
         fail('logical repository environment')
+    if os.environ.get('CODEXY_FIXTURE_GH_TRANSPORT') != '1':
+        fail('typed argv transport')
     return repo
 
 def route():

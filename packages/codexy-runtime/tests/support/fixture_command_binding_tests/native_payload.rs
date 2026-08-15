@@ -1,19 +1,15 @@
 use super::*;
+use crate::support::fixture_github_argv_adapter_path;
 
 #[test]
 fn launcher_binding_preserves_native_payload_arguments_across_the_posix_shell()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let script = temp.path().join("release-helper");
-    let bridge = temp.path().join("native-bridge");
     let payload = temp.path().join("gh-payload");
     write_posix_fixture_command(
         &script,
         "#!/bin/sh\ngh repos/eunsoogi/codexy /d/workspace/asset\n",
-    )?;
-    write_posix_fixture_command(
-        &bridge,
-        "#!/bin/sh\ntest -z \"${MSYS_NO_PATHCONV:-}\" || exit 75\ntest \"${MSYS2_ARG_CONV_EXCL:-}\" = 'repos/*;eunsoogi/codexy' || exit 76\nexec sh \"$@\"\n",
     )?;
     write_posix_fixture_command(&payload, "#!/bin/sh\nprintf '%s|%s\\n' \"$1\" \"$2\"\n")?;
     bind_posix_fixture_shell_launchers(
@@ -22,12 +18,21 @@ fn launcher_binding_preserves_native_payload_arguments_across_the_posix_shell()
             "gh",
             "CODEXY_FIXTURE_GH",
             "CODEXY_FIXTURE_GH_LAUNCHER",
-            FixtureArgumentDomain::GitHubApi,
+            FixtureArgumentDomain::GitHubApi {
+                adapter_launcher_environment: "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            },
         )],
     )?;
     let output = FixtureCommand::new(&script)
         .env("CODEXY_FIXTURE_GH", &payload)
-        .env_path("CODEXY_FIXTURE_GH_LAUNCHER", &bridge)
+        .env_path(
+            "CODEXY_FIXTURE_GH_LAUNCHER",
+            fixture_script_interpreter_path(&payload)?,
+        )
+        .env_path(
+            "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
+        )
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .output()?;
     assert!(
@@ -55,7 +60,7 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
     )?;
     fs::write(
         &gh,
-        "#!/usr/bin/env python3\nimport os,pathlib,sys\nrepo='eunsoogi/codexy'\nassert os.environ['MSYS2_ARG_CONV_EXCL'] == f'repos/*;{repo}'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args[:2] == ['api', f'repos/{repo}/releases/tags/v9.9.9']\n assert args[2] == '--dir'\n pathlib.Path(args[3]).write_bytes(b'native state\\r\\n')\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
+        "#!/usr/bin/env python3\nimport os,pathlib,sys\nrepo='eunsoogi/codexy'\nassert os.environ['GITHUB_REPOSITORY'] == repo\nassert os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] == '1'\nargs=sys.argv[1:]\nif args[:2] == ['release', 'view']:\n assert args == ['release', 'view', 'v9.9.9', '--repo', repo]\n print('release:' + args[-1])\nelif args[:1] == ['api']:\n assert args[:2] == ['api', f'repos/{repo}/releases/tags/v9.9.9']\n assert args[2] == '--dir'\n pathlib.Path(args[3]).write_bytes(b'native state\\r\\n')\n print('api:' + args[1])\nelse:\n raise AssertionError(args)\n",
     )?;
     crate::support::make_executable(&gh)?;
     bind_posix_fixture_shell_launchers(
@@ -64,7 +69,9 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
             "gh",
             "CODEXY_FIXTURE_GH",
             "CODEXY_FIXTURE_GH_LAUNCHER",
-            FixtureArgumentDomain::GitHubApi,
+            FixtureArgumentDomain::GitHubApi {
+                adapter_launcher_environment: "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            },
         )],
     )?;
     let output = FixtureCommand::new(&script)
@@ -72,6 +79,10 @@ fn launcher_binding_marshals_native_mock_paths_and_logical_repository_values()
         .env_path(
             "CODEXY_FIXTURE_GH_LAUNCHER",
             fixture_script_interpreter_path(&gh)?,
+        )
+        .env_path(
+            "CODEXY_FIXTURE_GH_ADAPTER_LAUNCHER",
+            fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?,
         )
         .env_path("FIXTURE_STATE", &state)
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")

@@ -1,4 +1,8 @@
-use std::{fs, io, path::Path, process::Command};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[derive(Clone, Copy)]
 pub(crate) struct FixtureScriptBinding {
@@ -9,9 +13,66 @@ pub(crate) struct FixtureScriptBinding {
 #[derive(Clone, Copy)]
 pub(crate) enum FixtureArgumentDomain {
     Posix,
-    /// A native GitHub CLI mock: repository/API identifiers stay logical while
-    /// filesystem operands retain Git Bash's normal native conversion.
-    GitHubApi,
+    /// A native GitHub CLI mock with a concrete adapter launcher. The adapter
+    /// carries API identifiers out-of-band and translates only declared file
+    /// operands before invoking the native payload.
+    GitHubApi {
+        adapter_launcher_environment: &'static str,
+    },
+}
+
+const GITHUB_ARGV_ADAPTER: &str = r##"#!/usr/bin/env python3
+import os
+import pathlib
+import subprocess
+import sys
+
+def fail(message):
+    print(f'fixture gh argv transport: {message}', file=sys.stderr)
+    sys.exit(2)
+
+def read_transport(path):
+    lines = pathlib.Path(path).read_text(encoding='utf-8').splitlines()
+    if not lines or not lines[0]:
+        fail('missing logical repository')
+    return lines[0], lines[1:]
+
+def native_path(value):
+    if os.name != 'nt':
+        return value
+    try:
+        return subprocess.check_output(
+            ['cygpath', '-w', '--', value], text=True, stderr=subprocess.PIPE
+        ).rstrip('\r\n')
+    except (OSError, subprocess.CalledProcessError) as error:
+        fail(f'filesystem conversion: {error}')
+
+def native_arguments(args):
+    file_indices = set()
+    if args[:2] == ['release', 'download']:
+        file_indices.update(index + 1 for index, value in enumerate(args) if value == '--dir')
+    elif args[:2] == ['release', 'upload'] and len(args) > 3:
+        file_indices.add(3)
+    elif args[:2] == ['attestation', 'verify'] and len(args) > 2:
+        file_indices.add(2)
+    return [native_path(value) if index in file_indices else value for index, value in enumerate(args)]
+
+def payload_is_posix(path):
+    return pathlib.Path(path).read_bytes().startswith(b'#!/bin/sh')
+
+payload, launcher, transport = sys.argv[1:]
+repository, arguments = read_transport(transport)
+os.environ['GITHUB_REPOSITORY'] = repository
+os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] = '1'
+if not payload_is_posix(payload):
+    arguments = native_arguments(arguments)
+os.execv(launcher, [launcher, payload, *arguments])
+"##;
+
+pub(crate) fn fixture_github_argv_adapter_path(path: &Path) -> PathBuf {
+    path.parent()
+        .expect("fixture script parent")
+        .join(".codexy-fixture-github-argv.py")
 }
 
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
@@ -55,15 +116,24 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
         validate_identifier(command)?;
         validate_identifier(payload_environment)?;
         validate_identifier(launcher_environment)?;
-        let conversion = match domain {
-            FixtureArgumentDomain::Posix => "",
-            FixtureArgumentDomain::GitHubApi => {
-                "MSYS2_ARG_CONV_EXCL=\"repos/*;${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}\" "
+        match domain {
+            FixtureArgumentDomain::Posix => bound.push_str(&format!(
+                "{command}() {{ \"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
+            )),
+            FixtureArgumentDomain::GitHubApi {
+                adapter_launcher_environment,
+            } => {
+                validate_identifier(adapter_launcher_environment)?;
+                let adapter = fixture_github_argv_adapter_path(path);
+                fs::write(&adapter, GITHUB_ARGV_ADAPTER)?;
+                crate::support::make_executable(&adapter)?;
+                let adapter =
+                    crate::support::fixture_path_text(&adapter).map_err(io::Error::other)?;
+                bound.push_str(&format!(
+                    "{command}() {{ fixture_argv_transport=\"{adapter}.args\"; {{ printf '%s\\n' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\"; printf '%s\\n' \"$@\"; }} > \"$fixture_argv_transport\"; \"${adapter_launcher_environment}\" \"{adapter}\" \"${payload_environment}\" \"${launcher_environment}\" \"$fixture_argv_transport\"; return \"$?\"; }}\n"
+                ));
             }
-        };
-        bound.push_str(&format!(
-            "{command}() {{ {conversion}\"${launcher_environment}\" \"${payload_environment}\" \"$@\"; }}\n"
-        ));
+        }
     }
     bound.push_str(body);
     fs::write(path, bound)?;

@@ -150,6 +150,12 @@ impl Fixture {
             .payload_path("FIXTURE_GH_STATE_ROOT", &self.root)
             .path("FIXTURE_GH_LAUNCHER", &self.gh_launcher)
             .path(
+                "FIXTURE_GH_ADAPTER_LAUNCHER",
+                fixture_script_interpreter_path(&crate::support::fixture_github_argv_adapter_path(
+                    &self.root.join("scripts/publish-verified-release"),
+                ))?,
+            )
+            .path(
                 "FIXTURE_POSIX_SHELL",
                 fixture_script_interpreter_path(&self.root.join("scripts/publish-verified-release"))?,
             )

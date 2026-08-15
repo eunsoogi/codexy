@@ -26,6 +26,7 @@ fn attestation_reconciliation_models_paginated_slurp_and_rerun_state()
 repo=eunsoogi/codexy
 header='X-GitHub-Api-Version: 2026-03-10'
 route="repos/$repo/attestations/sha256:8ba8496a2525ae171ffd104d632dede6ef418d9b95962a9d88e2fcdbc8d48d24?per_page=100"
+test "${CODEXY_FIXTURE_GH_TRANSPORT:-}" = 1 || exit 2
 case "$1" in
   api)
     case "$2" in
@@ -44,15 +45,20 @@ case "$1" in
 esac
 "#)?;
     crate::support::make_executable(&gh)?;
-    bind_posix_fixture_shell_launchers(&script, &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi)])?;
+    bind_posix_fixture_shell_launchers(&script, &[("gh", "FIXTURE_GH", "FIXTURE_GH_LAUNCHER", FixtureArgumentDomain::GitHubApi {
+        adapter_launcher_environment: "FIXTURE_GH_ADAPTER_LAUNCHER",
+    })])?;
     let launcher = fixture_script_interpreter_path(&gh)?;
+    let adapter = crate::support::fixture_github_argv_adapter_path(&script);
+    let adapter_launcher = fixture_script_interpreter_path(&adapter)?;
     let environment = temp.path().join("release.env");
     let run = |repository: &str, state: &str| ReleaseFixtureCommand::new(&script)
         .arg_path(&artifacts).args(["ATTEST_ORIGINAL", "release-baseline.json"])
         .current_dir(temp.path()).scalar("GITHUB_REPOSITORY", repository)
         .scalar("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         .path("GITHUB_ENV", &environment).scalar("ATTESTATION_STATE", state)
-        .path("FIXTURE_GH", &gh).path("FIXTURE_GH_LAUNCHER", &launcher).output();
+        .path("FIXTURE_GH", &gh).path("FIXTURE_GH_LAUNCHER", &launcher)
+        .path("FIXTURE_GH_ADAPTER_LAUNCHER", &adapter_launcher).output();
     let absent = run("eunsoogi/codexy", "absent")?;
     ReleaseFixtureCommand::assert_outcome(
         "reconcile-release-attestations absent",

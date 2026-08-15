@@ -115,14 +115,14 @@ fn release_script_fixtures_declare_their_known_windows_shell_children()
     let materializer = fs::read_to_string(
         tests.join("release_publication_recovery/fixture_materialization.rs"),
     )?;
-    let reconciliation = fs::read_to_string(
-        tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    let edit_baseline = fs::read_to_string(
+        tests.join("runtime_workflow_recovery/release_reconciliation/edit_baseline.rs"),
     )?;
     for (fixture, invocation) in [
         (&materializer, "scripts/generate-release-changelog"),
         (&materializer, "scripts/reconcile-release-baseline"),
         (&materializer, "scripts/verify-release-attestation-total"),
-        (&reconciliation, "scripts/verify-release-attestation-total"),
+        (&edit_baseline, "scripts/verify-release-attestation-total"),
     ] {
         assert!(fixture.contains("FixtureScriptBinding"));
         assert!(fixture.contains(invocation), "missing typed fixture invocation: {invocation}");
@@ -135,8 +135,8 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
 -> Result<(), Box<dyn std::error::Error>> {
     let tests = codexy_runtime::paths::runtime_package_root().join("tests");
     let recovery = fs::read_to_string(tests.join("release_publication_recovery/fixture.rs"))?;
-    let reconciliation = fs::read_to_string(
-        tests.join("runtime_workflow_recovery/release_reconciliation.rs"),
+    let edit_baseline = fs::read_to_string(
+        tests.join("runtime_workflow_recovery/release_reconciliation/edit_baseline.rs"),
     )?;
     let materialization = fs::read_to_string(
         tests.join("release_publication_recovery/fixture_materialization.rs"),
@@ -145,8 +145,9 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
     let attestation = fs::read_to_string(
         tests.join("runtime_workflow_recovery/release_attestation_reconciliation.rs"),
     )?;
+    let bindings = fs::read_to_string(tests.join("support/fixture_command_bindings.rs"))?;
     let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
-    for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&reconciliation, "GITHUB_EVENT_PATH")] {
+    for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&edit_baseline, "GITHUB_EVENT_PATH")] {
         assert!(
             fixture.contains(&format!(".path(\"{input}\"")),
             "POSIX shell input must use its projected path: {input}"
@@ -156,11 +157,11 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
         assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
     }
     for input in ["FIXTURE_DIR", "FIXTURE_GH"] {
-        assert!(reconciliation.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
+        assert!(edit_baseline.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
     }
     for (fixture, name) in [
         (&materialization, "publisher"),
-        (&reconciliation, "edit verifier"),
+        (&edit_baseline, "edit verifier"),
         (&settings, "settings verifier"),
         (&attestation, "attestation reconciler"),
     ] {
@@ -168,7 +169,13 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
             fixture.contains("FixtureArgumentDomain::GitHubApi"),
             "the {name} mock must preserve logical GitHub API arguments"
         );
+        assert!(
+            fixture.contains("adapter_launcher_environment"),
+            "the {name} mock must declare the native GitHub argv adapter"
+        );
     }
+    assert!(bindings.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
+    assert!(!bindings.contains("MSYS2_ARG_CONV_EXCL"), "GitHub fixture arguments must not rely on environment pattern suppression");
     assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
 }
