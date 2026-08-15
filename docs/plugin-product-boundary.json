@@ -60,7 +60,11 @@
     {
       "id": "hooks.policy-core",
       "category": "hooks",
-      "sources": ["plugins/codexy/hooks/codexy_policy/__init__.py", "plugins/codexy/hooks/codexy_policy/envelope.py", "plugins/codexy/hooks/codexy_policy/thread_delivery.py"],
+      "sources": [
+        "plugins/codexy/hooks/codexy_policy/__init__.py",
+        "plugins/codexy/hooks/codexy_policy/envelope.py",
+        "plugins/codexy/hooks/codexy_policy/thread_delivery.py"
+      ],
       "target": "codexy",
       "disposition": "retain"
     },
@@ -254,7 +258,12 @@
     {
       "id": "public.core",
       "category": "public-entrypoints",
-      "sources": ["plugins/codexy/.codex-plugin/plugin.json", "plugins/codexy/agents/openai.yaml", "plugins/codexy/bootstrap-codexy-agents", "plugins/codexy/check-codexy-agents"],
+      "sources": [
+        "plugins/codexy/.codex-plugin/plugin.json",
+        "plugins/codexy/agents/openai.yaml",
+        "plugins/codexy/bootstrap-codexy-agents",
+        "plugins/codexy/check-codexy-agents"
+      ],
       "target": "codexy",
       "disposition": "retain"
     },

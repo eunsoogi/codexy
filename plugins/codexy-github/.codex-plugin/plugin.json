@@ -22,7 +22,10 @@
     "websiteURL": "https://github.com/eunsoogi/codexy",
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
-    "defaultPrompt": ["Use $git-workflow with the public $orchestration contract for GitHub work.", "Keep issue, PR, review, and merge evidence current before requesting a merge."],
+    "defaultPrompt": [
+      "Use $git-workflow with the public $orchestration contract for GitHub work.",
+      "Keep issue, PR, review, and merge evidence current before requesting a merge."
+    ],
     "brandColor": "#2F6F5E",
     "screenshots": []
   }

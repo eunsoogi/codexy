@@ -376,7 +376,10 @@
         "kind": "maintainer-authorized packaged Sentinel",
         "reviewer_task": "/root/sentinel_pr595_authorized_review",
         "verdict": "BLOCK",
-        "findings": ["producer/consumer strict JSON and bounded SemVer divergence", "stale assertion-only current-head proof"]
+        "findings": [
+          "producer/consumer strict JSON and bounded SemVer divergence",
+          "stale assertion-only current-head proof"
+        ]
       },
       {
         "id": "pr595-authorized-delta-ad304194",

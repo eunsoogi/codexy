@@ -20,11 +20,11 @@
     "installedChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "2f19a72a6f38145f9ac9187c62cb3c9e949ba7af888c58aaebdacbaa2fed9752"
+        "sha256": "2f19a72a6f38145f9ac9187c62cb3c9e949ba7af888c58aaebdacbaa2fed9752"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-          "sha256": "e3ec1f2e832f930cc6931bbbba3012bb34642ab777d6bf2226ef8bd925fb15f0"
+        "sha256": "e3ec1f2e832f930cc6931bbbba3012bb34642ab777d6bf2226ef8bd925fb15f0"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",

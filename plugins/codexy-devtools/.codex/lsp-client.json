@@ -156,7 +156,20 @@
       "command": ["taplo", "lsp", "stdio"]
     },
     "tailwindcss-language-server": {
-      "extensions": [".html", ".htm", ".css", ".scss", ".less", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".astro"],
+      "extensions": [
+        ".html",
+        ".htm",
+        ".css",
+        ".scss",
+        ".less",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".vue",
+        ".svelte",
+        ".astro"
+      ],
       "priority": 30,
       "command": ["tailwindcss-language-server", "--stdio"]
     },

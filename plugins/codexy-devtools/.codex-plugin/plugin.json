@@ -20,7 +20,9 @@
     "websiteURL": "https://github.com/eunsoogi/codexy",
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
-    "defaultPrompt": ["Use $developer-tools for optional local Codegraph and LSP work when Codexy Devtools is installed."],
+    "defaultPrompt": [
+      "Use $developer-tools for optional local Codegraph and LSP work when Codexy Devtools is installed."
+    ],
     "brandColor": "#2F6F5E",
     "screenshots": []
   }
