@@ -24,6 +24,24 @@ expected = "suite_all::support::interleaved"
 if tests.get(expected) != 1 or outcomes.get("ok") != 1 or targets != {"suite_all"}:
     raise SystemExit(f"tests={tests!r} targets={targets!r} outcomes={outcomes!r}")
 
+transport_spliced = "\n".join((
+    "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-a)",
+    "test system::mcp_server_names::legacy_contract ... okTo D:\\a\\_temp\\remote.git",
+    " * [new branch] main -> main",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+))
+tests, targets, outcomes = module.observed_test_records(transport_spliced)
+expected = "suite_system::system::mcp_server_names::legacy_contract"
+if tests.get(expected) != 1 or outcomes.get("ok") != 1 or targets != {"suite_system"}:
+    raise SystemExit(f"transport splice: tests={tests!r} targets={targets!r} outcomes={outcomes!r}")
+
+tests, _, outcomes = module.observed_test_records("\n".join((
+    "     Running tests/suites/system_suite.rs (target/debug/deps/suite_system-b)",
+    "test system::mcp_server_names::legacy_contract ... okay",
+)))
+if tests or outcomes:
+    raise SystemExit(f"non-status prefix: tests={tests!r} outcomes={outcomes!r}")
+
 def assert_no_inference(label, lines):
     tests, _, outcomes = module.observed_test_records("\n".join(lines))
     if tests or outcomes:

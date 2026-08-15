@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 
 LIST_PATTERN = re.compile(r"^(?P<name>.+): (?:test|benchmark)$")
-RUN_PATTERN = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
+RUN_PATTERN = re.compile(
+    r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)(?=$|[A-Z])"
+)
 RUN_START_PATTERN = re.compile(r"^test (?P<name>.+?) \.\.\. .+$")
 RUNNING_NOTICE_PATTERN = re.compile(
     r"^test (?P<name>.+) has been running for over 60 seconds$"
