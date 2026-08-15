@@ -1,8 +1,6 @@
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, io, path::Path, process::Command};
+
+use super::fixture_github_argv_adapter::{GITHUB_ARGV_ADAPTER, fixture_github_argv_adapter_path};
 
 #[derive(Clone, Copy)]
 pub(crate) struct FixtureScriptBinding {
@@ -14,65 +12,12 @@ pub(crate) struct FixtureScriptBinding {
 pub(crate) enum FixtureArgumentDomain {
     Posix,
     /// A native GitHub CLI mock with a concrete adapter launcher. The adapter
-    /// carries API identifiers out-of-band and translates only declared file
-    /// operands before invoking the native payload.
+    /// carries API identifiers and argv in a NUL-framed, per-invocation pipe,
+    /// then translates only declared file operands before invoking the native
+    /// payload. The pipe is both lossless and uniquely owned by its invocation.
     GitHubApi {
         adapter_launcher_environment: &'static str,
     },
-}
-
-const GITHUB_ARGV_ADAPTER: &str = r##"#!/usr/bin/env python3
-import os
-import pathlib
-import subprocess
-import sys
-
-def fail(message):
-    print(f'fixture gh argv transport: {message}', file=sys.stderr)
-    sys.exit(2)
-
-def read_transport(path):
-    lines = pathlib.Path(path).read_text(encoding='utf-8').splitlines()
-    if len(lines) < 3 or not all(lines[:3]):
-        fail('missing typed launch transport')
-    return lines[0], lines[1], lines[2], lines[3:]
-
-def native_path(value):
-    if os.name != 'nt' and os.environ.get('CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS') != '1':
-        return value
-    try:
-        return subprocess.check_output(
-            ['cygpath', '-w', '--', value], text=True, stderr=subprocess.PIPE
-        ).rstrip('\r\n')
-    except (OSError, subprocess.CalledProcessError) as error:
-        fail(f'filesystem conversion: {error}')
-
-def native_arguments(args):
-    file_indices = set()
-    if args[:2] == ['release', 'download']:
-        file_indices.update(index + 1 for index, value in enumerate(args) if value == '--dir')
-    elif args[:2] == ['release', 'upload'] and len(args) > 3:
-        file_indices.add(3)
-    elif args[:2] == ['attestation', 'verify'] and len(args) > 2:
-        file_indices.add(2)
-    return [native_path(value) if index in file_indices else value for index, value in enumerate(args)]
-
-def payload_is_posix(path):
-    return pathlib.Path(path).read_bytes().startswith(b'#!/bin/sh')
-
-transport = sys.argv[1]
-repository, payload, launcher, arguments = read_transport(transport)
-os.environ['GITHUB_REPOSITORY'] = repository
-os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] = '1'
-if not payload_is_posix(payload):
-    arguments = native_arguments(arguments)
-os.execv(launcher, [launcher, payload, *arguments])
-"##;
-
-pub(crate) fn fixture_github_argv_adapter_path(path: &Path) -> PathBuf {
-    path.parent()
-        .expect("fixture script parent")
-        .join(".codexy-fixture-github-argv.py")
 }
 
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
@@ -130,7 +75,7 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
                 let adapter =
                     crate::support::fixture_path_text(&adapter).map_err(io::Error::other)?;
                 bound.push_str(&format!(
-                    "{command}() {{ fixture_argv_transport=\"{adapter}.args\"; {{ printf '%s\\n' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\"; printf '%s\\n' \"${{{payload_environment}:?fixture payload is required}}\"; printf '%s\\n' \"${{{launcher_environment}:?fixture launcher is required}}\"; printf '%s\\n' \"$@\"; }} > \"$fixture_argv_transport\"; \"${adapter_launcher_environment}\" \"{adapter}\" \"$fixture_argv_transport\"; return \"$?\"; }}\n"
+                    "{command}() {{ {{ printf '%s\\0' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\" \"${{{payload_environment}:?fixture payload is required}}\" \"${{{launcher_environment}:?fixture launcher is required}}\" \"$@\"; }} | \"${adapter_launcher_environment}\" \"{adapter}\"; return \"$?\"; }}\n"
                 ));
             }
         }

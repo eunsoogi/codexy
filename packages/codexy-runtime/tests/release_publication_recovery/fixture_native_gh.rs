@@ -96,6 +96,12 @@ if args[:2] == ['release', 'view']:
     print(json.dumps(graph))
     sys.exit()
 if args[:2] == ['release', 'create']:
+    expected = [
+        'release', 'create', tag, '--verify-tag', '--draft', '--target', commit,
+        '--title', tag, '--notes', '## Codexy v9.9.9\n\nChanges:\n- Fixture change',
+    ]
+    if args != expected:
+        fail('lossless release create notes')
     exists.write_text('yes')
     draft.write_text('true')
     log.write_text(log.read_text() + 'create\n' if log.exists() else 'create\n')

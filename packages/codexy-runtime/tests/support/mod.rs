@@ -11,6 +11,7 @@ mod fixture_command;
 mod fixture_command_bindings;
 mod fixture_command_mock;
 mod fixture_command_windows;
+mod fixture_github_argv_adapter;
 pub(crate) mod fixture_hook_path;
 pub(crate) mod fixture_hook_path_windows;
 pub(crate) mod fixture_path;
@@ -66,11 +67,11 @@ pub(crate) use fixture_command::{
 };
 pub(crate) use fixture_command_bindings::{
     FixtureArgumentDomain, FixtureScriptBinding, bind_posix_fixture_script_launchers,
-    bind_posix_fixture_shell_launchers, fixture_github_argv_adapter_path,
-    write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
-    write_single_posix_fixture_shell_runner,
+    bind_posix_fixture_shell_launchers, write_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner_with_scrub, write_single_posix_fixture_shell_runner,
 };
 pub(crate) use fixture_command_mock::write_posix_fixture_command;
+pub(crate) use fixture_github_argv_adapter::fixture_github_argv_adapter_path;
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};

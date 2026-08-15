@@ -10,6 +10,9 @@ use crate::support::{
 #[path = "fixture_command_binding_tests/native_payload.rs"]
 mod native_payload;
 
+#[path = "fixture_command_binding_tests/native_transport.rs"]
+mod native_transport;
+
 #[test]
 fn shell_runner_rejects_unsafe_function_identifiers_before_writing()
 -> Result<(), Box<dyn std::error::Error>> {

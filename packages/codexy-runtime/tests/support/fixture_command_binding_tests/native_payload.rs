@@ -76,7 +76,7 @@ fn launcher_binding_moves_spaced_native_launch_paths_through_transport()
     write_posix_fixture_command(
         &adapter_launcher,
         &format!(
-            "#!/bin/sh\ntest \"$#\" = 2 || exit 61\nexec \"{}\" \"$@\"\n",
+            "#!/bin/sh\ntest \"$#\" = 1 || exit 61\nexec \"{}\" \"$@\"\n",
             fixture_script_interpreter_path(&fixture_github_argv_adapter_path(&script))?.display()
         ),
     )?;

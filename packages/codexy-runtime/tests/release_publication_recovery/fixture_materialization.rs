@@ -21,7 +21,7 @@ pub(crate) fn copy_scripts(root: &Path) -> std::io::Result<()> {
     for (name, body) in [
         (
             "generate-release-changelog",
-            "#!/bin/sh\nprintf '%s\\n' notes\n",
+            "#!/bin/sh\nprintf '%s\\n' '## Codexy v9.9.9' '' 'Changes:' '- Fixture change'\n",
         ),
         ("verify-release-attestation-total", "#!/bin/sh\nexit 0\n"),
         (

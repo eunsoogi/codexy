@@ -146,6 +146,7 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
         tests.join("runtime_workflow_recovery/release_attestation_reconciliation.rs"),
     )?;
     let bindings = fs::read_to_string(tests.join("support/fixture_command_bindings.rs"))?;
+    let github_adapter = fs::read_to_string(tests.join("support/fixture_github_argv_adapter.rs"))?;
     let command = fs::read_to_string(tests.join("support/release_fixture_command.rs"))?;
     for (fixture, input) in [(&recovery, "GITHUB_ENV"), (&edit_baseline, "GITHUB_EVENT_PATH")] {
         assert!(
@@ -189,8 +190,11 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
             "the {name} mock must declare the native GitHub argv adapter"
         );
     }
-    assert!(bindings.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
-    assert!(bindings.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
+    assert!(github_adapter.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
+    assert!(github_adapter.contains("split(b'\\0')"), "GitHub argv transport must preserve multiline fields");
+    assert!(github_adapter.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
+    assert!(bindings.contains("printf '%s\\\\0'"), "GitHub argv transport must be per invocation");
+    assert!(!bindings.contains("fixture_argv_transport"), "GitHub argv transport must not reuse a fixture file");
     assert!(!bindings.contains("MSYS2_ARG_CONV_EXCL"), "GitHub fixture arguments must not rely on environment pattern suppression");
     assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())
