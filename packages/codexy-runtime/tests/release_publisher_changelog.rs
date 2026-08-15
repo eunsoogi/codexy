@@ -1,7 +1,5 @@
 use std::{fs, path::Path, process::Command};
 
-use serde_yaml::Value;
-
 use crate::support;
 
 #[test]
@@ -87,7 +85,11 @@ fn final_publisher_keeps_changelog_materialization_readable() -> Result<(), Box<
     support::assert_structured_literals(
         &release,
         "readable final publisher changelog materialization",
-        &["if ! gh release view v1.3.0 --repo \"$GITHUB_REPOSITORY\" --json isDraft,assets > release-state.json 2>/dev/null; then\n  changelog_notes=\"$(scripts/generate-release-changelog v1.3.0)\" || exit 1"],
+        &[
+            "release_exists=false",
+            "if gh release view \"$RELEASE_TAG\" --repo \"$GITHUB_REPOSITORY\" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then",
+            "if test \"$release_exists\" = false; then\n  changelog_notes=\"$(scripts/generate-release-changelog \"$RELEASE_TAG\")\"",
+        ],
     );
     support::assert_structured_absent_literals(
         &release,
@@ -98,19 +100,9 @@ fn final_publisher_keeps_changelog_materialization_readable() -> Result<(), Box<
 }
 
 fn release_step() -> Result<String, Box<dyn std::error::Error>> {
-    let workflow =
-        codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");
-    let publisher: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
-    publisher["jobs"]["publish-v1-3-0"]["steps"]
-        .as_sequence()
-        .and_then(|steps| {
-            steps
-                .iter()
-                .find(|step| step["name"] == "Create and verify the only public version release")
-        })
-        .and_then(|step| step["run"].as_str())
-        .map(str::to_owned)
-        .ok_or_else(|| "final release step".into())
+    Ok(fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
+    )?)
 }
 
 fn run_git(cwd: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {

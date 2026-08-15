@@ -12,6 +12,8 @@ import tempfile
 from pathlib import Path
 from typing import NoReturn
 
+from version_pr_tracks import parse_tracks_issue_number
+
 OID_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
@@ -84,21 +86,38 @@ def build_state(args: argparse.Namespace) -> dict[str, object]:
     if not isinstance(issue_number, int) or isinstance(issue_number, bool) or issue_number < 1:
         fail("governing issue number must be a positive integer")
     references = pr.get("closingIssuesReferences")
-    if not isinstance(references, list) or len(references) != 1:
-        fail("version pull request must have exactly one closing issue reference")
-    reference = require_object(references[0], "closing issue reference")
-    if reference.get("number") != issue_number:
-        fail("closing issue reference does not match the governing issue")
-    enriched_reference = dict(reference)
-    enriched_reference["labels"] = issue_labels
+    if args.issue_link_mode == "nonclosing":
+        if not isinstance(references, list) or references:
+            fail("provisional release pull request must not close an issue")
+        body = pr.get("body")
+        if not isinstance(body, str):
+            fail("provisional release pull request requires a body")
+        try:
+            observed_issue_number = parse_tracks_issue_number(body)
+        except ValueError as error:
+            fail(str(error))
+        if observed_issue_number != issue_number:
+            fail("provisional release pull request Tracks issue does not match the governing issue")
+        enriched_reference = {"number": issue_number, "labels": issue_labels}
+    else:
+        if not isinstance(references, list) or len(references) != 1:
+            fail("version pull request must have exactly one closing issue reference")
+        reference = require_object(references[0], "closing issue reference")
+        if reference.get("number") != issue_number:
+            fail("closing issue reference does not match the governing issue")
+        enriched_reference = dict(reference)
+        enriched_reference["labels"] = issue_labels
 
     state = dict(pr)
+    if args.issue_link_mode == "closing":
+        state["closingIssuesReferences"] = [enriched_reference]
     state.update(
         {
             "repository": args.repository,
             "repositoryLabels": repository_labels,
             "reviewThreads": review_threads,
-            "closingIssuesReferences": [enriched_reference],
+            "governingIssue": enriched_reference,
+            "issueLinkMode": args.issue_link_mode,
         }
     )
     return state
@@ -129,6 +148,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repository", required=True)
     parser.add_argument("--expected-head-ref", required=True)
     parser.add_argument("--expected-head-oid", required=True)
+    parser.add_argument("--issue-link-mode", choices=("closing", "nonclosing"), default="closing")
     parser.add_argument("--output", required=True, type=Path)
     return parser.parse_args()
 

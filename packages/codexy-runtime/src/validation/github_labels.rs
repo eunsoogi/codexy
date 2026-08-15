@@ -66,6 +66,19 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
                     .into(),
             ),
         }
+    } else if pr_state.get("issueLinkMode").and_then(Value::as_str) == Some("nonclosing") {
+        let governing_issue = issue_nodes(pr_state.get("governingIssue"));
+        let expected = tracks_issue_number(pr_state.get("body").and_then(Value::as_str));
+        if governing_issue.len() != 1 || expected.is_none() {
+            errors.push(
+                "GitHub label evidence missing nonclosing governingIssue with issue labels".into(),
+            );
+        } else if governing_issue[0].get("number").and_then(Value::as_u64) != expected {
+            errors
+                .push("GitHub label evidence governingIssue does not match Tracks linkage".into());
+        } else {
+            errors.extend(issue_label_errors(governing_issue));
+        }
     } else {
         let closing_issues = issue_nodes(pr_state.get("closingIssuesReferences"));
         if closing_issues.is_empty() {
@@ -77,6 +90,15 @@ pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<Str
         }
     }
     errors
+}
+
+fn tracks_issue_number(body: Option<&str>) -> Option<u64> {
+    let line = body?.lines().rev().find(|line| !line.trim().is_empty())?;
+    let digits = line.strip_prefix("Tracks #")?;
+    (digits.starts_with(|byte: char| matches!(byte, '1'..='9'))
+        && digits.bytes().all(|byte| byte.is_ascii_digit()))
+    .then(|| digits.parse().ok())
+    .flatten()
 }
 
 fn has_label_consideration_evidence(handoff: &str) -> bool {

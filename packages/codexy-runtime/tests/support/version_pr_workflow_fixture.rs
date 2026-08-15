@@ -137,6 +137,7 @@ fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> 
         "scripts/plan-version-pr-reconciliation",
         "scripts/render-version-pr-metadata",
         "scripts/version_pr_identity.py",
+        "scripts/version_pr_tracks.py",
         "scripts/build-version-pr-state",
         "plugins/codexy-github/hooks/codexy-pr-title-check.sh",
         "plugins/codexy-github/hooks/codexy-pr-label-check.sh",
@@ -210,15 +211,15 @@ fn write_state(state: &Path, scenario: Scenario, existing: serde_json::Value) ->
         ])),
         ("observed-pr.json", serde_json::json!({
             "number":999, "headRefName":"codexy/version-1.3.1", "headRefOid":"0000000000000000000000000000000000000000",
-            "body":format!("Fixes #{observed_issue}\n"), "labels":[{"name":"status/review"}],
-            "closingIssuesReferences":[{"number":observed_issue,"url":format!("https://github.com/eunsoogi/codexy/issues/{observed_issue}"),"repository":{"name":"codexy","owner":{"login":"eunsoogi"}}}]
+            "body":format!("Tracks #{observed_issue}\n"), "labels":[{"name":"status/review"}],
+            "closingIssuesReferences":[]
         })),
         ("review-threads.json", serde_json::json!({"pageInfo":{"hasNextPage":false},"nodes":[]})),
     ];
     for (name, value) in values {
         fs::write(state.join(name), serde_json::to_vec(&value)?)?;
     }
-    fs::write(state.join("current-body.md"), format!("Fixes #{observed_issue}\n"))
+    fs::write(state.join("current-body.md"), format!("Tracks #{observed_issue}\n"))
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {

@@ -1,7 +1,5 @@
 use std::{fs, io, path::Path, path::PathBuf, process::Output};
 
-use serde_yaml::Value;
-
 use crate::support::{
     self, FixtureCommand as Command, write_posix_fixture_command,
     write_posix_fixture_shell_runner_with_scrub,
@@ -70,9 +68,9 @@ fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
     assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
     assert_eq!(fixture.remote_state()?, "wrong", "API did not set wrong remote ref");
     assert_eq!(fixture.release_calls()?, 0, "wrong tag reached release creation");
-    assert_eq!(fixture.command_calls("git")?, 13, "host git fallthrough");
+    assert_eq!(fixture.command_calls("git")?, 7, "host git fallthrough");
     assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
-    assert_eq!(fixture.command_calls("gh")?, 1, "host gh fallthrough");
+    assert_eq!(fixture.command_calls("gh")?, 2, "host gh fallthrough");
     Ok(())
 }
 
@@ -101,9 +99,9 @@ fn assert_inherited_state_discarded(
     assert_eq!(fixture.api_calls()?, 1, "inherited state blocked authenticated API");
     assert_eq!(fixture.release_calls()?, 0, "inherited state reached release");
     assert_eq!(fixture.git_push_calls()?, 0, "inherited state used git push");
-    assert_eq!(fixture.command_calls("git")?, 13, "inherited Git state leaked");
+    assert_eq!(fixture.command_calls("git")?, 7, "inherited Git state leaked");
     assert_eq!(fixture.command_calls("jq")?, 3, "inherited state leaked into jq");
-    assert_eq!(fixture.command_calls("gh")?, 1, "inherited state leaked");
+    assert_eq!(fixture.command_calls("gh")?, 2, "inherited state leaked");
     Ok(())
 }
 
@@ -199,7 +197,8 @@ impl Fixture {
             .env("CODEXY_FIXTURE_GH_TOKEN", "fixture-token")
             .env("STAGING_SOURCE_COMMIT", STAGING)
             .env("ACTIVATION_COMMIT", ACTIVATION)
-            .env("STAGING_RUN_ID", "42");
+            .env("STAGING_RUN_ID", "42")
+            .env("RELEASE_TAG", "v1.3.0");
         Ok(fixture_output(&mut command, &self.runner, &self.root)?)
     }
 
@@ -218,14 +217,10 @@ impl Fixture {
 fn lines(path: &Path) -> Result<usize, Box<dyn std::error::Error>> { Ok(fs::read_to_string(path).unwrap_or_default().lines().count()) }
 
 fn release_step() -> Result<String, Box<dyn std::error::Error>> {
-    let workflow = codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");
-    let publisher: Value = serde_yaml::from_str(&fs::read_to_string(workflow)?)?;
-    let steps = publisher["jobs"]["publish-v1-3-0"]["steps"].as_sequence().ok_or("release steps")?;
-    let source = steps.iter().find(|step| step["name"] == "Verify selected protected-main source")
-        .and_then(|step| step["run"].as_str()).ok_or("protected main source")?;
-    let release = steps.iter().find(|step| step["name"] == "Create and verify the only public version release")
-        .and_then(|step| step["run"].as_str()).ok_or("final release step")?;
-    Ok(format!("{source}\n{}", release.replace("scripts/generate-release-changelog v1.3.0", "printf notes")))
+    Ok(fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
+    )?
+    .replace("scripts/generate-release-changelog \"$RELEASE_TAG\"", "printf notes"))
 }
 
 fn remote_state(state: RemoteTag) -> &'static str {

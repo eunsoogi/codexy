@@ -40,6 +40,7 @@ fn label_name(value: &Value) -> Option<String> {
 pub(super) fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
     match issues {
         Some(Value::Array(items)) => items.iter().collect(),
+        Some(value @ Value::Object(map)) if map.contains_key("number") => vec![value],
         Some(Value::Object(map)) => map
             .get("nodes")
             .and_then(Value::as_array)
