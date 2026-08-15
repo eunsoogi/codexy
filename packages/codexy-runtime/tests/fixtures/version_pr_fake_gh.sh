@@ -71,7 +71,7 @@ case "$command" in
             headRepository:{name:"codexy"},headRepositoryOwner:{login:"eunsoogi"},
             isCrossRepository:false,url:"https://github.com/eunsoogi/codexy/pull/999",
             labels:[{name:"priority/medium"},{name:"status/review"},{name:"type/ci"},{name:"area/release"}],
-            closingIssuesReferences:[{number:301,url:"https://github.com/eunsoogi/codexy/issues/301"}]
+            closingIssuesReferences:[]
           }'
         fi
         ;;

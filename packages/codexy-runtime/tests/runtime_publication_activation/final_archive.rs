@@ -10,7 +10,12 @@ use super::{final_archive_fixture::{FinalArchiveFixture, RUNTIME}, workflow};
 fn final_publisher_materializes_and_exercises_the_public_archive()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
-    let run = publisher.1;
+    let run = format!(
+        "{}\n{}\n{}",
+        publisher.1,
+        fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?,
+        fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/finalize-verified-release"))?,
+    );
     let inputs = publisher.2["on"]["workflow_dispatch"]["inputs"]
         .as_mapping()
         .ok_or("final publisher dispatch inputs")?;
@@ -29,12 +34,13 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "codexy-runtime-package.tar.gz",
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
-            "gh attestation verify public-runtime.tar.gz",
-            "gh release view v1.3.0",
-            "gh release upload v1.3.0",
+            "scripts/verify-release-attestation-set",
+            "scripts/verify-release-attestation-total",
+            "gh release view \"$RELEASE_TAG\"",
+            "gh release upload \"$RELEASE_TAG\"",
             "--draft",
-            "gh release edit v1.3.0 --draft=false",
-            "gh release download v1.3.0",
+            "gh release edit \"$RELEASE_TAG\" --draft=false",
+            "gh release download \"$RELEASE_TAG\"",
             "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy-devtools\"",
         ],

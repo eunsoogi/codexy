@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${GITHUB_ENV:?GITHUB_ENV is required}"
+: "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
+artifact_dir="${1:?artifact directory is required}"
+variable="${2:?GitHub environment variable is required}"
+name="${3:?artifact name is required}"
+artifact="$artifact_dir/$name"
+digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
+response="$(gh api --include -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" 2>/dev/null || true)"
+case "$response" in
+  '{'*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
+  'HTTP/'*' 200 '*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
+  'HTTP/'*' 404 '*) total=0 ;;
+  *) exit 1 ;;
+esac
+case "$total" in *[!0-9]*|'') exit 1 ;; esac
+if test "$total" = 0; then
+  printf '%s=true\n' "$variable" >> "$GITHUB_ENV"
+  exit 0
+fi
+signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
+  --signer-workflow "$signer" --source-ref refs/heads/main \
+  --source-digest "$ACTIVATION_COMMIT" --deny-self-hosted-runners \
+  --format json > "$artifact.preflight-attestations.json"
+allowed="$(jq 'length' "$artifact.preflight-attestations.json")"
+test "$allowed" = "$total"
+if test "$variable" = ATTEST_BASELINE; then
+  jq -e 'length == 1 and (.[0].verificationResult.statement.subject | length == 1)' "$artifact.preflight-attestations.json" >/dev/null
+else
+  jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' "$artifact.preflight-attestations.json" >/dev/null
+fi
+printf '%s=false\n' "$variable" >> "$GITHUB_ENV"

@@ -31,6 +31,7 @@ refresh_version_pr_snapshot() {
     --issue-json "$state_dir/issue.json" \
     --repository-labels-json "$state_dir/repository-labels.json" \
     --publication-phase provisional \
+    --issue-link-mode nonclosing \
     --validate-only
 }
 
@@ -42,7 +43,8 @@ render_version_pr_metadata() {
     --repository-labels-json "$state_dir/repository-labels.json" \
     --changed-files-file "$state_dir/changed-files.txt" \
     --output-dir "$state_dir/metadata" \
-    --publication-phase "$phase"
+    --publication-phase "$phase" \
+    --issue-link-mode nonclosing
 }
 
 publish_version_pr_metadata() {
@@ -101,6 +103,7 @@ action=$(scripts/plan-version-pr-reconciliation \
   --has-changes true --pr-count "$pr_count" --remote-exists "$remote_exists" \
   --pr-matches-origin "$pr_matches_origin" \
   --version "$VERSION" --repository "$GITHUB_REPOSITORY" \
+  --issue-link-mode nonclosing \
   --issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")
 
 expected_head_oid=""
@@ -173,6 +176,7 @@ scripts/build-version-pr-state \
   --repository "$GITHUB_REPOSITORY" \
   --expected-head-ref "$branch" \
   --expected-head-oid "$expected_head_oid" \
+  --issue-link-mode nonclosing \
   --output "$state_dir/pr-state.json"
 plugins/codexy-github/hooks/codexy-pr-label-check.sh \
   --pr-state-file "$state_dir/pr-state.json"
@@ -188,7 +192,6 @@ printf '%s\n\n' "$merge_subject" > "$state_dir/merge-message.txt"
 cat "$state_dir/metadata/body.md" >> "$state_dir/merge-message.txt"
 plugins/codexy-github/hooks/codexy-merge-message-check.sh \
   --expected-pr "$pr_number" \
-  --expected-issue "$ISSUE" \
   --merge-message-file "$state_dir/merge-message.txt"
 publication_phase=$(scripts/plan-version-pr-reconciliation \
   --publication-phase --release-candidate-passed true \
