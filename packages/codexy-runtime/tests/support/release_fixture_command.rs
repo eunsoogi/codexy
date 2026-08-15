@@ -67,7 +67,7 @@ impl ReleaseFixtureCommand {
         key: impl AsRef<OsStr>,
         value: impl AsRef<OsStr>,
     ) -> &mut Self {
-        self.command.env(key, value);
+        self.command.env_native_path(key, value);
         self
     }
 

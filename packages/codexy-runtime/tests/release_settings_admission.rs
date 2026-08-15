@@ -56,8 +56,8 @@ esac
     let run = |repository: &str, immutable: &str, pypi: &str, permission: &str| {
         Command::new(&script)
             .arg("--require-pypi")
-            .env_path("FIXTURE_GH", &gh)
-            .env_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
+            .env_native_path("FIXTURE_GH", &gh)
+            .env_native_path("FIXTURE_GH_LAUNCHER", &gh_launcher)
             .env_path("FIXTURE_GH_ADAPTER_LAUNCHER", &gh_adapter_launcher)
             .env("GITHUB_REPOSITORY", repository)
             .env("RELEASE_POLICY_TOKEN", "test-token")

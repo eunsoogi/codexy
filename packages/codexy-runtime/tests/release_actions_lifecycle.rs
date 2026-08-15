@@ -153,11 +153,26 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
             "POSIX shell input must use its projected path: {input}"
         );
     }
-    for (fixture, input) in [(&recovery, "FIXTURE_GH"), (&recovery, "FIXTURE_GH_STATE_ROOT")] {
+    for (fixture, input) in [
+        (&recovery, "FIXTURE_GH"),
+        (&recovery, "FIXTURE_GH_LAUNCHER"),
+        (&recovery, "FIXTURE_GH_STATE_ROOT"),
+    ] {
         assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
     }
-    for input in ["FIXTURE_DIR", "FIXTURE_GH"] {
+    for input in ["FIXTURE_DIR"] {
         assert!(edit_baseline.contains(&format!(".path(\"{input}\"")), "POSIX payload input must use its projected path: {input}");
+    }
+    for (fixture, input) in [
+        (&edit_baseline, "FIXTURE_GH"),
+        (&edit_baseline, "FIXTURE_GH_LAUNCHER"),
+        (&attestation, "FIXTURE_GH"),
+        (&attestation, "FIXTURE_GH_LAUNCHER"),
+    ] {
+        assert!(fixture.contains(&format!(".payload_path(\"{input}\"")), "native payload input must retain its host path: {input}");
+    }
+    for input in ["FIXTURE_GH", "FIXTURE_GH_LAUNCHER"] {
+        assert!(settings.contains(&format!(".env_native_path(\"{input}\"")), "settings native input must retain its host path: {input}");
     }
     for (fixture, name) in [
         (&materialization, "publisher"),
@@ -175,6 +190,7 @@ fn release_fixture_shell_boundaries_preserve_each_process_path_authority()
         );
     }
     assert!(bindings.contains("native_arguments"), "GitHub fixture arguments must cross a typed adapter");
+    assert!(bindings.contains("missing typed launch transport"), "native payload and launcher must cross the typed transport");
     assert!(!bindings.contains("MSYS2_ARG_CONV_EXCL"), "GitHub fixture arguments must not rely on environment pattern suppression");
     assert!(command.contains("payload_path"), "release fixture commands must distinguish native payload paths");
     Ok(())

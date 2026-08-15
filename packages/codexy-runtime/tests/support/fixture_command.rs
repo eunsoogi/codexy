@@ -146,6 +146,17 @@ impl FixtureCommand {
         self
     }
 
+    /// Preserves a native path for a payload that the POSIX fixture shell only
+    /// serializes into an explicit native launch transport.
+    pub(crate) fn env_native_path<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        self.command.env(key, value);
+        self
+    }
+
     pub(crate) fn env_path_list<K, I, V>(&mut self, key: K, values: I) -> &mut Self
     where
         K: AsRef<OsStr>,

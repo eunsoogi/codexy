@@ -57,7 +57,7 @@ esac
         .current_dir(temp.path()).scalar("GITHUB_REPOSITORY", repository)
         .scalar("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         .path("GITHUB_ENV", &environment).scalar("ATTESTATION_STATE", state)
-        .path("FIXTURE_GH", &gh).path("FIXTURE_GH_LAUNCHER", &launcher)
+        .payload_path("FIXTURE_GH", &gh).payload_path("FIXTURE_GH_LAUNCHER", &launcher)
         .path("FIXTURE_GH_ADAPTER_LAUNCHER", &adapter_launcher).output();
     let absent = run("eunsoogi/codexy", "absent")?;
     ReleaseFixtureCommand::assert_outcome(

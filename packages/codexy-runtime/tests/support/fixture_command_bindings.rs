@@ -33,9 +33,9 @@ def fail(message):
 
 def read_transport(path):
     lines = pathlib.Path(path).read_text(encoding='utf-8').splitlines()
-    if not lines or not lines[0]:
-        fail('missing logical repository')
-    return lines[0], lines[1:]
+    if len(lines) < 3 or not all(lines[:3]):
+        fail('missing typed launch transport')
+    return lines[0], lines[1], lines[2], lines[3:]
 
 def native_path(value):
     if os.name != 'nt' and os.environ.get('CODEXY_FIXTURE_FORCE_NATIVE_WINDOWS') != '1':
@@ -60,8 +60,8 @@ def native_arguments(args):
 def payload_is_posix(path):
     return pathlib.Path(path).read_bytes().startswith(b'#!/bin/sh')
 
-payload, launcher, transport = sys.argv[1:]
-repository, arguments = read_transport(transport)
+transport = sys.argv[1]
+repository, payload, launcher, arguments = read_transport(transport)
 os.environ['GITHUB_REPOSITORY'] = repository
 os.environ['CODEXY_FIXTURE_GH_TRANSPORT'] = '1'
 if not payload_is_posix(payload):
@@ -130,7 +130,7 @@ pub(crate) fn bind_posix_fixture_shell_launchers(
                 let adapter =
                     crate::support::fixture_path_text(&adapter).map_err(io::Error::other)?;
                 bound.push_str(&format!(
-                    "{command}() {{ fixture_argv_transport=\"{adapter}.args\"; {{ printf '%s\\n' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\"; printf '%s\\n' \"$@\"; }} > \"$fixture_argv_transport\"; \"${adapter_launcher_environment}\" \"{adapter}\" \"${payload_environment}\" \"${launcher_environment}\" \"$fixture_argv_transport\"; return \"$?\"; }}\n"
+                    "{command}() {{ fixture_argv_transport=\"{adapter}.args\"; {{ printf '%s\\n' \"${{GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}}\"; printf '%s\\n' \"${{{payload_environment}:?fixture payload is required}}\"; printf '%s\\n' \"${{{launcher_environment}:?fixture launcher is required}}\"; printf '%s\\n' \"$@\"; }} > \"$fixture_argv_transport\"; \"${adapter_launcher_environment}\" \"{adapter}\" \"$fixture_argv_transport\"; return \"$?\"; }}\n"
                 ));
             }
         }
