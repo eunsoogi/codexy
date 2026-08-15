@@ -1,9 +1,0 @@
-.git/
-node_modules/
-packages/codexy-runtime/target/
-packages/codexy-runtime/tests/fixtures/
-packages/codexy-runtime/tests/mcp/fixtures/
-plugins/codexy/assets/
-plugins/codexy-devtools/runtime/
-*.png
-*.jsonl

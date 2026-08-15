@@ -43,13 +43,9 @@ jobs:
       - name: Install Rust tools
         if: matrix.language == 'Rust'
         run: rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
-      - uses: actions/setup-node@v5
+      - name: Install dprint
         if: matrix.language == 'Text'
-        with:
-          node-version: "22"
-      - name: Install Prettier
-        if: matrix.language == 'Text'
-        run: npm ci --ignore-scripts
+        run: cargo install --locked dprint --version "$(jq -r .dprint tooling/lint-tools.json)"
       - name: Install ShellCheck and shfmt
         if: matrix.language == 'Shell'
         shell: bash
@@ -86,9 +82,9 @@ jobs:
         run: |
           git ls-files -z '*.sh' | xargs -0r shellcheck
           git ls-files -z '*.sh' | xargs -0r shfmt -d
-      - name: Lint supported text formats
+      - name: Check JSON, YAML, and Markdown formatting
         if: matrix.language == 'Text'
-        run: npm run lint
+        run: dprint check
       - name: Lint PowerShell
         if: matrix.language == 'PowerShell'
         shell: pwsh

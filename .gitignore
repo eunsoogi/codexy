@@ -7,6 +7,3 @@ __pycache__/
 /target/
 /packages/codexy-runtime/target/
 **/*.rs.bk
-
-# Local lint dependencies
-/node_modules/
