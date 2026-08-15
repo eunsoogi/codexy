@@ -38,10 +38,6 @@ def evaluate(
             if evaluate(nested, context, depth + 1, policy):
                 return True
         lexical_command = syntax.command
-        if syntax.control:
-            return dynamic_control_executable(command) or _control_segments(
-                command, context, depth, policy
-            )
     try:
         lexer = shlex.shlex(
             separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}"
@@ -53,6 +49,10 @@ def evaluate(
     try:
         sequence = parse(tokens)
     except GroupSyntaxError:
+        if syntax.control:
+            return dynamic_control_executable(command) or _control_segments(
+                command, context, depth, policy
+            )
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
     return evaluate_sequence(
         sequence,
@@ -104,10 +104,12 @@ def _segment(
             invocation.script, invocation.context, depth + 1, policy
         ), CommandEffect(context)
     if invocation.opaque:
+        if policy.opaque_invocation(invocation):
+            return True, CommandEffect(None)
         result = policy.command(invocation, context, depth)
         if result is not None:
             return result
-        return policy.opaque_invocation(invocation), CommandEffect(None)
+        return False, CommandEffect(None)
     if invocation.executable is None:
         return False, CommandEffect(invocation.context)
     if invocation.executable == "eval":

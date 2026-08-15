@@ -84,6 +84,38 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn opaque_protected_arguments_and_unreachable_controls_preserve_policy() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        assert_event_case(&root, event, &owned, "gh issue \"$ACTION\"", true, &[])?;
+        assert_event_case(&root, event, &owned, "printf \"$ACTION\"", false, &[])?;
+        assert_event_case(
+            &root,
+            event,
+            &owned,
+            &format!(
+                "if false; then cd {}; fi; gh issue create --title invalid",
+                foreign.display()
+            ),
+            true,
+            &[],
+        )?;
+        assert_event_case(
+            &root,
+            event,
+            &owned,
+            &format!("if false; then cd {}; fi; gh repo view", foreign.display()),
+            false,
+            &[],
+        )?;
+    }
+    Ok(())
+}
+
 fn shell_path(path: &Path) -> TestResult<String> {
     modeled_path_token(path.to_str().ok_or("path")?, &|value| Ok(value.to_owned()))?
         .ok_or_else(|| "absolute shell path".into())
