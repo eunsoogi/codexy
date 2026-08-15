@@ -53,6 +53,10 @@ fn prepare(version: &str) -> Result<Vec<Update>> {
     manifest["version"] = Value::String(version.to_owned());
     marketplace_plugin_mut(&mut marketplace)?["version"] = Value::String(version.to_owned());
     publish["version"] = Value::String(version.to_owned());
+    publish["currentMarketplace"]["ref"] = Value::String(format!("v{version}"));
+    publish["currentMarketplace"]["installCommand"] = Value::String(format!(
+        "codex plugin marketplace add eunsoogi/codexy --ref v{version}"
+    ));
     let mut updates = vec![
         Update::json(manifest_path, &manifest)?,
         Update::json(publish_path, &publish)?,

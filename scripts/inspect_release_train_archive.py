@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Fail closed on a complete, deterministic Codexy marketplace release train."""
+
+import hashlib
+import json
+import re
+import sys
+import tarfile
+import unicodedata
+from pathlib import Path
+
+ARCHIVE, CHECKOUT, TAG = map(Path, sys.argv[1:4])
+target = str(TAG).removeprefix("v")
+component_path = (
+    CHECKOUT / "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
+)
+marketplace_path = CHECKOUT / ".agents/plugins/marketplace.json"
+components = json.loads(component_path.read_text())["components"]
+marketplace = json.loads(marketplace_path.read_text())
+runtime_platforms = list(
+    json.loads((CHECKOUT / ".agents/plugins/runtime-activation.json").read_text())[
+        "candidate"
+    ]["platforms"]
+)
+inventory = [
+    (item["id"], item["plugin"], item["asset"]["packageRoot"]) for item in components
+]
+devices = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{i}" for i in range(1, 10)),
+    *(f"lpt{i}" for i in range(1, 10)),
+}
+if inventory != [
+    ("core", "codexy", "plugins/codexy"),
+    ("github", "codexy-github", "plugins/codexy-github"),
+    ("devtools", "codexy-devtools", "plugins/codexy-devtools"),
+]:
+    raise SystemExit("unsupported release-train component inventory")
+if any(item["version"] != target for item in components):
+    raise SystemExit("component manifest version mismatch")
+if any(item["version"] != target for item in marketplace["plugins"]):
+    raise SystemExit("marketplace version mismatch")
+if [
+    (item["name"], item["source"]["path"].removeprefix("./"))
+    for item in marketplace["plugins"]
+] != [(plugin, root) for _, plugin, root in inventory]:
+    raise SystemExit("marketplace paths mismatch")
+
+
+def reject(message: str) -> None:
+    raise SystemExit(message)
+
+
+entries: dict[str, bytes] = {}
+directories: set[str] = set()
+identities: set[str] = set()
+total_bytes = 0
+with tarfile.open(ARCHIVE, "r:gz") as archive:
+    for count, member in enumerate(archive, start=1):
+        name = member.name
+        if count > 10_000:
+            reject("archive contains too many entries")
+        pieces = tuple(part for part in name.split("/") if part != ".")
+        if (
+            not (member.isfile() or member.isdir())
+            or not pieces
+            or name != "/".join(pieces)
+        ):
+            reject(f"unsafe archive entry: {name}")
+        if "\\" in name or ":" in name or name.startswith("/") or ".." in pieces:
+            reject(f"unsafe archive path: {name}")
+        identity = unicodedata.normalize("NFC", name).casefold()
+        if identity in identities:
+            reject(f"colliding archive path: {name}")
+        identities.add(identity)
+        for piece in pieces:
+            folded = unicodedata.normalize("NFC", piece).casefold()
+            if folded.rstrip(" .") != folded or folded.split(".", 1)[0] in devices:
+                reject(f"unsafe Windows archive path: {name}")
+        if member.isfile():
+            if member.size > 52_428_800:
+                reject(f"oversized archive entry: {name}")
+            total_bytes += member.size
+            if total_bytes > 268_435_456:
+                reject("archive uncompressed size exceeds the configured limit")
+            extracted = archive.extractfile(member)
+            entries[name] = extracted.read() if extracted else b""
+        else:
+            directories.add(name)
+
+if ".agents/plugins/marketplace.json" not in entries:
+    reject("bundle marketplace metadata missing")
+if entries[".agents/plugins/marketplace.json"] != marketplace_path.read_bytes():
+    reject("bundle marketplace metadata differs from activation checkout")
+expected_entries = {".agents/plugins/marketplace.json"}
+expected_directories = {".agents", ".agents/plugins"}
+for _, plugin, package_root in inventory:
+    prefix = f"{package_root}/"
+    expected_directories.add(package_root)
+    manifest_name = f"{prefix}.codex-plugin/plugin.json"
+    if manifest_name not in entries:
+        reject(f"component manifest missing: {plugin}")
+    manifest = json.loads(entries[manifest_name])
+    if manifest.get("name") != plugin or manifest.get("version") != target:
+        reject(f"component manifest mismatch: {plugin}")
+    if (
+        plugin == "codexy-devtools"
+        and manifest.get("supportedPlatforms") != runtime_platforms
+    ):
+        reject("public devtools manifest does not match activated runtime platforms")
+    component = next(item for item in components if item["plugin"] == plugin)
+    for required in component["asset"]["requiredPaths"]:
+        if f"{prefix}{required}" not in entries:
+            reject(f"component required path missing: {plugin}/{required}")
+    source = CHECKOUT / package_root
+    for path in source.rglob("*"):
+        relative = path.relative_to(source).as_posix()
+        if path.is_symlink():
+            reject(f"activation checkout contains a symlink: {package_root}/{relative}")
+        if path.is_dir():
+            expected_directories.add(f"{package_root}/{relative}")
+            continue
+        if not path.is_file():
+            continue
+        if plugin == "codexy-devtools" and relative.startswith("runtime/"):
+            continue
+        if relative in {"runtime-candidate.json", "runtime-release.json"}:
+            if f"{prefix}{relative}" in entries:
+                reject(f"runtime contract leaked: {relative}")
+            continue
+        expected_entries.add(f"{prefix}{relative}")
+        source_bytes = path.read_bytes()
+        if plugin == "codexy-devtools" and relative == ".codex-plugin/plugin.json":
+            source_manifest = json.loads(source_bytes)
+            source_manifest["supportedPlatforms"] = runtime_platforms
+            source_bytes = (json.dumps(source_manifest, indent=2) + "\n").encode()
+        if entries.get(f"{prefix}{relative}") != source_bytes:
+            reject(f"component source mismatch: {plugin}/{relative}")
+    for name, content in entries.items():
+        if name.startswith(prefix) and not name.startswith(f"{prefix}runtime/"):
+            if re.search(
+                rb"BEGIN(?: [A-Z0-9]+)* PRIVATE KEY|(?:AKIA|ASIA)[0-9A-Z]{16}|(?:/Users|/home|/tmp|/private/var)/",
+                content,
+            ):
+                reject(f"unsafe archive content: {name}")
+    if plugin == "codexy-devtools":
+        for platform in runtime_platforms:
+            extension = "exe" if platform == "windows-x86_64" else "bin"
+            for server in ("lsp", "codegraph"):
+                expected_entries.add(
+                    f"{prefix}runtime/codexy-mcp-{server}-{platform}.{extension}"
+                )
+        expected_entries.add(f"{prefix}mcp/codexy-mcp-devtools.exe")
+        expected_directories.add(f"{package_root}/runtime")
+if set(entries) != expected_entries:
+    missing = sorted(expected_entries - set(entries))
+    extra = sorted(set(entries) - expected_entries)
+    reject(
+        f"bundle files differ from the complete release-train inventory: missing={missing} extra={extra}"
+    )
+if directories != expected_directories:
+    reject("bundle directories differ from the complete release-train inventory")
+print(f"release_train_sha256 {hashlib.sha256(ARCHIVE.read_bytes()).hexdigest()}")

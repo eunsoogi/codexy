@@ -16,7 +16,7 @@ gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 source_digest="$(jq -r .targetCommitish release-state.json)"
 ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-total release-baseline/release-baseline.json 1
-for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
   asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' release-state.json)"
   case "$asset_id" in ''|null|*[!0-9]*) exit 1 ;; esac
   gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "release-assets/$name"

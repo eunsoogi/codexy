@@ -35,6 +35,14 @@ fn sync_version_cli_updates_only_the_supplied_isolated_root()
     );
     let diagnostic_versions_after = version_surface_contents(&diagnostic_root)?;
     assert_ne!(diagnostic_versions_after, diagnostic_versions_before);
+    let contract: Value = serde_json::from_slice(&fs::read(
+        diagnostic_root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    assert_eq!(contract["currentMarketplace"]["ref"], "v1.3.1");
+    assert_eq!(
+        contract["currentMarketplace"]["installCommand"],
+        "codex plugin marketplace add eunsoogi/codexy --ref v1.3.1"
+    );
     for (path, contents) in diagnostic_versions_after {
         let text = String::from_utf8_lossy(&contents);
         assert!(

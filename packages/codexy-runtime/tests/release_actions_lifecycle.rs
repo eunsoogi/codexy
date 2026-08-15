@@ -26,7 +26,10 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     assert_eq!(job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Validate target version and protected release settings")).and_then(|step| step["env"]["TARGET_VERSION"].as_str()), Some("${{ inputs.target_version }}"));
     let materialize = named_run(job, "Materialize and exercise activated final artifacts")?;
     assert!(materialize.contains("RELEASE_TAG=\"$RELEASE_TAG\""));
-    assert!(materialize.contains("release: {tag: $releaseTag}"));
+    assert!(materialize.contains("scripts/create_release_train_receipt.py"));
+    let receipt = fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/create_release_train_receipt.py"))?;
+    assert!(receipt.contains("codexy-runtime-release-receipt/v2"));
+    assert!(receipt.contains("codexy-marketplace-bundle.tar.gz"));
     let release = named_run(job, "Create and verify the only public version release")?;
     assert_eq!(release, "scripts/publish-verified-release");
     let release_script = fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;

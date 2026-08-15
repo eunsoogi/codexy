@@ -31,6 +31,8 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main",
             "test \"$ACTIVATION_COMMIT\" = \"$(git rev-parse origin/main)\"",
             "scripts/materialize-runtime-release-archive",
+            "scripts/assemble-release-train-archive.sh",
+            "codexy-marketplace-bundle.tar.gz",
             "codexy-runtime-package.tar.gz",
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",

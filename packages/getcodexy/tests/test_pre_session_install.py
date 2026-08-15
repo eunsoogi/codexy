@@ -46,7 +46,7 @@ class PreSessionInstallTests(unittest.TestCase):
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "main",
+                    "v1.2.2",
                     "--json",
                 ),
                 commands()[0],

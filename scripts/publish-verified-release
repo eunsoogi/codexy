@@ -23,18 +23,18 @@ if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tag
   test "$(jq -r .isPrerelease release-state.json)" = false
   for name in $(jq -r '.assets[].name' release-state.json); do
     case "$name" in
-      codexy-marketplace-plugin.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;;
+      codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;;
       release-baseline.json) ;;
       *) exit 1 ;;
     esac
   done
   if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
-    for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+    for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
       jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
     done
   fi
   if test "$(jq -r .isDraft release-state.json)" = false; then
-    for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
+    for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
       jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
     done
   fi
@@ -79,7 +79,7 @@ verify_release_asset() {
 }
 existing_release="$(mktemp -d)"
 verified_release="$(mktemp -d)"
-release_assets='codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
+release_assets='codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
 for asset in $release_assets; do
   if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
     verify_release_asset "$existing_release"

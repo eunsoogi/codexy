@@ -40,7 +40,8 @@ def run_pre_session(
     invoke = runner or (lambda command: _run(command, home))
     _validate_real_path(home, require_exists=False)
 
-    marketplace_root = official_marketplace_root(executable, invoke)
+    target_version = package_version or distribution_version("getcodexy")
+    marketplace_root = official_marketplace_root(executable, invoke, target_version)
 
     before = _json(
         invoke([str(executable), "plugin", "list", "--json"]),
@@ -54,7 +55,7 @@ def run_pre_session(
         ),
         "marketplace upgrade",
     )
-    marketplace_root = official_marketplace_root(executable, invoke)
+    marketplace_root = official_marketplace_root(executable, invoke, target_version)
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",
@@ -62,7 +63,7 @@ def run_pre_session(
     plugin, version = _official_install(
         _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list"),
         marketplace_root,
-        package_version or distribution_version("getcodexy"),
+        target_version,
     )
     current = synchronize(plugin, home, "check")
     if current.status == "ready":
@@ -76,7 +77,9 @@ def run_pre_session(
     return PreSessionResult(plugin, version, applied.changed)
 
 
-def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
+def official_marketplace_root(
+    executable: Path, invoke: Runner, target_version: str | None = None
+) -> Path:
     market = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "marketplace list",
@@ -91,7 +94,7 @@ def official_marketplace_root(executable: Path, invoke: Runner) -> Path:
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "main",
+                    f"v{target_version or distribution_version('getcodexy')}",
                     "--json",
                 ]
             ),

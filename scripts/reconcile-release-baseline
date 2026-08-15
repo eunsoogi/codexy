@@ -15,7 +15,7 @@ if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.js
   existing_baseline_release="$(mktemp -d)"
   gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern release-baseline.json --dir "$existing_baseline"
   scripts/verify-release-attestation-total "$existing_baseline/release-baseline.json" 1
-  for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+  for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
     gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir "$existing_baseline_release"
   done
   scripts/verify-release-attestation-set "$existing_baseline_release" existing-attestations.json
@@ -39,7 +39,7 @@ test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
 test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
 test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
 for name in $(jq -r '.assets[].name' release-state.json); do
-  case "$name" in codexy-marketplace-plugin.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;; *) exit 1 ;; esac
+  case "$name" in codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;; *) exit 1 ;; esac
 done
 receipt_sha="$(sha256sum "$receipt" | awk '{print $1}')"
 scripts/verify-release-attestation-set dist release-attestations.json

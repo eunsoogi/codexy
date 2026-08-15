@@ -48,7 +48,7 @@ def run_github_pre_session(
     executable = trusted_codex(codex)
     invoke = runner or (lambda command: _run(command, home))
     release = package_version or distribution_version("getcodexy")
-    marketplace_root = official_marketplace_root(executable, invoke)
+    marketplace_root = official_marketplace_root(executable, invoke, release)
     before = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
     for name in ("codexy", "codexy-github"):
         preflight_named_install(before, marketplace_root, name)

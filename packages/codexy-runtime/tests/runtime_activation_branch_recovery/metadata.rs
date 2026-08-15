@@ -33,6 +33,7 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
+        ".agents/plugins/release-publish-contract.json",
         ".agents/plugins/marketplace.json",
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",

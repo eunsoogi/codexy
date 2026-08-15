@@ -73,7 +73,7 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                         "add",
                         "eunsoogi/codexy",
                         "--ref",
-                        "main",
+                        "v1.3.0",
                         "--json",
                     ),
                     (str(codex), "plugin", "marketplace", "list", "--json"),
