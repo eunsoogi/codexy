@@ -167,7 +167,7 @@ fn installed_fixture(root: &Path) -> std::io::Result<PathBuf> {
 
 fn registration_command(plugin_root: &Path, codex_home: &Path) -> Command {
     let mut command =
-        Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents.py"));
+        Command::new(plugin_root.join("skills/orchestration/scripts/register_codexy_agents.py"));
     command
         .env_remove("CODEXY_AGENT_REGISTRATION_FAIL_AFTER")
         .arg("--plugin-root")

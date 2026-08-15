@@ -27,12 +27,12 @@ COMPONENT_FILES = {
         "skills/orchestration/scripts/agent_registration_fs.py": "7fb2a425b1e6fad29c99d7a56b4e8cef47faf3a098577bef2e8a5938931acdf5",
         "skills/orchestration/scripts/agent_registration_lifecycle.py": "814616c78beea769cb81dc5480f86f1176020ce188408d3d757b695a197d0804",
         "skills/orchestration/scripts/agent_registration_support.py": "6866b0f8d18a7910788ab8d5f8772f03d1e8b660dc9accdb5f6cbdd278e23e70",
-        "skills/orchestration/scripts/register-codexy-agents.py": "f5b405a49525f9b66a735050f9ca3d22feb594ae42aeee94f480bb23ca3f4112",
+        "skills/orchestration/scripts/register_codexy_agents.py": "f5b405a49525f9b66a735050f9ca3d22feb594ae42aeee94f480bb23ca3f4112",
     },
     "codexy-github": {
         "agents/catalog.toml": "a40af1007d226569b0856f8a1f64e022b473644092f355df21d9468e3107880d",
         "agents/codexy-weaver.toml": "2c88b22c48eb63400d207989e98a5919479737fba2cfb855992104217a0a2353",
-        "skills/git-workflow/scripts/bootstrap-codexy-github-agent.py": "cc18f2a19e9784c6616c57a7d79d470e59b17cec6801b05bd94249d8c38dbedf",
+        "skills/git-workflow/scripts/bootstrap_codexy_github_agent.py": "cc18f2a19e9784c6616c57a7d79d470e59b17cec6801b05bd94249d8c38dbedf",
     },
 }
 

@@ -174,12 +174,12 @@ fn write_config(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
 }
 
 fn registration_script(plugin_root: &std::path::Path) -> Command {
-    Command::new(plugin_root.join("skills/orchestration/scripts/register-codexy-agents.py"))
+    Command::new(plugin_root.join("skills/orchestration/scripts/register_codexy_agents.py"))
 }
 
 fn script_text(plugin_root: &std::path::Path) -> std::io::Result<String> {
     std::fs::read_to_string(
-        plugin_root.join("skills/orchestration/scripts/register-codexy-agents.py"),
+        plugin_root.join("skills/orchestration/scripts/register_codexy_agents.py"),
     )
 }
 

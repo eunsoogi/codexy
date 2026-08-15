@@ -28,7 +28,7 @@ fn bootstrap_and_registrar_reject_abbreviated_options() -> TestResult {
         assert!(!codex_home.exists(), "rejected options mutated CODEX_HOME");
     }
 
-    let output = Command::new(scripts.join("register-codexy-agents.py"))
+    let output = Command::new(scripts.join("register_codexy_agents.py"))
         .args(["--plugin-r", path(&plugin_root)?, "--dry"])
         .env("CODEX_HOME", &codex_home)
         .output()?;
@@ -54,7 +54,7 @@ fn bootstrap_rejects_symlink_invocation_before_running_a_sibling() -> TestResult
     let linked_bootstrap = attack_dir.join("bootstrap-codexy-agents");
     symlink(&bootstrap, &linked_bootstrap)?;
     let marker = temp.path().join("attacker-ran");
-    let attacker = attack_dir.join("register-codexy-agents.py");
+    let attacker = attack_dir.join("register_codexy_agents.py");
     std::fs::write(
         &attacker,
         format!("#!/bin/sh\ntouch '{}'\n", path(&marker)?),
@@ -82,7 +82,7 @@ fn bootstrap_rejects_a_symlinked_registrar() -> TestResult {
     let temp = tempfile::tempdir()?;
     let plugin_root = installed_plugin(temp.path())?;
     let scripts = plugin_root.join("skills/orchestration/scripts");
-    let registrar = scripts.join("register-codexy-agents.py");
+    let registrar = scripts.join("register_codexy_agents.py");
     std::fs::remove_file(&registrar)?;
     let marker = temp.path().join("attacker-ran");
     let attacker = temp.path().join("attacker-registrar");

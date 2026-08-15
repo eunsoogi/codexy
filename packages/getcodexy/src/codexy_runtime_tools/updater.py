@@ -83,7 +83,7 @@ def sync_agents(
     _validate_real_path(root, require_exists=True)
     _validate_real_path(home, require_exists=False)
     identity = _identity(root)
-    script = root / "skills/orchestration/scripts/register-codexy-agents.py"
+    script = root / "skills/orchestration/scripts/register_codexy_agents.py"
     _validate_real_path(script, require_exists=True)
     command = [
         sys.executable,

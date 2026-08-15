@@ -169,7 +169,7 @@ def activate_core(root: Path, home: Path, synchronize: CoreSynchronizer) -> bool
 
 def sync_github_agent(root: Path, home: Path) -> bool:
     root = _absolute(root)
-    script = root / "skills/git-workflow/scripts/bootstrap-codexy-github-agent.py"
+    script = root / "skills/git-workflow/scripts/bootstrap_codexy_github_agent.py"
     _validate_real_path(script, require_exists=True)
     environment = os.environ.copy()
     environment.pop("PYTHONHOME", None)

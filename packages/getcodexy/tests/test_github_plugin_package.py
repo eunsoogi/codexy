@@ -136,7 +136,7 @@ class GithubPluginPackageTests(unittest.TestCase):
             )
             bridge = (
                 installed
-                / "skills/git-workflow/scripts/bootstrap-codexy-github-agent.py"
+                / "skills/git-workflow/scripts/bootstrap_codexy_github_agent.py"
             )
             self._run(bridge, "--codex-home", str(home))
             self._run(bridge, "--codex-home", str(home), "--diagnose")

@@ -11,7 +11,7 @@ case "$0" in
   *) script_dir=. ;;
 esac
 self_dir=$(CDPATH= cd -- "$script_dir" && pwd -P)
-registrar="$self_dir/register-codexy-agents.py"
+registrar="$self_dir/register_codexy_agents.py"
 if [ -L "$registrar" ] || [ ! -f "$registrar" ] || [ ! -x "$registrar" ]; then
   echo "bootstrap-codexy-agents requires a regular executable sibling registrar" >&2
   exit 2

@@ -13,7 +13,7 @@ published its console entry point. No-change execution remains a source-level be
 validator and MUST report `UPDATE_REQUIRED` when installed projections differ from the current package; lifecycle hooks MUST NOT invoke it.
 
 When an exact Codexy `agent_type` is unavailable, MUST resolve this selected skill's installed directory and run its sibling `scripts/bootstrap-codexy-agents` entrypoint. MUST NOT resolve the
-entrypoint from the target repository, a Codexy source checkout, or a hard-coded plugin cache path. The bootstrap diagnoses the installed state before mutation and invokes `register-codexy-agents.py`
+entrypoint from the target repository, a Codexy source checkout, or a hard-coded plugin cache path. The bootstrap diagnoses the installed state before mutation and invokes `register_codexy_agents.py`
 only when packaged role discovery is incomplete.
 
 If the bootstrap reports `D bootstrap: RESTART_REQUIRED`, MUST stop specialist dispatch in the current task and MUST tell the user to restart Codex or start a fresh task. The stale task MUST NOT claim

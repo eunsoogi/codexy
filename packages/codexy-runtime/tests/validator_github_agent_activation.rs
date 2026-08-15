@@ -70,11 +70,11 @@ fn copy_plugin(base: &std::path::Path, name: &str) -> TestResult<std::path::Path
 }
 
 fn bootstrap(plugin: &std::path::Path) -> Command {
-    Command::new(plugin.join("skills/git-workflow/scripts/bootstrap-codexy-github-agent.py"))
+    Command::new(plugin.join("skills/git-workflow/scripts/bootstrap_codexy_github_agent.py"))
 }
 
 fn core_bootstrap(plugin: &std::path::Path) -> Command {
-    Command::new(plugin.join("skills/orchestration/scripts/register-codexy-agents.py"))
+    Command::new(plugin.join("skills/orchestration/scripts/register_codexy_agents.py"))
 }
 
 fn path(path: &std::path::Path) -> Result<&str, Box<dyn std::error::Error>> {

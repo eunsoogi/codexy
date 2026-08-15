@@ -11,7 +11,7 @@ fn repository_contract_inputs_check_out_with_lf() -> Result<(), Box<dyn std::err
         "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
         "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
         "plugins/codexy-devtools/runtime-release.json",
-        "plugins/codexy/skills/orchestration/scripts/register-codexy-agents.py",
+        "plugins/codexy/skills/orchestration/scripts/register_codexy_agents.py",
     ];
 
     for input in inputs {
