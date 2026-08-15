@@ -13,10 +13,16 @@ from codexy_runtime_tools.github_pre_session import (
     trusted_codex,
 )
 from codexy_runtime_tools.updater import SyncResult
-
-
-OFFICIAL = "https://github.com/eunsoogi/codexy.git"
-REPOSITORY = Path(__file__).resolve().parents[3]
+from github_pre_session_install_support import (
+    OFFICIAL,
+    REPOSITORY,
+    disabled,
+    executable,
+    installed,
+    marketplace,
+    plugin,
+    result,
+)
 
 
 class GithubPreSessionInstallTests(unittest.TestCase):
@@ -287,50 +293,6 @@ class GithubPreSessionInstallTests(unittest.TestCase):
                     ),
                 ],
             )
-
-
-def marketplace(root: Path) -> dict[str, object]:
-    return {
-        "name": "codexy",
-        "root": str(root),
-        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
-    }
-
-
-def plugin(root: Path, name: str) -> Path:
-    shutil.copytree(REPOSITORY / "plugins" / name, root)
-    return root
-
-
-def executable(root: Path) -> Path:
-    trusted = root / "trusted/codex"
-    trusted.parent.mkdir(parents=True, exist_ok=True)
-    trusted.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    trusted.chmod(0o700)
-    return trusted.resolve()
-
-
-def result(mode: str, status: str, home: Path, changed: bool) -> SyncResult:
-    return SyncResult(mode, status, "codexy", "test", str(home), changed, changed, ())
-
-
-def installed(root: Path, name: str) -> dict[str, object]:
-    return {
-        "pluginId": f"{name}@codexy",
-        "name": name,
-        "marketplaceName": "codexy",
-        "version": "1.3.0",
-        "installed": True,
-        "enabled": True,
-        "source": {"source": "local", "path": str(root)},
-        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
-    }
-
-
-def disabled(root: Path, name: str) -> dict[str, object]:
-    item = installed(root, name)
-    item["enabled"] = False
-    return item
 
 
 if __name__ == "__main__":
