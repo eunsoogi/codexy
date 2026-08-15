@@ -90,7 +90,9 @@ jobs:
         run: |
           uv lock --check --directory packages/getcodexy
           ruff check .
+          git grep -lz '^#!.*python' | xargs -0r ruff check
           ruff format --check .
+          git grep -lz '^#!.*python' | xargs -0r ruff format --check
       - name: Lint shell scripts
         if: matrix.language == 'Shell'
         shell: bash

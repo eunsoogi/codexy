@@ -135,7 +135,7 @@ fn copy_production(root: &Path, repo: &Path, bin: &Path) -> std::io::Result<()> 
         "scripts/reconcile-version-pr",
         "scripts/canonicalize-version-pr-issue",
         "scripts/plan-version-pr-reconciliation",
-        "scripts/render-version-pr-metadata",
+        "scripts/render_version_pr_metadata.py",
         "scripts/version_pr_identity.py",
         "scripts/version_pr_observed.py",
         "scripts/version_pr_tracks.py",

@@ -49,7 +49,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         "packages/codexy-runtime/Cargo.lock\npackages/codexy-runtime/Cargo.toml\n.agents/plugins/marketplace.json\n\
          plugins/codexy/.codex-plugin/plugin.json\n",
     )?;
-    let output = Command::new(root.join("scripts/render-version-pr-metadata"))
+    let output = Command::new(root.join("scripts/render_version_pr_metadata.py"))
         .args([
             "--version",
             "1.3.1",
@@ -137,7 +137,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         "title hook failed: {}",
         String::from_utf8_lossy(&hook.stderr)
     );
-    let rerender = Command::new(root.join("scripts/render-version-pr-metadata"))
+    let rerender = Command::new(root.join("scripts/render_version_pr_metadata.py"))
         .args([
             "--version", "1.3.1", "--issue-json", path_text(&issue_path)?,
             "--repository-labels-json", path_text(&labels_path)?,
@@ -151,7 +151,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     assert_eq!(first_render.1, read_text_fixture(&output_dir.join("body.md"))?);
     assert_eq!(first_render.2, fs::read(output_dir.join("labels.json"))?);
 
-    let provisional = Command::new(root.join("scripts/render-version-pr-metadata"))
+    let provisional = Command::new(root.join("scripts/render_version_pr_metadata.py"))
         .args([
             "--version", "1.3.1", "--issue-json", path_text(&issue_path)?,
             "--repository-labels-json", path_text(&labels_path)?,

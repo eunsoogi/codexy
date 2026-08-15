@@ -115,7 +115,7 @@ fn render(
     changes: &Path,
     output: &Path,
 ) -> TestResult<RenderedMetadata> {
-    let output_result = Command::new(root.join("scripts/render-version-pr-metadata"))
+    let output_result = Command::new(root.join("scripts/render_version_pr_metadata.py"))
         .args([
             "--version", "1.3.1", "--issue-json", issue.to_str().unwrap(),
             "--repository-labels-json", taxonomy.to_str().unwrap(),

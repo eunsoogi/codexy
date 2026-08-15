@@ -47,7 +47,7 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
     assert_eq!(reconcile_path, "scripts/reconcile-version-pr");
     let reconcile = fs::read_to_string(root.join(reconcile_path))?;
     assert!(has_trimmed_line_start(validate_issue, "gh issue view "));
-    assert!(has_trimmed_line_start(validate_issue, "scripts/render-version-pr-metadata "));
+    assert!(has_trimmed_line_start(validate_issue, "scripts/render_version_pr_metadata.py "));
     assert_eq!(synchronize, "scripts/sync-plugin-version.sh --version \"$VERSION\"");
     for command in [
         "scripts/sync-plugin-version.sh --check",
