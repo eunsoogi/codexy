@@ -9,7 +9,21 @@ from dataclasses import dataclass
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
 
 CONTROL_WORDS = frozenset(
-    {"if", "then", "elif", "else", "fi", "for", "in", "while", "until", "do", "done", "case", "esac"}
+    {
+        "if",
+        "then",
+        "elif",
+        "else",
+        "fi",
+        "for",
+        "in",
+        "while",
+        "until",
+        "do",
+        "done",
+        "case",
+        "esac",
+    }
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 
@@ -42,8 +56,10 @@ def separate_lines(command: str) -> str:
             result.append(char)
         elif quote == "'" and char == "$":
             result.append(SINGLE_QUOTED_DOLLAR)
-        elif quote is None and char == "#" and (
-            not result or result[-1].isspace() or result[-1] in ";&|(){}"
+        elif (
+            quote is None
+            and char == "#"
+            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
         ):
             while index < len(command) and command[index] != "\n":
                 index += 1

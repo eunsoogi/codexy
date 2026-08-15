@@ -19,6 +19,7 @@ from .shell_opaque import dynamic_control_executable, separate_lines
 from .shell_segments import opaque_syntax, segments
 from .shell_sequence import evaluate as evaluate_sequence
 
+
 class Policy(Protocol):
     def owns_opaque(self, command: str, context: ExecutionContext) -> bool: ...
     def opaque_invocation(self, invocation: Invocation) -> bool: ...
@@ -141,7 +142,9 @@ def _segment(
     return (True, CommandEffect(None)) if effect is None else (False, effect)
 
 
-def _control_segments(command: str, context: ExecutionContext, depth: int, policy: Policy) -> bool:
+def _control_segments(
+    command: str, context: ExecutionContext, depth: int, policy: Policy
+) -> bool:
     """Walk parsed control bodies through the same typed invocation classifier."""
     parsed = segments(command)
     if parsed is None:

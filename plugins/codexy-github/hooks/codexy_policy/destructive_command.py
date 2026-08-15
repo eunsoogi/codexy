@@ -37,12 +37,16 @@ def forbidden(request: Request) -> bool | str:
         command, context
     ):
         return "UNRESOLVED_PROTECTED_EFFECT"
-    return "DESTRUCTIVE_EFFECT" if shell_forbidden(
-        command,
-        request.cwd,
-        os.environ.get("GH_REPO") or None,
-        os.environ.get("GIT_DIR") or None,
-        os.environ.get("GIT_COMMON_DIR") or None,
-        git_config_environment,
-        runtime_environment=runtime_environment,
-    ) else False
+    return (
+        "DESTRUCTIVE_EFFECT"
+        if shell_forbidden(
+            command,
+            request.cwd,
+            os.environ.get("GH_REPO") or None,
+            os.environ.get("GIT_DIR") or None,
+            os.environ.get("GIT_COMMON_DIR") or None,
+            git_config_environment,
+            runtime_environment=runtime_environment,
+        )
+        else False
+    )

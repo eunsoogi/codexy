@@ -10,9 +10,8 @@ from .shell_opaque import (
 
 
 def owns(command: str, context: ExecutionContext) -> bool:
-    return (
-        unresolved_protected_effect(command, context)
-        or contains_policy_executable(command, context, "gh")
+    return unresolved_protected_effect(command, context) or contains_policy_executable(
+        command, context, "gh"
     )
 
 

@@ -12,8 +12,17 @@ from .shell_segments import command_tokens, segments, separate_lines
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
 WRAPPER_HEADS = frozenset(
     {
-        "builtin", "command", "coproc", "env", "exec", "nice", "nohup", "sudo",
-        "time", "timeout", "xargs",
+        "builtin",
+        "command",
+        "coproc",
+        "env",
+        "exec",
+        "nice",
+        "nohup",
+        "sudo",
+        "time",
+        "timeout",
+        "xargs",
     }
 )
 
@@ -35,7 +44,9 @@ def resolved_segments(
     if parsed is None:
         return None
     return tuple(
-        ResolvedSegment(tokens, command_tokens(tokens), resolve_invocation(list(tokens), context))
+        ResolvedSegment(
+            tokens, command_tokens(tokens), resolve_invocation(list(tokens), context)
+        )
         for tokens in parsed
     )
 
@@ -63,7 +74,10 @@ def unresolved_protected_effect(command: str, context: ExecutionContext) -> bool
             and (
                 invocation.opaque
                 or not invocation.arguments
-                or any(DYNAMIC_NAME.fullmatch(argument) for argument in invocation.arguments)
+                or any(
+                    DYNAMIC_NAME.fullmatch(argument)
+                    for argument in invocation.arguments
+                )
             )
         ) or _dynamic_path_target(segment.tokens):
             return True
@@ -83,16 +97,24 @@ def contains_policy_executable(
         return True
     for segment in walked:
         invocation = segment.invocation
-        if invocation is not None and invocation.script and contains_policy_executable(
-            invocation.script, invocation.context, expected
+        if (
+            invocation is not None
+            and invocation.script
+            and contains_policy_executable(
+                invocation.script, invocation.context, expected
+            )
         ):
             return True
-        if invocation is not None and invocation.executable == "eval" and (
-            contains_policy_executable(
-                " ".join(invocation.arguments), invocation.context, expected
+        if (
+            invocation is not None
+            and invocation.executable == "eval"
+            and (
+                contains_policy_executable(
+                    " ".join(invocation.arguments), invocation.context, expected
+                )
+                if invocation.arguments
+                else True
             )
-            if invocation.arguments
-            else True
         ):
             return True
         if invocation is not None and invocation.executable == expected:
@@ -150,7 +172,11 @@ def _forced_opaque_alias(segment: ResolvedSegment) -> bool:
         and invocation.executable in {"ln", "cp"}
         and any(
             argument == "--force"
-            or (argument.startswith("-") and not argument.startswith("--") and "f" in argument[1:])
+            or (
+                argument.startswith("-")
+                and not argument.startswith("--")
+                and "f" in argument[1:]
+            )
             for argument in invocation.arguments
         )
     )
