@@ -15,6 +15,7 @@ from codexy_runtime_tools.version_lock import default_package_version
 try:
     from .pre_session_support import (
         commands,
+        fresh_marketplace_commands,
         installed,
         make_plugin,
         marketplace,
@@ -23,6 +24,7 @@ try:
 except ImportError:
     from pre_session_support import (
         commands,
+        fresh_marketplace_commands,
         installed,
         make_plugin,
         marketplace,
@@ -74,21 +76,7 @@ class PreSessionInstallTests(unittest.TestCase):
             synchronized: list[tuple[Path, Path, str]] = []
             marketplace_root = root / "marketplace"
             plugin = make_plugin(marketplace_root / "plugins/codexy")
-            expected = [
-                commands()[0],
-                (
-                    "/trusted/codex",
-                    "plugin",
-                    "marketplace",
-                    "add",
-                    "eunsoogi/codexy",
-                    "--ref",
-                    "v1.2.2",
-                    "--json",
-                ),
-                commands()[0],
-                *commands()[1:],
-            ]
+            expected = [*fresh_marketplace_commands(), *commands()[4:]]
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
                 calls.append(tuple(command))

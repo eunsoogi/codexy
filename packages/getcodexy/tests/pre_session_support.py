@@ -10,7 +10,7 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 def commands() -> list[tuple[str, ...]]:
     return [
-        ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
+        *reconcile_marketplace_commands(),
         ("/trusted/codex", "plugin", "list", "--json"),
         (
             "/trusted/codex",
@@ -23,6 +23,48 @@ def commands() -> list[tuple[str, ...]]:
         ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
         ("/trusted/codex", "plugin", "add", "codexy@codexy", "--json"),
         ("/trusted/codex", "plugin", "list", "--json"),
+    ]
+
+
+def reconcile_marketplace_commands() -> list[tuple[str, ...]]:
+    return [
+        ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
+        (
+            "/trusted/codex",
+            "plugin",
+            "marketplace",
+            "remove",
+            "codexy",
+            "--json",
+        ),
+        (
+            "/trusted/codex",
+            "plugin",
+            "marketplace",
+            "add",
+            "eunsoogi/codexy",
+            "--ref",
+            "v1.2.2",
+            "--json",
+        ),
+        ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
+    ]
+
+
+def fresh_marketplace_commands() -> list[tuple[str, ...]]:
+    return [
+        ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
+        (
+            "/trusted/codex",
+            "plugin",
+            "marketplace",
+            "add",
+            "eunsoogi/codexy",
+            "--ref",
+            "v1.2.2",
+            "--json",
+        ),
+        ("/trusted/codex", "plugin", "marketplace", "list", "--json"),
     ]
 
 

@@ -41,7 +41,9 @@ def run_pre_session(
     _validate_real_path(home, require_exists=False)
 
     target_version = package_version or default_package_version()
-    marketplace_root = official_marketplace_root(executable, invoke, target_version)
+    marketplace_root = reconcile_official_marketplace_root(
+        executable, invoke, target_version
+    )
 
     before = _json(
         invoke([str(executable), "plugin", "list", "--json"]),
@@ -55,7 +57,12 @@ def run_pre_session(
         ),
         "marketplace upgrade",
     )
-    marketplace_root = official_marketplace_root(executable, invoke, target_version)
+    marketplace_root = _official_marketplace(
+        _json(
+            invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+            "marketplace list",
+        )
+    )
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",
@@ -104,6 +111,43 @@ def official_marketplace_root(
             invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
             "marketplace list",
         )
+    return _official_marketplace(market)
+
+
+def reconcile_official_marketplace_root(
+    executable: Path, invoke: Runner, target_version: str
+) -> Path:
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
+    if _named_marketplace(market):
+        _official_marketplace(market)
+        _json(
+            invoke(
+                [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
+            ),
+            "marketplace remove",
+        )
+    _json(
+        invoke(
+            [
+                str(executable),
+                "plugin",
+                "marketplace",
+                "add",
+                "eunsoogi/codexy",
+                "--ref",
+                f"v{target_version}",
+                "--json",
+            ]
+        ),
+        "marketplace add",
+    )
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
     return _official_marketplace(market)
 
 
