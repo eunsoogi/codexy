@@ -4,8 +4,6 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.sh text eol=lf
-*.ps1 text eol=crlf
-*.cmd text eol=crlf
 
 # Versioned executable contract inputs without filename extensions.
 scripts/** text eol=lf
@@ -14,4 +12,4 @@ plugins/codexy/check-codexy-agents text eol=lf
 plugins/codexy/mcp/codexy-mcp-* text eol=lf
 plugins/codexy-devtools/mcp/codexy-mcp-* text eol=lf
 plugins/codexy-devtools/runtime-release.json text eol=lf
-plugins/*/skills/**/scripts/** text eol=lf
+plugins/codexy/skills/**/scripts/** text eol=lf

@@ -1,50 +1,22 @@
 param(
     [ValidateSet("--check", "--fix")][string]$Mode,
-    [Parameter(Mandatory = $true)][string]$Version,
-    [string]$ModulePath,
-    [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][string[]]$Path
+    [Parameter(ValueFromRemainingArguments = $true)][string[]]$Path
 )
 
 $ErrorActionPreference = "Stop"
-$repository = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
-$files = @($Path | ForEach-Object {
-    $candidate = Join-Path $repository $_
-    $relative = [IO.Path]::GetRelativePath($repository, $candidate)
-    if ([IO.Path]::IsPathRooted($_) -or $relative -eq ".." -or $relative.StartsWith("..$([IO.Path]::DirectorySeparatorChar)")) {
-        throw "lint input must remain in the repository: $_"
-    }
-    $cursor = $repository
-    foreach ($part in $relative -split '[\\/]') {
-        $cursor = Join-Path $cursor $part
-        if ((Get-Item -LiteralPath $cursor -Force).LinkType) {
-            throw "lint input must not cross a link: $_"
-        }
-    }
-    $item = Get-Item -LiteralPath $candidate -Force
-    if ($item.LinkType -or -not ($item -is [System.IO.FileInfo])) {
-        throw "lint input must be a regular file: $_"
-    }
-    $item.FullName
-})
-
-if ($ModulePath) {
-    Import-Module (Join-Path $ModulePath "PSScriptAnalyzer.psd1") -RequiredVersion $Version -ErrorAction Stop
+if ($env:CODEXY_PSSCRIPTANALYZER_PATH) {
+    Import-Module (Join-Path $env:CODEXY_PSSCRIPTANALYZER_PATH "PSScriptAnalyzer.psd1") -Force
 } else {
-    Import-Module PSScriptAnalyzer -RequiredVersion $Version -ErrorAction Stop
+    Import-Module PSScriptAnalyzer -Force
 }
-if ($Mode -eq "--fix") {
-    foreach ($file in $files) {
+
+$findings = foreach ($file in $Path) {
+    if ($Mode -eq "--fix") {
         $formatted = Invoke-Formatter -ScriptDefinition (Get-Content -Raw -LiteralPath $file)
         [IO.File]::WriteAllText($file, $formatted, [Text.UTF8Encoding]::new($false))
     }
+    Invoke-ScriptAnalyzer -Path $file -Severity ParseError, Error, Warning
 }
-
-$findings = @(
-    foreach ($file in $files) {
-        Invoke-ScriptAnalyzer -Path $file -Recurse -Severity ParseError, Error, Warning
-    }
-)
-if ($findings.Count -gt 0) {
+if ($findings) {
     $findings | Format-Table -AutoSize | Out-String | Write-Error
-    exit 1
 }

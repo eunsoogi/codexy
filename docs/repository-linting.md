@@ -1,6 +1,6 @@
 # Repository linting
 
-Run every read-only language check from the repository root:
+Run the read-only aggregate check from the repository root:
 
 ```sh
 scripts/lint-repository --check
@@ -13,36 +13,23 @@ scripts/lint-repository --fix
 scripts/lint-repository --check
 ```
 
-On Windows, run the same command through PowerShell:
+On Windows, invoke the Python entry point:
 
 ```powershell
-scripts/lint-repository.ps1 --check
+python scripts/lint-repository.py --check
 ```
 
-`tooling/lint-tools.json` is the single tool-version policy. The runner
-inventories Rust, Python, shell, PowerShell, Windows command launchers, and
-Markdown, JSON, YAML, and TOML. Prettier checks Markdown, JSON, and YAML;
-Taplo checks TOML. Rust uses the pinned `1.85.0` toolchain and lockfile; the
-other CI tools use the exact versions listed there. CI sets
-`CODEXY_LINT_CHANGED_SINCE` to the current pull request base branch (or the
-previous push) and selects its merge-base diff, so every changed maintained
-file is checked while pre-existing repository debt remains an explicit baseline
-rather than making every first rollout red.
+The source-derived inventory covers Rust, Python, shell, PowerShell, Windows
+command launchers, and Markdown, JSON, YAML, and TOML. Prettier checks only its
+supported text formats; Taplo checks TOML. CI installs the pinned tools in
+`tooling/lint-tools.json` and checks changed tracked source against the pull
+request base, avoiding a repository-wide rewrite of existing lint debt.
 
 Check mode is read-only. Fix mode applies Rustfmt, Ruff, shfmt,
-`Invoke-Formatter`, and Prettier; Ruff check mode is non-mutating while Ruff
-fix mode includes `ruff check --fix` before formatting. Windows command launchers remain check-only
-because running them to parse syntax could execute hooks and no safe canonical
-formatter exists. `.prettierignore` and the runner exclude the exact generated,
-vendor, and intentionally malformed fixture roots listed in the policy; source
-and executable fixtures are still classified by suffix or shebang. JSONL is an
-intentional check-only fixture/evidence format and is excluded from formatting.
-The CI jobs also run checked-in valid, invalid, and formatter-idempotence
-fixtures in their matching language route. Malformed fixtures stay excluded
-from ordinary repository checks so they cannot mask source debt.
+`Invoke-Formatter`, Prettier, and Taplo. Windows command launchers are
+check-only: their minimal non-executing contract avoids running checkout code.
+Generated, vendor, and intentionally malformed fixture roots are excluded.
 
 Run either command only in a trusted checkout: check mode can execute Cargo
 build scripts and procedural macros, while fix mode can also change source. The
-runner intentionally refuses symlinks and
-uses only NUL-safe Git-tracked regular-file paths, so it cannot follow an
-untracked or out-of-repository path. Stage intended new files before running it.
+runner passes only Git-tracked regular-file paths to formatters.

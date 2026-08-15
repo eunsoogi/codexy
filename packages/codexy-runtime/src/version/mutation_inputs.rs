@@ -2,8 +2,7 @@ use anyhow::Result;
 
 use super::{
     PLUGIN_MANIFEST, PUBLISH_CONTRACT, cargo, component_manifest, devtools_plugin, github_plugin,
-    load_json, marketplace_plugin_mut, package_lock, package_manifests, repo_path, require_semver,
-    string_field,
+    load_json, marketplace_plugin_mut, package_manifests, repo_path, require_semver, string_field,
 };
 
 /// Validates every mutation-managed input without requiring versions to match.
@@ -36,14 +35,6 @@ pub(super) fn validate() -> Result<()> {
             &package,
             "version",
             &path.display().to_string(),
-        )?)?;
-    }
-    for path in package_lock::package_locks()? {
-        let lock = load_json(&path)?;
-        require_semver(string_field(
-            package_lock::root_package_lock(&lock, &path)?,
-            "version",
-            &format!("{} root package", path.display()),
         )?)?;
     }
     Ok(())

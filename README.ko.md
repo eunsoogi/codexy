@@ -79,9 +79,6 @@ Codexy는 플러그인 중심으로 설계되었습니다. 저장소 운영, 패
 [플러그인 설정 검증기](scripts/validate-plugin-config),
 [릴리스 워크플로](.github/workflows/plugin-version-bump.yml)에 둡니다.
 
-로컬 언어 검사와 포매터 명령은 [저장소 린트 안내](docs/repository-linting.md)를
-참고하세요.
-
 ## 라이선스
 
 Codexy는 [MIT 라이선스](LICENSE)로 제공됩니다.

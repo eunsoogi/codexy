@@ -5,8 +5,8 @@ use serde_json::Value;
 
 use super::{
     MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, component_manifest,
-    devtools_plugin, github_plugin, load_json, marketplace_plugin_mut, package_lock,
-    package_manifests, repo_path,
+    devtools_plugin, github_plugin, load_json, marketplace_plugin_mut, package_manifests,
+    repo_path,
 };
 
 /// A complete managed-file replacement prepared before the mutation commits.
@@ -67,12 +67,6 @@ fn prepare(version: &str) -> Result<Vec<Update>> {
         let mut package = load_json(&path)?;
         package["version"] = Value::String(version.to_owned());
         updates.push(Update::json(path, &package)?);
-    }
-    for path in package_lock::package_locks()? {
-        let mut lock = load_json(&path)?;
-        package_lock::root_package_lock_mut(&mut lock, &path)?["version"] =
-            Value::String(version.to_owned());
-        updates.push(Update::json(path, &lock)?);
     }
     updates.push(Update::json(market_path, &marketplace)?);
     Ok(updates)

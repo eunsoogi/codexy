@@ -6,7 +6,6 @@ __pycache__/
 # Rust build artifacts
 /target/
 /packages/codexy-runtime/target/
-**/target/
 **/*.rs.bk
 
 # Local lint dependencies
