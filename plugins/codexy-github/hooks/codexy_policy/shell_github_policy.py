@@ -5,15 +5,15 @@ from .github import forbidden as gh_forbidden
 from .github_alias import expand as expand_gh_alias
 from .repository import github_identity
 from .shell_git import evaluate as evaluate_git
-from .shell_github_opaque import owns as github_opaque
+from .shell_github_opaque import owns as github_opaque, owns_invocation
 
 
 class GithubPolicy:
     owns_opaque = staticmethod(github_opaque)
 
     @staticmethod
-    def opaque_invocation(tokens: list[str], context: ExecutionContext) -> bool:
-        return github_opaque(" ".join(tokens), context)
+    def opaque_invocation(invocation) -> bool:
+        return owns_invocation(invocation)
 
     def command(self, invocation, outer: ExecutionContext, depth: int):
         if invocation.executable == "git":
