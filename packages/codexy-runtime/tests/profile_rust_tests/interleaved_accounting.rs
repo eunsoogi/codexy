@@ -107,6 +107,17 @@ head = __import__("subprocess").check_output(("git", "rev-parse", "HEAD"), cwd=r
 index_tree = __import__("subprocess").check_output(("git", "write-tree"), cwd=repository, text=True).strip()
 if index_tree != sys.argv[2]:
     raise SystemExit(f"private index tree drift: {index_tree!r} != {sys.argv[2]!r}")
+from profile_rust_receipt_finish import finish_receipt
+with tempfile.TemporaryDirectory() as directory:
+    receipt_path = pathlib.Path(directory) / "windows-system.json"
+    success = finish_receipt(
+        receipt_path, __import__("profile_rust_shards").WorkloadSpec("system", SHARDS["system"]),
+        __import__("types").SimpleNamespace(windows=True), list(SHARDS["system"]),
+        head, index_tree, 1, 1, 0, 0, 0, 280.158, Counter(), Counter(), set(),
+        {"profiler-started-epoch": 0}, 0, True,
+    )
+    if not success or __import__("json").loads(receipt_path.read_text())["state"] != "PASS":
+        raise SystemExit("green Windows shard at 280.158 seconds emitted a failed receipt")
 targets = sorted(module.declared_test_targets(repository))
 platforms = ("posix", "windows")
 def receipt_set(directory):
@@ -141,6 +152,7 @@ with tempfile.TemporaryDirectory() as directory:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
 check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
 check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
+check("receipt 280.158 within the shared budget", lambda rows: rows[13].update(elapsed=280.158), 0)
 def same_attempt_gap(rows):
     for value in rows:
         if value["platform"] == "posix":
@@ -163,7 +175,7 @@ for label, mutate in (
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
     ("pending", lambda rows: rows[0].update(state="PENDING")), ("missing process status", lambda rows: rows[0].pop("status")), ("nonzero process status", lambda rows: rows[0].update(status=1)), ("boolean process status", lambda rows: rows[0].update(status=False)), ("duplicate cross-shard identity", duplicate_cross_shard_identity),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
-    ("deadline", lambda rows: rows[0].update(elapsed=271)), ("window", lambda rows: rows[6].update(finished=301)),
+    ("deadline", lambda rows: rows[0].update(elapsed=300.001)), ("window", lambda rows: rows[6].update(finished=301)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
     ("boolean timing", lambda rows: rows[0].update(elapsed=True)),
     ("missing run ID", lambda rows: rows[0].pop("run_id")), ("mixed run ID", lambda rows: rows[0].update(run_id=2)),
