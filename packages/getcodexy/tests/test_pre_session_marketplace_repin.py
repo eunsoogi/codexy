@@ -23,6 +23,11 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
             root = Path(temporary)
             marketplace_root = root / "marketplace"
             plugin = make_plugin(marketplace_root / "plugins/codexy")
+            home = root / "home/.codex"
+            home.mkdir(parents=True)
+            (home / "config.toml").write_text(
+                '[plugin_marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+            )
             calls: list[tuple[str, ...]] = []
             target_version = "1.2.2"
             codex = "/trusted/codex"
@@ -52,13 +57,12 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
             result = run_pre_session(
-                root / "home/.codex",
+                home,
                 codex=Path(codex),
                 runner=runner,
                 synchronize=_ready,
                 package_version=target_version,
             )
-
             self.assertEqual(result.version, target_version)
             self.assertEqual(
                 calls,
@@ -74,6 +78,49 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                     (codex, "plugin", "list", "--json"),
                 ],
             )
+
+    def test_failed_repin_restores_the_exact_prior_registration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            home = root / "home/.codex"
+            home.mkdir(parents=True)
+            (home / "config.toml").write_text(
+                '[plugin_marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+            )
+            marketplace_root = root / "marketplace"
+            make_plugin(marketplace_root / "plugins/codexy")
+            state = {"registered": True, "ref": "main"}
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    payload: object = {
+                        "marketplaces": [marketplace(marketplace_root)]
+                        if state["registered"]
+                        else []
+                    }
+                    return subprocess.CompletedProcess(
+                        command, 0, json.dumps(payload), ""
+                    )
+                if command[1:4] == ["plugin", "marketplace", "remove"]:
+                    state["registered"] = False
+                    return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+                if command[1:4] == ["plugin", "marketplace", "add"]:
+                    ref = command[command.index("--ref") + 1]
+                    if ref == "v1.2.2":
+                        return subprocess.CompletedProcess(command, 1, "", "injected")
+                    state.update(registered=True, ref=ref)
+                    return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+                return subprocess.CompletedProcess(command, 0, '{"ok":true}', "")
+
+            with self.assertRaisesRegex(RuntimeError, "marketplace add failed"):
+                run_pre_session(
+                    home,
+                    codex=Path("/trusted/codex"),
+                    runner=runner,
+                    synchronize=_ready,
+                    package_version="1.2.2",
+                )
+            self.assertEqual(state, {"registered": True, "ref": "main"})
 
     @unittest.skipUnless(shutil.which("codex"), "Codex host is required")
     def test_real_cli_replaces_a_legacy_main_registration_with_the_target_tag(

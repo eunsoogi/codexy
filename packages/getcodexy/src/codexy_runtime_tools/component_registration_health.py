@@ -220,7 +220,7 @@ def _text(path: Path) -> str:
 
 def _regular(path: Path) -> bool:
     try:
-        return path.is_file() and not path.is_symlink()
+        return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
     except OSError:
         return False
 

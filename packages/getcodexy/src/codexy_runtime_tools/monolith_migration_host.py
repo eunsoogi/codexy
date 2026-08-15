@@ -98,7 +98,9 @@ def rollback(
     discover: Discover,
 ) -> None:
     remove_split_components(executable, runner, journal.selection)
-    reconcile_official_marketplace_root(executable, runner, journal.source_version)
+    reconcile_official_marketplace_root(
+        executable, runner, journal.source_version, home
+    )
     run_pre_session(
         home,
         codex=executable,

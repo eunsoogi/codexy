@@ -21,6 +21,7 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
             "assets/codexy-icon.png",
             "agents/catalog.toml",
             "hooks/hooks.json",
+            "skills/wiki/SKILL.md",
         ),
         "github": (
             ".codex-plugin/plugin.json",

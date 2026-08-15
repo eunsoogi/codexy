@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -42,7 +43,7 @@ def run_pre_session(
 
     target_version = package_version or default_package_version()
     marketplace_root = reconcile_official_marketplace_root(
-        executable, invoke, target_version
+        executable, invoke, target_version, home
     )
 
     before = _json(
@@ -115,7 +116,7 @@ def official_marketplace_root(
 
 
 def reconcile_official_marketplace_root(
-    executable: Path, invoke: Runner, target_version: str
+    executable: Path, invoke: Runner, target_version: str, home: Path
 ) -> Path:
     market = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
@@ -123,12 +124,28 @@ def reconcile_official_marketplace_root(
     )
     if _named_marketplace(market):
         _official_marketplace(market)
+        previous_ref = _marketplace_ref(home)
         _json(
             invoke(
                 [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
             ),
             "marketplace remove",
         )
+        try:
+            _add_marketplace(executable, invoke, f"v{target_version}")
+        except Exception:
+            _add_marketplace(executable, invoke, previous_ref)
+            raise
+    else:
+        _add_marketplace(executable, invoke, f"v{target_version}")
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
+    return _official_marketplace(market)
+
+
+def _add_marketplace(executable: Path, invoke: Runner, ref: str) -> None:
     _json(
         invoke(
             [
@@ -138,17 +155,26 @@ def reconcile_official_marketplace_root(
                 "add",
                 "eunsoogi/codexy",
                 "--ref",
-                f"v{target_version}",
+                ref,
                 "--json",
             ]
         ),
         "marketplace add",
     )
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
-    return _official_marketplace(market)
+
+
+def _marketplace_ref(home: Path) -> str:
+    config = home / "config.toml"
+    try:
+        contents = config.read_text(encoding="utf-8")
+    except OSError as error:
+        raise RuntimeError(
+            "existing marketplace has no recoverable registration"
+        ) from error
+    match = re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', contents)
+    if match is None:
+        raise RuntimeError("existing marketplace has no recoverable registration")
+    return match.group(1)
 
 
 def _find_codex() -> Path:
