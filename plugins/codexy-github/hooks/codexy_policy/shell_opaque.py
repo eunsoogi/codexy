@@ -1,135 +1,202 @@
-"""Concern-neutral handling for opaque shell syntax."""
+"""Concern-neutral decisions over parsed shell command positions."""
 
 from __future__ import annotations
 
 import re
-import shlex
+from dataclasses import dataclass
 
-from .execution_context import ExecutionContext, SINGLE_QUOTED_DOLLAR, assignment
-from .invocation import resolve as resolve_invocation
+from .execution_context import ExecutionContext, assignment
+from .invocation import Invocation, resolve as resolve_invocation
+from .shell_segments import command_tokens, segments, separate_lines
 
 DYNAMIC_NAME = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
-CONTROL_COMMAND_START = {"if", "then", "elif", "else", "while", "until", "do"}
+WRAPPER_HEADS = frozenset(
+    {
+        "builtin",
+        "command",
+        "coproc",
+        "env",
+        "exec",
+        "nice",
+        "nohup",
+        "sudo",
+        "time",
+        "timeout",
+        "xargs",
+    }
+)
 
 
-def separate_lines(command: str) -> str:
-    """Normalize supported line continuations and comments before tokenization."""
-    result, quote, escaped, index = [], None, False, 0
-    while index < len(command):
-        char = command[index]
-        if char == "\\" and quote != "'" and command[index + 1 : index + 2] == "\n":
-            index += 2
-            continue
-        if escaped:
-            result.append(char)
-            escaped = False
-        elif char == "\\" and quote != "'":
-            result.append(char)
-            escaped = True
-        elif char in {"'", '"'}:
-            quote = None if quote == char else char if quote is None else quote
-            result.append(char)
-        elif quote == "'" and char == "$":
-            result.append(SINGLE_QUOTED_DOLLAR)
-        elif (
-            quote is None
-            and char == "#"
-            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
-        ):
-            while index < len(command) and command[index] != "\n":
-                index += 1
-            continue
-        else:
-            result.append(";" if char == "\n" and quote is None else char)
-        index += 1
-    return "".join(result)
+@dataclass(frozen=True)
+class ResolvedSegment:
+    """One parsed command-position segment and its effective invocation."""
+
+    tokens: tuple[str, ...]
+    command: tuple[str, ...]
+    invocation: Invocation | None
+
+
+def resolved_segments(
+    command: str, context: ExecutionContext
+) -> tuple[ResolvedSegment, ...] | None:
+    """Use one shared walk for every protected-effect classifier."""
+    parsed = segments(command)
+    if parsed is None:
+        return None
+    return tuple(
+        ResolvedSegment(
+            tokens, command_tokens(tokens), resolve_invocation(list(tokens), context)
+        )
+        for tokens in parsed
+    )
 
 
 def dynamic_control_executable(command: str) -> bool:
-    lexer = shlex.shlex(
-        separate_lines(command), posix=True, punctuation_chars=";&|(){}"
+    """Fail closed only for a dynamic token in command position."""
+    parsed = segments(command)
+    return parsed is None or any(
+        command_tokens(segment) and DYNAMIC_NAME.fullmatch(command_tokens(segment)[0])
+        for segment in parsed
     )
-    lexer.whitespace_split, lexer.commenters = True, ""
-    command_start = True
-    for token in lexer:
-        if (
-            token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}
-            or token.casefold() in CONTROL_COMMAND_START
-        ):
-            command_start = True
-        elif command_start and (token == "!" or assignment(token)):
+
+
+def unresolved_protected_effect(command: str, context: ExecutionContext) -> bool:
+    """Recognize command-position indirection that can conceal an effect."""
+    walked = resolved_segments(command, context)
+    if walked is None:
+        return False
+    for segment in walked:
+        invocation = segment.invocation
+        if invocation is None:
             continue
-        else:
-            if command_start and DYNAMIC_NAME.fullmatch(token):
-                return True
-            command_start = False
+        if (
+            invocation.executable == "eval"
+            and (
+                invocation.opaque
+                or not invocation.arguments
+                or any(
+                    DYNAMIC_NAME.fullmatch(argument)
+                    for argument in invocation.arguments
+                )
+            )
+        ) or _dynamic_path_target(segment.tokens):
+            return True
+        if invocation.script and unresolved_protected_effect(
+            invocation.script, invocation.context
+        ):
+            return True
     return False
 
 
 def contains_policy_executable(
-    command: str,
-    context: ExecutionContext,
-    expected: str,
+    command: str, context: ExecutionContext, expected: str
 ) -> bool:
-    """Recognize a policy executable at an opaque command boundary."""
-    try:
-        lexer = shlex.shlex(
-            separate_lines(command), posix=True, punctuation_chars=";&|(){}"
-        )
-        lexer.whitespace_split, lexer.commenters = True, ""
-        tokens = list(lexer)
-        command_start = True
-        segment_start = 0
-        index = 0
-        while index < len(tokens):
-            token = tokens[index]
-            if (
-                token in {";", "&&", "||", "|", "&", "(", ")", "{", "}"}
-                or token.casefold() in CONTROL_COMMAND_START
-            ):
-                command_start = True
-                segment_start = index + 1
-            elif command_start and (token == "!" or assignment(token)):
-                pass
-            elif command_start:
-                end = index + 1
-                while end < len(tokens) and tokens[end] not in {
-                    ";",
-                    "&&",
-                    "||",
-                    "|",
-                    "&",
-                    "(",
-                    ")",
-                    "{",
-                    "}",
-                }:
-                    end += 1
-                invocation = resolve_invocation(tokens[segment_start:end], context)
-                if invocation is not None and invocation.executable == expected:
-                    return True
-                if invocation is not None and (
-                    invocation.opaque or invocation.context.opaque_environment
-                ):
-                    prefix_free = _without_prefix(tokens[segment_start:end])
-                    fallback = resolve_invocation(prefix_free, context)
-                    if (
-                        fallback is None
-                        or fallback.opaque
-                        or fallback.executable == expected
-                    ):
-                        return True
-                    if not fallback.available:
-                        return True
-                command_start = False
-                index = end - 1
-            index += 1
-        return False
-    except ValueError:
+    """Find a protected executable or unresolved command target structurally."""
+    walked = resolved_segments(command, context)
+    if walked is None:
         return True
+    for segment in walked:
+        invocation = segment.invocation
+        if (
+            invocation is not None
+            and invocation.script
+            and contains_policy_executable(
+                invocation.script, invocation.context, expected
+            )
+        ):
+            return True
+        if (
+            invocation is not None
+            and invocation.executable == "eval"
+            and (
+                contains_policy_executable(
+                    " ".join(invocation.arguments), invocation.context, expected
+                )
+                if invocation.arguments
+                else True
+            )
+        ):
+            return True
+        if invocation is not None and invocation.executable == expected:
+            return True
+        if invocation is not None and unresolved_invocation(invocation):
+            return True
+    return False
 
 
-def _without_prefix(tokens: list[str]) -> list[str]:
-    while tokens and (tokens[0] == "!" or assignment(tokens[0])):
-        tokens = tokens[1:]
-    return tokens
+def unresolved_invocation(invocation: Invocation) -> bool:
+    """Return whether an already parsed invocation lacks an effective target."""
+    return invocation.opaque and (
+        invocation.executable is None or invocation.executable in WRAPPER_HEADS
+    )
+
+
+def unresolved_alias_transition(command: str, context: ExecutionContext) -> bool:
+    """Fail closed only when a dynamic alias is later executed as its target."""
+    walked = resolved_segments(command, context)
+    if walked is None:
+        return True
+    if any(_forced_opaque_alias(segment) for segment in walked):
+        return True
+    destinations = {
+        destination
+        for segment in walked
+        if (destination := _opaque_alias_destination(segment)) is not None
+    }
+    return any(
+        _target_path(segment.command[0], context.cwd) in destinations
+        for segment in walked
+        if segment.command
+    )
+
+
+def _opaque_alias_destination(segment: ResolvedSegment) -> str | None:
+    invocation = segment.invocation
+    if (
+        invocation is None
+        or not invocation.opaque
+        or invocation.executable not in {"ln", "cp"}
+    ):
+        return None
+    operands = [token for token in invocation.arguments if not token.startswith("-")]
+    if len(operands) != 2 or DYNAMIC_NAME.search(operands[1]) is not None:
+        return None
+    return _target_path(operands[1], invocation.context.cwd)
+
+
+def _forced_opaque_alias(segment: ResolvedSegment) -> bool:
+    invocation = segment.invocation
+    return (
+        invocation is not None
+        and invocation.opaque
+        and invocation.executable in {"ln", "cp"}
+        and any(
+            argument == "--force"
+            or (
+                argument.startswith("-")
+                and not argument.startswith("--")
+                and "f" in argument[1:]
+            )
+            for argument in invocation.arguments
+        )
+    )
+
+
+def _target_path(value: str, cwd: str) -> str:
+    from os.path import abspath, join
+
+    return abspath(value if value.startswith("/") else join(cwd, value))
+
+
+def _dynamic_path_target(tokens: tuple[str, ...]) -> bool:
+    index = 0
+    while index < len(tokens) and (tokens[index] == "!" or assignment(tokens[index])):
+        index += 1
+    return (
+        index < len(tokens)
+        and not tokens[index].startswith("/")
+        and any(
+            token.startswith("PATH=") and DYNAMIC_NAME.search(token) is not None
+            for token in tokens[:index]
+        )
+    )

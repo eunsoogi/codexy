@@ -2,7 +2,7 @@
 
 from .execution_context import CommandEffect, ExecutionContext, remote_url
 from .shell_builtins import hash_path_alias, rm_forbidden
-from .shell_destructive_opaque import owns as destructive_opaque
+from .shell_destructive_opaque import owns as destructive_opaque, owns_invocation
 from .shell_git import evaluate as evaluate_git
 
 
@@ -10,9 +10,8 @@ class DestructivePolicy:
     owns_opaque = staticmethod(destructive_opaque)
 
     @staticmethod
-    def opaque_invocation(tokens: list[str], context: ExecutionContext) -> bool:
-        del tokens, context
-        return True
+    def opaque_invocation(invocation) -> bool:
+        return owns_invocation(invocation)
 
     def command(self, invocation, outer: ExecutionContext, depth: int):
         if invocation.executable == "hash" and hash_path_alias(invocation.arguments):
@@ -36,8 +35,8 @@ class DestructivePolicy:
         if invocation.executable == "gh":
             return False, CommandEffect(outer)
         if invocation.executable == "rm":
-            denied = invocation.context.cwd_owned is not False and rm_forbidden(
-                invocation.arguments
+            denied = invocation.context.cwd_owned is not False and (
+                invocation.opaque or rm_forbidden(invocation.arguments)
             )
             return denied, CommandEffect(outer)
         return None

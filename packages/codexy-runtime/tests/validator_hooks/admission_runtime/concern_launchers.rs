@@ -122,7 +122,7 @@ fn bash_concerns_have_independent_positive_and_negative_owners() -> TestResult {
     Ok(())
 }
 
-fn run_launcher(
+pub(super) fn run_launcher(
     root: &Path,
     launcher: &str,
     event: &str,

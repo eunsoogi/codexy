@@ -87,10 +87,10 @@ fn is_core_plugin(plugin_root: &Path) -> Result<bool> {
 }
 
 fn check_extension_topology(path: &Path, events: &serde_json::Map<String, Value>) -> Result<()> {
-    const REQUIRED: &[&str] = &["UserPromptSubmit", "PreToolUse"];
+    const REQUIRED: &[&str] = &["UserPromptSubmit", "PermissionRequest", "PreToolUse"];
     if events.len() != REQUIRED.len() || REQUIRED.iter().any(|event| !events.contains_key(*event)) {
         bail!(
-            "{} extension hooks must configure UserPromptSubmit and PreToolUse",
+            "{} extension hooks must configure UserPromptSubmit, PermissionRequest, and PreToolUse",
             display_relative(path)
         );
     }

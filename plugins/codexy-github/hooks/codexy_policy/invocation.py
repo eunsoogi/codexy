@@ -9,6 +9,7 @@ from .execution_context import (
     assigned_variables,
     assignment,
     at,
+    expand,
     expand_tokens,
     export_variables,
     leading_assignments,
@@ -77,7 +78,7 @@ def _unwrap(
             return None
         expanded = expand_tokens(tokens, context)
         if expanded is None:
-            return Invocation(None, [], context, opaque=True)
+            return _opaque_invocation(tokens, context)
         tokens = expanded
         if not tokens:
             return Invocation(None, [], context)
@@ -186,3 +187,15 @@ def _unwrap(
             available=executable_available(tokens[0], context.cwd, path),
         )
     return Invocation(None, [], context, opaque=True)
+
+
+def _opaque_invocation(tokens: list[str], context: ExecutionContext) -> Invocation:
+    """Preserve a resolved command position when only its data is dynamic."""
+    head = expand(tokens[0], context) if tokens else None
+    if head is None or (context.opaque_environment and "/" not in head):
+        return Invocation(None, [], context, opaque=True)
+    path = dict(context.environment).get("PATH")
+    executable = executable_identity(
+        head, context.cwd, context.executable_aliases, path
+    )
+    return Invocation(executable, tokens[1:], context, opaque=True)

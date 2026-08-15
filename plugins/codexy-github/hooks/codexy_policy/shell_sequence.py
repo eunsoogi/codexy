@@ -6,14 +6,14 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from .execution_context import CommandEffect, ExecutionContext
-from .shell_groups import Command, Group, Sequence
+from .shell_groups import Command, Conditional, Group, Sequence
 
 Segment = Callable[[list[str], ExecutionContext, int], tuple[bool, CommandEffect]]
 
 
 def evaluate(
     sequence: Sequence, context: ExecutionContext, depth: int, segment: Segment
-) -> tuple[bool, ExecutionContext]:
+) -> tuple[bool, CommandEffect]:
     """Evaluate supported connector lists without discarding result branches."""
     contexts, index = (context,), 0
     while index < len(sequence.steps):
@@ -29,13 +29,13 @@ def evaluate(
                 break
         denied, success, failure = _list(nodes, connectors, contexts, depth, segment)
         if denied:
-            return True, context
+            return True, CommandEffect(None)
         contexts = tuple(_unique(success + failure))
         if separator == "":
-            return False, _join(contexts, context)
+            return False, _effect(success, failure)
         if separator not in {";", "|", "&"}:
-            return True, context
-    return False, _join(contexts, context)
+            return True, CommandEffect(None)
+    return False, CommandEffect(context)
 
 
 def _list(
@@ -81,25 +81,69 @@ def _apply(
 
 
 def _node(
-    node: Command | Group, context: ExecutionContext, depth: int, segment: Segment
+    node: Command | Conditional | Group,
+    context: ExecutionContext,
+    depth: int,
+    segment: Segment,
 ) -> tuple[bool, CommandEffect]:
     if isinstance(node, Command):
         return segment(list(node.tokens), context, depth)
+    if isinstance(node, Conditional):
+        return _conditional(node, context, depth, segment)
     denied, nested = evaluate(node.body, context, depth + 1, segment)
     if denied:
         return True, CommandEffect(None)
-    return False, CommandEffect(context if node.kind == "subshell" else nested)
+    if node.kind == "subshell":
+        return False, CommandEffect(
+            context if nested.success is not None else None,
+            context if nested.failure is not None else None,
+        )
+    return False, nested
+
+
+def _conditional(
+    node: Conditional, context: ExecutionContext, depth: int, segment: Segment
+) -> tuple[bool, CommandEffect]:
+    denied, condition = evaluate(node.condition, context, depth + 1, segment)
+    if denied:
+        return True, CommandEffect(None)
+    effects: list[CommandEffect] = []
+    if condition.success is not None:
+        denied, effect = evaluate(
+            node.then_branch, condition.success, depth + 1, segment
+        )
+        if denied:
+            return True, CommandEffect(None)
+        effects.append(effect)
+    if condition.failure is not None:
+        if node.else_branch is None:
+            effects.append(CommandEffect(None, condition.failure))
+        else:
+            denied, effect = evaluate(
+                node.else_branch, condition.failure, depth + 1, segment
+            )
+            if denied:
+                return True, CommandEffect(None)
+            effects.append(effect)
+    return False, CommandEffect(
+        _join([effect.success for effect in effects if effect.success is not None]),
+        _join([effect.failure for effect in effects if effect.failure is not None]),
+    )
 
 
 def _unique(contexts: list[ExecutionContext]) -> list[ExecutionContext]:
     return list(dict.fromkeys(contexts))
 
 
-def _join(
-    contexts: tuple[ExecutionContext, ...], fallback: ExecutionContext
-) -> ExecutionContext:
+def _effect(
+    success: list[ExecutionContext], failure: list[ExecutionContext]
+) -> CommandEffect:
+    return CommandEffect(_join(success), _join(failure))
+
+
+def _join(contexts: list[ExecutionContext]) -> ExecutionContext | None:
     if not contexts:
-        return fallback
+        return None
     aliases: dict[str, str] = {}
     for context in contexts:
         aliases.update(context.executable_aliases)

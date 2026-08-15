@@ -60,7 +60,7 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         assert_event_case(&root, event, &owned, &format!("if true; then ! PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi", true, &[])?;
         assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi", true, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi", false, &[])?;
+        assert_event_case(&root, event, &owned, "if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi", true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' reset --hard; fi", git.display()), true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' pr merge 551; fi", gh.display()), true, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then builtin command '{}' reset --hard; fi", git.display()), true, &[])?;
@@ -75,11 +75,43 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
         for (wrapper, option) in wrappers {
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
             assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
-            assert_event_case(&root, event, &owned, &format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), false, &[])?;
+            assert_event_case(&root, event, &owned, &format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), true, &[])?;
         }
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false, &[])?;
         assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", printf.display()), false, &[])?;
+    }
+    Ok(())
+}
+
+#[test]
+fn opaque_protected_arguments_and_unreachable_controls_preserve_policy() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        assert_event_case(&root, event, &owned, "gh issue \"$ACTION\"", true, &[])?;
+        assert_event_case(&root, event, &owned, "printf \"$ACTION\"", false, &[])?;
+        assert_event_case(
+            &root,
+            event,
+            &owned,
+            &format!(
+                "if false; then cd {}; fi; gh issue create --title invalid",
+                foreign.display()
+            ),
+            true,
+            &[],
+        )?;
+        assert_event_case(
+            &root,
+            event,
+            &owned,
+            &format!("if false; then cd {}; fi; gh repo view", foreign.display()),
+            false,
+            &[],
+        )?;
     }
     Ok(())
 }

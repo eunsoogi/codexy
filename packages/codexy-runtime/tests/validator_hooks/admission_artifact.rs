@@ -1,4 +1,4 @@
-use super::{copy_github as copy, read, text, validate};
+use super::{copy_github as copy, text, validate};
 use crate::support::{FixtureCommand as Command, fixture_native_launcher};
 use std::io::Write as _;
 use std::process::Stdio;
@@ -13,6 +13,8 @@ const LAUNCHERS: &[&str] = &[
 
 #[path = "admission_artifact/runtime_failures.rs"]
 mod runtime_failures;
+#[path = "admission_artifact/activation.rs"]
+mod activation;
 
 #[test]
 fn validator_rejects_static_cross_concern_policy_imports() -> Result<(), Box<dyn std::error::Error>> {
@@ -55,24 +57,6 @@ fn validator_rejects_dynamic_cross_concern_policy_imports() -> Result<(), Box<dy
             "{injection}: {}",
             text(&output)
         );
-    }
-    Ok(())
-}
-
-#[test]
-fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let root = copy(temp.path())?;
-    let hooks = read(&root.join("hooks/hooks.json"))?;
-    assert_eq!(hooks["hooks"]["UserPromptSubmit"].as_array().ok_or("prompt hooks")?.len(), 1);
-    let groups = hooks["hooks"]["PreToolUse"].as_array().ok_or("admission hooks")?;
-    assert_eq!(groups.len(), 2);
-    for group in groups {
-        let handler = &group["hooks"][0];
-        assert_eq!(handler["type"], "command");
-        assert_eq!(handler["timeout"], 5);
-        assert!(handler["command"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission.sh"));
-        assert!(handler["commandWindows"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission-"));
     }
     Ok(())
 }
