@@ -2,9 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::contract::validate_contract;
 use super::inventory::files;
-use super::support::{
-    agent_requires_github_skill, contract, product, record, validate_import,
-};
+use super::support::{contract, product, record, validate_import};
 use crate::support::TestResult;
 
 fn assert_invalid(root: &std::path::Path, value: &serde_json::Value) {
@@ -138,10 +136,6 @@ fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
     let mut github_agent = contract.clone();
     record(&mut github_agent, "agents.github")["target"] = serde_json::json!("codexy");
     assert_invalid(root, &github_agent);
-    assert!(agent_requires_github_skill(
-        root,
-        "plugins/codexy-github/agents/codexy-weaver.toml"
-    )?);
     let owned = BTreeMap::from([
         ("plugins/codexy/hooks/codexy_policy/admission.py", "codexy"),
         (

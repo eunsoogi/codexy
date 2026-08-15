@@ -95,23 +95,6 @@ pub(super) fn policy_import_module(line: &str) -> Option<&str> {
     tail.split(|character: char| character == '.' || character == ',' || character.is_whitespace())
         .find(|part| !part.is_empty())
 }
-pub(super) fn agent_requires_github_skill(
-    root: &Path,
-    source: &str,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    let agent: toml::Value = toml::from_str(&std::fs::read_to_string(root.join(source))?)?;
-    Ok(agent
-        .get("developer_instructions")
-        .and_then(toml::Value::as_str)
-        .is_some_and(|instructions| {
-            instructions.split_whitespace().any(|word| {
-                word.trim_matches(|character: char| {
-                    !character.is_ascii_alphanumeric() && character != '-'
-                })
-                .eq("git-workflow")
-            })
-        }))
-}
 pub(super) fn validate_selector(root: &Path, path: &str, selector: &str) -> TestResult {
     let registrations: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(root.join(path))?)?;

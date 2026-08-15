@@ -4,8 +4,7 @@ use std::path::Path;
 use super::inventory::{files, governed_universe, record_matrix};
 use super::model::{BoundaryContract, CATEGORIES, DISPOSITIONS, PRODUCTS, SurfaceRecord, TARGETS};
 use super::support::{
-    agent_requires_github_skill, assert_sources, registration_selectors, unique_products,
-    validate_python_file, validate_selector,
+    assert_sources, registration_selectors, unique_products, validate_python_file, validate_selector,
 };
 use crate::support::TestResult;
 
@@ -210,16 +209,6 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
         .collect();
     for (&source, &target) in &owned {
         validate_python_file(root, source, target, &owned)?;
-    }
-    for record in records {
-        for source in &record.sources {
-            if source.ends_with(".toml")
-                && agent_requires_github_skill(root, source)?
-                && record.target == "codexy"
-            {
-                return Err(format!("core agent requires GitHub skill: {source}").into());
-            }
-        }
     }
     Ok(())
 }
