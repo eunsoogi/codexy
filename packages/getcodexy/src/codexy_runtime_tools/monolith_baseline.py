@@ -17,7 +17,7 @@ class Baseline:
 
 BASELINES = {
     "1.3.0": Baseline(
-        "1.3.0", "cdde46a96bf574f9b54a2445b6bb94c0841493148ec255bad220d4728a46ec0a"
+        "1.3.0", "9e1f2c8a97fe24949ea3fc11762246602c8b81b66b1298b88d5114bf71dc0b3b"
     )
 }
 
@@ -40,6 +40,12 @@ def tree_digest(root: Path) -> str:
     records = []
     for directory, children, files, descriptor in os.fwalk(root, follow_symlinks=False):
         relative = Path(directory).relative_to(root)
+        opened_directory = os.fstat(descriptor)
+        if not stat.S_ISDIR(opened_directory.st_mode) or _reparse(opened_directory):
+            raise ValueError("legacy plugin tree has an unsafe directory")
+        records.append(
+            f"D\0{relative.as_posix()}\0{opened_directory.st_mode & 0o777:o}"
+        )
         children.sort()
         for name in sorted(children + files):
             entry = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
@@ -66,7 +72,7 @@ def tree_digest(root: Path) -> str:
             finally:
                 os.close(opened)
             records.append(
-                f"{(relative / name).as_posix()}\0{entry.st_mode & 0o777:o}\0{digest}"
+                f"F\0{(relative / name).as_posix()}\0{entry.st_mode & 0o777:o}\0{digest}"
             )
     return hashlib.sha256("\n".join(records).encode()).hexdigest()
 

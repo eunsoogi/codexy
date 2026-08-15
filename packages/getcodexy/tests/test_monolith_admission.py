@@ -17,7 +17,7 @@ class MonolithAdmissionTests(unittest.TestCase):
     def test_v1_3_baseline_is_a_frozen_complete_tree_fingerprint(self) -> None:
         self.assertEqual(
             BASELINES["1.3.0"].tree_sha256,
-            "cdde46a96bf574f9b54a2445b6bb94c0841493148ec255bad220d4728a46ec0a",
+            "9e1f2c8a97fe24949ea3fc11762246602c8b81b66b1298b88d5114bf71dc0b3b",
         )
 
     def test_exact_supported_tree_is_admitted_but_modified_tree_is_rejected(
@@ -33,6 +33,20 @@ class MonolithAdmissionTests(unittest.TestCase):
                 self.assertEqual(classify_monolith(root).state, "supported-unmodified")
                 (root / "skill.md").write_text("modified", encoding="utf-8")
                 self.assertEqual(classify_monolith(root).state, "modified")
+
+    @unittest.skipIf(os.name == "nt", "POSIX directory modes are exercised in CI")
+    def test_empty_directories_and_directory_modes_change_the_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = _legacy_root(Path(directory))
+            original = tree_digest(root)
+            managed = root / "managed-empty"
+            managed.mkdir()
+            with_empty_directory = tree_digest(root)
+            os.chmod(managed, 0o700)
+            with_mode_change = tree_digest(root)
+
+        self.assertNotEqual(original, with_empty_directory)
+        self.assertNotEqual(with_empty_directory, with_mode_change)
 
     def test_unknown_or_modified_monolith_fails_closed_with_a_specific_code(
         self,

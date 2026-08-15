@@ -23,7 +23,10 @@ from .monolith_migration_state import (
 from .plugin_resolution import official_marketplace
 from .pre_session import _json
 from .updater import _absolute, _validate_real_path
-from .component_transaction_state import transaction_lock
+from .component_transaction_state import (
+    read_journal as read_component_journal,
+    transaction_lock,
+)
 from .version_lock import default_package_version
 
 
@@ -65,6 +68,11 @@ def _migrate(
         clear_journal(home)
         return _receipt("rolled-back", rolling, "interrupted-migration")
     target = default_package_version()
+    try:
+        if read_component_journal(home) is not None:
+            return _rejected(target, "migration-in-progress")
+    except (OSError, ValueError):
+        return _rejected(target, "ambiguous-monolith")
     if receipt := _already_migrated(home, executable, runner, target, requested):
         return receipt
     try:
@@ -76,7 +84,10 @@ def _migrate(
         return _rejected(target, "ambiguous-monolith")
     if plan.outcome != "ready":
         return _receipt("rejected", plan, plan.error)
-    _stage_target(executable, target, plan.selection)
+    try:
+        _stage_target(executable, target, plan.selection)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError):
+        return _receipt("rejected", plan, "target-release-unavailable")
     journal = MigrationJournal.capture(
         home, str(plan.source_version), plan.target_version, plan.selection
     )

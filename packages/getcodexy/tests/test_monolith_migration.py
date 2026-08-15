@@ -135,6 +135,38 @@ class MonolithMigrationTests(unittest.TestCase):
         self.assertEqual(receipt["errors"], [{"code": "ambiguous-monolith"}])
         stage.assert_not_called()
 
+    def test_target_staging_failure_is_a_rejected_receipt_before_host_mutation(
+        self,
+    ) -> None:
+        ready = MigrationPlan("ready", "1.3.0", "1.4.0", ("core",), None, "")
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch(
+                "codexy_runtime_tools.monolith_migration._already_migrated",
+                return_value=None,
+            ),
+            patch(
+                "codexy_runtime_tools.monolith_migration._discover",
+                return_value=(Path("/legacy"), "1.3.0"),
+            ),
+            patch(
+                "codexy_runtime_tools.monolith_migration.plan_migration",
+                return_value=ready,
+            ),
+            patch(
+                "codexy_runtime_tools.monolith_migration._stage_target",
+                side_effect=RuntimeError("target unavailable"),
+            ),
+            patch("codexy_runtime_tools.monolith_migration.write_journal") as write,
+            patch("codexy_runtime_tools.monolith_migration._activate") as activate,
+        ):
+            receipt = migrate(Path(directory) / "home", Path("/codex"), lambda _: None)
+
+        self.assertEqual(receipt["outcome"], "rejected")
+        self.assertEqual(receipt["errors"], [{"code": "target-release-unavailable"}])
+        write.assert_not_called()
+        activate.assert_not_called()
+
     def test_activation_marks_the_durable_journal_before_host_mutation(self) -> None:
         ready = MigrationPlan("ready", "1.3.0", "1.4.0", ("core",), None, "")
         events: list[str] = []

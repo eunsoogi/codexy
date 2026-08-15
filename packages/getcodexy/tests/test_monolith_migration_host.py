@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_transaction_state import (
+    InventorySnapshot,
+    read_journal as read_component_journal,
+    write_journal as write_component_journal,
+)
 from codexy_runtime_tools.monolith_migration_host import activate, rollback
 from codexy_runtime_tools.monolith_migration_plan import MigrationPlan
 from codexy_runtime_tools.monolith_migration_state import MigrationJournal
+from codexy_runtime_tools.component_transition_model import plan_transition
 
 
 class MonolithMigrationHostTests(unittest.TestCase):
@@ -112,6 +120,44 @@ class MonolithMigrationHostTests(unittest.TestCase):
 
         self.assertEqual(events, ["remove-extensions", "repin-source", "restore-core"])
         snapshot.restore.assert_called_once()
+
+    def test_rollback_restores_and_clears_the_nested_lifecycle_transaction(
+        self,
+    ) -> None:
+        snapshot = MagicMock()
+        snapshot.capture.return_value = snapshot
+        journal = MigrationJournal("1.3.0", "1.4.0", ("core",), snapshot)
+        manifest = load_component_manifest()
+        plan = plan_transition(manifest, "install", ("core",), (), None)
+        lifecycle = plan.journal("op-migration-recovery", InventorySnapshot(None))
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "home"
+            write_component_journal(home, lifecycle)
+            with (
+                patch(
+                    "codexy_runtime_tools.monolith_migration_host.remove_split_components"
+                ),
+                patch(
+                    "codexy_runtime_tools.monolith_migration_host.reconcile_official_marketplace_root"
+                ),
+                patch("codexy_runtime_tools.monolith_migration_host.run_pre_session"),
+                patch(
+                    "codexy_runtime_tools.monolith_migration_host.classify_monolith",
+                    return_value=MagicMock(state="supported-unmodified"),
+                ),
+                patch(
+                    "codexy_runtime_tools.monolith_migration_host.require_split_extensions_absent"
+                ),
+            ):
+                rollback(
+                    home,
+                    Path("/codex"),
+                    lambda _: None,
+                    journal,
+                    lambda *_: (Path("/legacy"), "1.3.0"),
+                )
+
+            self.assertIsNone(read_component_journal(home))
 
 
 if __name__ == "__main__":

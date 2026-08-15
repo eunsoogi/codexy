@@ -10,6 +10,12 @@ from typing import Callable
 from .component_inspection import doctor, status
 from .component_lifecycle import run_operation
 from .component_manifest import load_component_manifest
+from .component_transaction_state import (
+    InventorySnapshot,
+    clear_journal as clear_component_journal,
+    read_journal as read_component_journal,
+    restore_inventory_snapshot,
+)
 from .github_pre_session import run_github_pre_session
 from .monolith_classifier import classify_monolith
 from .monolith_migration_state import MigrationJournal
@@ -109,6 +115,19 @@ def rollback(
     ):
         raise RuntimeError("legacy monolith did not restore exactly")
     require_split_extensions_absent(executable, runner)
+    _restore_component_transaction(home, journal.selection)
+
+
+def _restore_component_transaction(home: Path, selection: tuple[str, ...]) -> None:
+    pending = read_component_journal(home)
+    if pending is None:
+        return
+    if pending.target != selection:
+        raise RuntimeError("nested lifecycle transaction does not match migration")
+    restore_inventory_snapshot(home, pending.snapshot)
+    if InventorySnapshot.capture(home) != pending.snapshot:
+        raise RuntimeError("nested lifecycle inventory did not restore")
+    clear_component_journal(home)
 
 
 def require_split_extensions_absent(executable: Path, runner: Runner) -> None:
