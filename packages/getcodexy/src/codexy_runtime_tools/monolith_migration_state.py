@@ -175,6 +175,9 @@ def _snapshot_path_allowed(relative: Path) -> bool:
     parts = relative.parts
     return (
         relative == Path("config.toml")
-        or (len(parts) >= 2 and parts[:2] in {("agents", "codexy"), ("agents", "codexy-github")})
+        or (
+            len(parts) >= 2
+            and parts[:2] in {("agents", "codexy"), ("agents", "codexy-github")}
+        )
         or (len(parts) == 1 and relative.name.startswith("config.toml.codexy-backup-"))
     )

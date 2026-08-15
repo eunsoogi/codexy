@@ -116,12 +116,18 @@ class MonolithMigrationTests(unittest.TestCase):
         ready = MigrationPlan("ready", "1.3.0", "1.4.0", ("core",), None, "")
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("codexy_runtime_tools.monolith_migration._already_migrated", return_value=None),
+            patch(
+                "codexy_runtime_tools.monolith_migration._already_migrated",
+                return_value=None,
+            ),
             patch(
                 "codexy_runtime_tools.monolith_migration._discover",
                 return_value=(Path("/legacy"), "9.9.9"),
             ),
-            patch("codexy_runtime_tools.monolith_migration.plan_migration", return_value=ready),
+            patch(
+                "codexy_runtime_tools.monolith_migration.plan_migration",
+                return_value=ready,
+            ),
             patch("codexy_runtime_tools.monolith_migration._stage_target") as stage,
         ):
             receipt = migrate(Path(directory) / "home", Path("/codex"), lambda _: None)

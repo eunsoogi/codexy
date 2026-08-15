@@ -98,7 +98,9 @@ class MonolithAdmissionTests(unittest.TestCase):
                 tree_digest(root)
 
     @unittest.skipIf(os.name == "nt", "POSIX link controls are exercised in CI")
-    def test_recovery_snapshot_refuses_linked_or_hardlinked_projection_files(self) -> None:
+    def test_recovery_snapshot_refuses_linked_or_hardlinked_projection_files(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             agents = home / "agents" / "codexy"
