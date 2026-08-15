@@ -86,5 +86,5 @@ def emit_summary(
             )
         )
     print(
-        f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if budget_pass else 'FAIL'}"
+        f"budget-seconds\t{arguments.budget_seconds:.3f}\t{'PASS' if total_elapsed <= arguments.budget_seconds else 'FAIL'}"
     )

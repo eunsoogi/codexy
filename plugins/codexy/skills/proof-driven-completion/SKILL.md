@@ -9,89 +9,160 @@ description:
 
 ## Purpose
 
-Completion is a claim about the current state, not a feeling about effort. This skill requires evidence that directly matches every explicit requirement before the agent says work is done, closes an
-issue, merges a PR, or marks a goal complete.
+Completion is a claim about the current state, not a feeling about effort. This
+skill requires evidence that directly matches every explicit requirement before
+the agent says work is done, closes an issue, merges a PR, or marks a goal
+complete.
 
-For every user-facing summary, MUST follow [Plain-Language User Replies](../orchestration/references/plain-language-user-replies.md) while preserving exact completion evidence separately. When
-replying in Korean, MUST also follow [Natural Korean User Replies](../orchestration/references/natural-korean-responses.md).
+For every user-facing summary, MUST follow
+[Plain-Language User Replies](../orchestration/references/plain-language-user-replies.md)
+while preserving exact completion evidence separately. When replying in Korean,
+MUST also follow
+[Natural Korean User Replies](../orchestration/references/natural-korean-responses.md).
 
 ## Completion Audit
 
 1. Restate the requested outcome.
-2. MUST list every explicit requirement, named file, command, review gate, external state, and deliverable.
+2. MUST list every explicit requirement, named file, command, review gate,
+   external state, and deliverable.
 3. For each item, name the evidence that would prove it:
    - file content or diff for documentation and configuration,
    - parser/schema output for structured data,
-   - `scripts/validate-plugin-config.sh --check` for Codexy plugin architecture surfaces when the validator exists,
+   - `scripts/validate-plugin-config.sh --check` for Codexy plugin architecture
+     surfaces when the validator exists,
    - lint/typecheck/unit/integration output for code,
-   - browser, desktop, CLI, GitHub, plugin, or marketplace observation for user-visible or external behavior,
+   - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
+     user-visible or external behavior,
    - PR review/comment/thread state for review gates.
-   - child-thread handoff or readback evidence when feedback belongs to a child-owned lane.
-   - TDD classification evidence before requiring RED/GREEN: engineering boundaries require the same faithful proof to turn RED then GREEN; non-engineering boundaries require proportional
-     direct/readback evidence.
-4. MUST inspect the current authoritative source. MUST NOT rely on memory, intent, or earlier output unless it is explicitly marked as stale supporting context.
-5. MUST classify each item as proved, contradicted, incomplete, too weak, or missing.
-6. MUST continue work until every required item is proved, or report the exact blocker without calling the task complete.
+   - child-thread handoff or readback evidence when feedback belongs to a
+     child-owned lane.
+   - TDD classification evidence before requiring RED/GREEN: engineering
+     boundaries require the same faithful proof to turn RED then GREEN;
+     non-engineering boundaries require proportional direct/readback evidence.
+4. MUST inspect the current authoritative source. MUST NOT rely on memory,
+   intent, or earlier output unless it is explicitly marked as stale supporting
+   context.
+5. MUST classify each item as proved, contradicted, incomplete, too weak, or
+   missing.
+6. MUST continue work until every required item is proved, or report the exact
+   blocker without calling the task complete.
 
 ## Required Checks
 
 - MUST run `git diff --check` before pushing or opening a PR.
 - MUST inspect `git status --short` and MUST NOT stage unrelated files.
 - MUST parse structured files with an appropriate parser when possible.
-- MUST keep strict safety, current-head, external-surface, and LOC gates independent from `engineering_tdd_required`; absent RED is not a proof gap for a non-engineering boundary.
-- For Codexy plugin architecture changes, validate LSP config, MCP config, role metadata or custom agent TOMLs, and thread/worktree orchestration wording. MUST run
-  `scripts/validate-plugin-config.sh --check` when that script is present in the current revision.
-- For code-touching or code-adjacent runtime changes, include Codexy `codegraph` MCP exploration evidence when the MCP is available, plus direct file-read confirmation before claiming the touched
-  surface is understood.
-- For non-trivial code, validator, harness, or workflow-rule changes, MUST run a touched implementation-file LOC gate before PR readiness or handoff:
-  `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>`. MUST treat files over the 250 LOC target as failing evidence. Every governed file MUST stay at or below 250 LOC. MUST NOT
-  use or authorize LOC exceptions.
-- MUST record why a LOC reduction is structural rather than formatting-only. MUST NOT treat blank-line deletion or collapsed readable multiline content as structural remediation evidence; MUST name
-  the helper, module, test target, responsibility, or duplicate removal that made the reduction coherent.
-- For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter with `name` and `description`.
-- For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews, and review threads.
-- When a handoff or final answer reports addressed review feedback, MUST include GraphQL `reviewThreads.nodes` in the PR state evidence and MUST run
-  `scripts/validate-plugin-config.sh --check-completion-handoff`; addressed unresolved threads, including outdated-but-fixed threads, MUST be resolved or covered by an accepted no-change rationale
-  before readiness evidence is accepted.
-- For child-owned PRs, MUST route actionable review feedback back to the owning child thread. The parent thread may coordinate, but it MUST NOT merge until the child thread returns current
-  verification or a documented non-change rationale.
-- Before accepting child handoffs that claim clean, synced, pushed, PR-ready, or parent-handoff-ready state, the parent MUST verify current `git status`, local head, remote ref, PR head, merge state,
-  and unresolved review threads. The parent MUST NOT accept handoff prose when those current surfaces contradict it.
-- If a child-owned PR handoff or final-answer evidence mentions parent-authored implementation or review-response commits, MUST run
-  `scripts/validate-plugin-config.sh --check-child-lane-ownership --evidence-file <path>`. A failing result blocks completion unless the evidence records explicit maintainer reassignment of
-  implementation ownership to the parent.
-- For delegated lanes that need their own branch, worktree, PR, or durable child context, MUST require evidence that the child was created, forked, or assigned before implementation patches began. If
-  parent-authored draft edits exist, MUST require recovery evidence showing the parent stopped editing, disclosed the mistake, protected user and other-agent work, and handed the draft diff to the
-  owning child thread.
-- For completion, merge, or default Codexy merge-flow requests, MUST NOT treat a PR that remains open as completion unless the maintainer explicitly requested stop, wait, draft-only, no-merge, or
-  leave-open behavior. When a final answer or handoff artifact may claim completion while the matching PR is open, MUST run
-  `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>` against current PR state before accepting the claim.
-- For every non-trivial atomic unit, MUST require evidence that the owning thread followed machine-owned `orchestration/references/review-profiles.json`: light has no LLM reviewer, standard has
-  `codexy-inspector`, and strict has `codexy-sentinel`. The selected reviewer gate MUST cover the current diff, exact head or file state, lane scope, touched implementation-file LOC evidence,
-  verification outputs, and evidence. Arbitrary reviewer agents, generic role names, parent-only readthroughs, stale reviewer output, or external review passes are not substitutes for this gate.
-- When the selected reviewer is Sentinel, its terminal evidence MUST state `PASS`, `BLOCK`, or `UNOBSERVABLE` with the reviewer name and exact head. Non-terminal `PENDING` or `RUNNING` observations
-  MUST NOT be treated as reviewer verdicts or fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT satisfy PR readiness, push readiness, parent acceptance, or completion unless a maintainer
-  explicitly approves a fallback.
-- When the selected reviewer is Sentinel, live observation MUST be read-only and event-driven. Generic child and ledger polling remains permitted. Both the child owner and the root orchestrator MUST
-  NOT message, interrupt, replace, duplicate, follow up with, or poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation, and an independently observed live reviewer
-  is `RUNNING`; neither observation is a reviewer verdict or fallback-eligible. The owning lane MUST retain the same reviewer and wait for its natural terminal result. A live Sentinel MUST report its
-  own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+- MUST keep strict safety, current-head, external-surface, and LOC gates
+  independent from `engineering_tdd_required`; absent RED is not a proof gap for
+  a non-engineering boundary.
+- For Codexy plugin architecture changes, validate LSP config, MCP config, role
+  metadata or custom agent TOMLs, and thread/worktree orchestration wording.
+  MUST run `scripts/validate-plugin-config.sh --check` when that script is
+  present in the current revision.
+- For code-touching or code-adjacent runtime changes, include Codexy `codegraph`
+  MCP exploration evidence when the MCP is available, plus direct file-read
+  confirmation before claiming the touched surface is understood.
+- For non-trivial code, validator, harness, or workflow-rule changes, MUST run a
+  touched implementation-file LOC gate before PR readiness or handoff:
+  `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>`.
+  MUST treat files over the 250 LOC target as failing evidence. Every governed
+  file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions.
+- MUST record why a LOC reduction is structural rather than formatting-only.
+  MUST NOT treat blank-line deletion or collapsed readable multiline content as
+  structural remediation evidence; MUST name the helper, module, test target,
+  responsibility, or duplicate removal that made the reduction coherent.
+- For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter
+  with `name` and `description`.
+- For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
+  and review threads.
+- When a handoff or final answer reports addressed review feedback, MUST include
+  GraphQL `reviewThreads.nodes` in the PR state evidence and MUST run
+  `scripts/validate-plugin-config.sh --check-completion-handoff`; addressed
+  unresolved threads, including outdated-but-fixed threads, MUST be resolved or
+  covered by an accepted no-change rationale before readiness evidence is
+  accepted.
+- For child-owned PRs, MUST route actionable review feedback back to the owning
+  child thread. The parent thread may coordinate, but it MUST NOT merge until
+  the child thread returns current verification or a documented non-change
+  rationale.
+- Before accepting child handoffs that claim clean, synced, pushed, PR-ready, or
+  parent-handoff-ready state, the parent MUST verify current `git status`, local
+  head, remote ref, PR head, merge state, and unresolved review threads. The
+  parent MUST NOT accept handoff prose when those current surfaces contradict
+  it.
+- If a child-owned PR handoff or final-answer evidence mentions parent-authored
+  implementation or review-response commits, MUST run
+  `scripts/validate-plugin-config.sh --check-child-lane-ownership --evidence-file <path>`.
+  A failing result blocks completion unless the evidence records explicit
+  maintainer reassignment of implementation ownership to the parent.
+- For delegated lanes that need their own branch, worktree, PR, or durable child
+  context, MUST require evidence that the child was created, forked, or assigned
+  before implementation patches began. If parent-authored draft edits exist,
+  MUST require recovery evidence showing the parent stopped editing, disclosed
+  the mistake, protected user and other-agent work, and handed the draft diff to
+  the owning child thread.
+- For completion, merge, or default Codexy merge-flow requests, MUST NOT treat a
+  PR that remains open as completion unless the maintainer explicitly requested
+  stop, wait, draft-only, no-merge, or leave-open behavior. When a final answer
+  or handoff artifact may claim completion while the matching PR is open, MUST
+  run
+  `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
+  against current PR state before accepting the claim.
+- For every non-trivial atomic unit, MUST require evidence that the owning
+  thread followed machine-owned `orchestration/references/review-profiles.json`:
+  light has no LLM reviewer, standard has `codexy-inspector`, and strict has
+  `codexy-sentinel`. The selected reviewer gate MUST cover the current diff,
+  exact head or file state, lane scope, touched implementation-file LOC
+  evidence, verification outputs, and evidence. Arbitrary reviewer agents,
+  generic role names, parent-only readthroughs, stale reviewer output, or
+  external review passes are not substitutes for this gate.
+- When the selected reviewer is Sentinel, its terminal evidence MUST state
+  `PASS`, `BLOCK`, or `UNOBSERVABLE` with the reviewer name and exact head.
+  Non-terminal `PENDING` or `RUNNING` observations MUST NOT be treated as
+  reviewer verdicts or fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT
+  satisfy PR readiness, push readiness, parent acceptance, or completion unless
+  a maintainer explicitly approves a fallback.
+- When the selected reviewer is Sentinel, live observation MUST be read-only and
+  event-driven. Generic child and ledger polling remains permitted. Both the
+  child owner and the root orchestrator MUST NOT message, interrupt, replace,
+  duplicate, follow up with, or poll a live Sentinel. A bounded wait with no
+  event is a non-terminal `PENDING` observation, and an independently observed
+  live reviewer is `RUNNING`; neither observation is a reviewer verdict or
+  fallback-eligible. The owning lane MUST retain the same reviewer and wait for
+  its natural terminal result. A live Sentinel MUST report its own terminal
+  `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 - MUST re-run verification after addressing review feedback.
-- For delegated non-trivial or multi-step child implementation lanes, MUST verify the child reported actual goal-tool usage or an unavailable-goal-tool fallback, current todo/plan tool usage or an
-  unavailable-todo-tool fallback, required multi-agent use for independent research questions, disjoint implementation slices, QA or verification in parallel, review gates, review-feedback validation,
-  or separable non-trivial subtasks, changed files, verification evidence, packaged Codexy reviewer findings or approval, and clean worktree status before treating the handoff as complete. A
-  "multi-agent not useful" rationale is acceptable only when it is concrete and tied to atomicity, tiny scope, or the absence of separable work; generic manual fallback is not enough when multi-agent
-  tooling is available. Goal-tool evidence MUST name real Codex goal surfaces such as `create_goal`, `get_goal`, or `update_goal` when they are available. Prose-only `Goal:` or `Todo:` text is not
-  evidence of real goal or todo/plan tool use. For an atomic trivial child lane, MUST require an explicit not-applicable rationale instead of silently skipping the execution discipline.
+- For delegated non-trivial or multi-step child implementation lanes, MUST
+  verify the child reported actual goal-tool usage or an unavailable-goal-tool
+  fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,
+  required multi-agent use for independent research questions, disjoint
+  implementation slices, QA or verification in parallel, review gates,
+  review-feedback validation, or separable non-trivial subtasks, changed files,
+  verification evidence, packaged Codexy reviewer findings or approval, and
+  clean worktree status before treating the handoff as complete. A "multi-agent
+  not useful" rationale is acceptable only when it is concrete and tied to
+  atomicity, tiny scope, or the absence of separable work; generic manual
+  fallback is not enough when multi-agent tooling is available. Goal-tool
+  evidence MUST name real Codex goal surfaces such as `create_goal`, `get_goal`,
+  or `update_goal` when they are available. Prose-only `Goal:` or `Todo:` text
+  is not evidence of real goal or todo/plan tool use. For an atomic trivial
+  child lane, MUST require an explicit not-applicable rationale instead of
+  silently skipping the execution discipline.
 
 ## Evidence Rules
 
-- Evidence MUST be current for the file state, commit, PR head, runtime, or external setting being claimed.
-- Narrow evidence proves only narrow claims. A parser check does not prove UX; a unit test does not prove GitHub settings.
-- If review feedback is addressed by a child thread, evidence MUST include the child thread result, the exact new head, and the rerun verification.
+- Evidence MUST be current for the file state, commit, PR head, runtime, or
+  external setting being claimed.
+- Narrow evidence proves only narrow claims. A parser check does not prove UX; a
+  unit test does not prove GitHub settings.
+- If review feedback is addressed by a child thread, evidence MUST include the
+  child thread result, the exact new head, and the rerun verification.
 - If a command was skipped, say so with the reason.
-- If evidence is local and untracked, MUST summarize it or give the ignored evidence path; MUST NOT commit scratch artifacts unless requested.
-- If a dependency PR has not yet landed, label validator, LSP, MCP, role metadata, custom agent TOML, thread, or worktree evidence as deferred instead of claiming completion.
+- If evidence is local and untracked, MUST summarize it or give the ignored
+  evidence path; MUST NOT commit scratch artifacts unless requested.
+- If a dependency PR has not yet landed, label validator, LSP, MCP, role
+  metadata, custom agent TOML, thread, or worktree evidence as deferred instead
+  of claiming completion.
 
 ## Final Report Shape
 
@@ -107,33 +178,60 @@ MUST include:
 ## Stop Conditions
 
 - MUST stop and fix if proof contradicts the claim.
-- MUST stop and ask only when the missing proof requires a secret, account action, destructive operation, or human-only decision.
-- MUST NOT call `update_goal(status="complete")` until every requirement in the finite execution phase has current matching proof and no immediately executable in-scope owner work remains. Goal
-  completion MUST NOT claim that the issue, implementation, or an external gate is complete.
-- MUST NOT call `update_goal(status="blocked")` merely because child-thread work, queued worktree/thread setup, or asynchronous tool completion is pending. While an immediately executable in-scope
-  obligation remains, the child MUST use one nonterminal wait handoff and retain its active goal, plan, and ownership. Once local code, proof, push, review-response, and handoff work is finished and
-  only an external gate or explicit parent wake remains, it MUST send one idle-wait handoff, complete the finite goal, and leave the task idle without claiming the issue complete. It MUST NOT poll,
-  interrupt, duplicate, replace, or approve the live producer or reviewer. A qualifying event creates a fresh short-lived goal and current plan before any further execution.
-- MUST allow `update_goal(status="blocked")` only for an exact unanswered user decision or missing user information that materially changes the result and has no safe default or in-scope action.
-- MUST NOT accept a non-trivial child implementation handoff as complete when it omits actual goal-tool usage, actual todo/plan tool usage, required situational multi-agent usage, a concrete
-  not-useful rationale tied to atomicity or tiny scope, or unavailable-tool fallback evidence required by the orchestrator assignment. Using only one of goal or todo/plan is insufficient unless the
-  missing tool was unavailable and the child reported that unavailability with its fallback.
-- MUST NOT accept a non-trivial atomic unit as complete when it omits the packaged Codexy reviewer agent result for the current diff, exact head or file state, lane scope, verification outputs, and
-  evidence.
+- MUST stop and ask only when the missing proof requires a secret, account
+  action, destructive operation, or human-only decision.
+- MUST NOT call `update_goal(status="complete")` until every requirement in the
+  finite execution phase has current matching proof and no immediately
+  executable in-scope owner work remains. Goal completion MUST NOT claim that
+  the issue, implementation, or an external gate is complete.
+- MUST NOT call `update_goal(status="blocked")` merely because child-thread
+  work, queued worktree/thread setup, or asynchronous tool completion is
+  pending. While an immediately executable in-scope obligation remains, the
+  child MUST use one nonterminal wait handoff and retain its active goal, plan,
+  and ownership. Once local code, proof, push, review-response, and handoff work
+  is finished and only an external gate or explicit parent wake remains, it MUST
+  send one idle-wait handoff, complete the finite goal, and leave the task idle
+  without claiming the issue complete. It MUST NOT poll, interrupt, duplicate,
+  replace, or approve the live producer or reviewer. A qualifying event creates
+  a fresh short-lived goal and current plan before any further execution.
+- MUST allow `update_goal(status="blocked")` only for an exact unanswered user
+  decision or missing user information that materially changes the result and
+  has no safe default or in-scope action.
+- MUST NOT accept a non-trivial child implementation handoff as complete when it
+  omits actual goal-tool usage, actual todo/plan tool usage, required
+  situational multi-agent usage, a concrete not-useful rationale tied to
+  atomicity or tiny scope, or unavailable-tool fallback evidence required by the
+  orchestrator assignment. Using only one of goal or todo/plan is insufficient
+  unless the missing tool was unavailable and the child reported that
+  unavailability with its fallback.
+- MUST NOT accept a non-trivial atomic unit as complete when it omits the
+  packaged Codexy reviewer agent result for the current diff, exact head or file
+  state, lane scope, verification outputs, and evidence.
 
 ## Failure Modes
 
 - Reporting a merge before verifying branch deletion and main sync.
-- Reporting completion after opening a clean PR while merge gates are not intentionally deferred.
-- Ignoring actionable top-level PR comments because they are not GitHub review objects.
-- Treating ordinary review or child-thread wait time as a blocker instead of a non-blocking external state, with an active goal only when executable work remains.
+- Reporting completion after opening a clean PR while merge gates are not
+  intentionally deferred.
+- Ignoring actionable top-level PR comments because they are not GitHub review
+  objects.
+- Treating ordinary review or child-thread wait time as a blocker instead of a
+  non-blocking external state, with an active goal only when executable work
+  remains.
 - Treating generated files as valid without parsing or inspecting them.
-- Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale evidence.
-- Treating prose about architecture gates as proof that LSP, MCP, role metadata, custom agent TOML, thread, or worktree behavior has been validated.
-- Treating code-touching work as complete without Codexy `codegraph` MCP exploration evidence when the MCP was available.
-- Fixing child-owned review feedback in the parent thread and merging without handing it back to the owning child thread for verification.
-- Accepting child-owned lane completion when the parent patched implementation first and delegated afterward without explicit recovery evidence.
-- Treating an arbitrary reviewer agent, generic review role, parent-only readthrough, stale reviewer output, or external review pass as equivalent to the packaged Codexy reviewer agent gate for the
-  current diff and evidence.
+- Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale
+  evidence.
+- Treating prose about architecture gates as proof that LSP, MCP, role metadata,
+  custom agent TOML, thread, or worktree behavior has been validated.
+- Treating code-touching work as complete without Codexy `codegraph` MCP
+  exploration evidence when the MCP was available.
+- Fixing child-owned review feedback in the parent thread and merging without
+  handing it back to the owning child thread for verification.
+- Accepting child-owned lane completion when the parent patched implementation
+  first and delegated afterward without explicit recovery evidence.
+- Treating an arbitrary reviewer agent, generic review role, parent-only
+  readthrough, stale reviewer output, or external review pass as equivalent to
+  the packaged Codexy reviewer agent gate for the current diff and evidence.
 
-A checked contract is the sole merge authorization; generic finish, completion, silence, clean gates, and a ready PR are non-authoritative signals.
+A checked contract is the sole merge authorization; generic finish, completion,
+silence, clean gates, and a ready PR are non-authoritative signals.

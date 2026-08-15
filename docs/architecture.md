@@ -1,15 +1,23 @@
 # Codexy plugin architecture
 
-Codexy is a plugin-first harness for turning repository work into owned, verifiable delivery lanes. This guide describes the components that ship in the plugin and the workflow implemented by their
-current configuration. The source of truth remains the packaged files linked below; being packaged or configured does not by itself guarantee that a particular Codex host exposes the surface in an
-already-running session.
+Codexy is a plugin-first harness for turning repository work into owned,
+verifiable delivery lanes. This guide describes the components that ship in the
+plugin and the workflow implemented by their current configuration. The source
+of truth remains the packaged files linked below; being packaged or configured
+does not by itself guarantee that a particular Codex host exposes the surface in
+an already-running session.
 
-The frozen target ownership for the future core, GitHub, and developer-tools products is defined in the [three-plugin product boundary](plugin-product-boundary.md).
+The frozen target ownership for the future core, GitHub, and developer-tools
+products is defined in the
+[three-plugin product boundary](plugin-product-boundary.md).
 
 ## Specialist agents
 
-The packaged catalog lists one TOML file per specialist. The plugin interface in [`agents/openai.yaml`](../plugins/codexy/agents/openai.yaml) starts Codexy itself; it is not another specialist. Agent
-files are discovered through [`catalog.toml`](../plugins/codexy/agents/catalog.toml) and projected into Codex's native custom-agent location by the registration bootstrap.
+The packaged catalog lists one TOML file per specialist. The plugin interface in
+[`agents/openai.yaml`](../plugins/codexy/agents/openai.yaml) starts Codexy
+itself; it is not another specialist. Agent files are discovered through
+[`catalog.toml`](../plugins/codexy/agents/catalog.toml) and projected into
+Codex's native custom-agent location by the registration bootstrap.
 
 | Agent                 | Model           | Reasoning effort | Role                                                                                                                                                |
 | --------------------- | --------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -21,19 +29,26 @@ files are discovered through [`catalog.toml`](../plugins/codexy/agents/catalog.t
 | `codexy-shipwright`   | `gpt-5.6-terra` | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
 | `codexy-warden`       | `gpt-5.6-sol`   | `xhigh`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
 
-These model assignments come directly from the packaged TOMLs. A named custom agent's TOML is authoritative for its model and reasoning effort; callers should not silently override it.
+These model assignments come directly from the packaged TOMLs. A named custom
+agent's TOML is authoritative for its model and reasoning effort; callers should
+not silently override it.
 
-The optional `codexy-github` plugin separately packages `codexy-weaver` for GitHub integration after that plugin is installed.
+The optional `codexy-github` plugin separately packages `codexy-weaver` for
+GitHub integration after that plugin is installed.
 
-The role-equivalence boundary records why the removed roles are not aliases and describes Inspector as a distinct profile-bound reviewer: see
+The role-equivalence boundary records why the removed roles are not aliases and
+describes Inspector as a distinct profile-bound reviewer: see
 [`specialist-role-equivalence.md`](specialist-role-equivalence.md).
 
 ## Packaged skills
 
-Skills are instruction packages discovered from [`skills/*/SKILL.md`](../plugins/codexy/skills). Their frontmatter describes when they must be selected; the body supplies the executable workflow and
+Skills are instruction packages discovered from
+[`skills/*/SKILL.md`](../plugins/codexy/skills). Their frontmatter describes
+when they must be selected; the body supplies the executable workflow and
 evidence rules.
 
-The optional `codexy-github` package separately provides `git-workflow` for GitHub issue, branch, PR, review, merge, and main-sync work after installation.
+The optional `codexy-github` package separately provides `git-workflow` for
+GitHub issue, branch, PR, review, merge, and main-sync work after installation.
 
 | Skill                     | Decision | Trigger / use                                                                                                                   | Responsibility                                                                                                                                                                                                             |
 | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -46,7 +61,9 @@ The optional `codexy-github` package separately provides `git-workflow` for GitH
 
 ## Repository-only skills
 
-Codex discovers these maintenance workflows from [`.agents/skills`](../.agents/skills) while working in this repository. They remain deliberately outside the Codexy plugin payload.
+Codex discovers these maintenance workflows from
+[`.agents/skills`](../.agents/skills) while working in this repository. They
+remain deliberately outside the Codexy plugin payload.
 
 | Skill                     | Decision        | Trigger / use                                                                                                                          | Responsibility                                                                                                 |
 | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -64,8 +81,11 @@ Codex discovers these maintenance workflows from [`.agents/skills`](../.agents/s
 
 ## Skill path-consumer map
 
-All 6 stable core packaged `skills/<name>/SKILL.md` paths in the inventory above have a matching `skills/<name>/agents/openai.yaml`. The two repository-only skills use the equivalent
-`.agents/skills/<name>/` paths. These consumer classes cover their selection, registration, references, validation, tests, and user-facing prompts.
+All 6 stable core packaged `skills/<name>/SKILL.md` paths in the inventory above
+have a matching `skills/<name>/agents/openai.yaml`. The two repository-only
+skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
+cover their selection, registration, references, validation, tests, and
+user-facing prompts.
 
 | Consumer class               | Paths                                                                                                                                                                                                                                                                                                                          | Contract                                                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,30 +98,43 @@ All 6 stable core packaged `skills/<name>/SKILL.md` paths in the inventory above
 
 ## MCP servers
 
-The optional Codexy Devtools manifest points `mcpServers` at [`plugins/codexy-devtools/.mcp.json`](../plugins/codexy-devtools/.mcp.json). That file registers two plugin-local stdio servers; core
-Codexy registers none. Registration tells a host how to resolve a server; runtime startup and tool exposure still belong to the host and the current session.
+The optional Codexy Devtools manifest points `mcpServers` at
+[`plugins/codexy-devtools/.mcp.json`](../plugins/codexy-devtools/.mcp.json).
+That file registers two plugin-local stdio servers; core Codexy registers none.
+Registration tells a host how to resolve a server; runtime startup and tool
+exposure still belong to the host and the current session.
 
 | Server      | Registration                                                                       | Runtime boundary                                                                                                                                     | Capabilities and tools                                                                                                                                                                                        |
 | ----------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `codegraph` | `{"command":"./mcp/codexy-mcp-devtools","args":["codegraph","--stdio"],"cwd":"."}` | A bootstrapped Codexy runtime binary runs as a plugin-relative local stdio child process.                                                            | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery. |
 | `lsp`       | `{"command":"./mcp/codexy-mcp-devtools","args":["lsp","--stdio"],"cwd":"."}`       | A plugin-relative local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, and `lsp_diagnostics` cover discovery, readiness, and language-aware requests.                  |
 
-Registration cells reproduce the complete JSON object so argument boundaries and simultaneously configured fields remain source-verifiable rather than being flattened into command-line prose.
+Registration cells reproduce the complete JSON object so argument boundaries and
+simultaneously configured fields remain source-verifiable rather than being
+flattened into command-line prose.
 
-For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json) is the machine-readable client registration and
-[`server-catalog.toml`](../plugins/codexy-devtools/lsp/server-catalog.toml) carries the validated language, extension, command, and install-hint catalog. A matching entry does not claim that the
-executable is installed.
+For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json)
+is the machine-readable client registration and
+[`server-catalog.toml`](../plugins/codexy-devtools/lsp/server-catalog.toml)
+carries the validated language, extension, command, and install-hint catalog. A
+matching entry does not claim that the executable is installed.
 
 ### Configured versus callable
 
-`codex plugin list` and `codex mcp list` can prove that Codex knows about a plugin or server. They do not prove that an already-running host loaded the registration, started the local binary or
-reached the remote endpoint, and published every tool into the active callable surface. A fresh session may be required after installation or update. When a registered server is missing from the
-actual tool surface, Codexy treats that mismatch as evidence to record, not as permission to claim the server worked.
+`codex plugin list` and `codex mcp list` can prove that Codex knows about a
+plugin or server. They do not prove that an already-running host loaded the
+registration, started the local binary or reached the remote endpoint, and
+published every tool into the active callable surface. A fresh session may be
+required after installation or update. When a registered server is missing from
+the actual tool surface, Codexy treats that mismatch as evidence to record, not
+as permission to claim the server worked.
 
 ## Implemented orchestration
 
-The main flow comes from `orchestration`, `git-workflow`, `engineering`, and `proof-driven-completion`. Routing context selects the owner and execution lane; verification and readiness checks are
-separate hard gates and cannot be replaced by contextual hook messages.
+The main flow comes from `orchestration`, `git-workflow`, `engineering`, and
+`proof-driven-completion`. Routing context selects the owner and execution lane;
+verification and readiness checks are separate hard gates and cannot be replaced
+by contextual hook messages.
 
 ```mermaid
 flowchart TD
@@ -137,14 +170,18 @@ flowchart TD
     end
 ```
 
-The owning lane keeps review-response fixes on the same branch. `PENDING` and `RUNNING` are non-terminal observations, so the same reviewer stays active and no replacement cycle starts. A `BLOCK`
-starts a fresh repair proof and the one permitted same-reviewer delta recheck; an `UNOBSERVABLE` result is not approval. Opening a PR is only a terminal state when the request explicitly says to stop,
+The owning lane keeps review-response fixes on the same branch. `PENDING` and
+`RUNNING` are non-terminal observations, so the same reviewer stays active and
+no replacement cycle starts. A `BLOCK` starts a fresh repair proof and the one
+permitted same-reviewer delta recheck; an `UNOBSERVABLE` result is not approval.
+Opening a PR is only a terminal state when the request explicitly says to stop,
 wait, or leave it open.
 
 ## Plugin and runtime discovery
 
-This second workflow is useful because configuration, installation, process startup, and active-session exposure are distinct states. It also shows where LSP resolution can legitimately stop without
-making a language-aware request.
+This second workflow is useful because configuration, installation, process
+startup, and active-session exposure are distinct states. It also shows where
+LSP resolution can legitimately stop without making a language-aware request.
 
 ```mermaid
 flowchart LR
@@ -174,14 +211,17 @@ flowchart LR
 
 ## Keeping the guide current
 
-The focused architecture inventory test reads the packaged agent catalog and TOMLs, every skill frontmatter block, and `.mcp.json`, then compares them with the three tables above. It rejects omitted
-or duplicate entries and stale agent model or reasoning values. Run it with:
+The focused architecture inventory test reads the packaged agent catalog and
+TOMLs, every skill frontmatter block, and `.mcp.json`, then compares them with
+the three tables above. It rejects omitted or duplicate entries and stale agent
+model or reasoning values. Run it with:
 
 ```sh
 cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
-The repository's broader plugin validator remains responsible for manifest, agent catalog, skill frontmatter, MCP, and LSP configuration integrity:
+The repository's broader plugin validator remains responsible for manifest,
+agent catalog, skill frontmatter, MCP, and LSP configuration integrity:
 
 ```sh
 scripts/validate-plugin-config.sh --check

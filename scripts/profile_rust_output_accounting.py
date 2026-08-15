@@ -52,7 +52,7 @@ def deadline_test_context(
         elif current and (match := RUN_START_PATTERN.match(line)):
             pending = match.group("name")
         elif current and pending and line in {"ok", "FAILED", "ignored"}:
-            completed = f"{current}::{accounting.canonical_test_name(pending)}"
+            completed = f"{current}::{canonical_test_name(pending)}"
             active.discard(completed)
             last_completed, pending = completed, None
     return current, terminal, sorted(active), last_completed, observed_targets

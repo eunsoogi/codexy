@@ -7,6 +7,11 @@ import importlib.util
 import os
 from pathlib import Path
 import re
+import sys
+
+SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
+if SCRIPT_DIRECTORY not in sys.path:
+    sys.path.insert(0, SCRIPT_DIRECTORY)
 
 from profile_rust_command_metrics import metrics as command_metrics
 

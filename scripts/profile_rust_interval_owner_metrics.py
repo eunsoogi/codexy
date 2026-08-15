@@ -23,11 +23,13 @@ def metrics(
 ) -> tuple[list[dict], dict]:
     expected = None
     if legacy_path is not None and legacy_path.is_dir():
-        from profile_rust_interval_telemetry import read_rows
+        from profile_rust_interval_telemetry import read_rows as read_interval_rows
 
         expected = sum(
             len(intervals)
-            for (_, key, _), producers in read_rows(legacy_path, session).items()
+            for (_, key, _), producers in read_interval_rows(
+                legacy_path, session
+            ).items()
             if key == "fixture-command.output"
             for intervals in producers.values()
         )

@@ -70,6 +70,7 @@ def run_workload(
                 if temp_root:
                     configure_windows_test_runner(environment, temp_root)
                 job = WindowsJob() if os.name == "nt" else None
+                process = None
                 if job is None:
                     process = subprocess.Popen(
                         workload,
@@ -94,7 +95,7 @@ def run_workload(
                 runtime.start(
                     capture_path,
                     process,
-                    lambda: (
+                    lambda process=process, job=job: (
                         job.diagnostics(process)["windows-job-images-json"]
                         if job
                         else json.dumps(linux_cargo_descendants_snapshot(process.pid))

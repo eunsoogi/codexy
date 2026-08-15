@@ -40,9 +40,13 @@
 - return control: confirmed
 - confirmed idle state: goal state=complete; plan state=idle
 
-Terminal parent handoff: event id=<event id>; issue/pr=<issue> / PR <pr or not-created>; child task=<child task>; parent task=<parent task>; branch=<branch>; worktree=<worktree>; head=<head>;
-clean/index=<clean or dirty>; last proof=<last proof>; current gate=<current gate>; preserved reservation/artifacts=<reservation or artifacts>; parent next action=<one parent-owned action>;
-delivery=confirmed; task surface=codex task/thread
+Terminal parent handoff: event id=<event id>; issue/pr=<issue> / PR
+<pr or not-created>; child task=<child task>; parent task=<parent task>;
+branch=<branch>; worktree=<worktree>; head=<head>; clean/index=<clean or dirty>;
+last proof=<last proof>; current gate=<current gate>; preserved
+reservation/artifacts=<reservation or artifacts>; parent next
+action=<one parent-owned action>; delivery=confirmed; task surface=codex
+task/thread
 
 ## Runtime Heartbeat
 

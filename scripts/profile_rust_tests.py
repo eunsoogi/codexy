@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Profile one registered Rust acceptance workload and account for its coverage."""
+"""Profile one registered Rust acceptance workload and account for its coverage (workload_receipt, listed_digest, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from profile_rust_accounting import (
     observed_test_inventory,
     observed_test_outcomes,
 )
-from profile_rust_archive_accounting import receipt_environment
+from profile_rust_archive_accounting import emit_receipt_report, receipt_environment
 from profile_rust_contract import (
     BUDGET_SECONDS,
     COMPILE_PATTERN,
@@ -29,6 +29,7 @@ from profile_rust_contract import (
     RESULT_PATTERN,
     WORKLOAD,
 )
+from profile_rust_lifecycle import run_workload as lifecycle_run_workload
 from profile_rust_compat import run_patchable
 from profile_rust_output import flush_output, observe_first_line, replay_output
 from profile_rust_cli import parse_arguments
@@ -69,7 +70,7 @@ def run_workload(
 
 
 def main() -> int:
-    arguments = parse_arguments(__doc__ or "")
+    parser, arguments = parse_arguments(__doc__ or "")
     try:
         root = runtime_package_root(arguments.root)
     except ValueError as error:

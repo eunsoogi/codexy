@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
+import os, signal, sys, threading, time
 from pathlib import Path
 
 SCRIPT_DIRECTORY = str(Path(__file__).resolve().parent)
@@ -19,8 +18,6 @@ from profile_rust_process_families import (
     valid_target,
 )
 from profile_rust_timing import elapsed
-import signal
-import threading
 from typing import Callable, Iterable, Sequence
 
 

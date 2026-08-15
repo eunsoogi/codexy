@@ -88,4 +88,8 @@ jobs:
       - name: Lint PowerShell
         if: matrix.language == 'PowerShell'
         shell: pwsh
-        run: Get-ChildItem -Recurse -Filter *.ps1 | Invoke-ScriptAnalyzer -Severity ParseError,Error,Warning
+        run: |
+          $files = @(Get-ChildItem -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
+          if ($files.Count -gt 0) {
+            Invoke-ScriptAnalyzer -Path $files -Severity ParseError,Error,Warning -EnableExit
+          }

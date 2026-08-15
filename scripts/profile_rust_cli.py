@@ -6,7 +6,9 @@ from pathlib import Path
 from profile_rust_contract import BUDGET_SECONDS
 
 
-def parse_arguments(description: str) -> argparse.Namespace:
+def parse_arguments(
+    description: str,
+) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--root",
@@ -21,4 +23,4 @@ def parse_arguments(description: str) -> argparse.Namespace:
     parser.add_argument("--receipt", type=Path)
     parser.add_argument("--aggregate-receipts", type=Path)
     parser.add_argument("--aggregate-platform", choices=("posix", "windows"))
-    return parser.parse_args()
+    return parser, parser.parse_args()

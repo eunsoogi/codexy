@@ -12,7 +12,7 @@ from .github_mutation import (
     form,
     target,
 )
-from .merge import cli as cli_merge, positive_int
+from .merge import cli as cli_merge, message_valid, positive_int
 from .pull_request import create as pr_create, shell_update
 from .repository import (
     github_identity,

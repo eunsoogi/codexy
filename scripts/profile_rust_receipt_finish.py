@@ -2,7 +2,7 @@
 
 import time
 
-from profile_rust_receipts import digest, write
+from profile_rust_receipts import SCHEMA, digest, write
 
 
 def finish_receipt(
@@ -54,4 +54,4 @@ def finish_receipt(
         )
         success = success and receipt["state"] == "PASS"
 
-        return success
+    return success
