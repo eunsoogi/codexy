@@ -15,6 +15,7 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         "plugins/codexy-devtools/.codex-plugin/plugin.json",
         "plugins/codexy-github/.codex-plugin/plugin.json",
         "packages/getcodexy/pyproject.toml",
+        "packages/getcodexy/uv.lock",
         "scripts/validate-release-lifecycle-contract",
     ];
     for relative in version_sources {

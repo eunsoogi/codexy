@@ -106,6 +106,7 @@ impl Fixture {
         fs::remove_file(repo.join("Cargo.toml"))?;
         fs::remove_file(repo.join("Cargo.lock"))?;
         metadata::synchronize_current_plugin_validation_inputs(&repo)?;
+        metadata::make_uv_lock_stale(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
         let workflow_target = repo.join(workflow);
         fs::create_dir_all(workflow_target.parent().ok_or("workflow parent")?)?;
@@ -160,6 +161,7 @@ impl Fixture {
                 "plugins/codexy-devtools",
                 "plugins/codexy-github",
                 "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+                "packages/getcodexy/uv.lock",
                 "packages/codexy-runtime/src/version/bootstrap.rs",
             ],
         )?;

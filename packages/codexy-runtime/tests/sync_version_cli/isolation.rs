@@ -79,7 +79,9 @@ pub(super) fn version_surface_contents(
             ".agents/plugins/release-publish-contract.json",
             "packages/codexy-runtime/Cargo.lock",
             "packages/codexy-runtime/Cargo.toml",
+            "packages/getcodexy/pyproject.toml",
             "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+            "packages/getcodexy/uv.lock",
             "plugins/codexy/.codex-plugin/plugin.json",
             "plugins/codexy-devtools/.codex-plugin/plugin.json",
             "plugins/codexy-github/.codex-plugin/plugin.json",
@@ -93,7 +95,6 @@ fn bootstrap_surface_contents(
     contents(
         root,
         [
-            "packages/getcodexy/pyproject.toml",
             "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
             "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
             "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",

@@ -4,7 +4,7 @@ set -eu
 runtime_archive=${1:?activated runtime archive required}
 bundle_archive=${2:?bundle archive required}
 : "${RELEASE_TAG:?release tag required}"
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$script_dir")
 component_manifest="$root/packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
 marketplace="$root/.agents/plugins/marketplace.json"

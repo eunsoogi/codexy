@@ -7,7 +7,6 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Callable
 
@@ -19,6 +18,7 @@ from .plugin_resolution import (
 )
 from .pre_session import _json, _run, official_marketplace_root
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
+from .version_lock import default_package_version
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -47,7 +47,7 @@ def run_github_pre_session(
     _validate_real_path(home, require_exists=False)
     executable = trusted_codex(codex)
     invoke = runner or (lambda command: _run(command, home))
-    release = package_version or distribution_version("getcodexy")
+    release = package_version or default_package_version()
     marketplace_root = official_marketplace_root(executable, invoke, release)
     before = _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
     for name in ("codexy", "codexy-github"):

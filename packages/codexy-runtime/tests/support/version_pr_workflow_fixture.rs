@@ -189,6 +189,10 @@ fn write_version_files(repo: &Path) -> std::io::Result<()> {
         ("plugins/codexy-devtools/.codex-plugin/plugin.json", "{}\n"),
         ("plugins/codexy-github/.codex-plugin/plugin.json", "{}\n"),
         ("packages/getcodexy/pyproject.toml", "[project]\nname='fixture'\n"),
+        (
+            "packages/getcodexy/uv.lock",
+            "[[package]]\nname = \"getcodexy\"\nversion = \"0.0.0\"\n",
+        ),
     ] {
         let target = repo.join(path);
         fs::create_dir_all(target.parent().expect("version file parent"))?;

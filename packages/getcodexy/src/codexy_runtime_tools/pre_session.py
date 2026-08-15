@@ -5,7 +5,6 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
-from importlib.metadata import version as distribution_version
 from pathlib import Path
 from typing import Callable
 
@@ -16,6 +15,7 @@ from .plugin_resolution import (
     preflight_install as _preflight,
 )
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
+from .version_lock import default_package_version
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
@@ -40,7 +40,7 @@ def run_pre_session(
     invoke = runner or (lambda command: _run(command, home))
     _validate_real_path(home, require_exists=False)
 
-    target_version = package_version or distribution_version("getcodexy")
+    target_version = package_version or default_package_version()
     marketplace_root = official_marketplace_root(executable, invoke, target_version)
 
     before = _json(
@@ -94,7 +94,7 @@ def official_marketplace_root(
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    f"v{target_version or distribution_version('getcodexy')}",
+                    f"v{target_version or default_package_version()}",
                     "--json",
                 ]
             ),

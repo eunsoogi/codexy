@@ -59,7 +59,6 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                 runner=runner,
                 synchronize=lambda _root, home, mode: sync_result(mode, home),
                 activate_github=lambda *_: True,
-                package_version="1.3.0",
             )
 
             self.assertEqual(

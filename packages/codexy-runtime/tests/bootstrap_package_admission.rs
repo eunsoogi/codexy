@@ -73,6 +73,10 @@ fn bootstrap_source_admission_rejects_stale_non_main_malformed_and_version_misma
         checkout.join("packages/getcodexy/pyproject.toml"),
         "[project]\nversion = \"9.9.9\"\n",
     )?;
+    fs::write(
+        checkout.join("packages/getcodexy/uv.lock"),
+        "[[package]]\nname = \"getcodexy\"\nversion = \"9.9.9\"\n",
+    )?;
     git(&checkout, &["add", "."])?;
     git(&checkout, &["commit", "-m", "current"])?;
     git(&checkout, &["branch", "-M", "main"])?;

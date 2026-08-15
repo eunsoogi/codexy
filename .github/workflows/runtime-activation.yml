@@ -89,7 +89,7 @@ jobs:
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .agents/plugins plugins/codexy plugins/codexy-devtools packages/getcodexy/src/codexy_runtime_tools/component-manifest.json packages/codexy-runtime/src/version/bootstrap.rs packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock
+          git add .agents/plugins plugins/codexy plugins/codexy-devtools packages/getcodexy/src/codexy_runtime_tools/component-manifest.json packages/getcodexy/uv.lock packages/codexy-runtime/src/version/bootstrap.rs packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock
           if test "$(cat activation-branch-state)" = existing; then
             git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
           else

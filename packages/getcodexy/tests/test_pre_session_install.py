@@ -8,8 +8,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codexy_runtime_tools.pre_session import run_pre_session
+from codexy_runtime_tools.pre_session import official_marketplace_root, run_pre_session
 from codexy_runtime_tools.updater import SyncResult
+from codexy_runtime_tools.version_lock import default_package_version
 
 try:
     from .pre_session_support import (
@@ -30,6 +31,42 @@ except ImportError:
 
 
 class PreSessionInstallTests(unittest.TestCase):
+    def test_default_marketplace_ref_uses_the_packaged_lockfile_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registered = False
+            calls: list[tuple[str, ...]] = []
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                nonlocal registered
+                calls.append(tuple(command))
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    payload: object = {
+                        "marketplaces": [marketplace(root)] if registered else []
+                    }
+                else:
+                    registered = True
+                    payload = {"ok": True}
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+            self.assertEqual(
+                official_marketplace_root(Path("/trusted/codex"), runner),
+                root.resolve(),
+            )
+            self.assertIn(
+                (
+                    "/trusted/codex",
+                    "plugin",
+                    "marketplace",
+                    "add",
+                    "eunsoogi/codexy",
+                    "--ref",
+                    f"v{default_package_version()}",
+                    "--json",
+                ),
+                calls,
+            )
+
     def test_fresh_marketplace_is_added_before_preflight_and_sync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

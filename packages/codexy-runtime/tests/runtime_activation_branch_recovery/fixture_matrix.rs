@@ -10,7 +10,7 @@ mod fixture_matrix_commands;
 
 use crate::support::{self, FixtureCommand};
 use fixture_matrix_commands::{fake_activator, fake_gh, fake_sync_version};
-const AUTHORIZED: [&str; 10] = [
+const AUTHORIZED: [&str; 11] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
@@ -20,6 +20,7 @@ const AUTHORIZED: [&str; 10] = [
     "plugins/codexy-devtools/.codex-plugin/plugin.json",
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+    "packages/getcodexy/uv.lock",
     "packages/codexy-runtime/src/version/bootstrap.rs",
 ];
 const PRESERVED: [&str; 3] = [

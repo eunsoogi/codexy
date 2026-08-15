@@ -54,6 +54,8 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertNotIn("test_component_manifest_resolver.py", workflow)
         self.assertIn("getcodexy.exe --help", workflow)
         self.assertIn("codexy-github-install.exe --help", workflow)
+        self.assertIn("test_version_lock.py", workflow)
+        self.assertIn("default_package_version", workflow)
         self.assertIn("codexy-github-check.exe --check-pr-labels", workflow)
         self.assertIn("& (Join-Path $hookRoot", workflow)
         self.assertNotIn("cmd /d /s /c", workflow)
