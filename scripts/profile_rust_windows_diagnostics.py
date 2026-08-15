@@ -21,9 +21,7 @@ def diagnostics(
     pids = _process_ids(kernel32, job, process_ids)
     images = [_process_image(kernel32, pid) for pid in pids]
     return {
-        "cargo-root-status": "running"
-        if root_status is None
-        else str(root_status),
+        "cargo-root-status": "running" if root_status is None else str(root_status),
         "windows-job-pids-json": json.dumps(pids),
         "windows-job-images-json": json.dumps(images, sort_keys=True),
     }

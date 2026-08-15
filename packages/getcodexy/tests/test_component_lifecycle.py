@@ -24,6 +24,7 @@ from packages.getcodexy.tests.component_lifecycle_recovery_cases import (
 from packages.getcodexy.tests.component_lifecycle_records import record, recorded
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 
+
 class ComponentLifecycleTests(
     ComponentLifecycleUpdateFailureCases,
     ComponentLifecycleMutationRecoveryCases,
