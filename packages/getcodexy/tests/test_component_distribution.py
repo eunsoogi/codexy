@@ -99,14 +99,18 @@ class ComponentDistributionTests(unittest.TestCase):
         self.assertEqual(_health(self._run("doctor")), {"core": "healthy"})
         (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").unlink()
         self.assertEqual(_health(self._run("doctor"))["core"], "stale")
+        (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").write_text("x")
+        self.assertEqual(_health(self._run("doctor"))["core"], "incompatible")
 
     def test_installed_cli_rejects_empty_specialist_and_hook(self) -> None:
         self._run("install", "github")
-        (self.marketplace / "plugins/codexy/agents/codexy-sentinel.toml").write_text("")
+        (self.marketplace / "plugins/codexy/agents/codexy-sentinel.toml").write_text(
+            "x"
+        )
         self.assertEqual(_health(self._run("doctor"))["core"], "incompatible")
         (
             self.marketplace / "plugins/codexy-github/hooks/codexy-github-admission.sh"
-        ).write_text("")
+        ).write_text("x")
         self.assertEqual(_health(self._run("doctor"))["github"], "incompatible")
 
     def test_installed_cli_bootstrap_and_invalid_migration_are_fail_closed(

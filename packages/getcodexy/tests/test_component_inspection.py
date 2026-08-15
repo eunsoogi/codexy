@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import unittest
@@ -8,33 +9,11 @@ from pathlib import Path
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from codexy_runtime_tools.component_registration_health import AGENT_FILES, LAUNCHERS
-
 from component_lifecycle_support import fixture
 from component_inspection_host_cases import ComponentInspectionHostCases
 
 
 def materialize(state: fixture, *components: str, version: str = "1.3.0") -> None:
-    paths = {
-        "core": (
-            ".codex-plugin/plugin.json",
-            "assets/codexy-icon.png",
-            "agents/catalog.toml",
-            "hooks/hooks.json",
-            "skills/wiki/SKILL.md",
-        ),
-        "github": (
-            ".codex-plugin/plugin.json",
-            "skills/git-workflow/SKILL.md",
-            "agents/catalog.toml",
-            "hooks/hooks.json",
-        ),
-        "devtools": (
-            ".codex-plugin/plugin.json",
-            ".mcp.json",
-            "mcp/codexy-mcp-devtools",
-        ),
-    }
     plugins = {
         "core": "codexy",
         "github": "codexy-github",
@@ -42,48 +21,14 @@ def materialize(state: fixture, *components: str, version: str = "1.3.0") -> Non
     }
     repository = Path(__file__).resolve().parents[3]
     for component in components:
-        for relative in paths[component]:
-            path = state.marketplace / "plugins" / plugins[component] / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if relative.endswith("plugin.json"):
-                contents = json.dumps(
-                    {
-                        "name": plugins[component],
-                        "repository": "https://github.com/eunsoogi/codexy",
-                        "version": version,
-                    }
-                )
-            elif relative == ".mcp.json":
-                contents = (
-                    repository / "plugins" / plugins[component] / relative
-                ).read_text(encoding="utf-8")
-            elif relative.endswith(("hooks.json", "catalog.toml", "SKILL.md")):
-                contents = (
-                    repository / "plugins" / plugins[component] / relative
-                ).read_text(encoding="utf-8")
-            else:
-                contents = "#!/bin/sh\n"
-            path.write_text(contents, encoding="utf-8")
-            if relative == "mcp/codexy-mcp-devtools":
-                path.chmod(0o700)
-        if component in AGENT_FILES:
-            for agent in AGENT_FILES[component]:
-                (
-                    state.marketplace
-                    / "plugins"
-                    / plugins[component]
-                    / "agents"
-                    / agent
-                ).write_text('model = "gpt-5.6-terra"\n', encoding="utf-8")
-        for launcher in LAUNCHERS[component]:
-            path = state.marketplace / "plugins" / plugins[component] / launcher
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                "@echo off\r\n" if launcher.endswith(".cmd") else "#!/bin/sh\n",
-                encoding="utf-8",
-            )
-            if launcher == "mcp/codexy-mcp-devtools":
-                path.chmod(0o700)
+        root = state.marketplace / "plugins" / plugins[component]
+        if root.exists():
+            continue
+        shutil.copytree(repository / "plugins" / plugins[component], root)
+        manifest = root / ".codex-plugin/plugin.json"
+        contents = json.loads(manifest.read_text(encoding="utf-8"))
+        contents["version"] = version
+        manifest.write_text(json.dumps(contents), encoding="utf-8")
 
 
 class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
