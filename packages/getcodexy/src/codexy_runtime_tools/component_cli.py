@@ -13,6 +13,8 @@ from .component_lifecycle import PreAdmissionError, run_operation
 from .component_transaction_identity import operation_id
 from .component_transition_model import OperationReceipt
 from .component_transition_rejections import Rejection, RejectionStage, StateFailure
+from .monolith_migration import migrate
+from .version_lock import default_package_version
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")),
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("install", "update", "remove"):
+    for command in ("install", "update", "remove", "migrate"):
         child = commands.add_parser(command, allow_abbrev=False)
         child.add_argument("components", nargs="*")
         child.add_argument("--json", action="store_true", dest="json_output")
@@ -44,6 +46,15 @@ def main(argv: list[str] | None = None) -> int:
             receipt = status(arguments.codex_home, codex=arguments.codex)
         elif arguments.command == "doctor":
             receipt = doctor(arguments.codex_home, codex=arguments.codex)
+        elif arguments.command == "migrate":
+            if arguments.codex is None:
+                raise PreAdmissionError("migrate requires a trusted Codex executable")
+            receipt = migrate(
+                arguments.codex_home,
+                arguments.codex,
+                lambda command: _run_migration(command, arguments.codex_home),
+                tuple(arguments.components),
+            )
         else:
             receipt = run_operation(
                 arguments.command,
@@ -54,6 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     except PreAdmissionError as error:
         if arguments.command == "bootstrap" and arguments.json_output:
             print(json.dumps(_bootstrap_host_failure(), sort_keys=True))
+            return 2
+        if arguments.command == "migrate" and arguments.json_output:
+            print(json.dumps(_migration_host_failure(), sort_keys=True))
             return 2
         print(f"getcodexy {arguments.command}: {error}", file=sys.stderr)
         return 1
@@ -68,6 +82,12 @@ def main(argv: list[str] | None = None) -> int:
         receipt.get("errors")
     )
     return 0 if receipt["outcome"] == "completed" and not unhealthy else 2
+
+
+def _run_migration(command: list[str], home: Path):
+    from .pre_session import _run
+
+    return _run(command, home)
 
 
 def _human(command: str, receipt: dict[str, object]) -> str:
@@ -112,6 +132,19 @@ def _bootstrap_host_failure() -> dict[str, object]:
     return OperationReceipt.rejected(
         operation_id(None), "bootstrap", (), (), rejection
     ).encode()
+
+
+def _migration_host_failure() -> dict[str, object]:
+    return {
+        "schema": "getcodexy.monolith-migration-receipt.v1",
+        "command": "migrate",
+        "outcome": "rejected",
+        "source_version": None,
+        "target_version": default_package_version(),
+        "selection_after": [],
+        "errors": [{"code": "trusted-codex-required"}],
+        "recovery": "rerun from the trusted Codex host",
+    }
 
 
 if __name__ == "__main__":

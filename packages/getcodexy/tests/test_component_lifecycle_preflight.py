@@ -5,10 +5,39 @@ import unittest
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
 from codexy_runtime_tools.component_transaction_state import read_journal
+from codexy_runtime_tools.monolith_migration_state import (
+    MigrationJournal,
+    read_journal as read_migration_journal,
+    write_journal as write_migration_journal,
+)
 from packages.getcodexy.tests.component_lifecycle_support import fixture, installed
 
 
 class LifecyclePreflightTests(unittest.TestCase):
+    def test_pending_monolith_migration_rejects_lifecycle_mutation(self) -> None:
+        with fixture() as state:
+            write_migration_journal(
+                state.home,
+                MigrationJournal.capture(state.home, "1.3.0", "1.4.0", ("core",)),
+            )
+
+            receipt = run_operation(
+                "install",
+                ("core",),
+                state.home,
+                state.codex,
+                state.run,
+                operation_id="op-pending-monolith-migration",
+            )
+
+            self.assertEqual(receipt["outcome"], "rejected")
+            self.assertEqual(
+                receipt["errors"], [{"code": "inconsistent-installed-state"}]
+            )
+            self.assertEqual(state.mutations, [])
+            self.assertIsNone(read_journal(state.home))
+            self.assertIsNotNone(read_migration_journal(state.home))
+
     def test_absent_marketplace_does_not_bootstrap_for_a_rejected_request(self) -> None:
         with fixture(marketplace_present=False) as state:
             receipt = run_operation(

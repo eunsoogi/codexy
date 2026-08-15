@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import nullcontext
 from pathlib import Path
 
 from .component_lifecycle_admission import (
@@ -8,9 +9,9 @@ from .component_lifecycle_admission import (
     admitted_bootstrap_recovery_selection,
     admitted_recovery_selection,
     admitted_selection,
-    matching_receipt,
     replay_receipt,
 )
+from .component_lifecycle_interlock import migration_rejection
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import (
     existing_marketplace_root,
@@ -31,12 +32,7 @@ from .component_lifecycle_support import (
     host_executable,
     operation_identifier,
 )
-from .component_resolver import (
-    ComponentResolutionError,
-    reconcile_installed_inventory,
-    verify_post_operation_inventory,
-)
-from .component_transaction_receipts import write_receipt
+from .component_resolver import ComponentResolutionError
 from .component_transaction_state import (
     InventorySnapshot,
     Journal,
@@ -50,8 +46,6 @@ from .component_transaction_state import (
     write_journal,
 )
 from .component_transition_model import (
-    OperationReceipt,
-    Rejection,
     RejectionStage,
     StateFailure,
     plan_transition,
@@ -68,6 +62,7 @@ def run_operation(
     runner: Runner | None = None,
     *,
     operation_id: str | None = None,
+    lock_held: bool = False,
 ) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
@@ -82,7 +77,11 @@ def run_operation(
         runner or (lambda args: _run(args, home)),
     )
     manifest, identifier = load_component_manifest(), operation_identifier(operation_id)
-    with transaction_lock(home):
+    with nullcontext() if lock_held else transaction_lock(home):
+        if rejection := migration_rejection(
+            home, manifest, identifier, command, requested, lock_held
+        ):
+            return rejection
         pending = read_journal(home)
         if pending is not None:
             pending.validate(manifest, decode_inventory)
