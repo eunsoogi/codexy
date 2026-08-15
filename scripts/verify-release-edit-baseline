@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${GITHUB_EVENT_PATH:?GITHUB_EVENT_PATH is required}"
+event="$GITHUB_EVENT_PATH"
+test "$(jq -r .action "$event")" = edited
+test "$(jq -r '(.changes | keys | sort | join(","))' "$event")" = body
+release_id="$(jq -r .release.id "$event")"
+case "$release_id" in ''|*[!0-9]*) exit 1 ;; esac
+gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets: [.assets[] | {id, name, size, digest}]}' > release-state.json
+baseline_id="$(jq -r '.assets[] | select(.name == "release-baseline.json") | .id' release-state.json)"
+case "$baseline_id" in ''|null|*[!0-9]*) exit 1 ;; esac
+mkdir -p release-baseline release-assets
+gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$baseline_id" > release-baseline/release-baseline.json
+signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+source_digest="$(jq -r .targetCommitish release-state.json)"
+ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-total release-baseline/release-baseline.json 1
+for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+  asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' release-state.json)"
+  case "$asset_id" in ''|null|*[!0-9]*) exit 1 ;; esac
+  gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "release-assets/$name"
+done
+ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-assets release-attestations.json
+jq -e --slurpfile baseline release-baseline/release-baseline.json --slurpfile attestations release-attestations.json --arg signer "$signer" --arg activation "$source_digest" '
+  . as $release | $baseline[0] as $expected |
+  ($release.id == $expected.release.id) and ($release.name == $expected.release.name) and
+  ($release.tagName == $expected.release.tagName) and ($release.targetCommitish == $expected.release.targetCommitish) and
+  ($release.isDraft == $expected.release.isDraft) and ($release.isPrerelease == $expected.release.isPrerelease) and
+  ([.assets[] | select(.name != "release-baseline.json") | del(.id) | {name, size, digest}] | sort_by(.name) == $expected.assets) and
+  ($expected.releaseReceiptSha256 == ([.assets[] | select(.name == "runtime-release-receipt.json") | .digest | sub("^sha256:"; "")][0])) and
+  ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+  ($expected.attestations == $attestations[0])
+' release-state.json >/dev/null

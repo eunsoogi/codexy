@@ -3,6 +3,10 @@ name: Publish verified version release
 on:
   workflow_dispatch:
     inputs:
+      target_version:
+        description: "Admitted MAJOR.MINOR.PATCH version from the activation contract"
+        required: true
+        type: string
       staging_source_commit:
         description: "Exact protected-main commit behind the staged artifact"
         required: true
@@ -16,6 +20,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: codexy-release-${{ inputs.target_version }}
+  cancel-in-progress: false
+
 permissions:
   actions: read
   attestations: write
@@ -23,8 +31,11 @@ permissions:
   id-token: write
 
 jobs:
-  publish-v1-3-0:
+  publish-release:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/getcodexy
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,14 +54,19 @@ jobs:
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
           test "$STAGING_SOURCE_COMMIT" != "$ACTIVATION_COMMIT"
-          if remote_tag="$(git ls-remote --refs origin refs/tags/v1.3.0)" && test -n "$remote_tag"; then
-            remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
-            test "$remote_tag_oid" = "$ACTIVATION_COMMIT"
-            git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
-          else test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"; fi
+          git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
           test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
           test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$ACTIVATION_COMMIT"
           git checkout --detach "$ACTIVATION_COMMIT"
+      - name: Validate target version and protected release settings
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
+        run: |
+          scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
+          scripts/verify-release-settings --require-pypi
       - name: Download authenticated staging artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -85,118 +101,72 @@ jobs:
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
-          mkdir -p dist
+          mkdir -p dist final-inspect
           cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
-          RELEASE_TAG=v1.3.0 scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
-          mkdir -p final-inspect
+          RELEASE_TAG="$RELEASE_TAG" scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
           tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
           scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
           final_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
           runtime_sha="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
           run_attempt="$(jq -r .run_attempt staging/runtime-staging-run.json)"
-          jq -n --arg activationCommit "$ACTIVATION_COMMIT" --arg stagingSourceCommit "$STAGING_SOURCE_COMMIT" --arg finalSha "$final_sha" --arg runtimeSha "$runtime_sha" --argjson runId "$STAGING_RUN_ID" --argjson runAttempt "$run_attempt" --slurpfile stagingReceipt staging/runtime-staging-receipt.json '{
-            schema: "codexy-runtime-release-receipt/v1",
-            source: {activationCommit: $activationCommit, stagingSourceCommit: $stagingSourceCommit},
-            release: {tag: "v1.3.0"},
-            artifact: {name: "codexy-marketplace-plugin.tar.gz", sha256: $finalSha},
-            runtimeArtifact: {name: "codexy-runtime-package.tar.gz", sha256: $runtimeSha},
-            staging: {runId: $runId, runAttempt: $runAttempt, artifactName: ("runtime-staging-\($runId)-\($runAttempt)")},
-            provenance: $stagingReceipt[0].provenance
-          }' > dist/runtime-release-receipt.json
-      - uses: actions/attest-build-provenance@v4
+          jq -n --arg activationCommit "$ACTIVATION_COMMIT" --arg stagingSourceCommit "$STAGING_SOURCE_COMMIT" --arg releaseTag "$RELEASE_TAG" --arg finalSha "$final_sha" --arg runtimeSha "$runtime_sha" --argjson runId "$STAGING_RUN_ID" --argjson runAttempt "$run_attempt" --slurpfile stagingReceipt staging/runtime-staging-receipt.json '{schema: "codexy-runtime-release-receipt/v1", source: {activationCommit: $activationCommit, stagingSourceCommit: $stagingSourceCommit}, release: {tag: $releaseTag}, artifact: {name: "codexy-marketplace-plugin.tar.gz", sha256: $finalSha}, runtimeArtifact: {name: "codexy-runtime-package.tar.gz", sha256: $runtimeSha}, staging: {runId: $runId, runAttempt: $runAttempt, artifactName: ("runtime-staging-\($runId)-\($runAttempt)")}, provenance: $stagingReceipt[0].provenance}' > dist/runtime-release-receipt.json
+      - name: Reconcile marketplace archive attestation
+        env:
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/reconcile-release-attestations dist ATTEST_MARKETPLACE codexy-marketplace-plugin.tar.gz
+      - name: Reconcile runtime archive attestation
+        env:
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/reconcile-release-attestations dist ATTEST_RUNTIME codexy-runtime-package.tar.gz
+      - name: Reconcile release receipt attestation
+        env:
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/reconcile-release-attestations dist ATTEST_RECEIPT runtime-release-receipt.json
+      - name: Attest marketplace archive
+        if: env.ATTEST_MARKETPLACE == 'true'
+        uses: actions/attest-build-provenance@v4
         with:
-          subject-path: |
-            dist/codexy-marketplace-plugin.tar.gz
-            dist/codexy-runtime-package.tar.gz
+          subject-path: dist/codexy-marketplace-plugin.tar.gz
+      - name: Attest runtime archive
+        if: env.ATTEST_RUNTIME == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/codexy-runtime-package.tar.gz
+      - name: Attest release receipt
+        if: env.ATTEST_RECEIPT == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/runtime-release-receipt.json
       - name: Create and verify the only public version release
         env:
           GH_TOKEN: ${{ github.token }}
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
-        run: |
-          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-          test -n "$STAGING_SOURCE_COMMIT" && test -n "$ACTIVATION_COMMIT" && test -n "$STAGING_RUN_ID"
-          test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
-          test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
-          test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = "$STAGING_SOURCE_COMMIT"
-          test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
-          test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
-          git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
-          tag_ref=refs/tags/v1.3.0
-          remote_tag="$(git ls-remote --refs origin "$tag_ref")"
-          if test -z "$remote_tag"; then
-            tag_create_response=tag-create-response.txt
-            if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response"; then
-              test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 201 || {
-                printf '%s\n' "remote v1.3.0 tag API did not create a ref" >&2
-                exit 1
-              }
-            else
-              test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 422 || {
-                printf '%s\n' "remote v1.3.0 tag API admission failed" >&2
-                exit 1
-              }
-            fi
-          fi
-          remote_tag="$(git ls-remote --refs origin "$tag_ref")"
-          test -n "$remote_tag" || {
-            printf '%s\n' "remote v1.3.0 tag is absent after admission" >&2
-            exit 1
-          }
-          remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
-          test "$remote_tag_oid" = "$ACTIVATION_COMMIT" || {
-            printf '%s\n' "remote v1.3.0 tag is not the exact lightweight activation ref" >&2
-            exit 1
-          }
-          git fetch --tags --force origin
-          tag_commit="$(git rev-parse --verify "$tag_ref^{commit}")" || {
-            printf '%s\n' "cannot resolve remote v1.3.0 tag" >&2
-            exit 1
-          }
-          test "$tag_commit" = "$ACTIVATION_COMMIT" || {
-            printf '%s\n' "remote v1.3.0 tag does not match activation commit" >&2
-            exit 1
-          }
-          test "$remote_tag" = "$(git ls-remote --refs origin "$tag_ref")" || {
-            printf '%s\n' "remote v1.3.0 tag changed during admission" >&2
-            exit 1
-          }
-          if ! gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json 2>/dev/null; then
-            changelog_notes="$(scripts/generate-release-changelog v1.3.0)" || exit 1
-            gh release create v1.3.0 --verify-tag --draft --title v1.3.0 --notes "$changelog_notes"
-            gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
-          fi
-          release_error() {
-            printf '%s\n' "$1" >&2
-            exit 1
-          }
-          verify_release_asset() {
-            gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" --dir "$1" --pattern "$asset" || return 1
-            cmp "dist/$asset" "$1/$asset" || release_error "release asset differs from verified bytes: $asset"
-          }
-          mkdir -p existing-release verified-release
-          release_assets='codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
-          for asset in $release_assets; do
-            if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
-              verify_release_asset existing-release
-            else
-              gh release upload v1.3.0 "dist/$asset"
-            fi
-          done
-          gh release view v1.3.0 --repo "$GITHUB_REPOSITORY" --json isDraft,assets > release-state.json
-          for asset in $release_assets; do
-            jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
-            verify_release_asset verified-release
-          done
-          if test "$(jq -r .isDraft release-state.json)" = true; then
-            changelog_notes="$(scripts/generate-release-changelog v1.3.0)" || exit 1
-            gh release edit v1.3.0 --notes "$changelog_notes"
-            gh release edit v1.3.0 --draft=false
-          fi
+        run: scripts/publish-verified-release
+      - name: Reconcile immutable release baseline attestation
+        if: env.BASELINE_CREATED == 'true'
+        env:
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/reconcile-release-attestations dist ATTEST_BASELINE release-baseline.json
+      - name: Attest immutable release baseline
+        if: env.BASELINE_CREATED == 'true' && env.ATTEST_BASELINE == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/release-baseline.json
+      - name: Finalize authenticated public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
+        run: scripts/finalize-verified-release
 
-  verify-v1-3-0:
-    needs: publish-v1-3-0
+  verify-public-release:
+    needs: publish-release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -204,47 +174,59 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ inputs.activation_commit }}
           persist-credentials: false
       - name: Download and verify reconciled public release without a token
         env:
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
+          TARGET_VERSION: ${{ inputs.target_version }}
+          RELEASE_TAG: v${{ inputs.target_version }}
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
-          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
-          base="https://github.com/eunsoogi/codexy/releases/download/v1.3.0"
+          test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
+          base="https://github.com/eunsoogi/codexy/releases/download/$RELEASE_TAG"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
           curl --fail --location "$base/codexy-runtime-package.tar.gz" -o public-runtime.tar.gz
           curl --fail --location "$base/runtime-release-receipt.json" -o public-receipt.json
+          curl --fail --location "$base/release-baseline.json" -o public-release-baseline.json
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .runtimeArtifact.sha256 public-receipt.json)"
-          sha256sum public-runtime.tar.gz | grep "$(jq -r .artifact.sha256 .agents/plugins/runtime-activation.json)"
+          test "$(jq -r .release.tag public-receipt.json)" = "$RELEASE_TAG"
           test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .source.stagingSourceCommit public-receipt.json)" = "$STAGING_SOURCE_COMMIT"
-          jq -cS .provenance public-receipt.json | tr -d '\n' > public-provenance.json
-          jq -cS .provenance .agents/plugins/runtime-activation.json | tr -d '\n' > activated-provenance.json
-          cmp activated-provenance.json public-provenance.json
           mkdir -p public-inspect
           tar --no-same-owner --no-same-permissions -xzf public.tar.gz -C public-inspect
           scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools public-release
-          test "$(jq -r .version public-inspect/plugins/codexy-devtools/.codex-plugin/plugin.json)" = 1.3.0
+          test "$(jq -r .version public-inspect/plugins/codexy-devtools/.codex-plugin/plugin.json)" = "$TARGET_VERSION"
           test ! -e public-inspect/plugins/codexy-devtools/runtime-release.json
           test ! -e public-inspect/plugins/codexy-devtools/runtime-candidate.json
       - name: Verify public release attestations with a read-only token
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ""
+          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
-          gh attestation verify public.tar.gz --repo "$GITHUB_REPOSITORY"
-          gh attestation verify public-runtime.tar.gz --repo "$GITHUB_REPOSITORY"
+          mkdir public-attested
+          cp public.tar.gz public-attested/codexy-marketplace-plugin.tar.gz
+          cp public-runtime.tar.gz public-attested/codexy-runtime-package.tar.gz
+          cp public-receipt.json public-attested/runtime-release-receipt.json
+          cp public-release-baseline.json public-attested/release-baseline.json
+          scripts/verify-release-attestation-total public-attested/release-baseline.json 1
+          scripts/verify-release-attestation-set public-attested public-attestations.json
+          jq -e --slurpfile baseline public-attested/release-baseline.json --slurpfile attestations public-attestations.json --arg receipt "$(sha256sum public-receipt.json | awk '{print $1}')" --arg signer "$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml" --arg activation "$ACTIVATION_COMMIT" '
+            $baseline[0] as $expected | ($expected.releaseReceiptSha256 == $receipt) and
+            ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+            ($expected.attestations == $attestations[0])
+          ' public-release-baseline.json >/dev/null
       - name: Smoke public release without a token
         env:
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
+          TARGET_VERSION: ${{ inputs.target_version }}
         run: |
           python -m venv public-bootstrap
-          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple getcodexy==1.3.0
+          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
           CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/plugins/codexy-devtools" -- --help
           CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/public-inspect/plugins/codexy-devtools" -- --help

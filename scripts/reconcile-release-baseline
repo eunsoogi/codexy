@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${GITHUB_ENV:?GITHUB_ENV is required}"
+: "${RELEASE_TAG:?RELEASE_TAG is required}"
+: "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
+receipt="${RELEASE_RECEIPT:-dist/runtime-release-receipt.json}"
+baseline=dist/release-baseline.json
+signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+
+gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
+if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
+  existing_baseline="$(mktemp -d)"
+  existing_baseline_release="$(mktemp -d)"
+  gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern release-baseline.json --dir "$existing_baseline"
+  scripts/verify-release-attestation-total "$existing_baseline/release-baseline.json" 1
+  for name in codexy-marketplace-plugin.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+    gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir "$existing_baseline_release"
+  done
+  scripts/verify-release-attestation-set "$existing_baseline_release" existing-attestations.json
+  jq -e --slurpfile baseline "$existing_baseline/release-baseline.json" --slurpfile attestations existing-attestations.json --arg signer "$signer" --arg activation "$ACTIVATION_COMMIT" '
+    . as $release | $baseline[0] as $expected |
+    ($release.id == $expected.release.id) and ($release.name == $expected.release.name) and
+    ($release.tagName == $expected.release.tagName) and ($release.targetCommitish == $expected.release.targetCommitish) and
+    ($release.isPrerelease == false) and
+    ([.assets[] | select(.name != "release-baseline.json") | {name, size, digest}] | sort_by(.name) == $expected.assets) and
+    ($expected.releaseReceiptSha256 == ([.assets[] | select(.name == "runtime-release-receipt.json") | .digest | sub("^sha256:"; "")][0])) and
+    ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+    ($expected.attestations == $attestations[0])
+  ' release-state.json >/dev/null
+  printf 'BASELINE_CREATED=false\n' >> "$GITHUB_ENV"
+  exit 0
+fi
+
+test "$(jq -r .isDraft release-state.json)" = true
+test "$(jq -r .isPrerelease release-state.json)" = false
+test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
+test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
+test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
+for name in $(jq -r '.assets[].name' release-state.json); do
+  case "$name" in codexy-marketplace-plugin.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;; *) exit 1 ;; esac
+done
+receipt_sha="$(sha256sum "$receipt" | awk '{print $1}')"
+scripts/verify-release-attestation-set dist release-attestations.json
+jq -n --arg signer "$signer" --arg activation "$ACTIVATION_COMMIT" --arg receiptSha256 "$receipt_sha" --argjson release "$(jq '{id, name, tagName, targetCommitish} + {isDraft: false, isPrerelease: false}' release-state.json)" --argjson assets "$(jq '[.assets[] | {name, size, digest}] | sort_by(.name)' release-state.json)" --slurpfile attestations release-attestations.json '{schema: "codexy-release-baseline/v1", release: $release, assets: $assets, releaseReceiptSha256: $receiptSha256, attestationPolicy: {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}, attestations: $attestations[0]}' > "$baseline"
+printf 'BASELINE_CREATED=true\n' >> "$GITHUB_ENV"

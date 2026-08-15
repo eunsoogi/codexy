@@ -71,6 +71,7 @@ jobs:
             --issue-json "$state_dir/issue.json" \
             --repository-labels-json "$state_dir/repository-labels.json" \
             --publication-phase provisional \
+            --issue-link-mode nonclosing \
             --validate-only
 
       - name: Synchronize plugin version

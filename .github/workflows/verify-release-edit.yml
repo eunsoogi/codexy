@@ -1,0 +1,23 @@
+name: Verify edited public release integrity
+
+on:
+  release:
+    types: [edited]
+
+permissions:
+  attestations: read
+  contents: read
+
+jobs:
+  verify-release-edit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Reject protected release mutation against Actions baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: scripts/verify-release-edit-baseline

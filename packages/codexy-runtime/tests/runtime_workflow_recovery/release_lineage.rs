@@ -8,7 +8,7 @@ use crate::support;
 fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");
     let publisher: Value = serde_yaml::from_str(&fs::read_to_string(path)?)?;
-    let source = publisher["jobs"]["publish-v1-3-0"]["steps"]
+    let source = publisher["jobs"]["publish-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify selected protected-main source"))
         .and_then(|step| step["run"].as_str())
@@ -17,10 +17,10 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         "for commit in \"$STAGING_SOURCE_COMMIT\" \"$ACTIVATION_COMMIT\"; do",
         "case \"$commit\" in *[!0-9a-f]*|'') exit 1 ;; esac",
         "test \"${#commit}\" -eq 40",
-        "git ls-remote --refs origin refs/tags/v1.3.0",
         "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
+        "test \"$GITHUB_SHA\" = \"$ACTIVATION_COMMIT\"",
     ]);
-    let step = publisher["jobs"]["publish-v1-3-0"]["steps"]
+    let step = publisher["jobs"]["publish-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Create and verify the only public version release"))
         .ok_or("final release step")?;
@@ -31,23 +31,17 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert_eq!(step["env"][name], format!("${{{{ inputs.{input} }}}}"));
     }
-    let release = step["run"].as_str().ok_or("final release run")?;
+    let release = std::fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;
     assert_eq!(step["env"]["GH_TOKEN"], "${{ github.token }}");
-    let create = release.find("gh release create v1.3.0").ok_or("version release")?;
+    let create = release.find("gh release create \"$RELEASE_TAG\"").ok_or("version release")?;
     for required in [
-        "test -n \"$STAGING_SOURCE_COMMIT\"",
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
         "git ls-remote --refs origin \"$tag_ref\"",
         "gh api --method POST --include \"repos/$GITHUB_REPOSITORY/git/refs\"",
         "-f ref=\"$tag_ref\" -f sha=\"$ACTIVATION_COMMIT\"",
         "tag_create_response=tag-create-response.txt",
-        "remote v1.3.0 tag API admission failed",
-        "remote v1.3.0 tag is not the exact lightweight activation ref",
         "git fetch --tags --force origin",
         "$tag_ref^{commit}",
-        "cannot resolve remote v1.3.0 tag",
-        "remote v1.3.0 tag does not match activation commit",
-        "remote v1.3.0 tag changed during admission",
         "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
@@ -56,10 +50,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));
     support::assert_structured_literals(
-        release,
+        &release,
         "exact-tag release creation",
-        &["gh release create v1.3.0 --verify-tag"],
+        &["gh release create \"$RELEASE_TAG\" --verify-tag --draft --target \"$ACTIVATION_COMMIT\""],
     );
-    support::assert_structured_absent_literals(release, "exact-tag release creation", &["--target"]);
     Ok(())
 }

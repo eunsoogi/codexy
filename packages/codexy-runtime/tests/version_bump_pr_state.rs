@@ -55,6 +55,76 @@ fn production_pr_state_rejects_cross_repository_or_mismatched_oid_without_mutati
     Ok(())
 }
 
+#[test]
+fn nonclosing_pr_state_requires_exact_tracks_linkage_without_fabricating_closure() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let temp = tempdir()?;
+    let paths = write_inputs(temp.path(), false, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")?;
+    let output = temp.path().join("pr-state.json");
+    let mut pr: Value = serde_json::from_slice(&fs::read(&paths.pr)?)?;
+    pr["body"] = json!("Tracks #301\n");
+    pr["closingIssuesReferences"] = json!([]);
+    fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
+    let exact = run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?;
+    assert!(exact.status.success());
+    let state: Value = serde_json::from_slice(&fs::read(&output)?)?;
+    assert_eq!(state["closingIssuesReferences"], json!([]));
+    assert_eq!(state["governingIssue"]["number"], 301);
+    for body in [
+        "NotTracks #301\n",
+        "Tracks #301\nTracks #301\n",
+        "Tracks #302\nTracks #301\n",
+        "tracks #301\n",
+        "- Tracks #301\n",
+        "1. Tracks #301\n",
+        "Tracks #301 extra\n",
+    ] {
+        pr["body"] = json!(body);
+        fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
+        assert!(
+            !run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success(),
+            "accepted ambiguous Tracks directive: {body:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn completion_handoff_validates_nonclosing_governing_issue_labels() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let temp = tempdir()?;
+    let paths = write_inputs(temp.path(), false, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")?;
+    let output = temp.path().join("pr-state.json");
+    let mut pr: Value = serde_json::from_slice(&fs::read(&paths.pr)?)?;
+    pr["body"] = json!("Tracks #301\n");
+    pr["closingIssuesReferences"] = json!([]);
+    fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
+    assert!(run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success());
+    let handoff = temp.path().join("handoff.md");
+    fs::write(&handoff, "Verification completed. This PR is open for CI and review; this automation does not claim completion.\n")?;
+    assert!(completion_handoff(&handoff, &output)?.status.success());
+    let valid = fs::read(&output)?;
+    for (field, value) in [
+        ("governingIssue", json!(null)),
+        ("governingIssue", json!({"number": 301, "labels": []})),
+        ("governingIssue", json!({"number": 999, "labels": [{"name": "type/ci"}]})),
+        ("issueLinkMode", json!("malformed")),
+    ] {
+        let mut state: Value = serde_json::from_slice(&valid)?;
+        state[field] = value;
+        fs::write(&output, serde_json::to_vec(&state)?)?;
+        assert!(!completion_handoff(&handoff, &output)?.status.success(), "accepted invalid {field}");
+    }
+    for (body, number) in [("Tracks #0\n", 0), ("Tracks #0301\n", 301)] {
+        let mut state: Value = serde_json::from_slice(&valid)?;
+        state["body"] = json!(body);
+        state["governingIssue"]["number"] = json!(number);
+        fs::write(&output, serde_json::to_vec(&state)?)?;
+        assert!(!completion_handoff(&handoff, &output)?.status.success(), "accepted noncanonical {body:?}");
+    }
+    Ok(())
+}
+
 struct Inputs {
     pr: std::path::PathBuf,
     issue: std::path::PathBuf,
@@ -103,6 +173,10 @@ fn write_inputs(
 }
 
 fn run_builder(root: &Path, paths: &Inputs, output: &Path, oid: &str) -> std::io::Result<std::process::Output> {
+    run_builder_mode(root, paths, output, oid, "closing")
+}
+
+fn run_builder_mode(root: &Path, paths: &Inputs, output: &Path, oid: &str, mode: &str) -> std::io::Result<std::process::Output> {
     Command::new(root.join("scripts/build-version-pr-state"))
         .arg("--pr-json").arg(&paths.pr)
         .arg("--issue-json").arg(&paths.issue)
@@ -110,6 +184,16 @@ fn run_builder(root: &Path, paths: &Inputs, output: &Path, oid: &str) -> std::io
         .arg("--review-threads-json").arg(&paths.threads)
         .args(["--repository", "eunsoogi/codexy", "--expected-head-ref", "codexy/version-1.3.1"])
         .arg("--expected-head-oid").arg(oid)
+        .arg("--issue-link-mode").arg(mode)
         .arg("--output").arg(output)
+        .output()
+}
+
+fn completion_handoff(handoff: &Path, state: &Path) -> std::io::Result<std::process::Output> {
+    Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .args(["--check-completion-handoff", "--handoff-file"])
+        .arg(handoff)
+        .arg("--pr-state-file")
+        .arg(state)
         .output()
 }

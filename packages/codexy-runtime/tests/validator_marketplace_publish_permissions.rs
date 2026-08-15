@@ -14,7 +14,11 @@ fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Resu
         }
         for job in document["jobs"].as_mapping().ok_or("jobs")?.values() {
             if let Some(permissions) = job.get("permissions") { assert_exact(mapping(permissions)?, "contents", "read")?; }
-            for step in job["steps"].as_sequence().ok_or("steps")? { if step["uses"].as_str() == Some("actions/checkout@v7") { assert_eq!(step["with"]["persist-credentials"], Value::Bool(false)); } }
+            for step in job["steps"].as_sequence().ok_or("steps")? {
+                if step["uses"].as_str().is_some_and(|uses| uses.starts_with("actions/checkout@")) {
+                    assert_eq!(step["with"]["persist-credentials"], Value::Bool(false));
+                }
+            }
         }
     }
     Ok(())
@@ -41,17 +45,17 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
     assert_eq!(permissions[Value::String("contents".into())], "write");
     assert_eq!(permissions[Value::String("id-token".into())], "write");
     assert_eq!(permissions[Value::String("attestations".into())], "write");
-    assert!(!checkout_persists(&publisher, "publish-v1-3-0")?);
-    let publish = run(&publisher, "publish-v1-3-0", "Create and verify the only public version release")?;
-    assert!(command(publish, &["gh", "release", "create", "v1.3.0"]));
-    let public = mapping(&publisher["jobs"]["verify-v1-3-0"]["permissions"])?;
+    assert!(!checkout_persists(&publisher, "publish-release")?);
+    let publish = run(&publisher, "publish-release", "Create and verify the only public version release")?;
+    assert!(command(publish, &["scripts/publish-verified-release"]));
+    let public = mapping(&publisher["jobs"]["verify-public-release"]["permissions"])?;
     assert_eq!(public.len(), 2);
     assert_eq!(public[Value::String("contents".into())], "read");
     assert_eq!(public[Value::String("attestations".into())], "read");
-    assert!(!checkout_persists(&publisher, "verify-v1-3-0")?);
+    assert!(!checkout_persists(&publisher, "verify-public-release")?);
     let verify = run(
         &publisher,
-        "verify-v1-3-0",
+        "verify-public-release",
         "Smoke public release without a token",
     )?;
     support::assert_structured_literals(
@@ -59,13 +63,13 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
         "tokenless public release smoke",
         &["python -m venv public-bootstrap"],
     );
-    let step = publisher["jobs"]["verify-v1-3-0"]["steps"]
+    let step = publisher["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Smoke public release without a token"))
         .ok_or("public release smoke step")?;
     assert_eq!(step["env"]["GH_TOKEN"], "");
     assert_eq!(step["env"]["GITHUB_TOKEN"], "");
-    let attestation = publisher["jobs"]["verify-v1-3-0"]["steps"]
+    let attestation = publisher["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify public release attestations with a read-only token"))
         .ok_or("public release attestation step")?;
@@ -85,4 +89,4 @@ fn assert_authenticated_read_only(mapping: &Mapping) -> Result<(), Box<dyn std::
 }
 fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == name)).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
 fn command(run: &str, words: &[&str]) -> bool { run.lines().map(str::trim).any(|line| line.split_ascii_whitespace().collect::<Vec<_>>().windows(words.len()).any(|actual| actual == words)) }
-fn checkout_persists(value: &Value, job: &str) -> Result<bool, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["uses"] == "actions/checkout@v7")).and_then(|step| step["with"]["persist-credentials"].as_bool()).ok_or_else(|| "checkout credentials".into()) }
+fn checkout_persists(value: &Value, job: &str) -> Result<bool, Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["uses"].as_str().is_some_and(|uses| uses.starts_with("actions/checkout@")))).and_then(|step| step["with"]["persist-credentials"].as_bool()).ok_or_else(|| "checkout credentials".into()) }

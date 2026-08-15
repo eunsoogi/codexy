@@ -49,7 +49,8 @@ fn bootstrap_source_admission_rejects_stale_non_main_malformed_and_version_misma
     let steps = bootstrap["jobs"]["publish-bootstrap"]["steps"]
         .as_sequence()
         .ok_or("bootstrap steps")?;
-    let admission = run(steps, "Admit current protected-main bootstrap source")?;
+    let admission = run(steps, "Admit current protected-main bootstrap source")?
+        .replace("scripts/verify-release-settings --require-pypi", ":");
     let temp = tempfile::tempdir()?;
     let remote = temp.path().join("remote.git");
     let checkout = temp.path().join("checkout");
@@ -96,10 +97,12 @@ fn bootstrap_source_admission_rejects_stale_non_main_malformed_and_version_misma
         ("version mismatch", current.as_str(), "9.9.8", false),
     ] {
         let status = Command::new("sh")
-            .args(["-eu", "-c", admission])
+            .args(["-eu", "-c", &admission])
             .current_dir(&checkout)
             .env("SOURCE_COMMIT", source)
             .env("BOOTSTRAP_VERSION", version)
+            .env("GITHUB_REF", "refs/heads/main")
+            .env("GITHUB_SHA", source)
             .status()?;
         assert_eq!(status.success(), succeeds, "{label} admission result");
     }
