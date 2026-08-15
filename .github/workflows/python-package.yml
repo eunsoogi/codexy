@@ -41,6 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -60,6 +61,56 @@ jobs:
           .package-venv/bin/python -c 'from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == "'"$version"'"'
           .package-venv/bin/codexy-mcp-runtime --help
           GETCODEXY_DISTRIBUTION_EXECUTABLE="$PWD/.package-venv/bin/getcodexy" PYTHONPATH=packages/getcodexy/tests .package-venv/bin/python -m unittest packages/getcodexy/tests/test_component_distribution.py
+      - name: Prove canonical distinct-target monolith migration
+        shell: bash
+        run: |
+          candidate="$RUNNER_TEMP/codexy-migration-candidate"
+          legacy="$RUNNER_TEMP/codexy-legacy"
+          candidate_dist="$RUNNER_TEMP/codexy-migration-dist"
+          candidate_venv="$RUNNER_TEMP/codexy-migration-venv"
+          mkdir -p "$candidate" "$legacy" "$candidate_dist"
+          git archive HEAD | tar -x -C "$candidate"
+          git archive v1.3.0 plugins/codexy | tar -x -C "$legacy"
+          CANDIDATE="$candidate" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["CANDIDATE"])
+          bootstrap = root / "packages/codexy-runtime/src/version/bootstrap.rs"
+          bootstrap.write_text(
+              bootstrap.read_text(encoding="utf-8")
+              .replace('VERSION: &str = "1.3.0"', 'VERSION: &str = "1.4.0"')
+              .replace('CANDIDATE_VERSION: &str = "1.3.0"', 'CANDIDATE_VERSION: &str = "1.4.0"'),
+              encoding="utf-8",
+          )
+          contract_path = root / ".agents/plugins/release-publish-contract.json"
+          contract = json.loads(contract_path.read_text(encoding="utf-8"))
+          contract["version"] = "1.4.0"
+          contract["bootstrap"].update(selectedVersion="1.4.0", candidateVersion="1.4.0")
+          contract["runtime"]["selectedTag"] = "v1.4.0"
+          contract["currentMarketplace"].update(
+              ref="v1.4.0",
+              installCommand="codex plugin marketplace add eunsoogi/codexy --ref v1.4.0",
+          )
+          contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
+          PY
+          (
+            cd "$candidate"
+            scripts/sync-plugin-version.sh --admit-version 1.4.0
+            scripts/sync-plugin-version.sh --version 1.4.0
+            scripts/sync-plugin-version.sh --check
+            python -m build --outdir "$candidate_dist" packages/getcodexy
+          )
+          python -m venv "$candidate_venv"
+          "$candidate_venv/bin/pip" install --no-index --find-links "$candidate_dist" 'getcodexy==1.4.0'
+          test -d "$candidate/plugins/codexy"
+          test -d "$legacy/plugins/codexy"
+          GETCODEXY_REQUIRE_MIGRATION_CANDIDATE=1 \
+          GETCODEXY_MIGRATION_CANDIDATE_ROOT="$candidate" \
+          GETCODEXY_MIGRATION_LEGACY_ROOT="$legacy/plugins/codexy" \
+          PYTHONPATH=packages/getcodexy/tests \
+          "$candidate_venv/bin/python" -m unittest test_monolith_migration_candidate_distribution
       - uses: actions/upload-artifact@v7
         with:
           name: getcodexy-bootstrap-package-${{ matrix.platform }}

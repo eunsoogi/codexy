@@ -46,6 +46,13 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                 calls.append(tuple(command))
                 if command[1:4] == ["plugin", "marketplace", "list"]:
                     payload: object = {"marketplaces": [marketplace(marketplace_root)]}
+                elif command[1:4] == ["plugin", "marketplace", "add"]:
+                    ref = command[command.index("--ref") + 1]
+                    (home / "config.toml").write_text(
+                        f'[plugin_marketplaces.codexy]\nref = "{ref}"\n',
+                        encoding="utf-8",
+                    )
+                    payload = {"ok": True}
                 elif command[1:3] == ["plugin", "list"]:
                     payload = {
                         "installed": []
@@ -85,11 +92,11 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
             home = root / "home/.codex"
             home.mkdir(parents=True)
             (home / "config.toml").write_text(
-                '[plugin_marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+                '[plugin_marketplaces.codexy]\nref = "v1.1.0"\n', encoding="utf-8"
             )
             marketplace_root = root / "marketplace"
             make_plugin(marketplace_root / "plugins/codexy")
-            state = {"registered": True, "ref": "main"}
+            state = {"registered": True, "ref": "v1.1.0"}
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
                 if command[1:4] == ["plugin", "marketplace", "list"]:
@@ -120,7 +127,7 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                     synchronize=_ready,
                     package_version="1.2.2",
                 )
-            self.assertEqual(state, {"registered": True, "ref": "main"})
+            self.assertEqual(state, {"registered": True, "ref": "v1.1.0"})
 
     def test_failed_post_add_verification_restores_the_exact_config_snapshot(
         self,
@@ -132,12 +139,12 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
             snapshot = (
                 '[marketplaces.other]\nref = "wrong-ref"\n\n'
                 '[marketplaces.codexy]\nsource = "https://github.com/eunsoogi/codexy.git"\n'
-                'ref = "main"\n'
+                'ref = "v1.1.0"\n'
             ).encode()
             (home / "config.toml").write_bytes(snapshot)
             marketplace_root = root / "marketplace"
             make_plugin(marketplace_root / "plugins/codexy")
-            state = {"registered": True, "ref": "main", "lists_after_target": 0}
+            state = {"registered": True, "ref": "v1.1.0", "lists_after_target": 0}
             adds: list[str] = []
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -171,8 +178,8 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                     synchronize=_ready,
                     package_version="1.2.2",
                 )
-            self.assertEqual(adds, ["v1.2.2", "main"])
-            self.assertEqual(state["ref"], "main")
+            self.assertEqual(adds, ["v1.2.2", "v1.1.0"])
+            self.assertEqual(state["ref"], "v1.1.0")
             self.assertGreater(state["lists_after_target"], 0)
             self.assertEqual((home / "config.toml").read_bytes(), snapshot)
 

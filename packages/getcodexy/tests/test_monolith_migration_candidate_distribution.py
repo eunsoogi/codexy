@@ -18,11 +18,12 @@ TARGET_ROOT = os.environ.get("GETCODEXY_MIGRATION_CANDIDATE_ROOT")
 LEGACY_ROOT = os.environ.get("GETCODEXY_MIGRATION_LEGACY_ROOT")
 
 
-@unittest.skipUnless(
-    TARGET_ROOT and LEGACY_ROOT, "isolated migration candidate is required"
-)
 class CandidateMigrationDistributionTests(unittest.TestCase):
     def test_distinct_target_success_and_failed_activation_rollback(self) -> None:
+        if not TARGET_ROOT or not LEGACY_ROOT:
+            if os.environ.get("GETCODEXY_REQUIRE_MIGRATION_CANDIDATE") == "1":
+                self.fail("required isolated migration candidate inputs are absent")
+            self.skipTest("isolated migration candidate is required")
         candidate = Path(TARGET_ROOT or "").resolve()
         legacy = Path(LEGACY_ROOT or "").resolve()
         self.assertEqual(tree_digest(legacy), BASELINES["1.3.0"].tree_sha256)

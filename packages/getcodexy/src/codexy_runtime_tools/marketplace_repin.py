@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from base64 import b64encode
 import json
 import re
 import subprocess
 from pathlib import Path
 from typing import Callable
 
+from .component_transaction_state import _atomic_write
 from .plugin_resolution import named_marketplace, official_marketplace
 
 
@@ -29,6 +31,7 @@ def reconcile_official_marketplace_root(
     if named_marketplace(market):
         official_marketplace(market)
         previous_ref, config_snapshot = _marketplace_ref(home)
+        expected_ref = f"v{target_version}"
         _json(
             invoke(
                 [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
@@ -36,13 +39,26 @@ def reconcile_official_marketplace_root(
             "marketplace remove",
         )
         try:
-            _add_marketplace(executable, invoke, f"v{target_version}")
+            _add_marketplace(executable, invoke, expected_ref)
             market = _json(
                 invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
                 "marketplace list",
             )
-            return official_marketplace(market)
+            root = official_marketplace(market)
+            _require_pinned_registration(home, expected_ref)
+            return root
         except Exception:
+            if previous_ref is None or previous_ref == "main":
+                reason = (
+                    "unsafe-default-ref" if previous_ref is None else "unsafe-main-ref"
+                )
+                _quarantine_unsafe_registration(
+                    executable, invoke, home, config_snapshot, reason
+                )
+                raise RuntimeError(
+                    "unsafe marketplace registration was removed; "
+                    "recover the recorded configuration only after an explicit pinned repair"
+                ) from None
             try:
                 _add_marketplace(executable, invoke, previous_ref)
             finally:
@@ -53,28 +69,28 @@ def reconcile_official_marketplace_root(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "marketplace list",
     )
-    return official_marketplace(market)
+    root = official_marketplace(market)
+    _require_pinned_registration(home, f"v{target_version}")
+    return root
 
 
 def _add_marketplace(executable: Path, invoke: Runner, ref: str) -> None:
+    command = [
+        str(executable),
+        "plugin",
+        "marketplace",
+        "add",
+        "eunsoogi/codexy",
+    ]
+    command.extend(("--ref", ref))
+    command.append("--json")
     _json(
-        invoke(
-            [
-                str(executable),
-                "plugin",
-                "marketplace",
-                "add",
-                "eunsoogi/codexy",
-                "--ref",
-                ref,
-                "--json",
-            ]
-        ),
+        invoke(command),
         "marketplace add",
     )
 
 
-def _marketplace_ref(home: Path) -> tuple[str, bytes]:
+def _marketplace_ref(home: Path) -> tuple[str | None, bytes]:
     config = home / "config.toml"
     try:
         snapshot = config.read_bytes()
@@ -86,18 +102,60 @@ def _marketplace_ref(home: Path) -> tuple[str, bytes]:
         r"(?ms)^\[(?:plugin_)?marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)",
         snapshot.decode("utf-8"),
     )
-    match = (
-        None
-        if section is None
-        else re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', section.group())
-    )
-    if match is None:
+    if section is None:
         raise RuntimeError("existing marketplace has no recoverable registration")
-    return match.group(1), snapshot
+    match = re.search(r'(?m)^ref\s*=\s*"([^"]+)"\s*$', section.group())
+    return (None if match is None else match.group(1)), snapshot
 
 
 def _restore_config(home: Path, snapshot: bytes) -> None:
-    (home / "config.toml").write_bytes(snapshot)
+    _atomic_write(home / "config.toml", snapshot)
+
+
+def _require_pinned_registration(home: Path, expected: str) -> None:
+    ref, _ = _marketplace_ref(home)
+    if ref != expected:
+        raise RuntimeError(
+            "official marketplace registration is not pinned to the target"
+        )
+
+
+def _quarantine_unsafe_registration(
+    executable: Path, invoke: Runner, home: Path, snapshot: bytes, reason: str
+) -> None:
+    try:
+        _json(
+            invoke(
+                [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
+            ),
+            "marketplace quarantine remove",
+        )
+    finally:
+        _write_recovery(home, snapshot, reason)
+        _remove_official_registration(home, snapshot)
+
+
+def _write_recovery(home: Path, snapshot: bytes, reason: str) -> None:
+    receipt = home / "getcodexy" / "marketplace-recovery.json"
+    _atomic_write(
+        receipt,
+        json.dumps(
+            {
+                "schema": "getcodexy.marketplace-recovery.v1",
+                "reason": reason,
+                "config_toml_base64": b64encode(snapshot).decode(),
+            },
+            sort_keys=True,
+        ).encode(),
+    )
+
+
+def _remove_official_registration(home: Path, snapshot: bytes) -> None:
+    section = re.compile(r"(?ms)^\[(?:plugin_)?marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)")
+    contents = snapshot.decode("utf-8")
+    if section.search(contents) is None:
+        raise RuntimeError("existing marketplace has no recoverable registration")
+    _atomic_write(home / "config.toml", section.sub("", contents).encode())
 
 
 def _json(done: subprocess.CompletedProcess[str], stage: str) -> object:

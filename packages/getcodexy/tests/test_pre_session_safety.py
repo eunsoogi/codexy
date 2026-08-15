@@ -220,5 +220,5 @@ def _registered_home(root: Path) -> None:
     home = root / "home/.codex"
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.toml").write_text(
-        '[marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+        '[marketplaces.codexy]\nref = "v1.2.2"\n', encoding="utf-8"
     )

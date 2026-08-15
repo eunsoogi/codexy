@@ -86,6 +86,14 @@ class PreSessionInstallTests(unittest.TestCase):
                 calls.append(tuple(command))
                 if len(calls) == 1:
                     payload: object = {"marketplaces": []}
+                elif command[1:4] == ["plugin", "marketplace", "add"]:
+                    ref = command[command.index("--ref") + 1]
+                    home = root / "home/.codex"
+                    home.mkdir(parents=True, exist_ok=True)
+                    (home / "config.toml").write_text(
+                        f'[marketplaces.codexy]\nref = "{ref}"\n', encoding="utf-8"
+                    )
+                    payload = {"ok": True}
                 elif command[1:4] == ["plugin", "marketplace", "list"]:
                     payload = {"marketplaces": [marketplace(marketplace_root)]}
                 elif len(calls) == 4:
@@ -182,7 +190,7 @@ class PreSessionInstallTests(unittest.TestCase):
         home = root / "home/.codex"
         home.mkdir(parents=True)
         (home / "config.toml").write_text(
-            '[marketplaces.codexy]\nref = "main"\n', encoding="utf-8"
+            '[marketplaces.codexy]\nref = "v1.2.2"\n', encoding="utf-8"
         )
 
         def synchronize(plugin_root: Path, home: Path, mode: str) -> SyncResult:
@@ -201,16 +209,29 @@ class PreSessionInstallTests(unittest.TestCase):
         stdout = io.StringIO()
         stderr = io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            result = run_pre_session(
-                home,
-                codex=Path("/trusted/codex"),
-                runner=lambda command: respond(
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                result = respond(
                     command,
                     calls,
                     [],
                     [installed(plugin)],
                     root / "marketplace",
-                ),
+                )
+                if (
+                    command[1:4] == ["plugin", "marketplace", "add"]
+                    and result.returncode == 0
+                ):
+                    ref = command[command.index("--ref") + 1]
+                    (home / "config.toml").write_text(
+                        f'[marketplaces.codexy]\nref = "{ref}"\n', encoding="utf-8"
+                    )
+                return result
+
+            result = run_pre_session(
+                home,
+                codex=Path("/trusted/codex"),
+                runner=runner,
                 synchronize=synchronize,
                 package_version="1.2.2",
             )
