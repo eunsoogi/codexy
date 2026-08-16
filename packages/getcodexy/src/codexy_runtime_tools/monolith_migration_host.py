@@ -19,6 +19,7 @@ from .component_transaction_state import (
 from .github_pre_session import run_github_pre_session
 from .monolith_classifier import classify_monolith
 from .monolith_migration_state import MigrationJournal
+from .plugin_resolution import official_install
 from .pre_session import (
     _json,
     _run,
@@ -98,13 +99,10 @@ def rollback(
     discover: Discover,
 ) -> None:
     remove_split_components(executable, runner, journal.selection)
-    reconcile_official_marketplace_root(executable, runner, journal.source_version)
-    run_pre_session(
-        home,
-        codex=executable,
-        runner=runner,
-        package_version=journal.source_version,
+    marketplace = reconcile_official_marketplace_root(
+        executable, runner, journal.source_version, home
     )
+    _restore_legacy_install(executable, runner, marketplace, journal.source_version)
     journal.snapshot.restore()
     if journal.snapshot != journal.snapshot.capture(home):
         raise RuntimeError("legacy configuration snapshot did not restore")
@@ -116,6 +114,28 @@ def rollback(
         raise RuntimeError("legacy monolith did not restore exactly")
     require_split_extensions_absent(executable, runner)
     _restore_component_transaction(home, journal.selection)
+
+
+def _restore_legacy_install(
+    executable: Path, runner: Runner, marketplace: Path, source_version: str
+) -> None:
+    """Restore the exact legacy plugin without applying split-only registration."""
+    _json(
+        runner([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
+        "legacy plugin add",
+    )
+    root, version = official_install(
+        _json(
+            runner([str(executable), "plugin", "list", "--json"]), "legacy plugin list"
+        ),
+        marketplace,
+        source_version,
+    )
+    if (
+        version != source_version
+        or classify_monolith(root).state != "supported-unmodified"
+    ):
+        raise RuntimeError("legacy monolith install did not restore exactly")
 
 
 def _restore_component_transaction(home: Path, selection: tuple[str, ...]) -> None:

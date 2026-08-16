@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .marketplace_repin import reconcile_official_marketplace_root
 from .plugin_resolution import (
     named_marketplace as _named_marketplace,
     official_install as _official_install,
@@ -41,15 +42,29 @@ def run_pre_session(
     _validate_real_path(home, require_exists=False)
 
     target_version = package_version or default_package_version()
+    market = _json(
+        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+        "marketplace list",
+    )
+    marketplace_root = (
+        _official_marketplace(market) if _named_marketplace(market) else None
+    )
+    existing_marketplace = marketplace_root is not None
+    if existing_marketplace:
+        before = _json(
+            invoke([str(executable), "plugin", "list", "--json"]),
+            "plugin list",
+        )
+        _preflight(before, marketplace_root)
     marketplace_root = reconcile_official_marketplace_root(
-        executable, invoke, target_version
+        executable, invoke, target_version, home, market
     )
-
-    before = _json(
-        invoke([str(executable), "plugin", "list", "--json"]),
-        "plugin list",
-    )
-    _preflight(before, marketplace_root)
+    if not existing_marketplace:
+        before = _json(
+            invoke([str(executable), "plugin", "list", "--json"]),
+            "plugin list",
+        )
+        _preflight(before, marketplace_root)
 
     _json(
         invoke(
@@ -111,43 +126,6 @@ def official_marketplace_root(
             invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
             "marketplace list",
         )
-    return _official_marketplace(market)
-
-
-def reconcile_official_marketplace_root(
-    executable: Path, invoke: Runner, target_version: str
-) -> Path:
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
-    if _named_marketplace(market):
-        _official_marketplace(market)
-        _json(
-            invoke(
-                [str(executable), "plugin", "marketplace", "remove", "codexy", "--json"]
-            ),
-            "marketplace remove",
-        )
-    _json(
-        invoke(
-            [
-                str(executable),
-                "plugin",
-                "marketplace",
-                "add",
-                "eunsoogi/codexy",
-                "--ref",
-                f"v{target_version}",
-                "--json",
-            ]
-        ),
-        "marketplace add",
-    )
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
     return _official_marketplace(market)
 
 

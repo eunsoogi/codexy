@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 
+from .component_integrity import verify_component
+
 
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
@@ -88,6 +90,30 @@ HOOKS = {
                     ]
                 }
             ],
+            "PermissionRequest": [
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh" PermissionRequest',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd" PermissionRequest',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh" PermissionRequest',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd" PermissionRequest',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+            ],
             "PreToolUse": [
                 {
                     "matcher": "^mcp__codex_apps__github_(create|update)_issue$",
@@ -107,6 +133,28 @@ HOOKS = {
                             "type": "command",
                             "command": '"${PLUGIN_ROOT}/hooks/codexy-github-admission.sh" --rule pr',
                             "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-github-admission-pr.cmd"',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.sh" PreToolUse',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-repository-github-command.cmd" PreToolUse',
+                            "timeout": 5,
+                        }
+                    ],
+                },
+                {
+                    "matcher": "^Bash$",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.sh" PreToolUse',
+                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-destructive-command.cmd" PreToolUse',
                             "timeout": 5,
                         }
                     ],
@@ -135,6 +183,10 @@ LAUNCHERS = {
         "hooks/codexy-github-admission.sh",
         "hooks/codexy-github-admission-issue.cmd",
         "hooks/codexy-github-admission-pr.cmd",
+        "hooks/codexy-repository-github-command.sh",
+        "hooks/codexy-repository-github-command.cmd",
+        "hooks/codexy-destructive-command.sh",
+        "hooks/codexy-destructive-command.cmd",
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
@@ -147,6 +199,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
             return _json(plugin / ".mcp.json") == MCP and _executable(
                 plugin / LAUNCHERS[component][0]
             )
+        verify_component(plugin, "codexy" if component == "core" else "codexy-github")
         return (
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
@@ -170,7 +223,7 @@ def _text(path: Path) -> str:
 
 def _regular(path: Path) -> bool:
     try:
-        return path.is_file() and not path.is_symlink()
+        return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
     except OSError:
         return False
 

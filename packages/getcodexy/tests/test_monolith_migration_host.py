@@ -99,7 +99,7 @@ class MonolithMigrationHostTests(unittest.TestCase):
                 side_effect=lambda *_: events.append("repin-source"),
             ),
             patch(
-                "codexy_runtime_tools.monolith_migration_host.run_pre_session",
+                "codexy_runtime_tools.monolith_migration_host._restore_legacy_install",
                 side_effect=lambda *_args, **_kwargs: events.append("restore-core"),
             ),
             patch(
@@ -140,7 +140,9 @@ class MonolithMigrationHostTests(unittest.TestCase):
                 patch(
                     "codexy_runtime_tools.monolith_migration_host.reconcile_official_marketplace_root"
                 ),
-                patch("codexy_runtime_tools.monolith_migration_host.run_pre_session"),
+                patch(
+                    "codexy_runtime_tools.monolith_migration_host._restore_legacy_install"
+                ),
                 patch(
                     "codexy_runtime_tools.monolith_migration_host.classify_monolith",
                     return_value=MagicMock(state="supported-unmodified"),

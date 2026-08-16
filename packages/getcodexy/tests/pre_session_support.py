@@ -10,8 +10,9 @@ OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 def commands() -> list[tuple[str, ...]]:
     return [
-        *reconcile_marketplace_commands(),
+        reconcile_marketplace_commands()[0],
         ("/trusted/codex", "plugin", "list", "--json"),
+        *reconcile_marketplace_commands()[1:],
         (
             "/trusted/codex",
             "plugin",

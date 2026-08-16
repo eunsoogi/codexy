@@ -95,6 +95,7 @@ class PreSessionSafetyTests(unittest.TestCase):
             root = Path(temporary)
             marketplace_root = root / "marketplace"
             plugin = make_plugin(marketplace_root / "plugins/codexy")
+            _registered_home(root)
             variants = [
                 [installed(plugin), installed(plugin)],
                 [
@@ -130,7 +131,7 @@ class PreSessionSafetyTests(unittest.TestCase):
                         package_version="1.2.2",
                     )
 
-                self.assertEqual(calls, commands()[:5])
+                self.assertEqual(calls, commands()[:2])
 
     def test_official_looking_plugin_outside_marketplace_root_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -165,6 +166,7 @@ class PreSessionSafetyTests(unittest.TestCase):
             plugin = make_plugin(root / "actual plugin")
             marketplace_root = root / "marketplace"
             link = marketplace_root / "plugins/codexy"
+            _registered_home(root)
             link.parent.mkdir(parents=True)
             try:
                 os.symlink(plugin, link, target_is_directory=True)
@@ -194,6 +196,7 @@ class PreSessionSafetyTests(unittest.TestCase):
             calls: list[tuple[str, ...]] = []
             marketplace_root = root / "marketplace"
             marketplace_root.mkdir()
+            _registered_home(root)
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
                 if command == list(commands()[5]):
@@ -211,3 +214,11 @@ class PreSessionSafetyTests(unittest.TestCase):
                 )
 
             self.assertEqual(calls, commands()[:6])
+
+
+def _registered_home(root: Path) -> None:
+    home = root / "home/.codex"
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "config.toml").write_text(
+        '[marketplaces.codexy]\nref = "v1.2.2"\n', encoding="utf-8"
+    )

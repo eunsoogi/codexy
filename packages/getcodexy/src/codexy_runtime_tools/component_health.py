@@ -12,7 +12,7 @@ from .component_resolver import ComponentResolutionError, compare_versions
 
 
 SURFACE_PATHS = {
-    "core": ("agents/catalog.toml", "hooks/hooks.json"),
+    "core": ("agents/catalog.toml", "hooks/hooks.json", "skills/wiki/SKILL.md"),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
     "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
 }
