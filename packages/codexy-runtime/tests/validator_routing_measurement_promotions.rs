@@ -8,7 +8,7 @@ const CORPUS: &str = r#"{
   "schema":"codexy.routing-evaluation-corpus.v1",
   "corpus_id":"routing-600-v1",
   "tasks":[
-    {"id":"simple-local-validator","classification":"simple","prompt":"Add one mutation test without editing production code.","acceptance_oracle":"The route prefers Luna/max when the callable child surface advertises it."},
+    {"id":"simple-local-validator","classification":"simple","prompt":"Add one mutation test without editing production code.","acceptance_oracle":"The candidate adds exactly one mutation test without editing production code."},
     {"id":"general-routing-contract","classification":"general","prompt":"Resolve a generic child route across the callable model surface.","acceptance_oracle":"Luna/max wins whenever callable; Terra/high is availability fallback."},
     {"id":"ambiguous-specialist-boundary","classification":"ambiguous","prompt":"Classify an ownership-sensitive routing change and select the safe handler.","acceptance_oracle":"The result fails closed without a callable generic route."}
   ]
@@ -107,7 +107,7 @@ fn results_reject_stale_identity_duplicates_and_unknown_fields() -> TestResult {
 
 fn results(selected: &str) -> Value {
     let tasks = [
-        ("simple-local-validator", "Add one mutation test without editing production code.", "The route prefers Luna/max when the callable child surface advertises it."),
+        ("simple-local-validator", "Add one mutation test without editing production code.", "The candidate adds exactly one mutation test without editing production code."),
         ("general-routing-contract", "Resolve a generic child route across the callable model surface.", "Luna/max wins whenever callable; Terra/high is availability fallback."),
         ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler.", "The result fails closed without a callable generic route."),
     ];

@@ -6,7 +6,7 @@
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The route prefers Luna/max when the callable child surface advertises it.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "high",
       "acceptance": "pass",
@@ -48,7 +48,7 @@
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The route prefers Luna/max when the callable child surface advertises it.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "xhigh",
       "acceptance": "pass",
@@ -90,7 +90,7 @@
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The route prefers Luna/max when the callable child surface advertises it.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "max",
       "acceptance": "pass",

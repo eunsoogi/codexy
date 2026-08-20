@@ -8,11 +8,37 @@ const CORPUS: &str = r#"{
   "schema": "codexy.routing-evaluation-corpus.v1",
   "corpus_id": "routing-600-v1",
   "tasks": [
-    {"id":"simple-local-validator","classification":"simple","prompt":"Add one mutation test without editing production code.","acceptance_oracle":"The route prefers Luna/max when the callable child surface advertises it."},
+    {"id":"simple-local-validator","classification":"simple","prompt":"Add one mutation test without editing production code.","acceptance_oracle":"The candidate adds exactly one mutation test without editing production code."},
     {"id":"general-routing-contract","classification":"general","prompt":"Resolve a generic child route across the callable model surface.","acceptance_oracle":"Luna/max wins whenever callable; Terra/high is availability fallback."},
     {"id":"ambiguous-specialist-boundary","classification":"ambiguous","prompt":"Classify an ownership-sensitive routing change and select the safe handler.","acceptance_oracle":"The result fails closed without a callable generic route."}
   ]
 }"#;
+
+#[test]
+fn simple_task_oracle_matches_its_mutation_test_prompt() -> TestResult {
+    let corpus: Value = serde_json::from_str(CORPUS)?;
+    let task = corpus["tasks"]
+        .as_array()
+        .expect("tasks array")
+        .iter()
+        .find(|task| task["id"] == "simple-local-validator")
+        .expect("simple task");
+    let prompt = task["prompt"].as_str().expect("simple prompt");
+    let oracle = task["acceptance_oracle"].as_str().expect("simple oracle");
+    let prompt = prompt.to_ascii_lowercase();
+    let oracle = oracle.to_ascii_lowercase();
+
+    assert!(prompt.contains("mutation test"), "unexpected prompt: {prompt}");
+    assert!(
+        oracle.contains("mutation test") && oracle.contains("without editing production code"),
+        "oracle does not evaluate the requested mutation test: {oracle}"
+    );
+    assert!(
+        !oracle.contains("route prefers luna/max"),
+        "simple-task oracle must not evaluate child routing: {oracle}"
+    );
+    Ok(())
+}
 
 #[test]
 fn routing_measurement_cli_requires_paired_closed_results_and_fail_closed_selection() -> TestResult {
@@ -124,7 +150,7 @@ fn routing_measurement_cli_rejects_every_same_id_frozen_corpus_tuple_mutation() 
     let mut cases = vec![
         CORPUS.replacen("Add one mutation test", "Change the exact prompt", 1),
         CORPUS.replacen(
-            "The route prefers Luna/max when the callable child surface advertises it.",
+            "The candidate adds exactly one mutation test without editing production code.",
             "Changed oracle.",
             1,
         ),
@@ -177,7 +203,7 @@ fn run(corpus: &std::path::Path, results: &std::path::Path) -> std::io::Result<s
 
 fn results_value(selected_effort: &str, omit_cost: bool) -> Value {
     let prompts = [
-        ("simple-local-validator", "Add one mutation test without editing production code.", "The route prefers Luna/max when the callable child surface advertises it."),
+        ("simple-local-validator", "Add one mutation test without editing production code.", "The candidate adds exactly one mutation test without editing production code."),
         ("general-routing-contract", "Resolve a generic child route across the callable model surface.", "Luna/max wins whenever callable; Terra/high is availability fallback."),
         ("ambiguous-specialist-boundary", "Classify an ownership-sensitive routing change and select the safe handler.", "The result fails closed without a callable generic route."),
     ];

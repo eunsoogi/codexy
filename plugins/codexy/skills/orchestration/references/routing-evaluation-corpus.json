@@ -6,7 +6,7 @@
       "id": "simple-local-validator",
       "classification": "simple",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The route prefers Luna/max when the callable child surface advertises it."
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code."
     },
     {
       "id": "general-routing-contract",
