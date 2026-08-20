@@ -20,9 +20,10 @@
 
 Codexy gives Codex a disciplined path from a broad repository request to an
 owned implementation, observable verification, bounded review, and a safe
-finish. Codexy is approachable for a first-time reader while covering the
-complete, scannable public product surface. Detailed architecture and executable
-contracts live in the linked `docs` guides.
+finish. Use it to coordinate planning, implementation, verification, review, and
+handoff across one or more Codex agents, with component-aware installation and
+durable evidence. Detailed architecture and executable contracts live in the
+linked `docs` guides.
 
 ## Install with getcodexy
 
