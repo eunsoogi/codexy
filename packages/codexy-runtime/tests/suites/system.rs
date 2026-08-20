@@ -83,6 +83,9 @@ mod windows_mcp_install_workflow_contract;
 #[path = "../bootstrap_package_admission.rs"]
 mod bootstrap_package_admission;
 
+#[path = "../pypi_environment_admission.rs"]
+mod pypi_environment_admission;
+
 #[path = "../version_bump_pr_readiness.rs"]
 mod version_bump_pr_readiness;
 

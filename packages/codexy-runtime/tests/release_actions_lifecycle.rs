@@ -16,6 +16,10 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     let job = publisher["jobs"]["publish-release"]
         .as_mapping()
         .ok_or("version-neutral publisher job")?;
+    assert_eq!(
+        named_run(job, "Admit protected PyPI environment")?,
+        "scripts/admit-pypi-environment",
+    );
     let admission = named_run(job, "Validate target version and release lifecycle contract")?;
     for required in ["scripts/validate-release-lifecycle-contract"] {
         assert!(admission.contains(required), "missing publisher admission: {required}");
@@ -72,6 +76,7 @@ fn release_publication_paths_do_not_depend_on_a_policy_pat_preflight()
     let bootstrap = workflow("bootstrap-package.yml")?;
     let publisher = workflow("publish-version-release.yml")?;
     let finalizer = fs::read_to_string(root.join("scripts/finalize-verified-release"))?;
+    let environment_admission = fs::read_to_string(root.join("scripts/admit-pypi-environment"))?;
 
     for (name, source) in [
         (
@@ -83,6 +88,7 @@ fn release_publication_paths_do_not_depend_on_a_policy_pat_preflight()
             fs::read_to_string(root.join(".github/workflows/publish-version-release.yml"))?,
         ),
         ("release finalizer", finalizer.clone()),
+        ("PyPI environment admission", environment_admission),
     ] {
         assert!(!source.contains("CODEXY_RELEASE_POLICY_TOKEN"), "{name} retains the policy PAT secret");
         assert!(!source.contains("RELEASE_POLICY_TOKEN"), "{name} retains the policy PAT variable");
@@ -91,6 +97,7 @@ fn release_publication_paths_do_not_depend_on_a_policy_pat_preflight()
     assert!(!root.join("scripts/verify-release-settings").exists());
 
     assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["environment"]["name"], "pypi");
+    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["actions"], "read");
     assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["id-token"], "write");
     assert_eq!(publisher["permissions"]["id-token"], "write");
     assert_eq!(publisher["permissions"]["attestations"], "write");

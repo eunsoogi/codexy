@@ -23,6 +23,7 @@ jobs:
   publish-bootstrap:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
     environment:
@@ -57,6 +58,11 @@ jobs:
           version="$(python3 -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
           test "$version" = "$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           test "$version" = "$BOOTSTRAP_VERSION"
+      - name: Admit protected PyPI environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: scripts/admit-pypi-environment
       - name: Build and publish bootstrap package
         run: |
           python -m pip install --disable-pip-version-check build
