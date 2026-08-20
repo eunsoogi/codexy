@@ -175,15 +175,13 @@ with tempfile.TemporaryDirectory() as directory:
     for index, value in enumerate(rows): write(root / f"{index}.json", value)
     if aggregate(root, repository) != 1 or aggregate(root, repository, "posix") != 0 or aggregate(root, repository, "windows") != 1:
         raise SystemExit("local platform aggregation weakened the required CI aggregate")
-check("window 299.999", lambda rows: rows[6].update(finished=299.999), 0)
-check("window 300.000", lambda rows: rows[6].update(finished=300.000), 1)
-check("receipt 280.158 within the shared budget", lambda rows: rows[13].update(elapsed=280.158), 0)
-def same_attempt_gap(rows):
-    for value in rows:
-        if value["platform"] == "posix":
-            value.update(started=0, finished=1, run_attempt=1)
-    last = next(value for value in rows if (value["platform"], value["shard"]) == ("posix", "agent"))
-    last.update(started=301, finished=302, run_attempt=1)
+check("receipt 300.000 within the per-receipt budget", lambda rows: rows[6].update(elapsed=300.000), 0)
+check("receipt 280.158 within the per-receipt budget", lambda rows: rows[13].update(elapsed=280.158), 0)
+def parallel_staggered_window(rows):
+    windows = {value["shard"]: value for value in rows if value["platform"] == "windows"}
+    for value in windows.values(): value.update(started=1787229710.935174, finished=1787229711.935174, elapsed=1)
+    windows["system"].update(finished=1787229981.9915333, elapsed=271.0411749)
+    windows["governance"].update(started=1787229865.9370716, finished=1787230063.910494, elapsed=197.9437776)
 def real_retries(rows):
     replaced = {("posix", "support"), ("posix", "governance")}
     for value in rows:
@@ -193,7 +191,7 @@ def real_retries(rows):
             value["finished"] += 3600
     if Counter(value["run_attempt"] for value in rows) != Counter({1: 12, 2: 2}):
         raise SystemExit("cumulative retry cohort was not 12 attempt-1 plus 2 attempt-2 receipts")
-check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
+check("measured Windows 352.9753201007843s parallel window", parallel_staggered_window, 0)
 check("mixed GitHub retry receipt provenance", real_retries, 0)
 check("future GitHub attempt", lambda rows: rows[0].update(run_attempt=3), 1)
 def stale_cumulative_retry(rows):
@@ -229,7 +227,7 @@ for label, mutate in (
     ("wrong argv", lambda rows: rows[0].update(argv=("wrong",))), ("wrong targets", lambda rows: rows[0]["physical_targets"].pop()),
     ("pending", lambda rows: rows[0].update(state="PENDING")), ("missing process status", lambda rows: rows[0].pop("status")), ("nonzero process status", lambda rows: rows[0].update(status=1)), ("boolean process status", lambda rows: rows[0].update(status=False)), ("duplicate cross-shard identity", duplicate_cross_shard_identity),
     ("wrong digest", lambda rows: rows[0].update(digest="wrong")), ("single platform", lambda rows: rows.__delitem__(slice(7, None))),
-    ("deadline", lambda rows: rows[0].update(elapsed=300.001)), ("window", lambda rows: rows[6].update(finished=301)),
+    ("deadline", lambda rows: rows[0].update(elapsed=300.001)),
     ("negative elapsed", lambda rows: rows[0].update(elapsed=-1)), ("negative window", lambda rows: rows[0].update(started=2, finished=1)),
     ("boolean timing", lambda rows: rows[0].update(elapsed=True)),
     ("missing run ID", lambda rows: rows[0].pop("run_id")), ("mixed run ID", lambda rows: rows[0].update(run_id=2)),

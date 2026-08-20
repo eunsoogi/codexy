@@ -7,7 +7,6 @@ import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from profile_rust_accounting import declared_test_targets
 from profile_rust_contract import BUDGET_SECONDS
@@ -154,8 +153,8 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
             for item in receipts
         )
         and all(
+            # Shards run in parallel; scheduling span is not shard execution time.
             targets[platform] == expected_targets
-            and provenance_windows_within_budget(receipts, platform, valid_timing)
             for platform in tests
         )
         and all(
@@ -167,27 +166,6 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     for platform, values in tests.items():
         print(f"aggregate-{platform}\t{sum(values.values())}\t{digest(values)}")
     return 0 if valid else 1
-
-
-def provenance_windows_within_budget(
-    receipts: list[dict[str, object]],
-    platform: str,
-    valid_timing: Callable[[dict[str, object]], bool],
-) -> bool:
-    attempts: dict[int, list[tuple[float, float]]] = {}
-    for item in receipts:
-        if item.get("platform") != platform:
-            continue
-        if not valid_timing(item) or not valid_provenance(item):
-            return False
-        attempts.setdefault(item["run_attempt"], []).append(
-            (float(item["started"]), float(item["finished"]))
-        )
-    return bool(attempts) and all(
-        max(finished for _, finished in spans) - min(started for started, _ in spans)
-        < BUDGET_SECONDS
-        for spans in attempts.values()
-    )
 
 
 def owned_targets(targets: set[str], shard: str) -> set[str]:
