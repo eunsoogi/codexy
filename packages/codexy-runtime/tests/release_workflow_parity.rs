@@ -25,6 +25,8 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     let apply = step_index(&activation, "open-activation-pr", "Apply verified activation and version-selection contract")?;
     let pr = step_index(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
     assert!(proof < apply && apply < pr);
+    assert!(run(&activation, "open-activation-pr", "Apply verified activation and version-selection contract")?
+        .contains("scripts/sync-plugin-version.sh --version \"$BOOTSTRAP_VERSION\""));
     let activation_proof = run(&activation, "open-activation-pr", "Prove public bootstrap and authenticated staging identity")?;
     assert!(lines(activation_proof).any(|line| line == "scripts/download-runtime-staging-artifact staging"));
     assert!(command_present(activation_proof, &["gh", "attestation", "verify"]));
@@ -63,8 +65,8 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
         .and_then(|job| job.get("steps"))
         .and_then(Value::as_sequence)
         .ok_or("version-bump steps")?;
-    let sync = named_step_run(steps, "Synchronize plugin version")?;
-    assert_eq!(sync, "scripts/sync-plugin-version.sh --version \"$VERSION\"");
+    let sync = named_step_run(steps, "Prepare candidate plugin version")?;
+    assert_eq!(sync, "scripts/sync-plugin-version.sh --prepare-candidate \"$VERSION\"");
     let open_pr = named_step_run(steps, "Open version bump pull request")?;
     assert_eq!(open_pr, "scripts/reconcile-version-pr");
     let adapter = std::fs::read_to_string(root.join(open_pr))?;
@@ -87,16 +89,16 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
     );
     let admission = steps
         .iter()
-        .position(|step| step["name"] == "Admit selected runtime version advance")
+        .position(|step| step["name"] == "Admit candidate version preparation")
         .ok_or("version admission")?;
     let mutation = steps
         .iter()
-        .position(|step| step["name"] == "Synchronize plugin version")
+        .position(|step| step["name"] == "Prepare candidate plugin version")
         .ok_or("version mutation")?;
     assert!(admission < mutation);
     assert_eq!(
         steps[admission]["run"],
-        "scripts/sync-plugin-version.sh --admit-version \"$VERSION\""
+        "scripts/sync-plugin-version.sh --admit-candidate \"$VERSION\""
     );
     assert!(
         staging
@@ -114,15 +116,34 @@ fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error
 }
 
 #[test]
-fn activated_bootstrap_identity_preserves_the_selected_runtime_release() -> Result<(), Box<dyn std::error::Error>> {
+fn bootstrap_identity_supports_selected_and_candidate_prepared_states() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let package: toml::Value = toml::from_str(&std::fs::read_to_string(root.join("packages/getcodexy/pyproject.toml"))?)?;
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
-    assert_eq!(package["project"]["version"].as_str(), Some("1.3.0"));
-    assert_eq!(contract["version"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
-    assert_eq!(contract["runtime"]["selectedTag"], "v1.3.0");
+    let package_version = package["project"]["version"].as_str().ok_or("package version")?;
+    let selected_version = contract["version"].as_str().ok_or("selected version")?;
+    let candidate_version = contract["bootstrap"]["candidateVersion"]
+        .as_str()
+        .ok_or("candidate version")?;
+    assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
+    assert_eq!(contract["runtime"]["selectedTag"], format!("v{selected_version}"));
+    assert_eq!(candidate_version, package_version);
+    if package_version == selected_version {
+        assert_eq!(candidate_version, selected_version);
+    } else {
+        assert_ne!(candidate_version, selected_version);
+    }
+    let bootstrap = std::fs::read_to_string(root.join("packages/codexy-runtime/src/version/bootstrap.rs"))?;
+    let selected_constant = bootstrap
+        .lines()
+        .find_map(|line| line.strip_prefix("pub(super) const VERSION: &str = \"")?.strip_suffix("\";"))
+        .ok_or("VERSION constant")?;
+    let candidate_constant = bootstrap
+        .lines()
+        .find_map(|line| line.strip_prefix("pub(super) const CANDIDATE_VERSION: &str = \"")?.strip_suffix("\";"))
+        .ok_or("CANDIDATE_VERSION constant")?;
+    assert_eq!(selected_constant, selected_version);
+    assert_eq!(candidate_constant, candidate_version);
     let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy-devtools/runtime-release.json"))?)?;
     assert_eq!(runtime_release["artifact"]["tag"], "v1.2.2");
     Ok(())

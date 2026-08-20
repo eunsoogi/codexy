@@ -79,7 +79,14 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         body.clone(),
         fs::read(output_dir.join("labels.json"))?,
     );
-    assert_eq!(title, "chore(plugin): bump version to 1.3.1\n");
+    assert_eq!(title, "chore(plugin): prepare candidate version 1.3.1\n");
+    assert!(body.contains("Prepare candidate-only Codexy version metadata for 1.3.1."));
+    assert!(body.contains(
+        "Keep selected runtime and plugin identities at the pre-activation version"
+    ));
+    assert!(body.contains(
+        "The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep"
+    ));
     assert_eq!(
         markdown_headings(&body),
         [
@@ -104,7 +111,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     assert_eq!(
         markdown_section_lines(&body, "## Verification"),
         [
-            "- `scripts/sync-plugin-version.sh --check`",
+            "- `scripts/sync-plugin-version.sh --check-candidate`",
             "- `scripts/validate-plugin-config.sh --check`",
             "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
             "- `git diff --check`",
@@ -173,7 +180,7 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
     assert_eq!(
         markdown_section_lines(&provisional_body, "## Verification"),
         [
-            "- `scripts/sync-plugin-version.sh --check`",
+            "- `scripts/sync-plugin-version.sh --check-candidate`",
             "- `scripts/validate-plugin-config.sh --check`",
             "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
             "- `git diff --check`",

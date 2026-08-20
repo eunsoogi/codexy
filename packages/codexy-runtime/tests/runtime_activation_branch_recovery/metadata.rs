@@ -166,9 +166,6 @@ pub(super) fn pre_activation_revision() -> Result<String, Box<dyn std::error::Er
     let selected = current["bootstrap"]["selectedVersion"]
         .as_str()
         .ok_or("current selected bootstrap version")?;
-    let candidate = current["bootstrap"]["candidateVersion"]
-        .as_str()
-        .ok_or("current candidate bootstrap version")?;
     let revisions = Command::new("git")
         .args([
             "log",
@@ -191,11 +188,56 @@ pub(super) fn pre_activation_revision() -> Result<String, Box<dyn std::error::Er
             continue;
         }
         let contract: Value = serde_json::from_slice(&source.stdout)?;
-        if contract["bootstrap"]["candidateVersion"] == candidate
-            && contract["bootstrap"]["selectedVersion"] != selected
-        {
+        if is_pre_activation_baseline(&contract, selected) {
             return Ok(revision.to_owned());
         }
     }
     Err("release contract history has no pre-activation candidate baseline".into())
+}
+
+pub(super) fn current_candidate_version() -> Result<String, Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let contract: Value = serde_json::from_str(&fs::read_to_string(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    contract["bootstrap"]["candidateVersion"]
+        .as_str()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| "current candidate bootstrap version".into())
+}
+
+fn is_pre_activation_baseline(contract: &Value, selected: &str) -> bool {
+    contract["bootstrap"]["candidateVersion"] == selected
+        && contract["bootstrap"]["selectedVersion"] != selected
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::is_pre_activation_baseline;
+
+    fn historical(selected: &str, candidate: &str) -> serde_json::Value {
+        json!({"bootstrap": {"selectedVersion": selected, "candidateVersion": candidate}})
+    }
+
+    #[test]
+    fn selected_state_recovers_the_selected_release_baseline() {
+        assert!(is_pre_activation_baseline(
+            &historical("1.2.2", "1.3.0"),
+            "1.3.0"
+        ));
+    }
+
+    #[test]
+    fn candidate_prepared_state_ignores_the_next_candidate() {
+        assert!(is_pre_activation_baseline(
+            &historical("1.2.2", "1.3.0"),
+            "1.3.0"
+        ));
+        assert!(!is_pre_activation_baseline(
+            &historical("1.3.0", "1.4.0"),
+            "1.3.0"
+        ));
+    }
 }

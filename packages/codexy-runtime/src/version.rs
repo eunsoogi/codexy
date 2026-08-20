@@ -30,7 +30,7 @@ const MARKETPLACE: &str = ".agents/plugins/marketplace.json";
 const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
-pub use mutation::set_version;
+pub use mutation::{admit_candidate, check_candidate, prepare_candidate, set_version};
 pub(crate) use semver::require as require_semver;
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {

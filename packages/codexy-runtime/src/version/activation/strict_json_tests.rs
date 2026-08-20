@@ -2,7 +2,8 @@ use std::fs;
 
 use anyhow::Result;
 
-use super::{Fixture, activate, assert_activation_rejected_without_mutation};
+use super::fixture::assert_activation_rejected_without_mutation;
+use super::{activate, candidate_version, fixture::Fixture};
 
 #[test]
 fn activation_rejects_top_level_and_nested_duplicate_json_keys_without_mutation() -> Result<()> {
@@ -22,7 +23,7 @@ fn activation_rejects_top_level_and_nested_duplicate_json_keys_without_mutation(
             &fixture.receipt,
             receipt.replacen(key, &format!("{key}{key}"), 1),
         )?;
-        assert_activation_rejected_without_mutation(&fixture, "1.3.0")
+        assert_activation_rejected_without_mutation(&fixture, candidate_version())
             .map_err(|error| anyhow::anyhow!("{label}: {error}"))?;
     }
     Ok(())

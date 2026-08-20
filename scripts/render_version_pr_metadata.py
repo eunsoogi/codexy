@@ -121,7 +121,7 @@ def render(
     publication_phase: str,
     issue_link_mode: str,
 ) -> tuple[str, str]:
-    title = f"chore(plugin): bump version to {version}\n"
+    title = f"chore(plugin): prepare candidate version {version}\n"
     changed = "\n".join(f"- `{name}`" for name in files)
     readiness_checks = ""
     readiness_evidence = "- Post-creation readiness gates are pending.\n"
@@ -139,12 +139,12 @@ def render(
         )
     body = f"""## Summary
 
-- Bump Codexy version sources to {version}.
-- Keep release metadata synchronized under governing issue #{number}.
+ - Prepare candidate-only Codexy version metadata for {version}.
+ - Keep selected runtime and plugin identities at the pre-activation version under governing issue #{number}.
 
 ## Rationale
 
-- Codexy releases require issue-sized scope and readiness metadata before review.
+ - The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.
 
 ## Changed Areas
 
@@ -152,7 +152,7 @@ def render(
 
 ## Verification
 
-- `scripts/sync-plugin-version.sh --check`
+- `scripts/sync-plugin-version.sh --check-candidate`
 - `scripts/validate-plugin-config.sh --check`
 - `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`
 - `git diff --check`
