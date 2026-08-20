@@ -30,17 +30,12 @@ in the linked `docs` guides.
 the component dependency graph, records the installed inventory, and exposes
 transactional lifecycle commands.
 
-> **Release status:** the component-aware 1.4.0 product is implemented and
-> verified in this repository, but 1.4.0 is not yet tagged or published. The
-> commands below describe the release-matched CLI; do not infer current PyPI or
-> marketplace availability from this README.
-
 ### Default installation
 
-After the matching release is published, install the complete Codexy product:
+Install the complete Codexy product:
 
 ```sh
-uvx --from "getcodexy==1.4.0" getcodexy install
+uvx --from getcodexy getcodexy install
 ```
 
 The default selection installs `core`, `github`, and `devtools`. Open a fresh
@@ -132,9 +127,8 @@ boundaries. Its shipped capabilities are:
 - **Orchestration and ownership.** Classify the task, establish finite goals
   and current plans, assign one owner per issue-sized branch/worktree, and
   preserve durable evidence through handoffs and context compaction.
-- **Profiles and specialists.** Route bounded work to Architect, Cartographer,
-  Auditor, Shipwright, Warden, Inspector, or Sentinel; the GitHub component adds
-  Weaver. Standard review uses Inspector, while strict review uses Sentinel.
+- **Profiles and specialists.** Route bounded work to the packaged specialists
+  below. Standard review uses Inspector, while strict review uses Sentinel.
 - **Instruction hooks.** Author scoped `AGENTS.md` files with explicit
   precedence and readback. Core validates task-thread delivery metadata; the
   GitHub component adds admission checks for GitHub operations, repository
@@ -155,6 +149,11 @@ boundaries. Its shipped capabilities are:
   their public boundaries, and retain receipts and rollback evidence for
   installation and release operations.
 
+### Orchestration at a glance
+
+The orchestration path keeps ownership, verification, and review visible from
+the first request to the final handoff:
+
 ```mermaid
 flowchart TD
     request["Request or issue"] --> classify["Classify scope, owner, and proof"]
@@ -165,21 +164,36 @@ flowchart TD
     review --> finish["PR, merge, or explicit handoff"]
 ```
 
+### Supported subagents
+
+The core plugin packages seven specialists. Installing `codexy-github` adds
+Weaver for GitHub-specific lane and merge coordination.
+
+| Component | Supported subagent | Best for |
+| --- | --- | --- |
+| core | `codexy-architect` | Plugin boundaries, schemas, orchestration contracts, MCP/LSP wiring, and extension points. |
+| core | `codexy-cartographer` | Read-only repository discovery, Codegraph exploration, file maps, and pattern mapping. |
+| core | `codexy-auditor` | Observable verification across CLI, config, GitHub, browser, app, and plugin surfaces. |
+| core | `codexy-shipwright` | Version bumps, release PRs, manifest sync, marketplace readiness, tags, and rollback planning. |
+| core | `codexy-inspector` | One bounded standard-profile review of the current diff, correctness, regressions, and scope. |
+| core | `codexy-sentinel` | Strict-profile review before handoff, PR readiness, merge, or final completion. |
+| core | `codexy-warden` | Workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and permissions. |
+| github | `codexy-weaver` | Reconciling parallel lanes, updating main, detecting conflicts, and preparing merge sequencing. |
+
 The detailed packaged inventory, component boundaries, agent catalog, skill
 contracts, and MCP/LSP runtime boundaries are in the [architecture
 guide](docs/architecture.md). Repository-maintenance and release skills remain
 repository-only; installing Codexy does not silently add this project's
 maintainer policy to another repository.
 
-## Platform proof boundary
+## Supported platforms and proof boundary
 
-The plugin manifests advertise macOS ARM64 and Linux x86_64. CI builds and
-installs the package, exercises the component lifecycle, and proves exact
-legacy-to-split candidate migration on Ubuntu and macOS. Native Windows CI
-exercises the component CLI, transaction lifecycle, recovery, and GitHub
-activation contracts, but does not claim automatic legacy-tree traversal or the
-packaged devtools runtime. LSP registrations also require the corresponding
-language-server executable on the host.
+| Platform or host surface | What is supported and verified |
+| --- | --- |
+| macOS ARM64 (`darwin-arm64`) | Packaged target for `codexy`, `codexy-github`, and `codexy-devtools`; CI builds and installs the package, exercises lifecycle commands, and proves legacy-to-split candidate migration. |
+| Linux x86_64 (`linux-x86_64`) | Packaged target for all three plugins; Ubuntu CI covers package build/install, lifecycle commands, and legacy-to-split candidate migration. |
+| Windows x86_64 (native CI surface) | CI exercises the component CLI, transaction lifecycle, recovery, and GitHub activation contracts. It does not claim automatic legacy-tree traversal or the packaged devtools runtime. |
+| LSP host prerequisite | Each registered language server must also be installed and executable on the host. |
 
 ## License
 
