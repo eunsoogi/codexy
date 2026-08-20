@@ -91,6 +91,9 @@ fn git_fixture_seed(
     // Later mutation cases amend their initial commit. Keep every immutable
     // seed private so one fixture can never affect a sibling fixture.
     run(&root, &["init", "-q"])?;
+    // Git maintenance can mutate .git/objects while a cached seed is copied.
+    // Disable it before creating the snapshot that later fixtures share.
+    run(&root, &["config", "maintenance.auto", "false"])?;
     run(&root, &["config", "user.email", "codexy@example.test"])?;
     run(&root, &["config", "user.name", "Codexy Test"])?;
     run(&root, &["add", "."])?;

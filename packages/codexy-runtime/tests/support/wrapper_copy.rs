@@ -19,9 +19,7 @@ pub(crate) fn copy_dir(
             }
             copy_dir(&source_path, &target_path)?;
         } else {
-            clone_seed_file(&source_path, &target_path).map_err(|error| {
-                copy_error("copy_file", source, target, Some(&source_path), error)
-            })?;
+            clone_seed_file(&source_path, &target_path)?;
         }
     }
     Ok(())
@@ -45,6 +43,14 @@ fn copy_error(
             target_root.display(),
         ),
     )
+}
+
+fn copy_file_error(
+    source: &std::path::Path,
+    target: &std::path::Path,
+    error: std::io::Error,
+) -> std::io::Error {
+    copy_error("copy_file", source, target, Some(source), error)
 }
 
 pub(crate) fn copy_wrapper_surface(
@@ -74,11 +80,15 @@ fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::i
     if unsafe { libc::clonefile(source_c.as_ptr(), target_c.as_ptr(), 0) } == 0 {
         return Ok(());
     }
-    std::fs::copy(source, target).map(|_| ())
+    std::fs::copy(source, target)
+        .map(|_| ())
+        .map_err(|error| copy_file_error(source, target, error))
 }
 
 #[cfg(not(target_os = "macos"))]
 fn clone_seed_file(source: &std::path::Path, target: &std::path::Path) -> std::io::Result<()> {
     super::profile_metrics::record("fixture_copy_file");
-    std::fs::copy(source, target).map(|_| ())
+    std::fs::copy(source, target)
+        .map(|_| ())
+        .map_err(|error| copy_file_error(source, target, error))
 }

@@ -120,6 +120,18 @@ fn touched_loc_parses_only_safe_single_script_commands() -> TestResult {
 fn touched_loc_fixtures_keep_private_histories_when_reusing_git_metadata() -> TestResult {
     let first = fixture("src/lib.rs", "pub fn first() {}\n".to_owned())?;
     let second = fixture("src/lib.rs", "pub fn second() {}\n".to_owned())?;
+    for repo in [&first, &second] {
+        let config = std::process::Command::new("git")
+            .args(["config", "--get", "maintenance.auto"])
+            .current_dir(repo.path())
+            .output()?;
+        assert!(
+            config.status.success(),
+            "cached fixture must copy its Git maintenance configuration: {}",
+            String::from_utf8_lossy(&config.stderr)
+        );
+        assert_eq!(String::from_utf8(config.stdout)?, "false\n");
+    }
     write(first.path(), "src/lib.rs", "pub fn mutated() {}\n")?;
     let first_add = std::process::Command::new("git")
         .args(["add", "src/lib.rs"])
