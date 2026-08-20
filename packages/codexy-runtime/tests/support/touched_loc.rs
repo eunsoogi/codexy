@@ -109,7 +109,12 @@ fn git_fixture_seed(
 pub(crate) fn write(root: &Path, path: &str, text: &str) -> std::io::Result<()> {
     let path = root.join(path);
     std::fs::create_dir_all(path.parent().expect("fixture file parent"))?;
-    std::fs::write(path, text)
+    std::fs::write(&path, text).map_err(|error| {
+        std::io::Error::new(
+            error.kind(),
+            format!("fixture write: path={}: {error}", path.display()),
+        )
+    })
 }
 
 pub(crate) fn validate(root: &Path) -> Result<Output, Box<dyn std::error::Error>> {
@@ -158,7 +163,16 @@ pub(crate) fn stderr(output: &Output) -> String {
 
 fn run(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     super::profile_metrics::record("git_command");
-    let output = Command::new("git").args(args).current_dir(root).output()?;
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .output()
+        .map_err(|error| {
+            std::io::Error::new(
+                error.kind(),
+                format!("git spawn: args={args:?} cwd={}: {error}", root.display()),
+            )
+        })?;
     assert!(
         output.status.success(),
         "git {args:?} failed: {}",
