@@ -34,7 +34,10 @@ Codexy를 설치하고 관리할 때는 `getcodexy`를 사용하세요. 컴포�
 Codexy의 전체 제품을 설치합니다.
 
 ```sh
-uvx --from getcodexy getcodexy install
+uv tool install getcodexy
+# uv의 tool bin 디렉터리를 PATH에 추가한 뒤 셸을 재시작하거나 다시 로드합니다.
+uv tool update-shell
+getcodexy install
 ```
 
 기본 구성은 `core`, `github`, `devtools`를 모두 설치합니다. 설치나 업데이트
@@ -71,9 +74,13 @@ flowchart LR
 
 ### 수명주기 명령
 
+첫 번째 명령으로 `getcodexy` CLI를 영구 설치하고, 아래 예시는 해당 실행 파일로
+전체 수명주기를 관리합니다.
+
 ```sh
 getcodexy status                       # 설치된 컴포넌트 목록 확인
 getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
+uv tool upgrade getcodexy              # 설치된 CLI 자체 업데이트
 getcodexy update                       # 설치된 모든 컴포넌트 업데이트
 getcodexy update github                # GitHub 의존 범위 업데이트
 getcodexy install github               # 기존 구성에 GitHub 추가

@@ -36,7 +36,10 @@ transactional lifecycle commands.
 Install the complete Codexy product:
 
 ```sh
-uvx --from getcodexy getcodexy install
+uv tool install getcodexy
+# Add uv's tool bin directory to PATH, then restart or reload your shell.
+uv tool update-shell
+getcodexy install
 ```
 
 The default selection installs `core`, `github`, and `devtools`. Open a fresh
@@ -73,9 +76,13 @@ flowchart LR
 
 ### Lifecycle commands
 
+The first command installs the `getcodexy` CLI persistently; the examples below
+then use that executable for the complete lifecycle.
+
 ```sh
 getcodexy status                       # read the installed-component inventory
 getcodexy doctor                       # check host readiness and component health
+uv tool upgrade getcodexy              # update the installed CLI itself
 getcodexy update                       # update every installed component
 getcodexy update github                # update one installed dependency closure
 getcodexy install github               # add GitHub to an existing selection
