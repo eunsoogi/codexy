@@ -12,6 +12,7 @@ from typing import Callable
 from profile_rust_accounting import declared_test_targets
 from profile_rust_contract import BUDGET_SECONDS
 from profile_rust_receipts import digest, load
+from profile_rust_reporting import github_receipt_provenance
 from profile_rust_targets import canonical_test_name
 
 
@@ -60,6 +61,16 @@ def valid_provenance(item: dict[str, object]) -> bool:
     )
 
 
+def valid_current_provenance(
+    item: dict[str, object], current_run_id: int, current_run_attempt: int
+) -> bool:
+    return (
+        valid_provenance(item)
+        and item["run_id"] == current_run_id
+        and item["run_attempt"] <= current_run_attempt
+    )
+
+
 def valid_process_status(item: dict[str, object]) -> bool:
     value = item.get("status")
     return isinstance(value, int) and not isinstance(value, bool) and value == 0
@@ -75,6 +86,11 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
     selected = {"posix"} if platform_only == "posix" else PLATFORMS
     if platform_only not in {None, "posix"}:
         print(f"aggregate-receipts\t0\tFAIL\tlocal platform aggregate must be posix")
+        return 1
+    try:
+        current_run_id, current_run_attempt = github_receipt_provenance()
+    except ValueError as error:
+        print(f"aggregate-receipts\t0\tFAIL\t{error}")
         return 1
     head = subprocess.check_output(
         ("git", "rev-parse", "HEAD"), cwd=root, text=True
@@ -110,7 +126,7 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
             or item.get("state") != "PASS"
             or not valid_process_status(item)
             or not valid_timing(item)
-            or not valid_provenance(item)
+            or not valid_current_provenance(item, current_run_id, current_run_attempt)
             or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard])
             or item.get("head") != head
             or item.get("index_tree") != index_tree
@@ -133,8 +149,10 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
         and found == expected
         and len(receipts) == len(expected)
         and duplicates == 0
-        and len({(item.get("run_id"), item.get("run_attempt")) for item in receipts})
-        == 1
+        and all(
+            valid_current_provenance(item, current_run_id, current_run_attempt)
+            for item in receipts
+        )
         and all(
             targets[platform] == expected_targets
             and provenance_windows_within_budget(receipts, platform, valid_timing)

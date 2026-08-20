@@ -40,6 +40,7 @@ jobs:
           name: rust-receipt-posix-${{ matrix.shard }}
           path: receipts/posix-${{ matrix.shard }}.json
           if-no-files-found: error
+          overwrite: true
 
   windows-rust-test:
     name: Rust shard (Windows, ${{ matrix.shard }})
@@ -75,6 +76,7 @@ jobs:
           name: rust-receipt-windows-${{ matrix.shard }}
           path: receipts/windows-${{ matrix.shard }}.json
           if-no-files-found: error
+          overwrite: true
 
   rust-test-aggregate:
     needs: [rust-test, windows-rust-test]

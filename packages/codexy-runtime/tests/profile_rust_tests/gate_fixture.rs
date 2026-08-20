@@ -44,6 +44,9 @@ impl GateFixture {
                 ).replace(
                     "          fetch-depth: 0\n          persist-credentials: false",
                     checkout,
+                ).replace(
+                    "          if-no-files-found: error\n",
+                    "          if-no-files-found: error\n          overwrite: true\n",
                 )
             ),
         )?;

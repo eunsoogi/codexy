@@ -60,6 +60,8 @@ from importlib.machinery import SourceFileLoader
 
 profiler_path, repository, runtime = map(pathlib.Path, sys.argv[1:])
 sys.path.insert(0, str(profiler_path.parent))
+os.environ["GITHUB_RUN_ID"] = "1"
+os.environ["GITHUB_RUN_ATTEMPT"] = "1"
 spec = importlib.util.spec_from_loader("profile_rust_tests", SourceFileLoader("profile_rust_tests", str(profiler_path)))
 profiler = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiler)
