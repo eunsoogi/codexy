@@ -7,7 +7,7 @@ fn target_summary_recovers_one_interleaved_completed_result()
     let repository = codexy_runtime::paths::repository_root();
     let index = LockedProbeIndex::new(&repository)?;
     let probe = r#"
-import copy, importlib.util, os, pathlib, sys, tempfile
+import copy, importlib.util, json, os, pathlib, sys, tempfile
 from collections import Counter
 
 os.environ["GITHUB_RUN_ID"] = "1"
@@ -155,7 +155,7 @@ def check(label, mutate, expected):
         attempts = [value.get("run_attempt") for value in rows]
         for index, value in enumerate(rows): write(root / f"{index}.json", value)
         result = aggregate(root, repository)
-        if [value.get("run_attempt") for value in rows] != attempts:
+        if [json.loads((root / f"{index}.json").read_text()).get("run_attempt") for index in range(len(rows))] != attempts:
             raise SystemExit(f"{label}: receipt attempts were rewritten")
         if result != expected: raise SystemExit(label)
 def rehash(value):
@@ -197,7 +197,9 @@ check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
 check("mixed GitHub retry receipt provenance", real_retries, 0)
 check("future GitHub attempt", lambda rows: rows[0].update(run_attempt=3), 1)
 def stale_cumulative_retry(rows):
-    real_retries(rows); rows[0]["state"] = "FAIL"
+    real_retries(rows)
+    stale = next(value for value in rows if value["run_attempt"] == 1)
+    stale["state"] = "FAIL"
 check("stale failed cumulative retry cohort", stale_cumulative_retry, 1)
 def check_without_ci_provenance():
     saved = {name: os.environ.pop(name, None) for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT")}
