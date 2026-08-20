@@ -20,9 +20,9 @@
 
 Codexy gives Codex a disciplined path from a broad repository request to an
 owned implementation, observable verification, bounded review, and a safe
-finish. This README is both a first-reader explanation and a complete, scannable
-public overview; detailed architecture and executable contracts live in the
-linked `docs` guides.
+finish. Codexy is approachable for a first-time reader while covering the
+complete, scannable public product surface. Detailed architecture and executable
+contracts live in the linked `docs` guides.
 
 ## Install with getcodexy
 
