@@ -1,24 +1,24 @@
 {
   "schema": "codexy.routing-evaluation-corpus.v1",
-  "corpus_id": "routing-549-v1",
+  "corpus_id": "routing-600-v1",
   "tasks": [
     {
       "id": "simple-local-validator",
       "classification": "simple",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The test is faithful and bounded."
+      "acceptance_oracle": "The route prefers Luna/max when the callable child surface advertises it."
     },
     {
       "id": "general-routing-contract",
       "classification": "general",
-      "prompt": "Map the routing contract and return a minimal proof plan.",
-      "acceptance_oracle": "The plan preserves current Terra/high."
+      "prompt": "Resolve a generic child route across the callable model surface.",
+      "acceptance_oracle": "Luna/max wins whenever callable; Terra/high is availability fallback."
     },
     {
       "id": "ambiguous-specialist-boundary",
       "classification": "ambiguous",
       "prompt": "Classify an ownership-sensitive routing change and select the safe handler.",
-      "acceptance_oracle": "The result fails closed without Luna."
+      "acceptance_oracle": "The result fails closed without a callable generic route."
     }
   ]
 }

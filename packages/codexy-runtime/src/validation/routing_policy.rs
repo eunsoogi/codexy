@@ -18,6 +18,7 @@ const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 pub(super) struct Policy {
     pub(super) schema: String,
     pub(super) generic: Route,
+    pub(super) generic_fallback: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
     pub(super) general: General,
@@ -164,8 +165,10 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.generic.model != "gpt-5.6-terra"
-        || policy.generic.thinking != "high"
+        || policy.generic.model != "gpt-5.6-luna"
+        || policy.generic.thinking != "max"
+        || policy.generic_fallback.model != "gpt-5.6-terra"
+        || policy.generic_fallback.thinking != "high"
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
         || policy.simple.model != "gpt-5.6-luna"

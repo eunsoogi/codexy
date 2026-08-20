@@ -40,6 +40,9 @@ mod validator_devtools_metadata;
 #[path = "../validator_child_routing_policy.rs"]
 mod validator_child_routing_policy;
 
+#[path = "../validator_child_routing_contract.rs"]
+mod validator_child_routing_contract;
+
 #[path = "../validator_tdd_classification_policy.rs"]
 mod validator_tdd_classification_policy;
 

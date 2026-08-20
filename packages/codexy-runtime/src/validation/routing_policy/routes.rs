@@ -13,16 +13,7 @@ pub(super) fn simple_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
-    if thread_capabilities::supports(capabilities, &policy.simple.model, &policy.simple.thinking) {
-        route(
-            "generic",
-            operation,
-            &policy.simple.model,
-            &policy.simple.thinking,
-        )
-    } else {
-        generic_or_fallback(policy, capabilities, operation, &policy.generic.thinking)
-    }
+    generic_or_fallback(policy, capabilities, operation)
 }
 
 pub(super) fn selected_general_route(
@@ -37,23 +28,39 @@ pub(super) fn selected_general_route(
         .join(&policy.general.measurement_results);
     let corpus = std::fs::read_to_string(corpus)?;
     let results = std::fs::read_to_string(results)?;
-    let selected = routing_measurement::selected_effort(plugin_root, &corpus, &results)?;
-    Ok(generic_or_fallback(
-        policy,
-        capabilities,
-        operation,
-        &selected,
-    ))
+    // Keep the paired measurement baseline valid, but never let its selected
+    // effort override the capability-driven Luna-first generic contract.
+    routing_measurement::selected_effort(plugin_root, &corpus, &results)?;
+    Ok(generic_or_fallback(policy, capabilities, operation))
 }
 
 fn generic_or_fallback(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
-    thinking: &str,
 ) -> Value {
-    if thread_capabilities::supports(capabilities, &policy.generic.model, thinking) {
-        route("generic", operation, &policy.generic.model, thinking)
+    if thread_capabilities::supports(
+        capabilities,
+        &policy.generic.model,
+        &policy.generic.thinking,
+    ) {
+        route(
+            "generic",
+            operation,
+            &policy.generic.model,
+            &policy.generic.thinking,
+        )
+    } else if thread_capabilities::supports(
+        capabilities,
+        &policy.generic_fallback.model,
+        &policy.generic_fallback.thinking,
+    ) {
+        route(
+            "generic",
+            operation,
+            &policy.generic_fallback.model,
+            &policy.generic_fallback.thinking,
+        )
     } else {
         json!({"route":policy.fallback})
     }
