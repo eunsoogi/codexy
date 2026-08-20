@@ -34,7 +34,8 @@ Codexy를 설치하고 관리할 때는 `getcodexy`를 사용하세요. 컴포�
 Codexy의 전체 제품을 설치합니다.
 
 ```sh
-uvx --from getcodexy getcodexy install
+uv tool install getcodexy
+getcodexy install
 ```
 
 기본 구성은 `core`, `github`, `devtools`를 모두 설치합니다. 설치나 업데이트
@@ -53,12 +54,12 @@ Codexy는 서로 협력하는 세 플러그인으로 제공됩니다. `github`�
 | `github`   | `codexy-github`   | branch, PR, CI, 리뷰, 릴리스, GitHub 안전 hook을 잇는 issue-to-merge 절차                    |
 | `devtools` | `codexy-devtools` | 로컬 Codegraph와 LSP MCP 서버, wrapper, 설정, 개발 도구 지침                                 |
 
-| 설치 결과                | 명령                                                     |
-| ------------------------ | -------------------------------------------------------- |
-| core만                   | `uvx --from getcodexy getcodexy install core`            |
-| core + GitHub            | `uvx --from getcodexy getcodexy install github`          |
-| core + devtools          | `uvx --from getcodexy getcodexy install devtools`        |
-| core + GitHub + devtools | `uvx --from getcodexy getcodexy install github devtools` |
+| 설치 결과                | 명령                                |
+| ------------------------ | ----------------------------------- |
+| core만                   | `getcodexy install core`            |
+| core + GitHub            | `getcodexy install github`          |
+| core + devtools          | `getcodexy install devtools`        |
+| core + GitHub + devtools | `getcodexy install github devtools` |
 
 ```mermaid
 flowchart LR
@@ -71,17 +72,17 @@ flowchart LR
 
 ### 수명주기 명령
 
-아래 예시는 모두 같은 `uvx` 실행기를 사용하므로 전역에 영구적인 `getcodexy` 실행
-파일을 따로 설치할 필요가 없습니다.
+첫 번째 명령으로 `getcodexy` CLI를 영구 설치하고, 아래 예시는 해당 실행 파일로
+전체 수명주기를 관리합니다.
 
 ```sh
-uvx --from getcodexy getcodexy status                       # 설치된 컴포넌트 목록 확인
-uvx --from getcodexy getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
-uvx --from getcodexy getcodexy update                       # 설치된 모든 컴포넌트 업데이트
-uvx --from getcodexy getcodexy update github                # GitHub 의존 범위 업데이트
-uvx --from getcodexy getcodexy install github               # 기존 구성에 GitHub 추가
-uvx --from getcodexy getcodexy remove github                # 의존 관계가 허용할 때 GitHub 제거
-uvx --from getcodexy getcodexy bootstrap                    # 전체 기본 구성으로 수렴
+getcodexy status                       # 설치된 컴포넌트 목록 확인
+getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
+getcodexy update                       # 설치된 모든 컴포넌트 업데이트
+getcodexy update github                # GitHub 의존 범위 업데이트
+getcodexy install github               # 기존 구성에 GitHub 추가
+getcodexy remove github                # 의존 관계가 허용할 때 GitHub 제거
+getcodexy bootstrap                    # 전체 기본 구성으로 수렴
 ```
 
 모든 명령은 `--json`을 지원합니다. 변경 작업은 durable journal과 receipt를
@@ -97,8 +98,8 @@ uvx --from getcodexy getcodexy bootstrap                    # 전체 기본 구�
 경로로 전달해야 합니다.
 
 ```sh
-uvx --from getcodexy getcodexy --codex /absolute/path/to/codex migrate
-uvx --from getcodexy getcodexy --codex /absolute/path/to/codex migrate core devtools
+getcodexy --codex /absolute/path/to/codex migrate
+getcodexy --codex /absolute/path/to/codex migrate core devtools
 ```
 
 정확히 일치하고 수정되지 않은 버전 고정 legacy tree와, 서로 다른 split target만
