@@ -152,8 +152,12 @@ def receipt_set(directory):
 def check(label, mutate, expected):
     with tempfile.TemporaryDirectory() as directory:
         root = pathlib.Path(directory); rows = receipt_set(root); mutate(rows)
+        attempts = [value.get("run_attempt") for value in rows]
         for index, value in enumerate(rows): write(root / f"{index}.json", value)
-        if aggregate(root, repository) != expected: raise SystemExit(label)
+        result = aggregate(root, repository)
+        if [value.get("run_attempt") for value in rows] != attempts:
+            raise SystemExit(f"{label}: receipt attempts were rewritten")
+        if result != expected: raise SystemExit(label)
 def rehash(value):
     observed = Counter(value["tests"])
     value["digest"] = __import__("profile_rust_receipts").digest(observed)
@@ -181,16 +185,20 @@ def same_attempt_gap(rows):
     last = next(value for value in rows if (value["platform"], value["shard"]) == ("posix", "agent"))
     last.update(started=301, finished=302, run_attempt=1)
 def real_retries(rows):
-    old = {("posix", "support"), ("posix", "child"), ("posix", "governance"), ("windows", "child"), ("windows", "orchestration")}
+    replaced = {("posix", "support"), ("posix", "governance")}
     for value in rows:
-        if (value["platform"], value["shard"]) not in old:
+        if (value["platform"], value["shard"]) in replaced:
             value["run_attempt"] = 2
             value["started"] += 3600
             value["finished"] += 3600
+    if Counter(value["run_attempt"] for value in rows) != Counter({1: 12, 2: 2}):
+        raise SystemExit("cumulative retry cohort was not 12 attempt-1 plus 2 attempt-2 receipts")
 check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
 check("mixed GitHub retry receipt provenance", real_retries, 0)
 check("future GitHub attempt", lambda rows: rows[0].update(run_attempt=3), 1)
-check("stale failed receipt", lambda rows: rows[0].update(state="FAIL"), 1)
+def stale_cumulative_retry(rows):
+    real_retries(rows); rows[0]["state"] = "FAIL"
+check("stale failed cumulative retry cohort", stale_cumulative_retry, 1)
 def check_without_ci_provenance():
     saved = {name: os.environ.pop(name, None) for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT")}
     try:
@@ -202,6 +210,16 @@ def check_without_ci_provenance():
         for name, value in saved.items():
             if value is not None: os.environ[name] = value
 check_without_ci_provenance()
+def check_invalid_ci_provenance():
+    for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"):
+        saved = os.environ[name]; os.environ[name] = "not-a-positive-decimal"
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory); rows = receipt_set(root)
+                for index, value in enumerate(rows): write(root / f"{index}.json", value)
+                if aggregate(root, repository) != 1: raise SystemExit(f"malformed current CI provenance: {name}")
+        finally: os.environ[name] = saved
+check_invalid_ci_provenance()
 for label, mutate in (
     ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
     ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
