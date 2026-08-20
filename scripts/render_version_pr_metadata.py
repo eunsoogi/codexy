@@ -139,12 +139,12 @@ def render(
         )
     body = f"""## Summary
 
- - Prepare candidate-only Codexy version metadata for {version}.
- - Keep selected runtime and plugin identities at the pre-activation version under governing issue #{number}.
+- Prepare candidate-only Codexy version metadata for {version}.
+- Keep selected runtime and plugin identities at the pre-activation version under governing issue #{number}.
 
 ## Rationale
 
- - The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.
+- The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.
 
 ## Changed Areas
 

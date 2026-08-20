@@ -80,13 +80,6 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         fs::read(output_dir.join("labels.json"))?,
     );
     assert_eq!(title, "chore(plugin): prepare candidate version 1.3.1\n");
-    assert!(body.contains("Prepare candidate-only Codexy version metadata for 1.3.1."));
-    assert!(body.contains(
-        "Keep selected runtime and plugin identities at the pre-activation version"
-    ));
-    assert!(body.contains(
-        "The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep"
-    ));
     assert_eq!(
         markdown_headings(&body),
         [
@@ -97,6 +90,19 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "## Evidence",
             "## Not Run",
             "## Follow-ups",
+        ]
+    );
+    assert_eq!(
+        markdown_section_lines(&body, "## Summary"),
+        [
+            "- Prepare candidate-only Codexy version metadata for 1.3.1.",
+            "- Keep selected runtime and plugin identities at the pre-activation version under governing issue #301.",
+        ]
+    );
+    assert_eq!(
+        markdown_section_lines(&body, "## Rationale"),
+        [
+            "- The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.",
         ]
     );
     assert_eq!(
