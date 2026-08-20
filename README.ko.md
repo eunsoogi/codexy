@@ -5,6 +5,10 @@
 <h1 align="center">Codexy</h1>
 
 <p align="center">
+  담당 범위가 분명한 작업, 전문 에이전트, 검증 중심 완료를 위한 Codex 하네스
+</p>
+
+<p align="center">
   <a href="README.md">English</a>
 </p>
 
@@ -14,70 +18,177 @@
   <a href="https://github.com/eunsoogi/codexy/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/eunsoogi/codexy.svg"></a>
 </p>
 
-Codexy는 한 번의 프롬프트만으로는 부족한 저장소 작업을 더 체계적으로 진행하도록
-돕는 Codex 하네스 플러그인입니다. 개발자와 팀이 큰 일을 책임과 검토 범위가
-분명한 작업 단위로 나누고, 상황에 맞는 작업 담당 또는 검토 에이전트를 활용하며,
-안전한 완료에 필요한 검증 기록을 남기도록 돕습니다.
+Codexy는 큰 저장소 요청을 담당자가 분명한 구현, 실제 동작 검증, 범위가 제한된
+리뷰, 안전한 완료까지 이어 주는 Codex 하네스입니다. 하나 이상의 Codex 에이전트가
+계획, 구현, 검증, 리뷰, 인수인계를 조율하도록 돕고, 컴포넌트별 설치와 지속적인
+증거 수집으로 작업 과정을 추적할 수 있게 합니다. 상세 아키텍처와 실행 계약은
+연결된 `docs` 문서에서 다룹니다.
 
-## Codexy가 유용한 때
+## getcodexy로 설치하기
 
-계획, 구현, 검증, 리뷰, 인수인계까지 이어지는 저장소 작업이나 여러 에이전트의
-역할 경계가 분명해야 하는 작업에 Codexy를 사용하세요. Codexy는 이슈 단위 브랜치,
-명확한 담당자, 현재 변경이 검토 가능한 상태임을 보여 주는 검증 결과가 필요한
-흐름을 위해 만들었습니다.
+Codexy를 설치하고 관리할 때는 `getcodexy`를 사용하세요. 컴포넌트 의존성을
+계산하고, 설치된 목록을 기록하며, 설치 수명주기를 트랜잭션으로 처리합니다.
 
-Codexy에는 다음이 포함됩니다.
+### 기본 설치
 
-- 작업을 분류하고 목표와 계획을 최신 상태로 관리하는 절차 지침
-- 구현, 조사, 문서화, 현재 변경 사항 검토를 맡는 전문 역할 정의
-- 저장소 탐색과 언어 특성을 반영한 검사를 위한 선택형 `codexy-devtools` 동반
-  플러그인의 codegraph와 언어 서버(language server) 등록
-- 플러그인 설정, pull request 준비 상태, 릴리스 작업을 확인하는 검증기와 GitHub
-  기반 검증 절차
-
-전체 에이전트, 스킬, MCP 구성과 실제 작업 흐름은
-[구성과 작업 흐름 안내서](docs/architecture.md)에서 확인할 수 있습니다.
-
-## Codexy 설치
-
-이 저장소를 Codex 플러그인 마켓플레이스로 등록한 뒤 Codexy를 설치합니다.
+Codexy의 전체 제품을 설치합니다.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref main
+uvx --from getcodexy getcodexy install
+```
+
+기본 구성은 `core`, `github`, `devtools`를 모두 설치합니다. 설치나 업데이트
+뒤에는 새 Codex 세션을 열어 새 플러그인, skill, hook, agent, MCP 서버가 host에
+노출되도록 하세요.
+
+### 컴포넌트 선택
+
+Codexy는 서로 협력하는 세 플러그인으로 제공됩니다. `github`와 `devtools`는 각각
+`core`에 의존하며 서로에게는 의존하지 않습니다. 필요한 의존성은 자동으로
+포함됩니다.
+
+| 컴포넌트   | 플러그인          | 추가되는 기능                                                                                |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| `core`     | `codexy`          | 오케스트레이션, 목표와 계획, worktree 담당 범위, 전문 에이전트, instruction hook, 검증, Wiki |
+| `github`   | `codexy-github`   | branch, PR, CI, 리뷰, 릴리스, GitHub 안전 hook을 잇는 issue-to-merge 절차                    |
+| `devtools` | `codexy-devtools` | 로컬 Codegraph와 LSP MCP 서버, wrapper, 설정, 개발 도구 지침                                 |
+
+| 설치 결과                | 명령                                |
+| ------------------------ | ----------------------------------- |
+| core만                   | `getcodexy install core`            |
+| core + GitHub            | `getcodexy install github`          |
+| core + devtools          | `getcodexy install devtools`        |
+| core + GitHub + devtools | `getcodexy install github devtools` |
+
+```mermaid
+flowchart LR
+    getcodexy["getcodexy"] --> core["core · codexy"]
+    getcodexy --> github["github · codexy-github"]
+    getcodexy --> devtools["devtools · codexy-devtools"]
+    github --> core
+    devtools --> core
+```
+
+### 수명주기 명령
+
+```sh
+getcodexy status                       # 설치된 컴포넌트 목록 확인
+getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
+getcodexy update                       # 설치된 모든 컴포넌트 업데이트
+getcodexy update github                # GitHub 의존 범위 업데이트
+getcodexy install github               # 기존 구성에 GitHub 추가
+getcodexy remove github                # 의존 관계가 허용할 때 GitHub 제거
+getcodexy bootstrap                    # 전체 기본 구성으로 수렴
+```
+
+모든 명령은 `--json`을 지원합니다. 변경 작업은 durable journal과 receipt를
+남깁니다. 실패하면 이전 선택을 정확히 복원하며, 의존성이 남은 컴포넌트 제거,
+혼합 버전, 알 수 없는 컴포넌트, 일관되지 않은 설치 목록은 변경 전에 거부합니다.
+선택 규칙, receipt, 오류 코드, 복구 동작은
+[컴포넌트 설치 및 이전 계약](docs/getcodexy-component-installation.md)에
+정리되어 있습니다.
+
+### 기존 monolith 이전
+
+이전은 host가 중개합니다. 신뢰할 수 있는 Codex host가 자신의 실행 파일을 절대
+경로로 전달해야 합니다.
+
+```sh
+getcodexy --codex /absolute/path/to/codex migrate
+getcodexy --codex /absolute/path/to/codex migrate core devtools
+```
+
+정확히 일치하고 수정되지 않은 버전 고정 legacy tree와, 서로 다른 split target만
+이전할 수 있습니다. 수정됐거나 link된 tree, 읽을 수 없거나 출처가 불분명한
+tree는 안전하게 거부합니다. 중단되거나 실패한 이전은 기존 설정을 transaction으로
+복원하거나 다음 신뢰할 수 있는 재시도를 위한 durable recovery journal을
+보존합니다.
+
+### 고급 사용: 플러그인 직접 설치
+
+Marketplace 직접 설치는 개발 또는 통제된 복구를 위한 고급 경로입니다. 개별
+컴포넌트를 직접 설치해야 할 때 사용하고 `core`부터 설치하세요.
+
+```sh
+codex plugin marketplace add eunsoogi/codexy
 codex plugin add codexy@codexy
-# 선택형 저장소 탐색 및 언어 도구:
+codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-Codex에서 설치된 플러그인과 MCP 서버를 확인합니다.
+## Codexy가 하는 일
 
-```sh
-codex plugin list
-codex mcp list
+Codexy는 계획, 구현, 검증, 리뷰, 인수인계까지 이어지는 저장소 작업이나 여러
+에이전트의 역할 경계가 필요한 작업에 유용합니다. 현재 제공하는 기능은 다음과
+같습니다.
+
+- **오케스트레이션과 담당 범위.** 작업을 분류하고 유한한 목표와 최신 계획을
+  만들며, issue 단위 branch/worktree마다 담당자를 한 명만 둡니다. 인수인계와
+  context compaction 뒤에도 검증 근거를 보존합니다.
+- **Profile과 전문 에이전트.** 아래에 정리한 패키지 전문 에이전트로 범위가
+  분명한 작업을 배정합니다. 표준 리뷰는 Inspector, 엄격 리뷰는 Sentinel이
+  담당합니다.
+- **Instruction hook.** 적용 범위와 우선순위가 분명한 `AGENTS.md`를 작성하고
+  다시 읽어 확인합니다. Core는 task-thread 전달 metadata를 검사하고, GitHub
+  컴포넌트는 GitHub 작업·저장소 명령·파괴적 shell 작업의 admission을 검사합니다.
+- **검증과 엔지니어링.** 실행 가능한 엔지니어링 경계에만 TDD를 적용하고 실제
+  변경 surface에 맞는 validator와 실제 동작 검사를 실행하며, 완료와 리뷰 근거를
+  현재 파일 상태 또는 commit에 묶습니다.
+- **LLM Wiki.** `init → ingest → compile → query → refresh` 흐름으로 범위가
+  제한된 topic root를 관리합니다. immutable raw source, 인용, provenance,
+  freshness 검사, 명시적인 knowledge gap을 유지합니다.
+- **GitHub 절차.** Issue intake부터 branch와 worktree, PR, CI, 리뷰 대응, 승인된
+  squash merge, 릴리스, 병합 뒤 `main` 동기화까지 조정합니다.
+- **개발 도구.** Codegraph로 범위가 제한된 dependency neighborhood를 살피고,
+  맞는 language server가 설치돼 있으면 LSP 탐색, symbol, definition, reference,
+  diagnostic을 사용합니다.
+- **패키징과 복구.** 세 플러그인의 버전을 맞추고 공개 경계를 검증하며, 설치와
+  릴리스 작업의 receipt와 rollback 근거를 보존합니다.
+
+### 오케스트레이션 한눈에 보기
+
+오케스트레이션은 첫 요청부터 최종 인수인계까지 담당 범위, 검증, 리뷰를 확인할 수
+있는 흐름으로 연결합니다.
+
+```mermaid
+flowchart TD
+    request["요청 또는 issue"] --> classify["범위·담당자·검증 방법 분류"]
+    classify --> plan["목표 + 최신 계획"]
+    plan --> work["담당 branch/worktree 작업"]
+    work --> verify["실제 동작 검증"]
+    verify --> review["Profile에 맞는 리뷰"]
+    review --> finish["PR·병합 또는 명시적 인수인계"]
 ```
 
-새 플러그인, 스킬 또는 MCP가 현재 세션에 나타나지 않으면 새 Codex 세션을 여세요.
+### 지원하는 서브에이전트
 
-## Codexy로 작업하는 흐름
+Core 플러그인은 일곱 가지 전문 에이전트를 포함합니다. `codexy-github`를 설치하면
+GitHub 작업과 병합 조정을 담당하는 Weaver가 추가됩니다.
 
-1. **작업을 분류합니다.** 편집 전에 작업 단위, 담당자, 범위, 검증 근거, 중단
-   조건을 정합니다.
-2. **작업을 의도적으로 진행합니다.** 목표와 계획을 유지하고, 사용할 수 있을 때
-   저장소 탐색 및 언어 특성을 반영한 도구를 활용하며, 전문 역할에는 범위가
-   한정된 책임을 맡깁니다.
-3. **결과를 증명합니다.** 변경한 내용을 검증하고, 현재 커밋을 기준으로 한 검증
-   결과를 남기며, pull request가 리뷰와 병합 안전장치를 거치게 합니다.
+| 컴포넌트 | 지원 서브에이전트     | 잘 맞는 작업                                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------------------ |
+| core     | `codexy-architect`    | 플러그인 경계, schema, 오케스트레이션 계약, MCP/LSP 연결, 확장 지점            |
+| core     | `codexy-cartographer` | 읽기 전용 저장소 탐색, Codegraph 조사, 파일 맵, 패턴 매핑                      |
+| core     | `codexy-auditor`      | CLI, 설정, GitHub, 브라우저, 앱, 플러그인 surface의 실제 동작 검증             |
+| core     | `codexy-shipwright`   | 버전 변경, 릴리스 PR, manifest 동기화, marketplace 준비, tag, rollback 계획    |
+| core     | `codexy-inspector`    | 현재 diff의 범위가 제한된 표준 Profile 리뷰, 정확성, 회귀, 범위 확인           |
+| core     | `codexy-sentinel`     | 인수인계, PR 준비, 병합, 최종 완료 전의 엄격한 Profile 리뷰                    |
+| core     | `codexy-warden`       | workflow, shell 명령, credential, 원격 MCP endpoint, 신뢰할 수 없는 입력, 권한 |
+| github   | `codexy-weaver`       | 병렬 lane 조정, main 업데이트, 충돌 탐지, 병합 순서 준비                       |
 
-이 구조에서는 조정 세션이 작업을 배정하고, 하위 작업을 맡은 워크트리 스레드
-(worktree thread)가 구현 브랜치와 리뷰 대응 수정을 담당합니다. 범위가 분명한
-보조 및 검토 에이전트는 브랜치 담당자가 되지 않고도 작업을 도울 수 있습니다.
+패키지에 포함된 전체 목록, 컴포넌트 경계, 에이전트 목록, skill 계약, MCP/LSP
+runtime 경계는 [아키텍처 안내서](docs/architecture.md)에서 확인할 수 있습니다.
+저장소 유지관리와 릴리스 skill은 이 저장소에서만 사용되며, Codexy를 설치해도 이
+프로젝트의 유지관리 정책이 다른 저장소에 자동으로 추가되지는 않습니다.
 
-## 저장소 유지관리자 안내
+## 지원 플랫폼과 검증 범위
 
-Codexy는 플러그인 중심으로 설계되었습니다. 저장소 운영, 패키징, 릴리스, 기여자
-규칙은 이 소개 문서에 반복하지 않고 정식 [에이전트 지침](AGENTS.md),
-[플러그인 설정 검증기](scripts/validate-plugin-config.sh),
-[릴리스 워크플로](.github/workflows/plugin-version-bump.yml)에 둡니다.
+| 플랫폼 또는 host surface           | 지원 및 검증 범위                                                                                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS ARM64 (`darwin-arm64`)       | `codexy`, `codexy-github`, `codexy-devtools` 패키지 대상입니다. CI가 패키지 build·install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다.                      |
+| Linux x86_64 (`linux-x86_64`)      | 세 플러그인 모두의 패키지 대상입니다. Ubuntu CI가 패키지 build/install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다.                                         |
+| Windows x86_64 (native CI surface) | CI가 컴포넌트 CLI, transaction lifecycle, recovery, GitHub activation 계약을 실행합니다. 자동 legacy tree 탐색이나 패키지 devtools runtime까지 지원한다고 주장하지 않습니다. |
+| LSP host prerequisite              | 등록한 각 language server가 host에 설치되어 실행 가능해야 합니다.                                                                                                            |
 
 ## 라이선스
 
