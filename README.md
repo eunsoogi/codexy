@@ -55,12 +55,12 @@ automatically.
 | `github`   | `codexy-github`   | Issue-to-merge workflow for branches, PRs, CI, reviews, release work, and GitHub safety hooks.       |
 | `devtools` | `codexy-devtools` | Local Codegraph and LSP MCP servers, wrappers, configuration, and developer-tool guidance.           |
 
-| Desired result           | Command                             |
-| ------------------------ | ----------------------------------- |
-| core only                | `getcodexy install core`            |
-| core + GitHub            | `getcodexy install github`          |
-| core + devtools          | `getcodexy install devtools`        |
-| core + GitHub + devtools | `getcodexy install github devtools` |
+| Desired result           | Command                                                  |
+| ------------------------ | -------------------------------------------------------- |
+| core only                | `uvx --from getcodexy getcodexy install core`            |
+| core + GitHub            | `uvx --from getcodexy getcodexy install github`          |
+| core + devtools          | `uvx --from getcodexy getcodexy install devtools`        |
+| core + GitHub + devtools | `uvx --from getcodexy getcodexy install github devtools` |
 
 ```mermaid
 flowchart LR
@@ -73,14 +73,17 @@ flowchart LR
 
 ### Lifecycle commands
 
+Every example below uses the same `uvx` runner, so it does not depend on a
+permanent global `getcodexy` executable.
+
 ```sh
-getcodexy status                       # read the installed-component inventory
-getcodexy doctor                       # check host readiness and component health
-getcodexy update                       # update every installed component
-getcodexy update github                # update one installed dependency closure
-getcodexy install github               # add GitHub to an existing selection
-getcodexy remove github                # remove GitHub when dependencies allow it
-getcodexy bootstrap                    # converge on the complete default selection
+uvx --from getcodexy getcodexy status                       # read the installed-component inventory
+uvx --from getcodexy getcodexy doctor                       # check host readiness and component health
+uvx --from getcodexy getcodexy update                       # update every installed component
+uvx --from getcodexy getcodexy update github                # update one installed dependency closure
+uvx --from getcodexy getcodexy install github               # add GitHub to an existing selection
+uvx --from getcodexy getcodexy remove github                # remove GitHub when dependencies allow it
+uvx --from getcodexy getcodexy bootstrap                    # converge on the complete default selection
 ```
 
 All commands accept `--json`. Mutations use a durable journal and receipt. A
@@ -97,8 +100,8 @@ Migration is host-mediated. The trusted Codex host must supply its executable as
 an absolute path:
 
 ```sh
-getcodexy --codex /absolute/path/to/codex migrate
-getcodexy --codex /absolute/path/to/codex migrate core devtools
+uvx --from getcodexy getcodexy --codex /absolute/path/to/codex migrate
+uvx --from getcodexy getcodexy --codex /absolute/path/to/codex migrate core devtools
 ```
 
 Only an exact, unmodified, versioned legacy tree and a distinct split target are
