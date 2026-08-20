@@ -105,13 +105,11 @@ tree는 안전하게 거부합니다. 중단되거나 실패한 이전은 기존
 
 ### 고급 사용: 플러그인 직접 설치
 
-Marketplace 직접 설치는 개발 또는 통제된 복구를 위한 방법입니다. immutable
-release tag를 사용하고 `core`부터 설치하세요. `--ref`를 생략하거나 mutable한
-`main`을 일반 배포 경로로 사용하면 안 됩니다.
+Marketplace 직접 설치는 개발 또는 통제된 복구를 위한 고급 경로입니다. 개별
+컴포넌트를 직접 설치해야 할 때 사용하고 `core`부터 설치하세요.
 
 ```sh
-# v1.4.0이 immutable release tag로 생긴 뒤에만 실행하세요.
-codex plugin marketplace add eunsoogi/codexy --ref v1.4.0
+codex plugin marketplace add eunsoogi/codexy
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy

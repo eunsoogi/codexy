@@ -108,12 +108,11 @@ or preserve a durable recovery journal for the next trusted retry.
 ### Advanced: direct plugin installation
 
 Direct marketplace installation is for development or controlled recovery. Use
-an immutable released tag, install `core` first, and never treat an omitted
-`--ref` or mutable `main` as a normal deployment source.
+it when you need to install individual components directly, and install `core`
+first.
 
 ```sh
-# Run only after v1.4.0 exists as an immutable release tag.
-codex plugin marketplace add eunsoogi/codexy --ref v1.4.0
+codex plugin marketplace add eunsoogi/codexy
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
