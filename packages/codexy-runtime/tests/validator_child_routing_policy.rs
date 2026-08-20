@@ -45,6 +45,24 @@ fn resolver_uses_closed_policy_for_generic_simple_and_fallback_routes() -> TestR
 }
 
 #[test]
+fn distributed_general_block_is_measurement_only() -> TestResult {
+    let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY)])?;
+    let policy: Value = serde_json::from_str(&std::fs::read_to_string(fixture.root().join(POLICY))?)?;
+    let general = policy
+        .get("general")
+        .and_then(Value::as_object)
+        .ok_or("general policy block")?;
+
+    assert!(!general.contains_key("model"), "general block must not expose a route-shaped model");
+    assert_eq!(general.get("candidate_efforts"), Some(&json!(["high", "xhigh", "max"])));
+    assert_eq!(
+        general.get("measurement_results"),
+        Some(&json!(RESULTS.strip_prefix("skills/orchestration/references/").unwrap()))
+    );
+    Ok(())
+}
+
+#[test]
 fn policy_rejects_unknown_fields_invalid_simple_evidence_and_unearned_promotion() -> TestResult {
     let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY), Path::new(RESULTS)])?;
     let policy_path = fixture.root().join(POLICY);

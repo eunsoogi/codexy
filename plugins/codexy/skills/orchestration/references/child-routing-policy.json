@@ -12,7 +12,6 @@
     "all_required": ["fixed_scope", "deterministic_oracle", "low_risk_reversible", "no_unresolved_decision"]
   },
   "general": {
-    "model": "gpt-5.6-terra",
     "candidate_efforts": ["high", "xhigh", "max"],
     "measurement_results": "routing-evaluation-results.json"
   },

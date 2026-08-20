@@ -51,7 +51,6 @@ pub(super) struct Simple {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct General {
-    pub(super) model: String,
     pub(super) candidate_efforts: Vec<String>,
     pub(super) measurement_results: String,
 }
@@ -179,7 +178,6 @@ fn validate(policy: &Policy) -> Result<()> {
             .iter()
             .map(String::as_str)
             .eq(required)
-        || policy.general.model != "gpt-5.6-terra"
         || !policy
             .general
             .candidate_efforts
