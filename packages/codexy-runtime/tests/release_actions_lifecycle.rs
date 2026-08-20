@@ -16,14 +16,15 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     let job = publisher["jobs"]["publish-release"]
         .as_mapping()
         .ok_or("version-neutral publisher job")?;
-    let admission = named_run(job, "Validate target version and protected release settings")?;
-    for required in [
-        "scripts/validate-release-lifecycle-contract",
-        "scripts/verify-release-settings",
-    ] {
+    assert_eq!(
+        named_run(job, "Admit protected PyPI environment")?,
+        "scripts/admit-pypi-environment",
+    );
+    let admission = named_run(job, "Validate target version and release lifecycle contract")?;
+    for required in ["scripts/validate-release-lifecycle-contract"] {
         assert!(admission.contains(required), "missing publisher admission: {required}");
     }
-    assert_eq!(job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Validate target version and protected release settings")).and_then(|step| step["env"]["TARGET_VERSION"].as_str()), Some("${{ inputs.target_version }}"));
+    assert_eq!(job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Validate target version and release lifecycle contract")).and_then(|step| step["env"]["TARGET_VERSION"].as_str()), Some("${{ inputs.target_version }}"));
     let materialize = named_run(job, "Materialize and exercise activated final artifacts")?;
     assert!(materialize.contains("RELEASE_TAG=\"$RELEASE_TAG\""));
     assert!(materialize.contains("scripts/create_release_train_receipt.py"));
@@ -69,6 +70,49 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
 }
 
 #[test]
+fn release_publication_paths_do_not_depend_on_a_policy_pat_preflight()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let bootstrap = workflow("bootstrap-package.yml")?;
+    let publisher = workflow("publish-version-release.yml")?;
+    let finalizer = fs::read_to_string(root.join("scripts/finalize-verified-release"))?;
+    let environment_admission = fs::read_to_string(root.join("scripts/admit-pypi-environment"))?;
+
+    for (name, source) in [
+        (
+            "bootstrap workflow",
+            fs::read_to_string(root.join(".github/workflows/bootstrap-package.yml"))?,
+        ),
+        (
+            "version release workflow",
+            fs::read_to_string(root.join(".github/workflows/publish-version-release.yml"))?,
+        ),
+        ("release finalizer", finalizer.clone()),
+        ("PyPI environment admission", environment_admission),
+    ] {
+        assert!(!source.contains("CODEXY_RELEASE_POLICY_TOKEN"), "{name} retains the policy PAT secret");
+        assert!(!source.contains("RELEASE_POLICY_TOKEN"), "{name} retains the policy PAT variable");
+        assert!(!source.contains("verify-release-settings"), "{name} retains the duplicate policy preflight");
+    }
+    assert!(!root.join("scripts/verify-release-settings").exists());
+
+    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["environment"]["name"], "pypi");
+    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["actions"], "read");
+    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["id-token"], "write");
+    assert_eq!(publisher["permissions"]["id-token"], "write");
+    assert_eq!(publisher["permissions"]["attestations"], "write");
+    assert_eq!(publisher["jobs"]["publish-release"]["environment"]["name"], "pypi");
+    assert_eq!(
+        named_run(
+            publisher["jobs"]["publish-release"].as_mapping().ok_or("publisher job")?,
+            "Finalize authenticated public release",
+        )?,
+        "scripts/finalize-verified-release",
+    );
+    Ok(())
+}
+
+#[test]
 fn release_edit_verifier_allows_only_body_changes_and_rechecks_actions_baseline()
 -> Result<(), Box<dyn std::error::Error>> {
     let verifier = workflow("verify-release-edit.yml")?;
@@ -95,7 +139,7 @@ fn bootstrap_publication_uses_minimal_build_dependencies_and_protected_pypi_envi
     let job = bootstrap["jobs"]["publish-bootstrap"].as_mapping().ok_or("bootstrap job")?;
     assert_eq!(job["environment"]["name"], "pypi");
     let admission = named_run(job, "Admit current protected-main bootstrap source")?;
-    assert!(admission.contains("scripts/verify-release-settings --require-pypi"));
+    assert!(admission.contains("git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main"));
     let build = named_run(job, "Build and publish bootstrap package")?;
     assert!(build.contains("python -m pip install --disable-pip-version-check build"));
     assert!(build.contains("python -m build --outdir dist packages/getcodexy"));

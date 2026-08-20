@@ -35,6 +35,22 @@ fn bootstrap_publication_admits_only_the_current_protected_main_snapshot()
         .iter()
         .position(|step| step["name"] == "Build and publish bootstrap package")
         .ok_or("publication index")?;
+    let environment_index = steps
+        .iter()
+        .position(|step| step["name"] == "Admit protected PyPI environment")
+        .ok_or("environment admission index")?;
+    assert_eq!(
+        steps[environment_index]["run"],
+        "scripts/admit-pypi-environment",
+    );
+    assert!(
+        environment_index < publication_index,
+        "PyPI environment admission must precede OIDC publication"
+    );
+    assert_eq!(
+        steps[environment_index]["env"]["GH_TOKEN"],
+        "${{ github.token }}",
+    );
     assert!(
         admission_index < publication_index,
         "publication must follow source admission"
@@ -49,8 +65,7 @@ fn bootstrap_source_admission_rejects_stale_non_main_malformed_and_version_misma
     let steps = bootstrap["jobs"]["publish-bootstrap"]["steps"]
         .as_sequence()
         .ok_or("bootstrap steps")?;
-    let admission = run(steps, "Admit current protected-main bootstrap source")?
-        .replace("scripts/verify-release-settings --require-pypi", ":");
+    let admission = run(steps, "Admit current protected-main bootstrap source")?;
     let temp = tempfile::tempdir()?;
     let remote = temp.path().join("remote.git");
     let checkout = temp.path().join("checkout");

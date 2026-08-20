@@ -61,10 +61,6 @@ mod release_lifecycle_contract;
 #[path = "../release_publication_recovery.rs"]
 mod release_publication_recovery;
 
-#[cfg(unix)]
-#[path = "../release_settings_admission.rs"]
-mod release_settings_admission;
-
 #[path = "../repository_eol_contract.rs"]
 mod repository_eol_contract;
 
@@ -86,6 +82,9 @@ mod windows_mcp_install_workflow_contract;
 
 #[path = "../bootstrap_package_admission.rs"]
 mod bootstrap_package_admission;
+
+#[path = "../pypi_environment_admission.rs"]
+mod pypi_environment_admission;
 
 #[path = "../version_bump_pr_readiness.rs"]
 mod version_bump_pr_readiness;
