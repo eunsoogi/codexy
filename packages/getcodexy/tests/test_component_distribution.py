@@ -87,7 +87,9 @@ class ComponentDistributionTests(unittest.TestCase):
             ["core", "github", "devtools"],
         )
 
-    def test_packaged_manifest_drives_install_and_update_at_package_version(self) -> None:
+    def test_packaged_manifest_drives_install_and_update_at_package_version(
+        self,
+    ) -> None:
         self.assertEqual(
             self._run("install")["selection_after"],
             ["core", "github", "devtools"],
