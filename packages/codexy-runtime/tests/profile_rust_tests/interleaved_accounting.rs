@@ -7,8 +7,11 @@ fn target_summary_recovers_one_interleaved_completed_result()
     let repository = codexy_runtime::paths::repository_root();
     let index = LockedProbeIndex::new(&repository)?;
     let probe = r#"
-import copy, importlib.util, pathlib, sys, tempfile
+import copy, importlib.util, os, pathlib, sys, tempfile
 from collections import Counter
+
+os.environ["GITHUB_RUN_ID"] = "1"
+os.environ["GITHUB_RUN_ATTEMPT"] = "2"
 
 path = pathlib.Path(sys.argv[1])
 spec = importlib.util.spec_from_file_location("accounting", path)
@@ -185,7 +188,20 @@ def real_retries(rows):
             value["started"] += 3600
             value["finished"] += 3600
 check("same GitHub attempt gap does not split provenance", same_attempt_gap, 1)
-check("mixed GitHub retry receipt provenance", real_retries, 1)
+check("mixed GitHub retry receipt provenance", real_retries, 0)
+check("future GitHub attempt", lambda rows: rows[0].update(run_attempt=3), 1)
+check("stale failed receipt", lambda rows: rows[0].update(state="FAIL"), 1)
+def check_without_ci_provenance():
+    saved = {name: os.environ.pop(name, None) for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT")}
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory); rows = receipt_set(root)
+            for index, value in enumerate(rows): write(root / f"{index}.json", value)
+            if aggregate(root, repository) != 1: raise SystemExit("missing current CI provenance")
+    finally:
+        for name, value in saved.items():
+            if value is not None: os.environ[name] = value
+check_without_ci_provenance()
 for label, mutate in (
     ("missing receipt topology", lambda rows: rows.pop()), ("extra receipt topology", lambda rows: rows.append(rows[0].copy())),
     ("duplicate", lambda rows: rows.__setitem__(-1, rows[0].copy())),
