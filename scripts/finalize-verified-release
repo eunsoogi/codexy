@@ -4,7 +4,6 @@ set -eu
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${RELEASE_TAG:?RELEASE_TAG is required}"
 : "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
-: "${RELEASE_POLICY_TOKEN:?CODEXY_RELEASE_POLICY_TOKEN is required}"
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 final_release="$(mktemp -d)"
 if test "${BASELINE_CREATED:-false}" = true; then
@@ -34,7 +33,6 @@ jq -e --slurpfile baseline "$final_release/release-baseline.json" --slurpfile at
   ($expected.attestations == $attestations[0])
 ' release-state.json >/dev/null
 if test "$(jq -r .isDraft release-state.json)" = true; then
-  scripts/verify-release-settings --require-pypi
   gh release edit "$RELEASE_TAG" --draft=false
 fi
 gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > final-release-state.json

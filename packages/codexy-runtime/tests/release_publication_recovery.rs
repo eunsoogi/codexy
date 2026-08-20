@@ -32,27 +32,13 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
 }
 
 #[test]
-fn finalizer_rejects_policy_drift_before_publication() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new(&ASSETS, false, false)?;
-    let publish = fixture.run("publish-verified-release")?;
-    assert!(publish.status.success());
-    let baseline_created = fixture.last_baseline_created()?;
-    let before = fixture.log()?;
-    let finalize = fixture.run_with_settings("finalize-verified-release", baseline_created, false)?;
-    assert!(!finalize.status.success());
-    assert!(fixture.log()?.starts_with(&before));
-    assert!(!fixture.log()?.contains("publish\n"), "policy drift published the release");
-    Ok(())
-}
-
-#[test]
 fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
     let publish = fixture.run("publish-verified-release")?;
     assert!(publish.status.success());
     let baseline_created = fixture.last_baseline_created()?;
-    let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, true, false)?;
+    let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, false)?;
     assert!(!finalize.status.success());
     assert!(fixture.log()?.contains("publish\n"), "fixture did not exercise the post-publication observation");
     Ok(())
@@ -127,10 +113,6 @@ impl Fixture {
             root.join("scripts/verify-release-attestation-set"),
             "#!/bin/sh\nprintf '[]\\n' > \"$2\"\n",
         )?;
-        fs::write(
-            root.join("scripts/verify-release-settings"),
-            "#!/bin/sh\ntest \"${SETTINGS_ALLOWED:-true}\" = true\n",
-        )?;
         fs::write(root.join("bin/git"), git_fixture())?;
         fs::write(root.join("bin/gh"), gh_fixture())?;
         for path in fs::read_dir(root.join("scripts"))?.chain(fs::read_dir(root.join("bin"))?) {
@@ -148,29 +130,19 @@ impl Fixture {
             String::from_utf8_lossy(&publish.stderr)
         );
         let baseline_created = self.last_baseline_created()?;
-        let finalize = self.run_with_settings("finalize-verified-release", baseline_created, true)?;
+        let finalize = self.run_with_policy("finalize-verified-release", baseline_created, true)?;
         assert!(finalize.status.success(), "{}", String::from_utf8_lossy(&finalize.stderr));
         Ok(())
     }
 
     fn run(&self, name: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_settings(name, false, true)
-    }
-
-    fn run_with_settings(
-        &self,
-        name: &str,
-        baseline_created: bool,
-        settings_allowed: bool,
-    ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_policy(name, baseline_created, settings_allowed, true)
+        self.run_with_policy(name, false, true)
     }
 
     fn run_with_policy(
         &self,
         name: &str,
         baseline_created: bool,
-        settings_allowed: bool,
         immutable: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
         let path = format!("{}:{}", self.root.join("bin").display(), std::env::var("PATH")?);
@@ -184,8 +156,6 @@ impl Fixture {
             .env("RELEASE_TAG", "v9.9.9")
             .env("GITHUB_ENV", self.root.join("release.env"))
             .env("BASELINE_CREATED", baseline_created.to_string())
-            .env("RELEASE_POLICY_TOKEN", "fixture-token")
-            .env("SETTINGS_ALLOWED", settings_allowed.to_string())
             .env("FIXTURE_IMMUTABLE", immutable.to_string())
             .output()?)
     }

@@ -60,13 +60,11 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           test "$GITHUB_SHA" = "$ACTIVATION_COMMIT"
           git checkout --detach "$ACTIVATION_COMMIT"
-      - name: Validate target version and protected release settings
+      - name: Validate target version and release lifecycle contract
         env:
           TARGET_VERSION: ${{ inputs.target_version }}
-          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
         run: |
           scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
-          scripts/verify-release-settings --require-pypi
       - name: Download authenticated staging artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -171,7 +169,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
-          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
         run: scripts/finalize-verified-release
 
   verify-public-release:

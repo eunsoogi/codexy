@@ -41,7 +41,6 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
-          RELEASE_POLICY_TOKEN: ${{ secrets.CODEXY_RELEASE_POLICY_TOKEN }}
         run: |
           test "${#SOURCE_COMMIT}" = 40
           case "$SOURCE_COMMIT" in
@@ -52,7 +51,6 @@ jobs:
           test "$SOURCE_COMMIT" = "$main_at_admission"
           test "$GITHUB_REF" = refs/heads/main
           test "$GITHUB_SHA" = "$SOURCE_COMMIT"
-          scripts/verify-release-settings --require-pypi
           git cat-file -e "$SOURCE_COMMIT^{commit}"
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"

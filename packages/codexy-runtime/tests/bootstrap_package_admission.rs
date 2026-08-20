@@ -49,8 +49,7 @@ fn bootstrap_source_admission_rejects_stale_non_main_malformed_and_version_misma
     let steps = bootstrap["jobs"]["publish-bootstrap"]["steps"]
         .as_sequence()
         .ok_or("bootstrap steps")?;
-    let admission = run(steps, "Admit current protected-main bootstrap source")?
-        .replace("scripts/verify-release-settings --require-pypi", ":");
+    let admission = run(steps, "Admit current protected-main bootstrap source")?;
     let temp = tempfile::tempdir()?;
     let remote = temp.path().join("remote.git");
     let checkout = temp.path().join("checkout");

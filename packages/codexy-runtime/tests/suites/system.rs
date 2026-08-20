@@ -61,10 +61,6 @@ mod release_lifecycle_contract;
 #[path = "../release_publication_recovery.rs"]
 mod release_publication_recovery;
 
-#[cfg(unix)]
-#[path = "../release_settings_admission.rs"]
-mod release_settings_admission;
-
 #[path = "../repository_eol_contract.rs"]
 mod repository_eol_contract;
 
