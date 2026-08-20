@@ -35,6 +35,8 @@ Codexy의 전체 제품을 설치합니다.
 
 ```sh
 uv tool install getcodexy
+# uv의 tool bin 디렉터리를 PATH에 추가한 뒤 셸을 재시작하거나 다시 로드합니다.
+uv tool update-shell
 getcodexy install
 ```
 
@@ -78,6 +80,7 @@ flowchart LR
 ```sh
 getcodexy status                       # 설치된 컴포넌트 목록 확인
 getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
+uv tool upgrade getcodexy              # 설치된 CLI 자체 업데이트
 getcodexy update                       # 설치된 모든 컴포넌트 업데이트
 getcodexy update github                # GitHub 의존 범위 업데이트
 getcodexy install github               # 기존 구성에 GitHub 추가

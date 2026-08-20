@@ -37,6 +37,8 @@ Install the complete Codexy product:
 
 ```sh
 uv tool install getcodexy
+# Add uv's tool bin directory to PATH, then restart or reload your shell.
+uv tool update-shell
 getcodexy install
 ```
 
@@ -80,6 +82,7 @@ then use that executable for the complete lifecycle.
 ```sh
 getcodexy status                       # read the installed-component inventory
 getcodexy doctor                       # check host readiness and component health
+uv tool upgrade getcodexy              # update the installed CLI itself
 getcodexy update                       # update every installed component
 getcodexy update github                # update one installed dependency closure
 getcodexy install github               # add GitHub to an existing selection
