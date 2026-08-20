@@ -87,6 +87,29 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
     Ok(())
 }
 
+#[test]
+fn candidate_preparation_projects_the_packaged_component_manifest()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = selected_fixture(shared_repository_archive()?, &temp, "component-manifest")?;
+    prepare_candidate(&root)?;
+
+    let manifest: Value = serde_json::from_str(&fs::read_to_string(
+        root.join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"),
+    )?)?;
+    for field in ["components", "compatibleCombinations"] {
+        for entry in manifest[field].as_array().ok_or("component manifest array")? {
+            assert_eq!(entry["version"], "1.4.0", "candidate {field} is stale");
+        }
+    }
+    let contract: Value = serde_json::from_str(&fs::read_to_string(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
+    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.4.0");
+    Ok(())
+}
+
 fn case_name(case: NegativeCase) -> &'static str {
     match case {
         NegativeCase::CandidateNotAdvanced => "candidate-not-advanced",

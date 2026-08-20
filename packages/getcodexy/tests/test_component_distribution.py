@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import stat
 import subprocess
 import sys
@@ -12,14 +11,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.version_lock import default_package_version
+from packages.getcodexy.tests.component_distribution_support import (
+    copy_marketplace_plugins,
+)
+
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
-OFFICIAL = "https://github.com/eunsoogi/codexy.git"
-COMPONENTS = {
-    "codexy": "core",
-    "codexy-github": "github",
-    "codexy-devtools": "devtools",
-}
 REPOSITORY = Path(__file__).parents[3]
 
 
@@ -43,7 +42,7 @@ class ComponentDistributionTests(unittest.TestCase):
         self.state = self.root / "host-state.json"
         self.host = self.root / "codex-host.py"
         self.codex = self.root / ("codex.cmd" if os.name == "nt" else "codex")
-        self.version = _write_plugins(self.marketplace)
+        self.version = copy_marketplace_plugins(REPOSITORY, self.marketplace)
         self.state.write_text(json.dumps({"marketplace": False, "selection": []}))
         self.host.write_text(_HOST, encoding="utf-8")
         if os.name == "nt":
@@ -87,6 +86,17 @@ class ComponentDistributionTests(unittest.TestCase):
             self._run("install", "github")["selection_after"],
             ["core", "github", "devtools"],
         )
+
+    def test_packaged_manifest_drives_install_and_update_at_package_version(self) -> None:
+        self.assertEqual(
+            self._run("install")["selection_after"],
+            ["core", "github", "devtools"],
+        )
+        self.assertEqual(
+            self._run("update", "github")["selection_after"],
+            ["core", "github", "devtools"],
+        )
+        self.assertEqual(load_component_manifest().version, default_package_version())
 
     def test_installed_cli_detects_an_incomplete_plugin_package(self) -> None:
         self._run("install")
@@ -166,13 +176,6 @@ class ComponentDistributionTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, expected, result.stderr + result.stdout)
         return json.loads(result.stdout)
-
-
-def _write_plugins(root: Path) -> str:
-    for plugin in COMPONENTS:
-        shutil.copytree(REPOSITORY / "plugins" / plugin, root / "plugins" / plugin)
-    manifest = root / "plugins/codexy/.codex-plugin/plugin.json"
-    return json.loads(manifest.read_text(encoding="utf-8"))["version"]
 
 
 def _health(receipt: dict[str, object]) -> dict[str, str]:

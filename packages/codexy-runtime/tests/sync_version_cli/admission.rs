@@ -135,6 +135,15 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
         {
             continue;
         }
+        if path.ends_with("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json") {
+            let manifest: Value = serde_json::from_slice(&fs::read(&path)?)?;
+            for field in ["components", "compatibleCombinations"] {
+                for entry in manifest[field].as_array().ok_or("component manifest array")? {
+                    assert_eq!(entry["version"], "1.4.0");
+                }
+            }
+            continue;
+        }
         assert_eq!(fs::read(path)?, bytes);
     }
     Ok(())
