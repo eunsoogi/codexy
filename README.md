@@ -20,9 +20,9 @@
 
 Codexy gives Codex a disciplined path from a broad repository request to an
 owned implementation, observable verification, bounded review, and a safe
-finish. This README is both a first-reader explanation and a complete,
-scannable public overview; detailed architecture and executable contracts live
-in the linked `docs` guides.
+finish. This README is both a first-reader explanation and a complete, scannable
+public overview; detailed architecture and executable contracts live in the
+linked `docs` guides.
 
 ## Install with getcodexy
 
@@ -85,7 +85,8 @@ getcodexy bootstrap                    # converge on the complete default select
 All commands accept `--json`. Mutations use a durable journal and receipt. A
 failed mutation restores the exact previous selection; dependency-protected
 removals, mixed versions, unknown components, and inconsistent installed
-inventories are rejected before mutation. See the [component installation and
+inventories are rejected before mutation. See the
+[component installation and
 migration contract](docs/getcodexy-component-installation.md) for selection
 rules, receipts, errors, and recovery behavior.
 
@@ -121,12 +122,12 @@ codex plugin add codexy-devtools@codexy
 ## What Codexy does
 
 Codexy is useful when repository work spans planning, implementation,
-verification, review, and handoff, or when several agents need clear
-boundaries. Its shipped capabilities are:
+verification, review, and handoff, or when several agents need clear boundaries.
+Its shipped capabilities are:
 
-- **Orchestration and ownership.** Classify the task, establish finite goals
-  and current plans, assign one owner per issue-sized branch/worktree, and
-  preserve durable evidence through handoffs and context compaction.
+- **Orchestration and ownership.** Classify the task, establish finite goals and
+  current plans, assign one owner per issue-sized branch/worktree, and preserve
+  durable evidence through handoffs and context compaction.
 - **Profiles and specialists.** Route bounded work to the packaged specialists
   below. Standard review uses Inspector, while strict review uses Sentinel.
 - **Instruction hooks.** Author scoped `AGENTS.md` files with explicit
@@ -139,9 +140,9 @@ boundaries. Its shipped capabilities are:
 - **LLM Wiki.** Maintain a bounded topic root through
   `init → ingest → compile → query → refresh`, with immutable raw sources,
   citations, provenance, freshness checks, and explicit knowledge gaps.
-- **GitHub workflow.** Coordinate issue intake, branches and worktrees, PRs,
-  CI, review feedback, authorized squash merge, release work, and post-merge
-  `main` synchronization.
+- **GitHub workflow.** Coordinate issue intake, branches and worktrees, PRs, CI,
+  review feedback, authorized squash merge, release work, and post-merge `main`
+  synchronization.
 - **Developer tools.** Explore bounded dependency neighborhoods with Codegraph
   and use LSP discovery, symbols, definitions, references, and diagnostics when
   a matching language server is installed.
@@ -169,31 +170,31 @@ flowchart TD
 The core plugin packages seven specialists. Installing `codexy-github` adds
 Weaver for GitHub-specific lane and merge coordination.
 
-| Component | Supported subagent | Best for |
-| --- | --- | --- |
-| core | `codexy-architect` | Plugin boundaries, schemas, orchestration contracts, MCP/LSP wiring, and extension points. |
-| core | `codexy-cartographer` | Read-only repository discovery, Codegraph exploration, file maps, and pattern mapping. |
-| core | `codexy-auditor` | Observable verification across CLI, config, GitHub, browser, app, and plugin surfaces. |
-| core | `codexy-shipwright` | Version bumps, release PRs, manifest sync, marketplace readiness, tags, and rollback planning. |
-| core | `codexy-inspector` | One bounded standard-profile review of the current diff, correctness, regressions, and scope. |
-| core | `codexy-sentinel` | Strict-profile review before handoff, PR readiness, merge, or final completion. |
-| core | `codexy-warden` | Workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and permissions. |
-| github | `codexy-weaver` | Reconciling parallel lanes, updating main, detecting conflicts, and preparing merge sequencing. |
+| Component | Supported subagent    | Best for                                                                                        |
+| --------- | --------------------- | ----------------------------------------------------------------------------------------------- |
+| core      | `codexy-architect`    | Plugin boundaries, schemas, orchestration contracts, MCP/LSP wiring, and extension points.      |
+| core      | `codexy-cartographer` | Read-only repository discovery, Codegraph exploration, file maps, and pattern mapping.          |
+| core      | `codexy-auditor`      | Observable verification across CLI, config, GitHub, browser, app, and plugin surfaces.          |
+| core      | `codexy-shipwright`   | Version bumps, release PRs, manifest sync, marketplace readiness, tags, and rollback planning.  |
+| core      | `codexy-inspector`    | One bounded standard-profile review of the current diff, correctness, regressions, and scope.   |
+| core      | `codexy-sentinel`     | Strict-profile review before handoff, PR readiness, merge, or final completion.                 |
+| core      | `codexy-warden`       | Workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and permissions. |
+| github    | `codexy-weaver`       | Reconciling parallel lanes, updating main, detecting conflicts, and preparing merge sequencing. |
 
 The detailed packaged inventory, component boundaries, agent catalog, skill
-contracts, and MCP/LSP runtime boundaries are in the [architecture
-guide](docs/architecture.md). Repository-maintenance and release skills remain
-repository-only; installing Codexy does not silently add this project's
-maintainer policy to another repository.
+contracts, and MCP/LSP runtime boundaries are in the
+[architecture guide](docs/architecture.md). Repository-maintenance and release
+skills remain repository-only; installing Codexy does not silently add this
+project's maintainer policy to another repository.
 
 ## Supported platforms and proof boundary
 
-| Platform or host surface | What is supported and verified |
-| --- | --- |
-| macOS ARM64 (`darwin-arm64`) | Packaged target for `codexy`, `codexy-github`, and `codexy-devtools`; CI builds and installs the package, exercises lifecycle commands, and proves legacy-to-split candidate migration. |
-| Linux x86_64 (`linux-x86_64`) | Packaged target for all three plugins; Ubuntu CI covers package build/install, lifecycle commands, and legacy-to-split candidate migration. |
-| Windows x86_64 (native CI surface) | CI exercises the component CLI, transaction lifecycle, recovery, and GitHub activation contracts. It does not claim automatic legacy-tree traversal or the packaged devtools runtime. |
-| LSP host prerequisite | Each registered language server must also be installed and executable on the host. |
+| Platform or host surface           | What is supported and verified                                                                                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS ARM64 (`darwin-arm64`)       | Packaged target for `codexy`, `codexy-github`, and `codexy-devtools`; CI builds and installs the package, exercises lifecycle commands, and proves legacy-to-split candidate migration. |
+| Linux x86_64 (`linux-x86_64`)      | Packaged target for all three plugins; Ubuntu CI covers package build/install, lifecycle commands, and legacy-to-split candidate migration.                                             |
+| Windows x86_64 (native CI surface) | CI exercises the component CLI, transaction lifecycle, recovery, and GitHub activation contracts. It does not claim automatic legacy-tree traversal or the packaged devtools runtime.   |
+| LSP host prerequisite              | Each registered language server must also be installed and executable on the host.                                                                                                      |
 
 ## License
 

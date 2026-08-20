@@ -36,8 +36,8 @@ Codexy의 전체 제품을 설치합니다.
 uvx --from getcodexy getcodexy install
 ```
 
-기본 구성은 `core`, `github`, `devtools`를 모두 설치합니다. 설치나 업데이트 뒤에는
-새 Codex 세션을 열어 새 플러그인, skill, hook, agent, MCP 서버가 host에
+기본 구성은 `core`, `github`, `devtools`를 모두 설치합니다. 설치나 업데이트
+뒤에는 새 Codex 세션을 열어 새 플러그인, skill, hook, agent, MCP 서버가 host에
 노출되도록 하세요.
 
 ### 컴포넌트 선택
@@ -46,11 +46,11 @@ Codexy는 서로 협력하는 세 플러그인으로 제공됩니다. `github`�
 `core`에 의존하며 서로에게는 의존하지 않습니다. 필요한 의존성은 자동으로
 포함됩니다.
 
-| 컴포넌트  | 플러그인          | 추가되는 기능                                                                            |
-| --------- | ----------------- | ---------------------------------------------------------------------------------------- |
-| `core`    | `codexy`          | 오케스트레이션, 목표와 계획, worktree 담당 범위, 전문 에이전트, instruction hook, 검증, Wiki |
-| `github`  | `codexy-github`   | branch, PR, CI, 리뷰, 릴리스, GitHub 안전 hook을 잇는 issue-to-merge 절차             |
-| `devtools` | `codexy-devtools` | 로컬 Codegraph와 LSP MCP 서버, wrapper, 설정, 개발 도구 지침                        |
+| 컴포넌트   | 플러그인          | 추가되는 기능                                                                                |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| `core`     | `codexy`          | 오케스트레이션, 목표와 계획, worktree 담당 범위, 전문 에이전트, instruction hook, 검증, Wiki |
+| `github`   | `codexy-github`   | branch, PR, CI, 리뷰, 릴리스, GitHub 안전 hook을 잇는 issue-to-merge 절차                    |
+| `devtools` | `codexy-devtools` | 로컬 Codegraph와 LSP MCP 서버, wrapper, 설정, 개발 도구 지침                                 |
 
 | 설치 결과                | 명령                                |
 | ------------------------ | ----------------------------------- |
@@ -83,8 +83,9 @@ getcodexy bootstrap                    # 전체 기본 구성으로 수렴
 모든 명령은 `--json`을 지원합니다. 변경 작업은 durable journal과 receipt를
 남깁니다. 실패하면 이전 선택을 정확히 복원하며, 의존성이 남은 컴포넌트 제거,
 혼합 버전, 알 수 없는 컴포넌트, 일관되지 않은 설치 목록은 변경 전에 거부합니다.
-선택 규칙, receipt, 오류 코드, 복구 동작은 [컴포넌트 설치 및 이전
-계약](docs/getcodexy-component-installation.md)에 정리되어 있습니다.
+선택 규칙, receipt, 오류 코드, 복구 동작은
+[컴포넌트 설치 및 이전 계약](docs/getcodexy-component-installation.md)에
+정리되어 있습니다.
 
 ### 기존 monolith 이전
 
@@ -125,8 +126,9 @@ Codexy는 계획, 구현, 검증, 리뷰, 인수인계까지 이어지는 저장
 - **오케스트레이션과 담당 범위.** 작업을 분류하고 유한한 목표와 최신 계획을
   만들며, issue 단위 branch/worktree마다 담당자를 한 명만 둡니다. 인수인계와
   context compaction 뒤에도 검증 근거를 보존합니다.
-- **Profile과 전문 에이전트.** 아래에 정리한 패키지 전문 에이전트로 범위가 분명한
-  작업을 배정합니다. 표준 리뷰는 Inspector, 엄격 리뷰는 Sentinel이 담당합니다.
+- **Profile과 전문 에이전트.** 아래에 정리한 패키지 전문 에이전트로 범위가
+  분명한 작업을 배정합니다. 표준 리뷰는 Inspector, 엄격 리뷰는 Sentinel이
+  담당합니다.
 - **Instruction hook.** 적용 범위와 우선순위가 분명한 `AGENTS.md`를 작성하고
   다시 읽어 확인합니다. Core는 task-thread 전달 metadata를 검사하고, GitHub
   컴포넌트는 GitHub 작업·저장소 명령·파괴적 shell 작업의 admission을 검사합니다.
@@ -146,8 +148,8 @@ Codexy는 계획, 구현, 검증, 리뷰, 인수인계까지 이어지는 저장
 
 ### 오케스트레이션 한눈에 보기
 
-오케스트레이션은 첫 요청부터 최종 인수인계까지 담당 범위, 검증, 리뷰를
-확인할 수 있는 흐름으로 연결합니다.
+오케스트레이션은 첫 요청부터 최종 인수인계까지 담당 범위, 검증, 리뷰를 확인할 수
+있는 흐름으로 연결합니다.
 
 ```mermaid
 flowchart TD
@@ -161,33 +163,33 @@ flowchart TD
 
 ### 지원하는 서브에이전트
 
-Core 플러그인은 일곱 가지 전문 에이전트를 포함합니다. `codexy-github`를
-설치하면 GitHub 작업과 병합 조정을 담당하는 Weaver가 추가됩니다.
+Core 플러그인은 일곱 가지 전문 에이전트를 포함합니다. `codexy-github`를 설치하면
+GitHub 작업과 병합 조정을 담당하는 Weaver가 추가됩니다.
 
-| 컴포넌트 | 지원 서브에이전트 | 잘 맞는 작업 |
-| --- | --- | --- |
-| core | `codexy-architect` | 플러그인 경계, schema, 오케스트레이션 계약, MCP/LSP 연결, 확장 지점 |
-| core | `codexy-cartographer` | 읽기 전용 저장소 탐색, Codegraph 조사, 파일 맵, 패턴 매핑 |
-| core | `codexy-auditor` | CLI, 설정, GitHub, 브라우저, 앱, 플러그인 surface의 실제 동작 검증 |
-| core | `codexy-shipwright` | 버전 변경, 릴리스 PR, manifest 동기화, marketplace 준비, tag, rollback 계획 |
-| core | `codexy-inspector` | 현재 diff의 범위가 제한된 표준 Profile 리뷰, 정확성, 회귀, 범위 확인 |
-| core | `codexy-sentinel` | 인수인계, PR 준비, 병합, 최종 완료 전의 엄격한 Profile 리뷰 |
-| core | `codexy-warden` | workflow, shell 명령, credential, 원격 MCP endpoint, 신뢰할 수 없는 입력, 권한 |
-| github | `codexy-weaver` | 병렬 lane 조정, main 업데이트, 충돌 탐지, 병합 순서 준비 |
+| 컴포넌트 | 지원 서브에이전트     | 잘 맞는 작업                                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------------------ |
+| core     | `codexy-architect`    | 플러그인 경계, schema, 오케스트레이션 계약, MCP/LSP 연결, 확장 지점            |
+| core     | `codexy-cartographer` | 읽기 전용 저장소 탐색, Codegraph 조사, 파일 맵, 패턴 매핑                      |
+| core     | `codexy-auditor`      | CLI, 설정, GitHub, 브라우저, 앱, 플러그인 surface의 실제 동작 검증             |
+| core     | `codexy-shipwright`   | 버전 변경, 릴리스 PR, manifest 동기화, marketplace 준비, tag, rollback 계획    |
+| core     | `codexy-inspector`    | 현재 diff의 범위가 제한된 표준 Profile 리뷰, 정확성, 회귀, 범위 확인           |
+| core     | `codexy-sentinel`     | 인수인계, PR 준비, 병합, 최종 완료 전의 엄격한 Profile 리뷰                    |
+| core     | `codexy-warden`       | workflow, shell 명령, credential, 원격 MCP endpoint, 신뢰할 수 없는 입력, 권한 |
+| github   | `codexy-weaver`       | 병렬 lane 조정, main 업데이트, 충돌 탐지, 병합 순서 준비                       |
 
 패키지에 포함된 전체 목록, 컴포넌트 경계, 에이전트 목록, skill 계약, MCP/LSP
 runtime 경계는 [아키텍처 안내서](docs/architecture.md)에서 확인할 수 있습니다.
-저장소 유지관리와 릴리스 skill은 이 저장소에서만 사용되며, Codexy를 설치해도
-이 프로젝트의 유지관리 정책이 다른 저장소에 자동으로 추가되지는 않습니다.
+저장소 유지관리와 릴리스 skill은 이 저장소에서만 사용되며, Codexy를 설치해도 이
+프로젝트의 유지관리 정책이 다른 저장소에 자동으로 추가되지는 않습니다.
 
 ## 지원 플랫폼과 검증 범위
 
-| 플랫폼 또는 host surface | 지원 및 검증 범위 |
-| --- | --- |
-| macOS ARM64 (`darwin-arm64`) | `codexy`, `codexy-github`, `codexy-devtools` 패키지 대상입니다. CI가 패키지 build·install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다. |
-| Linux x86_64 (`linux-x86_64`) | 세 플러그인 모두의 패키지 대상입니다. Ubuntu CI가 패키지 build/install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다. |
+| 플랫폼 또는 host surface           | 지원 및 검증 범위                                                                                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS ARM64 (`darwin-arm64`)       | `codexy`, `codexy-github`, `codexy-devtools` 패키지 대상입니다. CI가 패키지 build·install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다.                      |
+| Linux x86_64 (`linux-x86_64`)      | 세 플러그인 모두의 패키지 대상입니다. Ubuntu CI가 패키지 build/install, lifecycle 명령, legacy-to-split candidate 이전을 검증합니다.                                         |
 | Windows x86_64 (native CI surface) | CI가 컴포넌트 CLI, transaction lifecycle, recovery, GitHub activation 계약을 실행합니다. 자동 legacy tree 탐색이나 패키지 devtools runtime까지 지원한다고 주장하지 않습니다. |
-| LSP host prerequisite | 등록한 각 language server가 host에 설치되어 실행 가능해야 합니다. |
+| LSP host prerequisite              | 등록한 각 language server가 host에 설치되어 실행 가능해야 합니다.                                                                                                            |
 
 ## 라이선스
 
