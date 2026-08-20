@@ -126,9 +126,7 @@ def aggregate(directory: Path, root: Path, platform_only: str | None = None) -> 
             or item.get("state") != "PASS"
             or not valid_process_status(item)
             or not valid_timing(item)
-            or not valid_current_provenance(
-                item, current_run_id, current_run_attempt
-            )
+            or not valid_current_provenance(item, current_run_id, current_run_attempt)
             or item.get("argv") not in (list(SHARDS[shard]), SHARDS[shard])
             or item.get("head") != head
             or item.get("index_tree") != index_tree
