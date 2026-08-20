@@ -66,5 +66,7 @@ fn declaration(text: &str, name: &str) -> Result<Declaration> {
     if marker_count != 1 || declarations.len() != 1 {
         bail!("{name} must contain exactly one semantic version")
     }
-    Ok(declarations.pop().expect("declaration count checked above"))
+    declarations
+        .pop()
+        .context("bootstrap version declaration was not found")
 }
