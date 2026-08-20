@@ -58,8 +58,15 @@ pub(super) struct General {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Delivery {
-    pub(super) parent_to_generic: Route,
+    pub(super) parent_to_generic: GenericDelivery,
     pub(super) child_to_root: Route,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct GenericDelivery {
+    pub(super) primary: Route,
+    pub(super) fallback: Route,
 }
 
 #[derive(Deserialize)]
@@ -186,8 +193,10 @@ fn validate(policy: &Policy) -> Result<()> {
             .eq(["high", "xhigh", "max"])
         || policy.general.measurement_results != "routing-evaluation-results.json"
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.model != policy.generic.model
-        || policy.delivery.parent_to_generic.thinking != policy.generic.thinking
+        || policy.delivery.parent_to_generic.primary.model != policy.generic.model
+        || policy.delivery.parent_to_generic.primary.thinking != policy.generic.thinking
+        || policy.delivery.parent_to_generic.fallback.model != policy.generic_fallback.model
+        || policy.delivery.parent_to_generic.fallback.thinking != policy.generic_fallback.thinking
         || policy.delivery.child_to_root.model != "gpt-5.6-sol"
         || policy.delivery.child_to_root.thinking != "medium"
     {

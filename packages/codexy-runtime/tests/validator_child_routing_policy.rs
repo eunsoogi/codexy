@@ -63,6 +63,28 @@ fn distributed_general_block_is_measurement_only() -> TestResult {
 }
 
 #[test]
+fn distributed_delivery_contract_exposes_generic_primary_and_fallback() -> TestResult {
+    let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY)])?;
+    let policy: Value = serde_json::from_str(&std::fs::read_to_string(fixture.root().join(POLICY))?)?;
+    let parent_to_generic = policy
+        .get("delivery")
+        .and_then(Value::as_object)
+        .and_then(|delivery| delivery.get("parent_to_generic"))
+        .and_then(Value::as_object)
+        .ok_or("parent-to-generic delivery contract")?;
+
+    assert_eq!(
+        parent_to_generic.get("primary"),
+        Some(&json!({"model":"gpt-5.6-luna","thinking":"max"}))
+    );
+    assert_eq!(
+        parent_to_generic.get("fallback"),
+        Some(&json!({"model":"gpt-5.6-terra","thinking":"high"}))
+    );
+    Ok(())
+}
+
+#[test]
 fn policy_rejects_unknown_fields_invalid_simple_evidence_and_unearned_promotion() -> TestResult {
     let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY), Path::new(RESULTS)])?;
     let policy_path = fixture.root().join(POLICY);

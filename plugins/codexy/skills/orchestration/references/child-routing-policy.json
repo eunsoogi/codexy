@@ -17,7 +17,10 @@
   },
   "fallback": "root_or_named_specialist",
   "delivery": {
-    "parent_to_generic": { "model": "gpt-5.6-luna", "thinking": "max" },
+    "parent_to_generic": {
+      "primary": { "model": "gpt-5.6-luna", "thinking": "max" },
+      "fallback": { "model": "gpt-5.6-terra", "thinking": "high" }
+    },
     "child_to_root": { "model": "gpt-5.6-sol", "thinking": "medium" }
   }
 }
