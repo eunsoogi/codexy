@@ -1,6 +1,7 @@
 {
   "schema": "codexy.child-routing-policy.v1",
-  "generic": { "model": "gpt-5.6-terra", "thinking": "high" },
+  "generic": { "model": "gpt-5.6-luna", "thinking": "max" },
+  "generic_fallback": { "model": "gpt-5.6-terra", "thinking": "high" },
   "named_specialist": {
     "catalog": "agents/catalog.toml",
     "caller_overrides": "forbidden"
@@ -11,13 +12,15 @@
     "all_required": ["fixed_scope", "deterministic_oracle", "low_risk_reversible", "no_unresolved_decision"]
   },
   "general": {
-    "model": "gpt-5.6-terra",
     "candidate_efforts": ["high", "xhigh", "max"],
     "measurement_results": "routing-evaluation-results.json"
   },
   "fallback": "root_or_named_specialist",
   "delivery": {
-    "parent_to_generic": { "model": "gpt-5.6-terra", "thinking": "high" },
+    "parent_to_generic": {
+      "primary": { "model": "gpt-5.6-luna", "thinking": "max" },
+      "fallback": { "model": "gpt-5.6-terra", "thinking": "high" }
+    },
     "child_to_root": { "model": "gpt-5.6-sol", "thinking": "medium" }
   }
 }

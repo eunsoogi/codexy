@@ -1,12 +1,12 @@
 {
   "schema": "codexy.routing-evaluation-results.v1",
-  "corpus_id": "routing-549-v1",
+  "corpus_id": "routing-600-v1",
   "selected_effort": "high",
   "results": [
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The test is faithful and bounded.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "high",
       "acceptance": "pass",
@@ -19,8 +19,8 @@
     },
     {
       "task_id": "general-routing-contract",
-      "prompt": "Map the routing contract and return a minimal proof plan.",
-      "acceptance_oracle": "The plan preserves current Terra/high.",
+      "prompt": "Resolve a generic child route across the callable model surface.",
+      "acceptance_oracle": "Luna/max wins whenever callable; Terra/high is availability fallback.",
       "model": "gpt-5.6-terra",
       "thinking": "high",
       "acceptance": "pass",
@@ -34,7 +34,7 @@
     {
       "task_id": "ambiguous-specialist-boundary",
       "prompt": "Classify an ownership-sensitive routing change and select the safe handler.",
-      "acceptance_oracle": "The result fails closed without Luna.",
+      "acceptance_oracle": "The result fails closed without a callable generic route.",
       "model": "gpt-5.6-terra",
       "thinking": "high",
       "acceptance": "pass",
@@ -48,7 +48,7 @@
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The test is faithful and bounded.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "xhigh",
       "acceptance": "pass",
@@ -61,8 +61,8 @@
     },
     {
       "task_id": "general-routing-contract",
-      "prompt": "Map the routing contract and return a minimal proof plan.",
-      "acceptance_oracle": "The plan preserves current Terra/high.",
+      "prompt": "Resolve a generic child route across the callable model surface.",
+      "acceptance_oracle": "Luna/max wins whenever callable; Terra/high is availability fallback.",
       "model": "gpt-5.6-terra",
       "thinking": "xhigh",
       "acceptance": "pass",
@@ -76,7 +76,7 @@
     {
       "task_id": "ambiguous-specialist-boundary",
       "prompt": "Classify an ownership-sensitive routing change and select the safe handler.",
-      "acceptance_oracle": "The result fails closed without Luna.",
+      "acceptance_oracle": "The result fails closed without a callable generic route.",
       "model": "gpt-5.6-terra",
       "thinking": "xhigh",
       "acceptance": "pass",
@@ -90,7 +90,7 @@
     {
       "task_id": "simple-local-validator",
       "prompt": "Add one mutation test without editing production code.",
-      "acceptance_oracle": "The test is faithful and bounded.",
+      "acceptance_oracle": "The candidate adds exactly one mutation test without editing production code.",
       "model": "gpt-5.6-terra",
       "thinking": "max",
       "acceptance": "pass",
@@ -103,8 +103,8 @@
     },
     {
       "task_id": "general-routing-contract",
-      "prompt": "Map the routing contract and return a minimal proof plan.",
-      "acceptance_oracle": "The plan preserves current Terra/high.",
+      "prompt": "Resolve a generic child route across the callable model surface.",
+      "acceptance_oracle": "Luna/max wins whenever callable; Terra/high is availability fallback.",
       "model": "gpt-5.6-terra",
       "thinking": "max",
       "acceptance": "pass",
@@ -118,7 +118,7 @@
     {
       "task_id": "ambiguous-specialist-boundary",
       "prompt": "Classify an ownership-sensitive routing change and select the safe handler.",
-      "acceptance_oracle": "The result fails closed without Luna.",
+      "acceptance_oracle": "The result fails closed without a callable generic route.",
       "model": "gpt-5.6-terra",
       "thinking": "max",
       "acceptance": "pass",

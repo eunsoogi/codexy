@@ -18,6 +18,7 @@ const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 pub(super) struct Policy {
     pub(super) schema: String,
     pub(super) generic: Route,
+    pub(super) generic_fallback: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
     pub(super) general: General,
@@ -50,7 +51,6 @@ pub(super) struct Simple {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct General {
-    pub(super) model: String,
     pub(super) candidate_efforts: Vec<String>,
     pub(super) measurement_results: String,
 }
@@ -58,8 +58,15 @@ pub(super) struct General {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Delivery {
-    pub(super) parent_to_generic: Route,
+    pub(super) parent_to_generic: GenericDelivery,
     pub(super) child_to_root: Route,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct GenericDelivery {
+    pub(super) primary: Route,
+    pub(super) fallback: Route,
 }
 
 #[derive(Deserialize)]
@@ -164,8 +171,10 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.generic.model != "gpt-5.6-terra"
-        || policy.generic.thinking != "high"
+        || policy.generic.model != "gpt-5.6-luna"
+        || policy.generic.thinking != "max"
+        || policy.generic_fallback.model != "gpt-5.6-terra"
+        || policy.generic_fallback.thinking != "high"
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
         || policy.simple.model != "gpt-5.6-luna"
@@ -176,7 +185,6 @@ fn validate(policy: &Policy) -> Result<()> {
             .iter()
             .map(String::as_str)
             .eq(required)
-        || policy.general.model != "gpt-5.6-terra"
         || !policy
             .general
             .candidate_efforts
@@ -185,8 +193,10 @@ fn validate(policy: &Policy) -> Result<()> {
             .eq(["high", "xhigh", "max"])
         || policy.general.measurement_results != "routing-evaluation-results.json"
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.model != policy.generic.model
-        || policy.delivery.parent_to_generic.thinking != policy.generic.thinking
+        || policy.delivery.parent_to_generic.primary.model != policy.generic.model
+        || policy.delivery.parent_to_generic.primary.thinking != policy.generic.thinking
+        || policy.delivery.parent_to_generic.fallback.model != policy.generic_fallback.model
+        || policy.delivery.parent_to_generic.fallback.thinking != policy.generic_fallback.thinking
         || policy.delivery.child_to_root.model != "gpt-5.6-sol"
         || policy.delivery.child_to_root.thinking != "medium"
     {

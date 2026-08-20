@@ -117,6 +117,18 @@ planning and parent integration; a child owns only its assigned atomic lane.
 Subagents are helpers, never worktree owners. Every delegated helper MUST NOT
 spawn, delegate to, or create another agent, task, or thread.
 
+## Generic Child Routing
+
+For every child delegation that is not owned by a named specialist, the parent
+MUST resolve the packaged child-routing policy immediately before the Codex app
+`create_thread` or `send_message_to_thread` operation. Luna/max is the single
+default route when the actual callable thread surface advertises it; Terra/high
+is an availability fallback only when Luna/max cannot be used. If neither route
+is callable, the parent MUST fail closed to `root_or_named_specialist`. The
+selected recipient `model` and `thinking` MUST be bound explicitly, and this
+generic rule MUST NOT override named-specialist, root, Inspector, Sentinel,
+review-profile, or delivery contracts.
+
 MUST follow `references/review-lifecycle.md` for profile-selected multi-agent
 review selection, terminal verdict accounting, post-cap completion, repair, and
 proof gates. A finding MAY block only when it maps to the issue contract or a
