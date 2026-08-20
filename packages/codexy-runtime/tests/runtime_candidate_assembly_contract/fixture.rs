@@ -132,6 +132,7 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
         )?;
         crate::support::make_executable(&rsync)?;
         run_git(&root, &["init", "-q"])?;
+        run_git(&root, &["config", "maintenance.auto", "false"])?;
         run_git(&root, &["config", "user.email", "test@example.invalid"])?;
         run_git(&root, &["config", "user.name", "Candidate Fixture"])?;
         run_git(&root, &["add", "."])?;
@@ -166,6 +167,18 @@ mod tests {
     fn candidate_fixture_copies_do_not_share_seed_files() -> Result<(), Box<dyn std::error::Error>> {
         let first = CandidateFixture::new("first wrapper\n")?;
         let second = CandidateFixture::new("second wrapper\n")?;
+        for fixture in [&first, &second] {
+            let config = std::process::Command::new("git")
+                .args(["config", "--get", "maintenance.auto"])
+                .current_dir(fixture.root())
+                .output()?;
+            assert!(
+                config.status.success(),
+                "candidate fixture must copy its Git maintenance configuration: {}",
+                String::from_utf8_lossy(&config.stderr)
+            );
+            assert_eq!(config.stdout, b"false\n");
+        }
         std::fs::write(
             first.root().join("scripts/assemble-runtime-candidate"),
             "mutated script\n",
