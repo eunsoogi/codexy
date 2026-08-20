@@ -65,6 +65,7 @@ def producer(
             "name": f"rust-receipt-{platform_name}-${{{{ matrix.shard }}}}",
             "path": receipt,
             "if-no-files-found": "error",
+            "overwrite": "true",
         },
     }
     return tuple(steps) == (CHECKOUT, *setup, {"run": command}, upload)

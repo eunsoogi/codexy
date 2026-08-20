@@ -81,6 +81,47 @@ fn rust_workflow_runs_the_full_suite_natively_on_windows() {
 }
 
 #[test]
+fn rust_workflow_overwrites_fixed_name_receipts_for_reruns() {
+    let workflow = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root().join(".github/workflows/rust-test.yml"),
+    )
+    .expect("read Rust workflow");
+    let upload_marker =
+        "      - if: always()\n        uses: actions/upload-artifact@v7\n        with:\n";
+    let uploads: Vec<_> = workflow
+        .split(upload_marker)
+        .skip(1)
+        .map(|tail| tail.split("\n\n").next().expect("upload block"))
+        .collect();
+
+    assert_eq!(uploads.len(), 2, "expected one fixed-name producer per platform");
+    for (upload, platform) in uploads.iter().zip(["posix", "windows"]) {
+        assert!(
+            upload.contains("          overwrite: true"),
+            "{platform} producer must overwrite its fixed-name retry artifact: {upload}"
+        );
+        assert!(
+            upload.contains(&format!("          name: rust-receipt-{platform}-${{{{ matrix.shard }}}}")),
+            "{platform} producer must keep its fixed receipt name: {upload}"
+        );
+    }
+}
+
+#[test]
+fn gate_rejects_a_fixed_name_upload_without_overwrite() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = GateFixture::new(0, 1802, 0)?;
+    let workflow = std::fs::read_to_string(&fixture.workflow)?;
+    let missing_overwrite = workflow.replace("          overwrite: true\n", "");
+    assert_eq!(missing_overwrite.matches("actions/upload-artifact@v7").count(), 2);
+    std::fs::write(&fixture.workflow, missing_overwrite)?;
+
+    let output = fixture.run(&[])?;
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(String::from_utf8(output.stderr)?.contains("invalid platform matrix"));
+    Ok(())
+}
+
+#[test]
 fn gate_retains_the_exact_native_windows_positive() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GateFixture::new(0, 1802, 0)?;
     std::fs::write(
