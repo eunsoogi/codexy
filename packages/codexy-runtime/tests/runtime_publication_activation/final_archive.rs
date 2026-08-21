@@ -39,10 +39,9 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "scripts/verify-release-attestation-set",
             "scripts/verify-release-attestation-total",
             "gh release view \"$RELEASE_TAG\"",
-            "gh release upload \"$RELEASE_TAG\"",
             "--draft",
-            "gh release edit \"$RELEASE_TAG\" --draft=false",
-            "gh release download \"$RELEASE_TAG\"",
+            "RELEASE_ID", "gh api --method POST", "releases/$release_id/assets?name=$asset",
+            "releases/$RELEASE_ID/assets?name=release-baseline.json", "releases/assets/$asset_id", "gh api --method PATCH",
             "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy-devtools\"",
         ],
@@ -50,7 +49,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
     support::assert_structured_absent_literals(
         &run,
         "immutable release asset reconciliation",
-        &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz"],
+        &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz", "gh release upload \"$RELEASE_TAG\"", "gh release download \"$RELEASE_TAG\"", "releases/tags/$RELEASE_TAG"],
     );
     assert!(run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() < run.find("scripts/materialize-runtime-release-archive").unwrap(), "candidate-proven runtime bytes must be copied before public materialization");
     Ok(())

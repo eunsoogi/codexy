@@ -51,6 +51,9 @@ release_exists=false
 release_id=
 if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
   release_exists=true
+  release_id="$(release_id_for_tag)"
+  test -n "$release_id"
+  release_state "$release_id" > release-state.json
   validate_release_state
 fi
 tag_ref="refs/tags/$RELEASE_TAG"
@@ -99,8 +102,22 @@ release_error() {
   printf '%s\n' "$1" >&2
   exit 1
 }
+release_asset_id() {
+  jq -er --arg asset "$1" '
+    [.assets[] | select(.name == $asset)] |
+    if length == 1 then .[0].id else error("release asset identity is not unique") end
+  ' release-state.json
+}
+download_release_asset() {
+  directory="$1"
+  asset="$2"
+  asset_id="$(release_asset_id "$asset")"
+  case "$asset_id" in ''|*[!0-9]*) release_error "release asset id is invalid: $asset" ;; esac
+  gh api -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Accept: application/octet-stream' \
+    "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$directory/$asset"
+}
 verify_release_asset() {
-  gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$1" --pattern "$asset" || return 1
+  download_release_asset "$1" "$asset" || return 1
   cmp "dist/$asset" "$1/$asset" || release_error "release asset differs from verified bytes: $asset"
 }
 existing_release="$(mktemp -d)"
@@ -113,16 +130,17 @@ for asset in $release_assets; do
 done
 for asset in $release_assets; do
   if ! jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
-    gh release upload "$RELEASE_TAG" "dist/$asset"
+    gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Content-Type: application/octet-stream' \
+      "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset" --input "dist/$asset" >/dev/null
   fi
 done
-if test -n "$release_id"; then
-  release_state "$release_id" > release-state.json
-else
-  gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
-fi
+case "$release_id" in ''|*[!0-9]*) release_error "release id is invalid" ;; esac
+release_state "$release_id" > release-state.json
 for asset in $release_assets; do
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
   verify_release_asset "$verified_release"
 done
-scripts/reconcile-release-baseline
+if test -n "${GITHUB_ENV:-}"; then
+  printf 'RELEASE_ID=%s\n' "$release_id" >> "$GITHUB_ENV"
+fi
+RELEASE_ID="$release_id" scripts/reconcile-release-baseline

@@ -22,6 +22,8 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
     ] {
         let fixture = Fixture::new(existing, published, false)?;
         fixture.run_all()?;
+        assert!(fixture.reads()?.contains("api-download"), "{name} did not download assets by numeric release identity");
+        assert!(fixture.log()?.contains("api-upload"), "{name} did not upload assets by numeric release identity");
         let published_log = fixture.log()?;
         fixture.run_all()?;
         assert_eq!(fixture.log()?, published_log, "{name} public rerun mutated release state");
@@ -146,7 +148,16 @@ impl Fixture {
         immutable: bool,
     ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
         let path = format!("{}:{}", self.root.join("bin").display(), std::env::var("PATH")?);
-        Ok(Command::new(self.root.join("scripts").join(name))
+        let release_id = fs::read_to_string(self.root.join("release.env"))
+            .ok()
+            .and_then(|contents| {
+                contents
+                    .lines()
+                    .rev()
+                    .find_map(|line| line.strip_prefix("RELEASE_ID=").map(str::to_owned))
+            });
+        let mut command = Command::new(self.root.join("scripts").join(name));
+        command
             .current_dir(&self.root)
             .env("PATH", path)
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
@@ -156,8 +167,11 @@ impl Fixture {
             .env("RELEASE_TAG", format!("v{}", env!("CARGO_PKG_VERSION")))
             .env("GITHUB_ENV", self.root.join("release.env"))
             .env("BASELINE_CREATED", baseline_created.to_string())
-            .env("FIXTURE_IMMUTABLE", immutable.to_string())
-            .output()?)
+            .env("FIXTURE_IMMUTABLE", immutable.to_string());
+        if let Some(release_id) = release_id {
+            command.env("RELEASE_ID", release_id);
+        }
+        Ok(command.output()?)
     }
 
     fn last_baseline_created(&self) -> Result<bool, Box<dyn std::error::Error>> {
@@ -179,5 +193,9 @@ impl Fixture {
 
     fn log(&self) -> Result<String, Box<dyn std::error::Error>> {
         Ok(fs::read_to_string(self.root.join("log")).unwrap_or_default())
+    }
+
+    fn reads(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join("reads")).unwrap_or_default())
     }
 }

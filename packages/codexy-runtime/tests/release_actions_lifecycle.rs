@@ -34,7 +34,13 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     let release = named_run(job, "Create and verify the only public version release")?;
     assert_eq!(release, "scripts/publish-verified-release");
     let release_script = fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;
-    for required in ["tag_ref=\"refs/tags/$RELEASE_TAG\"", "gh release view \"$RELEASE_TAG\"", "scripts/reconcile-release-baseline"] {
+    for required in [
+        "tag_ref=\"refs/tags/$RELEASE_TAG\"",
+        "gh release view \"$RELEASE_TAG\"",
+        "release_id=\"$(release_id_for_tag)\"",
+        "RELEASE_ID=\"$release_id\" scripts/reconcile-release-baseline",
+        "scripts/reconcile-release-baseline",
+    ] {
         assert!(release_script.contains(required), "missing version-neutral release operation: {required}");
     }
     let public = publisher["jobs"]["verify-public-release"]

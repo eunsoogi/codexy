@@ -41,6 +41,9 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
             "existing_baseline=\"$(mktemp -d)\"",
             "attestation_policies()",
             "runtime-candidate.yml",
+            "RELEASE_ID",
+            "releases/$RELEASE_ID",
+            "releases/assets/$asset_id",
             "BASELINE_CREATED=true",
         ],
     );
@@ -63,11 +66,22 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "runtime-release-receipt.json release-baseline.json",
             "final_release=\"$(mktemp -d)\"",
             "scripts/verify-release-attestation-total \"$final_release/$asset\" 1",
+            "gh api --method PATCH",
+            "releases/$RELEASE_ID\" -F draft=false",
+        ],
+    );
+    support::assert_structured_absent_literals(
+        &finalizer,
+        "draft release operations must use numeric identity",
+        &[
+            "gh release upload \"$RELEASE_TAG\"",
+            "gh release download \"$RELEASE_TAG\"",
+            "releases/tags/$RELEASE_TAG",
             "gh release edit \"$RELEASE_TAG\" --draft=false",
         ],
     );
     support::assert_structured_literals(&attestation, "release attestation total", &["gh api --paginate --slurp", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
-    let publish = finalizer.find("gh release edit \"$RELEASE_TAG\" --draft=false").ok_or("public release")?;
+    let publish = finalizer.find("gh api --method PATCH").ok_or("public release")?;
     let verification = finalizer.find("scripts/verify-release-attestation-set").ok_or("attestation verification")?;
     assert!(verification < publish, "release must be authenticated before publication");
     Ok(())
