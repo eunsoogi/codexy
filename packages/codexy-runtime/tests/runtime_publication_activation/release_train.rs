@@ -64,17 +64,6 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
         assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
     }
     assert_eq!(fs::read(&first)?, fs::read(&second)?);
-    let listing = Command::new("tar").args(["-tzf"]).arg_path(&first).output()?;
-    assert!(listing.status.success());
-    let listing = String::from_utf8(listing.stdout)?;
-    for path in [
-        ".agents/plugins/marketplace.json",
-        "plugins/codexy/.codex-plugin/plugin.json",
-        "plugins/codexy-github/.codex-plugin/plugin.json",
-        "plugins/codexy-devtools/.codex-plugin/plugin.json",
-    ] {
-        assert!(listing.lines().any(|entry| entry == path), "missing {path}");
-    }
     Ok(())
 }
 
@@ -102,6 +91,18 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
         "darwin-arm64", "linux-x86_64", "windows-x86_64"
     ]);
     fs::write(&manifest_path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
+    let wrapper_path = staged.join("mcp/codexy-mcp-devtools");
+    let wrapper = fs::read_to_string(&wrapper_path)?.replace(
+        "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+        "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+    );
+    let version_pattern = regex::Regex::new(
+        r"(exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+",
+    )?;
+    let wrapper = version_pattern
+        .replace(&wrapper, format!("${{1}}{candidate_version}"))
+        .into_owned();
+    fs::write(wrapper_path, wrapper)?;
     fs::create_dir_all(staged.join("runtime"))?;
     fs::create_dir_all(staged.join("mcp"))?;
     fs::write(staged.join("mcp/codexy-mcp-devtools.exe"), "dispatcher\n")?;

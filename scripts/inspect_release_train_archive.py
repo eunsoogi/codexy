@@ -54,6 +54,29 @@ def reject(message: str) -> None:
     raise SystemExit(message)
 
 
+def materialized_source_bytes(plugin: str, relative: str, source_bytes: bytes) -> bytes:
+    if plugin != "codexy-devtools":
+        return source_bytes
+    if relative == ".codex-plugin/plugin.json":
+        source_manifest = json.loads(source_bytes)
+        source_manifest["supportedPlatforms"] = runtime_platforms
+        return (json.dumps(source_manifest, indent=2) + "\n").encode()
+    if relative != "mcp/codexy-mcp-devtools":
+        return source_bytes
+    text = source_bytes.decode()
+    source_declaration = 'bundled_platforms="darwin-arm64 linux-x86_64"'
+    target_declaration = 'bundled_platforms="' + " ".join(runtime_platforms) + '"'
+    if text.count(source_declaration) != 1:
+        reject("activation checkout wrapper platform declaration mismatch")
+    text = text.replace(source_declaration, target_declaration, 1)
+    text, replacements = re.subn(
+        r"(?<=exec uvx --from getcodexy==)\d+\.\d+\.\d+", target, text
+    )
+    if replacements != 1:
+        reject("activation checkout wrapper version declaration mismatch")
+    return text.encode()
+
+
 entries: dict[str, bytes] = {}
 directories: set[str] = set()
 identities: set[str] = set()
@@ -132,11 +155,7 @@ for _, plugin, package_root in inventory:
                 reject(f"runtime contract leaked: {relative}")
             continue
         expected_entries.add(f"{prefix}{relative}")
-        source_bytes = path.read_bytes()
-        if plugin == "codexy-devtools" and relative == ".codex-plugin/plugin.json":
-            source_manifest = json.loads(source_bytes)
-            source_manifest["supportedPlatforms"] = runtime_platforms
-            source_bytes = (json.dumps(source_manifest, indent=2) + "\n").encode()
+        source_bytes = materialized_source_bytes(plugin, relative, path.read_bytes())
         if entries.get(f"{prefix}{relative}") != source_bytes:
             reject(f"component source mismatch: {plugin}/{relative}")
     for name, content in entries.items():
