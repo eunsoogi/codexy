@@ -26,6 +26,8 @@ mod legacy_core_archive;
 mod release_train;
 #[path = "runtime_publication_activation/shell_fixtures.rs"]
 mod shell_fixtures;
+#[path = "runtime_publication_activation/selected_sync.rs"]
+mod selected_sync;
 #[path = "runtime_publication_activation/staging.rs"]
 mod staging;
 #[path = "runtime_publication_activation/staging_zip_fixture.rs"]
@@ -74,60 +76,6 @@ pub(super) fn workflow(name: &str) -> Result<Workflow, Box<dyn std::error::Error
     let path = codexy_runtime::paths::repository_root().join(".github/workflows").join(name);
     let text = fs::read_to_string(&path)?;
     Ok((path, text.clone(), serde_yaml::from_str(&text)?))
-}
-
-#[test]
-fn already_selected_version_sync_preserves_runtime_pointers()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let repo = archive_repository(&temp)?;
-    let preserved = [
-        (
-            "plugins/codexy-devtools/runtime-release.json",
-            "{\"runtime\":\"immutable\"}\n",
-        ),
-        (
-            "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
-            "#!/bin/sh\necho pinned\n",
-        ),
-        (
-            "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
-            "#!/bin/sh\necho pinned\n",
-        ),
-    ];
-    for (relative, contents) in preserved {
-        let path = repo.join(relative);
-        fs::create_dir_all(path.parent().ok_or("fixture parent")?)?;
-        fs::write(path, contents)?;
-    }
-    let before = preserved
-        .iter()
-        .map(|(relative, _)| Ok((relative.to_string(), fs::read(repo.join(relative))?)))
-        .collect::<Result<BTreeMap<_, _>, std::io::Error>>()?;
-    let mut before = before;
-    let bootstrap = "packages/getcodexy/pyproject.toml";
-    before.insert(bootstrap.into(), fs::read(repo.join(bootstrap))?);
-    let manifest: Json = serde_json::from_slice(&fs::read(
-        repo.join("plugins/codexy-devtools/.codex-plugin/plugin.json"),
-    )?)?;
-    let selected = manifest["version"].as_str().ok_or("selected version")?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", selected])
-        .env("CODEXY_REPO_ROOT", &repo)
-        .output()?;
-    assert!(
-        output.status.success(),
-        "version sync fixture failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    for (relative, expected) in before {
-        assert_eq!(
-            fs::read(repo.join(&relative))?,
-            expected,
-            "ordinary version sync changed {relative}"
-        );
-    }
-    Ok(())
 }
 
 #[test]

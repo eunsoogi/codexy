@@ -21,9 +21,10 @@ use receipt::receipt_value;
 fn real_base_activator_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
+    let candidate = metadata::current_candidate_version()?;
     metadata::assert_canonical_default_prompt(&fixture.repo)?;
     metadata::assert_canonical_preserved_eol(&fixture.repo)?;
-    assert_result(fixture.verify("main", "1.3.0")?, true, "exact retry");
+    assert_result(fixture.verify("main", &candidate)?, true, "exact retry");
     assert_eq!(
         fixture.cargo_invocations()?,
         0,
@@ -41,9 +42,10 @@ fn real_base_activator_authenticates_retry_and_metadata_matrix()
 fn real_base_activator_preserves_candidate_bytes_with_autocrlf()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
+    let candidate = metadata::current_candidate_version()?;
     metadata::enable_autocrlf(&fixture.repo)?;
     metadata::assert_canonical_preserved_eol(&fixture.repo)?;
-    assert_result(fixture.verify("main", "1.3.0")?, true, "autocrlf retry");
+    assert_result(fixture.verify("main", &candidate)?, true, "autocrlf retry");
     Ok(())
 }
 
@@ -131,6 +133,7 @@ impl Fixture {
         git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
         metadata::select_current_bootstrap(&repo)?;
+        let candidate = metadata::current_candidate_version()?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
         let bin = temp.path().join("bin");
@@ -146,9 +149,9 @@ impl Fixture {
             "#!/bin/sh\nprintf 'cargo\\n' >> \"$CODEXY_FIXTURE_COMMAND_TRACE\"\nexit 97\n",
         )?;
         let external_activation_process_invocations = Cell::new(0);
-        codexy_runtime::version::activation::activate(&repo, "1.3.0", &receipt)?;
+        codexy_runtime::version::activation::activate(&repo, &candidate, &receipt)?;
         let mut sync = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"));
-        sync.args(["--version", "1.3.0"])
+        sync.args(["--version", &candidate])
             .current_dir(&repo)
             .env("CODEXY_REPO_ROOT", &repo);
         command(&mut sync)?;
@@ -160,6 +163,7 @@ impl Fixture {
                 "plugins/codexy",
                 "plugins/codexy-devtools",
                 "plugins/codexy-github",
+                "packages/getcodexy/pyproject.toml",
                 "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
                 "packages/getcodexy/uv.lock",
                 "packages/codexy-runtime/src/version/bootstrap.rs",

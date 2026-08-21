@@ -41,16 +41,35 @@ fn workflow_requires_issue_scope_and_reconciles_one_pr() -> TestResult {
         Some(0),
     );
     let validate_issue = named_step_run(steps, "Validate governing release issue")?;
-    let synchronize = named_step_run(steps, "Synchronize plugin version")?;
+    let admission_run = named_step_run(steps, "Admit candidate version preparation")?;
+    let synchronize = named_step_run(steps, "Prepare candidate plugin version")?;
     let validate_release = named_step_run(steps, "Validate release candidate")?;
     let reconcile_path = named_step_run(steps, "Open version bump pull request")?;
     assert_eq!(reconcile_path, "scripts/reconcile-version-pr");
     let reconcile = fs::read_to_string(root.join(reconcile_path))?;
     assert!(has_trimmed_line_start(validate_issue, "gh issue view "));
     assert!(has_trimmed_line_start(validate_issue, "scripts/render_version_pr_metadata.py "));
-    assert_eq!(synchronize, "scripts/sync-plugin-version.sh --version \"$VERSION\"");
+    assert_eq!(synchronize, "scripts/sync-plugin-version.sh --prepare-candidate \"$VERSION\"");
+    assert_eq!(admission_run, "scripts/sync-plugin-version.sh --admit-candidate \"$VERSION\"");
+    assert_eq!(steps.len(), 8, "candidate preparation must preserve the base step count");
+    let issue_index = steps
+        .iter()
+        .position(|step| step["name"] == "Validate governing release issue")
+        .ok_or("issue validation")?;
+    let admission_index = steps
+        .iter()
+        .position(|step| step["name"] == "Admit candidate version preparation")
+        .ok_or("candidate admission")?;
+    let mutation_index = steps
+        .iter()
+        .position(|step| step["name"] == "Prepare candidate plugin version")
+        .ok_or("candidate mutation")?;
+    assert!(admission_index < issue_index && issue_index < mutation_index);
+    assert!(validate_release.contains("scripts/sync-plugin-version.sh --check-candidate"));
+    assert!(!text.contains("publish-forward-bootstrap"));
+    assert!(!text.contains("project-bootstrap-candidate"));
     for command in [
-        "scripts/sync-plugin-version.sh --check",
+        "scripts/sync-plugin-version.sh --check-candidate",
         "scripts/validate-plugin-config.sh --check",
         "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked",
         "git diff --check",

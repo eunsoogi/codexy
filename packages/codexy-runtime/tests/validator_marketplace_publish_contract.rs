@@ -32,15 +32,25 @@ fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Res
 fn contract_names_selected_and_authenticated_staging_identities() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join(".agents/plugins/release-publish-contract.json"))?)?;
+    let selected = contract["bootstrap"]["selectedVersion"]
+        .as_str()
+        .ok_or("selected bootstrap version")?;
+    let candidate = contract["bootstrap"]["candidateVersion"]
+        .as_str()
+        .ok_or("candidate bootstrap version")?;
     assert_eq!(contract["schema"], "codexy.internal.release-publish-contract.v2");
-    assert_eq!(contract["version"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.3.0");
+    assert_eq!(contract["version"].as_str(), Some(selected));
+    assert_eq!(contract["bootstrap"]["selectedVersion"].as_str(), Some(selected));
+    assert_eq!(contract["bootstrap"]["candidateVersion"].as_str(), Some(candidate));
     assert_eq!(contract["runtime"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(contract["sourceMarketplace"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64"]));
     assert_eq!(contract["releaseArchive"]["platforms"], serde_json::json!(["darwin-arm64", "linux-x86_64", "windows-x86_64"]));
     assert_eq!(contract["releaseArchive"]["bundle"], "dist/codexy-marketplace-bundle.tar.gz");
-    assert_eq!(contract["currentMarketplace"]["ref"], "v1.3.0");
+    let current_marketplace_ref = format!("v{selected}");
+    assert_eq!(
+        contract["currentMarketplace"]["ref"].as_str(),
+        Some(current_marketplace_ref.as_str())
+    );
     assert_eq!(contract["runtime"]["artifactRetentionDays"], 14);
     assert!(contract["runtime"].get("candidateTagPrefix").is_none());
     for path in [contract["bootstrap"]["publicationWorkflow"].as_str(), contract["runtime"]["stagingWorkflow"].as_str(), contract["runtime"]["activationWorkflow"].as_str(), contract["runtime"]["finalPublisherWorkflow"].as_str()] { assert!(root.join(path.ok_or("workflow")?).is_file()); }

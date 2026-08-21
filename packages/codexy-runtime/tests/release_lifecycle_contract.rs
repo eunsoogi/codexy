@@ -22,7 +22,7 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         let from = source.join(relative);
         let to = target.join(relative);
         fs::create_dir_all(to.parent().ok_or("parent")?)?;
-        fs::write(&to, fs::read_to_string(from)?.replace("1.3.0", version))?;
+        fs::write(&to, replace_known_versions(&fs::read_to_string(from)?, version))?;
     }
     let lifecycle_script = target.join("scripts/validate-release-lifecycle-contract");
     crate::support::make_executable(&lifecycle_script)?;
@@ -71,4 +71,8 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
     assert!(!run(version)?);
     assert!(!run("9.9")?);
     Ok(())
+}
+
+fn replace_known_versions(text: &str, version: &str) -> String {
+    text.replace("1.3.0", version).replace("1.4.0", version)
 }

@@ -6,18 +6,35 @@ verify_case() {
   base="${2:-origin/main}"
   bootstrap_version="${3:?bootstrap version is required}"
   receipt="${4:?candidate receipt is required}"
-  expected="$(printf '%s\n' \
-    packages/codexy-runtime/Cargo.lock \
-    packages/codexy-runtime/Cargo.toml \
-    .agents/plugins/marketplace.json \
-    .agents/plugins/release-publish-contract.json \
-    .agents/plugins/runtime-activation.json \
-    plugins/codexy/.codex-plugin/plugin.json \
-    plugins/codexy-devtools/.codex-plugin/plugin.json \
-    plugins/codexy-github/.codex-plugin/plugin.json \
-    packages/getcodexy/src/codexy_runtime_tools/component-manifest.json \
-    packages/getcodexy/uv.lock \
-    packages/codexy-runtime/src/version/bootstrap.rs | LC_ALL=C sort)"
+  base_package_version="$(git show "$base:packages/getcodexy/pyproject.toml" | sed -n 's/^version = "\(.*\)"/\1/p' | head -n 1)"
+  if test -z "$base_package_version" || test "$bootstrap_version" = "$base_package_version"; then
+    expected="$(printf '%s\n' \
+      packages/codexy-runtime/Cargo.lock \
+      packages/codexy-runtime/Cargo.toml \
+      .agents/plugins/marketplace.json \
+      .agents/plugins/release-publish-contract.json \
+      .agents/plugins/runtime-activation.json \
+      plugins/codexy/.codex-plugin/plugin.json \
+      plugins/codexy-devtools/.codex-plugin/plugin.json \
+      plugins/codexy-github/.codex-plugin/plugin.json \
+      packages/getcodexy/src/codexy_runtime_tools/component-manifest.json \
+      packages/getcodexy/uv.lock \
+      packages/codexy-runtime/src/version/bootstrap.rs | LC_ALL=C sort)"
+  else
+    expected="$(printf '%s\n' \
+      packages/codexy-runtime/Cargo.lock \
+      packages/codexy-runtime/Cargo.toml \
+      .agents/plugins/marketplace.json \
+      .agents/plugins/release-publish-contract.json \
+      .agents/plugins/runtime-activation.json \
+      plugins/codexy/.codex-plugin/plugin.json \
+      plugins/codexy-devtools/.codex-plugin/plugin.json \
+      plugins/codexy-github/.codex-plugin/plugin.json \
+      packages/getcodexy/pyproject.toml \
+      packages/getcodexy/src/codexy_runtime_tools/component-manifest.json \
+      packages/getcodexy/uv.lock \
+      packages/codexy-runtime/src/version/bootstrap.rs | LC_ALL=C sort)"
+  fi
   preserved="$(printf '%s\n' \
     plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
     plugins/codexy-devtools/mcp/codexy-mcp-lsp \

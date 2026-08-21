@@ -2,6 +2,8 @@ use std::{fs, path::Path, process::Command};
 
 use serde_json::{Value, json};
 
+use super::isolation::version_surface_contents;
+
 #[test]
 fn version_admission_matrix_is_ordered_and_fail_closed()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -55,6 +57,94 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
                 String::from_utf8_lossy(&check.stderr),
             );
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn candidate_preparation_keeps_selected_identity_until_activation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let archive = super::shared_repository_archive()?;
+    let root = super::archive_repository(archive, &temp, "candidate")?;
+    let selected = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", "1.3.0"])
+        .env("CODEXY_REPO_ROOT", &root)
+        .current_dir(&root)
+        .output()?;
+    assert!(
+        selected.status.success(),
+        "selected fixture normalization failed: {}",
+        String::from_utf8_lossy(&selected.stderr)
+    );
+    let bootstrap = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
+    let bootstrap_text = fs::read_to_string(&bootstrap)?;
+    fs::write(
+        &bootstrap,
+        bootstrap_text.replace(
+            "CANDIDATE_VERSION: &str = \"1.4.0\"",
+            "CANDIDATE_VERSION: &str = \"1.3.0\"",
+        ),
+    )?;
+    let contract_path = root.join(".agents/plugins/release-publish-contract.json");
+    let mut contract: Value = serde_json::from_slice(&fs::read(&contract_path)?)?;
+    contract["bootstrap"]["candidateVersion"] = json!("1.3.0");
+    fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
+    let before = version_surface_contents(&root)?;
+    let bootstrap_before = fs::read(&bootstrap)?;
+    let pyproject = root.join("packages/getcodexy/pyproject.toml");
+    let uv_lock = root.join("packages/getcodexy/uv.lock");
+    let pyproject_before = fs::read(&pyproject)?;
+    let uv_lock_before = fs::read(&uv_lock)?;
+    let contract_before = fs::read(&contract_path)?;
+    for args in [["--admit-candidate", "1.4.0"], ["--prepare-candidate", "1.4.0"]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+            .args(args)
+            .env("CODEXY_REPO_ROOT", &root)
+            .current_dir(&root)
+            .output()?;
+        assert!(output.status.success(), "candidate command failed: {}", String::from_utf8_lossy(&output.stderr));
+        if args[0] == "--admit-candidate" {
+            assert_eq!(version_surface_contents(&root)?, before);
+            assert_eq!(fs::read(&bootstrap)?, bootstrap_before);
+        }
+    }
+    let check = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .arg("--check-candidate")
+        .env("CODEXY_REPO_ROOT", &root)
+        .current_dir(&root)
+        .output()?;
+    assert!(check.status.success(), "candidate check failed: {}", String::from_utf8_lossy(&check.stderr));
+    let contract: Value = serde_json::from_str(&fs::read_to_string(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    assert_eq!(contract["version"], "1.3.0");
+    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
+    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.4.0");
+    assert_eq!(contract["runtime"]["selectedTag"], "v1.3.0");
+    assert!(fs::read_to_string(&bootstrap)?.contains("VERSION: &str = \"1.3.0\""));
+    assert!(fs::read_to_string(&bootstrap)?.contains("CANDIDATE_VERSION: &str = \"1.4.0\""));
+    assert_ne!(fs::read(&bootstrap)?, bootstrap_before);
+    assert_ne!(fs::read(&pyproject)?, pyproject_before);
+    assert_ne!(fs::read(&uv_lock)?, uv_lock_before);
+    assert_ne!(fs::read(&contract_path)?, contract_before);
+    for (path, bytes) in before {
+        if path.ends_with("release-publish-contract.json")
+            || path.ends_with("packages/getcodexy/pyproject.toml")
+            || path.ends_with("packages/getcodexy/uv.lock")
+        {
+            continue;
+        }
+        if path.ends_with("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json") {
+            let manifest: Value = serde_json::from_slice(&fs::read(&path)?)?;
+            for field in ["components", "compatibleCombinations"] {
+                for entry in manifest[field].as_array().ok_or("component manifest array")? {
+                    assert_eq!(entry["version"], "1.4.0");
+                }
+            }
+            continue;
+        }
+        assert_eq!(fs::read(path)?, bytes);
     }
     Ok(())
 }

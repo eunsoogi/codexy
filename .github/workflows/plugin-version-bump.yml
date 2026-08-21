@@ -37,10 +37,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Admit selected runtime version advance
+      - name: Admit candidate version preparation
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version.sh --admit-version "$VERSION"
+        run: scripts/sync-plugin-version.sh --admit-candidate "$VERSION"
 
       - name: Validate governing release issue
         env:
@@ -74,14 +74,14 @@ jobs:
             --issue-link-mode nonclosing \
             --validate-only
 
-      - name: Synchronize plugin version
+      - name: Prepare candidate plugin version
         env:
           VERSION: ${{ inputs.version }}
-        run: scripts/sync-plugin-version.sh --version "$VERSION"
+        run: scripts/sync-plugin-version.sh --prepare-candidate "$VERSION"
 
       - name: Validate release candidate
         run: |
-          scripts/sync-plugin-version.sh --check
+          scripts/sync-plugin-version.sh --check-candidate
           scripts/validate-plugin-config.sh --check
           cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked
           git diff --check

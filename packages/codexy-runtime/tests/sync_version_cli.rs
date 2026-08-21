@@ -1,8 +1,7 @@
 use std::{
     fs,
     path::PathBuf,
-    process::Command,
-    sync::OnceLock,
+    process::{Command, Output},
 };
 
 use crate::support::FixtureCommand;
@@ -13,6 +12,10 @@ mod isolation;
 mod mutation_preflight;
 #[path = "sync_version_cli/admission.rs"]
 mod admission;
+#[path = "sync_version_cli/archive.rs"]
+mod archive;
+#[path = "sync_version_cli/candidate_negatives.rs"]
+mod candidate_negatives;
 #[path = "sync_version_cli/fixture_files.rs"]
 mod fixture_files;
 #[path = "sync_version_cli/strict_manifest.rs"]
@@ -20,11 +23,13 @@ mod strict_manifest;
 #[path = "sync_version_cli/uv_lock.rs"]
 mod uv_lock;
 
+pub(super) use archive::{archive_repository, shared_repository_archive};
+
 #[test]
 fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn std::error::Error>> {
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .arg("--check")
-        .output()?;
+    let temp = tempfile::tempdir()?;
+    let (root, version) = selected_fixture(&temp, "manifest-parity")?;
+    let output = run_sync(&root, &["--check"])?;
     assert!(
         output.status.success(),
         "sync-version --check failed\nstdout:\n{}\nstderr:\n{}",
@@ -33,7 +38,9 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
     );
     assert!(
         String::from_utf8_lossy(&output.stdout)
-            .contains("plugin version sync ok: codexy=1.3.0, codexy-github=1.3.0"),
+            .contains(&format!(
+                "plugin version sync ok: codexy={version}, codexy-github={version}"
+            )),
         "unexpected stdout: {}",
         String::from_utf8_lossy(&output.stdout)
     );
@@ -42,15 +49,10 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
 
 #[test]
 fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::repository_root();
-    let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
-        root.join("plugins/codexy/.codex-plugin/plugin.json"),
-    )?)?;
-    let version = manifest["version"].as_str().ok_or("manifest version")?;
+    let temp = tempfile::tempdir()?;
+    let (root, version) = selected_fixture(&temp, "tag-parity")?;
     let matching_tag = format!("v{version}");
-    let matching = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--check", "--tag", &matching_tag])
-        .output()?;
+    let matching = run_sync(&root, &["--check", "--tag", &matching_tag])?;
     assert!(
         matching.status.success(),
         "matching release tag failed\nstdout:\n{}\nstderr:\n{}",
@@ -58,17 +60,13 @@ fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error
         String::from_utf8_lossy(&matching.stderr)
     );
 
-    let mismatched = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--check", "--tag", "1.1.0"])
-        .output()?;
+    let mismatched = run_sync(&root, &["--check", "--tag", "1.1.0"])?;
     assert!(
         !mismatched.status.success(),
         "tag without v prefix unexpectedly passed"
     );
 
-    let stale = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--check", "--tag", "v9.9.9"])
-        .output()?;
+    let stale = run_sync(&root, &["--check", "--tag", "v9.9.9"])?;
     assert!(
         !stale.status.success(),
         "mismatched release tag unexpectedly passed"
@@ -76,12 +74,53 @@ fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error
     Ok(())
 }
 
+fn run_sync(root: &std::path::Path, args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
+    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(args)
+        .env("CODEXY_REPO_ROOT", root)
+        .current_dir(root)
+        .output()?)
+}
+
+fn fixture_repo(
+    temp: &tempfile::TempDir,
+    name: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    archive_repository(shared_repository_archive()?, temp, name)
+}
+
+fn selected_fixture(
+    temp: &tempfile::TempDir,
+    name: &str,
+) -> Result<(PathBuf, String), Box<dyn std::error::Error>> {
+    let root = fixture_repo(temp, name)?;
+    let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("plugins/codexy/.codex-plugin/plugin.json"),
+    )?)?;
+    let version = manifest["version"]
+        .as_str()
+        .ok_or("manifest version")?
+        .to_owned();
+    let normalized = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
+        .args(["--version", &version])
+        .env("CODEXY_REPO_ROOT", &root)
+        .current_dir(&root)
+        .output()?;
+    if !normalized.status.success() {
+        return Err(format!(
+            "selected fixture normalization failed: {}",
+            String::from_utf8_lossy(&normalized.stderr)
+        )
+        .into());
+    }
+    Ok((root, version))
+}
+
 #[test]
 fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let archive = shared_repository_archive()?;
-    let repo = archive_repository(archive, &temp, "repo")?;
+    let repo = fixture_repo(&temp, "repo")?;
     fs::copy(
         codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version.sh"),
         repo.join("scripts/sync-plugin-version.sh"),
@@ -117,8 +156,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
 fn version_advance_requires_selected_public_identities_before_mutation(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let archive = shared_repository_archive()?;
-    let repo = archive_repository(archive, &temp, "pre-activation")?;
+    let repo = fixture_repo(&temp, "pre-activation")?;
     let before = isolation::version_surface_contents(&repo)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--version", "1.3.1"])
@@ -128,72 +166,6 @@ fn version_advance_requires_selected_public_identities_before_mutation(
     assert!(!output.status.success(), "pre-activation version advance unexpectedly succeeded");
     assert_eq!(isolation::version_surface_contents(&repo)?, before);
     Ok(())
-}
-
-pub(super) struct RepositoryArchive {
-    _temp: tempfile::TempDir,
-    archive: PathBuf,
-}
-
-impl RepositoryArchive {
-    fn create() -> Result<Self, Box<dyn std::error::Error>> {
-        let temp = tempfile::tempdir()?;
-        let archive = temp.path().join("repository.tar");
-        let archive_status = Command::new("git")
-            .args(["archive", "--format=tar", "HEAD"])
-            .arg("-o")
-            .arg(&archive)
-            .current_dir(codexy_runtime::paths::repository_root())
-            .status()?;
-        if !archive_status.success() {
-            return Err("git archive failed".into());
-        }
-        Ok(Self {
-            _temp: temp,
-            archive,
-        })
-    }
-}
-
-fn shared_repository_archive() -> Result<&'static RepositoryArchive, Box<dyn std::error::Error>> {
-    static ARCHIVE: OnceLock<Result<RepositoryArchive, String>> = OnceLock::new();
-    match ARCHIVE.get_or_init(|| RepositoryArchive::create().map_err(|error| error.to_string())) {
-        Ok(archive) => Ok(archive),
-        Err(error) => Err(error.clone().into()),
-    }
-}
-
-pub(super) fn archive_repository(
-    source: &RepositoryArchive,
-    temp: &tempfile::TempDir,
-    name: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let repo = temp.path().join(name);
-    fs::create_dir(&repo)?;
-    let tar_status = Command::new("tar")
-        .arg("-xf")
-        .arg(&source.archive)
-        .arg("-C")
-        .arg(&repo)
-        .status()?;
-    assert!(tar_status.success(), "tar extract failed");
-    let agents_root = repo.join("plugins/codexy/agents");
-    fs::remove_dir_all(&agents_root)?;
-    crate::support::copy_dir(
-        &codexy_runtime::paths::repository_root().join("plugins/codexy/agents"),
-        &agents_root,
-    )?;
-    for relative in fixture_files::REPLACED_FILES {
-        let destination = repo.join(relative);
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::copy(
-            codexy_runtime::paths::repository_root().join(relative),
-            destination,
-        )?;
-    }
-    Ok(repo)
 }
 
 fn stale_codexy_runtime_lock_version(
