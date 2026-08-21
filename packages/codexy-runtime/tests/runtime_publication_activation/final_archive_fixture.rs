@@ -139,11 +139,25 @@ impl FinalArchiveFixture {
         &self,
         prepend_path: Option<PathBuf>,
     ) -> Result<Output, std::io::Error> {
-        self.materialize_with(&self.staged_archive, STAGING_COMMIT, "42", prepend_path, false)
+        self.materialize_with(
+            &self.staged_archive,
+            STAGING_COMMIT,
+            "42",
+            prepend_path,
+            false,
+            "v1.3.0",
+        )
     }
 
     pub(super) fn materialize_public(&self) -> Result<Output, std::io::Error> {
-        self.materialize_public_with(&self.public_archive, STAGING_COMMIT, "42", None)
+        self.materialize_with(&self.public_archive, STAGING_COMMIT, "42", None, true, "v1.3.0")
+    }
+
+    pub(super) fn materialize_public_for_tag(
+        &self,
+        release_tag: &str,
+    ) -> Result<Output, std::io::Error> {
+        self.materialize_with(&self.public_archive, STAGING_COMMIT, "42", None, true, release_tag)
     }
 
     pub(super) fn materialize_public_with(
@@ -153,7 +167,7 @@ impl FinalArchiveFixture {
         run_id: &str,
         prepend_path: Option<PathBuf>,
     ) -> Result<Output, std::io::Error> {
-        self.materialize_with(archive, source_commit, run_id, prepend_path, true)
+        self.materialize_with(archive, source_commit, run_id, prepend_path, true, "v1.3.0")
     }
 
     fn materialize_with(
@@ -163,6 +177,7 @@ impl FinalArchiveFixture {
         run_id: &str,
         prepend_path: Option<PathBuf>,
         public: bool,
+        release_tag: &str,
     ) -> Result<Output, std::io::Error> {
         let mut command = Command::new(
             codexy_runtime::paths::repository_root()
@@ -181,7 +196,7 @@ impl FinalArchiveFixture {
         command
             .arg_path(&self.final_archive)
             .current_dir(&self.root)
-            .env("RELEASE_TAG", "v1.3.0")
+            .env("RELEASE_TAG", release_tag)
             .env("STAGING_SOURCE_COMMIT", source_commit)
             .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
             .env("STAGING_RUN_ID", run_id);

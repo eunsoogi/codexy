@@ -152,13 +152,21 @@ fn public_validator_rejects_duplicate_keys_and_out_of_range_semver() -> TestResu
     let fixture = CanonicalSourceFixture::new()?;
     let manifest_path = fixture.root().join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
     let canonical = fs::read_to_string(&manifest_path)?;
-    for invalid in [
-        canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1),
-        canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1),
-        canonical.replace("\"version\": \"1.3.0\"", "\"version\": \"2147483648.0.0\""),
+    let manifest: serde_json::Value = serde_json::from_str(&canonical)?;
+    let version = manifest["components"]
+        .as_array()
+        .and_then(|components| components.first())
+        .and_then(|component| component["version"].as_str())
+        .ok_or("component manifest version")?;
+    let version_needle = format!("\"version\": \"{version}\"");
+    for (label, invalid) in [
+        ("top-level duplicate", canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1)),
+        ("nested duplicate", canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1)),
+        ("out-of-range semver", canonical.replacen(&version_needle, "\"version\": \"2147483648.0.0\"", 1)),
     ] {
+        assert_ne!(invalid, canonical, "{label} fixture did not change");
         fs::write(&manifest_path, invalid)?;
-        assert!(!validate(&fixture.plugin_root())?.status.success());
+        assert!(!validate(&fixture.plugin_root())?.status.success(), "{label} unexpectedly passed");
         fs::write(&manifest_path, &canonical)?;
     }
     Ok(())

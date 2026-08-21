@@ -1,24 +1,42 @@
-use std::fs;
+use std::{fs, path::{Path, PathBuf}};
 
 use crate::support::{self, FixtureCommand as Command};
 
 use super::final_archive_fixture::FinalArchiveFixture;
 
+const COMPONENT_MANIFEST: &str =
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
+const MARKETPLACE: &str = ".agents/plugins/marketplace.json";
+const PLUGIN_MANIFESTS: [&str; 3] = [
+    "plugins/codexy/.codex-plugin/plugin.json",
+    "plugins/codexy-github/.codex-plugin/plugin.json",
+    "plugins/codexy-devtools/.codex-plugin/plugin.json",
+];
+
 #[test]
 fn release_train_assembler_emits_a_reproducible_complete_bundle()
--> Result<(), Box<dyn std::error::Error>> {
+    -> Result<(), Box<dyn std::error::Error>> {
     let fixture = FinalArchiveFixture::new()?;
     let root = codexy_runtime::paths::repository_root();
+    let candidate_version = component_version(root)?;
+    let release_tag = format!("v{candidate_version}");
+    set_manifest_version(
+        &fixture.root.join(PLUGIN_MANIFESTS[2]),
+        &candidate_version,
+    )?;
     fs::copy(
         root.join("plugins/codexy-devtools/.mcp.json"),
         fixture.root.join("plugins/codexy-devtools/.mcp.json"),
     )?;
-    assert!(fixture.materialize_public()?.status.success());
+    assert!(fixture
+        .materialize_public_for_tag(&release_tag)?
+        .status
+        .success());
     for relative in [
         "plugins/codexy",
         "plugins/codexy-github",
-        "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
-        ".agents/plugins/marketplace.json",
+        COMPONENT_MANIFEST,
+        MARKETPLACE,
     ] {
         let source = root.join(relative);
         let target = fixture.root.join(relative);
@@ -29,14 +47,19 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
             fs::copy(source, target)?;
         }
     }
+    project_release_versions(&fixture.root, &candidate_version)?;
+    let assembler = fixture.root.join("scripts/assemble-release-train-archive.sh");
+    fs::create_dir_all(assembler.parent().ok_or("assembler parent")?)?;
+    fs::copy(root.join("scripts/assemble-release-train-archive.sh"), &assembler)?;
+    support::make_executable(&assembler)?;
     let first = fixture.root.join("bundle-one.tar.gz");
     let second = fixture.root.join("bundle-two.tar.gz");
     for output in [&first, &second] {
-        let result = Command::new(root.join("scripts/assemble-release-train-archive.sh"))
+        let result = Command::new(&assembler)
             .arg_path(&fixture.final_archive)
             .arg_path(output)
             .current_dir(&fixture.root)
-            .env("RELEASE_TAG", "v1.3.0")
+            .env("RELEASE_TAG", &release_tag)
             .output()?;
         assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
     }
@@ -60,10 +83,13 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
 -> Result<(), Box<dyn std::error::Error>> {
     let temporary = tempfile::tempdir()?;
     let root = codexy_runtime::paths::repository_root();
+    let candidate_version = component_version(root)?;
+    let release_tag = format!("v{candidate_version}");
+    let checkout = release_checkout(root, temporary.path(), &candidate_version)?;
     let runtime = temporary.path().join("runtime.tar.gz");
     let bundle = temporary.path().join("bundle.tar.gz");
     let staged = temporary.path().join("staged/plugins/codexy-devtools");
-    support::copy_dir(&root.join("plugins/codexy-devtools"), &staged)?;
+    support::copy_dir(&checkout.join("plugins/codexy-devtools"), &staged)?;
     for contract in ["runtime-candidate.json", "runtime-release.json"] {
         let path = staged.join(contract);
         if path.exists() {
@@ -96,17 +122,17 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
         .arg("plugins/codexy-devtools")
         .status()?
         .success());
-    let assembled = Command::new(root.join("scripts/assemble-release-train-archive.sh"))
+    let assembled = Command::new(checkout.join("scripts/assemble-release-train-archive.sh"))
         .arg_path(&runtime)
         .arg_path(&bundle)
-        .current_dir(&root)
-        .env("RELEASE_TAG", "v1.3.0")
+        .current_dir(&checkout)
+        .env("RELEASE_TAG", &release_tag)
         .output()?;
     assert!(assembled.status.success(), "{}", String::from_utf8_lossy(&assembled.stderr));
     let inspected = Command::new(root.join("scripts/inspect_release_train_archive.py"))
         .arg_path(&bundle)
-        .arg_path(&root)
-        .arg("v1.3.0")
+        .arg_path(&checkout)
+        .arg(&release_tag)
         .output()?;
     assert!(inspected.status.success(), "{}", String::from_utf8_lossy(&inspected.stderr));
     let staging_receipt = temporary.path().join("staging-receipt.json");
@@ -115,15 +141,15 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     let receipt = temporary.path().join("release-receipt.json");
     fs::write(&staging_receipt, r#"{"provenance":{"runId":42}}"#)?;
     fs::write(&staging_run, r#"{"run_attempt":7}"#)?;
-    let created = Command::new(root.join("scripts/create_release_train_receipt.py"))
+    let created = Command::new(checkout.join("scripts/create_release_train_receipt.py"))
         .arg_path(&runtime)
         .arg_path(&bundle)
         .arg_path(&runtime)
         .arg_path(&staging_receipt)
         .arg_path(&staging_run)
         .arg_path(&receipt)
-        .current_dir(&root)
-        .env("RELEASE_TAG", "v1.3.0")
+        .current_dir(&checkout)
+        .env("RELEASE_TAG", &release_tag)
         .env("ACTIVATION_COMMIT", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
         .env("STAGING_SOURCE_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         .env("STAGING_RUN_ID", "42")
@@ -143,18 +169,80 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
         .status()?
         .success());
     let tampered_bundle = temporary.path().join("tampered-bundle.tar.gz");
-    let assembled = Command::new(root.join("scripts/assemble-release-train-archive.sh"))
+    let assembled = Command::new(checkout.join("scripts/assemble-release-train-archive.sh"))
         .arg_path(&tampered_runtime)
         .arg_path(&tampered_bundle)
-        .current_dir(&root)
-        .env("RELEASE_TAG", "v1.3.0")
+        .current_dir(&checkout)
+        .env("RELEASE_TAG", &release_tag)
         .output()?;
     assert!(assembled.status.success());
     let rejected = Command::new(root.join("scripts/inspect_release_train_archive.py"))
         .arg_path(&tampered_bundle)
-        .arg_path(&root)
-        .arg("v1.3.0")
+        .arg_path(&checkout)
+        .arg(&release_tag)
         .output()?;
     assert!(!rejected.status.success(), "extra bundle file was accepted");
     Ok(())
+}
+
+fn component_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let manifest: serde_json::Value = serde_json::from_slice(&fs::read(root.join(COMPONENT_MANIFEST))?)?;
+    manifest["components"]
+        .as_array()
+        .and_then(|components| components.first())
+        .and_then(|component| component["version"].as_str())
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| "component manifest version".into())
+}
+
+fn set_manifest_version(path: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut manifest: serde_json::Value = serde_json::from_slice(&fs::read(path)?)?;
+    manifest["version"] = serde_json::Value::String(version.to_owned());
+    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
+    Ok(())
+}
+
+fn project_release_versions(root: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    for relative in PLUGIN_MANIFESTS {
+        set_manifest_version(&root.join(relative), version)?;
+    }
+    let path = root.join(MARKETPLACE);
+    let mut marketplace: serde_json::Value = serde_json::from_slice(&fs::read(&path)?)?;
+    for plugin in marketplace["plugins"]
+        .as_array_mut()
+        .ok_or("marketplace plugins")?
+    {
+        plugin["version"] = serde_json::Value::String(version.to_owned());
+    }
+    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&marketplace)?))?;
+    Ok(())
+}
+
+fn release_checkout(
+    root: &Path,
+    parent: &Path,
+    version: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let checkout = parent.join("activation-checkout");
+    for relative in ["plugins/codexy", "plugins/codexy-github", "plugins/codexy-devtools"] {
+        support::copy_dir(root.join(relative), &checkout.join(relative))?;
+    }
+    for relative in [COMPONENT_MANIFEST, MARKETPLACE, ".agents/plugins/runtime-activation.json"] {
+        let target = checkout.join(relative);
+        fs::create_dir_all(target.parent().ok_or("checkout artifact parent")?)?;
+        fs::copy(root.join(relative), target)?;
+    }
+    fs::create_dir_all(checkout.join("scripts"))?;
+    for script in [
+        "assemble-release-train-archive.sh",
+        "create_release_train_receipt.py",
+    ] {
+        let target = checkout.join("scripts").join(script);
+        fs::copy(root.join("scripts").join(script), &target)?;
+        if script.ends_with(".sh") {
+            support::make_executable(&target)?;
+        }
+    }
+    project_release_versions(&checkout, version)?;
+    Ok(checkout)
 }

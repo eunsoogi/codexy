@@ -12,6 +12,18 @@ const TARGET: &str = "1.3.1";
 #[test]
 fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
+    let version_needle = {
+        let text = fs::read_to_string(
+            codexy_runtime::paths::repository_root().join(COMPONENT_MANIFEST),
+        )?;
+        let manifest: serde_json::Value = serde_json::from_str(&text)?;
+        let version = manifest["components"]
+            .as_array()
+            .and_then(|components| components.first())
+            .and_then(|component| component["version"].as_str())
+            .ok_or("component manifest version")?;
+        format!("\"version\": \"{version}\"")
+    };
     for (label, needle, replacement) in [
         (
             "top-level duplicate",
@@ -25,22 +37,22 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
         ),
         (
             "oversized semver",
-            "\"version\": \"1.3.0\"",
+            version_needle.as_str(),
             "\"version\": \"2147483648.0.0\"",
         ),
         (
             "leading-zero semver",
-            "\"version\": \"1.3.0\"",
+            version_needle.as_str(),
             "\"version\": \"01.3.0\"",
         ),
         (
             "malformed semver",
-            "\"version\": \"1.3.0\"",
+            version_needle.as_str(),
             "\"version\": \"1.3\"",
         ),
         (
             "prerelease semver",
-            "\"version\": \"1.3.0\"",
+            version_needle.as_str(),
             "\"version\": \"1.3.0-beta\"",
         ),
         (
