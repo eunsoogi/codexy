@@ -66,7 +66,21 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
         select_version_advance(&repo, TARGET)?;
         let manifest = repo.join(COMPONENT_MANIFEST);
         let text = fs::read_to_string(&manifest)?;
-        let corrupted = text.replacen(needle, replacement, 1);
+        let corrupted = if label == "dependency-invalid compatible combination" {
+            let mut manifest: serde_json::Value = serde_json::from_str(&text)?;
+            let combination = manifest["compatibleCombinations"]
+                .as_array_mut()
+                .and_then(|combinations| {
+                    combinations
+                        .iter_mut()
+                        .find(|combination| combination["components"] == serde_json::json!(["core", "github"]))
+                })
+                .ok_or("compatible combination fixture")?;
+            combination["components"] = serde_json::json!(["github"]);
+            format!("{}\n", serde_json::to_string_pretty(&manifest)?)
+        } else {
+            text.replacen(needle, replacement, 1)
+        };
         assert_ne!(corrupted, text, "{label} fixture did not change");
         fs::write(&manifest, corrupted)?;
         let before = version_surface_contents(&repo)?;
