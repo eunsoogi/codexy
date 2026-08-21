@@ -27,6 +27,34 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
 }
 
 #[test]
+fn selected_runtime_source_helper_keeps_modern_and_legacy_boundaries() {
+    let root = codexy_runtime::paths::repository_root();
+    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package.sh"))
+        .expect("selected runtime source helper");
+    for required in [
+        "if test -f public-release/runtime-release-receipt.json; then",
+        "test \"$(jq -r .release.tag \"$receipt\")\" = \"$RELEASE_TAG\"",
+        "public release receipt does not match activated staging identity",
+        ": >\"$marker_dir/public-release\"",
+        "legacy_release=plugins/codexy-devtools/runtime-release.json",
+        "test \"$(jq -er .state \"$legacy_release\")\" = legacy-public",
+        "test \"$(jq -er .artifact.tag \"$legacy_release\")\" = \"$RELEASE_TAG\"",
+        "expected_url=\"https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/codexy-marketplace-plugin.tar.gz\"",
+        "test \"$url\" = \"$expected_url\"",
+        "curl --fail --location \"$url\" -o \"$output\"",
+        "test \"$(digest_file \"$output\")\" = \"$digest\"",
+        ": >\"$marker_dir/legacy-public\"",
+        "scripts/download-runtime-staging-artifact staging",
+    ] {
+        assert!(helper.contains(required), "helper must include {required}");
+    }
+    assert!(
+        !helper.contains("v1.2.2"),
+        "helper must remain version-relative"
+    );
+}
+
+#[test]
 fn archive_gate_workflow_rejects_helper_missing_from_either_event_filter() {
     let missing_push = "on:\n  pull_request:\n    paths: [scripts/**]\n  push:\n    paths: []\n";
     let workflow: Value = serde_yaml::from_str(missing_push).expect("workflow YAML");

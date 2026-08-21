@@ -124,6 +124,10 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
 fn materializer_projects_current_source_onto_an_immutable_public_runtime()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = FinalArchiveFixture::new()?;
+    fs::write(
+        fixture.root.join(".agents/plugins/runtime-activation.json"),
+        b"stale activation metadata must not be read for public assembly\n",
+    )?;
     let input_tree = fixture.input_tree()?;
     let output = fixture.materialize_public()?;
     assert!(

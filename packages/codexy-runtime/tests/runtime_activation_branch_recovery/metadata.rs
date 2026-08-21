@@ -40,6 +40,7 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
         "packages/getcodexy/uv.lock",
         "packages/getcodexy/tests/fixtures/component-installation-cases.json",
+        "scripts/download-selected-runtime-package.sh",
     ] {
         let target = repo.join(relative);
         fs::create_dir_all(target.parent().ok_or("component contract parent")?)?;

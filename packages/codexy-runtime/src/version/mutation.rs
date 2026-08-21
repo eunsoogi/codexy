@@ -48,10 +48,13 @@ pub fn admit_candidate(version: &str) -> Result<String> {
 }
 
 pub fn prepare_candidate(version: &str) -> Result<String> {
+    let root = crate::paths::repo_root()?;
     candidate_preflight(version)?;
+    let selected_runtime_tag = runtime_selection::selected_tag(&root)?;
     let publish_path = repo_path(PUBLISH_CONTRACT)?;
     let mut publish = load_json(&publish_path)?;
     publish["bootstrap"]["candidateVersion"] = Value::String(version.to_owned());
+    publish["runtime"]["selectedTag"] = Value::String(selected_runtime_tag);
     let updates = vec![
         uv_lock::prepare_version(version)?,
         uv_lock::prepare_pyproject_version(version)?,
@@ -105,8 +108,9 @@ pub fn check_candidate() -> Result<String> {
         &selected,
         "selected",
     )?;
+    let selected_runtime_tag = runtime_selection::selected_tag(&root)?;
     if nested_string(&publish, &["bootstrap", "selectedVersion"])? != selected
-        || nested_string(&publish, &["runtime", "selectedTag"])? != format!("v{selected}")
+        || nested_string(&publish, &["runtime", "selectedTag"])? != selected_runtime_tag
         || nested_string(&publish, &["bootstrap", "candidateVersion"])? != candidate
     {
         bail!("candidate state changed a selected release identity");

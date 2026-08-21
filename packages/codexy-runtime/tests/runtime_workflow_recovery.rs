@@ -14,6 +14,10 @@ mod release_tag_admission;
 mod durable_selection;
 #[path = "runtime_workflow_recovery/durable_selection_behavior.rs"]
 mod durable_selection_behavior;
+#[path = "runtime_workflow_recovery/legacy_selected_source.rs"]
+mod legacy_selected_source;
+#[path = "runtime_workflow_recovery/legacy_public_assembly.rs"]
+mod legacy_public_assembly;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()

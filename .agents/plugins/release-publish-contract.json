@@ -8,7 +8,7 @@
     "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
   },
   "runtime": {
-    "selectedTag": "v1.3.0",
+    "selectedTag": "v1.2.2",
     "stagingWorkflow": ".github/workflows/runtime-candidate.yml",
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
     "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",

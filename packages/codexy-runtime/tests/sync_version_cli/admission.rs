@@ -109,6 +109,14 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
             assert_eq!(fs::read(&bootstrap)?, bootstrap_before);
         }
     }
+    let runtime_release: Value = serde_json::from_str(&fs::read_to_string(
+        root.join("plugins/codexy-devtools/runtime-release.json"),
+    )?)?;
+    let selected_runtime_tag = runtime_release["artifact"]["tag"]
+        .as_str()
+        .ok_or("selected runtime tag")?;
+    let contract: Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
+    assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
     let check = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .arg("--check-candidate")
         .env("CODEXY_REPO_ROOT", &root)
@@ -121,7 +129,7 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     assert_eq!(contract["version"], "1.3.0");
     assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
     assert_eq!(contract["bootstrap"]["candidateVersion"], "1.4.0");
-    assert_eq!(contract["runtime"]["selectedTag"], "v1.3.0");
+    assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
     assert!(fs::read_to_string(&bootstrap)?.contains("VERSION: &str = \"1.3.0\""));
     assert!(fs::read_to_string(&bootstrap)?.contains("CANDIDATE_VERSION: &str = \"1.4.0\""));
     assert_ne!(fs::read(&bootstrap)?, bootstrap_before);

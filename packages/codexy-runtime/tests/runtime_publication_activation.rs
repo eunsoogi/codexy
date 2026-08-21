@@ -18,6 +18,8 @@ mod artifact_download;
 mod final_archive;
 #[path = "runtime_publication_activation/final_archive_fixture.rs"]
 mod final_archive_fixture;
+#[path = "runtime_publication_activation/public_receipt.rs"]
+mod public_receipt;
 #[path = "runtime_publication_activation/final_archive_lifecycle.rs"]
 mod final_archive_lifecycle;
 #[path = "runtime_publication_activation/legacy_core_archive.rs"]

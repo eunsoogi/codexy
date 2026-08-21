@@ -52,6 +52,12 @@ pub(crate) fn archive_repository(
         .arg(&repo)
         .status()?;
     assert!(tar_status.success(), "tar extract failed");
+    for relative in fixture_files::REMOVED_FILES {
+        let path = repo.join(relative);
+        if path.exists() {
+            fs::remove_file(path)?;
+        }
+    }
     let agents_root = repo.join("plugins/codexy/agents");
     fs::remove_dir_all(&agents_root)?;
     crate::support::copy_dir(

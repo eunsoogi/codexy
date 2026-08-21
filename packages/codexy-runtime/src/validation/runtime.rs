@@ -99,7 +99,8 @@ fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
 }
 
 fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
-    let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
+    let root = crate::paths::repo_root()?;
+    let path = root.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
     let legacy = ["darwin-arm64", "linux-x86_64"];
@@ -112,12 +113,9 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     for required in [
         "verify-selected-package:",
         "Download and verify selected immutable bytes",
-        "command -v sha256sum",
-        "shasum -a 256",
-        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+        "scripts/download-selected-runtime-package.sh dist/selected.tar.gz",
         "Assemble state-aware marketplace package without rebuilding",
         ".agents/plugins/runtime-activation.json",
-        "scripts/download-runtime-staging-artifact staging",
         "scripts/materialize-runtime-release-archive",
         "public-release",
         "dist/codexy-marketplace-plugin",
@@ -150,6 +148,62 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+pub(super) fn check_selected_runtime_source_helper(root: &Path) -> Result<()> {
+    let path = root.join("scripts/download-selected-runtime-package.sh");
+    let text = std::fs::read_to_string(&path)
+        .with_context(|| format!("reading {}", display_relative(&path)))?;
+    for required in [
+        "curl --fail --location \"$url\"",
+        "command -v sha256sum",
+        "shasum -a 256",
+        "runtime-release-receipt.json",
+        "legacy_release=plugins/codexy-devtools/runtime-release.json",
+        "scripts/download-runtime-staging-artifact staging",
+        "test \"$url\" = \"$expected_url\"",
+        "test \"$(digest_file \"$output\")\" = \"$digest\"",
+    ] {
+        if !text.contains(required) {
+            bail!(
+                "{} selected runtime source helper must include {required:?}",
+                display_relative(&path)
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, fs};
+
+    use super::check_selected_runtime_source_helper;
+
+    #[test]
+    fn selected_runtime_source_helper_rejects_missing_required_invariant()
+    -> Result<(), Box<dyn Error>> {
+        let temporary = tempfile::tempdir()?;
+        let scripts = temporary.path().join("scripts");
+        fs::create_dir_all(&scripts)?;
+        fs::write(
+            scripts.join("download-selected-runtime-package.sh"),
+            r#"curl --fail --location "$url"
+command -v sha256sum
+shasum -a 256
+legacy_release=plugins/codexy-devtools/runtime-release.json
+scripts/download-runtime-staging-artifact staging
+test "$url" = "$expected_url"
+test "$(digest_file "$output")" = "$digest"
+"#,
+        )?;
+
+        let result = check_selected_runtime_source_helper(temporary.path());
+        assert!(result.is_err());
+        let error = result.err().ok_or("missing helper invariant error")?;
+        assert!(error.to_string().contains("runtime-release-receipt.json"));
+        Ok(())
+    }
 }
 
 fn bundled_platforms(wrapper_path: &Path) -> Result<Vec<String>> {

@@ -44,65 +44,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
         run: |
-          digest_file() {
-            if command -v sha256sum >/dev/null 2>&1; then
-              sha256sum "$1" | awk '{print $1}'
-            else
-              shasum -a 256 "$1" | awk '{print $1}'
-            fi
-          }
-          mkdir -p dist
-          if test -f .agents/plugins/runtime-activation.json; then
-            record=.agents/plugins/runtime-activation.json
-            RELEASE_TAG="$(jq -r .runtime.selectedTag .agents/plugins/release-publish-contract.json)"
-            if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2> release-view-error; then
-              mkdir public-release
-              gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir public-release --pattern codexy-marketplace-plugin.tar.gz --pattern runtime-release-receipt.json
-              receipt=public-release/runtime-release-receipt.json
-              test "$(jq -r .release.tag "$receipt")" = "$RELEASE_TAG"
-              test "$(jq -r .source.stagingSourceCommit "$receipt")" = "$(jq -r .candidate.source.commit "$record")"
-              test "$(jq -r .staging.runId "$receipt")" = "$(jq -r .candidate.artifact.stagingRunId "$record")"
-              test "$(jq -r .staging.runAttempt "$receipt")" = "$(jq -r .candidate.artifact.stagingRunAttempt "$record")"
-              jq -cS .provenance "$receipt" | tr -d '\n' > public-provenance.json
-              jq -cS .provenance "$record" | tr -d '\n' > activated-provenance.json
-              cmp public-provenance.json activated-provenance.json || {
-                printf '%s\n' "public release receipt does not match activated staging identity" >&2
-                exit 1
-              }
-              cp public-release/codexy-marketplace-plugin.tar.gz dist/selected.tar.gz
-              test "$(digest_file dist/selected.tar.gz)" = "$(jq -r .artifact.sha256 "$receipt")"
-              : > dist/public-release
-            else
-              release_status=$?
-              if ! grep -Eq 'HTTP 404|release not found' release-view-error; then
-                cat release-view-error >&2
-                exit "$release_status"
-              fi
-              export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId "$record")"
-              export SOURCE_COMMIT="$(jq -r .candidate.source.commit "$record")"
-              scripts/download-runtime-staging-artifact staging
-              cp staging/codexy-marketplace-plugin.tar.gz dist/selected.tar.gz
-              test "$(digest_file dist/selected.tar.gz)" = "$(jq -r .artifact.sha256 "$record")"
-            fi
-            rm -f release-view-error
-          else
-            url="$(jq -r .artifact.url plugins/codexy-devtools/runtime-release.json)"
-            digest="$(jq -r .artifact.sha256 plugins/codexy-devtools/runtime-release.json)"
-            curl --fail --location "$url" -o dist/selected.tar.gz
-            test "$(digest_file dist/selected.tar.gz)" = "$digest"
-          fi
+          scripts/download-selected-runtime-package.sh dist/selected.tar.gz
       - name: Assemble state-aware marketplace package without rebuilding
         run: |
           if test -f dist/public-release; then state=public-release
+          elif test -f dist/legacy-public; then state=legacy-public
           elif test -f .agents/plugins/runtime-activation.json; then state=candidate-proven
           else state=legacy-public
           fi
           case "$state" in
           public-release)
-            export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)"
-            export STAGING_SOURCE_COMMIT="$(jq -r .candidate.source.commit .agents/plugins/runtime-activation.json)"
+            public_receipt=public-release/runtime-release-receipt.json
+            test -f "$public_receipt"
+            export STAGING_RUN_ID="$(jq -er .staging.runId "$public_receipt")"
+            export STAGING_SOURCE_COMMIT="$(jq -er .source.stagingSourceCommit "$public_receipt")"
             export ACTIVATION_COMMIT="$(git rev-parse HEAD)"
-            export RELEASE_TAG="$(jq -r .runtime.selectedTag .agents/plugins/release-publish-contract.json)"
+            export RELEASE_TAG="$(jq -er .release.tag "$public_receipt")"
+            export PUBLIC_RELEASE_RECEIPT="$public_receipt"
             export PUBLIC_RELEASE=1
             scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
             mkdir -p final-inspect
@@ -123,13 +81,18 @@ jobs:
             mkdir -p legacy final/plugins
             tar -xzf dist/selected.tar.gz -C legacy
             staged=final/plugins/codexy-devtools
+            legacy_plugin_root=$(scripts/check-release-archive-entries \
+              dist/selected.tar.gz 52428800 10000 268435456 --input-plugin-root auto)
             rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy-devtools/ "$staged/"
             for path in \
               plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin \
               plugins/codexy-devtools/runtime/codexy-mcp-codegraph-darwin-arm64.bin \
               plugins/codexy-devtools/runtime/codexy-mcp-lsp-linux-x86_64.bin \
-              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do test -f "legacy/$path"; done
-            cp -R legacy/plugins/codexy-devtools/runtime "$staged/"
+              plugins/codexy-devtools/runtime/codexy-mcp-codegraph-linux-x86_64.bin; do
+              runtime_path=${path#plugins/codexy-devtools/}
+              test -f "legacy/$legacy_plugin_root/$runtime_path"
+            done
+            cp -R "legacy/$legacy_plugin_root/runtime" "$staged/"
             tar -C final -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
             scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz "$staged"
             ;;
@@ -164,34 +127,10 @@ jobs:
           $env:SOURCE_COMMIT = $env:STAGING_SOURCE_COMMIT
           $env:ACTIVATION_COMMIT = (git rev-parse HEAD)
           $env:RELEASE_TAG = (Get-Content -Raw ".agents/plugins/release-publish-contract.json" | ConvertFrom-Json).runtime.selectedTag
-          $releaseOutput = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 2>&1
-          $releaseStatus = $LASTEXITCODE
-          if ($releaseStatus -eq 0) {
-            New-Item -ItemType Directory -Path public-release -ErrorAction Stop | Out-Null
-            gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --dir public-release --pattern codexy-marketplace-plugin.tar.gz --pattern runtime-release-receipt.json
-            if ($LASTEXITCODE -ne 0) { throw "public release download failed" }
-            $receipt = Get-Content -Raw public-release/runtime-release-receipt.json | ConvertFrom-Json
-            if ($receipt.release.tag -ne $env:RELEASE_TAG) { throw "public release tag mismatch" }
-            if ("$($receipt.source.stagingSourceCommit)" -ne "$($record.candidate.source.commit)") { throw "public release source mismatch" }
-            if ("$($receipt.staging.runId)" -ne "$($record.candidate.artifact.stagingRunId)") { throw "public release run identity mismatch" }
-            if ("$($receipt.staging.runAttempt)" -ne "$($record.candidate.artifact.stagingRunAttempt)") { throw "public release run attempt mismatch" }
-            $publicProvenance = jq -cS .provenance public-release/runtime-release-receipt.json
-            $activatedProvenance = jq -cS .provenance .agents/plugins/runtime-activation.json
-            if ($publicProvenance -ne $activatedProvenance) { throw "public release receipt does not match activated staging identity" }
-            $archive = "public-release/codexy-marketplace-plugin.tar.gz"
-            if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $receipt.artifact.sha256) { throw "public release archive digest mismatch" }
-            $publicArchive = $true
-          } else {
-            if ($releaseOutput -notmatch "HTTP 404|release not found") {
-              $releaseOutput | Write-Error
-              exit $releaseStatus
-            }
-            bash scripts/download-runtime-staging-artifact staging
-            if ($LASTEXITCODE -ne 0) { throw "authenticated candidate download failed" }
-            $archive = "staging/codexy-marketplace-plugin.tar.gz"
-            if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $record.artifact.sha256) { throw "candidate archive digest mismatch" }
-            $publicArchive = $false
-          }
+          $archive = "dist/selected.tar.gz"
+          bash scripts/download-selected-runtime-package.sh $archive
+          if ($LASTEXITCODE -ne 0) { throw "selected runtime download failed" }
+          $publicArchive = Test-Path -LiteralPath "dist/public-release" -PathType Leaf
           $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
           $entries = & $windowsTar -tzf $archive
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive listing failed" }
@@ -208,9 +147,19 @@ jobs:
           New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
-          New-Item -ItemType Directory -Path dist -ErrorAction Stop | Out-Null
           if ($publicArchive) { $env:PUBLIC_RELEASE = "1" }
-          else { Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue }
+          if ($publicArchive) {
+            $receiptPath = "public-release/runtime-release-receipt.json"
+            if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw "public release receipt missing" }
+            $receipt = Get-Content -Raw $receiptPath | ConvertFrom-Json
+            $env:STAGING_RUN_ID = "$($receipt.staging.runId)"
+            $env:STAGING_SOURCE_COMMIT = "$($receipt.source.stagingSourceCommit)"
+            $env:RELEASE_TAG = "$($receipt.release.tag)"
+            $env:PUBLIC_RELEASE_RECEIPT = $receiptPath
+          } else {
+            Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue
+            Remove-Item Env:PUBLIC_RELEASE_RECEIPT -ErrorAction SilentlyContinue
+          }
           bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz
           if ($LASTEXITCODE -ne 0) { throw "public archive projection failed" }
           $public = Join-Path $env:RUNNER_TEMP "public-marketplace"

@@ -157,13 +157,9 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     for required in [
         "verify-selected-package:",
         "Download and verify selected immutable bytes",
-        "curl --fail --location \"$url\"",
-        "command -v sha256sum",
-        "shasum -a 256",
-        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+        "scripts/download-selected-runtime-package.sh dist/selected.tar.gz",
         "Assemble state-aware marketplace package without rebuilding",
         ".agents/plugins/runtime-activation.json",
-        "scripts/download-runtime-staging-artifact staging",
         "scripts/materialize-runtime-release-archive",
         "public-release",
         "dist/codexy-marketplace-plugin",
@@ -176,6 +172,10 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
                 display_relative(path)
             );
         }
+    }
+    let root = crate::paths::repo_root()?;
+    if root.join(".git").exists() {
+        super::runtime::check_selected_runtime_source_helper(&root)?;
     }
     for forbidden in [
         "cargo build",

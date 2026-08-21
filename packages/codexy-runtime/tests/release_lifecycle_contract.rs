@@ -18,11 +18,20 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         "packages/getcodexy/uv.lock",
         "scripts/validate-release-lifecycle-contract",
     ];
+    let source_contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        source.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    let selected_runtime_tag = source_contract["runtime"]["selectedTag"]
+        .as_str()
+        .ok_or("selected runtime tag")?;
     for relative in version_sources {
         let from = source.join(relative);
         let to = target.join(relative);
         fs::create_dir_all(to.parent().ok_or("parent")?)?;
-        fs::write(&to, replace_known_versions(&fs::read_to_string(from)?, version))?;
+        fs::write(
+            &to,
+            replace_known_versions(&fs::read_to_string(from)?, version, selected_runtime_tag),
+        )?;
     }
     let lifecycle_script = target.join("scripts/validate-release-lifecycle-contract");
     crate::support::make_executable(&lifecycle_script)?;
@@ -73,6 +82,8 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
     Ok(())
 }
 
-fn replace_known_versions(text: &str, version: &str) -> String {
-    text.replace("1.3.0", version).replace("1.4.0", version)
+fn replace_known_versions(text: &str, version: &str, selected_runtime_tag: &str) -> String {
+    text.replace("1.3.0", version)
+        .replace("1.4.0", version)
+        .replace(selected_runtime_tag, &format!("v{version}"))
 }

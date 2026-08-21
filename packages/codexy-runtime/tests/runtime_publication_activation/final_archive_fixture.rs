@@ -115,6 +115,7 @@ impl FinalArchiveFixture {
                 .status()?
                 .success()
         );
+        super::public_receipt::write(&root, &public_archive)?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::write(
             root.join(".agents/plugins/runtime-activation.json"),
@@ -157,6 +158,7 @@ impl FinalArchiveFixture {
         &self,
         release_tag: &str,
     ) -> Result<Output, std::io::Error> {
+        super::public_receipt::set_tag_for_root(&self.root, release_tag)?;
         self.materialize_with(&self.public_archive, STAGING_COMMIT, "42", None, true, release_tag)
     }
 
@@ -202,6 +204,10 @@ impl FinalArchiveFixture {
             .env("STAGING_RUN_ID", run_id);
         if public {
             command.env("PUBLIC_RELEASE", "1");
+            command.env_path(
+                "PUBLIC_RELEASE_RECEIPT",
+                self.root.join("public-release/runtime-release-receipt.json"),
+            );
         }
         command.output()
     }
