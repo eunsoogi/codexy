@@ -24,7 +24,7 @@ pub(crate) use fixture_command::{
     FixtureCommand, fixture_script_launcher, windows_fixture_companion,
     windows_static_python_fixture,
 };
-pub(crate) use fixture_text::normalize_fixture_text;
+pub(crate) use fixture_text::{normalize_fixture_text, write_fixture_with_permissions};
 
 #[cfg(windows)]
 use std::process::Command;

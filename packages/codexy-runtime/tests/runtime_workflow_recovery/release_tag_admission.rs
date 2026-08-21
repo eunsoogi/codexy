@@ -128,7 +128,11 @@ impl Fixture {
             &root.join("dist/runtime-release-receipt.json"),
             fs::write(root.join("dist/runtime-release-receipt.json"), "{}")
         );
-        for (name, body) in [("git", git_fixture()), ("jq", jq_fixture()), ("gh", gh_fixture())] {
+        for (name, body) in [
+            ("git", git_fixture()),
+            ("jq", jq_fixture()),
+            ("gh", support::release_tag_admission_gh_fixture()),
+        ] {
             let path = bin.join(name);
             fixture_io!(&format!("write fixture command {name}"), &path, write_posix_fixture_command(&path, body));
         }
@@ -238,36 +242,4 @@ fn git_fixture() -> &'static str {
 
 fn jq_fixture() -> &'static str {
     "#!/bin/sh\ncase \"$2\" in .source.stagingSourceCommit) printf '%s\\n' \"$STAGING_SOURCE_COMMIT\" ;; .source.activationCommit) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; .staging.runId) printf '%s\\n' \"$STAGING_RUN_ID\" ;; *) exit 91 ;; esac\n"
-}
-
-fn gh_fixture() -> &'static str {
-    r#"#!/bin/sh
-if test -n "${GH_CONFIG_DIR+x}${GH_HOST+x}${GH_ENTERPRISE_TOKEN+x}${GITHUB_TOKEN+x}"; then printf '%s\n' 'inherited GitHub state reached fixture' >&2; exit 92; fi
-state() { cat "$REMOTE_STATE"; }
-if [ "$1" = api ]; then
-  case "$*" in
-    *"repos/eunsoogi/codexy/releases"*)
-      [ "$GH_TOKEN" = fixture-token ] || { printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }
-      printf '%s\n' release >> "$RELEASE_CALLS"
-      printf '%s\n' 'release-create sentinel' >&2
-      exit 83
-      ;;
-  esac
-  printf '%s\n' api >> "$API_CALLS"
-  [ "$GH_TOKEN" = fixture-token ] || { printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }
-  case "$(state)" in
-    absent) printf '%s\n' exact > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 201 Created'; exit 0 ;;
-    concurrent-exact) printf '%s\n' exact > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
-    concurrent-wrong) printf '%s\n' wrong > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
-    concurrent-unpeelable) printf '%s\n' unpeelable > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
-    api-auth) printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;;
-    api-failure) printf '%s\n' 'HTTP/2.0 500 Server Error'; exit 1 ;;
-    *) exit 91 ;;
-  esac
-fi
-if [ "$1 $2" = 'release view' ]; then exit 1; fi
-printf '%s\n' release >> "$RELEASE_CALLS"
-printf '%s\n' 'release-create sentinel' >&2
-exit 83
-"#
 }

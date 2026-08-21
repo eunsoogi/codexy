@@ -67,12 +67,15 @@ pub(crate) use fixture_command_bindings::{
     write_posix_fixture_shell_runner, write_posix_fixture_shell_runner_with_scrub,
     write_single_posix_fixture_shell_runner,
 };
-pub(crate) use fixture_command_mock::write_posix_fixture_command;
+pub(crate) use fixture_command_mock::{
+    release_tag_admission_gh_fixture, write_executable_fixture, write_posix_fixture_command,
+};
 pub(crate) use fixture_hook_path::hook_fixture_model_input;
 pub(crate) use fixture_path::fixture_path_text;
 pub(crate) use fixture_probe::{FixtureProbe, install_fixture_probe};
 pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
+    write_fixture_with_permissions,
 };
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
