@@ -93,20 +93,18 @@ impl Fixture {
         )?;
         let runtime = repo.join("packages/codexy-runtime");
         fs::create_dir_all(runtime.join("src/version"))?;
-        for relative in ["Cargo.toml", "Cargo.lock", "src/version/bootstrap.rs"] {
-            fs::copy(
-                repo.join(relative),
-                runtime.join(relative),
-            )?;
-        }
         let suite = runtime.join("tests/suites/all.rs");
         fs::create_dir_all(suite.parent().ok_or("suite parent")?)?;
         fs::copy(
             codexy_runtime::paths::runtime_package_root().join("tests/suites/all.rs"),
             suite,
         )?;
-        fs::remove_file(repo.join("Cargo.toml"))?;
-        fs::remove_file(repo.join("Cargo.lock"))?;
+        for relative in ["Cargo.toml", "Cargo.lock"] {
+            let path = repo.join(relative);
+            if path.exists() {
+                fs::remove_file(path)?;
+            }
+        }
         metadata::synchronize_current_plugin_validation_inputs(&repo)?;
         metadata::make_uv_lock_stale(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
@@ -141,7 +139,7 @@ impl Fixture {
         let activator = bin.join("activate-current-bootstrap");
         write_posix_fixture_command(
             &activator,
-            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = '1.3.0'\ndata['runtime']['selectedTag'] = 'v1.2.2'\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'], root / 'packages/codexy-runtime/src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
+            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\nbootstrap_source = pathlib.Path(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'])\nbootstrap = bootstrap_source.read_text()\nselected_version = next(\n    line.split('= ', 1)[1].strip().strip(';').strip(chr(34))\n    for line in bootstrap.splitlines()\n    if line.startswith('pub(super) const VERSION: &str = ')\n)\nruntime_release = json.loads((root / 'plugins/codexy-devtools/runtime-release.json').read_text())\nselected_tag = runtime_release['artifact']['tag']\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = selected_version\ndata['runtime']['selectedTag'] = selected_tag\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(bootstrap_source, root / 'packages/codexy-runtime/src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
         )?;
         let command_trace = temp.path().join("command-trace");
         write_posix_fixture_command(

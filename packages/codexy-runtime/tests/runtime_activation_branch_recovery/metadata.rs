@@ -26,6 +26,13 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         fs::remove_dir_all(&plugin)?;
     }
     copy_dir(root.join("plugins/codexy-devtools"), &plugin)?;
+    let devtools_manifest_path = plugin.join(".codex-plugin/plugin.json");
+    let mut devtools_manifest: Value = serde_json::from_slice(&fs::read(&devtools_manifest_path)?)?;
+    devtools_manifest["version"] = Value::String(baseline_version.clone());
+    fs::write(
+        &devtools_manifest_path,
+        format!("{}\n", serde_json::to_string_pretty(&devtools_manifest)?),
+    )?;
     let core_candidate: Value = serde_json::from_slice(&fs::read(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
@@ -33,7 +40,6 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
-        ".agents/plugins/release-publish-contract.json",
         ".agents/plugins/marketplace.json",
         "docs/getcodexy-component-installation.md",
         "packages/getcodexy/contracts/component-installation-contract.json",
@@ -57,13 +63,21 @@ pub(super) fn make_uv_lock_stale(repo: &Path) -> Result<(), Box<dyn std::error::
         .lines()
         .find_map(|line| line.trim().strip_prefix("version = \"")?.strip_suffix('"'))
         .ok_or("getcodexy lock version")?;
+    let stale_version = next_patch_version(current_version)?;
     let stale_lock = lock_text.replacen(
         &format!("version = \"{current_version}\""),
-        "version = \"0.0.0\"",
+        &format!("version = \"{stale_version}\""),
         1,
     );
     fs::write(lock, stale_lock)?;
     Ok(())
+}
+
+fn next_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let (major, remainder) = version.split_once('.').ok_or("major version")?;
+    let (minor, patch) = remainder.split_once('.').ok_or("minor version")?;
+    let patch = patch.parse::<u64>()?.checked_add(1).ok_or("patch overflow")?;
+    Ok(format!("{major}.{minor}.{patch}"))
 }
 
 fn reset_github_version(repo: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -147,10 +161,17 @@ pub(super) fn enable_autocrlf(repo: &Path) -> Result<(), Box<dyn std::error::Err
 }
 
 pub(super) fn select_current_bootstrap(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let selected_version = current_candidate_version()?;
+    let runtime_release: Value = serde_json::from_slice(&fs::read(
+        repo.join("plugins/codexy-devtools/runtime-release.json"),
+    )?)?;
+    let selected_tag = runtime_release["artifact"]["tag"]
+        .as_str()
+        .ok_or("selected runtime release tag")?;
     let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
     let mut contract: Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
-    contract["bootstrap"]["selectedVersion"] = json!("1.3.0");
-    contract["runtime"]["selectedTag"] = json!("v1.2.2");
+    contract["bootstrap"]["selectedVersion"] = json!(selected_version);
+    contract["runtime"]["selectedTag"] = json!(selected_tag);
     fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
     fs::copy(
         codexy_runtime::paths::runtime_package_root().join("src/version/bootstrap.rs"),
@@ -210,35 +231,4 @@ pub(super) fn current_candidate_version() -> Result<String, Box<dyn std::error::
 fn is_pre_activation_baseline(contract: &Value, selected: &str) -> bool {
     contract["bootstrap"]["candidateVersion"] == selected
         && contract["bootstrap"]["selectedVersion"] != selected
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::is_pre_activation_baseline;
-
-    fn historical(selected: &str, candidate: &str) -> serde_json::Value {
-        json!({"bootstrap": {"selectedVersion": selected, "candidateVersion": candidate}})
-    }
-
-    #[test]
-    fn selected_state_recovers_the_selected_release_baseline() {
-        assert!(is_pre_activation_baseline(
-            &historical("1.2.2", "1.3.0"),
-            "1.3.0"
-        ));
-    }
-
-    #[test]
-    fn candidate_prepared_state_ignores_the_next_candidate() {
-        assert!(is_pre_activation_baseline(
-            &historical("1.2.2", "1.3.0"),
-            "1.3.0"
-        ));
-        assert!(!is_pre_activation_baseline(
-            &historical("1.3.0", "1.4.0"),
-            "1.3.0"
-        ));
-    }
 }

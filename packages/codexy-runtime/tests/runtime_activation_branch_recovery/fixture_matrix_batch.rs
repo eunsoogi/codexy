@@ -76,7 +76,7 @@ fn manifest_text(cases: &[BatchCase], root: &Path) -> Result<String, Box<dyn std
             case.name.to_owned(),
             "activation".into(),
             "main".into(),
-            "1.3.0".into(),
+            case.fixture.activation_version.clone(),
             fixture_path_text(&case.fixture.receipt)?,
             fixture_path_text(&case.fixture.repo)?,
             fixture_path_text(&case.fixture.expected)?,
