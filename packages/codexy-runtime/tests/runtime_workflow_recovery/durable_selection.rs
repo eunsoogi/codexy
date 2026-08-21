@@ -184,21 +184,43 @@ fn windows_selected_runtime_verification_exercises_the_public_release_branch()
     fs::write(root.join(".agents/plugins/release-publish-contract.json"), r#"{"runtime":{"selectedTag":"v1.3.0"}}"#)?;
     let digest = format!("{:x}", Sha256::digest(fs::read(&archive)?));
     fs::write(&receipt, format!(r#"{{"release":{{"tag":"v1.3.0"}},"source":{{"stagingSourceCommit":"{}"}},"staging":{{"runId":42,"runAttempt":3}},"provenance":{{"runId":42}},"artifact":{{"sha256":"{digest}"}}}}"#, "a".repeat(40)))?;
-    fs::write(root.join("bin/gh.cmd"), r#"@echo off
-if "%1 %2"=="release view" exit /b 0
-if "%1 %2"=="release download" (
-  if not exist public-release mkdir public-release
-  copy /y "%PUBLIC_ARCHIVE%" "public-release\codexy-marketplace-plugin.tar.gz" >nul
-  copy /y "%PUBLIC_RECEIPT%" "public-release\runtime-release-receipt.json" >nul
-  exit /b 0
-)
-exit /b 91
-"#)?;
+    support::write_posix_fixture_command(
+        &root.join("bin/gh"),
+        r#"#!/bin/sh
+set -eu
+case "$1 $2" in
+  'release view') exit 0 ;;
+  'release download')
+    while test "$#" -gt 0; do
+      case "$1" in
+        --dir) directory=$2; shift 2 ;;
+        --pattern)
+          pattern=$2
+          case "$pattern" in
+            codexy-marketplace-plugin.tar.gz) source=$PUBLIC_ARCHIVE ;;
+            runtime-release-receipt.json) source=$PUBLIC_RECEIPT ;;
+            *) source= ;;
+          esac
+          if test -n "$source"; then
+            source=$(cygpath -u "$source")
+            mkdir -p "$directory"
+            cp "$source" "$directory/$pattern"
+          fi
+          shift 2
+          ;;
+        *) shift ;;
+      esac
+    done
+    ;;
+  *) exit 91 ;;
+esac
+"#,
+    )?;
     let runner = root.join("verify-public-release.ps1");
     fs::write(&runner, format!("$record = Get-Content -Raw '.agents/plugins/runtime-activation.json' | ConvertFrom-Json\n$env:STAGING_RUN_ID = \"$($record.candidate.artifact.stagingRunId)\"\n$env:STAGING_SOURCE_COMMIT = \"$($record.candidate.source.commit)\"\n$env:RELEASE_TAG = 'v1.3.0'\n{}", windows_release_branch()?))?;
     let mut paths = vec![root.join("bin")];
     paths.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
-    let output = Command::new("pwsh").args(["-NoProfile", "-File"]).arg(&runner).current_dir(root).env("GITHUB_REPOSITORY", "eunsoogi/codexy").env("PUBLIC_ARCHIVE", archive).env("PUBLIC_RECEIPT", receipt).env("PATH", std::env::join_paths(paths)?).output()?;
+    let output = Command::new("pwsh").args(["-NoProfile", "-File"]).arg(&runner).current_dir(root).env("GITHUB_REPOSITORY", "eunsoogi/codexy").env("GH_TOKEN", "fixture-token").env("PUBLIC_ARCHIVE", archive).env("PUBLIC_RECEIPT", receipt).env("PATH", std::env::join_paths(paths)?).output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert!(root.join("public-release/codexy-marketplace-plugin.tar.gz").is_file());
     assert!(root.join("dist/public-release").is_file());

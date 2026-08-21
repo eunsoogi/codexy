@@ -12,6 +12,9 @@ pub(crate) fn copy_dir(
         let entry =
             entry.map_err(|error| copy_error("read_dir_entry", source, target, None, error))?;
         let source_path = entry.path();
+        if is_transient_git_object_lock(&source_path) {
+            continue;
+        }
         let target_path = target.join(entry.file_name());
         if source_path.is_dir() {
             if is_generated_fixture_directory(&source_path) {
@@ -66,6 +69,20 @@ pub(crate) fn copy_wrapper_surface(
 
 pub(super) fn is_generated_fixture_directory(path: &std::path::Path) -> bool {
     path.file_name().is_some_and(|name| name == "__pycache__")
+}
+
+fn is_transient_git_object_lock(path: &std::path::Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension == "lock")
+        && path
+            .parent()
+            .and_then(std::path::Path::file_name)
+            .is_some_and(|name| name == "objects")
+        && path
+            .parent()
+            .and_then(std::path::Path::parent)
+            .and_then(std::path::Path::file_name)
+            .is_some_and(|name| name == ".git")
 }
 
 #[cfg(target_os = "macos")]

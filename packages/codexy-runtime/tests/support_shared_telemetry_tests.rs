@@ -48,6 +48,35 @@ fn fixture_copy_omits_generated_python_bytecode() -> Result<(), Box<dyn std::err
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn fixture_copy_ignores_a_disappeared_git_maintenance_lock()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::symlink;
+
+    let temp = tempfile::tempdir()?;
+    let source = temp.path().join("source");
+    let target = temp.path().join("target");
+    let objects = source.join(".git/objects");
+    std::fs::create_dir_all(&objects)?;
+    std::fs::write(source.join(".git/config"), b"fixture git config\n")?;
+    // A dangling entry models maintenance.lock disappearing after read_dir and
+    // before the copier can dereference the entry.
+    symlink(
+        objects.join("maintenance.lock.removed"),
+        objects.join("maintenance.lock"),
+    )?;
+
+    copy_dir(&source, &target)?;
+
+    assert_eq!(
+        std::fs::read(target.join(".git/config"))?,
+        b"fixture git config\n"
+    );
+    assert!(!target.join(".git/objects/maintenance.lock").exists());
+    Ok(())
+}
+
 #[test]
 fn fixture_platform_selector_is_explicit_and_never_reads_host_environment()
 -> Result<(), Box<dyn std::error::Error>> {
