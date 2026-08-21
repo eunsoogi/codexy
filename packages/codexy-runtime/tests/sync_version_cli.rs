@@ -60,13 +60,14 @@ fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error
         String::from_utf8_lossy(&matching.stderr)
     );
 
-    let mismatched = run_sync(&root, &["--check", "--tag", "1.1.0"])?;
+    let mismatched = run_sync(&root, &["--check", "--tag", version.as_str()])?;
     assert!(
         !mismatched.status.success(),
         "tag without v prefix unexpectedly passed"
     );
 
-    let stale = run_sync(&root, &["--check", "--tag", "v9.9.9"])?;
+    let stale_tag = format!("v{}", isolation::next_patch_version(&version)?);
+    let stale = run_sync(&root, &["--check", "--tag", &stale_tag])?;
     assert!(
         !stale.status.success(),
         "mismatched release tag unexpectedly passed"
@@ -128,7 +129,9 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
 
     let lock_path = repo.join("packages/codexy-runtime/Cargo.lock");
     let lock_text = fs::read_to_string(&lock_path)?;
-    let stale_lock = stale_codexy_runtime_lock_version(&lock_text, "9.9.9")?;
+    let selected_version = isolation::fixture_version(&repo)?;
+    let stale_version = isolation::next_patch_version(&selected_version)?;
+    let stale_lock = stale_codexy_runtime_lock_version(&lock_text, &stale_version)?;
     assert_ne!(lock_text, stale_lock, "lock fixture did not change");
     fs::write(&lock_path, stale_lock)?;
 
@@ -144,7 +147,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     );
     let after = fs::read_to_string(&lock_path)?;
     assert_eq!(
-        stale_codexy_runtime_lock_version(&after, "9.9.9")?,
+        stale_codexy_runtime_lock_version(&after, &stale_version)?,
         after,
         "sync-version --check changed the stale Cargo.lock"
     );
@@ -158,8 +161,10 @@ fn version_advance_requires_selected_public_identities_before_mutation(
     let temp = tempfile::tempdir()?;
     let repo = fixture_repo(&temp, "pre-activation")?;
     let before = isolation::version_surface_contents(&repo)?;
+    let selected_version = isolation::fixture_version(&repo)?;
+    let target = isolation::next_patch_version(&selected_version)?;
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", "1.3.1"])
+        .args(["--version", &target])
         .env("CODEXY_REPO_ROOT", &repo)
         .current_dir(&repo)
         .output()?;

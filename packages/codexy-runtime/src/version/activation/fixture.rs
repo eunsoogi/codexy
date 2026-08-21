@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
@@ -19,10 +19,26 @@ pub(super) struct Fixture {
     _temp: tempfile::TempDir,
     pub(super) root: PathBuf,
     pub(super) receipt: PathBuf,
+    prior_runtime_release: String,
+    prior_runtime_version: String,
 }
 
 pub(super) fn candidate_version() -> &'static str {
     super::super::super::bootstrap::CANDIDATE_VERSION
+}
+
+fn selected_version() -> &'static str {
+    super::super::super::bootstrap::VERSION
+}
+
+pub(super) fn next_patch_version(version: &str) -> Result<String> {
+    let (major, remainder) = version.split_once('.').context("major version")?;
+    let (minor, patch) = remainder.split_once('.').context("minor version")?;
+    let patch = patch
+        .parse::<u64>()?
+        .checked_add(1)
+        .context("patch overflow")?;
+    Ok(format!("{major}.{minor}.{patch}"))
 }
 
 pub(super) fn write(root: &Path, relative: &str, contents: impl AsRef<[u8]>) -> Result<()> {
@@ -45,6 +61,15 @@ impl Fixture {
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("repo");
         let mcp = root.join("plugins/codexy-devtools/mcp");
+        let prior_runtime_release = fs::read_to_string(
+            crate::paths::repository_root().join("plugins/codexy-devtools/runtime-release.json"),
+        )?;
+        let release: Value = serde_json::from_str(&prior_runtime_release)?;
+        let prior_runtime_version = release["artifact"]["tag"]
+            .as_str()
+            .and_then(|tag| tag.strip_prefix('v'))
+            .context("prior runtime version")?
+            .to_owned();
         fs::create_dir_all(root.join("packages/codexy-runtime/src/version"))?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(root.join("plugins/codexy-devtools/.codex-plugin"))?;
@@ -53,18 +78,26 @@ impl Fixture {
             &root,
             "packages/codexy-runtime/src/version/bootstrap.rs",
             format!(
-                "pub(super) const VERSION: &str = \"1.3.0\";\npub(super) const CANDIDATE_VERSION: &str = \"{}\";\n",
+                "pub(super) const VERSION: &str = \"{}\";\npub(super) const CANDIDATE_VERSION: &str = \"{}\";\n",
+                selected_version(),
                 candidate_version()
             ),
         )?;
         for (path, contents) in [
             (
                 "plugins/codexy-devtools/runtime-release.json",
-                r#"{"artifact":{"tag":"v1.2.2"}}"#,
+                prior_runtime_release.as_str(),
             ),
             (
                 ".agents/plugins/release-publish-contract.json",
-                r#"{"bootstrap":{"selectedVersion":"1.3.0"},"runtime":{"selectedTag":"v1.2.2","platforms":["darwin-arm64","linux-x86_64"]},"package":{"platforms":["darwin-arm64","linux-x86_64"]}}"#,
+                &serde_json::to_string(&json!({
+                    "bootstrap": {"selectedVersion": selected_version()},
+                    "runtime": {
+                        "selectedTag": release["artifact"]["tag"],
+                        "platforms": ["darwin-arm64", "linux-x86_64"]
+                    },
+                    "package": {"platforms": ["darwin-arm64", "linux-x86_64"]}
+                }))?,
             ),
             (
                 "plugins/codexy-devtools/.codex-plugin/plugin.json",
@@ -82,7 +115,7 @@ impl Fixture {
                 &root,
                 path,
                 format!(
-                    "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy==0.0.1 codexy-mcp-runtime {server} -- \"$@\"\n"
+                    "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy=={prior_runtime_version} codexy-mcp-runtime {server} -- \"$@\"\n"
                 ),
             )?;
         }
@@ -92,6 +125,8 @@ impl Fixture {
             _temp: temp,
             root,
             receipt,
+            prior_runtime_release,
+            prior_runtime_version,
         })
     }
 
@@ -101,6 +136,14 @@ impl Fixture {
 
     pub(super) fn wrappers(&self) -> impl Iterator<Item = PathBuf> + '_ {
         WRAPPERS.into_iter().map(|path| self.root.join(path))
+    }
+
+    pub(super) fn prior_runtime_release(&self) -> &str {
+        &self.prior_runtime_release
+    }
+
+    pub(super) fn prior_runtime_version(&self) -> &str {
+        &self.prior_runtime_version
     }
 
     pub(super) fn tracked(&self) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>> {

@@ -10,6 +10,7 @@ mod fixture_matrix_commands;
 
 use crate::support::{self, FixtureCommand};
 use fixture_matrix_commands::{fake_activator, fake_gh, fake_sync_version};
+use serde_json::Value;
 const AUTHORIZED: [&str; 11] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
@@ -49,6 +50,7 @@ pub(super) struct FixtureMatrix {
     git_starts: Rc<Cell<usize>>,
     pub(super) verifier_starts: Rc<Cell<usize>>,
     pub(super) batched_case_count: Rc<Cell<usize>>,
+    pub(super) activation_version: String,
 }
 
 pub(super) struct Fixture {
@@ -58,6 +60,7 @@ pub(super) struct Fixture {
     pub(super) bin: PathBuf,
     pub(super) receipt: PathBuf,
     pub(super) verifier_starts: Rc<Cell<usize>>,
+    pub(super) activation_version: String,
 }
 
 impl FixtureMatrix {
@@ -69,6 +72,14 @@ impl FixtureMatrix {
         let git_starts = Rc::new(Cell::new(0));
         let verifier_starts = Rc::new(Cell::new(0));
         let batched_case_count = Rc::new(Cell::new(0));
+        let manifest: Value = serde_json::from_slice(&fs::read(
+            codexy_runtime::paths::repository_root()
+                .join("plugins/codexy/.codex-plugin/plugin.json"),
+        )?)?;
+        let activation_version = manifest["version"]
+            .as_str()
+            .ok_or("activation fixture version")?
+            .to_owned();
         fs::create_dir_all(&seed_repo)?;
         fs::create_dir_all(&expected)?;
         fs::create_dir_all(&bin)?;
@@ -80,7 +91,11 @@ impl FixtureMatrix {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
-        write(&seed_repo, "packages/getcodexy/pyproject.toml", b"version = \"1.3.0\"\n")?;
+        write(
+            &seed_repo,
+            "packages/getcodexy/pyproject.toml",
+            format!("version = \"{activation_version}\"\n").as_bytes(),
+        )?;
         for path in PRESERVED {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("base:{path}\n").as_bytes())?;
@@ -97,7 +112,17 @@ impl FixtureMatrix {
         fake_activator(&bin.join("activate"))?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, "{}")?;
-        Ok(Self { temp, seed_repo, expected, bin, receipt, git_starts, verifier_starts, batched_case_count })
+        Ok(Self {
+            temp,
+            seed_repo,
+            expected,
+            bin,
+            receipt,
+            git_starts,
+            verifier_starts,
+            batched_case_count,
+            activation_version,
+        })
     }
 
     pub(super) fn case(
@@ -140,6 +165,7 @@ impl FixtureMatrix {
             bin: self.bin.clone(),
             receipt: self.receipt.clone(),
             verifier_starts: self.verifier_starts.clone(),
+            activation_version: self.activation_version.clone(),
         })
     }
 
@@ -170,7 +196,7 @@ impl Fixture {
         command.args([
             "activation",
             "main",
-            "1.3.0",
+            &self.activation_version,
             self.receipt.to_str().ok_or("receipt")?,
         ])
         .current_dir(&self.repo)

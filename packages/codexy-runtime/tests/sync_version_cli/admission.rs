@@ -2,7 +2,10 @@ use std::{fs, path::Path, process::Command};
 
 use serde_json::{Value, json};
 
-use super::isolation::version_surface_contents;
+use super::isolation::{
+    bootstrap_candidate_version, fixture_version, next_patch_version, prior_runtime_version,
+    version_surface_contents,
+};
 
 #[test]
 fn version_admission_matrix_is_ordered_and_fail_closed()
@@ -10,21 +13,24 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let current = super::archive_repository(archive, &temp, "current")?;
-    assert!(admit(&current, "1.3.0")?.status.success());
-    assert!(!admit(&current, "1.1.0")?.status.success());
+    let current_version = fixture_version(&current)?;
+    let prior_version = prior_runtime_version(&current)?;
+    assert!(admit(&current, &current_version)?.status.success());
+    assert!(!admit(&current, &prior_version)?.status.success());
 
     for case in ["exact", "stale-bootstrap", "stale-runtime", "legacy-runtime", "wrapper-drift"] {
         let root = super::archive_repository(archive, &temp, case)?;
-        select_next_public_identities(&root)?;
+        let target = next_patch_version(&current_version)?;
+        select_next_public_identities(&root, &target, &current_version)?;
         match case {
             "exact" => {}
             "stale-bootstrap" => mutate_json(
                 &root.join(".agents/plugins/release-publish-contract.json"),
-                |value| value["bootstrap"]["selectedVersion"] = json!("1.3.0"),
+                |value| value["bootstrap"]["selectedVersion"] = json!(current_version.clone()),
             )?,
             "stale-runtime" => mutate_json(
                 &root.join(".agents/plugins/release-publish-contract.json"),
-                |value| value["runtime"]["selectedTag"] = json!("v1.3.0"),
+                |value| value["runtime"]["selectedTag"] = json!(format!("v{current_version}")),
             )?,
             "legacy-runtime" => mutate_json(
                 &root.join(".agents/plugins/runtime-activation.json"),
@@ -32,11 +38,11 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             )?,
             "wrapper-drift" => fs::write(
                 root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
-                "#!/bin/sh\nexec uvx --from getcodexy==1.2.1 codexy-mcp-runtime \"$server\" -- \"$@\"\n",
+                format!("#!/bin/sh\nexec uvx --from getcodexy=={target} codexy-mcp-runtime \"$server\" -- \"$@\"\n"),
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }
-        let output = admit(&root, "1.3.1")?;
+        let output = admit(&root, &target)?;
         assert_eq!(
             output.status.success(),
             case == "exact",
@@ -44,7 +50,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             String::from_utf8_lossy(&output.stderr),
         );
         if case == "exact" {
-            let advance = sync_version(&root, "1.3.1")?;
+            let advance = sync_version(&root, &target)?;
             assert!(
                 advance.status.success(),
                 "activated source failed sync --version: {}",
@@ -67,8 +73,10 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let root = super::archive_repository(archive, &temp, "candidate")?;
+    let selected_version = fixture_version(&root)?;
+    let candidate_version = next_patch_version(&selected_version)?;
     let selected = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", "1.3.0"])
+        .args(["--version", &selected_version])
         .env("CODEXY_REPO_ROOT", &root)
         .current_dir(&root)
         .output()?;
@@ -79,16 +87,17 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     );
     let bootstrap = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
     let bootstrap_text = fs::read_to_string(&bootstrap)?;
+    let current_candidate = bootstrap_candidate_version(&root)?;
     fs::write(
         &bootstrap,
         bootstrap_text.replace(
-            "CANDIDATE_VERSION: &str = \"1.4.0\"",
-            "CANDIDATE_VERSION: &str = \"1.3.0\"",
+            &format!("CANDIDATE_VERSION: &str = \"{current_candidate}\""),
+            &format!("CANDIDATE_VERSION: &str = \"{selected_version}\""),
         ),
     )?;
     let contract_path = root.join(".agents/plugins/release-publish-contract.json");
     let mut contract: Value = serde_json::from_slice(&fs::read(&contract_path)?)?;
-    contract["bootstrap"]["candidateVersion"] = json!("1.3.0");
+    contract["bootstrap"]["candidateVersion"] = json!(selected_version);
     fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
     let before = version_surface_contents(&root)?;
     let bootstrap_before = fs::read(&bootstrap)?;
@@ -97,7 +106,10 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     let pyproject_before = fs::read(&pyproject)?;
     let uv_lock_before = fs::read(&uv_lock)?;
     let contract_before = fs::read(&contract_path)?;
-    for args in [["--admit-candidate", "1.4.0"], ["--prepare-candidate", "1.4.0"]] {
+    for args in [
+        ["--admit-candidate", candidate_version.as_str()],
+        ["--prepare-candidate", candidate_version.as_str()],
+    ] {
         let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
             .args(args)
             .env("CODEXY_REPO_ROOT", &root)
@@ -126,12 +138,12 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     let contract: Value = serde_json::from_str(&fs::read_to_string(
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
-    assert_eq!(contract["version"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.4.0");
+    assert_eq!(contract["version"], selected_version);
+    assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
+    assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
     assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
-    assert!(fs::read_to_string(&bootstrap)?.contains("VERSION: &str = \"1.3.0\""));
-    assert!(fs::read_to_string(&bootstrap)?.contains("CANDIDATE_VERSION: &str = \"1.4.0\""));
+    assert!(fs::read_to_string(&bootstrap)?.contains(&format!("VERSION: &str = \"{selected_version}\"")));
+    assert!(fs::read_to_string(&bootstrap)?.contains(&format!("CANDIDATE_VERSION: &str = \"{candidate_version}\"")));
     assert_ne!(fs::read(&bootstrap)?, bootstrap_before);
     assert_ne!(fs::read(&pyproject)?, pyproject_before);
     assert_ne!(fs::read(&uv_lock)?, uv_lock_before);
@@ -147,7 +159,7 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
             let manifest: Value = serde_json::from_slice(&fs::read(&path)?)?;
             for field in ["components", "compatibleCombinations"] {
                 for entry in manifest[field].as_array().ok_or("component manifest array")? {
-                    assert_eq!(entry["version"], "1.4.0");
+                    assert_eq!(entry["version"], candidate_version);
                 }
             }
             continue;
@@ -157,17 +169,23 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     Ok(())
 }
 
-fn select_next_public_identities(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn select_next_public_identities(
+    root: &Path,
+    target: &str,
+    candidate: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     mutate_json(
         &root.join(".agents/plugins/release-publish-contract.json"),
         |value| {
-            value["bootstrap"]["selectedVersion"] = json!("1.3.1");
-            value["runtime"]["selectedTag"] = json!("v1.3.1");
+            value["bootstrap"]["selectedVersion"] = json!(target);
+            value["runtime"]["selectedTag"] = json!(format!("v{target}"));
         },
     )?;
     fs::write(
         root.join("packages/codexy-runtime/src/version/bootstrap.rs"),
-        "pub(super) const VERSION: &str = \"1.3.1\";\npub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+        format!(
+            "pub(super) const VERSION: &str = \"{target}\";\npub(super) const CANDIDATE_VERSION: &str = \"{candidate}\";\n"
+        ),
     )?;
     Ok(())
 }

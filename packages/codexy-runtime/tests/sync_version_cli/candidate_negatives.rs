@@ -7,7 +7,10 @@ use std::{
 use serde_json::{Value, json};
 
 use super::archive::RepositoryArchive;
-use super::isolation::version_surface_contents;
+use super::isolation::{
+    bootstrap_candidate_version, fixture_version, next_patch_version, prior_runtime_version,
+    version_surface_contents,
+};
 use super::{archive_repository, shared_repository_archive};
 
 #[derive(Clone, Copy)]
@@ -36,9 +39,16 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
         NegativeCase::CheckFalsePositive,
     ] {
         let root = selected_fixture(archive, &temp, case_name(case))?;
+        let selected_version = fixture_version(&root)?;
+        let candidate_version = next_patch_version(&selected_version)?;
+        let prior_version = prior_runtime_version(&root)?;
         match case {
             NegativeCase::CandidateNotAdvanced => {
-                reject(&root, &["--admit-candidate", "1.3.0"], case_name(case))?;
+                reject(
+                    &root,
+                    &["--admit-candidate", selected_version.as_str()],
+                    case_name(case),
+                )?;
             }
             NegativeCase::MalformedCandidate => {
                 reject(&root, &["--prepare-candidate", "not-semver"], case_name(case))?;
@@ -46,14 +56,18 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
             NegativeCase::DuplicateCandidateDeclaration => {
                 append_bootstrap(
                     &root,
-                    "pub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+                    &format!(
+                        "pub(super) const CANDIDATE_VERSION: &str = \"{selected_version}\";\n"
+                    ),
                 )?;
                 reject_candidate_commands(&root, case_name(case))?;
             }
             NegativeCase::MarkerDecoyDeclaration => {
                 append_bootstrap(
                     &root,
-                    "// pub(super) const CANDIDATE_VERSION: &str = \"1.3.0\";\n",
+                    &format!(
+                        "// pub(super) const CANDIDATE_VERSION: &str = \"{selected_version}\";\n"
+                    ),
                 )?;
                 reject_candidate_commands(&root, case_name(case))?;
             }
@@ -61,7 +75,7 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
                 prepare_candidate(&root)?;
                 mutate_json(
                     &root.join(".agents/plugins/release-publish-contract.json"),
-                    |value| value["bootstrap"]["selectedVersion"] = json!("1.2.0"),
+                    |value| value["bootstrap"]["selectedVersion"] = json!(prior_version.clone()),
                 )?;
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
@@ -69,7 +83,10 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
                 prepare_candidate(&root)?;
                 let path = root.join("packages/getcodexy/pyproject.toml");
                 let text = fs::read_to_string(&path)?;
-                let mismatch = text.replace("version = \"1.4.0\"", "version = \"1.3.0\"");
+                let mismatch = text.replace(
+                    &format!("version = \"{candidate_version}\""),
+                    &format!("version = \"{selected_version}\""),
+                );
                 assert_ne!(text, mismatch, "package mismatch fixture did not change");
                 fs::write(path, mismatch)?;
                 reject(&root, &["--check-candidate"], case_name(case))?;
@@ -78,7 +95,10 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
                 prepare_candidate(&root)?;
                 mutate_json(
                     &root.join(".agents/plugins/release-publish-contract.json"),
-                    |value| value["runtime"]["selectedTag"] = json!("v1.4.0"),
+                    |value| {
+                        value["runtime"]["selectedTag"] =
+                            json!(format!("v{candidate_version}"));
+                    },
                 )?;
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
@@ -97,16 +117,18 @@ fn candidate_preparation_projects_the_packaged_component_manifest()
     let manifest: Value = serde_json::from_str(&fs::read_to_string(
         root.join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"),
     )?)?;
+    let selected_version = fixture_version(&root)?;
+    let candidate_version = next_patch_version(&selected_version)?;
     for field in ["components", "compatibleCombinations"] {
         for entry in manifest[field].as_array().ok_or("component manifest array")? {
-            assert_eq!(entry["version"], "1.4.0", "candidate {field} is stale");
+            assert_eq!(entry["version"], candidate_version, "candidate {field} is stale");
         }
     }
     let contract: Value = serde_json::from_str(&fs::read_to_string(
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
-    assert_eq!(contract["bootstrap"]["selectedVersion"], "1.3.0");
-    assert_eq!(contract["bootstrap"]["candidateVersion"], "1.4.0");
+    assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
+    assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
     Ok(())
 }
 
@@ -128,7 +150,8 @@ fn selected_fixture(
     name: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let root = archive_repository(archive, temp, name)?;
-    let output = run(&root, &["--version", "1.3.0"])?;
+    let selected_version = fixture_version(&root)?;
+    let output = run(&root, &["--version", selected_version.as_str()])?;
     assert!(
         output.status.success(),
         "selected fixture normalization failed: {}",
@@ -136,22 +159,25 @@ fn selected_fixture(
     );
     let bootstrap = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
     let text = fs::read_to_string(&bootstrap)?;
+    let current_candidate = bootstrap_candidate_version(&root)?;
     fs::write(
         bootstrap,
         text.replace(
-            "CANDIDATE_VERSION: &str = \"1.4.0\"",
-            "CANDIDATE_VERSION: &str = \"1.3.0\"",
+            &format!("CANDIDATE_VERSION: &str = \"{current_candidate}\""),
+            &format!("CANDIDATE_VERSION: &str = \"{selected_version}\""),
         ),
     )?;
     mutate_json(
         &root.join(".agents/plugins/release-publish-contract.json"),
-        |value| value["bootstrap"]["candidateVersion"] = json!("1.3.0"),
+        |value| value["bootstrap"]["candidateVersion"] = json!(selected_version),
     )?;
     Ok(root)
 }
 
 fn prepare_candidate(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let output = run(root, &["--prepare-candidate", "1.4.0"])?;
+    let selected_version = fixture_version(root)?;
+    let candidate_version = next_patch_version(&selected_version)?;
+    let output = run(root, &["--prepare-candidate", candidate_version.as_str()])?;
     assert!(
         output.status.success(),
         "candidate preparation failed: {}",
@@ -172,9 +198,11 @@ fn reject_candidate_commands(
     root: &Path,
     label: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let selected_version = fixture_version(root)?;
+    let candidate_version = next_patch_version(&selected_version)?;
     for args in [
-        ["--admit-candidate", "1.4.0"],
-        ["--prepare-candidate", "1.4.0"],
+        ["--admit-candidate", candidate_version.as_str()],
+        ["--prepare-candidate", candidate_version.as_str()],
     ] {
         reject(root, &args, &format!("{label}-{}", args[0]))?;
     }

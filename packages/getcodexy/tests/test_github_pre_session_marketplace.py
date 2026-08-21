@@ -59,7 +59,7 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                 runner=runner,
                 synchronize=lambda _root, home, mode: sync_result(mode, home),
                 activate_github=lambda *_: True,
-                package_version="1.3.0",
+                package_version=version(core),
             )
 
             self.assertEqual(
@@ -73,7 +73,7 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                         "add",
                         "eunsoogi/codexy",
                         "--ref",
-                        "v1.3.0",
+                        f"v{version(core)}",
                         "--json",
                     ),
                     (str(codex), "plugin", "marketplace", "list", "--json"),
@@ -109,12 +109,17 @@ def installed(root: Path, name: str) -> dict[str, object]:
         "pluginId": f"{name}@codexy",
         "name": name,
         "marketplaceName": "codexy",
-        "version": "1.3.0",
+        "version": version(root),
         "installed": True,
         "enabled": True,
         "source": {"source": "local", "path": str(root)},
         "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
     }
+
+
+def version(root: Path) -> str:
+    manifest = root / ".codex-plugin/plugin.json"
+    return str(json.loads(manifest.read_text(encoding="utf-8"))["version"])
 
 
 def sync_result(mode: str, home: Path) -> SyncResult:

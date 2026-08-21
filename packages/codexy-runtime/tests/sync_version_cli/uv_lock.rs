@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::support::FixtureCommand;
 
-use super::{archive_repository, shared_repository_archive};
+use super::{archive_repository, isolation::next_patch_version, shared_repository_archive};
 
 #[test]
 fn sync_version_script_rejects_a_pyproject_projection_that_differs_from_uv_lock()
@@ -21,9 +21,10 @@ fn sync_version_script_rejects_a_pyproject_projection_that_differs_from_uv_lock(
         .lines()
         .find_map(|line| line.trim().strip_prefix("version = \"")?.strip_suffix('"'))
         .ok_or("getcodexy package version")?;
+    let stale_version = next_patch_version(current_version)?;
     let stale_package = package_text.replacen(
         &format!("version = \"{current_version}\""),
-        "version = \"9.9.9\"",
+        &format!("version = \"{stale_version}\""),
         1,
     );
     assert_ne!(package_text, stale_package, "package fixture did not change");

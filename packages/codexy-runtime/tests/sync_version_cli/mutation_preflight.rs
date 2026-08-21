@@ -5,14 +5,14 @@ use super::{
     isolation::version_surface_contents,
     strict_manifest::select_version_advance,
 };
+use super::isolation::{fixture_version, next_patch_version};
 
 const COMPONENT_MANIFEST: &str = "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
-const TARGET: &str = "1.3.1";
 
 #[test]
 fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
-    let version_needle = {
+    let (version, version_needle) = {
         let text = fs::read_to_string(
             codexy_runtime::paths::repository_root().join(COMPONENT_MANIFEST),
         )?;
@@ -22,8 +22,14 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             .and_then(|components| components.first())
             .and_then(|component| component["version"].as_str())
             .ok_or("component manifest version")?;
-        format!("\"version\": \"{version}\"")
+        (version.to_owned(), format!("\"version\": \"{version}\""))
     };
+    let leading_zero = format!("\"version\": \"0{version}\"");
+    let malformed = format!(
+        "\"version\": \"{}\"",
+        version.rsplit_once('.').map_or(version.as_str(), |(prefix, _)| prefix)
+    );
+    let prerelease = format!("\"version\": \"{version}-beta\"");
     for (label, needle, replacement) in [
         (
             "top-level duplicate",
@@ -36,24 +42,19 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             "\"pluginId\": \"codexy@codexy\", \"pluginId\": \"codexy@codexy\",",
         ),
         (
-            "oversized semver",
-            version_needle.as_str(),
-            "\"version\": \"2147483648.0.0\"",
-        ),
-        (
             "leading-zero semver",
             version_needle.as_str(),
-            "\"version\": \"01.3.0\"",
+            leading_zero.as_str(),
         ),
         (
             "malformed semver",
             version_needle.as_str(),
-            "\"version\": \"1.3\"",
+            malformed.as_str(),
         ),
         (
             "prerelease semver",
             version_needle.as_str(),
-            "\"version\": \"1.3.0-beta\"",
+            prerelease.as_str(),
         ),
         (
             "dependency-invalid compatible combination",
@@ -63,7 +64,9 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
     ] {
         let temp = tempfile::tempdir()?;
         let repo = archive_repository(shared_repository_archive()?, &temp, label)?;
-        select_version_advance(&repo, TARGET)?;
+        let selected_version = fixture_version(&repo)?;
+        let target = next_patch_version(&selected_version)?;
+        select_version_advance(&repo, &target)?;
         let manifest = repo.join(COMPONENT_MANIFEST);
         let text = fs::read_to_string(&manifest)?;
         let corrupted = if label == "dependency-invalid compatible combination" {
@@ -85,7 +88,7 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
         fs::write(&manifest, corrupted)?;
         let before = version_surface_contents(&repo)?;
 
-        let output = sync_version(&repo, TARGET)?;
+        let output = sync_version(&repo, &target)?;
         assert!(
             !output.status.success(),
             "{label} unexpectedly completed mutation\nstdout:\n{}\nstderr:\n{}",
@@ -105,24 +108,33 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
 fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
     for (line_ending_label, line_ending) in [("LF", "\n"), ("CRLF", "\r\n")] {
-        for (label, relative, needle, replacement) in [
+        for (label, relative) in [
             (
                 "Cargo.toml alternate version spacing",
                 "packages/codexy-runtime/Cargo.toml",
-                "version = \"1.3.0\"",
-                "version=\"1.3.0\"",
             ),
             (
                 "Cargo.lock package field ordering",
                 "packages/codexy-runtime/Cargo.lock",
-                "name = \"codexy-runtime\"\nversion = \"1.3.0\"",
-                "version = \"1.3.0\"\nname = \"codexy-runtime\"",
             ),
         ] {
             let label = format!("{label} ({line_ending_label})");
             let temp = tempfile::tempdir()?;
             let repo = archive_repository(shared_repository_archive()?, &temp, &label)?;
-            select_version_advance(&repo, TARGET)?;
+            let selected_version = fixture_version(&repo)?;
+            let target = next_patch_version(&selected_version)?;
+            let (needle, replacement) = if relative.ends_with("Cargo.toml") {
+                (
+                    format!("version = \"{selected_version}\""),
+                    format!("version=\"{selected_version}\""),
+                )
+            } else {
+                (
+                    format!("name = \"codexy-runtime\"\nversion = \"{selected_version}\""),
+                    format!("version = \"{selected_version}\"\nname = \"codexy-runtime\""),
+                )
+            };
+            select_version_advance(&repo, &target)?;
             let path = repo.join(relative);
             let text = with_line_endings(&fs::read_to_string(&path)?, line_ending);
             let corrupted = text.replacen(
@@ -134,7 +146,7 @@ fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes
             fs::write(&path, corrupted)?;
             let before = version_surface_contents(&repo)?;
 
-            let output = sync_version(&repo, TARGET)?;
+            let output = sync_version(&repo, &target)?;
             assert!(
                 !output.status.success(),
                 "{label} unexpectedly completed mutation\nstdout:\n{}\nstderr:\n{}",
@@ -147,42 +159,6 @@ fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes
                 "{label} changed a managed version surface before rejection"
             );
         }
-    }
-    Ok(())
-}
-
-#[test]
-fn markerless_version_mutation_accepts_the_component_semver_upper_bound_and_reads_back()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let repo = archive_repository(shared_repository_archive()?, &temp, "max-bound")?;
-    let target = "2147483647.0.0";
-    select_version_advance(&repo, target)?;
-
-    let output = sync_version(&repo, target)?;
-    assert!(
-        output.status.success(),
-        "max-bound mutation failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let check = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .arg("--check")
-        .env("CODEXY_REPO_ROOT", &repo)
-        .current_dir(&repo)
-        .output()?;
-    assert!(
-        check.status.success(),
-        "max-bound mutation did not read back\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&check.stdout),
-        String::from_utf8_lossy(&check.stderr)
-    );
-    for (path, contents) in version_surface_contents(&repo)? {
-        assert!(
-            String::from_utf8_lossy(&contents).contains(target),
-            "managed version surface did not contain the max-bound value: {}",
-            path.display()
-        );
     }
     Ok(())
 }

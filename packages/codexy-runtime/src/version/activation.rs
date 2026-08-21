@@ -58,7 +58,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
         Update {
             path: repo_root.join(".agents/plugins/runtime-activation.json"),
-            bytes: serde_json::to_vec(&canonical(receipt))?,
+            bytes: format!("{}\n", serde_json::to_string_pretty(&canonical(receipt))?).into_bytes(),
             delete: false,
         },
         Update {

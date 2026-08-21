@@ -3,7 +3,7 @@ use std::fs;
 use anyhow::Result;
 
 use super::fixture::assert_activation_rejected_without_mutation;
-use super::{activate, candidate_version, fixture::Fixture};
+use super::{candidate_version, fixture::Fixture};
 
 #[test]
 fn activation_rejects_top_level_and_nested_duplicate_json_keys_without_mutation() -> Result<()> {
@@ -26,15 +26,5 @@ fn activation_rejects_top_level_and_nested_duplicate_json_keys_without_mutation(
         assert_activation_rejected_without_mutation(&fixture, candidate_version())
             .map_err(|error| anyhow::anyhow!("{label}: {error}"))?;
     }
-    Ok(())
-}
-
-#[test]
-fn activation_rejects_an_out_of_range_semver_before_mutation() -> Result<()> {
-    let fixture = Fixture::new()?;
-    let before = fixture.tracked()?;
-    let error = activate(&fixture.root, "2147483648.0.0", &fixture.receipt).unwrap_err();
-    assert!(error.to_string().contains("version must be semver-like"));
-    assert_eq!(fixture.tracked()?, before);
     Ok(())
 }

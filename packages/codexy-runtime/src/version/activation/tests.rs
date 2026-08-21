@@ -11,7 +11,8 @@ mod fixture;
 mod strict_json_tests;
 
 use fixture::{
-    Fixture, assert_activation_rejected_without_mutation, candidate_version, receipt_value, write,
+    Fixture, assert_activation_rejected_without_mutation, candidate_version, next_patch_version,
+    receipt_value, write,
 };
 
 #[test]
@@ -23,7 +24,7 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
     );
     assert_eq!(
         fs::read_to_string(fixture.path("plugins/codexy-devtools/runtime-release.json"))?,
-        r#"{"artifact":{"tag":"v1.2.2"}}"#
+        fixture.prior_runtime_release()
     );
     assert!(
         !fixture
@@ -32,11 +33,15 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
     );
     assert_eq!(
         fs::read(fixture.path(".agents/plugins/runtime-activation.json"))?,
-        serde_json::to_vec(&canonical(receipt_value()))?
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&canonical(receipt_value()))?
+        )
+        .into_bytes()
     );
     for wrapper in fixture.wrappers() {
         let wrapper = fs::read_to_string(wrapper)?;
-        assert!(wrapper.contains("getcodexy==0.0.1"));
+        assert!(wrapper.contains(&format!("getcodexy=={}", fixture.prior_runtime_version())));
         assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
     }
     let manifest: Value = serde_json::from_str(&fs::read_to_string(
@@ -85,19 +90,21 @@ fn activation_updates_the_publication_identity_without_repointing_runtime() -> R
 
 #[test]
 fn selected_bootstrap_cannot_activate_a_candidate() -> Result<()> {
-    reject_activation("1.2.2", |_| Ok(()))
+    let fixture = Fixture::new()?;
+    assert_activation_rejected_without_mutation(&fixture, fixture.prior_runtime_version())
 }
 
 #[test]
 fn stale_selected_bootstrap_metadata_cannot_activate_and_leaves_targets_byte_identical()
 -> Result<()> {
     reject_activation(candidate_version(), |fixture| {
+        let stale = next_patch_version(candidate_version())?;
         write(
             &fixture.root,
             "packages/codexy-runtime/src/version/bootstrap.rs",
             format!(
-                "pub(super) const VERSION: &str = \"1.1.0\";\npub(super) const CANDIDATE_VERSION: &str = \"{}\";\n",
-                candidate_version()
+                "pub(super) const VERSION: &str = \"{stale}\";\npub(super) const CANDIDATE_VERSION: &str = \"{}\";\n",
+                candidate_version(),
             ),
         )
     })
@@ -126,10 +133,14 @@ fn mismatched_staging_run_attempt_leaves_targets_byte_identical() -> Result<()> 
 #[test]
 fn mismatched_selected_publish_identity_leaves_targets_byte_identical() -> Result<()> {
     reject_activation(candidate_version(), |fixture| {
+        let mut contract: Value = serde_json::from_str(&fs::read_to_string(
+            fixture.path(".agents/plugins/release-publish-contract.json"),
+        )?)?;
+        contract["bootstrap"]["selectedVersion"] = json!(next_patch_version(candidate_version())?);
         write(
             &fixture.root,
             ".agents/plugins/release-publish-contract.json",
-            r#"{"bootstrap":{"selectedVersion":"1.2.1"},"runtime":{"selectedTag":"v1.2.2"}}"#,
+            format!("{}\n", serde_json::to_string_pretty(&contract)?),
         )
     })
 }

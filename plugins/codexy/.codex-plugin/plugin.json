@@ -1,6 +1,6 @@
 {
   "name": "codexy",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Codex orchestrator scaffolding for atomic agent workflows, verification, evidence capture, and merge-safe execution.",
   "author": {
     "name": "Eunsoo Lee",
@@ -9,15 +9,28 @@
   "homepage": "https://github.com/eunsoogi/codexy#readme",
   "repository": "https://github.com/eunsoogi/codexy",
   "license": "MIT",
-  "keywords": ["codex", "agents", "workflow", "verification", "harness"],
-  "supportedPlatforms": ["darwin-arm64", "linux-x86_64"],
+  "keywords": [
+    "codex",
+    "agents",
+    "workflow",
+    "verification",
+    "harness"
+  ],
+  "supportedPlatforms": [
+    "darwin-arm64",
+    "linux-x86_64"
+  ],
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Run Codex work through atomic orchestration, evidence, review, and merge gates.",
     "longDescription": "Codexy starts as an orchestrator for Codex work: it decomposes broad requests into issue-sized lanes, routes work through specialist roles and skills, verifies real surfaces, and keeps pull requests behind review and squash-merge gates.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/eunsoogi/codexy",
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",

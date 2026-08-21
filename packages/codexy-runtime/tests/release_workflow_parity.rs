@@ -132,7 +132,15 @@ fn bootstrap_identity_supports_selected_and_candidate_prepared_states() -> Resul
         .as_str()
         .ok_or("selected runtime tag")?;
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
-    assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
+    let expected_runtime_tag = if package_version == selected_version {
+        format!("v{selected_version}")
+    } else {
+        selected_runtime_tag.to_owned()
+    };
+    assert_eq!(
+        contract["runtime"]["selectedTag"].as_str(),
+        Some(expected_runtime_tag.as_str())
+    );
     assert_eq!(candidate_version, package_version);
     if package_version == selected_version {
         assert_eq!(candidate_version, selected_version);
