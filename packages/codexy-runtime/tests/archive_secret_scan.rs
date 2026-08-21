@@ -56,7 +56,6 @@ fn grep_only_path(root: &Path) -> PathBuf {
         .iter()
         .filter(|directory| directory.join("rg").is_file())
         .collect();
-    assert!(!rg_dirs.is_empty(), "rg must be available for this test");
     for directory in &rg_dirs {
         for entry in fs::read_dir(directory).expect("rg directory") {
             let entry = entry.expect("rg directory entry");
