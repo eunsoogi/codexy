@@ -35,6 +35,7 @@ pub(super) enum Change {
     BootstrapDrift,
     ReleaseContractDrift,
     CargoVersionDrift,
+    StaleComponentManifest,
     Extra,
     Missing,
 }
@@ -79,6 +80,7 @@ impl FixtureMatrix {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
+        write(&seed_repo, "packages/getcodexy/pyproject.toml", b"version = \"1.3.0\"\n")?;
         for path in PRESERVED {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("base:{path}\n").as_bytes())?;
@@ -118,6 +120,11 @@ impl FixtureMatrix {
                 &repo,
                 "packages/codexy-runtime/Cargo.toml",
                 b"drift\n",
+            )?,
+            Change::StaleComponentManifest => write(
+                &repo,
+                "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+                b"base:packages/getcodexy/src/codexy_runtime_tools/component-manifest.json\n",
             )?,
             Change::Extra => write(&repo, "docs/extra.md", b"extra\n")?,
             Change::Missing => fs::remove_file(repo.join(".agents/plugins/runtime-activation.json"))?,

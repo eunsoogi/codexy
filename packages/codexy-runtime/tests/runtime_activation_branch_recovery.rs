@@ -6,6 +6,8 @@ mod fixture_matrix;
 #[path = "runtime_activation_branch_recovery/fixture_matrix_batch.rs"]
 mod fixture_matrix_batch;
 
+use std::process::Command;
+
 use fixture_matrix::{Change, FixtureMatrix};
 
 #[test]
@@ -57,6 +59,34 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
     assert_eq!(matrix.git_setup_starts(), 21, "seed plus mutation setup inventory");
     assert_eq!(matrix.batched_case_count(), 10, "all verifier states must remain");
     assert_eq!(matrix.verifier_starts(), 2, "single and batched verifier entrypoints");
+    Ok(())
+}
+
+#[test]
+fn existing_activation_branch_rejects_stale_component_manifest_after_reconstruction()
+-> Result<(), Box<dyn std::error::Error>> {
+    let matrix = FixtureMatrix::new()?;
+    let stale = matrix.case(Change::StaleComponentManifest)?;
+    let component_manifest = "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
+    let unchanged = Command::new("git")
+        .args(["diff", "--quiet", "main...HEAD", "--", component_manifest])
+        .current_dir(&stale.repo)
+        .status()?;
+    assert!(unchanged.success(), "fixture must leave the manifest unchanged in the branch diff");
+
+    let output = stale.run("OPEN")?;
+    assert!(
+        !output.status.success(),
+        "stale reconstructed component manifest unexpectedly passed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let diagnostics = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(diagnostics.contains(component_manifest), "missing stale manifest diagnostic: {diagnostics}");
     Ok(())
 }
 

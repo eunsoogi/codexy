@@ -152,13 +152,35 @@ fn public_validator_rejects_duplicate_keys_and_out_of_range_semver() -> TestResu
     let fixture = CanonicalSourceFixture::new()?;
     let manifest_path = fixture.root().join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json");
     let canonical = fs::read_to_string(&manifest_path)?;
-    for invalid in [
-        canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1),
-        canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1),
-        canonical.replace("\"version\": \"1.3.0\"", "\"version\": \"2147483648.0.0\""),
+    let out_of_range = {
+        let mut manifest: serde_json::Value = serde_json::from_str(&canonical)?;
+        for field in ["components", "compatibleCombinations"] {
+            for entry in manifest[field]
+                .as_array_mut()
+                .ok_or("component manifest version entries")?
+            {
+                entry["version"] = serde_json::json!("2147483648.0.0");
+            }
+        }
+        format!("{}\n", serde_json::to_string_pretty(&manifest)?)
+    };
+    for (label, invalid) in [
+        ("top-level duplicate", canonical.replacen("\"schema\": \"getcodexy.component-manifest.v1\",", "\"schema\": \"getcodexy.component-manifest.v1\", \"schema\": \"getcodexy.component-manifest.v1\",", 1)),
+        ("nested duplicate", canonical.replacen("\"name\": \"codexy\",", "\"name\": \"codexy\", \"name\": \"codexy\",", 1)),
+        ("out-of-range semver", out_of_range),
     ] {
+        assert_ne!(invalid, canonical, "{label} fixture did not change");
         fs::write(&manifest_path, invalid)?;
-        assert!(!validate(&fixture.plugin_root())?.status.success());
+        let output = validate(&fixture.plugin_root())?;
+        assert!(!output.status.success(), "{label} unexpectedly passed");
+        if label == "out-of-range semver" {
+            assert!(
+                String::from_utf8_lossy(&output.stderr)
+                    .contains("component manifest core version is invalid"),
+                "out-of-range fixture did not exercise semver validation\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
         fs::write(&manifest_path, &canonical)?;
     }
     Ok(())
