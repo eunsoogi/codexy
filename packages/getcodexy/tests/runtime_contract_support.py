@@ -24,12 +24,12 @@ def candidate() -> dict[str, object]:
     platforms = {
         platform: {
             name: {
-                "path": f"runtime/codexy-mcp-{name}-{platform}.bin",
+                "path": f"runtime/codexy-mcp-{name}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}",
                 "sha256": hashlib.sha256(data).hexdigest(),
             }
             for name, data in BINARIES.items()
         }
-        for platform in ("darwin-arm64", "linux-x86_64")
+        for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
     }
     return {
         "schema": "codexy-runtime-candidate/v1",
@@ -74,5 +74,6 @@ def legacy() -> dict[str, object]:
             server: {"sha256": binary["sha256"]} for server, binary in inventory.items()
         }
         for platform, inventory in candidate()["platforms"].items()
+        if platform in ("darwin-arm64", "linux-x86_64")
     }
     return value

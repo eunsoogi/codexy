@@ -155,12 +155,12 @@ class RuntimeSourceIdentityTests(RuntimeSourceIdentityOverrideCases, unittest.Te
             "platforms": {
                 platform: {
                     server: {
-                        "path": f"runtime/codexy-mcp-{server}-{platform}.bin",
+                        "path": f"runtime/codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}",
                         "sha256": hashlib.sha256(selected_binary).hexdigest(),
                     }
                     for server in ("lsp", "codegraph")
                 }
-                for platform in ("darwin-arm64", "linux-x86_64")
+                for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
             },
         }
         encoded = json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode()

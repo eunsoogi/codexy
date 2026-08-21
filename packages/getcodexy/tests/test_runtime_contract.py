@@ -12,7 +12,6 @@ from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
-
 from runtime_contract_support import (
     ARCHIVE_DIGEST,
     BINARIES,
@@ -96,7 +95,7 @@ class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.load(bad)
 
-    def test_compatibility_and_windows_advertising_fail_closed(self) -> None:
+    def test_compatibility_and_legacy_windows_advertising_fail_closed(self) -> None:
         _, parsed = self.load(release())
         self.assertTrue(
             parsed.supports(
@@ -108,7 +107,7 @@ class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
                 mcp_protocol="2024-11-05",
             )
         )
-        self.assertFalse(
+        self.assertTrue(
             parsed.supports(
                 server="lsp",
                 platform="windows-x86_64",
@@ -128,7 +127,8 @@ class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
                 mcp_protocol="2024-11-05",
             )
         )
-        self.assertFalse(parsed.advertises(platform="windows-x86_64"))
+        self.assertTrue(parsed.advertises(platform="windows-x86_64"))
+        self.assertFalse(self.load(legacy())[1].advertises(platform="windows-x86_64"))
 
     def test_cache_uses_runtime_identity_not_plugin_version_and_rolls_back(
         self,
@@ -201,9 +201,7 @@ class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
             )
         )
 
-    def test_archive_requires_candidate_digest_identity_and_binary_inventory(
-        self,
-    ) -> None:
+    def test_archive_requires_candidate_identity_and_binary_inventory(self) -> None:
         _, parsed = self.load(release())
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / "runtime.tar.gz"
@@ -236,7 +234,8 @@ class RuntimeContractTests(RuntimeContractRuntimeCases, unittest.TestCase):
                 "plugins/codexy-devtools/runtime-candidate.json": encoded(embedded),
                 "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"version":"1.2.2"}',
                 **{
-                    f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-linux-x86_64.bin": data
+                    f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}": data
+                    for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
                     for server, data in BINARIES.items()
                 },
             }

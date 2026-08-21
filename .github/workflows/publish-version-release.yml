@@ -119,6 +119,7 @@ jobs:
         run: scripts/reconcile-release-attestations dist ATTEST_MARKETPLACE codexy-marketplace-plugin.tar.gz
       - name: Reconcile runtime archive attestation
         env:
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_RUNTIME codexy-runtime-package.tar.gz
@@ -220,6 +221,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ""
+          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
           mkdir public-attested
@@ -230,9 +232,9 @@ jobs:
           cp public-release-baseline.json public-attested/release-baseline.json
           scripts/verify-release-attestation-total public-attested/release-baseline.json 1
           scripts/verify-release-attestation-set public-attested public-attestations.json
-          jq -e --slurpfile baseline public-attested/release-baseline.json --slurpfile attestations public-attestations.json --arg receipt "$(sha256sum public-receipt.json | awk '{print $1}')" --arg signer "$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml" --arg activation "$ACTIVATION_COMMIT" '
+          jq -e --slurpfile baseline public-attested/release-baseline.json --slurpfile attestations public-attestations.json --arg receipt "$(sha256sum public-receipt.json | awk '{print $1}')" --arg signer "$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml" --arg runtimeSigner "$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml" --arg activation "$ACTIVATION_COMMIT" --arg staging "$STAGING_SOURCE_COMMIT" '
             $baseline[0] as $expected | ($expected.releaseReceiptSha256 == $receipt) and
-            ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+            ($expected.attestationPolicies == {"codexy-marketplace-plugin.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}, "codexy-marketplace-bundle.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}, "codexy-runtime-package.tar.gz": {signerWorkflow: $runtimeSigner, sourceRef: "refs/heads/main", sourceDigest: $staging, denySelfHostedRunners: true}, "runtime-release-receipt.json": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}}) and
             ($expected.attestations == $attestations[0])
           ' public-release-baseline.json >/dev/null
       - name: Smoke public release without a token

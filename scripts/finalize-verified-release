@@ -5,6 +5,7 @@ set -eu
 : "${RELEASE_TAG:?RELEASE_TAG is required}"
 : "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 final_release="$(mktemp -d)"
 if test "${BASELINE_CREATED:-false}" = true; then
   gh release upload "$RELEASE_TAG" dist/release-baseline.json --repo "$GITHUB_REPOSITORY"
@@ -20,8 +21,9 @@ for asset in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz c
     scripts/verify-release-attestation-total "$final_release/$asset" 1
   fi
 done
-scripts/verify-release-attestation-set "$final_release" final-attestations.json
-jq -e --slurpfile baseline "$final_release/release-baseline.json" --slurpfile attestations final-attestations.json --arg signer "$signer" --arg activation "$ACTIVATION_COMMIT" '
+staging_source_commit="$(jq -er .source.stagingSourceCommit "$final_release/runtime-release-receipt.json")"
+STAGING_SOURCE_COMMIT="$staging_source_commit" scripts/verify-release-attestation-set "$final_release" final-attestations.json
+jq -e --slurpfile baseline "$final_release/release-baseline.json" --slurpfile attestations final-attestations.json --arg signer "$signer" --arg runtimeSigner "$runtime_signer" --arg activation "$ACTIVATION_COMMIT" --arg staging "$staging_source_commit" '
   . as $release | $baseline[0] as $expected |
   ($release.id == $expected.release.id) and ($release.name == $expected.release.name) and
   ($release.tagName == $expected.release.tagName) and ($release.targetCommitish == $expected.release.targetCommitish) and
@@ -29,7 +31,12 @@ jq -e --slurpfile baseline "$final_release/release-baseline.json" --slurpfile at
   ($release.isPrerelease == $expected.release.isPrerelease) and
   ([.assets[] | select(.name != "release-baseline.json") | {name, size, digest}] | sort_by(.name) == $expected.assets) and
   ($expected.releaseReceiptSha256 == ([.assets[] | select(.name == "runtime-release-receipt.json") | .digest | sub("^sha256:"; "")][0])) and
-  ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+  ($expected.attestationPolicies == {
+    "codexy-marketplace-plugin.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true},
+    "codexy-marketplace-bundle.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true},
+    "codexy-runtime-package.tar.gz": {signerWorkflow: $runtimeSigner, sourceRef: "refs/heads/main", sourceDigest: $staging, denySelfHostedRunners: true},
+    "runtime-release-receipt.json": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}
+  }) and
   ($expected.attestations == $attestations[0])
 ' release-state.json >/dev/null
 if test "$(jq -r .isDraft release-state.json)" = true; then

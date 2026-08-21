@@ -9,7 +9,8 @@ from typing import Any
 
 
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
-PLATFORMS = {"darwin-arm64", "linux-x86_64"}
+PUBLIC_PLATFORMS = {"darwin-arm64", "linux-x86_64"}
+CANDIDATE_PLATFORMS = PUBLIC_PLATFORMS | {"windows-x86_64"}
 SERVERS = {"lsp", "codegraph"}
 
 
@@ -72,7 +73,8 @@ def platforms(
     value: Any, *, require_path: bool
 ) -> dict[str, dict[str, dict[str, str]]]:
     value = object(value, "platforms")
-    if set(value) != PLATFORMS:
+    expected_platforms = CANDIDATE_PLATFORMS if require_path else PUBLIC_PLATFORMS
+    if set(value) != expected_platforms:
         raise ValueError("runtime release has unknown or missing platform")
     result: dict[str, dict[str, dict[str, str]]] = {}
     for platform, inventory in value.items():
@@ -88,7 +90,8 @@ def platforms(
             binary = {"sha256": digest(item.get("sha256"), "binary.sha256")}
             if require_path:
                 path = string(item.get("path"), "binary.path")
-                expected = f"runtime/codexy-mcp-{server}-{platform}.bin"
+                extension = "exe" if platform == "windows-x86_64" else "bin"
+                expected = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
                 if path != expected or path.casefold() != path:
                     raise ValueError("runtime release binary path is not canonical")
                 binary["path"] = path
