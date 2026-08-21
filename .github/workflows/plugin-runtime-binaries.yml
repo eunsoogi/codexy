@@ -54,10 +54,13 @@ jobs:
           fi
           case "$state" in
           public-release)
-            export STAGING_RUN_ID="$(jq -r .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)"
-            export STAGING_SOURCE_COMMIT="$(jq -r .candidate.source.commit .agents/plugins/runtime-activation.json)"
-            export ACTIVATION_COMMIT="$(git rev-parse HEAD)"
-            export RELEASE_TAG="$(jq -r .runtime.selectedTag .agents/plugins/release-publish-contract.json)"
+            public_receipt=public-release/runtime-release-receipt.json
+            test -f "$public_receipt"
+            export STAGING_RUN_ID="$(jq -er .staging.runId "$public_receipt")"
+            export STAGING_SOURCE_COMMIT="$(jq -er .source.stagingSourceCommit "$public_receipt")"
+            export ACTIVATION_COMMIT="$(jq -er .source.activationCommit "$public_receipt")"
+            export RELEASE_TAG="$(jq -er .release.tag "$public_receipt")"
+            export PUBLIC_RELEASE_RECEIPT="$public_receipt"
             export PUBLIC_RELEASE=1
             scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz
             mkdir -p final-inspect
@@ -140,7 +143,19 @@ jobs:
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
           if ($publicArchive) { $env:PUBLIC_RELEASE = "1" }
-          else { Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue }
+          if ($publicArchive) {
+            $receiptPath = "public-release/runtime-release-receipt.json"
+            if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw "public release receipt missing" }
+            $receipt = Get-Content -Raw $receiptPath | ConvertFrom-Json
+            $env:STAGING_RUN_ID = "$($receipt.staging.runId)"
+            $env:STAGING_SOURCE_COMMIT = "$($receipt.source.stagingSourceCommit)"
+            $env:ACTIVATION_COMMIT = "$($receipt.source.activationCommit)"
+            $env:RELEASE_TAG = "$($receipt.release.tag)"
+            $env:PUBLIC_RELEASE_RECEIPT = $receiptPath
+          } else {
+            Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue
+            Remove-Item Env:PUBLIC_RELEASE_RECEIPT -ErrorAction SilentlyContinue
+          }
           bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz
           if ($LASTEXITCODE -ne 0) { throw "public archive projection failed" }
           $public = Join-Path $env:RUNNER_TEMP "public-marketplace"

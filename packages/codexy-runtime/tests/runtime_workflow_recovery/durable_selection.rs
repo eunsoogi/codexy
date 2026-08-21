@@ -64,6 +64,12 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         public,
         "durable public-release source projection",
         &[
+            "public_receipt=public-release/runtime-release-receipt.json",
+            "export STAGING_RUN_ID=\"$(jq -er .staging.runId \"$public_receipt\")\"",
+            "export STAGING_SOURCE_COMMIT=\"$(jq -er .source.stagingSourceCommit \"$public_receipt\")\"",
+            "export ACTIVATION_COMMIT=\"$(jq -er .source.activationCommit \"$public_receipt\")\"",
+            "export RELEASE_TAG=\"$(jq -er .release.tag \"$public_receipt\")\"",
+            "export PUBLIC_RELEASE_RECEIPT=\"$public_receipt\"",
             "export PUBLIC_RELEASE=1",
             "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
             "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
@@ -72,7 +78,12 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
     support::assert_structured_absent_literals(
         public,
         "durable public-release must not bypass current source projection",
-        &["cp dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz"],
+        &[
+            "cp dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
+            ".candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json",
+            ".candidate.source.commit .agents/plugins/runtime-activation.json",
+            ".runtime.selectedTag .agents/plugins/release-publish-contract.json",
+        ],
     );
     let windows = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
         .as_sequence()
@@ -98,6 +109,38 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         windows,
         "Windows selected helper owns dist creation",
         &["New-Item -ItemType Directory -Path dist -ErrorAction Stop"],
+    );
+    support::assert_structured_literals(
+        windows,
+        "Windows public-release receipt source projection",
+        &[
+            "$receiptPath = \"public-release/runtime-release-receipt.json\"",
+            "$receipt = Get-Content -Raw $receiptPath | ConvertFrom-Json",
+            "$env:STAGING_RUN_ID = \"$($receipt.staging.runId)\"",
+            "$env:STAGING_SOURCE_COMMIT = \"$($receipt.source.stagingSourceCommit)\"",
+            "$env:ACTIVATION_COMMIT = \"$($receipt.source.activationCommit)\"",
+            "$env:RELEASE_TAG = \"$($receipt.release.tag)\"",
+            "$env:PUBLIC_RELEASE_RECEIPT = $receiptPath",
+        ],
+    );
+    let materializer = fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/materialize-runtime-release-archive"),
+    )?;
+    let source_helper = fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/materialize_runtime_source.py"),
+    )?;
+    let materializer = format!("{materializer}\n{source_helper}");
+    support::assert_structured_literals(
+        &materializer,
+        "public-release materializer receipt source",
+        &[
+            "PUBLIC_RELEASE_RECEIPT",
+            "codexy-runtime-release-receipt/v2",
+            "SELECTED_CANDIDATE",
+            "public runtime inventory",
+        ],
     );
     Ok(())
 }

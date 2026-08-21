@@ -12,6 +12,8 @@ use sha2::{Digest as _, Sha256};
 
 #[cfg(unix)]
 const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+#[cfg(unix)]
+const ACTIVATION: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 #[test]
 #[cfg(unix)]
@@ -91,7 +93,14 @@ impl Fixture {
         let provenance = if mismatch { r#"{"runId":99}"# } else { r#"{"runId":42}"# };
         fs::write(
             root.join("public-receipt.json"),
-            format!(r#"{{"release":{{"tag":"v1.3.0"}},"source":{{"stagingSourceCommit":"{COMMIT}"}},"staging":{{"runId":42,"runAttempt":3}},"provenance":{provenance},"artifact":{{"sha256":"{public_sha}"}}}}"#),
+            serde_json::to_vec(&serde_json::json!({
+                "schema": "codexy-runtime-release-receipt/v2",
+                "release": {"tag": "v1.3.0"},
+                "source": {"activationCommit": ACTIVATION, "stagingSourceCommit": COMMIT},
+                "staging": {"runId": 42, "runAttempt": 3},
+                "provenance": serde_json::from_str::<serde_json::Value>(provenance)?,
+                "artifact": {"sha256": public_sha},
+            }))?,
         )?;
         let gh = bin.join("gh");
         fs::write(&gh, fake_gh())?;
@@ -105,7 +114,7 @@ impl Fixture {
         let materializer = root.join("scripts/materialize-runtime-release-archive");
         fs::write(
             &materializer,
-            "#!/bin/sh\nset -eu\ntest \"${PUBLIC_RELEASE:-0}\" = 1\nprintf '%s\\n' \"$PUBLIC_RELEASE\" > public-projection-log\ncp \"$1\" \"$2\"\n",
+            "#!/bin/sh\nset -eu\ntest \"${PUBLIC_RELEASE:-0}\" = 1\nprintf '%s|%s|%s|%s|%s|%s\\n' \"$STAGING_RUN_ID\" \"$STAGING_SOURCE_COMMIT\" \"$ACTIVATION_COMMIT\" \"$RELEASE_TAG\" \"$PUBLIC_RELEASE_RECEIPT\" \"$PUBLIC_RELEASE\" > public-projection-log\ncp \"$1\" \"$2\"\n",
         )?;
         executable(&materializer)?;
         let inspector = root.join("scripts/inspect-release-archive");
@@ -145,6 +154,14 @@ impl Fixture {
 
     fn assert_public_projection(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.assert_result(true, false)?;
+        fs::write(
+            self.root.join(".agents/plugins/runtime-activation.json"),
+            r#"{"candidate":{"source":{"commit":"cccccccccccccccccccccccccccccccccccccccc"},"artifact":{"stagingRunId":99,"stagingRunAttempt":1}},"provenance":{"runId":99}}"#,
+        )?;
+        fs::write(
+            self.root.join(".agents/plugins/release-publish-contract.json"),
+            r#"{"runtime":{"selectedTag":"v9.9.9"}}"#,
+        )?;
         let host_path = std::env::var_os("PATH").ok_or("PATH")?;
         let mut paths = vec![self.root.join("bin")];
         paths.extend(std::env::split_paths(&host_path));
@@ -153,7 +170,10 @@ impl Fixture {
             .env("PATH", std::env::join_paths(paths)?)
             .output()?;
         assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-        assert_eq!(fs::read_to_string(self.root.join("public-projection-log"))?, "1\n");
+        assert_eq!(
+            fs::read_to_string(self.root.join("public-projection-log"))?,
+            "42|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|v1.3.0|public-release/runtime-release-receipt.json|1\n"
+        );
         assert_eq!(fs::read_to_string(self.root.join("public-inspection-log"))?, "public-release\n");
         Ok(())
     }

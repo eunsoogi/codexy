@@ -11,6 +11,7 @@ source_plugin=plugins/codexy-devtools
 activation_record=.agents/plugins/runtime-activation.json
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 public_release=${PUBLIC_RELEASE:-0}
+public_receipt=${PUBLIC_RELEASE_RECEIPT:-}
 
 case "$public_release" in 0|1) ;; *) exit 1 ;; esac
 
@@ -21,7 +22,12 @@ done
 test "$staging_source_commit" != "$activation_commit"
 test -f "$staged_archive"
 test -d "$source_plugin"
-test -f "$activation_record"
+if [ "$public_release" = 1 ]; then
+  test -n "$public_receipt"
+  test -f "$public_receipt"
+else
+  test -f "$activation_record"
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
   digest_file() { sha256sum "$1" | awk '{print $1}'; }
@@ -61,52 +67,12 @@ fi
 
 STAGED_SHA=$(digest_file "$staged_archive") \
 RELEASE_TAG="$release_tag" STAGING_SOURCE_COMMIT="$staging_source_commit" STAGING_RUN_ID="${STAGING_RUN_ID:?staging run id required}" \
-SOURCE_PLUGIN="$source_plugin" ACTIVATION_RECORD="$activation_record" PUBLIC_RELEASE="$public_release" \
-STAGED_PLUGIN="$staged_plugin" PROTECTED="$tmp_dir/protected.json" LEGACY_DISPATCHER_FREE="$legacy_dispatcher_free" python3 - <<'PY'
-import hashlib, json, os, re
-from pathlib import Path
-
-source = Path(os.environ["SOURCE_PLUGIN"])
-staged = Path(os.environ["STAGED_PLUGIN"])
-record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
-manifest = json.loads((source / ".codex-plugin/plugin.json").read_text())
-candidate = record["candidate"]
-public_release = os.environ["PUBLIC_RELEASE"] == "1"
-legacy_dispatcher_free = os.environ["LEGACY_DISPATCHER_FREE"] == "1"
-if (
-    candidate["source"]["commit"] != os.environ["STAGING_SOURCE_COMMIT"]
-    or candidate["artifact"]["stagingRunId"] != int(os.environ["STAGING_RUN_ID"])
-    or manifest.get("version") != os.environ["RELEASE_TAG"].removeprefix("v")
-):
-    raise SystemExit("activation record does not match selected identity")
-if not public_release:
-    candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
-    if (
-        record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
-        or record["artifact"]["payloadManifestSha256"] != hashlib.sha256(candidate_bytes).hexdigest()
-        or json.loads(candidate_bytes) != candidate
-    ):
-        raise SystemExit("private activation record does not match staged identity")
-for platform, inventory in candidate["platforms"].items():
-    for server, binary in inventory.items():
-        path = staged / binary["path"]
-        if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
-            raise SystemExit(f"selected runtime digest mismatch: {binary['path']}")
-dispatcher = staged / "mcp/codexy-mcp-devtools.exe"
-if not dispatcher.is_file() and not legacy_dispatcher_free:
-    raise SystemExit(f"selected Windows dispatcher missing: {dispatcher}")
-for server in ("lsp", "codegraph"):
-    legacy = staged / "mcp" / f"codexy-mcp-{server}.exe"
-    if legacy.exists() and not legacy_dispatcher_free:
-        raise SystemExit(f"duplicate Windows server entrypoint remains: {legacy}")
-protected = {}
-for path in sorted((staged / "runtime").rglob("*")):
-    if path.is_file() and not (legacy_dispatcher_free and path.name.endswith("-windows-x86_64.exe")):
-        protected[str(path.relative_to(staged))] = hashlib.sha256(path.read_bytes()).hexdigest()
-if dispatcher.is_file():
-    protected[str(dispatcher.relative_to(staged))] = hashlib.sha256(dispatcher.read_bytes()).hexdigest()
-Path(os.environ["PROTECTED"]).write_text(json.dumps(protected, sort_keys=True))
-PY
+ACTIVATION_COMMIT="$activation_commit" SOURCE_PLUGIN="$source_plugin" \
+ACTIVATION_RECORD="$activation_record" PUBLIC_RECEIPT="$public_receipt" \
+PUBLIC_RELEASE="$public_release" STAGED_PLUGIN="$staged_plugin" \
+SELECTED_CANDIDATE="$tmp_dir/selected-candidate.json" \
+PROTECTED="$tmp_dir/protected.json" LEGACY_DISPATCHER_FREE="$legacy_dispatcher_free" \
+python3 "$script_dir/materialize_runtime_source.py"
 
 if [ "$input_plugin" != "$source_plugin" ]; then
   mkdir -p "$(dirname -- "$tmp_dir/extracted/$source_plugin")"
@@ -166,17 +132,18 @@ if legacy_dispatcher_free:
         (staged / "mcp" / f"codexy-mcp-{server}.cmd").unlink(missing_ok=True)
 PY
 SOURCE_PLUGIN="$source_plugin" STAGED_PLUGIN="$staged_plugin" RELEASE_TAG="$release_tag" \
-ACTIVATION_RECORD="$activation_record" PROTECTED="$tmp_dir/protected.json" LEGACY_DISPATCHER_FREE="$legacy_dispatcher_free" python3 - <<'PY'
+SELECTED_CANDIDATE="$tmp_dir/selected-candidate.json" PROTECTED="$tmp_dir/protected.json" \
+LEGACY_DISPATCHER_FREE="$legacy_dispatcher_free" python3 - <<'PY'
 import hashlib, json, os, re
 from pathlib import Path
 
 source = Path(os.environ["SOURCE_PLUGIN"])
 staged = Path(os.environ["STAGED_PLUGIN"])
-record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
+candidate = json.loads(Path(os.environ["SELECTED_CANDIDATE"]).read_text())
 legacy_dispatcher_free = os.environ["LEGACY_DISPATCHER_FREE"] == "1"
 if (staged / "runtime-release.json").exists() or (staged / "runtime-candidate.json").exists():
     raise SystemExit("public release archive must not contain runtime contracts")
-platforms = list(record["candidate"]["platforms"])
+platforms = list(candidate["platforms"])
 if legacy_dispatcher_free:
     platforms = [platform for platform in platforms if platform != "windows-x86_64"]
 manifest_path = staged / ".codex-plugin/plugin.json"
