@@ -28,6 +28,15 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
     support::assert_structured_literals(
         proof,
         "durable selected runtime verification",
+        &["scripts/download-selected-runtime-package dist/selected.tar.gz"],
+    );
+    let helper = fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/download-selected-runtime-package"),
+    )?;
+    support::assert_structured_literals(
+        &helper,
+        "durable selected runtime source helper",
         &[
             "gh release view \"$RELEASE_TAG\"",
             "grep -Eq 'HTTP 404|release not found' release-view-error",
@@ -79,9 +88,10 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         &[
             "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
             "$env:PUBLIC_RELEASE = \"1\"",
+            "bash scripts/download-selected-runtime-package $archive",
+            "Test-Path -LiteralPath \"dist/public-release\" -PathType Leaf",
             "bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz",
             "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy-devtools\" public-release",
-            "$releaseOutput -notmatch \"HTTP 404|release not found\"",
         ],
     );
     Ok(())

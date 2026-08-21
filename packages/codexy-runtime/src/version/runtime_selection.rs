@@ -21,10 +21,10 @@ pub(super) fn selected_tag(root: &Path) -> Result<String> {
 
 pub(super) fn wrapper_version(root: &Path) -> Result<String> {
     let tag = selected_tag(root)?;
-    Ok(tag
+    let version = tag
         .strip_prefix('v')
-        .expect("selected runtime tag was validated with v prefix")
-        .to_owned())
+        .context("runtime release artifact tag must start with v")?;
+    Ok(version.to_owned())
 }
 
 #[cfg(test)]

@@ -99,7 +99,8 @@ fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
 }
 
 fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
-    let path = crate::paths::repo_root()?.join(".github/workflows/plugin-runtime-binaries.yml");
+    let root = crate::paths::repo_root()?;
+    let path = root.join(".github/workflows/plugin-runtime-binaries.yml");
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("reading {}", display_relative(&path)))?;
     let legacy = ["darwin-arm64", "linux-x86_64"];
@@ -112,12 +113,9 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
     for required in [
         "verify-selected-package:",
         "Download and verify selected immutable bytes",
-        "command -v sha256sum",
-        "shasum -a 256",
-        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+        "scripts/download-selected-runtime-package dist/selected.tar.gz",
         "Assemble state-aware marketplace package without rebuilding",
         ".agents/plugins/runtime-activation.json",
-        "scripts/download-runtime-staging-artifact staging",
         "scripts/materialize-runtime-release-archive",
         "public-release",
         "dist/codexy-marketplace-plugin",
@@ -145,6 +143,30 @@ fn check_runtime_build_matrix(platforms: &[String]) -> Result<()> {
         if text.contains(forbidden) {
             bail!(
                 "{} runtime package workflow must not require {forbidden:?}",
+                display_relative(&path)
+            );
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn check_selected_runtime_source_helper(root: &Path) -> Result<()> {
+    let path = root.join("scripts/download-selected-runtime-package");
+    let text = std::fs::read_to_string(&path)
+        .with_context(|| format!("reading {}", display_relative(&path)))?;
+    for required in [
+        "curl --fail --location \"$url\"",
+        "command -v sha256sum",
+        "shasum -a 256",
+        "runtime-release-receipt.json",
+        "legacy_release=plugins/codexy-devtools/runtime-release.json",
+        "scripts/download-runtime-staging-artifact staging",
+        "test \"$url\" = \"$expected_url\"",
+        "test \"$(digest_file \"$output\")\" = \"$digest\"",
+    ] {
+        if !text.contains(required) {
+            bail!(
+                "{} selected runtime source helper must include {required:?}",
                 display_relative(&path)
             );
         }

@@ -55,6 +55,11 @@ impl Fixture {
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(root.join("scripts"))?;
         fs::create_dir_all(&bin)?;
+        fs::copy(
+            codexy_runtime::paths::repository_root()
+                .join("scripts/download-selected-runtime-package"),
+            root.join("scripts/download-selected-runtime-package"),
+        )?;
         fs::write(root.join("release-state"), release)?;
         let public = root.join("public.tar.gz");
         let staging = root.join("staging.tar.gz");

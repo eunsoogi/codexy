@@ -7,18 +7,22 @@ mod runtime_negatives;
 
 #[test]
 fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
     let workflow = document("plugin-runtime-binaries.yml")?;
     let job = &workflow["jobs"]["verify-selected-package"];
     assert_eq!(job["strategy"]["matrix"]["include"].as_sequence().ok_or("matrix")?.len(), 2);
     let download = run(job, "Download and verify selected immutable bytes")?;
-    assert!(lines(download).any(|line| line == "curl --fail --location \"$url\" -o dist/selected.tar.gz"));
+    assert!(lines(download).any(|line| line == "scripts/download-selected-runtime-package dist/selected.tar.gz"));
+    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package"))?;
     for portable_digest_line in [
         "if command -v sha256sum >/dev/null 2>&1; then",
         "shasum -a 256 \"$1\" | awk '{print $1}'",
-        "test \"$(digest_file dist/selected.tar.gz)\" = \"$digest\"",
+        "test \"$(digest_file \"$output\")\" = \"$digest\"",
     ] {
-        assert!(lines(download).any(|line| line == portable_digest_line));
+        assert!(helper.contains(portable_digest_line));
     }
+    assert!(helper.contains("runtime-release-receipt.json"));
+    assert!(helper.contains("legacy_release=plugins/codexy-devtools/runtime-release.json"));
     let assemble = run(job, "Assemble state-aware marketplace package without rebuilding")?;
     assert!(lines(assemble).any(|line| line == "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz"));
     assert!(lines(assemble).any(|line| line.ends_with("public-release")));
