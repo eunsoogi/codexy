@@ -54,7 +54,7 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
 
             home = root / "fresh Codex home"
             result = run_github_pre_session(
-                home, codex=codex, runner=runner, package_version="1.3.0"
+                home, codex=codex, runner=runner, package_version=version(core)
             )
 
             self.assertTrue(result.changed)
@@ -131,7 +131,10 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
         home = root / "fresh Codex home"
         with self.assertRaisesRegex(ValueError, "component manifest"):
             run_github_pre_session(
-                home, codex=executable(root), runner=runner, package_version="1.3.0"
+                home,
+                codex=executable(root),
+                runner=runner,
+                package_version=version(core),
             )
         self.assertFalse((home / "agents").exists())
         self.assertEqual(
@@ -179,12 +182,17 @@ def installed(root: Path, name: str) -> dict[str, object]:
         "pluginId": f"{name}@codexy",
         "name": name,
         "marketplaceName": "codexy",
-        "version": "1.3.0",
+        "version": version(root),
         "installed": True,
         "enabled": True,
         "source": {"source": "local", "path": str(root)},
         "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
     }
+
+
+def version(root: Path) -> str:
+    manifest = root / ".codex-plugin/plugin.json"
+    return str(json.loads(manifest.read_text(encoding="utf-8"))["version"])
 
 
 if __name__ == "__main__":

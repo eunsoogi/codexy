@@ -13,6 +13,7 @@ from github_pre_session_install_support import (
     marketplace,
     plugin,
     result,
+    version,
 )
 
 
@@ -68,7 +69,7 @@ class GithubPreSessionRollbackCases:
                     activate_github=lambda *_: (_ for _ in ()).throw(
                         RuntimeError("activation failed")
                     ),
-                    package_version="1.3.0",
+                    package_version=version(core),
                 )
             self.assertEqual(
                 (home / "config.toml").read_text(encoding="utf-8"), "original = true\n"

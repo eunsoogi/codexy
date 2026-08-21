@@ -22,6 +22,7 @@ from github_pre_session_install_support import (
     marketplace,
     plugin,
     result,
+    version,
 )
 from github_pre_session_rollback_cases import GithubPreSessionRollbackCases
 
@@ -104,7 +105,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                 activate_github=lambda plugin_root, home: synchronized.append(
                     (plugin_root, home)
                 ),
-                package_version="1.3.0",
+                package_version=version(core),
             )
 
             self.assertEqual(result.core_root, core.resolve())
@@ -171,7 +172,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     activate_github=lambda *_: self.fail(
                         "tampered cache reached GitHub activation"
                     ),
-                    package_version="1.3.0",
+                    package_version=version(core),
                 )
             self.assertEqual(
                 invoked[-2:],
@@ -214,7 +215,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     root / "home/.codex",
                     codex=executable(root),
                     runner=runner,
-                    package_version="1.3.0",
+                    package_version=version(core),
                 )
             self.assertEqual(len(calls), 2)
 

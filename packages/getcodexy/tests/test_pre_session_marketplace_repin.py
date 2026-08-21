@@ -9,7 +9,7 @@ from pathlib import Path
 
 from codexy_runtime_tools.pre_session import _run, run_pre_session
 from codexy_runtime_tools.updater import SyncResult
-from codexy_runtime_tools.version_lock import default_package_version
+from codexy_runtime_tools.monolith_baseline import BASELINES
 
 try:
     from .pre_session_support import installed, make_plugin, marketplace
@@ -191,7 +191,10 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
             home = Path(temporary) / "codex-home"
             home.mkdir()
             executable = Path(shutil.which("codex") or "").resolve()
-            target_version = default_package_version()
+            target_version = max(
+                BASELINES,
+                key=lambda value: tuple(int(part) for part in value.split(".")),
+            )
             initial = _run(
                 [
                     str(executable),
