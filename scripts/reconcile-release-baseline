@@ -4,7 +4,9 @@ set -eu
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_ENV:?GITHUB_ENV is required}"
 : "${RELEASE_TAG:?RELEASE_TAG is required}"
+: "${RELEASE_ID:?RELEASE_ID is required}"
 : "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
+case "$RELEASE_ID" in ''|*[!0-9]*) exit 1 ;; esac
 receipt="${RELEASE_RECEIPT:-dist/runtime-release-receipt.json}"
 baseline=dist/release-baseline.json
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
@@ -21,14 +23,26 @@ attestation_policies() {
     }'
 }
 
-gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
+download_release_asset() {
+  directory="$1"
+  asset="$2"
+  asset_id="$(jq -er --arg asset "$asset" '
+    [.assets[] | select(.name == $asset)] |
+    if length == 1 then .[0].id else error("release asset identity is not unique") end
+  ' release-state.json)"
+  case "$asset_id" in ''|*[!0-9]*) exit 1 ;; esac
+  gh api -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Accept: application/octet-stream' \
+    "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$directory/$asset"
+}
+
+gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
 if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
   existing_baseline="$(mktemp -d)"
   existing_baseline_release="$(mktemp -d)"
-  gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern release-baseline.json --dir "$existing_baseline"
+  download_release_asset "$existing_baseline" release-baseline.json
   scripts/verify-release-attestation-total "$existing_baseline/release-baseline.json" 1
   for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
-    gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir "$existing_baseline_release"
+    download_release_asset "$existing_baseline_release" "$name"
   done
   staging_source_commit="$(jq -er .source.stagingSourceCommit "$existing_baseline_release/runtime-release-receipt.json")"
   STAGING_SOURCE_COMMIT="$staging_source_commit" scripts/verify-release-attestation-set "$existing_baseline_release" existing-attestations.json
