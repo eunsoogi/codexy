@@ -153,7 +153,7 @@ impl Fixture {
             .env("STAGING_SOURCE_COMMIT", COMMIT)
             .env("ACTIVATION_COMMIT", COMMIT)
             .env("STAGING_RUN_ID", "42")
-            .env("RELEASE_TAG", "v9.9.9")
+            .env("RELEASE_TAG", format!("v{}", env!("CARGO_PKG_VERSION")))
             .env("GITHUB_ENV", self.root.join("release.env"))
             .env("BASELINE_CREATED", baseline_created.to_string())
             .env("FIXTURE_IMMUTABLE", immutable.to_string())

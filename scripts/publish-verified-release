@@ -14,9 +14,17 @@ test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = 
 test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
 test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
-release_exists=false
-if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
-  release_exists=true
+release_state() {
+  gh api "repos/$GITHUB_REPOSITORY/releases/$1" |
+    jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets: [.assets[] | {id, name, size, digest}]}'
+}
+release_id_for_tag() {
+  gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+    jq -r --arg tag "$RELEASE_TAG" --arg target "$ACTIVATION_COMMIT" '
+      [.[] | select(.name == $tag and .tag_name == $tag and .target_commitish == $target)] |
+      if length > 1 then error("multiple releases match tag and activation") elif length == 1 then .[0].id else empty end'
+}
+validate_release_state() {
   test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
   test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
   test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
@@ -38,6 +46,12 @@ if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tag
       jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
     done
   fi
+}
+release_exists=false
+release_id=
+if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
+  release_exists=true
+  validate_release_state
 fi
 tag_ref="refs/tags/$RELEASE_TAG"
 remote_tag="$(git ls-remote --refs origin "$tag_ref")"
@@ -65,8 +79,20 @@ git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 
 if test "$release_exists" = false; then
   changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
-  gh release create "$RELEASE_TAG" --verify-tag --draft --target "$ACTIVATION_COMMIT" --title "$RELEASE_TAG" --notes "$changelog_notes"
-  gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
+  if gh release create "$RELEASE_TAG" --verify-tag --draft --target "$ACTIVATION_COMMIT" --title "$RELEASE_TAG" --notes "$changelog_notes"; then
+    release_id="$(release_id_for_tag)"
+    test -n "$release_id"
+    release_state "$release_id" > release-state.json
+    validate_release_state
+  else
+    create_status=$?
+    test "$create_status" -eq 1
+    release_id="$(release_id_for_tag)"
+    test -n "$release_id"
+    release_exists=true
+    release_state "$release_id" > release-state.json
+    validate_release_state
+  fi
 fi
 
 release_error() {
@@ -90,7 +116,11 @@ for asset in $release_assets; do
     gh release upload "$RELEASE_TAG" "dist/$asset"
   fi
 done
-gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
+if test -n "$release_id"; then
+  release_state "$release_id" > release-state.json
+else
+  gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json
+fi
 for asset in $release_assets; do
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
   verify_release_asset "$verified_release"
