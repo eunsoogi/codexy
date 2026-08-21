@@ -33,7 +33,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "scripts/materialize-runtime-release-archive",
             "scripts/assemble-release-train-archive.sh",
             "codexy-marketplace-bundle.tar.gz",
-            "codexy-runtime-package.tar.gz",
+            "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz",
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
             "scripts/verify-release-attestation-set",

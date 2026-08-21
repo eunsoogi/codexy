@@ -105,8 +105,8 @@ jobs:
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           mkdir -p dist final-inspect
-          cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
           RELEASE_TAG="$RELEASE_TAG" scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
+          cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
           RELEASE_TAG="$RELEASE_TAG" scripts/assemble-release-train-archive.sh dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz
           tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
           scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
