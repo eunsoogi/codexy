@@ -241,5 +241,33 @@ fn jq_fixture() -> &'static str {
 }
 
 fn gh_fixture() -> &'static str {
-    "#!/bin/sh\nif test -n \"${GH_CONFIG_DIR+x}${GH_HOST+x}${GH_ENTERPRISE_TOKEN+x}${GITHUB_TOKEN+x}\"; then printf '%s\\n' 'inherited GitHub state reached fixture' >&2; exit 92; fi\nstate() { cat \"$REMOTE_STATE\"; }\nif [ \"$1\" = api ]; then\n  printf '%s\\n' api >> \"$API_CALLS\"\n  [ \"$GH_TOKEN\" = fixture-token ] || { printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }\n  case \"$(state)\" in absent) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 201 Created'; exit 0 ;; concurrent-exact) printf '%s\\n' exact > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-wrong) printf '%s\\n' wrong > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; concurrent-unpeelable) printf '%s\\n' unpeelable > \"$REMOTE_STATE\"; printf '%s\\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;; api-auth) printf '%s\\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;; api-failure) printf '%s\\n' 'HTTP/2.0 500 Server Error'; exit 1 ;; *) exit 91 ;; esac\nfi\nif [ \"$1 $2\" = 'release view' ]; then exit 1; fi\nprintf '%s\\n' release >> \"$RELEASE_CALLS\"\nprintf '%s\\n' 'release-create sentinel' >&2\nexit 83\n"
+    r#"#!/bin/sh
+if test -n "${GH_CONFIG_DIR+x}${GH_HOST+x}${GH_ENTERPRISE_TOKEN+x}${GITHUB_TOKEN+x}"; then printf '%s\n' 'inherited GitHub state reached fixture' >&2; exit 92; fi
+state() { cat "$REMOTE_STATE"; }
+if [ "$1" = api ]; then
+  case "$*" in
+    *"repos/eunsoogi/codexy/releases"*)
+      [ "$GH_TOKEN" = fixture-token ] || { printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }
+      printf '%s\n' release >> "$RELEASE_CALLS"
+      printf '%s\n' 'release-create sentinel' >&2
+      exit 83
+      ;;
+  esac
+  printf '%s\n' api >> "$API_CALLS"
+  [ "$GH_TOKEN" = fixture-token ] || { printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1; }
+  case "$(state)" in
+    absent) printf '%s\n' exact > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 201 Created'; exit 0 ;;
+    concurrent-exact) printf '%s\n' exact > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
+    concurrent-wrong) printf '%s\n' wrong > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
+    concurrent-unpeelable) printf '%s\n' unpeelable > "$REMOTE_STATE"; printf '%s\n' 'HTTP/2.0 422 Unprocessable Entity'; exit 1 ;;
+    api-auth) printf '%s\n' 'HTTP/2.0 401 Unauthorized'; exit 1 ;;
+    api-failure) printf '%s\n' 'HTTP/2.0 500 Server Error'; exit 1 ;;
+    *) exit 91 ;;
+  esac
+fi
+if [ "$1 $2" = 'release view' ]; then exit 1; fi
+printf '%s\n' release >> "$RELEASE_CALLS"
+printf '%s\n' 'release-create sentinel' >&2
+exit 83
+"#
 }

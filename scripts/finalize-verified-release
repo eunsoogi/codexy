@@ -9,11 +9,24 @@ case "$RELEASE_ID" in ''|*[!0-9]*) exit 1 ;; esac
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 final_release="$(mktemp -d)"
-if test "${BASELINE_CREATED:-false}" = true; then
+release_state() {
+  gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" |
+    jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, uploadUrl: .upload_url, assets}'
+}
+release_upload_url() {
+  jq -er .uploadUrl release-state.json | sed 's/{?name,label}$//'
+}
+upload_release_asset() {
+  asset="$1"
+  upload_url="$(release_upload_url)"
   gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Content-Type: application/octet-stream' \
-    "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=release-baseline.json" --input dist/release-baseline.json >/dev/null
+    "$upload_url?name=$asset" --input "dist/$asset" >/dev/null
+}
+release_state > release-state.json
+if test "${BASELINE_CREATED:-false}" = true; then
+  upload_release_asset release-baseline.json
 fi
-gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
+release_state > release-state.json
 for name in $(jq -r '.assets[].name' release-state.json); do
   case "$name" in codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json|release-baseline.json) ;; *) exit 1 ;; esac
 done

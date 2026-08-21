@@ -23,7 +23,11 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
         &publish,
         "release draft reconciliation",
         &[
-            "gh release create \"$RELEASE_TAG\" --verify-tag --draft --target \"$ACTIVATION_COMMIT\"",
+            "release_create_response=\"$(gh api --method POST",
+            "repos/$GITHUB_REPOSITORY/releases\" -f \"tag_name=$RELEASE_TAG\"",
+            "jq -er .id",
+            "uploadUrl: .upload_url",
+            "\"$upload_url?name=$asset\"",
             "scripts/reconcile-release-baseline",
             "release_assets='codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'",
         ],
