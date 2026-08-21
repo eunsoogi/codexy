@@ -15,7 +15,7 @@ pub(super) fn write(
     let receipt = root.join("public-release/runtime-release-receipt.json");
     fs::create_dir_all(receipt.parent().expect("public receipt parent"))?;
     let document = json!({
-        "schema": "codexy-runtime-release-receipt/v2",
+        "schema": "codexy-runtime-release-receipt/v1",
         "source": {
             "activationCommit": ACTIVATION_COMMIT,
             "stagingSourceCommit": STAGING_COMMIT,

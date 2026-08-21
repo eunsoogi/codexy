@@ -172,7 +172,7 @@ impl Fixture {
         assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
         assert_eq!(
             fs::read_to_string(self.root.join("public-projection-log"))?,
-            "42|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|v1.3.0|public-release/runtime-release-receipt.json|1\n"
+            "42|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|v1.3.0|public-release/runtime-release-receipt.json|1\n"
         );
         assert_eq!(fs::read_to_string(self.root.join("public-inspection-log"))?, "public-release\n");
         Ok(())

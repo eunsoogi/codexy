@@ -18,12 +18,18 @@ if public_release:
     provenance = receipt.get("provenance", {})
     staging = receipt.get("staging", {})
     source_identity = receipt.get("source", {})
+    receipt_activation_commit = source_identity.get("activationCommit")
     if (
-        receipt.get("schema") != "codexy-runtime-release-receipt/v2"
+        receipt.get("schema")
+        not in {
+            "codexy-runtime-release-receipt/v1",
+            "codexy-runtime-release-receipt/v2",
+        }
         or receipt.get("release", {}).get("tag") != os.environ["RELEASE_TAG"]
         or source_identity.get("stagingSourceCommit")
         != os.environ["STAGING_SOURCE_COMMIT"]
-        or source_identity.get("activationCommit") != os.environ["ACTIVATION_COMMIT"]
+        or not isinstance(receipt_activation_commit, str)
+        or not re.fullmatch(r"[0-9a-f]{40}", receipt_activation_commit)
         or staging.get("runId") != staging_run_id
         or provenance.get("runId") != staging_run_id
         or provenance.get("runAttempt") != staging.get("runAttempt")
@@ -34,26 +40,38 @@ if public_release:
     inventory = {}
     for path in sorted((staged / "runtime").iterdir()):
         if not path.is_file():
-            raise SystemExit(f"public runtime inventory contains a non-file: {path.name}")
+            raise SystemExit(
+                f"public runtime inventory contains a non-file: {path.name}"
+            )
         match = re.fullmatch(
             r"codexy-mcp-(lsp|codegraph)-(darwin-arm64|linux-x86_64|windows-x86_64)\.(bin|exe)",
             path.name,
         )
         if not match:
-            raise SystemExit(f"public runtime inventory contains an unexpected file: {path.name}")
+            raise SystemExit(
+                f"public runtime inventory contains an unexpected file: {path.name}"
+            )
         server, platform, extension = match.groups()
         expected_extension = "exe" if platform == "windows-x86_64" else "bin"
         if extension != expected_extension:
-            raise SystemExit(f"public runtime inventory has an invalid platform: {path.name}")
+            raise SystemExit(
+                f"public runtime inventory has an invalid platform: {path.name}"
+            )
         platform_inventory = inventory.setdefault(platform, {})
         if server in platform_inventory:
-            raise SystemExit(f"public runtime inventory contains a duplicate: {path.name}")
+            raise SystemExit(
+                f"public runtime inventory contains a duplicate: {path.name}"
+            )
         platform_inventory[server] = {
             "path": f"runtime/{path.name}",
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         }
-    if not inventory or any(set(value) != {"lsp", "codegraph"} for value in inventory.values()):
-        raise SystemExit("public runtime inventory must contain lsp and codegraph per platform")
+    if not inventory or any(
+        set(value) != {"lsp", "codegraph"} for value in inventory.values()
+    ):
+        raise SystemExit(
+            "public runtime inventory must contain lsp and codegraph per platform"
+        )
     candidate = {
         "source": {"commit": os.environ["STAGING_SOURCE_COMMIT"]},
         "artifact": {"stagingRunId": staging_run_id},
@@ -81,9 +99,7 @@ if not public_release:
     ):
         raise SystemExit("private activation record does not match staged identity")
 
-Path(os.environ["SELECTED_CANDIDATE"]).write_text(
-    json.dumps(candidate, sort_keys=True)
-)
+Path(os.environ["SELECTED_CANDIDATE"]).write_text(json.dumps(candidate, sort_keys=True))
 legacy_dispatcher_free = os.environ["LEGACY_DISPATCHER_FREE"] == "1"
 for platform, inventory in candidate["platforms"].items():
     for server, binary in inventory.items():

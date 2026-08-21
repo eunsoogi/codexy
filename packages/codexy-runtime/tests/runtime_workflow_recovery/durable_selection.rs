@@ -67,7 +67,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "public_receipt=public-release/runtime-release-receipt.json",
             "export STAGING_RUN_ID=\"$(jq -er .staging.runId \"$public_receipt\")\"",
             "export STAGING_SOURCE_COMMIT=\"$(jq -er .source.stagingSourceCommit \"$public_receipt\")\"",
-            "export ACTIVATION_COMMIT=\"$(jq -er .source.activationCommit \"$public_receipt\")\"",
+            "export ACTIVATION_COMMIT=\"$(git rev-parse HEAD)\"",
             "export RELEASE_TAG=\"$(jq -er .release.tag \"$public_receipt\")\"",
             "export PUBLIC_RELEASE_RECEIPT=\"$public_receipt\"",
             "export PUBLIC_RELEASE=1",
@@ -83,6 +83,8 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             ".candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json",
             ".candidate.source.commit .agents/plugins/runtime-activation.json",
             ".runtime.selectedTag .agents/plugins/release-publish-contract.json",
+            "export ACTIVATION_COMMIT=\"$(jq -er .source.activationCommit \"$public_receipt\")\"",
+            "$env:ACTIVATION_COMMIT = \"$($receipt.source.activationCommit)\"",
         ],
     );
     let windows = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
@@ -118,7 +120,6 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "$receipt = Get-Content -Raw $receiptPath | ConvertFrom-Json",
             "$env:STAGING_RUN_ID = \"$($receipt.staging.runId)\"",
             "$env:STAGING_SOURCE_COMMIT = \"$($receipt.source.stagingSourceCommit)\"",
-            "$env:ACTIVATION_COMMIT = \"$($receipt.source.activationCommit)\"",
             "$env:RELEASE_TAG = \"$($receipt.release.tag)\"",
             "$env:PUBLIC_RELEASE_RECEIPT = $receiptPath",
         ],
@@ -137,7 +138,9 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         "public-release materializer receipt source",
         &[
             "PUBLIC_RELEASE_RECEIPT",
+            "codexy-runtime-release-receipt/v1",
             "codexy-runtime-release-receipt/v2",
+            "receipt_activation_commit",
             "SELECTED_CANDIDATE",
             "public runtime inventory",
         ],
