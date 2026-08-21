@@ -57,8 +57,8 @@ impl Fixture {
         fs::create_dir_all(&bin)?;
         fs::copy(
             codexy_runtime::paths::repository_root()
-                .join("scripts/download-selected-runtime-package"),
-            root.join("scripts/download-selected-runtime-package"),
+                .join("scripts/download-selected-runtime-package.sh"),
+            root.join("scripts/download-selected-runtime-package.sh"),
         )?;
         fs::write(root.join("release-state"), release)?;
         let public = root.join("public.tar.gz");

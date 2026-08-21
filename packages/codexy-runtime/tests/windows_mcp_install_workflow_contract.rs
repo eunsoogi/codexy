@@ -15,7 +15,7 @@ fn windows_selected_candidate_proof_preserves_legacy_public_boundary() {
             "Verify immutable native Windows candidate bytes",
             "legacy-public baseline intentionally has no selected Windows candidate",
             "candidate-proven",
-            "bash scripts/download-selected-runtime-package $archive",
+            "bash scripts/download-selected-runtime-package.sh $archive",
             "Test-Path -LiteralPath \"dist/public-release\" -PathType Leaf",
             "System32/tar.exe",
             "codexy-mcp-$server-windows-x86_64.exe",
@@ -51,6 +51,52 @@ fn windows_candidate_verifier_creates_its_fresh_extraction_directory() {
     assert!(legacy_exit < root, "legacy-public must not create or extract a Windows candidate");
     assert!(dispatcher_boundary < root, "legacy dispatcher-free archives must stop before extraction");
     assert!(root < reject_ambient && reject_ambient < create && create < extract, "candidate extraction root must be fresh before tar -C");
+}
+
+#[test]
+fn windows_candidate_verifier_projects_only_after_helper_owned_download() {
+    let workflow = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join(".github/workflows/plugin-runtime-binaries.yml"),
+    )
+    .expect("read plugin runtime workflow");
+    let workflow: serde_yaml::Value = serde_yaml::from_str(&workflow).expect("runtime workflow YAML");
+    let verifier = workflow["jobs"]["verify-windows-selected-candidate"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify immutable native Windows candidate bytes"))
+        .and_then(|step| step["run"].as_str())
+        .expect("native Windows verifier step");
+    let lines = verifier.lines().map(str::trim).collect::<Vec<_>>();
+    let download = lines
+        .iter()
+        .position(|line| *line == "bash scripts/download-selected-runtime-package.sh $archive")
+        .expect("selected runtime helper download");
+    let listed = lines
+        .iter()
+        .position(|line| *line == "$entries = & $windowsTar -tzf $archive")
+        .expect("selected archive listing");
+    let extracted = lines
+        .iter()
+        .position(|line| *line == "& $windowsTar -xzf $archive -C $root")
+        .expect("selected candidate extraction");
+    let projected = lines
+        .iter()
+        .position(|line| *line == "bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz")
+        .expect("public archive projection");
+    let public_extracted = lines
+        .iter()
+        .position(|line| *line == "& $windowsTar -xzf dist/codexy-marketplace-plugin.tar.gz -C $public")
+        .expect("public archive extraction");
+    let inspected = lines
+        .iter()
+        .position(|line| *line == "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy-devtools\" public-release")
+        .expect("public archive inspection");
+
+    assert!(download < listed && listed < extracted && extracted < projected);
+    assert!(projected < public_extracted && public_extracted < inspected);
+    assert!(
+        lines.iter().all(|line| *line != "New-Item -ItemType Directory -Path dist -ErrorAction Stop")
+    );
 }
 
 #[test]

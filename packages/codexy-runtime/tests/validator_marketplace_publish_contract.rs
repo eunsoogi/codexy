@@ -12,8 +12,8 @@ fn runtime_check_workflow_projects_private_staging_into_public_packages() -> Res
     let job = &workflow["jobs"]["verify-selected-package"];
     assert_eq!(job["strategy"]["matrix"]["include"].as_sequence().ok_or("matrix")?.len(), 2);
     let download = run(job, "Download and verify selected immutable bytes")?;
-    assert!(lines(download).any(|line| line == "scripts/download-selected-runtime-package dist/selected.tar.gz"));
-    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package"))?;
+    assert!(lines(download).any(|line| line == "scripts/download-selected-runtime-package.sh dist/selected.tar.gz"));
+    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package.sh"))?;
     for portable_digest_line in [
         "if command -v sha256sum >/dev/null 2>&1; then",
         "shasum -a 256 \"$1\" | awk '{print $1}'",

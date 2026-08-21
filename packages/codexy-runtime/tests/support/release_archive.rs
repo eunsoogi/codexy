@@ -92,11 +92,9 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
         "Assemble state-aware marketplace package without rebuilding",
     );
     let download = workflow_run(job, "Download and verify selected immutable bytes");
-    assert!(
-        download.lines().map(str::trim).any(|line| {
-            line == "scripts/download-selected-runtime-package dist/selected.tar.gz"
-        })
-    );
+    assert!(download.lines().map(str::trim).any(|line| {
+        line == "scripts/download-selected-runtime-package.sh dist/selected.tar.gz"
+    }));
     for marker in ["legacy-public)", "candidate-proven)"] {
         assert_eq!(
             workflow_lines(assembly)

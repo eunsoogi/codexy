@@ -28,11 +28,11 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
     support::assert_structured_literals(
         proof,
         "durable selected runtime verification",
-        &["scripts/download-selected-runtime-package dist/selected.tar.gz"],
+        &["scripts/download-selected-runtime-package.sh dist/selected.tar.gz"],
     );
     let helper = fs::read_to_string(
         codexy_runtime::paths::repository_root()
-            .join("scripts/download-selected-runtime-package"),
+            .join("scripts/download-selected-runtime-package.sh"),
     )?;
     support::assert_structured_literals(
         &helper,
@@ -42,6 +42,7 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
             "grep -Eq 'HTTP 404|release not found' release-view-error",
             "runtime-release-receipt.json",
             "public release receipt does not match activated staging identity",
+            "mkdir -p \"$marker_dir\"",
         ],
     );
     let assemble = workflow["jobs"]["verify-selected-package"]["steps"]
@@ -86,13 +87,17 @@ fn selected_runtime_verification_uses_the_immutable_release_after_publication()
         windows,
         "Windows public-release archive projection",
         &[
-            "New-Item -ItemType Directory -Path dist -ErrorAction Stop",
             "$env:PUBLIC_RELEASE = \"1\"",
-            "bash scripts/download-selected-runtime-package $archive",
+            "bash scripts/download-selected-runtime-package.sh $archive",
             "Test-Path -LiteralPath \"dist/public-release\" -PathType Leaf",
             "bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz",
             "bash scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$public/plugins/codexy-devtools\" public-release",
         ],
+    );
+    support::assert_structured_absent_literals(
+        windows,
+        "Windows selected helper owns dist creation",
+        &["New-Item -ItemType Directory -Path dist -ErrorAction Stop"],
     );
     Ok(())
 }
@@ -104,7 +109,13 @@ fn windows_selected_runtime_verification_exercises_the_public_release_branch()
     let temporary = tempfile::tempdir()?;
     let root = temporary.path();
     fs::create_dir_all(root.join(".agents/plugins"))?;
+    fs::create_dir_all(root.join("scripts"))?;
     fs::create_dir_all(root.join("bin"))?;
+    fs::copy(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/download-selected-runtime-package.sh"),
+        root.join("scripts/download-selected-runtime-package.sh"),
+    )?;
     let archive = root.join("public.tar.gz");
     let receipt = root.join("public-receipt.json");
     let archive_root = root.join("public archive/plugins/codexy-devtools/mcp");
@@ -141,9 +152,10 @@ exit /b 91
     fs::write(&runner, format!("$record = Get-Content -Raw '.agents/plugins/runtime-activation.json' | ConvertFrom-Json\n$env:STAGING_RUN_ID = \"$($record.candidate.artifact.stagingRunId)\"\n$env:STAGING_SOURCE_COMMIT = \"$($record.candidate.source.commit)\"\n$env:RELEASE_TAG = 'v1.3.0'\n{}", windows_release_branch()?))?;
     let mut paths = vec![root.join("bin")];
     paths.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
-    let output = Command::new("pwsh").args(["-NoProfile", "-File"]).arg(&runner).current_dir(root).env("PUBLIC_ARCHIVE", archive).env("PUBLIC_RECEIPT", receipt).env("PATH", std::env::join_paths(paths)?).output()?;
+    let output = Command::new("pwsh").args(["-NoProfile", "-File"]).arg(&runner).current_dir(root).env("GITHUB_REPOSITORY", "eunsoogi/codexy").env("PUBLIC_ARCHIVE", archive).env("PUBLIC_RECEIPT", receipt).env("PATH", std::env::join_paths(paths)?).output()?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert!(root.join("public-release/codexy-marketplace-plugin.tar.gz").is_file());
+    assert!(root.join("dist/public-release").is_file());
     Ok(())
 }
 
@@ -151,7 +163,9 @@ exit /b 91
 fn windows_release_branch() -> Result<String, Box<dyn std::error::Error>> {
     let workflow: serde_yaml::Value = serde_yaml::from_str(&fs::read_to_string(PathBuf::from(codexy_runtime::paths::repository_root()).join(".github/workflows/plugin-runtime-binaries.yml"))?)?;
     let run = workflow["jobs"]["verify-windows-selected-candidate"]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Verify immutable native Windows candidate bytes")).and_then(|step| step["run"].as_str()).ok_or("windows verifier")?;
-    let start = run.find("gh release view $env:RELEASE_TAG").ok_or("release view")?;
-    let end = run.find("$root = Join-Path").ok_or("extraction")?;
+    let start = run.find("$archive = \"dist/selected.tar.gz\"").ok_or("archive")?;
+    let end = run
+        .find("$publicArchive = Test-Path -LiteralPath \"dist/public-release\"")
+        .ok_or("public-release marker")?;
     Ok(run[start..end].to_owned())
 }

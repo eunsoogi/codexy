@@ -157,7 +157,7 @@ fn check_workflow_packages_release_artifacts(path: &Path) -> Result<()> {
     for required in [
         "verify-selected-package:",
         "Download and verify selected immutable bytes",
-        "scripts/download-selected-runtime-package dist/selected.tar.gz",
+        "scripts/download-selected-runtime-package.sh dist/selected.tar.gz",
         "Assemble state-aware marketplace package without rebuilding",
         ".agents/plugins/runtime-activation.json",
         "scripts/materialize-runtime-release-archive",

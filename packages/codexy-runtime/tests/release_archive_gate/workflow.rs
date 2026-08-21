@@ -29,13 +29,13 @@ fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
 #[test]
 fn selected_runtime_source_helper_keeps_modern_and_legacy_boundaries() {
     let root = codexy_runtime::paths::repository_root();
-    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package"))
+    let helper = std::fs::read_to_string(root.join("scripts/download-selected-runtime-package.sh"))
         .expect("selected runtime source helper");
     for required in [
         "if test -f public-release/runtime-release-receipt.json; then",
         "test \"$(jq -r .release.tag \"$receipt\")\" = \"$RELEASE_TAG\"",
         "public release receipt does not match activated staging identity",
-        ": > \"$marker_dir/public-release\"",
+        ": >\"$marker_dir/public-release\"",
         "legacy_release=plugins/codexy-devtools/runtime-release.json",
         "test \"$(jq -er .state \"$legacy_release\")\" = legacy-public",
         "test \"$(jq -er .artifact.tag \"$legacy_release\")\" = \"$RELEASE_TAG\"",
@@ -43,7 +43,7 @@ fn selected_runtime_source_helper_keeps_modern_and_legacy_boundaries() {
         "test \"$url\" = \"$expected_url\"",
         "curl --fail --location \"$url\" -o \"$output\"",
         "test \"$(digest_file \"$output\")\" = \"$digest\"",
-        ": > \"$marker_dir/legacy-public\"",
+        ": >\"$marker_dir/legacy-public\"",
         "scripts/download-runtime-staging-artifact staging",
     ] {
         assert!(helper.contains(required), "helper must include {required}");

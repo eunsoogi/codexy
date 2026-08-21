@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
         run: |
-          scripts/download-selected-runtime-package dist/selected.tar.gz
+          scripts/download-selected-runtime-package.sh dist/selected.tar.gz
       - name: Assemble state-aware marketplace package without rebuilding
         run: |
           if test -f dist/public-release; then state=public-release
@@ -120,7 +120,7 @@ jobs:
           $env:ACTIVATION_COMMIT = (git rev-parse HEAD)
           $env:RELEASE_TAG = (Get-Content -Raw ".agents/plugins/release-publish-contract.json" | ConvertFrom-Json).runtime.selectedTag
           $archive = "dist/selected.tar.gz"
-          bash scripts/download-selected-runtime-package $archive
+          bash scripts/download-selected-runtime-package.sh $archive
           if ($LASTEXITCODE -ne 0) { throw "selected runtime download failed" }
           $publicArchive = Test-Path -LiteralPath "dist/public-release" -PathType Leaf
           $windowsTar = Join-Path $env:SystemRoot "System32/tar.exe"
@@ -139,7 +139,6 @@ jobs:
           New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
           & $windowsTar -xzf $archive -C $root
           if ($LASTEXITCODE -ne 0) { throw "native Windows archive extraction failed" }
-          New-Item -ItemType Directory -Path dist -ErrorAction Stop | Out-Null
           if ($publicArchive) { $env:PUBLIC_RELEASE = "1" }
           else { Remove-Item Env:PUBLIC_RELEASE -ErrorAction SilentlyContinue }
           bash scripts/materialize-runtime-release-archive $archive dist/codexy-marketplace-plugin.tar.gz
