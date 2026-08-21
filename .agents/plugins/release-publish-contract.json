@@ -4,7 +4,7 @@
   "version": "1.3.0",
   "bootstrap": {
     "selectedVersion": "1.3.0",
-    "candidateVersion": "1.3.0",
+    "candidateVersion": "1.4.0",
     "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
   },
   "runtime": {
@@ -13,7 +13,11 @@
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
     "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",
     "artifactRetentionDays": 14,
-    "platforms": ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64",
+      "windows-x86_64"
+    ]
   },
   "currentMarketplace": {
     "repository": "https://github.com/eunsoogi/codexy",
@@ -26,16 +30,27 @@
     "workflow": ".github/workflows/plugin-runtime-binaries.yml",
     "archive": "dist/codexy-marketplace-plugin.tar.gz",
     "futureInstallRef": "version-tags",
-    "platforms": ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64",
+      "windows-x86_64"
+    ]
   },
   "sourceMarketplace": {
     "path": ".agents/plugins/marketplace.json",
     "mode": "source-checkout-dev",
-    "platforms": ["darwin-arm64", "linux-x86_64"]
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64"
+    ]
   },
   "releaseArchive": {
     "bundle": "dist/codexy-marketplace-bundle.tar.gz",
     "componentManifest": "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
-    "platforms": ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+    "platforms": [
+      "darwin-arm64",
+      "linux-x86_64",
+      "windows-x86_64"
+    ]
   }
 }

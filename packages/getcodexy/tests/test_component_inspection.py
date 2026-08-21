@@ -13,7 +13,9 @@ from component_lifecycle_support import fixture
 from component_inspection_host_cases import ComponentInspectionHostCases
 
 
-def materialize(state: fixture, *components: str, version: str = "1.3.0") -> None:
+def materialize(
+    state: fixture, *components: str, version: str = load_component_manifest().version
+) -> None:
     plugins = {
         "core": "codexy",
         "github": "codexy-github",
