@@ -125,8 +125,14 @@ fn bootstrap_identity_supports_selected_and_candidate_prepared_states() -> Resul
     let candidate_version = contract["bootstrap"]["candidateVersion"]
         .as_str()
         .ok_or("candidate version")?;
+    let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        root.join("plugins/codexy-devtools/runtime-release.json"),
+    )?)?;
+    let selected_runtime_tag = runtime_release["artifact"]["tag"]
+        .as_str()
+        .ok_or("selected runtime tag")?;
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
-    assert_eq!(contract["runtime"]["selectedTag"], format!("v{selected_version}"));
+    assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
     assert_eq!(candidate_version, package_version);
     if package_version == selected_version {
         assert_eq!(candidate_version, selected_version);
@@ -144,8 +150,6 @@ fn bootstrap_identity_supports_selected_and_candidate_prepared_states() -> Resul
         .ok_or("CANDIDATE_VERSION constant")?;
     assert_eq!(selected_constant, selected_version);
     assert_eq!(candidate_constant, candidate_version);
-    let runtime_release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root.join("plugins/codexy-devtools/runtime-release.json"))?)?;
-    assert_eq!(runtime_release["artifact"]["tag"], "v1.2.2");
     Ok(())
 }
 
