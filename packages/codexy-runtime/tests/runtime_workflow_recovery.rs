@@ -16,6 +16,8 @@ mod durable_selection;
 mod durable_selection_behavior;
 #[path = "runtime_workflow_recovery/legacy_selected_source.rs"]
 mod legacy_selected_source;
+#[path = "runtime_workflow_recovery/legacy_public_assembly.rs"]
+mod legacy_public_assembly;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
