@@ -1,4 +1,4 @@
-use std::{fs, io, path::Path, process::Command};
+use std::{io, path::Path, process::Command};
 
 /// Sources a POSIX fixture script after binding bare command names to mock payloads.
 ///
@@ -39,8 +39,7 @@ pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
     }
     validate_identifier(target_environment)?;
     source.push_str(&format!(". \"${target_environment}\" \"$@\"\n"));
-    fs::write(path, source)?;
-    crate::support::make_executable(path)
+    crate::support::write_executable_fixture(path, source)
 }
 
 pub(crate) fn write_single_posix_fixture_shell_runner(

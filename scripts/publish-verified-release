@@ -16,7 +16,7 @@ test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 release_state() {
   gh api "repos/$GITHUB_REPOSITORY/releases/$1" |
-    jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets: [.assets[] | {id, name, size, digest}]}'
+    jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, uploadUrl: .upload_url, assets: [.assets[] | {id, name, size, digest}]}'
 }
 release_id_for_tag() {
   gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
@@ -82,8 +82,11 @@ git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 
 if test "$release_exists" = false; then
   changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
-  if gh release create "$RELEASE_TAG" --verify-tag --draft --target "$ACTIVATION_COMMIT" --title "$RELEASE_TAG" --notes "$changelog_notes"; then
-    release_id="$(release_id_for_tag)"
+  if release_create_response="$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' \
+    "repos/$GITHUB_REPOSITORY/releases" -f "tag_name=$RELEASE_TAG" \
+    -f "target_commitish=$ACTIVATION_COMMIT" -f "name=$RELEASE_TAG" \
+    -f "body=$changelog_notes" -F draft=true)"; then
+    release_id="$(printf '%s' "$release_create_response" | jq -er .id)"
     test -n "$release_id"
     release_state "$release_id" > release-state.json
     validate_release_state
@@ -108,6 +111,15 @@ release_asset_id() {
     if length == 1 then .[0].id else error("release asset identity is not unique") end
   ' release-state.json
 }
+release_upload_url() {
+  jq -er .uploadUrl release-state.json | sed 's/{?name,label}$//'
+}
+upload_release_asset() {
+  asset="$1"
+  upload_url="$(release_upload_url)"
+  gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Content-Type: application/octet-stream' \
+    "$upload_url?name=$asset" --input "dist/$asset" >/dev/null
+}
 download_release_asset() {
   directory="$1"
   asset="$2"
@@ -130,8 +142,7 @@ for asset in $release_assets; do
 done
 for asset in $release_assets; do
   if ! jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
-    gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Content-Type: application/octet-stream' \
-      "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$asset" --input "dist/$asset" >/dev/null
+    upload_release_asset "$asset"
   fi
 done
 case "$release_id" in ''|*[!0-9]*) release_error "release id is invalid" ;; esac

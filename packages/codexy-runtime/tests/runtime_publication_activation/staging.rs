@@ -46,7 +46,7 @@ fn final_publisher_is_version_only() -> Result<(), Box<dyn std::error::Error>> {
         &[
             "target_version",
             "RELEASE_TAG",
-            "gh release create",
+            "gh api --method POST",
             "attest-build-provenance",
             "curl --fail",
             "codexy-marketplace-plugin.tar.gz",

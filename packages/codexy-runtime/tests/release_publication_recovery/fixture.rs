@@ -18,7 +18,7 @@ case "$1" in fetch|merge-base) exit 0 ;; rev-parse) printf '%s\n' "$ACTIVATION_C
 
 pub(crate) fn gh_fixture() -> &'static str { r#"#!/usr/bin/env python3
 import hashlib,json,os,pathlib,shutil,sys,urllib.parse
-root=pathlib.Path.cwd(); remote=root/'remote'; exists=root/'exists'; draft=root/'draft'; log=root/'log'; reads=root/'reads'; tag=os.environ['RELEASE_TAG']; commit=os.environ['ACTIVATION_COMMIT']
+root=pathlib.Path.cwd(); remote=root/'remote'; exists=root/'exists'; created=root/'created'; visibility=root/'visibility'; draft=root/'draft'; log=root/'log'; reads=root/'reads'; tag=os.environ['RELEASE_TAG']; commit=os.environ['ACTIVATION_COMMIT']
 def append_log(value):
  log.write_text(log.read_text()+value+'\n' if log.exists() else value+'\n')
 def append_read(value):
@@ -26,30 +26,38 @@ def append_read(value):
 def assets():
  return [{'id':i+1,'name':p.name,'size':p.stat().st_size,'digest':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for i,p in enumerate(sorted(remote.iterdir()))]
 def state(api=False):
- s={'id':42,'name':tag,'tag_name':tag,'target_commitish':commit,'draft':draft.read_text().strip()=='true','prerelease':False,'assets':assets()}
+ s={'id':42,'name':tag,'tag_name':tag,'target_commitish':commit,'draft':draft.read_text().strip()=='true','prerelease':False,'upload_url':'https://uploads.github.com/repos/eunsoogi/codexy/releases/42/assets{?name,label}','assets':assets()}
  if api: s['immutable']=os.environ.get('FIXTURE_IMMUTABLE','true') == 'true'
  else: s={'id':s['id'],'name':s['name'],'tagName':s['tag_name'],'targetCommitish':s['target_commitish'],'isDraft':s['draft'],'isPrerelease':s['prerelease'],'assets':s['assets']}
  return s
 args=sys.argv[1:]
 def endpoint():
  for value in args[1:]:
-  if value.startswith('repos/'): return value
+  if value.startswith('repos/') or value.startswith('https://'): return value
  return ''
 def method():
  return args[args.index('--method')+1] if '--method' in args else 'GET'
 def input_path():
  return args[args.index('--input')+1] if '--input' in args else ''
 if args[:2]==['release','view']:
+ if created.exists(): visibility.write_text('visible'); print(json.dumps(state(False))); sys.exit()
  print('gh: Not Found (HTTP 404)',file=sys.stderr); sys.exit(1)
 if args[:2]==['release','create']:
  if exists.exists(): print('release already exists',file=sys.stderr); sys.exit(1)
- exists.write_text('yes'); draft.write_text('true'); append_log('create'); sys.exit()
+ exists.write_text('yes'); draft.write_text('true'); visibility.write_text('hidden'); append_log('legacy-create'); print('https://github.com/eunsoogi/codexy/releases/tag/untagged-create-race'); sys.exit()
 if args[:2] in (['release','download'],['release','upload'],['release','edit']):
  print('gh: Not Found (HTTP 404) tag-selected draft route',file=sys.stderr); sys.exit(1)
 if args and args[0]=='api':
  url=endpoint()
- if url.endswith('/releases?per_page=100'): print(json.dumps([state(True)] if exists.exists() else [])); sys.exit()
+ if method() == 'POST' and url.endswith('/releases'):
+  if exists.exists(): print('release already exists',file=sys.stderr); sys.exit(1)
+  exists.write_text('yes'); draft.write_text('true'); created.write_text('yes'); visibility.write_text('hidden'); append_log('api-create'); print(json.dumps(state(True))); sys.exit()
+ if url.endswith('/releases?per_page=100'):
+  if visibility.exists() and visibility.read_text() == 'hidden':
+   visibility.write_text('visible'); print('[]'); sys.exit()
+  print(json.dumps([state(True)] if exists.exists() else [])); sys.exit()
  if method() == 'POST' and '/releases/42/assets?name=' in url:
+  if not url.startswith('https://uploads.github.com/'): print('release asset upload used the API host',file=sys.stderr); sys.exit(1)
   name=urllib.parse.unquote(url.split('?name=',1)[1]); shutil.copy(input_path(),remote/name); append_log('api-upload '+name); print(json.dumps({'name':name})); sys.exit()
  if '/releases/assets/' in url:
   asset_id=int(url.rsplit('/',1)[1]); path=sorted(remote.iterdir())[asset_id-1]; append_read('api-download '+path.name); sys.stdout.buffer.write(path.read_bytes()); sys.exit()

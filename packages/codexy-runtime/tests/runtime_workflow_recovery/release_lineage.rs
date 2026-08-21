@@ -33,7 +33,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     }
     let release = std::fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;
     assert_eq!(step["env"]["GH_TOKEN"], "${{ github.token }}");
-    let create = release.find("gh release create \"$RELEASE_TAG\"").ok_or("version release")?;
+    let create = release.find("release_create_response=\"$(gh api --method POST").ok_or("version release")?;
     for required in [
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
         "git ls-remote --refs origin \"$tag_ref\"",
@@ -52,7 +52,11 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     support::assert_structured_literals(
         &release,
         "exact-tag release creation",
-        &["gh release create \"$RELEASE_TAG\" --verify-tag --draft --target \"$ACTIVATION_COMMIT\""],
+        &[
+            "release_create_response=\"$(gh api --method POST",
+            "repos/$GITHUB_REPOSITORY/releases\" -f \"tag_name=$RELEASE_TAG\"",
+            "-f \"target_commitish=$ACTIVATION_COMMIT\" -f \"name=$RELEASE_TAG\"",
+        ],
     );
     Ok(())
 }
