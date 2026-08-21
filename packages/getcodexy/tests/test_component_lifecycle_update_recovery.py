@@ -10,7 +10,7 @@ from codexy_runtime_tools.component_transaction_state import (
     read_journal,
     write_journal,
 )
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
 
 class UpdateRecoveryTests(unittest.TestCase):
@@ -90,7 +90,7 @@ class UpdateRecoveryTests(unittest.TestCase):
                     "started",
                 ),
             )
-            state.versions["core"] = "1.3.0"
+            state.versions["core"] = VERSION
 
             receipt = run_operation(
                 "install",

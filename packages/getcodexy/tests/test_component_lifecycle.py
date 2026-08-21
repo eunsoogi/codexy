@@ -22,7 +22,7 @@ from packages.getcodexy.tests.component_lifecycle_recovery_cases import (
     ComponentLifecycleRecoveryCases,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record, recorded
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
 
 class ComponentLifecycleTests(
@@ -71,7 +71,7 @@ class ComponentLifecycleTests(
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    "v1.3.0",
+                    f"v{VERSION}",
                     "--json",
                 ),
                 state.mutations,

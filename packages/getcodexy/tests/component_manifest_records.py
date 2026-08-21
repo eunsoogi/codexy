@@ -1,7 +1,12 @@
 """Installed-component records for manifest resolver cases."""
 
+from codexy_runtime_tools.component_manifest import load_component_manifest
 
-def installed(plugin: str, version: str = "1.3.0") -> dict[str, object]:
+
+VERSION = load_component_manifest().version
+
+
+def installed(plugin: str, version: str = VERSION) -> dict[str, object]:
     return {
         "pluginId": f"{plugin}@codexy",
         "name": plugin,

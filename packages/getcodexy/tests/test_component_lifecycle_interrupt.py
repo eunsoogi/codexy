@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
+from codexy_runtime_tools.component_manifest import load_component_manifest
 
 
 class LifecycleInterruptionTests(unittest.TestCase):
@@ -37,7 +38,9 @@ class LifecycleInterruptionTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            codex.write_text(_host_script(), encoding="utf-8")
+            codex.write_text(
+                _host_script(load_component_manifest().version), encoding="utf-8"
+            )
             codex.chmod(0o700)
             environment = {
                 **os.environ,
@@ -76,7 +79,7 @@ def _child_program(home: str, codex: str) -> str:
     return f"from codexy_runtime_tools.component_lifecycle import run_operation; run_operation('install', ('github',), {home!r}, __import__('pathlib').Path({codex!r}), operation_id='op-killed')"
 
 
-def _host_script() -> str:
+def _host_script(version: str) -> str:
     return """#!/usr/bin/env python3
 import json, os, signal, sys
 root = os.path.dirname(__file__)
@@ -89,7 +92,7 @@ command = sys.argv[1:]
 if command[:3] == ["plugin", "marketplace", "list"]:
     payload = {"marketplaces": [{"name": "codexy", "root": market, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}]}
 elif command[:2] == ["plugin", "list"]:
-    payload = {"installed": [{"pluginId": names[item] + "@codexy", "name": names[item], "marketplaceName": "codexy", "version": "1.3.0", "installed": True, "enabled": True, "source": {"source": "local", "path": os.path.join(market, "plugins", names[item])}, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}} for item in ["core", "github", "devtools"] if item in selected]}
+    payload = {"installed": [{"pluginId": names[item] + "@codexy", "name": names[item], "marketplaceName": "codexy", "version": "__VERSION__", "installed": True, "enabled": True, "source": {"source": "local", "path": os.path.join(market, "plugins", names[item])}, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}} for item in ["core", "github", "devtools"] if item in selected]}
 else:
     item = reverse[command[2].split("@", 1)[0]]
     if command[1] == "add" and item not in selected: selected.append(item)
@@ -99,7 +102,7 @@ else:
         os.kill(os.getppid(), signal.SIGKILL)
     payload = {"ok": True}
 print(json.dumps(payload))
-"""
+""".replace("__VERSION__", version)
 
 
 if __name__ == "__main__":

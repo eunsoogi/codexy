@@ -5,8 +5,11 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from codexy_runtime_tools.component_manifest import load_component_manifest
+
 
 OFFICIAL = "https://github.com/eunsoogi/codexy.git"
+VERSION = load_component_manifest().version
 
 
 class fixture:
@@ -89,7 +92,7 @@ class fixture:
             if self.fail_upgrade:
                 self.fail_upgrade = False
                 return subprocess.CompletedProcess(command, 1, "", "failed")
-            self.versions = {component: "1.3.0" for component in self.selection}
+            self.versions = {component: VERSION for component in self.selection}
             payload = {"ok": True}
         elif tail == ("plugin", "list", "--json"):
             payload = (
@@ -102,7 +105,7 @@ class fixture:
                         installed(
                             self.marketplace,
                             component,
-                            self.versions.get(component, "1.3.0"),
+                            self.versions.get(component, VERSION),
                         )
                         for component in ("core", "github", "devtools")
                         if component in self.selection
@@ -112,7 +115,7 @@ class fixture:
         elif tail[:2] == ("plugin", "add"):
             plugin = tail[2].split("@", 1)[0]
             self.selection.add(component_id(plugin))
-            self.versions[component_id(plugin)] = "1.3.0"
+            self.versions[component_id(plugin)] = VERSION
             self.mutations.append(tail)
             if plugin == self.interrupt_add:
                 raise KeyboardInterrupt()
@@ -142,7 +145,7 @@ def component_id(plugin: str) -> str:
     ]
 
 
-def installed(root: Path, component: str, version: str = "1.3.0") -> dict[str, object]:
+def installed(root: Path, component: str, version: str = VERSION) -> dict[str, object]:
     plugin = {
         "core": "codexy",
         "github": "codexy-github",

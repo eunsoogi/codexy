@@ -74,7 +74,7 @@ class ComponentManifestReconciliationCases:
     ) -> None:
         mixed = {
             "installed": [
-                installed("codexy", "1.3.0"),
+                installed("codexy", self.manifest.version),
                 installed("codexy-github", "1.2.0"),
             ]
         }
