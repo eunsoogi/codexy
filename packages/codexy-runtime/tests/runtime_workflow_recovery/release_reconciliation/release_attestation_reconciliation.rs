@@ -14,11 +14,12 @@ fn attestation_reconciliation_admits_only_absent_or_exact_authenticated_state()
     let script = scripts.join("reconcile-release-attestations");
     fs::copy(root.join("scripts/reconcile-release-attestations"), &script)?;
     fs::write(artifacts.join("release-baseline.json"), b"baseline")?;
+    fs::write(artifacts.join("codexy-runtime-package.tar.gz"), b"baseline")?;
     let gh = bin.join("gh");
     fs::write(&gh, r#"#!/bin/sh
 repo=eunsoogi/codexy
 header='X-GitHub-Api-Version: 2026-03-10'
-route="repos/$repo/attestations/sha256:8ba8496a2525ae171ffd104d632dede6ef418d9b95962a9d88e2fcdbc8d48d24?per_page=100"
+route="repos/$repo/attestations/sha256:${EXPECTED_DIGEST:?}?per_page=100"
 case "$1" in
   api)
     case "$2" in
@@ -32,9 +33,9 @@ case "$1" in
     esac ;;
   attestation)
     test "$2" = verify && test "$4" = --repo && test "$5" = "$repo" && \
-      test "$6" = --signer-workflow && test "$7" = "$repo/.github/workflows/publish-version-release.yml" && \
+      test "$6" = --signer-workflow && test "$7" = "$repo/.github/workflows/${EXPECTED_WORKFLOW:?}" && \
       test "$8" = --source-ref && test "$9" = refs/heads/main && \
-      test "${10}" = --source-digest && test "${11}" = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa && \
+      test "${10}" = --source-digest && test "${11}" = "${EXPECTED_SOURCE_DIGEST:?}" && \
       test "${12}" = --deny-self-hosted-runners && test "${13}" = --format && test "${14}" = json || exit 2
     case "${ATTESTATION_STATE:?}" in
       mismatch) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"}]}}}]' ;;
@@ -46,29 +47,49 @@ esac
     crate::support::make_executable(&gh)?;
     let environment = temp.path().join("release.env");
     let base_path = std::env::var("PATH")?;
-    let run = |state: &str| {
+    let run = |state: &str, workflow: &str, source_digest: &str, name: &str| {
         Command::new("sh")
             .arg(&script)
             .arg(&artifacts)
-            .args(["ATTEST_ORIGINAL", "release-baseline.json"])
+            .args(["ATTEST_ORIGINAL", name])
             .current_dir(temp.path())
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("ACTIVATION_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            .env("EXPECTED_DIGEST", "8ba8496a2525ae171ffd104d632dede6ef418d9b95962a9d88e2fcdbc8d48d24")
+            .env("EXPECTED_WORKFLOW", workflow)
+            .env("EXPECTED_SOURCE_DIGEST", source_digest)
+            .env("STAGING_SOURCE_COMMIT", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
             .env("GITHUB_ENV", &environment)
             .env("ATTESTATION_STATE", state)
             .env("PATH", format!("{}:{base_path}", bin.display()))
             .output()
     };
-    let absent = run("absent")?;
+    let absent = run("absent", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json")?;
     assert!(absent.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&absent.stdout), String::from_utf8_lossy(&absent.stderr));
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=true\n");
     fs::write(&environment, "")?;
-    let existing = run("existing")?;
+    let existing = run("existing", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json")?;
     assert!(existing.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&existing.stdout), String::from_utf8_lossy(&existing.stderr));
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=false\n");
     fs::write(&environment, "")?;
-    let mismatch = run("mismatch")?;
+    let mismatch = run("mismatch", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json")?;
     assert!(!mismatch.status.success(), "count mismatch was admitted");
+    assert_eq!(fs::read_to_string(&environment)?, "");
+    let runtime = run(
+        "existing",
+        "runtime-candidate.yml",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "codexy-runtime-package.tar.gz",
+    )?;
+    assert!(runtime.status.success(), "runtime candidate policy rejected: stdout: {} stderr: {}", String::from_utf8_lossy(&runtime.stdout), String::from_utf8_lossy(&runtime.stderr));
+    fs::write(&environment, "")?;
+    let missing_runtime = run(
+        "absent",
+        "runtime-candidate.yml",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "codexy-runtime-package.tar.gz",
+    )?;
+    assert!(!missing_runtime.status.success(), "missing runtime candidate attestation was admitted");
     assert_eq!(fs::read_to_string(&environment)?, "");
     Ok(())
 }

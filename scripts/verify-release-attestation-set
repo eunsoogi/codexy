@@ -11,10 +11,18 @@ for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz co
   artifact="$artifact_dir/$name"
   attestations="$artifact_dir/$name.attestations.json"
   digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
+  if test "$name" = codexy-runtime-package.tar.gz; then
+    : "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
+    signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
+    source_digest="$STAGING_SOURCE_COMMIT"
+  else
+    signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+    source_digest="$ACTIVATION_COMMIT"
+  fi
   total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')"
   gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
     --signer-workflow "$signer" --source-ref refs/heads/main \
-    --source-digest "$ACTIVATION_COMMIT" --deny-self-hosted-runners \
+    --source-digest "$source_digest" --deny-self-hosted-runners \
     --format json > "$attestations"
   jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
     "$attestations" >/dev/null

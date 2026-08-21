@@ -33,7 +33,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "scripts/materialize-runtime-release-archive",
             "scripts/assemble-release-train-archive.sh",
             "codexy-marketplace-bundle.tar.gz",
-            "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz",
+            "cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz",
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
             "scripts/verify-release-attestation-set",
@@ -50,11 +50,11 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
     support::assert_structured_absent_literals(
         &run,
         "immutable release asset reconciliation",
-        &["--clobber"],
+        &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz"],
     );
+    assert!(run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() < run.find("scripts/materialize-runtime-release-archive").unwrap(), "candidate-proven runtime bytes must be copied before public materialization");
     Ok(())
 }
-
 #[test]
 fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
 -> Result<(), Box<dyn std::error::Error>> {

@@ -14,6 +14,7 @@ case "$baseline_id" in ''|null|*[!0-9]*) exit 1 ;; esac
 mkdir -p release-baseline release-assets
 gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$baseline_id" > release-baseline/release-baseline.json
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 source_digest="$(jq -r .targetCommitish release-state.json)"
 ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-total release-baseline/release-baseline.json 1
 for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
@@ -21,14 +22,20 @@ for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz co
   case "$asset_id" in ''|null|*[!0-9]*) exit 1 ;; esac
   gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "release-assets/$name"
 done
-ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-assets release-attestations.json
-jq -e --slurpfile baseline release-baseline/release-baseline.json --slurpfile attestations release-attestations.json --arg signer "$signer" --arg activation "$source_digest" '
+staging_source_commit="$(jq -er .source.stagingSourceCommit release-assets/runtime-release-receipt.json)"
+STAGING_SOURCE_COMMIT="$staging_source_commit" ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-assets release-attestations.json
+jq -e --slurpfile baseline release-baseline/release-baseline.json --slurpfile attestations release-attestations.json --arg signer "$signer" --arg runtimeSigner "$runtime_signer" --arg activation "$source_digest" --arg staging "$staging_source_commit" '
   . as $release | $baseline[0] as $expected |
   ($release.id == $expected.release.id) and ($release.name == $expected.release.name) and
   ($release.tagName == $expected.release.tagName) and ($release.targetCommitish == $expected.release.targetCommitish) and
   ($release.isDraft == $expected.release.isDraft) and ($release.isPrerelease == $expected.release.isPrerelease) and
   ([.assets[] | select(.name != "release-baseline.json") | del(.id) | {name, size, digest}] | sort_by(.name) == $expected.assets) and
   ($expected.releaseReceiptSha256 == ([.assets[] | select(.name == "runtime-release-receipt.json") | .digest | sub("^sha256:"; "")][0])) and
-  ($expected.attestationPolicy == {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}) and
+  ($expected.attestationPolicies == {
+    "codexy-marketplace-plugin.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true},
+    "codexy-marketplace-bundle.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true},
+    "codexy-runtime-package.tar.gz": {signerWorkflow: $runtimeSigner, sourceRef: "refs/heads/main", sourceDigest: $staging, denySelfHostedRunners: true},
+    "runtime-release-receipt.json": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}
+  }) and
   ($expected.attestations == $attestations[0])
 ' release-state.json >/dev/null

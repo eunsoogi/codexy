@@ -18,6 +18,7 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
     let publish = fs::read_to_string(root.join("scripts/publish-verified-release"))?;
     let baseline = fs::read_to_string(root.join("scripts/reconcile-release-baseline"))?;
     let attestation = fs::read_to_string(root.join("scripts/verify-release-attestation-total"))?;
+    let attestation_set = fs::read_to_string(root.join("scripts/verify-release-attestation-set"))?;
     support::assert_structured_literals(
         &publish,
         "release draft reconciliation",
@@ -38,10 +39,13 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
         &[
             "test \"$(jq -r .targetCommitish release-state.json)\" = \"$ACTIVATION_COMMIT\"",
             "existing_baseline=\"$(mktemp -d)\"",
+            "attestation_policies()",
+            "runtime-candidate.yml",
             "BASELINE_CREATED=true",
         ],
     );
-    support::assert_structured_literals(&attestation, "release baseline attestation total", &["gh api --paginate --slurp", "--source-digest \"$ACTIVATION_COMMIT\" --deny-self-hosted-runners"]);
+    support::assert_structured_literals(&attestation, "release baseline attestation total", &["gh api --paginate --slurp", "source_digest=\"$ACTIVATION_COMMIT\""]);
+    support::assert_structured_literals(&attestation_set, "per-subject attestation verification", &["runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
     Ok(())
 }
 
@@ -62,7 +66,7 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "gh release edit \"$RELEASE_TAG\" --draft=false",
         ],
     );
-    support::assert_structured_literals(&attestation, "release attestation total", &["gh api --paginate --slurp", "--source-digest \"$ACTIVATION_COMMIT\" --deny-self-hosted-runners"]);
+    support::assert_structured_literals(&attestation, "release attestation total", &["gh api --paginate --slurp", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
     let publish = finalizer.find("gh release edit \"$RELEASE_TAG\" --draft=false").ok_or("public release")?;
     let verification = finalizer.find("scripts/verify-release-attestation-set").ok_or("attestation verification")?;
     assert!(verification < publish, "release must be authenticated before publication");
@@ -90,6 +94,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
     let fixture = temp.path().join("fixture");
     fs::create_dir(&fixture)?;
     let commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let staging_commit = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let statement = r#"[{"subject":[{"name":"subject"}]}]"#;
     let fingerprint = format!("{:x}", Sha256::digest(format!("{statement}\n").as_bytes()));
     let assets = serde_json::json!([
@@ -100,7 +105,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
         {"id": 1, "name": "release-baseline.json", "size": 1, "digest": "sha256:baseline"}
     ]);
     let baseline = serde_json::json!({
-        "schema": "codexy-release-baseline/v1",
+        "schema": "codexy-release-baseline/v2",
         "release": {"id": 42, "name": "v9.9.9", "tagName": "v9.9.9", "targetCommitish": commit, "isDraft": false, "isPrerelease": false},
         "assets": [
             {"name": "codexy-marketplace-bundle.tar.gz", "size": 1, "digest": "sha256:bundle"},
@@ -109,7 +114,12 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
             {"name": "runtime-release-receipt.json", "size": 1, "digest": "sha256:receipt"}
         ],
         "releaseReceiptSha256": "receipt",
-        "attestationPolicy": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true},
+        "attestationPolicies": {
+            "codexy-marketplace-plugin.tar.gz": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true},
+            "codexy-marketplace-bundle.tar.gz": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true},
+            "codexy-runtime-package.tar.gz": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/runtime-candidate.yml", "sourceRef": "refs/heads/main", "sourceDigest": staging_commit, "denySelfHostedRunners": true},
+            "runtime-release-receipt.json": {"signerWorkflow": "eunsoogi/codexy/.github/workflows/publish-version-release.yml", "sourceRef": "refs/heads/main", "sourceDigest": commit, "denySelfHostedRunners": true}
+        },
         "attestations": [
             {"name": "codexy-marketplace-bundle.tar.gz", "count": 1, "fingerprint": fingerprint},
             {"name": "codexy-marketplace-plugin.tar.gz", "count": 1, "fingerprint": fingerprint},
@@ -129,6 +139,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
 case "$*" in
   *releases/42*) cat "$FIXTURE_DIR/state.json" ;;
   *releases/assets/1*) cat "$FIXTURE_DIR/baseline.json" ;;
+  *releases/assets/5*) printf '%s\n' '{"source":{"stagingSourceCommit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}' ;;
   *releases/assets/*) printf x ;;
   *attestations/sha256*)
     if test "${EXTRA_ATTESTATION:-false}" = true; then
@@ -181,7 +192,7 @@ esac
     fs::write(fixture.join("state.json"), &state)?;
     for (name, pointer, replacement) in [
         ("baseline receipt", "/releaseReceiptSha256", serde_json::json!("changed")),
-        ("baseline signer", "/attestationPolicy/signerWorkflow", serde_json::json!("other/workflow")),
+        ("baseline signer", "/attestationPolicies/codexy-marketplace-plugin.tar.gz/signerWorkflow", serde_json::json!("other/workflow")),
         ("baseline fingerprint", "/attestations/0/fingerprint", serde_json::json!("changed")),
     ] {
         let mut tampered: serde_json::Value = serde_json::from_slice(&baseline_bytes)?;

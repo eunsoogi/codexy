@@ -34,12 +34,12 @@ def candidate() -> dict[str, object]:
     platforms = {
         platform: {
             server: {
-                "path": f"runtime/codexy-mcp-{server}-{platform}.bin",
+                "path": f"runtime/codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}",
                 "sha256": hashlib.sha256(binary).hexdigest(),
             }
             for server, binary in BINARIES.items()
         }
-        for platform in ("darwin-arm64", "linux-x86_64")
+        for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
     }
     return {
         "schema": "codexy-runtime-candidate/v1",
@@ -77,8 +77,8 @@ def write_candidate_archive(path: Path, *, mixed: bool = False) -> None:
         "plugins/codexy-devtools/runtime-candidate.json": encoded(candidate()),
         "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"version":"1.3.0"}',
         **{
-            f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-{platform}.bin": binary
-            for platform in ("darwin-arm64", "linux-x86_64")
+            f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}": binary
+            for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
             for server, binary in BINARIES.items()
         },
     }
