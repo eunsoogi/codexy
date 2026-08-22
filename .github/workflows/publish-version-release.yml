@@ -63,8 +63,7 @@ jobs:
           test "$(git rev-parse "$STAGING_SOURCE_COMMIT")" = "$STAGING_SOURCE_COMMIT"
           test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
           test "$GITHUB_REF" = refs/heads/main
-          test "$GITHUB_SHA" = "$ACTIVATION_COMMIT"
-          git checkout --detach "$ACTIVATION_COMMIT"
+          git show "$GITHUB_SHA:scripts/project-release-verifiers.sh" > "$RUNNER_TEMP/project-release-verifiers" && chmod 755 "$RUNNER_TEMP/project-release-verifiers" && "$RUNNER_TEMP/project-release-verifiers" "$ACTIVATION_COMMIT"
       - name: Validate target version and release lifecycle contract
         env:
           TARGET_VERSION: ${{ inputs.target_version }}
@@ -197,7 +196,7 @@ jobs:
           STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
           ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
-          test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main && git show "$GITHUB_SHA:scripts/project-release-verifiers.sh" > "$RUNNER_TEMP/project-release-verifiers" && chmod 755 "$RUNNER_TEMP/project-release-verifiers" && "$RUNNER_TEMP/project-release-verifiers" "$ACTIVATION_COMMIT"
           base="https://github.com/eunsoogi/codexy/releases/download/$RELEASE_TAG"
           curl --fail --location "$base/codexy-marketplace-plugin.tar.gz" -o public.tar.gz
           curl --fail --location "$base/codexy-marketplace-bundle.tar.gz" -o public-bundle.tar.gz

@@ -18,8 +18,13 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         "case \"$commit\" in *[!0-9a-f]*|'') exit 1 ;; esac",
         "test \"${#commit}\" -eq 40",
         "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
-        "test \"$GITHUB_SHA\" = \"$ACTIVATION_COMMIT\"",
+        "git show \"$GITHUB_SHA:scripts/project-release-verifiers.sh\" > \"$RUNNER_TEMP/project-release-verifiers\" && chmod 755 \"$RUNNER_TEMP/project-release-verifiers\" && \"$RUNNER_TEMP/project-release-verifiers\" \"$ACTIVATION_COMMIT\"",
     ]);
+    support::assert_structured_absent_literals(
+        source,
+        "protected main source must not equate the dispatch SHA to activation",
+        &["test \"$GITHUB_SHA\" = \"$ACTIVATION_COMMIT\""],
+    );
     let step = publisher["jobs"]["publish-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Create and verify the only public version release"))
@@ -31,6 +36,43 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert_eq!(step["env"][name], format!("${{{{ inputs.{input} }}}}"));
     }
+    let public = publisher["jobs"]["verify-public-release"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| step["name"] == "Download and verify reconciled public release without a token"))
+        .and_then(|step| step["run"].as_str())
+        .ok_or("public release verification")?;
+    support::assert_structured_literals(
+        public,
+        "public verifier current source projection",
+        &[
+            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main && git show \"$GITHUB_SHA:scripts/project-release-verifiers.sh\" > \"$RUNNER_TEMP/project-release-verifiers\" && chmod 755 \"$RUNNER_TEMP/project-release-verifiers\" && \"$RUNNER_TEMP/project-release-verifiers\" \"$ACTIVATION_COMMIT\"",
+        ],
+    );
+    support::assert_structured_absent_literals(
+        public,
+        "public verifier must not equate the dispatch SHA to activation",
+        &["test \"$GITHUB_SHA\" = \"$ACTIVATION_COMMIT\""],
+    );
+    let projection = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/project-release-verifiers.sh"),
+    )?;
+    support::assert_structured_literals(
+        &projection,
+        "controlled verifier source projection",
+        &[
+            "test \"$GITHUB_SHA\" = \"$(git rev-parse origin/main)\"",
+            "git checkout --detach \"$activation_commit\"",
+            "scripts/project-release-verifiers.sh scripts/verify-release-attestation-set scripts/verify-release-attestation-total",
+            "git diff --name-only \"$activation_commit\" \"$GITHUB_SHA\" -- scripts | sort",
+            "git checkout \"$GITHUB_SHA\" -- scripts/verify-release-attestation-set scripts/verify-release-attestation-total",
+            "git hash-object \"$verifier\"",
+        ],
+    );
+    support::assert_structured_absent_literals(
+        &projection,
+        "controlled verifier source projection must remain version-relative",
+        &["v1.4.0", "7b96e8ac24251aa7ea99e0323eb2b458c8ea6855", "899146ea3587eed1bfc5a0d7e44f49acd0061257"],
+    );
     let release = std::fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;
     assert_eq!(step["env"]["GH_TOKEN"], "${{ github.token }}");
     let create = release.find("release_create_response=\"$(gh api --method POST").ok_or("version release")?;

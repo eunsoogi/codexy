@@ -58,7 +58,12 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     ] {
         assert!(download.contains(required), "missing future-version public check: {required}");
     }
-    assert!(download.contains("test \"$(git rev-parse HEAD)\" = \"$ACTIVATION_COMMIT\""));
+    for required in [
+        "git show \"$GITHUB_SHA:scripts/project-release-verifiers.sh\"",
+        "\"$RUNNER_TEMP/project-release-verifiers\" \"$ACTIVATION_COMMIT\"",
+    ] {
+        assert!(download.contains(required), "missing verifier projection: {required}");
+    }
     let smoke = named_run(public, "Smoke public release without a token")?;
     assert!(smoke.contains("getcodexy==${TARGET_VERSION}"));
     assert_eq!(public["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Download and verify reconciled public release without a token")).and_then(|step| step["env"]["RELEASE_TAG"].as_str()), Some("v${{ inputs.target_version }}"));
