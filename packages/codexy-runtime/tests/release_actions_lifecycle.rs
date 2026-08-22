@@ -2,10 +2,34 @@ use std::fs;
 
 use serde_yaml::Value;
 
+use crate::support;
+
 #[test]
 fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_version()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
+    let language_lint = workflow("language-lint.yml")?;
+    let power_shell_install = named_run(
+        language_lint["jobs"]["lint"].as_mapping().ok_or("language lint job")?,
+        "Install PSScriptAnalyzer",
+    )?;
+    support::assert_structured_literals(
+        power_shell_install,
+        "locked PowerShell lint dependency",
+        &[
+            "tooling/lint-tools.json",
+            "psScriptAnalyzerNupkgSha256",
+            "Invoke-WebRequest",
+            "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$version",
+            "Get-FileHash",
+            "Expand-Archive",
+        ],
+    );
+    support::assert_structured_absent_literals(
+        power_shell_install,
+        "PowerShell lint dependency must not use repository lookup or a version literal",
+        &["Install-Module", "RequiredVersion"],
+    );
     let inputs = publisher["on"]["workflow_dispatch"]["inputs"]
         .as_mapping()
         .ok_or("publisher inputs")?;

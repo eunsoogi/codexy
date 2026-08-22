@@ -12,10 +12,23 @@ test "$(git rev-parse "$activation_commit")" = "$activation_commit"
 git checkout --detach "$activation_commit"
 test "$(git rev-parse HEAD)" = "$activation_commit"
 
-expected_paths="$(printf '%s\n' scripts/project-release-verifiers.sh scripts/verify-release-attestation-set scripts/verify-release-attestation-total | sort)"
 actual_paths="$(git diff --name-only "$activation_commit" "$GITHUB_SHA" -- scripts | sort)"
-test "$actual_paths" = "$expected_paths"
-git checkout "$GITHUB_SHA" -- scripts/verify-release-attestation-set scripts/verify-release-attestation-total
+if test -n "$actual_paths"; then
+	while IFS= read -r path; do
+		case "$path" in
+		scripts/project-release-verifiers.sh)
+			;;
+		scripts/verify-release-attestation-set | scripts/verify-release-attestation-total)
+			git checkout "$GITHUB_SHA" -- "$path"
+			;;
+		*)
+			exit 1
+			;;
+		esac
+	done <<EOF
+$actual_paths
+EOF
+fi
 for verifier in scripts/verify-release-attestation-set scripts/verify-release-attestation-total; do
 	test -x "$verifier"
 	test "$(git hash-object "$verifier")" = "$(git rev-parse "$GITHUB_SHA:$verifier")"

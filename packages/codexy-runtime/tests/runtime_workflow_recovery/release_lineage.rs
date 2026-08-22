@@ -1,5 +1,8 @@
 use std::fs;
 
+#[cfg(unix)]
+use std::{path::Path, process::Command};
+
 use serde_yaml::Value;
 
 use crate::support;
@@ -62,9 +65,12 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         &[
             "test \"$GITHUB_SHA\" = \"$(git rev-parse origin/main)\"",
             "git checkout --detach \"$activation_commit\"",
-            "scripts/project-release-verifiers.sh scripts/verify-release-attestation-set scripts/verify-release-attestation-total",
             "git diff --name-only \"$activation_commit\" \"$GITHUB_SHA\" -- scripts | sort",
-            "git checkout \"$GITHUB_SHA\" -- scripts/verify-release-attestation-set scripts/verify-release-attestation-total",
+            "if test -n \"$actual_paths\"; then",
+            "while IFS= read -r path; do",
+            "scripts/project-release-verifiers.sh)",
+            "scripts/verify-release-attestation-set | scripts/verify-release-attestation-total)",
+            "git checkout \"$GITHUB_SHA\" -- \"$path\"",
             "git hash-object \"$verifier\"",
         ],
     );
@@ -100,5 +106,113 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "-f \"target_commitish=$ACTIVATION_COMMIT\" -f \"name=$RELEASE_TAG\"",
         ],
     );
+    #[cfg(unix)]
+    assert_projection_cases(&projection)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn assert_projection_cases(projection: &str) -> Result<(), Box<dyn std::error::Error>> {
+    for (name, kind, expected_success) in [
+        ("no-delta", "no-delta", true),
+        ("allowed-verifier-delta", "verifier-delta", true),
+        ("forbidden-scripts-delta", "forbidden-delta", false),
+    ] {
+        run_projection_case(projection, name, kind, expected_success)?;
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn run_projection_case(
+    projection: &str,
+    name: &str,
+    kind: &str,
+    expected_success: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let temporary = tempfile::tempdir()?;
+    let root = temporary.path();
+    run_git(root, &["init", "--quiet", "--initial-branch=main"])?;
+    run_git(root, &["config", "user.email", "codexy-test@example.invalid"])?;
+    run_git(root, &["config", "user.name", "codexy-test"])?;
+
+    let scripts = root.join("scripts");
+    fs::create_dir(&scripts)?;
+    write_executable(&scripts.join("project-release-verifiers.sh"), projection)?;
+    write_executable(&scripts.join("verify-release-attestation-set"), "activation-set\n")?;
+    write_executable(&scripts.join("verify-release-attestation-total"), "activation-total\n")?;
+    run_git(root, &["add", "scripts"])?;
+    run_git(root, &["commit", "--quiet", "-m", "activation"])?;
+    let activation = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
+
+    match kind {
+        "no-delta" => {
+            run_git(root, &["commit", "--quiet", "--allow-empty", "-m", "main"])?;
+        }
+        "verifier-delta" => {
+            fs::write(
+                scripts.join("verify-release-attestation-set"),
+                "activation-set\nchanged-set\n",
+            )?;
+            run_git(root, &["add", "scripts/verify-release-attestation-set"])?;
+            run_git(root, &["commit", "--quiet", "-m", "main"])?;
+        }
+        "forbidden-delta" => {
+            fs::write(scripts.join("unrelated-script"), "forbidden\n")?;
+            run_git(root, &["add", "scripts/unrelated-script"])?;
+            run_git(root, &["commit", "--quiet", "-m", "main"])?;
+        }
+        other => return Err(format!("unknown projection fixture: {other}").into()),
+    }
+    let current = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
+    run_git(root, &["update-ref", "refs/remotes/origin/main", &current])?;
+
+    let output = Command::new(scripts.join("project-release-verifiers.sh"))
+        .current_dir(root)
+        .env("GITHUB_SHA", &current)
+        .env("GITHUB_REF", "refs/heads/main")
+        .arg(&activation)
+        .output()?;
+    assert_eq!(
+        output.status.success(),
+        expected_success,
+        "{name} projection case had unexpected status: {}",
+        String::from_utf8_lossy(&output.stderr),
+    );
+    if expected_success {
+        assert_eq!(run_git(root, &["rev-parse", "HEAD"])?.trim(), activation);
+        let verifier_set = fs::read_to_string(scripts.join("verify-release-attestation-set"))?;
+        let verifier_total = fs::read_to_string(scripts.join("verify-release-attestation-total"))?;
+        if kind == "verifier-delta" {
+            assert_eq!(verifier_set, "activation-set\nchanged-set\n");
+        } else {
+            assert_eq!(verifier_set, "activation-set\n");
+        }
+        assert_eq!(verifier_total, "activation-total\n");
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn run_git(cwd: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(cwd).args(args).output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+#[cfg(unix)]
+fn write_executable(path: &Path, contents: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::write(path, contents)?;
+    let mut permissions = fs::metadata(path)?.permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions)?;
     Ok(())
 }

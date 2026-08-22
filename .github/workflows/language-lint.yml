@@ -67,7 +67,21 @@ jobs:
       - name: Install PSScriptAnalyzer
         if: matrix.language == 'PowerShell'
         shell: pwsh
-        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+        run: |
+          $tools = Get-Content -Raw tooling/lint-tools.json | ConvertFrom-Json
+          $version = [string]$tools.PSScriptAnalyzer
+          $expectedHash = ([string]$tools.psScriptAnalyzerNupkgSha256).ToLowerInvariant()
+          $archive = Join-Path $env:RUNNER_TEMP "PSScriptAnalyzer.$version.zip"
+          $moduleRoot = Join-Path $HOME "Documents\PowerShell\Modules"
+          $modulePath = Join-Path $moduleRoot "PSScriptAnalyzer\$version"
+          Invoke-WebRequest -Uri "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$version" -OutFile $archive
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw "PSScriptAnalyzer package hash mismatch: expected $expectedHash, got $actualHash"
+          }
+          New-Item -ItemType Directory -Path $modulePath -Force | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $modulePath -Force
+          Import-Module (Join-Path $modulePath "PSScriptAnalyzer.psd1") -Force
       - name: Verify PowerShell lint failure propagation
         if: matrix.language == 'PowerShell'
         shell: pwsh
