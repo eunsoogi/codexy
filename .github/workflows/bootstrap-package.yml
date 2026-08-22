@@ -99,6 +99,55 @@ jobs:
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: |
+          simple_index_attempt=0
+          while :; do
+            simple_index_attempt=$((simple_index_attempt + 1))
+            curl --fail --silent --show-error --location --max-time 20 \
+              "https://pypi.org/simple/getcodexy/" -o simple-index.html
+            if BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" python3 - simple-index.html <<'PY'
+          import html.parser
+          import os
+          import sys
+          from urllib.parse import unquote, urlsplit
+
+          class DistributionLinks(html.parser.HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.filenames = set()
+
+              def handle_starttag(self, tag, attrs):
+                  if tag != "a":
+                      return
+                  href = dict(attrs).get("href")
+                  if href:
+                      filename = unquote(urlsplit(href).path.rsplit("/", 1)[-1])
+                      if filename:
+                          self.filenames.add(filename)
+
+          version = os.environ["BOOTSTRAP_VERSION"]
+          version_prefix = f"getcodexy-{version}"
+          parser = DistributionLinks()
+          with open(sys.argv[1], encoding="utf-8") as index:
+              parser.feed(index.read())
+          visible = sorted(
+              filename
+              for filename in parser.filenames
+              if filename == f"{version_prefix}.tar.gz"
+              or (filename.startswith(f"{version_prefix}-") and filename.endswith(".whl"))
+          )
+          if not visible:
+              raise SystemExit(f"PyPI Simple Index does not expose getcodexy=={version} yet")
+          print(f"PyPI Simple Index exposes getcodexy=={version}: {', '.join(visible)}")
+          PY
+            then
+              break
+            fi
+            if test "$simple_index_attempt" -ge 12; then
+              echo "PyPI Simple Index did not expose getcodexy==${BOOTSTRAP_VERSION} after ${simple_index_attempt} bounded checks; refusing exact-version install." >&2
+              exit 1
+            fi
+            sleep 10
+          done
           python -m venv public-bootstrap
           public-bootstrap/bin/python -m pip install --index-url https://pypi.org/simple "getcodexy==${BOOTSTRAP_VERSION}"
           public-bootstrap/bin/codexy-mcp-runtime --help
