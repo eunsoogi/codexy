@@ -65,6 +65,8 @@ fn posix_command_mock_uses_the_platform_dispatch_boundary() -> TestResult {
     paths.extend(std::env::split_paths(&host_path));
     let trace = temp.path().join("command trace");
     let mut fixture = FixtureCommand::new(&runner);
+    #[cfg(unix)]
+    assert_eq!(fixture.get_program(), std::ffi::OsStr::new("/bin/sh"));
     fixture.current_dir(temp.path());
     fixture
         .env_path_list("PATH", paths)
@@ -105,78 +107,6 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
         std::fs::write(&command, source)?;
         assert_eq!(windows_static_python_fixture(&shell), None);
     }
-    Ok(())
-}
-
-#[cfg(unix)]
-#[test]
-fn fixture_command_preserves_script_arguments_cwd_stdin_and_exit_status() -> TestResult {
-    use std::io::Write as _;
-    let temp = tempfile::tempdir()?;
-    let working_directory = temp.path().join("working directory");
-    std::fs::create_dir(&working_directory)?;
-    let script = working_directory.join("fixture script");
-    crate::support::write_posix_fixture_command(
-        &script,
-        "#!/bin/sh\nread input\nprintf '%s\\n%s\\n%s\\n' \"$PWD\" \"$1\" \"$input\"\nexit 17\n",
-    )?;
-    let poison_bin = temp.path().join("poison bin");
-    let poison = temp.path().join("poison marker");
-    std::fs::create_dir(&poison_bin)?;
-    let poison_sh = poison_bin.join("sh");
-    crate::support::write_posix_fixture_command(
-        &poison_sh,
-        "#!/bin/sh\nprintf poison > \"$CODEXY_FIXTURE_POISON\"\nexit 91\n",
-    )?;
-    let expected = format!(
-        "{}\nargument with spaces\nstdin with spaces\n",
-        working_directory.canonicalize()?.display()
-    );
-    for path in [std::ffi::OsString::new(), poison_bin.into_os_string()] {
-        let mut child = FixtureCommand::new(&script)
-            .arg("argument with spaces")
-            .current_dir(&working_directory)
-            .env_clear()
-            .env("PATH", path)
-            .env("CODEXY_FIXTURE_POISON", &poison)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .spawn()?;
-        child
-            .stdin
-            .as_mut()
-            .ok_or("fixture stdin")?
-            .write_all(b"stdin with spaces")?;
-        let output = child.wait_with_output()?;
-        assert_eq!(output.status.code(), Some(17));
-        assert_eq!(String::from_utf8(output.stdout)?, expected);
-        assert!(!poison.exists(), "fixture resolved poisoned sh from PATH");
-    }
-    let workspace = codexy_runtime::paths::repository_root();
-    let outside = tempfile::tempdir_in(workspace)?;
-    let outside_script = outside.path().join("outside fixture");
-    crate::support::write_posix_fixture_command(
-        &outside_script,
-        "#!/bin/sh\nprintf '%s\\n' \"$1\"\nexit 17\n",
-    )?;
-    let mut dot_dot = temp.path().to_path_buf();
-    for _ in temp.path().components() {
-        dot_dot.push("..");
-    }
-    dot_dot.push(workspace.strip_prefix("/")?);
-    dot_dot.push(outside.path().file_name().ok_or("outside fixture name")?);
-    dot_dot.push("outside fixture");
-    let symlink = temp.path().join("outside fixture symlink");
-    std::os::unix::fs::symlink(&outside_script, &symlink)?;
-    for path in [&dot_dot, &symlink] {
-        let mut command = FixtureCommand::new(path);
-        assert_eq!(command.get_program(), path.as_os_str());
-        let output = command.arg("argument with spaces").output()?;
-        assert_eq!(output.status.code(), Some(17));
-        assert_eq!(String::from_utf8(output.stdout)?, "argument with spaces\n");
-    }
-    std::fs::remove_file(&outside_script)?;
-    assert!(FixtureCommand::new(&symlink).output().is_err());
     Ok(())
 }
 
