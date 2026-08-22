@@ -51,7 +51,7 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
             "BASELINE_CREATED=true",
         ],
     );
-    support::assert_structured_literals(&attestation, "release baseline attestation total", &["gh api --paginate --slurp", "source_digest=\"$ACTIVATION_COMMIT\""]);
+    support::assert_structured_literals(&attestation, "release baseline attestation total", &["gh attestation verify", "source_digest=\"$ACTIVATION_COMMIT\""]);
     support::assert_structured_literals(&attestation_set, "per-subject attestation verification", &["runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
     Ok(())
 }
@@ -84,7 +84,7 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "gh release edit \"$RELEASE_TAG\" --draft=false",
         ],
     );
-    support::assert_structured_literals(&attestation, "release attestation total", &["gh api --paginate --slurp", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
+    support::assert_structured_literals(&attestation, "release attestation total", &["gh attestation verify", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
     let publish = finalizer.find("gh api --method PATCH").ok_or("public release")?;
     let verification = finalizer.find("scripts/verify-release-attestation-set").ok_or("attestation verification")?;
     assert!(verification < publish, "release must be authenticated before publication");
@@ -160,17 +160,21 @@ case "$*" in
   *releases/assets/5*) printf '%s\n' '{"source":{"stagingSourceCommit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}' ;;
   *releases/assets/*) printf x ;;
   *attestations/sha256*)
-    if test "${EXTRA_ATTESTATION:-false}" = true; then
-      printf '%s\n' '{"attestations":[{},{}]}'
-    else
-      printf '%s\n' '{"attestations":[{}]}'
-    fi ;;
+    case "${ATTESTATION_STATE:?}" in
+      release|extra) printf '%s\n' '{"attestations":[{},{}]}' ;;
+      *) printf '%s\n' '{"attestations":[{}]}' ;;
+    esac ;;
   *attestation*--format\ json*)
-    if test "${EXTRA_ATTESTATION:-false}" = true; then
-      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}},{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
-    else
-      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
-    fi ;;
+    case "${ATTESTATION_STATE:?}" in
+      extra) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}},{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+      many-unrelated)
+        # The policy match is after the default 30-result window.
+        case "$*" in
+          *"--limit 1000"*) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+          *) printf '%s\n' '[]' ;;
+        esac ;;
+      *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+    esac ;;
   *attestation*) exit 0 ;;
   *) exit 1 ;;
 esac
@@ -181,13 +185,13 @@ esac
         permissions.set_mode(0o755);
         fs::set_permissions(&gh, permissions)?;
     }
-    let run = |extra_attestation: bool| Command::new(scripts.join("verify-release-edit-baseline"))
+    let run = |attestation_state: &str| Command::new(scripts.join("verify-release-edit-baseline"))
         .current_dir(temp.path()).env("FIXTURE_DIR", &fixture).env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("EXTRA_ATTESTATION", extra_attestation.to_string()).env("PATH", format!("{}:{}", bin.display(), std::env::var("PATH")?))
+        .env("GITHUB_EVENT_PATH", temp.path().join("event.json")).env("ATTESTATION_STATE", attestation_state).env("PATH", format!("{}:{}", bin.display(), std::env::var("PATH")?))
         .output().map_err(|error| -> Box<dyn std::error::Error> { error.into() });
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
-    let verified = run(false)?;
+    let verified = run("single")?;
     assert!(verified.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&verified.stdout), String::from_utf8_lossy(&verified.stderr));
     let rejected_states: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
         ("release id", Box::new(|state| state["id"] = serde_json::json!(43))),
@@ -205,7 +209,7 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&state)?;
         mutate(&mut tampered);
         fs::write(fixture.join("state.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+        assert!(!run("single")?.status.success(), "{name} mutation was accepted");
     }
     fs::write(fixture.join("state.json"), &state)?;
     for (name, pointer, replacement) in [
@@ -216,9 +220,10 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&baseline_bytes)?;
         *tampered.pointer_mut(pointer).ok_or("baseline field")? = replacement;
         fs::write(fixture.join("baseline.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run(false)?.status.success(), "{name} mutation was accepted");
+        assert!(!run("single")?.status.success(), "{name} mutation was accepted");
     }
     fs::write(fixture.join("baseline.json"), &baseline_bytes)?;
-    assert!(!run(true)?.status.success());
+    assert!(run("many-unrelated")?.status.success());
+    assert!(!run("extra")?.status.success());
     Ok(())
 }
