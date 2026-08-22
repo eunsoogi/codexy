@@ -16,8 +16,7 @@ actual_paths="$(git diff --name-only "$activation_commit" "$GITHUB_SHA" -- scrip
 if test -n "$actual_paths"; then
 	while IFS= read -r path; do
 		case "$path" in
-		scripts/project-release-verifiers.sh)
-			;;
+		scripts/project-release-verifiers.sh) ;;
 		scripts/verify-release-attestation-set | scripts/verify-release-attestation-total)
 			git checkout "$GITHUB_SHA" -- "$path"
 			;;
