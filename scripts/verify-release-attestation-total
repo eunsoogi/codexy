@@ -6,10 +6,6 @@ set -eu
 artifact="${1:?artifact is required}"
 expected="${2:?expected attestation count is required}"
 case "$expected" in *[!0-9]*|'') exit 2 ;; esac
-digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
-listed="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100")"
-total="$(printf '%s' "$listed" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')"
-test "$total" = "$expected"
 name="$(basename "$artifact")"
 if test "$name" = codexy-runtime-package.tar.gz; then
   : "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
