@@ -1,3 +1,5 @@
+use std::{fs, path::{Path, PathBuf}, process::{Command, Output}};
+
 use serde_yaml::Value;
 
 use crate::support;
@@ -14,6 +16,26 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     for line in ["attempt=0", "test \"$attempt\" -lt 12 || exit 1", "for package_type in (\"bdist_wheel\", \"sdist\"):", "printf '%s  %s\\n' \"$digest\" \"public-${package_type}\" | sha256sum -c -"] {
         assert!(lines(bootstrap_proof).any(|actual| actual == line));
     }
+    let bootstrap_clean_index = step_index(&bootstrap, "publish-bootstrap", "Prove clean public bootstrap install")?;
+    assert!(step_index(&bootstrap, "publish-bootstrap", "Prove public wheel and source distribution availability")? < bootstrap_clean_index);
+    let bootstrap_clean = run(&bootstrap, "publish-bootstrap", "Prove clean public bootstrap install")?;
+    for required in [
+        "simple_index_attempt=0",
+        "https://pypi.org/simple/getcodexy/",
+        "--max-time 20",
+        "BOOTSTRAP_VERSION=\"$BOOTSTRAP_VERSION\" python3 - simple-index.html <<'PY'",
+        "version_prefix = f\"getcodexy-{version}\"",
+        "if test \"$simple_index_attempt\" -ge 12; then",
+        "refusing exact-version install",
+        "python -m venv public-bootstrap",
+        "public-bootstrap/bin/python -m pip install --index-url https://pypi.org/simple \"getcodexy==${BOOTSTRAP_VERSION}\"",
+        "public-bootstrap/bin/codexy-mcp-runtime --help",
+    ] {
+        assert!(bootstrap_clean.contains(required), "missing clean-install propagation contract: {required}");
+    }
+    assert!(!bootstrap_clean.contains("pip install --retries"));
+    assert!(bootstrap_clean.find("python -m venv public-bootstrap").unwrap() < bootstrap_clean.find("pip install --index-url").unwrap());
+    assert!(bootstrap_clean.find("pip install --index-url").unwrap() < bootstrap_clean.find("codexy-mcp-runtime --help").unwrap());
     let staging_assembly = run(&staging, "stage-runtime", "Assemble canonical staged archive and receipt")?;
     assert_eq!(staging_assembly, "scripts/assemble-runtime-candidate");
     let staging_assembly = script("assemble-runtime-candidate")?;
@@ -47,6 +69,31 @@ fn publication_phases_are_separate_and_explicitly_gated() -> Result<(), Box<dyn 
     );
     let release = run(&publisher, "publish-release", "Create and verify the only public version release")?;
     assert_eq!(release, "scripts/publish-verified-release");
+    Ok(())
+}
+
+#[test]
+fn clean_bootstrap_preflight_exercises_visibility_and_failure_boundaries() -> Result<(), Box<dyn std::error::Error>> {
+    let bootstrap = document("bootstrap-package.yml")?;
+    let clean = run(&bootstrap, "publish-bootstrap", "Prove clean public bootstrap install")?;
+    let package: toml::Value = toml::from_str(&fs::read_to_string(codexy_runtime::paths::repository_root().join("packages/getcodexy/pyproject.toml"))?)?;
+    let version = package["project"]["version"].as_str().ok_or("package version")?;
+    let exact_index = format!("<a href=\"https://files.pythonhosted.org/getcodexy-{version}-py3-none-any.whl\">getcodexy-{version}-py3-none-any.whl</a>\n<a href=\"https://files.pythonhosted.org/getcodexy-{version}.tar.gz\">getcodexy-{version}.tar.gz</a>");
+    let adjacent_index = format!("<a href=\"https://files.pythonhosted.org/getcodexy-{version}.post1-py3-none-any.whl\">getcodexy-{version}.post1-py3-none-any.whl</a>");
+    let stale_root = tempfile::tempdir()?;
+    let stale_curl = format!("count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -eq 1; then return 7; fi; printf '%s\\n' '{adjacent_index}' > simple-index.html");
+    let stale = run_clean_preflight(clean, stale_root.path(), version, &stale_curl)?;
+    assert_eq!(fs::read_to_string(stale_root.path().join("simple-index-attempts"))?.trim(), "12");
+    assert_eq!(stale.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&stale.stderr).contains("after 12 bounded checks"));
+    let positive_root = tempfile::tempdir()?;
+    let positive_curl = format!("printf '%s\\n' '{exact_index}' > simple-index.html");
+    let positive = run_clean_preflight(clean, positive_root.path(), version, &positive_curl)?;
+    assert!(positive.status.success());
+    let transport_root = tempfile::tempdir()?;
+    let transport_curl = format!("count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -lt 2; then return 7; fi; printf '%s\\n' '{exact_index}' > simple-index.html");
+    let transport = run_clean_preflight(clean, transport_root.path(), version, &transport_curl)?;
+    assert!(transport.status.success() && fs::read_to_string(transport_root.path().join("simple-index-attempts"))?.trim() == "2" && String::from_utf8_lossy(&transport.stdout).contains("exposes getcodexy=="));
     Ok(())
 }
 
@@ -169,6 +216,29 @@ fn assert_dispatch_only(value: &Value) -> Result<(), Box<dyn std::error::Error>>
 fn steps<'a>(value: &'a Value, job: &str) -> Result<&'a [Value], Box<dyn std::error::Error>> { value["jobs"][job]["steps"].as_sequence().map(Vec::as_slice).ok_or_else(|| "steps".into()) }
 fn step_index(value: &Value, job: &str, name: &str) -> Result<usize, Box<dyn std::error::Error>> { steps(value, job)?.iter().position(|step| step["name"] == name).ok_or_else(|| "step".into()) }
 fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> { steps(value, job)?.iter().find(|step| step["name"] == name).and_then(|step| step["run"].as_str()).ok_or_else(|| "run".into()) }
+fn run_clean_preflight(run: &str, root: &Path, version: &str, curl_body: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    let preflight = run.splitn(2, "\npython -m venv public-bootstrap").next().ok_or("clean-install preflight")?;
+    let script = format!("curl() {{ {curl_body}; }}\nsleep() {{ :; }}\n{preflight}");
+    Ok(bash_command()?.args(["-euo", "pipefail", "-c", &script]).current_dir(root).env("BOOTSTRAP_VERSION", version).output()?)
+}
+
+fn bash_command() -> Result<Command, Box<dyn std::error::Error>> {
+    let bash = if cfg!(windows) {
+        let mut path = std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?).collect::<Vec<_>>();
+        for (variable, append_git) in [("GIT_INSTALL_ROOT", false), ("ProgramFiles", true), ("ProgramFiles(x86)", true)] {
+            if let Some(root) = std::env::var_os(variable) {
+                let git = append_git.then(|| PathBuf::from(&root).join("Git")).unwrap_or_else(|| PathBuf::from(root));
+                path.extend([git.join("bin"), git.join("usr").join("bin")]);
+            }
+        }
+        let path = std::env::join_paths(path)?;
+        let extensions = std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
+        support::executable_path::executable_path_in("bash", &path, &extensions)?
+    } else {
+        PathBuf::from("bash")
+    };
+    Ok(Command::new(bash))
+}
 
 fn named_step_run<'a>(steps: &'a [Value], name: &str) -> Result<&'a str, &'static str> {
     steps
