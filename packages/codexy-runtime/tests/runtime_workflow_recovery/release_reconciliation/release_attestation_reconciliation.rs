@@ -38,8 +38,8 @@ case "$1" in
       test "${10}" = --source-digest && test "${11}" = "${EXPECTED_SOURCE_DIGEST:?}" && \
       test "${12}" = --deny-self-hosted-runners && test "${13}" = --format && test "${14}" = json || exit 2
     case "${ATTESTATION_STATE:?}" in
-      mismatch) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"}]}}}]' ;;
-      *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"}]}}},{"verificationResult":{"statement":{"subject":[{"name":"two"}]}}}]' ;;
+      mismatch) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"},{"name":"two"}]}}}]' ;;
+      *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"}]}}}]' ;;
     esac ;;
   *) exit 2 ;;
 esac
@@ -73,7 +73,7 @@ esac
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=false\n");
     fs::write(&environment, "")?;
     let mismatch = run("mismatch", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json")?;
-    assert!(!mismatch.status.success(), "count mismatch was admitted");
+    assert!(!mismatch.status.success(), "multi-subject attestation was admitted");
     assert_eq!(fs::read_to_string(&environment)?, "");
     let runtime = run(
         "existing",
