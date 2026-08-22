@@ -81,7 +81,7 @@ fn clean_bootstrap_preflight_exercises_visibility_and_failure_boundaries() -> Re
     let exact_index = format!("<a href=\"https://files.pythonhosted.org/getcodexy-{version}-py3-none-any.whl\">getcodexy-{version}-py3-none-any.whl</a>\n<a href=\"https://files.pythonhosted.org/getcodexy-{version}.tar.gz\">getcodexy-{version}.tar.gz</a>");
     let adjacent_index = format!("<a href=\"https://files.pythonhosted.org/getcodexy-{version}.post1-py3-none-any.whl\">getcodexy-{version}.post1-py3-none-any.whl</a>");
     let stale_root = tempfile::tempdir()?;
-    let stale_curl = format!("count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; printf '%s\\n' '{adjacent_index}' > simple-index.html");
+    let stale_curl = format!("count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -eq 1; then return 7; fi; printf '%s\\n' '{adjacent_index}' > simple-index.html");
     let stale = run_clean_preflight(clean, stale_root.path(), version, &stale_curl)?;
     assert_eq!(fs::read_to_string(stale_root.path().join("simple-index-attempts"))?.trim(), "12");
     assert_eq!(stale.status.code(), Some(1));
@@ -90,10 +90,10 @@ fn clean_bootstrap_preflight_exercises_visibility_and_failure_boundaries() -> Re
     let positive_curl = format!("printf '%s\\n' '{exact_index}' > simple-index.html");
     let positive = run_clean_preflight(clean, positive_root.path(), version, &positive_curl)?;
     assert!(positive.status.success());
-    assert!(String::from_utf8_lossy(&positive.stdout).contains("exposes getcodexy=="));
     let transport_root = tempfile::tempdir()?;
-    let transport = run_clean_preflight(clean, transport_root.path(), version, "return 7")?;
-    assert_eq!(transport.status.code(), Some(7));
+    let transport_curl = format!("count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -lt 2; then return 7; fi; printf '%s\\n' '{exact_index}' > simple-index.html");
+    let transport = run_clean_preflight(clean, transport_root.path(), version, &transport_curl)?;
+    assert!(transport.status.success() && fs::read_to_string(transport_root.path().join("simple-index-attempts"))?.trim() == "2" && String::from_utf8_lossy(&transport.stdout).contains("exposes getcodexy=="));
     Ok(())
 }
 

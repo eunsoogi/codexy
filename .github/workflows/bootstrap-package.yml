@@ -102,9 +102,9 @@ jobs:
           simple_index_attempt=0
           while :; do
             simple_index_attempt=$((simple_index_attempt + 1))
-            curl --fail --silent --show-error --location --max-time 20 \
-              "https://pypi.org/simple/getcodexy/" -o simple-index.html
-            if BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" python3 - simple-index.html <<'PY'
+            if curl --fail --silent --show-error --location --max-time 20 \
+              "https://pypi.org/simple/getcodexy/" -o simple-index.html \
+              && BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" python3 - simple-index.html <<'PY'
           import html.parser
           import os
           import sys
