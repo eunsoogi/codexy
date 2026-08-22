@@ -21,6 +21,7 @@ for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz co
   gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
     --signer-workflow "$signer" --source-ref refs/heads/main \
     --source-digest "$source_digest" --deny-self-hosted-runners \
+    --limit 1000 \
     --format json > "$attestations"
   jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
     "$attestations" >/dev/null

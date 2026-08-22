@@ -165,11 +165,16 @@ case "$*" in
       *) printf '%s\n' '{"attestations":[{}]}' ;;
     esac ;;
   *attestation*--format\ json*)
-    if test "${ATTESTATION_STATE:?}" = extra; then
-      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}},{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
-    else
-      printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]'
-    fi ;;
+    case "${ATTESTATION_STATE:?}" in
+      extra) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}},{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+      many-unrelated)
+        # The policy match is after the default 30-result window.
+        case "$*" in
+          *"--limit 1000"*) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+          *) printf '%s\n' '[]' ;;
+        esac ;;
+      *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"subject"}]}}}]' ;;
+    esac ;;
   *attestation*) exit 0 ;;
   *) exit 1 ;;
 esac
@@ -218,7 +223,7 @@ esac
         assert!(!run("single")?.status.success(), "{name} mutation was accepted");
     }
     fs::write(fixture.join("baseline.json"), &baseline_bytes)?;
-    assert!(run("release")?.status.success());
+    assert!(run("many-unrelated")?.status.success());
     assert!(!run("extra")?.status.success());
     Ok(())
 }

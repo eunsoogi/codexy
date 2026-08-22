@@ -18,5 +18,6 @@ fi
 gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
   --signer-workflow "$signer" --source-ref refs/heads/main \
   --source-digest "$source_digest" --deny-self-hosted-runners \
+  --limit 1000 \
   --format json > "$artifact.attestations.json"
 jq -e --argjson expected "$expected" 'length == $expected and all(.[]; .verificationResult.statement.subject | length == 1)' "$artifact.attestations.json" >/dev/null
