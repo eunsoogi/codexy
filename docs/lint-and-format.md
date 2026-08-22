@@ -6,9 +6,9 @@ that workflow aligned; do not introduce a wrapper or alternate runner.
 
 ## Authoritative tools and files
 
-- `tooling/lint-tools.json` records the Rust 1.95.0, dprint, ShellCheck, shfmt,
-  and PSScriptAnalyzer pins. The workflow reads the Rust and dprint pins
-  directly.
+- `tooling/lint-tools.json` records the Rust, dprint, ShellCheck, shfmt, and
+  PSScriptAnalyzer pins. The workflow reads the Rust, dprint, and
+  PSScriptAnalyzer pins directly.
 - `tooling/lint-requirements.txt` pins and hashes Ruff. Install it with
   `python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r tooling/lint-requirements.txt`.
 - `dprint.json` configures JSON, YAML, and Markdown formatting.
@@ -59,11 +59,22 @@ dprint check
 dprint fmt
 ```
 
-For PowerShell, install the pinned analyzer and run it directly over each
-discovered `.ps1` path, matching CI:
+For PowerShell, download the pinned analyzer archive, verify its digest, and run
+it directly over each discovered `.ps1` path, matching CI:
 
 ```powershell
-Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+$tools = Get-Content -Raw tooling/lint-tools.json | ConvertFrom-Json
+$version = [string]$tools.PSScriptAnalyzer
+$expectedHash = ([string]$tools.psScriptAnalyzerNupkgSha256).ToLowerInvariant()
+$archive = Join-Path $env:TEMP "PSScriptAnalyzer.$version.zip"
+$moduleRoot = Join-Path $HOME "Documents\PowerShell\Modules"
+$modulePath = Join-Path $moduleRoot "PSScriptAnalyzer\$version"
+Invoke-WebRequest -Uri "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$version" -OutFile $archive
+$actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualHash -ne $expectedHash) { throw "PSScriptAnalyzer package hash mismatch" }
+New-Item -ItemType Directory -Path $modulePath -Force | Out-Null
+Expand-Archive -LiteralPath $archive -DestinationPath $modulePath -Force
+Import-Module (Join-Path $modulePath "PSScriptAnalyzer.psd1") -Force
 $files = @(Get-ChildItem -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
 foreach ($file in $files) { Invoke-ScriptAnalyzer -Path $file -Severity ParseError,Error,Warning -EnableExit }
 ```
