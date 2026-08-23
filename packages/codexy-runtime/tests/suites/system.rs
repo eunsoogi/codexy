@@ -67,7 +67,6 @@ mod repository_eol_contract;
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
-
 #[path = "../runtime_activation_branch_recovery.rs"]
 mod runtime_activation_branch_recovery;
 
@@ -143,6 +142,55 @@ mod skill_boundary_taxonomy;
 #[path = "../session_audit_parent_bounds.rs"]
 mod session_audit_parent_bounds;
 
+pub(crate) mod stage_budget_test_support {
+    use serde_json::{Value, json};
+
+    pub(crate) fn set(value: &mut Value, path: &str, replacement: Value) {
+        let path = format!("/{}", path.replace('.', "/"));
+        *value.pointer_mut(&path).unwrap() = replacement;
+    }
+
+    pub(crate) fn fixture() -> Value {
+        let mut value: Value = serde_json::from_str(include_str!(
+            "../../../../plugins/codexy/skills/orchestration/templates/stage-budget-receipt.json"
+        ))
+        .unwrap();
+        value["limits"] = json!({"contextBytes":1000,"toolOutputBytes":1000,"replayEvents":10,"turns":10,"toolCalls":10});
+        value["usage"] = json!({"contextBytes":100,"toolOutputBytes":100,"turns":1,"toolCalls":1});
+        value["measures"]["toolOutputBytes"]["value"] = json!(100);
+        value["identity"]["stable"] = json!("stage-601");
+        value["identity"]["volatile"] = json!("event-1");
+        value["events"]["identities"] = json!(["event-1"]);
+        value
+    }
+
+    pub(crate) fn oversized(value: &mut Value, kind: &str, identity: &str, bytes: u64, state: &str) {
+        let result = json!({"kind":kind,"identity":identity,"bytes":bytes,"state":state,"bodyReplayed":false});
+        set(value, "oversizedResult", result);
+        if kind == "tool-output" {
+            set(value, "usage.toolOutputBytes", json!(bytes));
+            set(value, "measures.toolOutputBytes.value", json!(bytes));
+        } else {
+            set(value, "usage.contextBytes", json!(bytes));
+        }
+    }
+
+    pub(crate) fn previous_anchor(value: &Value) -> Value {
+        json!({"stage":value["stage"],"stageSequence":value["stageSequence"],"previousReceiptIdentity":value["previousReceiptIdentity"],"receiptIdentity":value["receiptIdentity"],"owner":value["owner"],"identity":value["identity"],"safety":value["safety"],"proof":value["proof"],"limits":value["limits"],"usage":value["usage"],"events":value["events"],"oversizedResult":value["oversizedResult"],"cumulativeReplayEvents":value["continuity"]["cumulativeReplayEvents"]})
+    }
+
+    pub(crate) fn declare(value: &mut Value, decision: &str) {
+        value["decision"] = json!(decision);
+        let action = match (decision, value["stage"].as_str()) {
+            ("continue", Some("wait" | "selected-review")) => "wait-for-event",
+            ("continue", _) => "continue-stage",
+            ("compact", _) => "compact-context",
+            _ => "handoff-parent",
+        };
+        value["nextAction"] = json!(action);
+    }
+}
+
 #[path = "../session_audit_receipt.rs"]
 mod session_audit_receipt;
 
@@ -158,12 +206,17 @@ mod session_audit_scorecard;
 #[path = "../session_audit_scorecard_contract.rs"]
 mod session_audit_scorecard_contract;
 
+#[path = "../session_audit_stage_budget.rs"]
+mod session_audit_stage_budget;
+
+#[path = "../session_audit_stage_budget_continuity.rs"]
+mod session_audit_stage_budget_continuity;
+
 #[path = "../structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 
 #[path = "../sync_version_cli.rs"]
 mod sync_version_cli;
-
 
 #[path = "../validator_lsp_readiness.rs"]
 mod validator_lsp_readiness;
