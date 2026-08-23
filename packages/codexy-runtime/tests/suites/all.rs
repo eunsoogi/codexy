@@ -8,3 +8,6 @@ mod hook {
 mod workflow {
     include!("workflow.rs");
 }
+
+#[path = "../validator_handoff_envelope.rs"]
+mod handoff_envelope;
