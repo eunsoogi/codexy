@@ -276,11 +276,46 @@
     "surface_non_applicable_fields": {
       "repository engineering": [],
       "GitHub": ["owner_worktree", "base_head_sha", "dirty_index_state"],
-      "browser/desktop": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "unresolved_review_threads", "selected_reviewer_state"],
-      "documents/artifacts": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "unresolved_review_threads", "selected_reviewer_state"],
-      "spreadsheets/data": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "unresolved_review_threads", "selected_reviewer_state"],
-      "research/wiki": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "unresolved_review_threads", "selected_reviewer_state"],
-      "read-only/local": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "unresolved_review_threads", "selected_reviewer_state"]
+      "browser/desktop": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "documents/artifacts": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "spreadsheets/data": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "research/wiki": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "read-only/local": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ]
     },
     "risk_names": ["mixed", "security", "permission", "destructive", "external_mutation"],
     "risk_reference_routes": {
@@ -288,7 +323,13 @@
       "security": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
       "permission": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
       "destructive": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
-      "external_mutation": ["workflow_profiles", "task_classification", "child_routing", "proof_completion", "public_extension_contracts"]
+      "external_mutation": [
+        "workflow_profiles",
+        "task_classification",
+        "child_routing",
+        "proof_completion",
+        "public_extension_contracts"
+      ]
     },
     "fallback_reference_route": ["workflow_profiles", "task_classification", "child_routing"],
     "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],

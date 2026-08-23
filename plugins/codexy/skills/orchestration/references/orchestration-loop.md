@@ -13,8 +13,8 @@ necessity, or classification from rationale wording.
 1. Intake:
    - MUST use `$orchestration` before setup, delegation, implementation,
      validation, PR handling, review-response routing, or merge coordination.
-   - MUST read the latest request, active project instructions, active issue, and
-     relevant local skills.
+   - MUST read the latest request, active project instructions, active issue,
+     and relevant local skills.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
    - MUST use the available `codegraph` MCP to map relevant code files and

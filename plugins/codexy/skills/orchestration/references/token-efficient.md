@@ -167,8 +167,8 @@ When the installed package exposes a metadata-only audit entrypoint, MUST use
 that package-owned entrypoint with `<metadata-jsonl>` for bounded aggregate
 evidence. An installed skill MUST NOT resolve audit commands from the active
 project or current working directory; when no packaged runtime is exposed, it
-MUST record the audit as unavailable and use the explicit metadata receipt.
-The audit MUST report session size, latest cumulative tokens, recent per-turn
+MUST record the audit as unavailable and use the explicit metadata receipt. The
+audit MUST report session size, latest cumulative tokens, recent per-turn
 average, call counts by tool, and output bytes by tool. It MUST read only exact
 top-level metadata keys, reject invalid ids or tool keys, deduplicate the stable
 event identity, and MUST NOT emit prompts, tool arguments, tool bodies, or

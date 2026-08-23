@@ -47,8 +47,8 @@ or `create_thread` with a worktree environment.
 
 MUST run this before creating, forking, reusing, or recycling a Codex app
 worktree for a repository-owned task. This is an active-project fail-closed
-diagnostic; it does not claim to atomically control the host allocator. The
-live worktree reservation preflight is the required project-side check.
+diagnostic; it does not claim to atomically control the host allocator. The live
+worktree reservation preflight is the required project-side check.
 
 1. MUST rebuild the reservation map from the active/waiting child ledger and
    every active or waiting specialist or Sentinel. Each reservation MUST name

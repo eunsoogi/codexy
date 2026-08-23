@@ -33,8 +33,8 @@ also follow
      structured dump.
    - Installed plugin architecture: the active project's package or schema
      validator when supplied, plus focused evidence for LSP config, MCP config,
-     role metadata or custom-agent TOMLs, and task/thread/worktree behavior.
-     A repository-only validator remains the active project's policy, not an
+     role metadata or custom-agent TOMLs, and task/thread/worktree behavior. A
+     repository-only validator remains the active project's policy, not an
      installed Core prerequisite.
    - Code exploration: Codexy `codegraph` MCP output when the MCP is available,
      followed by direct file-read confirmation for edited files.
@@ -70,8 +70,9 @@ Cleanup:
   unaccounted for.
 - MUST NOT pass installed plugin architecture QA without evidence for LSP, MCP,
   role metadata, custom agent TOMLs, thread, and worktree surfaces that changed.
-- MUST NOT pass a code-touching lane QA without available `codegraph` MCP exploration
-  evidence when the MCP is available, or an explicit unavailable-tool fallback.
+- MUST NOT pass a code-touching lane QA without available `codegraph` MCP
+  exploration evidence when the MCP is available, or an explicit
+  unavailable-tool fallback.
 - MUST NOT pass a child-owned lane when review feedback was fixed only in the
   parent thread. The owning child thread MUST validate the response or provide a
   documented non-change rationale.

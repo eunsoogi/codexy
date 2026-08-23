@@ -62,9 +62,9 @@ For GitHub-surface lanes, current evidence usually means `git status`,
 
 ## Active Child Thread Ledger
 
-For orchestration, review-response, or multi-lane handoffs, dreaming
-MUST preserve a durable active/waiting child thread ledger instead of reducing
-child work to a one-time summary. The dream pass MUST collect the full
+For orchestration, review-response, or multi-lane handoffs, dreaming MUST
+preserve a durable active/waiting child thread ledger instead of reducing child
+work to a one-time summary. The dream pass MUST collect the full
 in-progress/waiting child thread list from current issue, PR, thread, worktree,
 and handoff evidence before deciding whether new child work is needed.
 

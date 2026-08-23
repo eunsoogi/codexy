@@ -213,10 +213,10 @@ the first workflow action:
   multi-lane work, audit evidence, release work, and PR-readiness claims.
 - Child lanes MUST emit the complete orchestration table before creating or
   switching to an implementation branch or worktree. Handoff evidence MUST NOT
-  report child-created branch/worktree setup before that table;
-  The active project's child-lane ownership policy check catches this workflow
-  defect. Historical dogfood examples are evidence only and MUST NOT be reused
-  as active branch or project assumptions.
+  report child-created branch/worktree setup before that table; The active
+  project's child-lane ownership policy check catches this workflow defect.
+  Historical dogfood examples are evidence only and MUST NOT be reused as active
+  branch or project assumptions.
 - Formal classification MUST happen before acting on or using the owner decision
   to edit files, set up branches or worktrees, delegate lanes, or route review
   feedback.

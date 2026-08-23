@@ -65,9 +65,9 @@ MUST also follow
 - For non-trivial code, validator, harness, or workflow-rule changes, MUST run
   the package-owned governed-code checker against explicit applicable paths
   before PR readiness or handoff. MUST treat files over the 250 LOC target as
-  failing evidence. Every governed file MUST stay at or below 250 LOC. MUST
-  NOT use or authorize LOC exceptions. The checker MUST be proportional for
-  non-code tasks and MUST NOT assume an active checkout root.
+  failing evidence. Every governed file MUST stay at or below 250 LOC. MUST NOT
+  use or authorize LOC exceptions. The checker MUST be proportional for non-code
+  tasks and MUST NOT assume an active checkout root.
 - MUST record why a LOC reduction is structural rather than formatting-only.
   MUST NOT treat blank-line deletion or collapsed readable multiline content as
   structural remediation evidence; MUST name the helper, module, test target,
@@ -78,10 +78,9 @@ MUST also follow
   and review threads.
 - When a handoff or final answer reports addressed review feedback, MUST include
   current review-thread state in the PR evidence and MUST run the active
-  project's completion-handoff check; addressed
-  unresolved threads, including outdated-but-fixed threads, MUST be resolved or
-  covered by an accepted no-change rationale before readiness evidence is
-  accepted.
+  project's completion-handoff check; addressed unresolved threads, including
+  outdated-but-fixed threads, MUST be resolved or covered by an accepted
+  no-change rationale before readiness evidence is accepted.
 - For child-owned PRs, MUST route actionable review feedback back to the owning
   child thread. The parent thread may coordinate, but it MUST NOT merge until
   the child thread returns current verification or a documented non-change
@@ -93,8 +92,9 @@ MUST also follow
   it.
 - If a child-owned PR handoff or final-answer evidence mentions parent-authored
   implementation or review-response commits, MUST run the owning project's
-  child-lane ownership policy check against the evidence. A failing result blocks completion unless the evidence records explicit
-  maintainer reassignment of implementation ownership to the parent.
+  child-lane ownership policy check against the evidence. A failing result
+  blocks completion unless the evidence records explicit maintainer reassignment
+  of implementation ownership to the parent.
 - For delegated lanes that need their own branch, worktree, PR, or durable child
   context, MUST require evidence that the child was created, forked, or assigned
   before implementation patches began. If parent-authored draft edits exist,

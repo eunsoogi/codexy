@@ -24,9 +24,8 @@ When an exact packaged `agent_type` is unavailable, MUST resolve this selected
 skill's installed directory and run its package-owned sibling
 `scripts/bootstrap-codexy-agents` entrypoint. MUST NOT resolve the entrypoint
 from the active project, an unrelated source checkout, or a hard-coded cache
-path. The bootstrap diagnoses the installed state before mutation and
-invokes `register_codexy_agents.py` only when packaged role discovery is
-incomplete.
+path. The bootstrap diagnoses the installed state before mutation and invokes
+`register_codexy_agents.py` only when packaged role discovery is incomplete.
 
 If the bootstrap reports `D bootstrap: RESTART_REQUIRED`, MUST stop specialist
 dispatch in the current task and MUST tell the user to restart Codex or start a

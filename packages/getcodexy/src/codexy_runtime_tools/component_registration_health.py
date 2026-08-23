@@ -14,7 +14,6 @@ CATALOGS = {
 # registration script load agent_files from this catalog; native Codex agent
 # use is through marker-owned standalone files under the Codex home agents directory.
 version = "0.1.0"
-default_branch_prefix = "codexy/"
 catalog_kind = "plugin-packaged-specialist-agent-files"
 native_custom_agent_registration = "codex-home-standalone-agent-projection"
 native_custom_agent_projection = "managed-codexy-subdirectory"
