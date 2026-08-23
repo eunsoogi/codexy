@@ -45,6 +45,20 @@ AGENT_FILES = {
     ),
     "github": ("codexy-weaver.toml",),
 }
+
+
+def _child_thread_hook(event: str) -> dict[str, object]:
+    return {
+        "matcher": "^codex_app__create_thread$",
+        "hooks": [{
+            "type": "command",
+            "command": f'"${{PLUGIN_ROOT}}/hooks/codexy-child-thread-creation.sh" {event}',
+            "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/codexy-child-thread-creation.cmd" {event}',
+            "timeout": 5,
+        }],
+    }
+
+
 HOOKS = {
     "core": {
         "hooks": {
@@ -59,7 +73,8 @@ HOOKS = {
                             "timeout": 5,
                         }
                     ],
-                }
+                },
+                _child_thread_hook("PermissionRequest"),
             ],
             "PreToolUse": [
                 {
@@ -72,7 +87,8 @@ HOOKS = {
                             "timeout": 5,
                         }
                     ],
-                }
+                },
+                _child_thread_hook("PreToolUse"),
             ],
         }
     },
@@ -176,7 +192,7 @@ MCP = {
     },
 }
 LAUNCHERS = {
-    "core": ("hooks/codexy-thread-delivery.sh", "hooks/codexy-thread-delivery.cmd"),
+    "core": ("hooks/codexy-thread-delivery.sh", "hooks/codexy-thread-delivery.cmd", "hooks/codexy-child-thread-creation.sh", "hooks/codexy-child-thread-creation.cmd"),
     "github": (
         "hooks/codexy-github-workflow-context.sh",
         "hooks/codexy-github-workflow-context.cmd",
@@ -190,6 +206,7 @@ LAUNCHERS = {
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
+CORE_HOOK_DEPENDENCIES = ("hooks/codexy-child-thread-creation.py", "hooks/codexy_policy/child_thread_creation.py", "hooks/codexy_policy/envelope.py")
 
 
 def valid_registration(plugin: Path, component: str) -> bool:
@@ -207,6 +224,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
                 _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
             )
             and all(_regular(plugin / path) for path in LAUNCHERS[component])
+            and (component != "core" or all(_regular(plugin / path) for path in CORE_HOOK_DEPENDENCIES))
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False

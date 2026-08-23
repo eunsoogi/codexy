@@ -45,7 +45,10 @@
         "plugins/codexy/hooks/codexy-hook-runtime.sh",
         "plugins/codexy/hooks/codexy-thread-delivery.cmd",
         "plugins/codexy/hooks/codexy-thread-delivery.py",
-        "plugins/codexy/hooks/codexy-thread-delivery.sh"
+        "plugins/codexy/hooks/codexy-thread-delivery.sh",
+        "plugins/codexy/hooks/codexy-child-thread-creation.cmd",
+        "plugins/codexy/hooks/codexy-child-thread-creation.py",
+        "plugins/codexy/hooks/codexy-child-thread-creation.sh"
       ],
       "target": "codexy",
       "disposition": "retain"
@@ -63,7 +66,8 @@
       "sources": [
         "plugins/codexy/hooks/codexy_policy/__init__.py",
         "plugins/codexy/hooks/codexy_policy/envelope.py",
-        "plugins/codexy/hooks/codexy_policy/thread_delivery.py"
+        "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
+        "plugins/codexy/hooks/codexy_policy/child_thread_creation.py"
       ],
       "target": "codexy",
       "disposition": "retain"

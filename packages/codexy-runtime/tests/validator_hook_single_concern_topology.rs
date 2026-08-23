@@ -20,6 +20,12 @@ const CONCERNS: &[Concern] = &[
         diagnostic: "CODEXY_THREAD_DELIVERY_",
     },
     Concern {
+        id: "child-thread-creation",
+        matcher: "^codex_app__create_thread$",
+        launcher: "codexy-child-thread-creation",
+        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
+    },
+    Concern {
         id: "repository-issue",
         matcher: "^mcp__codex_apps__github_(create|update)_issue$",
         launcher: "codexy-repository-issue",
@@ -51,12 +57,20 @@ const CONCERNS: &[Concern] = &[
     },
 ];
 
-const INSTALLED_CONCERNS: &[Concern] = &[Concern {
-    id: "thread-delivery",
-    matcher: "^codex_app__send_message_to_thread$",
-    launcher: "codexy-thread-delivery",
-    diagnostic: "CODEXY_THREAD_DELIVERY_",
-}];
+const INSTALLED_CONCERNS: &[Concern] = &[
+    Concern {
+        id: "thread-delivery",
+        matcher: "^codex_app__send_message_to_thread$",
+        launcher: "codexy-thread-delivery",
+        diagnostic: "CODEXY_THREAD_DELIVERY_",
+    },
+    Concern {
+        id: "child-thread-creation",
+        matcher: "^codex_app__create_thread$",
+        launcher: "codexy-child-thread-creation",
+        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
+    },
+];
 
 #[test]
 fn packaged_hooks_have_one_ordered_binding_per_concern_and_event()
@@ -164,6 +178,7 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
 -> Result<(), Box<dyn std::error::Error>> {
     let tools = [
         "codex_app__send_message_to_thread",
+        "codex_app__create_thread",
         "mcp__codex_apps__github_create_issue",
         "mcp__codex_apps__github_create_pull_request",
         "mcp__codex_apps__github_merge_pull_request",
@@ -178,7 +193,7 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
                 "tool_input": null,
                 "cwd": "/tmp",
             });
-            let hooks = if concern.id == "thread-delivery" {
+            let hooks = if matches!(concern.id, "thread-delivery" | "child-thread-creation") {
                 codexy_runtime::paths::repository_root().join("plugins/codexy/hooks")
             } else {
                 codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks")

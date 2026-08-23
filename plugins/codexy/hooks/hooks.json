@@ -11,6 +11,17 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "^codex_app__create_thread$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-child-thread-creation.sh\" PermissionRequest",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-child-thread-creation.cmd\" PermissionRequest",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -21,6 +32,17 @@
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PreToolUse",
             "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PreToolUse",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^codex_app__create_thread$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-child-thread-creation.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-child-thread-creation.cmd\" PreToolUse",
             "timeout": 5
           }
         ]

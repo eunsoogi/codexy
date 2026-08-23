@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v2",
-  "contentDigest": "6ece032b19def154",
+  "contentDigest": "4e3c10f66984afe5",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -11,6 +11,16 @@
       "entrypoints": ["codexy-thread-delivery.sh", "codexy-thread-delivery.cmd", "codexy-thread-delivery.py"],
       "diagnosticFamily": "CODEXY_THREAD_DELIVERY_",
       "contentDigest": "103d7a8ebac72ebe"
+    },
+    {
+      "concernId": "child-thread-creation",
+      "trigger": "^codex_app__create_thread$",
+      "events": ["PermissionRequest", "PreToolUse"],
+      "inputContract": "codexy.hooks.child-thread-creation.v1",
+      "preventive": true,
+      "entrypoints": ["codexy-child-thread-creation.sh", "codexy-child-thread-creation.cmd", "codexy-child-thread-creation.py"],
+      "diagnosticFamily": "CODEXY_CHILD_THREAD_CREATION_",
+      "contentDigest": "4e4ee82f1687821c"
     }
   ]
 }

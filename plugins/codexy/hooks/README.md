@@ -5,7 +5,11 @@ before invoking each configured concern launcher. The hooks are stateless: a
 permitted operation writes zero bytes; a denied operation emits only the
 official event-native denial schema with its concern's diagnostic family.
 
-The installed Codexy plugin activates only thread-delivery metadata. The
+The installed Codexy plugin activates thread-delivery metadata and
+child-thread-creation admission requiring native, non-empty `model` and
+`thinking` fields. The upstream orchestration resolver selects generic,
+explicit, fallback, and named-role pairs; the native host owns the callable
+pair, and this hook does not infer or authenticate route provenance. The
 installed Codexy GitHub plugin activates generic GitHub-command and destructive
 shell/Git admission through its own `${PLUGIN_ROOT}` hook manifest. A trusted
 repository's `.codex/hooks.json` activates only its repository-specific issue,

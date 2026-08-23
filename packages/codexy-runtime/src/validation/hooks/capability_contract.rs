@@ -19,13 +19,22 @@ struct Expected {
     diagnostic: &'static str,
 }
 
-const CONCERNS: &[Expected] = &[Expected {
-    id: "thread-delivery",
-    trigger: "^codex_app__send_message_to_thread$",
-    input: "codexy.hooks.thread-delivery.v1",
-    launcher: "codexy-thread-delivery",
-    diagnostic: "CODEXY_THREAD_DELIVERY_",
-}];
+const CONCERNS: &[Expected] = &[
+    Expected {
+        id: "thread-delivery",
+        trigger: "^codex_app__send_message_to_thread$",
+        input: "codexy.hooks.thread-delivery.v1",
+        launcher: "codexy-thread-delivery",
+        diagnostic: "CODEXY_THREAD_DELIVERY_",
+    },
+    Expected {
+        id: "child-thread-creation",
+        trigger: "^codex_app__create_thread$",
+        input: "codexy.hooks.child-thread-creation.v1",
+        launcher: "codexy-child-thread-creation",
+        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
+    },
+];
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -103,7 +112,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
         })?;
         if groups.len() != CONCERNS.len() {
             bail!(
-                "{} {event} must bind every concern exactly once",
+                "{} {event} must be a non-empty matcher group array and bind every concern exactly once",
                 display_relative(path)
             );
         }
