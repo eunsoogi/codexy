@@ -152,13 +152,13 @@ fn expected_decision(r: &StageBudgetReceipt, duplicates: u64, replay: u64) -> De
 }
 
 fn reviewer_gate_is_terminal(r: &StageBudgetReceipt) -> bool {
-    if r.stage != "selected-review" && r.stage != "wait" {
+    if !["selected-review", "wait"].contains(&r.stage.as_str()) {
         return false;
     }
-    !matches!(
-        r.safety.selected_reviewer_state.as_str(),
-        "pending" | "running"
-    ) || r.safety.external_gate != "pending"
+    ["pass", "block", "unobservable"].contains(&r.safety.selected_reviewer_state.as_str())
+        || ["pass", "blocked", "not-applicable"].contains(&r.safety.external_gate.as_str())
+        || (r.safety.selected_reviewer_state == "not-applicable"
+            && r.safety.external_gate == "none")
 }
 
 fn near(value: u64, limit: u64) -> bool {
@@ -168,7 +168,8 @@ fn near(value: u64, limit: u64) -> bool {
 fn next_action(r: &StageBudgetReceipt, decision: &str) -> NextAction {
     if decision == "continue"
         && (r.stage == "wait"
-            || (r.stage == "selected-review" && r.safety.selected_reviewer_state == "running"))
+            || (r.stage == "selected-review"
+                && ["pending", "running"].contains(&r.safety.selected_reviewer_state.as_str())))
     {
         return "wait-for-event".to_string();
     }

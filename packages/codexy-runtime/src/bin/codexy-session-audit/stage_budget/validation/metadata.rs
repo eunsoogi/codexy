@@ -30,7 +30,7 @@ pub(super) fn validate_measures(
     validate_measure(&measures.tool_output_bytes, "tool output bytes")?;
     validate_measure(&measures.cache_input_tokens, "cache input tokens")?;
     if measures.tool_output_bytes.availability == "unavailable" {
-        if !result.is_some_and(|value| value.state == "unavailable") || output != 0 {
+        if result.is_none_or(|value| value.state != "unavailable") || output != 0 {
             bail!(
                 "unavailable tool output bytes require zero usage and unavailable result metadata"
             );

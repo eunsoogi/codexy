@@ -27,7 +27,9 @@
   "properties": {
     "schema": { "const": "codexy.stage-budget.v1" },
     "metadataOnly": { "const": true },
-    "stage": { "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"] },
+    "stage": {
+      "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"]
+    },
     "stageSequence": { "type": "integer", "minimum": 1 },
     "previousReceiptIdentity": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
     "receiptIdentity": { "$ref": "#/$defs/digest" },
@@ -88,9 +90,25 @@
     "previousReceipt": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["stage", "stageSequence", "previousReceiptIdentity", "receiptIdentity", "owner", "identity", "safety", "proof", "limits", "usage", "events", "oversizedResult", "cumulativeReplayEvents"],
+      "required": [
+        "stage",
+        "stageSequence",
+        "previousReceiptIdentity",
+        "receiptIdentity",
+        "owner",
+        "identity",
+        "safety",
+        "proof",
+        "limits",
+        "usage",
+        "events",
+        "oversizedResult",
+        "cumulativeReplayEvents"
+      ],
       "properties": {
-        "stage": { "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"] },
+        "stage": {
+          "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"]
+        },
         "stageSequence": { "type": "integer", "minimum": 1 },
         "previousReceiptIdentity": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
         "receiptIdentity": { "$ref": "#/$defs/digest" },
@@ -108,7 +126,17 @@
     "safety": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["issuePrIdentity", "ownerWorktree", "baseHeadSha", "dirtyIndexState", "checks", "unresolvedReviewThreads", "selectedReviewerState", "verification", "externalGate"],
+      "required": [
+        "issuePrIdentity",
+        "ownerWorktree",
+        "baseHeadSha",
+        "dirtyIndexState",
+        "checks",
+        "unresolvedReviewThreads",
+        "selectedReviewerState",
+        "verification",
+        "externalGate"
+      ],
       "properties": {
         "issuePrIdentity": { "$ref": "#/$defs/issuePr" },
         "ownerWorktree": { "$ref": "#/$defs/ownerWorktree" },
@@ -208,7 +236,14 @@
     "measures": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["inputTokens", "wallTimeMs", "observedCostUsd", "toolInputBytes", "toolOutputBytes", "cacheInputTokens"],
+      "required": [
+        "inputTokens",
+        "wallTimeMs",
+        "observedCostUsd",
+        "toolInputBytes",
+        "toolOutputBytes",
+        "cacheInputTokens"
+      ],
       "properties": {
         "inputTokens": { "$ref": "#/$defs/measureU64" },
         "wallTimeMs": { "$ref": "#/$defs/measureU64" },
@@ -234,19 +269,31 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["availability", "value", "reason"],
-      "properties": { "availability": { "const": "available" }, "value": { "type": "integer", "minimum": 0 }, "reason": { "const": null } }
+      "properties": {
+        "availability": { "const": "available" },
+        "value": { "type": "integer", "minimum": 0 },
+        "reason": { "const": null }
+      }
     },
     "availableNumber": {
       "type": "object",
       "additionalProperties": false,
       "required": ["availability", "value", "reason"],
-      "properties": { "availability": { "const": "available" }, "value": { "type": "number", "minimum": 0 }, "reason": { "const": null } }
+      "properties": {
+        "availability": { "const": "available" },
+        "value": { "type": "number", "minimum": 0 },
+        "reason": { "const": null }
+      }
     },
     "unavailable": {
       "type": "object",
       "additionalProperties": false,
       "required": ["availability", "value", "reason"],
-      "properties": { "availability": { "const": "unavailable" }, "value": { "const": null }, "reason": { "$ref": "#/$defs/safeMetadata" } }
+      "properties": {
+        "availability": { "const": "unavailable" },
+        "value": { "const": null },
+        "reason": { "$ref": "#/$defs/safeMetadata" }
+      }
     },
     "oversizedResult": {
       "oneOf": [

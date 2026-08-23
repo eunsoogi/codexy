@@ -160,6 +160,7 @@ pub(crate) mod stage_budget_test_support {
         value["measures"]["toolOutputBytes"]["value"] = json!(100);
         value["identity"]["stable"] = json!("stage-601");
         value["identity"]["volatile"] = json!("event-1");
+        value["events"]["identities"] = json!(["event-1"]);
         value
     }
 

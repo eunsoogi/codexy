@@ -87,6 +87,46 @@ fn stage_budget_receipt_supports_every_stage_and_emits_metadata_only_decision() 
 }
 
 #[test]
+fn pending_selected_review_waits_for_event() -> TestResult {
+    let mut receipt = budget::stage_receipt("selected-review");
+    budget::set(&mut receipt, "safety.selectedReviewerState", json!("pending"));
+    budget::set(&mut receipt, "safety.externalGate", json!("pending"));
+    budget::declare(&mut receipt, "continue");
+    let result = budget::report(&mut receipt)?;
+    assert_eq!(result["nextAction"], "wait-for-event");
+    Ok(())
+}
+
+#[test]
+fn ordinary_external_wait_remains_nonterminal() -> TestResult {
+    let mut receipt = budget::stage_receipt("wait");
+    budget::set(&mut receipt, "owner.kind", json!("child"));
+    budget::set(&mut receipt, "safety.selectedReviewerState", json!("not-applicable"));
+    budget::set(&mut receipt, "safety.externalGate", json!("pending"));
+    budget::declare(&mut receipt, "continue");
+    let result = budget::report(&mut receipt)?;
+    assert_eq!(result["decision"], "continue");
+    assert_eq!(result["nextAction"], "wait-for-event");
+    Ok(())
+}
+
+#[test]
+fn receipt_rejects_event_replay_after_one_receipt_gap() -> TestResult {
+    let mut first = budget::fixture();
+    budget::refresh_receipt(&mut first);
+    let mut second = budget::continuation(&first);
+    budget::refresh_receipt(&mut second);
+    let mut replay = budget::continuation(&second);
+    budget::set(&mut replay, "stageSequence", json!(3));
+    budget::set(&mut replay, "previousReceiptIdentity", second["receiptIdentity"].clone());
+    budget::set(&mut replay, "continuity.previous", budget::previous_anchor(&second));
+    budget::set(&mut replay, "identity.volatile", json!("event-3"));
+    budget::set(&mut replay, "events.identities", json!(["event-1"]));
+    budget::declare(&mut replay, "continue");
+    budget::rejected(&mut replay)
+}
+
+#[test]
 fn duplicate_events_and_replays_consume_budget_without_renewal() -> TestResult {
     let mut receipt = budget::fixture();
     budget::set(

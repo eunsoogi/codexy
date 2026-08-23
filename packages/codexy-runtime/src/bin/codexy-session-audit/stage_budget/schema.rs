@@ -69,20 +69,20 @@ pub(crate) fn validate_continuity(r: &StageBudgetReceipt, replay: u64) -> Result
         bail!("cumulative replay accounting does not match this receipt");
     }
     if r.receipt_identity
-        != anchor_identity(
-            r.stage.as_str(),
-            r.stage_sequence,
-            r.previous_receipt_identity.as_deref(),
-            &r.owner,
-            &r.identity,
-            &r.safety,
-            &r.proof,
-            &r.limits,
-            &r.usage,
-            &r.events,
-            r.oversized_result.as_ref(),
+        != anchor_identity(&AnchorInput {
+            stage: r.stage.as_str(),
+            sequence: r.stage_sequence,
+            previous: r.previous_receipt_identity.as_deref(),
+            owner: &r.owner,
+            identity: &r.identity,
+            safety: &r.safety,
+            proof: &r.proof,
+            limits: &r.limits,
+            usage: &r.usage,
+            events: &r.events,
+            oversized_result: r.oversized_result.as_ref(),
             replay,
-        )?
+        })?
     {
         bail!("receipt identity does not authenticate cumulative state");
     }
@@ -127,12 +127,11 @@ pub(crate) fn validate_continuity(r: &StageBudgetReceipt, replay: u64) -> Result
     {
         bail!("continued receipts cannot renew finite stage limits");
     }
-    if (p.stage == "selected-review" && r.stage == "wait")
-        || (p.stage == "wait" && r.stage == "wait" && p.owner.kind == "selected-reviewer")
+    if ((p.stage == "selected-review" && r.stage == "wait")
+        || (p.stage == "wait" && r.stage == "wait" && p.owner.kind == "selected-reviewer"))
+        && r.owner.id != p.owner.id
     {
-        if r.owner.id != p.owner.id {
-            bail!("reviewer wait must preserve the same reviewer owner");
-        }
+        bail!("reviewer wait must preserve the same reviewer owner");
     }
     if r.identity.stable != p.identity.stable
         || r.owner != p.owner
@@ -142,50 +141,50 @@ pub(crate) fn validate_continuity(r: &StageBudgetReceipt, replay: u64) -> Result
         || r.proof.goal != p.proof.goal
         || r.proof.plan != p.proof.plan
         || r.identity.volatile == p.identity.volatile
-        || r.events
-            .identities
+        || !r.events.identities.starts_with(&p.events.identities)
+        || r.events.identities[p.events.identities.len()..]
             .iter()
-            .any(|id| id == &p.identity.volatile)
-        || r.events
-            .identities
-            .iter()
-            .any(|id| p.events.identities.iter().any(|prior_id| prior_id == id))
+            .any(|id| {
+                id == &p.identity.volatile
+                    || p.events.identities.iter().any(|prior_id| prior_id == id)
+            })
     {
         bail!(
-            "continued receipt changed stable ownership or proof identity, or reused an event identity"
+            "continued receipt changed stable ownership or proof identity, or reused event history"
         );
     }
     Ok(())
 }
-fn anchor_identity(
-    stage: &str,
+struct AnchorInput<'a> {
+    stage: &'a str,
     sequence: u64,
-    previous: Option<&str>,
-    owner: &Owner,
-    identity: &Identity,
-    safety: &Safety,
-    proof: &ProofState,
-    limits: &Limits,
-    usage: &Usage,
-    events: &Events,
-    oversized_result: Option<&OversizedResult>,
+    previous: Option<&'a str>,
+    owner: &'a Owner,
+    identity: &'a Identity,
+    safety: &'a Safety,
+    proof: &'a ProofState,
+    limits: &'a Limits,
+    usage: &'a Usage,
+    events: &'a Events,
+    oversized_result: Option<&'a OversizedResult>,
     replay: u64,
-) -> Result<String> {
+}
+fn anchor_identity(input: &AnchorInput<'_>) -> Result<String> {
     Ok(format!(
         "{:x}",
         Sha256::digest(serde_json::to_vec(&(
-            stage,
-            sequence,
-            previous,
-            owner,
-            identity,
-            safety,
-            proof,
-            limits,
-            usage,
-            events,
-            oversized_result,
-            replay
+            input.stage,
+            input.sequence,
+            input.previous,
+            input.owner,
+            input.identity,
+            input.safety,
+            input.proof,
+            input.limits,
+            input.usage,
+            input.events,
+            input.oversized_result,
+            input.replay
         ))?)
     ))
 }
@@ -219,20 +218,20 @@ fn validate_previous(p: &PreviousReceipt) -> Result<()> {
         bail!("the first prior receipt cannot have a previous identity");
     }
     if p.receipt_identity
-        != anchor_identity(
-            &p.stage,
-            p.stage_sequence,
-            p.previous_receipt_identity.as_deref(),
-            &p.owner,
-            &p.identity,
-            &p.safety,
-            &p.proof,
-            &p.limits,
-            &p.usage,
-            &p.events,
-            p.oversized_result.as_ref(),
-            p.cumulative_replay_events,
-        )?
+        != anchor_identity(&AnchorInput {
+            stage: &p.stage,
+            sequence: p.stage_sequence,
+            previous: p.previous_receipt_identity.as_deref(),
+            owner: &p.owner,
+            identity: &p.identity,
+            safety: &p.safety,
+            proof: &p.proof,
+            limits: &p.limits,
+            usage: &p.usage,
+            events: &p.events,
+            oversized_result: p.oversized_result.as_ref(),
+            replay: p.cumulative_replay_events,
+        })?
     {
         bail!("prior receipt identity does not authenticate cumulative state");
     }

@@ -20,7 +20,9 @@ pub(crate) mod support {
         set(&mut next, "continuity.previous", previous_anchor(previous));
         set(&mut next, "usage", previous["usage"].clone());
         set(&mut next, "identity.volatile", json!("event-2"));
-        set(&mut next, "events.identities", json!(["event-2"]));
+        let mut identities = previous["events"]["identities"].clone();
+        identities.as_array_mut().unwrap().push(json!("event-2"));
+        set(&mut next, "events.identities", identities);
         next["owner"] = previous["owner"].clone();
         next["identity"]["stable"] = previous["identity"]["stable"].clone();
         next["safety"] = previous["safety"].clone();
@@ -81,7 +83,11 @@ fn continuation_rejects_prior_identity_changes_and_history_replay() -> TestResul
         "continuity.previous",
         budget::previous_anchor(&prior_with_history),
     );
-    budget::set(&mut replay, "events.identities", json!(["prior-event"]));
+    budget::set(
+        &mut replay,
+        "events.identities",
+        json!(["event-1", "prior-event", "prior-event"]),
+    );
     budget::set(&mut replay, "identity.volatile", json!("event-2"));
     budget::rejected(&mut replay)?;
 
@@ -160,7 +166,11 @@ fn terminal_review_passes_handoff_and_preserve_reviewer_wait_owner() -> TestResu
     budget::set(&mut again, "previousReceiptIdentity", waiting["receiptIdentity"].clone());
     budget::set(&mut again, "continuity.previous", budget::previous_anchor(&waiting));
     budget::set(&mut again, "identity.volatile", json!("event-3"));
-    budget::set(&mut again, "events.identities", json!(["event-3"]));
+    budget::set(
+        &mut again,
+        "events.identities",
+        json!(["event-1", "event-2", "event-3"]),
+    );
     budget::declare(&mut again, "stop_and_handoff");
     budget::report(&mut again)?;
     assert_eq!(again["owner"]["id"], selected["owner"]["id"]);
