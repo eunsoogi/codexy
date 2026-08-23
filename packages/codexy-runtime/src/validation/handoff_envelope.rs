@@ -1,4 +1,5 @@
 mod legacy;
+mod replay;
 mod schema;
 use anyhow::{Result, bail, ensure};
 pub use legacy::LegacyContext;
@@ -105,42 +106,13 @@ pub fn canonicalize_handoff(text: &str) -> Result<String> {
     serde_json::to_string(&compact).map_err(anyhow::Error::from)
 }
 pub fn validate_handoff(text: &str, authority: &HandoffAuthority) -> Result<HandoffEnvelope> {
-    let envelope = parse_envelope(text, authority.stable.as_ref())?;
-    validate_intrinsic(&envelope)?;
-    let volatile = &envelope.volatile;
-    ensure!(
-        volatile.base_head_sha.head == authority.current_head,
-        "stale HEAD"
-    );
-    let owner_ok = volatile.owner_worktree.owner == authority.owner
-        && volatile.owner_worktree.worktree == authority.worktree;
-    ensure!(owner_ok, "owner/worktree authority");
-    let (identity, branch, base) = &authority.lane;
-    ensure!(
-        volatile.issue_pr_identity == *identity
-            && volatile.owner_worktree.branch == *branch
-            && volatile.base_head_sha.base == *base,
-        "lane authority"
-    );
-    let event_id = &envelope.volatile.event.id;
-    ensure!(
-        authority
-            .seen_event_ids
-            .borrow_mut()
-            .insert(event_id.clone()),
-        "handoff event is a duplicate"
-    );
-    Ok(envelope)
+    replay::validate_single(text, authority)
 }
 pub fn validate_handoff_batch(
     texts: &[&str],
     authority: &HandoffAuthority,
 ) -> Result<Vec<HandoffEnvelope>> {
-    let mut envelopes = Vec::with_capacity(texts.len());
-    for text in texts {
-        envelopes.push(validate_handoff(text, authority)?);
-    }
-    Ok(envelopes)
+    replay::validate_batch(texts, authority)
 }
 pub fn migrate_legacy_handoff(text: &str, context: &LegacyContext) -> Result<String> {
     let envelope = legacy::migrate(text, context)?;
