@@ -257,8 +257,86 @@
         "cacheInputTokens": null
       }
     },
-    { "id": "baseline-wait", "optimizationId": "program-baseline", "optimizationSet": ["program-baseline"], "model": "gpt-5.6-sol", "effort": "high", "taskId": "general-implementation", "taskClass": "general-implementation", "owner": { "kind": "child", "id": "baseline-child" }, "phase": "wait", "window": { "kind": "equal-record-count", "beforeRecords": 3, "afterRecords": 3 }, "before": { "acceptanceRuns": 1, "acceptedRuns": 1, "p0P1Misses": 0, "proofCompleteRuns": 1, "repairs": 0, "reviewCycles": 0, "inputTokens": null, "wallTimeMs": null, "observedCostUsd": null, "toolInputBytes": 0, "toolOutputBytes": 0, "cacheInputTokens": null }, "after": { "acceptanceRuns": 1, "acceptedRuns": 1, "p0P1Misses": 0, "proofCompleteRuns": 1, "repairs": 0, "reviewCycles": 0, "inputTokens": null, "wallTimeMs": null, "observedCostUsd": null, "toolInputBytes": 0, "toolOutputBytes": 0, "cacheInputTokens": null } },
-    { "id": "baseline-tool-output", "optimizationId": "program-baseline", "optimizationSet": ["program-baseline"], "model": "gpt-5.6-sol", "effort": "high", "taskId": "review-response", "taskClass": "review-response", "owner": { "kind": "selected-reviewer", "id": "baseline-reviewer" }, "phase": "tool-output", "window": { "kind": "equal-record-count", "beforeRecords": 3, "afterRecords": 3 }, "before": { "acceptanceRuns": 1, "acceptedRuns": 1, "p0P1Misses": 0, "proofCompleteRuns": 1, "repairs": 0, "reviewCycles": 0, "inputTokens": null, "wallTimeMs": null, "observedCostUsd": null, "toolInputBytes": 0, "toolOutputBytes": 0, "cacheInputTokens": null }, "after": { "acceptanceRuns": 1, "acceptedRuns": 1, "p0P1Misses": 0, "proofCompleteRuns": 1, "repairs": 0, "reviewCycles": 0, "inputTokens": null, "wallTimeMs": null, "observedCostUsd": null, "toolInputBytes": 0, "toolOutputBytes": 0, "cacheInputTokens": null } }
+    {
+      "id": "baseline-wait",
+      "optimizationId": "program-baseline",
+      "optimizationSet": ["program-baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "general-implementation",
+      "taskClass": "general-implementation",
+      "owner": { "kind": "child", "id": "baseline-child" },
+      "phase": "wait",
+      "window": { "kind": "equal-record-count", "beforeRecords": 3, "afterRecords": 3 },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": null,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 0,
+        "toolOutputBytes": 0,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": null,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 0,
+        "toolOutputBytes": 0,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "baseline-tool-output",
+      "optimizationId": "program-baseline",
+      "optimizationSet": ["program-baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "review-response",
+      "taskClass": "review-response",
+      "owner": { "kind": "selected-reviewer", "id": "baseline-reviewer" },
+      "phase": "tool-output",
+      "window": { "kind": "equal-record-count", "beforeRecords": 3, "afterRecords": 3 },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": null,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 0,
+        "toolOutputBytes": 0,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": null,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 0,
+        "toolOutputBytes": 0,
+        "cacheInputTokens": null
+      }
+    }
   ],
   "decisionInputs": [
     {
