@@ -26,7 +26,7 @@ COMPONENT_FILES = {
         "agents/codexy-warden.toml": "f58f37cedbc1f56ce8ba8a3ac2f60a55560d7903fc915d2df2457f0263b2db86",
         "hooks/codexy-thread-delivery.cmd": "a00b46db11963bedc90589bb644b38740491be95b9c36f962ab9f31d0e6a4797",
         "hooks/codexy-thread-delivery.sh": "70f8cc7c6415573cf61389b4a55dfd3b5bb6b037ce8549a50022e69306fe4146",
-        "hooks/codexy-child-thread-creation.cmd": "6a807c05dfd8a1d260bfcd0cd8ea5e76332ed70409b5fa1c3ad9a925c75ff5fa",
+        "hooks/codexy-child-thread-creation.cmd": "9450762b7e1f7bbafc71bd6e0e8000ccb459baf5aa0aeee768236637e2e2197f",
         "hooks/codexy-child-thread-creation.sh": "0e83f9eee3dfcebcdb67ec1d6ea374ecebc5d0386a5ff4429277c64b2689b0ad",
         "hooks/codexy-child-thread-creation.py": "6f0de7208940cad5a5250422f817c778343b2b9f523af800e2b472fb0ec7471a",
         "hooks/codexy_policy/child_thread_creation.py": "9ba39931e3b459e2e58dc42cb007690aebe6e90ccb8f98969c47ab45a4c20f9d",

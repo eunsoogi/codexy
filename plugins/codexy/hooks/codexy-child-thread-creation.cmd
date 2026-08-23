@@ -12,5 +12,5 @@ if /I "%event%"=="PermissionRequest" goto permission_deny
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}
 exit /b 0
 :permission_deny
-echo {"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}
+echo {"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}}
 exit /b 0

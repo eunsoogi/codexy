@@ -7,6 +7,59 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const TOOL: &str = "codex_app__create_thread";
 const LAUNCHER: &str = "codexy-child-thread-creation.sh";
+const WINDOWS_LAUNCHER: &str = "codexy-child-thread-creation.cmd";
+
+#[test]
+fn windows_permission_request_runtime_failure_fallback_is_valid_json() -> TestResult {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let source = std::fs::read_to_string(root.join("hooks").join(WINDOWS_LAUNCHER))?;
+    let fallback = source
+        .lines()
+        .find(|line| {
+            line.starts_with("echo {\"hookSpecificOutput\"")
+                && line.contains("\"hookEventName\":\"PermissionRequest\"")
+        })
+        .ok_or("PermissionRequest fallback")?;
+    let denial: Value = serde_json::from_str(fallback.strip_prefix("echo ").ok_or("echo")?)?;
+    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
+    assert_eq!(
+        denial["hookSpecificOutput"]["decision"]["behavior"],
+        "deny"
+    );
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn native_windows_child_launcher_runtime_failure_emits_valid_permission_denial() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let launcher = temp.path().join(WINDOWS_LAUNCHER);
+    std::fs::copy(
+        codexy_runtime::paths::repository_root()
+            .join("plugins/codexy/hooks")
+            .join(WINDOWS_LAUNCHER),
+        &launcher,
+    )?;
+    std::fs::write(
+        temp.path().join("codexy-child-thread-creation.py"),
+        "import sys\nsys.exit(1)\n",
+    )?;
+    let output = std::process::Command::new("cmd")
+        .arg("/d")
+        .arg("/c")
+        .arg(&launcher)
+        .arg("PermissionRequest")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()?;
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let denial: Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
+    assert_eq!(denial["hookSpecificOutput"]["decision"]["behavior"], "deny");
+    Ok(())
+}
 
 #[test]
 fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResult {
