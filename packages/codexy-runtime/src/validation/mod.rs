@@ -64,6 +64,7 @@ mod completion_handoff_pending_worktree_search;
 mod completion_handoff_pending_worktree_segments;
 mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
+mod context_tiers;
 mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
@@ -123,26 +124,45 @@ use std::path::Path;
 use anyhow::Result;
 
 pub use mode::Mode;
-pub use mode_dispatch::{errors, run};
+pub use mode_dispatch::{
+    context_identities, covered_extensions, errors, run, validate_context_envelope,
+};
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
+
+const FORWARDED_CONTEXT_TYPES: [&str; 4] = [
+    "retained_slot",
+    "selected_reference",
+    "qualifying_event_delta",
+    "authoritative_refresh_handle",
+];
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(dead_code)]
+pub(super) struct BudgetSemantics {
+    pub context_unit: String,
+    pub output_unit: String,
+    pub limit_source: String,
+    pub stages: Vec<String>,
+    pub context_floor: Vec<String>,
+    pub refresh_only: String,
+    pub overflow_order: Vec<String>,
+    pub required_output: Vec<String>,
+    pub cache_metadata: String,
+    pub cache_savings_claims: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum ForwardedContext {
+    RetainedSlot,
+    SelectedReference,
+    QualifyingEventDelta,
+    AuthoritativeRefreshHandle,
+}
 
 pub(crate) fn validate_getcodexy_component_contract(plugin_root: &Path) -> Result<()> {
     getcodexy_component_contract::validate(plugin_root).map_err(anyhow::Error::msg)
-}
-
-/// Returns the LSP file extensions covered by Codexy validation metadata.
-pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
-    lsp::covered_extensions(&devtools_root(plugin_root))
-}
-
-fn devtools_root(plugin_root: &Path) -> std::path::PathBuf {
-    if plugin_root.file_name().is_some_and(|name| name == "codexy") {
-        return plugin_root.parent().map_or_else(
-            || std::path::PathBuf::from("plugins/codexy-devtools"),
-            |parent| parent.join("codexy-devtools"),
-        );
-    }
-    plugin_root.to_path_buf()
 }
 
 /// Returns touched-LOC diagnostics for an explicit repository root.

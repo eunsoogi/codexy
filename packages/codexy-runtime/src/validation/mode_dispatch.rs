@@ -4,9 +4,9 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
-    conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, review_control, roles, roles_yaml,
-    routing_measurement, routing_policy, runtime, tdd_classification, touched_loc,
+    context_tiers, conventional_commit, getcodexy_component_contract, github_labels, hooks,
+    issue_intake, lsp, manifest, mcp, merge_authorization, merge_message, review_control, roles,
+    roles_yaml, routing_measurement, routing_policy, runtime, tdd_classification, touched_loc,
     workflow_profiles,
 };
 
@@ -34,6 +34,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(tdd_classification::check(plugin_root));
             all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
+            all.extend(context_tiers::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             let devtools = devtools_root(plugin_root);
             if devtools.is_dir() {
@@ -82,6 +83,37 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
     }
 }
 
+/// Returns the LSP file extensions covered by Codexy validation metadata.
+///
+/// # Errors
+///
+/// Returns an error when the packaged LSP metadata is unreadable or malformed.
+pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
+    lsp::covered_extensions(&public_devtools_root(plugin_root))
+}
+
+/// Validates one retained context envelope against current authoritative state.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or either input is malformed.
+pub fn validate_context_envelope(
+    plugin_root: &Path,
+    envelope: &str,
+    current_state: &str,
+) -> Result<Vec<String>> {
+    context_tiers::validate_envelope(plugin_root, envelope, current_state)
+}
+
+/// Builds deterministic stable and volatile identities for current context.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or current state is malformed.
+pub fn context_identities(plugin_root: &Path, current_state: &str) -> Result<[String; 2]> {
+    context_tiers::identities(plugin_root, current_state)
+}
+
 fn is_devtools(plugin_root: &Path) -> bool {
     std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
         .ok()
@@ -101,6 +133,16 @@ fn devtools_root(plugin_root: &Path) -> PathBuf {
         || PathBuf::from("plugins/codexy-devtools"),
         |parent| parent.join("codexy-devtools"),
     )
+}
+
+fn public_devtools_root(plugin_root: &Path) -> PathBuf {
+    if plugin_root.file_name().is_some_and(|name| name == "codexy") {
+        return plugin_root.parent().map_or_else(
+            || PathBuf::from("plugins/codexy-devtools"),
+            |parent| parent.join("codexy-devtools"),
+        );
+    }
+    plugin_root.to_path_buf()
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {

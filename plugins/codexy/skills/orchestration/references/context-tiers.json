@@ -1,0 +1,228 @@
+{
+  "schema": "codexy.context-tiers.v1",
+  "tier_order": ["always_on", "task_selected", "event_delta", "refresh_only"],
+  "identity_order": ["stable", "volatile"],
+  "authorities": [
+    { "id": "workflow_profiles", "path": "skills/orchestration/references/workflow-profiles.json" },
+    { "id": "task_classification", "path": "skills/orchestration/references/task-classification.md" },
+    { "id": "token_efficient", "path": "skills/orchestration/references/token-efficient.md" },
+    { "id": "dreaming", "path": "skills/dreaming/SKILL.md" },
+    { "id": "review_profiles", "path": "skills/orchestration/references/review-profiles.json" },
+    { "id": "review_lifecycle", "path": "skills/orchestration/references/review-lifecycle.md" },
+    { "id": "proof_completion", "path": "skills/proof-driven-completion/SKILL.md" },
+    { "id": "execution_budget", "path": "skills/orchestration/references/execution-budget.md" },
+    { "id": "child_routing", "path": "skills/orchestration/references/child-routing-policy.json" }
+  ],
+  "retained_fields": [
+    {
+      "name": "workflow_profile",
+      "tier": "always_on",
+      "identity": "stable",
+      "authority": "workflow_profiles",
+      "safety_invariant": false,
+      "budget_exempt": true
+    },
+    {
+      "name": "task_classification",
+      "tier": "always_on",
+      "identity": "stable",
+      "authority": "task_classification",
+      "safety_invariant": false,
+      "budget_exempt": true
+    },
+    {
+      "name": "issue_pr_identity",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "owner_worktree",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "base_head_sha",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "dirty_index_state",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "checks",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "unresolved_review_threads",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "selected_reviewer_state",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "review_profiles",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "verification",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "proof_completion",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "external_gate",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "next_action",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "selected_references",
+      "tier": "task_selected",
+      "identity": "stable",
+      "authority": "task_classification",
+      "safety_invariant": false,
+      "budget_exempt": false
+    },
+    {
+      "name": "qualifying_event_delta",
+      "tier": "event_delta",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": false,
+      "budget_exempt": false
+    },
+    {
+      "name": "authoritative_refresh_handles",
+      "tier": "refresh_only",
+      "identity": "volatile",
+      "authority": "proof_completion",
+      "safety_invariant": false,
+      "budget_exempt": false
+    }
+  ],
+  "profile_matrix": {
+    "light": {
+      "always_on": "required",
+      "task_selected": "when_applicable",
+      "event_delta": "typed_omission_when_not_applicable",
+      "refresh_only": "typed_omission_when_not_applicable"
+    },
+    "standard": {
+      "always_on": "required",
+      "task_selected": "required",
+      "event_delta": "when_applicable",
+      "refresh_only": "required_before_authoritative_action"
+    },
+    "strict": {
+      "always_on": "required",
+      "task_selected": "required",
+      "event_delta": "when_applicable",
+      "refresh_only": "required_before_authoritative_action"
+    }
+  },
+  "omission_reasons": ["not_applicable", "not_created", "external_surface_absent"],
+  "routing": {
+    "task_classes": [
+      "orchestration/lane setup",
+      "implementation",
+      "review response",
+      "GitHub/merge",
+      "validation/QA",
+      "documentation/skill authoring",
+      "plugin/release",
+      "investigation/debugging",
+      "issue/intake only",
+      "other"
+    ],
+    "task_reference_routes": {
+      "orchestration/lane setup": ["task_classification", "child_routing", "execution_budget"],
+      "implementation": ["task_classification", "execution_budget", "proof_completion"],
+      "review response": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
+      "GitHub/merge": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
+      "validation/QA": ["task_classification", "review_profiles", "proof_completion"],
+      "documentation/skill authoring": ["task_classification", "proof_completion"],
+      "plugin/release": ["task_classification", "execution_budget", "proof_completion"],
+      "investigation/debugging": ["task_classification", "execution_budget", "proof_completion"],
+      "issue/intake only": ["task_classification", "child_routing"],
+      "other": ["task_classification", "child_routing"]
+    },
+    "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],
+    "fallback_authority": "child_routing",
+    "fail_closed_preserves_all_safety_fields": true
+  },
+  "ordering": {
+    "stable_prefix": "codexy.context.stable.v1",
+    "volatile_prefix": "codexy.context.volatile.v1",
+    "stable_identity": "sha256_exact_contract_bytes_and_typed_stable_fields",
+    "volatile_identity": "sha256_typed_envelope_in_field_order",
+    "stable_fields": ["workflow_profile", "task_classification", "selected_references"],
+    "volatile_fields": [
+      "issue_pr_identity",
+      "owner_worktree",
+      "base_head_sha",
+      "dirty_index_state",
+      "checks",
+      "unresolved_review_threads",
+      "selected_reviewer_state",
+      "verification",
+      "external_gate",
+      "next_action",
+      "qualifying_event_delta",
+      "authoritative_refresh_handles"
+    ]
+  },
+  "budget_semantics": {
+    "context_unit": "utf8_bytes_after_serialization",
+    "output_unit": "utf8_bytes_emitted",
+    "limit_source": "positive_consumer_supplied_per_stage",
+    "stages": ["classification", "implementation", "repair", "review", "handoff"],
+    "context_floor": ["always_on", "applicable_task_selected"],
+    "refresh_only": "payload_bytes_excluded_from_retained_context",
+    "overflow_order": ["deduplicate_unchanged_event_delta", "drop_unselected_references", "fail_closed"],
+    "required_output": ["required_proof_state", "one_next_action"],
+    "cache_metadata": "unavailable_not_zero",
+    "cache_savings_claims": "prohibited_without_runtime_evidence"
+  },
+  "forwarded_context_types": [
+    "retained_slot",
+    "selected_reference",
+    "qualifying_event_delta",
+    "authoritative_refresh_handle"
+  ],
+  "forbidden_context": ["full_conversation_forwarding", "full_tool_body_forwarding", "full_agent_tree_forwarding"]
+}
