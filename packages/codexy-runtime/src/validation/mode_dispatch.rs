@@ -4,9 +4,9 @@ use anyhow::{Result, bail};
 
 use super::{
     Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
-    conventional_commit, getcodexy_component_contract, github_labels, hooks, issue_intake, lsp,
-    manifest, mcp, merge_authorization, merge_message, review_control, roles, roles_yaml,
-    routing_measurement, routing_policy, runtime, tdd_classification, touched_loc,
+    context_tiers, conventional_commit, getcodexy_component_contract, github_labels, hooks,
+    issue_intake, lsp, manifest, mcp, merge_authorization, merge_message, review_control, roles,
+    roles_yaml, routing_measurement, routing_policy, runtime, tdd_classification, touched_loc,
     workflow_profiles,
 };
 
@@ -34,6 +34,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(tdd_classification::check(plugin_root));
             all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
+            all.extend(context_tiers::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
             let devtools = devtools_root(plugin_root);
             if devtools.is_dir() {

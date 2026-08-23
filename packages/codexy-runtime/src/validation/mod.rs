@@ -64,6 +64,7 @@ mod completion_handoff_pending_worktree_search;
 mod completion_handoff_pending_worktree_segments;
 mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
+mod context_tiers;
 mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
@@ -168,6 +169,29 @@ pub fn resolve_child_routing(plugin_root: &Path, request: &str) -> Result<serde_
 /// Returns an error for unreadable, malformed, or incomplete policy or request data.
 pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
     tdd_classification::resolve(plugin_root, request)
+}
+
+/// Validates one retained context envelope against current authoritative state
+/// using `skills/orchestration/references/context-tiers.json`.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or either input is malformed.
+pub fn validate_context_envelope(
+    plugin_root: &Path,
+    envelope: &str,
+    current_state: &str,
+) -> Result<Vec<String>> {
+    context_tiers::validate_envelope(plugin_root, envelope, current_state)
+}
+
+/// Builds deterministic stable and volatile identities for current context.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or current state is malformed.
+pub fn context_identities(plugin_root: &Path, current_state: &str) -> Result<[String; 2]> {
+    context_tiers::identities(plugin_root, current_state)
 }
 
 pub use review::{

@@ -46,6 +46,9 @@ mod validator_child_routing_contract;
 #[path = "../validator_tdd_classification_policy.rs"]
 mod validator_tdd_classification_policy;
 
+#[path = "../validator_context_tiers.rs"]
+mod validator_context_tiers;
+
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 
