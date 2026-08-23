@@ -18,7 +18,11 @@
       "events": ["PermissionRequest", "PreToolUse"],
       "inputContract": "codexy.hooks.child-thread-creation.v1",
       "preventive": true,
-      "entrypoints": ["codexy-child-thread-creation.sh", "codexy-child-thread-creation.cmd", "codexy-child-thread-creation.py"],
+      "entrypoints": [
+        "codexy-child-thread-creation.sh",
+        "codexy-child-thread-creation.cmd",
+        "codexy-child-thread-creation.py"
+      ],
       "diagnosticFamily": "CODEXY_CHILD_THREAD_CREATION_",
       "contentDigest": "4e4ee82f1687821c"
     }
