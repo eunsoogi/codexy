@@ -163,10 +163,11 @@ gate points to them.
 
 ## Metadata-Only Session Audit
 
-In a source checkout, MUST use `scripts/session-audit --input <metadata-jsonl>`
-for bounded aggregate evidence. An installed skill MUST NOT claim this
-repository-local command is packaged; it MUST direct users to the source
-checkout or an explicitly packaged runtime before requesting audit execution.
+When the installed package exposes a metadata-only audit entrypoint, MUST use
+that package-owned entrypoint with `<metadata-jsonl>` for bounded aggregate
+evidence. An installed skill MUST NOT resolve audit commands from the active
+project or current working directory; when no packaged runtime is exposed, it
+MUST record the audit as unavailable and use the explicit metadata receipt.
 The audit MUST report session size, latest cumulative tokens, recent per-turn
 average, call counts by tool, and output bytes by tool. It MUST read only exact
 top-level metadata keys, reject invalid ids or tool keys, deduplicate the stable
@@ -200,7 +201,7 @@ the installed plugin.
 
 ### Efficiency Scorecard
 
-MUST run `scripts/session-audit --scorecard <scorecard-json>`; the closed
+MUST run the package-owned metadata audit with `<scorecard-json>`; the closed
 artifacts are the three `efficiency-scorecard*.json` references.
 
 Comparisons MUST bind a safe optimization set, model, effort, task class, typed

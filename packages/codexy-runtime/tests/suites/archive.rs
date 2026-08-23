@@ -22,6 +22,9 @@ mod archive_private_key;
 #[path = "../archive_secret_scan.rs"]
 mod archive_secret_scan;
 
+#[path = "../archive_project_neutral_core.rs"]
+mod archive_project_neutral_core;
+
 #[path = "../release_archive_gate.rs"]
 mod release_archive_gate;
 

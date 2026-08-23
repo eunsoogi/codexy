@@ -2,13 +2,22 @@
 
 ## Purpose
 
-MUST classify first for any Codexy work to select a workflow profile before
-acting. The versioned canonical contract is
+MUST classify first for any Codex task to select a workflow profile and
+applicable task surfaces before acting. The versioned canonical contract is
 [Workflow Profiles](workflow-profiles.json): `light` is the default, `standard`
 scales proof for non-trivial single-owner work, and `strict` applies to
 high-risk work. The contract's invariant floor applies to every profile and
 profiles MUST NOT weaken merge gates. Proof and Sentinel requirements scale with
 the profile, but every readiness claim MUST remain bound to the current head.
+
+The closed task-surface set is `repository engineering`, `GitHub`,
+`browser/desktop`, `documents/artifacts`, `spreadsheets/data`, `research/wiki`,
+and `read-only/local`. A task MAY select more than one surface. The closed risk
+set is `mixed`, `security`, `permission`, `destructive`, and
+`external_mutation`; any selected risk MUST fail closed until its authority and
+proof are present. [Context Tiers](context-tiers.json) is the sole compact
+task-selected routing authority. Do not infer a surface or risk from vague
+prompt wording when the structured classification is absent.
 
 Tiny or read-only work needs no visible receipt. Light and standard work MUST
 remain proportionate: they MUST NOT require an exact eight-row table, goal/plan
@@ -26,7 +35,7 @@ fenced historical examples.
 ## Classification Workflow
 
 1. Intake:
-   - MUST read the latest user request, explicit issue or PR, repository
+   - MUST read the latest user request, explicit issue or PR, active project
      instructions, and named skills.
    - MUST separate hard requirements, stop conditions, non-goals, and requested
      completion state.
@@ -66,7 +75,7 @@ fenced historical examples.
    - MUST decide owner as `parent-owned`, `child-owned`, `current-thread-owned`,
      or `external/human-owned`.
 5. MUST route strict work:
-   - MUST name the required Codexy skills and any explicit user-named skills.
+   - MUST name the required installed skills and any explicit user-named skills.
    - MUST name required tool surfaces, including goal, plan/todo, codegraph,
      LSP, GitHub, validators, local tests, and packaged `codexy-sentinel`.
    - MUST decide whether multi-agent helper work or separate Codex
@@ -197,8 +206,6 @@ the first workflow action:
   unavailable.
 - The `First allowed action` row states the next concrete action that may happen
   only after this classification.
-- The `Stop/blocker` row states `None` or the exact blocker that prevents
-  proceeding.
 
 ## Gates
 
@@ -207,11 +214,9 @@ the first workflow action:
 - Child lanes MUST emit the complete orchestration table before creating or
   switching to an implementation branch or worktree. Handoff evidence MUST NOT
   report child-created branch/worktree setup before that table;
-  `scripts/validate-plugin-config.sh --check-child-lane-ownership --evidence-file <path>`
-  catches this workflow defect. Issue #231 tracks the exact dogfood evidence
-  from issue #228: child branch
-  `codexy/228-reject-generic-reviewer-gate-sentinel-proof` was created
-  immediately after thread rename and before formal `$orchestration` evidence.
+  The active project's child-lane ownership policy check catches this workflow
+  defect. Historical dogfood examples are evidence only and MUST NOT be reused
+  as active branch or project assumptions.
 - Formal classification MUST happen before acting on or using the owner decision
   to edit files, set up branches or worktrees, delegate lanes, or route review
   feedback.

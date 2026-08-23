@@ -25,8 +25,9 @@
 MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after
 context compaction, goal continuation, or resume as a dogfooding defect.
 
-Before editing after compaction or continuation, re-check GitHub state for the
-issue and PR. Also capture a fresh git preflight with:
+Before editing after compaction or continuation, re-check the selected external
+surface state when the task has an issue or PR. For a repository-owned lane,
+also capture a fresh git preflight with:
 
 ```sh
 pwd
@@ -73,9 +74,11 @@ edits.
   endpoints, untrusted input, repository permissions, install scripts, local
   state mutation, or generated evidence with security implications;
   `codexy-auditor` after implementation for acceptance-criteria, readiness, and
-  observable verification passes across CLI, config, GitHub, browser, app,
-  plugin, documentation, or workflow surfaces; `codexy-weaver` for reconciling
-  parallel lanes, conflict checks, main updates, or merge sequencing;
+  observable verification passes across repository, CLI, config, GitHub,
+  browser/desktop, documents/artifacts, spreadsheets/data, research/wiki,
+  read-only/local, plugin, documentation, or workflow surfaces; a separately
+  installed integration specialist for reconciling parallel lanes, conflict
+  checks, main updates, or merge sequencing;
   `codexy-shipwright` for release, packaging, version, marketplace, manifest,
   tag, or rollback work; the optional `codexy-github` plugin's `codexy-weaver`
   for GitHub integration when installed; and the reviewer selected only by
@@ -118,13 +121,8 @@ edits.
 Opening a PR is not completion when the requested outcome includes completion,
 merge, default Codexy merge flow, or no explicit stop/wait/draft-only/
 leave-open instruction. Validate completion claims that could otherwise stop at
-an open PR:
-
-```sh
-scripts/validate-plugin-config.sh --check-completion-handoff \
-  --handoff-file <report> \
-  --pr-state-file <gh-pr-view-json>
-```
+an open PR with the active project's completion-handoff contract and current PR
+state. This check is applicable only when the GitHub surface is selected.
 
 If the handoff discusses addressed review feedback, MUST include GraphQL
 `reviewThreads.nodes` in the PR state evidence. Addressed unresolved threads,

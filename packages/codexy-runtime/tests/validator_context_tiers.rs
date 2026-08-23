@@ -85,30 +85,7 @@ fn profile_tier_behavior_stable_volatile_identities_and_public_routes_are_separa
     assert_ne!(baseline[0], changed[0]);
     assert_eq!(baseline[1], changed[1]);
     for task_class in TASK_CLASSES {
-        let mut routed = current.clone();
-        routed["slots"]["task_classification"] = json!({"value":task_class});
-        let route = contract_route(&root, task_class)?;
-        let references = route["value"].as_array().ok_or("route authorities")?;
-        assert!(CLASSIFICATION_REFERENCES
-            .iter()
-            .all(|required| references.iter().any(|authority| authority == required)));
-        assert_eq!(
-            references
-                .iter()
-                .any(|authority| authority == "public_extension_contracts"),
-            matches!(
-                task_class,
-                "orchestration/lane setup"
-                    | "review response"
-                    | "GitHub/merge"
-                    | "plugin/release"
-                    | "issue/intake only"
-            ),
-            "{task_class}"
-        );
-        routed["slots"]["selected_references"] = route;
-        let retained = envelope(&root, &routed)?;
-        assert!(diagnostics(&root, &retained, &routed)?.is_empty(), "{task_class}");
+        assert_task_route(&root, &current, &contract, task_class)?;
     }
     Ok(())
 }
@@ -143,15 +120,18 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     ambiguous["slots"]["checks"] = json!({"value":"pending","extra":true});
     assert!(identities(&root, &ambiguous).is_err());
 
-    for item in ["full_tool_payload", "raw conversation text", "full_conversation_forwarding"] {
+    for (item, should_reject) in [
+        ("full_tool_payload", true),
+        ("raw conversation text", true),
+        ("full_conversation_forwarding", true),
+        ("retained_slot", false),
+        ("selected_reference", false),
+        ("qualifying_event_delta", false),
+        ("authoritative_refresh_handle", false),
+    ] {
         let mut forwarded = baseline_envelope.clone();
         forwarded["forwarded_context"] = json!([item]);
-        assert!(rejected(&root, &forwarded, &current)?, "{item}");
-    }
-    for item in ["retained_slot", "selected_reference", "qualifying_event_delta", "authoritative_refresh_handle"] {
-        let mut forwarded = baseline_envelope.clone();
-        forwarded["forwarded_context"] = json!([item]);
-        assert!(!rejected(&root, &forwarded, &current)?, "{item}");
+        assert_eq!(rejected(&root, &forwarded, &current)?, should_reject, "{item}");
     }
 
     for mutate in [
@@ -174,11 +154,15 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     for risk in ["unknown", "ambiguous", "high_risk", "security", "permission", "release"] {
         let mut risk_current = current.clone();
         risk_current["slots"]["task_classification"] = json!({"value":risk});
+        let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
+        risk_current["slots"]["selected_references"] =
+            json!({"value":contract["routing"]["fallback_reference_route"].clone()});
         let mut routed = envelope(&root, &risk_current)?;
         routed["task_class"] = json!(risk);
         routed["route_authority"] = json!("child_routing");
+        routed["action_allowed"] = json!(false);
         assert!(diagnostics(&root, &routed, &risk_current)?.is_empty(), "{risk}");
-        routed["route_authority"] = Value::Null;
+        routed["action_allowed"] = json!(true);
         assert!(!diagnostics(&root, &routed, &risk_current)?.is_empty());
     }
     Ok(())
@@ -203,9 +187,23 @@ fn rejected(root: &Path, envelope: &Value, current: &Value) -> TestResult<bool> 
     Ok(diagnostics(root, envelope, current).map_or(true, |errors| !errors.is_empty()))
 }
 
-fn contract_route(root: &Path, task_class: &str) -> TestResult<Value> {
-    let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
-    Ok(json!({"value":contract["routing"]["task_reference_routes"][task_class]}))
+fn assert_task_route(root: &Path, current: &Value, contract: &Value, task_class: &str) -> TestResult {
+    let mut routed = current.clone();
+    routed["slots"]["task_classification"] = json!({"value":task_class});
+    let route = super::validator_task_surface_routing::contract_route(contract, task_class)?;
+    let references = route["value"].as_array().ok_or("route authorities")?;
+    assert!(CLASSIFICATION_REFERENCES.iter().all(|required| {
+        references.iter().any(|authority| authority == required)
+    }));
+    assert_eq!(
+        references.iter().any(|authority| authority == "public_extension_contracts"),
+        matches!(task_class, "orchestration/lane setup" | "review response" | "GitHub/merge" | "plugin/release" | "issue/intake only"),
+        "{task_class}"
+    );
+    routed["slots"]["selected_references"] = route;
+    let retained = envelope(root, &routed)?;
+    assert!(diagnostics(root, &retained, &routed)?.is_empty(), "{task_class}");
+    Ok(())
 }
 
 fn current_state() -> Value {

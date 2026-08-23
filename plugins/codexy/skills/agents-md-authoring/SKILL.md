@@ -15,10 +15,11 @@ with deeper instructions and higher-priority user or system directions.
 
 ## Workflow
 
-1. MUST locate the target directory and read every governing `AGENTS.md` from
-   the filesystem root down through each ancestor directory to the target.
+1. MUST locate the active project's target directory and read every governing
+   `AGENTS.md` from the filesystem root down through each ancestor directory to
+   the target.
 2. MUST identify the intended scope:
-   - root guidance for repository-wide project structure and durable policies,
+   - root guidance for the active project's structure and durable policies,
    - nested guidance only for stable local rules that MUST NOT apply elsewhere,
    - no new file when a short edit to an existing governing file is enough.
 3. MUST check priority before writing:
@@ -42,7 +43,7 @@ with deeper instructions and higher-priority user or system directions.
    - MUST inspect the edited file directly,
    - MUST confirm the directory scope is correct,
    - MUST check for conflicts with parent or child AGENTS.md files,
-   - MUST run the repository's documentation or formatting checks when
+   - MUST run the active project's documentation or formatting checks when
      available.
 
 ## Content Checklist
@@ -69,8 +70,8 @@ MUST include only sections that help agents act correctly:
 
 ## Verification
 
-For documentation-only AGENTS.md edits, MUST run the repository's expected doc
-checks. When no project-specific check exists, at minimum MUST run:
+For documentation-only AGENTS.md edits, MUST run the active project's expected
+doc checks. When no project-specific check exists, at minimum MUST run:
 
 ```sh
 git diff --check

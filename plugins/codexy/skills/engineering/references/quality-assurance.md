@@ -25,17 +25,17 @@ also follow
    - Browser: URL, viewport, actions, visible text, screenshot or trace.
    - Desktop: app path, UI action, screenshot or accessibility evidence.
    - GitHub: PR, issue, review, branch, settings, or ruleset API state.
-   - Completion handoff: final-answer or handoff artifact plus current
-     `gh pr view` JSON through
-     `scripts/validate-plugin-config.sh --check-completion-handoff` when a
-     completion claim could otherwise stop at an open PR; MUST include GraphQL
-     `reviewThreads.nodes` when the artifact reports review feedback was
+   - Completion handoff: final-answer or handoff artifact plus current external
+     state when a completion claim could otherwise stop at an open PR; MUST
+     include review-thread data when the artifact reports review feedback was
      addressed.
    - Plugin/config/docs: parser, schema, frontmatter, rendered preview, or
      structured dump.
-   - Codexy architecture: `scripts/validate-plugin-config.sh --check` when
-     present, plus focused evidence for LSP config, MCP config, role metadata or
-     custom agent TOMLs, and thread/worktree orchestration wording.
+   - Installed plugin architecture: the active project's package or schema
+     validator when supplied, plus focused evidence for LSP config, MCP config,
+     role metadata or custom-agent TOMLs, and task/thread/worktree behavior.
+     A repository-only validator remains the active project's policy, not an
+     installed Core prerequisite.
    - Code exploration: Codexy `codegraph` MCP output when the MCP is available,
      followed by direct file-read confirmation for edited files.
    - Child-owned PR review: owning child thread response, new head SHA, rerun
@@ -68,9 +68,9 @@ Cleanup:
 - MUST NOT ignore skipped checks; MUST list why they were skipped.
 - MUST NOT leave QA-only servers, sessions, screenshots, traces, or temp files
   unaccounted for.
-- MUST NOT pass Codexy plugin architecture QA without evidence for LSP, MCP,
+- MUST NOT pass installed plugin architecture QA without evidence for LSP, MCP,
   role metadata, custom agent TOMLs, thread, and worktree surfaces that changed.
-- MUST NOT pass code-touching lane QA without Codexy `codegraph` MCP exploration
+- MUST NOT pass a code-touching lane QA without available `codegraph` MCP exploration
   evidence when the MCP is available, or an explicit unavailable-tool fallback.
 - MUST NOT pass a child-owned lane when review feedback was fixed only in the
   parent thread. The owning child thread MUST validate the response or provide a
@@ -85,9 +85,9 @@ Cleanup:
 - GitHub API output proves repository state only for the returned PR, issue,
   branch, ruleset, or comment.
 - Parser/schema checks prove syntax and shape, not semantic intent.
-- `scripts/validate-plugin-config.sh --check` proves the Codexy validator's
-  configured contract for the current revision; pair it with direct file
-  inspection for any newly added architecture claim.
+- A package or active-project validator proves only its configured contract for
+  the current revision; pair it with direct file inspection for any newly added
+  architecture claim.
 - Child-thread review-response evidence proves only the lane and head it names;
   rerun parent PR review-gate checks before merge.
 - If evidence was captured before a new commit, rerun it or label it stale.
