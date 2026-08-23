@@ -1,0 +1,11 @@
+{
+  "schema": "codexy.efficiency-scorecard-corpus.v1",
+  "corpusId": "orchestration-1.5-baseline-v1",
+  "tasks": [
+    { "id": "simple-discovery", "taskClass": "simple-discovery", "acceptanceOracle": "Find the requested repository surface without changing it." },
+    { "id": "general-implementation", "taskClass": "general-implementation", "acceptanceOracle": "Implement one issue-sized change with current proof." },
+    { "id": "review-response", "taskClass": "review-response", "acceptanceOracle": "Address owned feedback and refresh exact-head evidence." },
+    { "id": "strict-work", "taskClass": "strict-work", "acceptanceOracle": "Preserve every strict safety and review requirement." },
+    { "id": "compaction-recovery", "taskClass": "compaction-recovery", "acceptanceOracle": "Recover only current authoritative state after compaction." }
+  ]
+}

@@ -152,6 +152,12 @@ mod session_audit_receipt_contract;
 #[path = "../session_audit_receipt_review_feedback.rs"]
 mod session_audit_receipt_review_feedback;
 
+#[path = "../session_audit_scorecard.rs"]
+mod session_audit_scorecard;
+
+#[path = "../session_audit_scorecard_contract.rs"]
+mod session_audit_scorecard_contract;
+
 #[path = "../structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 
