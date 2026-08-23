@@ -141,14 +141,16 @@ fn validate_scorecard_outcomes(
     let before_tool = percentile95(
         comparisons
             .iter()
-            .map(|comparison| comparison.before.tool_output_bytes.unwrap_or_default())
-            .collect(),
+            .map(|comparison| comparison.before.tool_output_bytes)
+            .collect::<Option<Vec<_>>>()
+            .context("observable decisions require complete metric pairs")?,
     );
     let after_tool = percentile95(
         comparisons
             .iter()
-            .map(|comparison| comparison.after.tool_output_bytes.unwrap_or_default())
-            .collect(),
+            .map(|comparison| comparison.after.tool_output_bytes)
+            .collect::<Option<Vec<_>>>()
+            .context("observable decisions require complete metric pairs")?,
     );
     let tool_reduction = reduction(Some(before_tool), Some(after_tool))?;
     let totals = |after: bool| {
@@ -238,7 +240,8 @@ fn percentile95(mut values: Vec<u64>) -> u64 {
 
 #[allow(clippy::cast_precision_loss)]
 fn reduction(before: Option<u64>, after: Option<u64>) -> Result<f64> {
-    let (before, after) = (before.unwrap_or_default(), after.unwrap_or_default());
+    let before = before.context("observable decisions require complete metric pairs")?;
+    let after = after.context("observable decisions require complete metric pairs")?;
     if before == 0 {
         bail!("observable reduction baselines must be positive");
     }

@@ -94,6 +94,19 @@ fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestRes
     assert!(!output.status.success());
     assert!(stderr(&output).contains("every scorecard threshold"));
 
+    for metric in ["inputTokens", "toolOutputBytes"] {
+        let mut scorecard = fixture()?;
+        for comparison in scorecard["comparisons"]
+            .as_array_mut()
+            .ok_or("comparisons must be an array")?
+        {
+            comparison["after"][metric] = Value::Null;
+        }
+        let output = validate(&scorecard)?;
+        assert!(!output.status.success());
+        assert!(stderr(&output).contains("complete metric pairs"));
+    }
+
     let mut scorecard = fixture()?;
     scorecard["comparisons"][0]["after"]["p0P1Misses"] = json!(1);
     assert!(!validate(&scorecard)?.status.success());
