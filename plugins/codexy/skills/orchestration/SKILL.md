@@ -24,14 +24,19 @@ authorize an omission that the contract forbids.
 ## Entry procedure
 
 1. Read `context-tiers.json` and classify the request with its closed task set.
-2. Select exactly the manifest's `task_reference_routes` entry for the
-   classification; load only the manifest-selected references. The isolation
+2. Select the manifest's `task_reference_routes` entry for the workflow, then
+   append each selected `surface_reference_routes` entry and any applicable
+   `risk_reference_routes` entry in order, deduplicating while preserving order.
+   For an ordinary structured classification, this is the same task-plus-
+   surface route produced by the validator. Load only that union; the isolation
    invariant is `unrelated references are not loaded`. Resolve each selected
    authority through the contract's `authorities` map; its packaged path is the
    only matching-reference indirection.
-3. For unknown/incomplete or security-, permission-, or release-sensitive
-   classification, use `fail_closed_classes` and `fallback_authority`; retain
-   all always-on fields and do not authorize action from missing proof.
+3. For unknown/incomplete or security-, permission-, release-, or other
+   risk-sensitive classification, use `fallback_reference_route` plus the
+   selected `risk_reference_routes` entries; do not union ordinary task or
+   surface authorities into an unsafe route. Retain all always-on fields and do
+   not authorize action from missing proof.
 4. Keep `selected_references`, typed omissions, context forwarding, stable and
    volatile identities, and the one next action exactly as the contract
    specifies. MUST NOT forward a full conversation, tool body, or agent tree.

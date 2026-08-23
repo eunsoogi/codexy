@@ -114,6 +114,19 @@ fn every_declared_risk_route_fails_closed_without_authority_union() -> TestResul
     Ok(())
 }
 
+#[test]
+fn github_actionable_context_must_retain_base_head_sha() -> TestResult {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
+    let mut current = surface_state(&contract, "GitHub")?;
+    current["slots"]["base_head_sha"] = json!({"omitted":{"code":"not_applicable","reason":"GitHub omission"}});
+    let identities = codexy_runtime::validation::context_identities(&root, &serde_json::to_string(&current)?)?;
+    let envelope = json!({"schema":"codexy.context-envelope.v1","profile":"light","task_class":"other","route_authority":null,"action_allowed":true,"slots":current["slots"].clone(),"forwarded_context":[],"stable_identity":identities[0],"volatile_identity":identities[1]});
+    let errors = codexy_runtime::validation::validate_context_envelope(&root, &serde_json::to_string(&envelope)?, &serde_json::to_string(&current)?)?;
+    assert!(!errors.is_empty(), "actionable GitHub route omitted base_head_sha");
+    Ok(())
+}
+
 fn surface_state(contract: &Value, surface: &str) -> TestResult<Value> {
     let mut state = structured_state();
     state["slots"]["task_classification"]["value"] = json!({

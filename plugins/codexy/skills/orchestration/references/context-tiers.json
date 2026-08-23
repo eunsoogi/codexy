@@ -275,7 +275,7 @@
     },
     "surface_non_applicable_fields": {
       "repository engineering": [],
-      "GitHub": ["owner_worktree", "base_head_sha", "dirty_index_state"],
+      "GitHub": ["owner_worktree", "dirty_index_state"],
       "browser/desktop": [
         "issue_pr_identity",
         "owner_worktree",

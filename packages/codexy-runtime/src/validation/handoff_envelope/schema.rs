@@ -1,4 +1,5 @@
 use super::OmissionReason;
+use super::classification::StableClassification;
 use anyhow::{Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -8,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct StableHandoff {
     pub policy_digest: String,
     pub workflow_profile: String,
-    pub task_classification: String,
+    pub task_classification: StableClassification,
     pub selected_references: Vec<String>,
 }
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
