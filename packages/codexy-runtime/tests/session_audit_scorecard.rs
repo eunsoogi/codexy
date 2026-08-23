@@ -59,6 +59,25 @@ fn scorecard_rejects_weakened_gates_and_private_nested_content() -> TestResult {
     let output = validate(&scorecard)?;
     assert!(!output.status.success());
     assert!(!stderr(&output).contains("private-enum-marker"));
+
+    for raw in [
+        serde_json::to_string(&fixture()?)?.replacen(
+            "\"schema\":",
+            "\"schema\":\"private-top-marker\",\"schema\":",
+            1,
+        ),
+        serde_json::to_string(&fixture()?)?.replacen(
+            "\"model\":\"gpt-5.6-sol\"",
+            "\"model\":\"private-nested-marker\",\"model\":\"gpt-5.6-sol\"",
+            1,
+        ),
+    ] {
+        let output = validate_bytes(raw.as_bytes())?;
+        assert!(!output.status.success());
+        let error = stderr(&output);
+        assert!(!error.contains("private-top-marker"));
+        assert!(!error.contains("private-nested-marker"));
+    }
     Ok(())
 }
 
@@ -146,6 +165,41 @@ fn integrated_optimization_sets_support_independent_decisions() -> TestResult {
 }
 
 #[test]
+fn scorecard_rejects_odd_and_even_padding_and_accepts_mixed_availability() -> TestResult {
+    for extra in [1, 4] {
+        let mut scorecard = fixture()?;
+        let zeroed = if extra == 1 { 4 } else { 5 };
+        for index in 0..zeroed {
+            scorecard["comparisons"][index]["after"]["inputTokens"] =
+                scorecard["comparisons"][index]["before"]["inputTokens"].clone();
+        }
+        for index in 0..extra {
+            let mut padding = scorecard["comparisons"][5].clone();
+            padding["id"] = json!(format!("padding-{index}"));
+            scorecard["comparisons"]
+                .as_array_mut()
+                .ok_or("comparisons must be an array")?
+                .push(padding);
+            scorecard["decisionInputs"][0]["comparisonIds"]
+                .as_array_mut()
+                .ok_or("comparison ids must be an array")?
+                .push(json!(format!("padding-{index}")));
+        }
+        assert!(!validate(&scorecard)?.status.success(), "padding {extra}");
+    }
+
+    let mut scorecard = fixture()?;
+    scorecard["measureAvailability"]["wallTimeMs"] = json!("available");
+    scorecard["comparisons"][0]["before"]["wallTimeMs"] = json!(100);
+    scorecard["comparisons"][0]["after"]["wallTimeMs"] = json!(90);
+    scorecard["decisionInputs"][0]["unavailableMeasures"] =
+        json!(["observedCostUsd", "cacheInputTokens"]);
+    let output = validate(&scorecard)?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    Ok(())
+}
+
+#[test]
 fn scorecard_requires_the_representative_task_corpus() -> TestResult {
     let mut scorecard = fixture()?;
     scorecard["comparisons"]
@@ -165,9 +219,13 @@ fn fixture() -> TestResult<Value> {
 }
 
 fn validate(scorecard: &Value) -> TestResult<std::process::Output> {
+    validate_bytes(&serde_json::to_vec(scorecard)?)
+}
+
+fn validate_bytes(bytes: &[u8]) -> TestResult<std::process::Output> {
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("scorecard.json");
-    fs::write(&path, serde_json::to_vec(scorecard)?)?;
+    fs::write(&path, bytes)?;
     Ok(Command::new(env!("CARGO_BIN_EXE_codexy-session-audit"))
         .arg("--scorecard")
         .arg(path)

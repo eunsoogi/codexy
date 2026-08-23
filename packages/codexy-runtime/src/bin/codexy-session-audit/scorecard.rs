@@ -37,13 +37,13 @@ pub(super) fn validate_file(path: &Path) -> Result<Validation> {
     if bytes.len() > MAX_INPUT_BYTES {
         bail!("scorecard input exceeds {MAX_INPUT_BYTES} bytes");
     }
+    let scorecard: Scorecard = serde_json::from_slice(&bytes)
+        .map_err(|_| anyhow!("scorecard input does not match the closed schema"))?;
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|_| anyhow!("scorecard input does not match the closed schema"))?;
     if !schema::has_required_nullable_fields(&value) {
         bail!("scorecard input does not match the closed schema");
     }
-    let scorecard: Scorecard = serde_json::from_value(value)
-        .map_err(|_| anyhow!("scorecard input does not match the closed schema"))?;
     validate(scorecard)
 }
 
@@ -158,12 +158,8 @@ fn validate_measurements(
         measurements.cache_input_tokens.is_some(),
     ];
     for ((name, state), present) in super::availability_pairs(availability).iter().zip(values) {
-        match (state, present) {
-            (Availability::Unavailable, true) => {
-                bail!("unavailable measure must remain null: {name}")
-            }
-            (Availability::Available, false) => bail!("available measure must be recorded: {name}"),
-            _ => {}
+        if (*state, present) == (Availability::Unavailable, true) {
+            bail!("unavailable measure must remain null: {name}");
         }
     }
     Ok(())
@@ -203,11 +199,17 @@ fn validate_decisions(
             .iter()
             .map(String::as_str)
             .collect::<BTreeSet<_>>();
+        let selected_phases = selected
+            .iter()
+            .map(|comparison| comparison.phase)
+            .collect::<BTreeSet<_>>();
         if !is_safe_id(&decision.optimization_id)
             || decision.comparison_ids.is_empty()
             || !optimizations.insert(decision.optimization_id.as_str())
             || selected.len() != decision.comparison_ids.len()
             || selected.len() != expected_selected
+            || selected.len() != 7
+            || selected_phases.len() != 7
             || selected.iter().any(|comparison| {
                 !comparison
                     .optimization_set
