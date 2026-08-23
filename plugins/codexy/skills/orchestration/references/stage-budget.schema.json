@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "codexy.stage-budget.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "metadataOnly",
+    "stage",
+    "stageSequence",
+    "previousReceiptIdentity",
+    "receiptIdentity",
+    "continuity",
+    "owner",
+    "identity",
+    "units",
+    "safety",
+    "proof",
+    "limits",
+    "usage",
+    "events",
+    "measures",
+    "oversizedResult",
+    "decision",
+    "nextAction"
+  ],
+  "properties": {
+    "schema": { "const": "codexy.stage-budget.v1" },
+    "metadataOnly": { "const": true },
+    "stage": { "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"] },
+    "stageSequence": { "type": "integer", "minimum": 1 },
+    "previousReceiptIdentity": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
+    "receiptIdentity": { "$ref": "#/$defs/digest" },
+    "continuity": { "$ref": "#/$defs/continuity" },
+    "owner": { "$ref": "#/$defs/owner" },
+    "identity": { "$ref": "#/$defs/identity" },
+    "units": { "$ref": "#/$defs/units" },
+    "safety": { "$ref": "#/$defs/safety" },
+    "proof": { "$ref": "#/$defs/proof" },
+    "limits": { "$ref": "#/$defs/limits" },
+    "usage": { "$ref": "#/$defs/usage" },
+    "events": { "$ref": "#/$defs/events" },
+    "measures": { "$ref": "#/$defs/measures" },
+    "oversizedResult": { "$ref": "#/$defs/oversizedResult" },
+    "decision": { "enum": ["continue", "compact", "stop_and_handoff"] },
+    "nextAction": { "enum": ["continue-stage", "compact-context", "wait-for-event", "handoff-parent"] }
+  },
+  "$defs": {
+    "safeMetadata": { "type": "string", "pattern": "^[A-Za-z0-9._:/@-]{1,256}$" },
+    "sha": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
+    "digest": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["root", "child", "selected-reviewer"] },
+        "id": { "$ref": "#/$defs/safeMetadata" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stable", "volatile"],
+      "properties": {
+        "stable": { "$ref": "#/$defs/safeMetadata" },
+        "volatile": { "$ref": "#/$defs/safeMetadata" }
+      }
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context", "toolOutput"],
+      "properties": {
+        "context": { "const": "utf8_bytes_after_serialization" },
+        "toolOutput": { "const": "utf8_bytes_emitted" }
+      }
+    },
+    "continuity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["previous", "cumulativeReplayEvents"],
+      "properties": {
+        "previous": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/previousReceipt" }] },
+        "cumulativeReplayEvents": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "previousReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "stageSequence", "previousReceiptIdentity", "receiptIdentity", "owner", "identity", "safety", "proof", "limits", "usage", "events", "oversizedResult", "cumulativeReplayEvents"],
+      "properties": {
+        "stage": { "enum": ["root-planning", "child-implementation", "repair", "selected-review", "wait", "parent-integration"] },
+        "stageSequence": { "type": "integer", "minimum": 1 },
+        "previousReceiptIdentity": { "type": ["string", "null"], "pattern": "^[0-9a-fA-F]{64}$" },
+        "receiptIdentity": { "$ref": "#/$defs/digest" },
+        "owner": { "$ref": "#/$defs/owner" },
+        "identity": { "$ref": "#/$defs/identity" },
+        "safety": { "$ref": "#/$defs/safety" },
+        "proof": { "$ref": "#/$defs/proof" },
+        "limits": { "$ref": "#/$defs/limits" },
+        "usage": { "$ref": "#/$defs/usage" },
+        "events": { "$ref": "#/$defs/events" },
+        "oversizedResult": { "$ref": "#/$defs/oversizedResult" },
+        "cumulativeReplayEvents": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuePrIdentity", "ownerWorktree", "baseHeadSha", "dirtyIndexState", "checks", "unresolvedReviewThreads", "selectedReviewerState", "verification", "externalGate"],
+      "properties": {
+        "issuePrIdentity": { "$ref": "#/$defs/issuePr" },
+        "ownerWorktree": { "$ref": "#/$defs/ownerWorktree" },
+        "baseHeadSha": { "$ref": "#/$defs/baseHeadSha" },
+        "dirtyIndexState": { "$ref": "#/$defs/dirtyIndexState" },
+        "checks": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/check" } },
+        "unresolvedReviewThreads": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/safeMetadata" } },
+        "selectedReviewerState": { "enum": ["pending", "running", "pass", "block", "unobservable", "not-applicable"] },
+        "verification": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/safeMetadata" } },
+        "externalGate": { "enum": ["none", "pending", "pass", "blocked", "not-applicable"] }
+      }
+    },
+    "issuePr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issue", "pr"],
+      "properties": {
+        "issue": { "$ref": "#/$defs/safeMetadata" },
+        "pr": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._:/@-]{1,256}$" }
+      }
+    },
+    "ownerWorktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownerThreadId", "branch", "worktree"],
+      "properties": {
+        "ownerThreadId": { "$ref": "#/$defs/safeMetadata" },
+        "branch": { "$ref": "#/$defs/safeMetadata" },
+        "worktree": { "$ref": "#/$defs/safeMetadata" }
+      }
+    },
+    "baseHeadSha": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "head"],
+      "properties": { "base": { "$ref": "#/$defs/sha" }, "head": { "$ref": "#/$defs/sha" } }
+    },
+    "dirtyIndexState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dirty", "index"],
+      "properties": { "dirty": { "type": "boolean" }, "index": { "type": "boolean" } }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "state"],
+      "properties": {
+        "name": { "$ref": "#/$defs/safeMetadata" },
+        "state": { "enum": ["pending", "passing", "failing", "unavailable"] }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal", "plan", "verification"],
+      "properties": {
+        "goal": { "enum": ["active", "complete", "idle"] },
+        "plan": { "enum": ["active", "complete", "idle"] },
+        "verification": { "enum": ["pending", "pass", "fail", "unavailable"] }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextBytes", "toolOutputBytes", "replayEvents", "turns", "toolCalls"],
+      "properties": {
+        "contextBytes": { "type": "integer", "minimum": 1 },
+        "toolOutputBytes": { "type": "integer", "minimum": 1 },
+        "replayEvents": { "type": "integer", "minimum": 1 },
+        "turns": { "type": "integer", "minimum": 1 },
+        "toolCalls": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextBytes", "toolOutputBytes", "turns", "toolCalls"],
+      "properties": {
+        "contextBytes": { "type": "integer", "minimum": 0 },
+        "toolOutputBytes": { "type": "integer", "minimum": 0 },
+        "turns": { "type": "integer", "minimum": 0 },
+        "toolCalls": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identities", "unchangedWaits", "fullStateReplays", "oversizedPreviewReads"],
+      "properties": {
+        "identities": { "type": "array", "minItems": 1, "maxItems": 256, "items": { "$ref": "#/$defs/safeMetadata" } },
+        "unchangedWaits": { "type": "integer", "minimum": 0 },
+        "fullStateReplays": { "type": "integer", "minimum": 0 },
+        "oversizedPreviewReads": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "measures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputTokens", "wallTimeMs", "observedCostUsd", "toolInputBytes", "toolOutputBytes", "cacheInputTokens"],
+      "properties": {
+        "inputTokens": { "$ref": "#/$defs/measureU64" },
+        "wallTimeMs": { "$ref": "#/$defs/measureU64" },
+        "observedCostUsd": { "$ref": "#/$defs/measureNumber" },
+        "toolInputBytes": { "$ref": "#/$defs/measureU64" },
+        "toolOutputBytes": { "$ref": "#/$defs/measureU64" },
+        "cacheInputTokens": { "$ref": "#/$defs/measureU64" }
+      }
+    },
+    "measureU64": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableU64" },
+        { "$ref": "#/$defs/unavailable" }
+      ]
+    },
+    "measureNumber": {
+      "oneOf": [
+        { "$ref": "#/$defs/availableNumber" },
+        { "$ref": "#/$defs/unavailable" }
+      ]
+    },
+    "availableU64": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "value", "reason"],
+      "properties": { "availability": { "const": "available" }, "value": { "type": "integer", "minimum": 0 }, "reason": { "const": null } }
+    },
+    "availableNumber": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "value", "reason"],
+      "properties": { "availability": { "const": "available" }, "value": { "type": "number", "minimum": 0 }, "reason": { "const": null } }
+    },
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "value", "reason"],
+      "properties": { "availability": { "const": "unavailable" }, "value": { "const": null }, "reason": { "$ref": "#/$defs/safeMetadata" } }
+    },
+    "oversizedResult": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "identity", "bytes", "state", "bodyReplayed"],
+          "properties": {
+            "kind": { "enum": ["tool-output", "preview", "history"] },
+            "identity": { "$ref": "#/$defs/safeMetadata" },
+            "bytes": { "type": "integer", "minimum": 0 },
+            "state": { "enum": ["oversized", "replay-blocked", "unavailable"] },
+            "bodyReplayed": { "const": false }
+          }
+        }
+      ]
+    }
+  }
+}

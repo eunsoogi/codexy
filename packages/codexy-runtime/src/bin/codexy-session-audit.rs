@@ -2,7 +2,6 @@ use std::{fs, io::Read as _, path::PathBuf};
 
 use anyhow::{Context as _, Result, bail};
 use clap::{ArgGroup, Parser};
-use serde_json::Value;
 
 #[path = "codexy-session-audit/audit_math.rs"]
 mod audit_math;
@@ -16,6 +15,8 @@ mod receipt;
 mod report;
 #[path = "codexy-session-audit/scorecard.rs"]
 mod scorecard;
+#[path = "codexy-session-audit/stage_budget.rs"]
+mod stage_budget;
 
 use report::{Report, SessionReport};
 use scorecard::schema::{Availability, Candidate, Comparison, MeasureAvailability, Thresholds};
@@ -28,7 +29,7 @@ pub(crate) const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
     ArgGroup::new("source")
         .required(true)
         .multiple(false)
-        .args(["input", "receipt", "scorecard"])
+        .args(["input", "receipt", "scorecard", "stage_budget"])
 ))]
 struct Cli {
     #[arg(long)]
@@ -37,6 +38,8 @@ struct Cli {
     receipt: Option<PathBuf>,
     #[arg(long)]
     scorecard: Option<PathBuf>,
+    #[arg(long = "stage-budget")]
+    stage_budget: Option<PathBuf>,
     #[arg(long, requires = "input")]
     recent_turns: Option<usize>,
 }
@@ -50,6 +53,11 @@ fn main() -> Result<()> {
     }
     if let Some(scorecard) = cli.scorecard {
         let result = scorecard::validate_file(&scorecard)?;
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
+    if let Some(stage_budget) = cli.stage_budget {
+        let result = stage_budget::validate_file(&stage_budget)?;
         println!("{}", serde_json::to_string_pretty(&result)?);
         return Ok(());
     }
@@ -70,42 +78,12 @@ fn main() -> Result<()> {
     }
     let input = String::from_utf8(input_bytes)
         .with_context(|| format!("decoding session metadata input {}", input_path.display()))?;
-    let report = match detect_input_format(&input)? {
-        InputFormat::Codex => codex_session::audit(&input, recent_turns)?,
-        InputFormat::Generic => generic_session::audit(&input, recent_turns)?,
+    let report = match stage_budget::detect_input_format(&input)? {
+        stage_budget::InputFormat::Codex => codex_session::audit(&input, recent_turns)?,
+        stage_budget::InputFormat::Generic => generic_session::audit(&input, recent_turns)?,
     };
     println!("{}", serde_json::to_string_pretty(&report)?);
     Ok(())
-}
-
-enum InputFormat {
-    Codex,
-    Generic,
-}
-
-fn detect_input_format(input: &str) -> Result<InputFormat> {
-    let mut codex = false;
-    let mut generic = false;
-    for (index, line) in input.lines().enumerate() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let value: Value = serde_json::from_str(line)
-            .with_context(|| format!("invalid JSON on metadata line {}", index + 1))?;
-        let object = value
-            .as_object()
-            .with_context(|| format!("metadata line {} must be a JSON object", index + 1))?;
-        codex |= object.get("type").and_then(Value::as_str) == Some("session_meta");
-        generic |= object.get("event").and_then(Value::as_str) == Some("turn.completed");
-    }
-    if codex && generic {
-        bail!("mixed generic and Codex session metadata formats are not allowed");
-    }
-    Ok(if codex {
-        InputFormat::Codex
-    } else {
-        InputFormat::Generic
-    })
 }
 
 fn is_safe_id(value: &str) -> bool {
