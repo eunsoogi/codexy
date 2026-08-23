@@ -11,7 +11,8 @@
     { "id": "review_lifecycle", "path": "skills/orchestration/references/review-lifecycle.md" },
     { "id": "proof_completion", "path": "skills/proof-driven-completion/SKILL.md" },
     { "id": "execution_budget", "path": "skills/orchestration/references/execution-budget.md" },
-    { "id": "child_routing", "path": "skills/orchestration/references/child-routing-policy.json" }
+    { "id": "child_routing", "path": "skills/orchestration/references/child-routing-policy.json" },
+    { "id": "public_extension_contracts", "path": "skills/orchestration/references/plugin-public-contracts.md" }
   ],
   "retained_fields": [
     {
@@ -170,15 +171,26 @@
       "other"
     ],
     "task_reference_routes": {
-      "orchestration/lane setup": ["task_classification", "child_routing", "execution_budget"],
+      "orchestration/lane setup": [
+        "task_classification",
+        "child_routing",
+        "execution_budget",
+        "public_extension_contracts"
+      ],
       "implementation": ["task_classification", "execution_budget", "proof_completion"],
       "review response": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
-      "GitHub/merge": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
+      "GitHub/merge": [
+        "task_classification",
+        "review_profiles",
+        "review_lifecycle",
+        "proof_completion",
+        "public_extension_contracts"
+      ],
       "validation/QA": ["task_classification", "review_profiles", "proof_completion"],
       "documentation/skill authoring": ["task_classification", "proof_completion"],
-      "plugin/release": ["task_classification", "execution_budget", "proof_completion"],
+      "plugin/release": ["task_classification", "execution_budget", "proof_completion", "public_extension_contracts"],
       "investigation/debugging": ["task_classification", "execution_budget", "proof_completion"],
-      "issue/intake only": ["task_classification", "child_routing"],
+      "issue/intake only": ["task_classification", "child_routing", "public_extension_contracts"],
       "other": ["task_classification", "child_routing"]
     },
     "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],

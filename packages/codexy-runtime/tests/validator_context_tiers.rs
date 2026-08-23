@@ -47,8 +47,13 @@ fn validator_rejects_unknown_tiers_duplicate_authority_and_safety_weakening() ->
 }
 
 #[test]
-fn profile_tier_behavior_and_stable_volatile_identities_are_separate() -> TestResult {
+fn profile_tier_behavior_stable_volatile_identities_and_public_routes_are_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
+    assert!(contract["authorities"].as_array().ok_or("authorities")?.iter().any(
+        |authority| authority["id"] == "public_extension_contracts"
+            && authority["path"] == "skills/orchestration/references/plugin-public-contracts.md"
+    ));
     for profile in PROFILES {
         for (field, action_allowed, permitted) in [
             ("issue_pr_identity", true, false),
@@ -83,8 +88,24 @@ fn profile_tier_behavior_and_stable_volatile_identities_are_separate() -> TestRe
     for task_class in TASK_CLASSES {
         let mut routed = current.clone();
         routed["slots"]["task_classification"] = json!({"value":task_class});
-        routed["slots"]["selected_references"] =
-            contract_route(&root, task_class)?.into();
+        let route = contract_route(&root, task_class)?;
+        let selected = route["value"]
+            .as_array()
+            .ok_or("route authorities")?
+            .iter()
+            .any(|authority| authority == "public_extension_contracts");
+        assert_eq!(
+            selected,
+            matches!(
+                task_class,
+                "orchestration/lane setup"
+                    | "GitHub/merge"
+                    | "plugin/release"
+                    | "issue/intake only"
+            ),
+            "{task_class}"
+        );
+        routed["slots"]["selected_references"] = route;
         let retained = envelope(&root, &routed)?;
         assert!(diagnostics(&root, &retained, &routed)?.is_empty(), "{task_class}");
     }
