@@ -5,6 +5,7 @@
   "authorities": [
     { "id": "workflow_profiles", "path": "skills/orchestration/references/workflow-profiles.json" },
     { "id": "task_classification", "path": "skills/orchestration/references/task-classification.md" },
+    { "id": "tdd_classification_policy", "path": "skills/orchestration/references/tdd-classification-policy.json" },
     { "id": "token_efficient", "path": "skills/orchestration/references/token-efficient.md" },
     { "id": "dreaming", "path": "skills/dreaming/SKILL.md" },
     { "id": "review_profiles", "path": "skills/orchestration/references/review-profiles.json" },
@@ -172,26 +173,74 @@
     ],
     "task_reference_routes": {
       "orchestration/lane setup": [
+        "workflow_profiles",
         "task_classification",
+        "tdd_classification_policy",
         "child_routing",
         "execution_budget",
         "public_extension_contracts"
       ],
-      "implementation": ["task_classification", "execution_budget", "proof_completion"],
-      "review response": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
-      "GitHub/merge": [
+      "implementation": [
+        "workflow_profiles",
         "task_classification",
+        "tdd_classification_policy",
+        "execution_budget",
+        "proof_completion"
+      ],
+      "review response": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
         "review_profiles",
         "review_lifecycle",
         "proof_completion",
         "public_extension_contracts"
       ],
-      "validation/QA": ["task_classification", "review_profiles", "proof_completion"],
-      "documentation/skill authoring": ["task_classification", "proof_completion"],
-      "plugin/release": ["task_classification", "execution_budget", "proof_completion", "public_extension_contracts"],
-      "investigation/debugging": ["task_classification", "execution_budget", "proof_completion"],
-      "issue/intake only": ["task_classification", "child_routing", "public_extension_contracts"],
-      "other": ["task_classification", "child_routing"]
+      "GitHub/merge": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "review_profiles",
+        "review_lifecycle",
+        "proof_completion",
+        "public_extension_contracts"
+      ],
+      "validation/QA": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "review_profiles",
+        "proof_completion"
+      ],
+      "documentation/skill authoring": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "proof_completion"
+      ],
+      "plugin/release": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "execution_budget",
+        "proof_completion",
+        "public_extension_contracts"
+      ],
+      "investigation/debugging": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "execution_budget",
+        "proof_completion"
+      ],
+      "issue/intake only": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "child_routing",
+        "public_extension_contracts"
+      ],
+      "other": ["workflow_profiles", "task_classification", "tdd_classification_policy", "child_routing"]
     },
     "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],
     "fallback_authority": "child_routing",

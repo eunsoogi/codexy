@@ -9,6 +9,7 @@ use super::{
 use crate::support::{self, TestResult};
 
 const PROFILES: [&str; 3] = ["light", "standard", "strict"];
+const CLASSIFICATION_REFERENCES: [&str; 2] = ["workflow_profiles", "tdd_classification_policy"];
 
 #[test]
 fn validator_rejects_unknown_tiers_duplicate_authority_and_safety_weakening() -> TestResult {
@@ -50,10 +51,15 @@ fn validator_rejects_unknown_tiers_duplicate_authority_and_safety_weakening() ->
 fn profile_tier_behavior_stable_volatile_identities_and_public_routes_are_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
-    assert!(contract["authorities"].as_array().ok_or("authorities")?.iter().any(
-        |authority| authority["id"] == "public_extension_contracts"
+    let authorities = contract["authorities"].as_array().ok_or("authorities")?;
+    assert!(authorities.iter().any(|authority| {
+        authority["id"] == "tdd_classification_policy"
+            && authority["path"] == "skills/orchestration/references/tdd-classification-policy.json"
+    }));
+    assert!(authorities.iter().any(|authority| {
+        authority["id"] == "public_extension_contracts"
             && authority["path"] == "skills/orchestration/references/plugin-public-contracts.md"
-    ));
+    }));
     for profile in PROFILES {
         for (field, action_allowed, permitted) in [
             ("issue_pr_identity", true, false),
@@ -72,33 +78,28 @@ fn profile_tier_behavior_stable_volatile_identities_and_public_routes_are_separa
         }
     }
     let current = current_state();
-    let baseline = codexy_runtime::validation::context_identities(
-        &root,
-        &serde_json::to_string(&current)?,
-    )?;
+    let baseline = identities(&root, &current)?;
     let mut stable_change = current.clone();
     stable_change["slots"]["selected_references"] = json!({"value":["other"]});
-    let changed = codexy_runtime::validation::context_identities(
-        &root,
-        &serde_json::to_string(&stable_change)?,
-    )?;
+    let changed = identities(&root, &stable_change)?;
     assert_ne!(baseline[0], changed[0]);
     assert_eq!(baseline[1], changed[1]);
-
     for task_class in TASK_CLASSES {
         let mut routed = current.clone();
         routed["slots"]["task_classification"] = json!({"value":task_class});
         let route = contract_route(&root, task_class)?;
-        let selected = route["value"]
-            .as_array()
-            .ok_or("route authorities")?
+        let references = route["value"].as_array().ok_or("route authorities")?;
+        assert!(CLASSIFICATION_REFERENCES
             .iter()
-            .any(|authority| authority == "public_extension_contracts");
+            .all(|required| references.iter().any(|authority| authority == required)));
         assert_eq!(
-            selected,
+            references
+                .iter()
+                .any(|authority| authority == "public_extension_contracts"),
             matches!(
                 task_class,
                 "orchestration/lane setup"
+                    | "review response"
                     | "GitHub/merge"
                     | "plugin/release"
                     | "issue/intake only"
@@ -140,11 +141,7 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     }
     let mut ambiguous = current.clone();
     ambiguous["slots"]["checks"] = json!({"value":"pending","extra":true});
-    assert!(codexy_runtime::validation::context_identities(
-        &root,
-        &serde_json::to_string(&ambiguous)?,
-    )
-    .is_err());
+    assert!(identities(&root, &ambiguous).is_err());
 
     for item in ["full_tool_payload", "raw conversation text", "full_conversation_forwarding"] {
         let mut forwarded = baseline_envelope.clone();
@@ -166,11 +163,7 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     ] {
         let mut invalid = current.clone();
         mutate(&mut invalid);
-        assert!(codexy_runtime::validation::context_identities(
-            &root,
-            &serde_json::to_string(&invalid)?,
-        )
-        .is_err());
+        assert!(identities(&root, &invalid).is_err());
     }
 
     let mut omitted_thread = baseline_envelope.clone();
@@ -199,6 +192,13 @@ fn diagnostics(root: &Path, envelope: &Value, current: &Value) -> TestResult<Vec
     )?)
 }
 
+fn identities(root: &Path, state: &Value) -> TestResult<[String; 2]> {
+    Ok(codexy_runtime::validation::context_identities(
+        root,
+        &serde_json::to_string(state)?,
+    )?)
+}
+
 fn rejected(root: &Path, envelope: &Value, current: &Value) -> TestResult<bool> {
     Ok(diagnostics(root, envelope, current).map_or(true, |errors| !errors.is_empty()))
 }
@@ -224,7 +224,7 @@ fn current_state() -> Value {
             "verification":{"value":["focused"]},
             "external_gate":{"value":"none"},
             "next_action":{"value":"implement"},
-            "selected_references":{"value":["task_classification","execution_budget","proof_completion"]},
+            "selected_references":{"value":["workflow_profiles","task_classification","tdd_classification_policy","execution_budget","proof_completion"]},
             "qualifying_event_delta":{"value":"new-head"},
             "authoritative_refresh_handles":{"value":["git","github"]}
         }
@@ -232,8 +232,7 @@ fn current_state() -> Value {
 }
 
 fn envelope(root: &Path, current: &Value) -> TestResult<Value> {
-    let current_text = serde_json::to_string(current)?;
-    let identities = codexy_runtime::validation::context_identities(root, &current_text)?;
+    let identities = identities(root, current)?;
     Ok(json!({
         "schema":"codexy.context-envelope.v1",
         "profile":current["slots"]["workflow_profile"]["value"].clone(),
