@@ -65,7 +65,12 @@ def evaluate(
         or data.get("tool_name") not in tools
     ):
         return deny(event, diagnostic, "ENVELOPE")
-    request = Request(event, data["tool_name"], data.get("tool_input"), data.get("cwd"))
+    request = Request(
+        event,
+        data["tool_name"],
+        data.get("tool_input"),
+        data.get("cwd"),
+    )
     try:
         blocked = forbidden(request)
     except (OSError, TypeError, ValueError):

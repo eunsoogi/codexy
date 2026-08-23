@@ -45,35 +45,36 @@ AGENT_FILES = {
     ),
     "github": ("codexy-weaver.toml",),
 }
+
+
+def _command_hook(matcher: str, launcher_stem: str, event: str) -> dict[str, object]:
+    return {
+        "matcher": matcher,
+        "hooks": [
+            {
+                "type": "command",
+                "command": f'"${{PLUGIN_ROOT}}/hooks/{launcher_stem}.sh" {event}',
+                "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/{launcher_stem}.cmd" {event}',
+                "timeout": 5,
+            }
+        ],
+    }
+
+
+_CORE_COMMAND_HOOKS = (
+    ("^codex_app__send_message_to_thread$", "codexy-thread-delivery"),
+    ("^codex_app__create_thread$", "codexy-child-thread-creation"),
+)
+
+
 HOOKS = {
     "core": {
         "hooks": {
-            "PermissionRequest": [
-                {
-                    "matcher": "^codex_app__send_message_to_thread$",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh" PermissionRequest',
-                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd" PermissionRequest',
-                            "timeout": 5,
-                        }
-                    ],
-                }
-            ],
-            "PreToolUse": [
-                {
-                    "matcher": "^codex_app__send_message_to_thread$",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh" PreToolUse',
-                            "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd" PreToolUse',
-                            "timeout": 5,
-                        }
-                    ],
-                }
-            ],
+            event: [
+                _command_hook(matcher, launcher_stem, event)
+                for matcher, launcher_stem in _CORE_COMMAND_HOOKS
+            ]
+            for event in ("PermissionRequest", "PreToolUse")
         }
     },
     "github": {
@@ -176,7 +177,12 @@ MCP = {
     },
 }
 LAUNCHERS = {
-    "core": ("hooks/codexy-thread-delivery.sh", "hooks/codexy-thread-delivery.cmd"),
+    "core": (
+        "hooks/codexy-thread-delivery.sh",
+        "hooks/codexy-thread-delivery.cmd",
+        "hooks/codexy-child-thread-creation.sh",
+        "hooks/codexy-child-thread-creation.cmd",
+    ),
     "github": (
         "hooks/codexy-github-workflow-context.sh",
         "hooks/codexy-github-workflow-context.cmd",
@@ -190,6 +196,11 @@ LAUNCHERS = {
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
+CORE_HOOK_DEPENDENCIES = (
+    "hooks/codexy-child-thread-creation.py",
+    "hooks/codexy_policy/child_thread_creation.py",
+    "hooks/codexy_policy/envelope.py",
+)
 
 
 def valid_registration(plugin: Path, component: str) -> bool:
@@ -207,6 +218,10 @@ def valid_registration(plugin: Path, component: str) -> bool:
                 _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
             )
             and all(_regular(plugin / path) for path in LAUNCHERS[component])
+            and (
+                component != "core"
+                or all(_regular(plugin / path) for path in CORE_HOOK_DEPENDENCIES)
+            )
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False

@@ -1,0 +1,16 @@
+@echo off
+setlocal EnableExtensions DisableDelayedExpansion
+set "event=%~1"
+if /I "%event%"=="PreToolUse" goto evaluate
+if /I "%event%"=="PermissionRequest" goto evaluate
+set "event=PreToolUse"
+:evaluate
+py -3 -I -B "%~dp0codexy-child-thread-creation.py" --event "%event%"
+set "status=%errorlevel%"
+if "%status%"=="0" exit /b 0
+if /I "%event%"=="PermissionRequest" goto permission_deny
+echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}
+exit /b 0
+:permission_deny
+echo {"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}}
+exit /b 0

@@ -173,6 +173,7 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
             "plugins/codexy/hooks/codexy_policy/__init__.py",
             "plugins/codexy/hooks/codexy_policy/envelope.py",
             "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
+            "plugins/codexy/hooks/codexy_policy/child_thread_creation.py",
         ],
     )?;
     let expected_selectors = registration_selectors(root)?;

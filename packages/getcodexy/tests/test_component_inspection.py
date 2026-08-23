@@ -181,14 +181,32 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
             }
             self.assertEqual(health[component], "incompatible")
 
-    def test_doctor_rejects_a_missing_canonical_hook_launcher(self) -> None:
-        with fixture({"core"}) as state:
-            materialize(state, "core")
-            (
-                state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh"
-            ).unlink()
-            result = doctor(state.home, codex=state.codex, runner=state.run)
-        self.assertEqual(result["component_health"][0]["state"], "incompatible")
+    def test_doctor_rejects_missing_or_tampered_canonical_hook_dependencies(
+        self,
+    ) -> None:
+        dependencies = (
+            "hooks/codexy-thread-delivery.sh",
+            "hooks/codexy-thread-delivery.cmd",
+            "hooks/codexy-child-thread-creation.sh",
+            "hooks/codexy-child-thread-creation.cmd",
+            "hooks/codexy-child-thread-creation.py",
+            "hooks/codexy_policy/child_thread_creation.py",
+            "hooks/codexy_policy/envelope.py",
+        )
+        for relative in dependencies:
+            for mutation in ("missing", "tampered"):
+                with (
+                    self.subTest(relative=relative, mutation=mutation),
+                    fixture({"core"}) as state,
+                ):
+                    materialize(state, "core")
+                    path = state.marketplace / "plugins/codexy" / relative
+                    if mutation == "missing":
+                        path.unlink()
+                    else:
+                        path.write_bytes(path.read_bytes() + b"\n# tampered\n")
+                    result = doctor(state.home, codex=state.codex, runner=state.run)
+                self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
 
 if __name__ == "__main__":
