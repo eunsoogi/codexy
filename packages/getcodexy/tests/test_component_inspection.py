@@ -195,9 +195,10 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
         )
         for relative in dependencies:
             for mutation in ("missing", "tampered"):
-                with self.subTest(relative=relative, mutation=mutation), fixture(
-                    {"core"}
-                ) as state:
+                with (
+                    self.subTest(relative=relative, mutation=mutation),
+                    fixture({"core"}) as state,
+                ):
                     materialize(state, "core")
                     path = state.marketplace / "plugins/codexy" / relative
                     if mutation == "missing":
@@ -205,9 +206,7 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     else:
                         path.write_bytes(path.read_bytes() + b"\n# tampered\n")
                     result = doctor(state.home, codex=state.codex, runner=state.run)
-                self.assertEqual(
-                    result["component_health"][0]["state"], "incompatible"
-                )
+                self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,6 @@ def forbidden(request: Request) -> bool:
     if not isinstance(tool_input, dict):
         return True
     return any(
-        not isinstance(tool_input.get(field), str)
-        or not tool_input[field].strip()
+        not isinstance(tool_input.get(field), str) or not tool_input[field].strip()
         for field in REQUIRED_FIELDS
     )
