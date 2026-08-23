@@ -145,11 +145,10 @@ fn compare(
 ) {
     let retained = envelope.slots.get(&field.name);
     let authoritative = current.slots.get(&field.name);
-    if retained.is_none() || authoritative.is_none() {
+    let Some((retained, authoritative)) = retained.zip(authoritative) else {
         errors.push(format!("missing retained field {}", field.name));
         return;
-    }
-    let (retained, authoritative) = (retained.expect("checked"), authoritative.expect("checked"));
+    };
     if retained != authoritative {
         errors.push(format!("stale retained field {}", field.name));
     }

@@ -14,21 +14,126 @@
     { "id": "child_routing", "path": "skills/orchestration/references/child-routing-policy.json" }
   ],
   "retained_fields": [
-    { "name": "workflow_profile", "tier": "always_on", "identity": "stable", "authority": "workflow_profiles", "safety_invariant": false, "budget_exempt": true },
-    { "name": "task_classification", "tier": "always_on", "identity": "stable", "authority": "task_classification", "safety_invariant": false, "budget_exempt": true },
-    { "name": "issue_pr_identity", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "owner_worktree", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "base_head_sha", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "dirty_index_state", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "checks", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "unresolved_review_threads", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "selected_reviewer_state", "tier": "always_on", "identity": "volatile", "authority": "review_profiles", "safety_invariant": true, "budget_exempt": true },
-    { "name": "verification", "tier": "always_on", "identity": "volatile", "authority": "proof_completion", "safety_invariant": true, "budget_exempt": true },
-    { "name": "external_gate", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "next_action", "tier": "always_on", "identity": "volatile", "authority": "token_efficient", "safety_invariant": true, "budget_exempt": true },
-    { "name": "selected_references", "tier": "task_selected", "identity": "stable", "authority": "task_classification", "safety_invariant": false, "budget_exempt": false },
-    { "name": "qualifying_event_delta", "tier": "event_delta", "identity": "volatile", "authority": "token_efficient", "safety_invariant": false, "budget_exempt": false },
-    { "name": "authoritative_refresh_handles", "tier": "refresh_only", "identity": "volatile", "authority": "proof_completion", "safety_invariant": false, "budget_exempt": false }
+    {
+      "name": "workflow_profile",
+      "tier": "always_on",
+      "identity": "stable",
+      "authority": "workflow_profiles",
+      "safety_invariant": false,
+      "budget_exempt": true
+    },
+    {
+      "name": "task_classification",
+      "tier": "always_on",
+      "identity": "stable",
+      "authority": "task_classification",
+      "safety_invariant": false,
+      "budget_exempt": true
+    },
+    {
+      "name": "issue_pr_identity",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "owner_worktree",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "base_head_sha",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "dirty_index_state",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "checks",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "unresolved_review_threads",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "selected_reviewer_state",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "review_profiles",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "verification",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "proof_completion",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "external_gate",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "next_action",
+      "tier": "always_on",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": true,
+      "budget_exempt": true
+    },
+    {
+      "name": "selected_references",
+      "tier": "task_selected",
+      "identity": "stable",
+      "authority": "task_classification",
+      "safety_invariant": false,
+      "budget_exempt": false
+    },
+    {
+      "name": "qualifying_event_delta",
+      "tier": "event_delta",
+      "identity": "volatile",
+      "authority": "token_efficient",
+      "safety_invariant": false,
+      "budget_exempt": false
+    },
+    {
+      "name": "authoritative_refresh_handles",
+      "tier": "refresh_only",
+      "identity": "volatile",
+      "authority": "proof_completion",
+      "safety_invariant": false,
+      "budget_exempt": false
+    }
   ],
   "profile_matrix": {
     "light": {
@@ -52,7 +157,14 @@
   },
   "omission_reasons": ["not_applicable", "not_created", "external_surface_absent"],
   "routing": {
-    "task_classes": ["read_only", "documentation", "implementation", "review_response", "validation_qa", "orchestration_recovery"],
+    "task_classes": [
+      "read_only",
+      "documentation",
+      "implementation",
+      "review_response",
+      "validation_qa",
+      "orchestration_recovery"
+    ],
     "task_reference_routes": {
       "read_only": ["task_classification"],
       "documentation": ["task_classification", "proof_completion"],
@@ -71,7 +183,20 @@
     "stable_identity": "sha256_exact_contract_bytes_and_typed_stable_fields",
     "volatile_identity": "sha256_typed_envelope_in_field_order",
     "stable_fields": ["workflow_profile", "task_classification", "selected_references"],
-    "volatile_fields": ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "checks", "unresolved_review_threads", "selected_reviewer_state", "verification", "external_gate", "next_action", "qualifying_event_delta", "authoritative_refresh_handles"]
+    "volatile_fields": [
+      "issue_pr_identity",
+      "owner_worktree",
+      "base_head_sha",
+      "dirty_index_state",
+      "checks",
+      "unresolved_review_threads",
+      "selected_reviewer_state",
+      "verification",
+      "external_gate",
+      "next_action",
+      "qualifying_event_delta",
+      "authoritative_refresh_handles"
+    ]
   },
   "budget_semantics": {
     "context_unit": "utf8_bytes_after_serialization",
