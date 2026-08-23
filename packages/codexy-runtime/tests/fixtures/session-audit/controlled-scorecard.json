@@ -1,0 +1,361 @@
+{
+  "schema": "codexy.efficiency-scorecard.v1",
+  "corpusId": "orchestration-1.5-baseline-v1",
+  "candidate": {
+    "head": "1111111111111111111111111111111111111111",
+    "installedContentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "thresholds": {
+    "medianInputTokenReductionMinPct": 25.0,
+    "p95ToolOutputByteReductionMinPct": 40.0,
+    "maxP0P1Misses": 0,
+    "acceptanceMinPct": 95.0,
+    "maxRepairCycleIncrease": 0,
+    "maxReviewCycleIncrease": 0
+  },
+  "measureAvailability": {
+    "inputTokens": "available",
+    "wallTimeMs": "unavailable",
+    "observedCostUsd": "unavailable",
+    "toolInputBytes": "available",
+    "toolOutputBytes": "available",
+    "cacheInputTokens": "unavailable"
+  },
+  "comparisons": [
+    {
+      "id": "simple",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "simple-discovery",
+      "taskClass": "simple-discovery",
+      "owner": {
+        "kind": "root",
+        "id": "root-1"
+      },
+      "phase": "discovery",
+      "window": {
+        "kind": "equal-record-count",
+        "beforeRecords": 10,
+        "afterRecords": 10
+      },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 100,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 20,
+        "toolOutputBytes": 50,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 70,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 15,
+        "toolOutputBytes": 25,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "general",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "general-implementation",
+      "taskClass": "general-implementation",
+      "owner": {
+        "kind": "child",
+        "id": "child-1"
+      },
+      "phase": "implementation",
+      "window": {
+        "kind": "equal-duration",
+        "beforeDurationSeconds": 300,
+        "afterDurationSeconds": 300
+      },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 1,
+        "reviewCycles": 1,
+        "inputTokens": 200,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 30,
+        "toolOutputBytes": 80,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 1,
+        "reviewCycles": 1,
+        "inputTokens": 140,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 20,
+        "toolOutputBytes": 40,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "review",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "review-response",
+      "taskClass": "review-response",
+      "owner": {
+        "kind": "selected-reviewer",
+        "id": "reviewer-1"
+      },
+      "phase": "review-response",
+      "window": {
+        "kind": "equal-record-count",
+        "beforeRecords": 8,
+        "afterRecords": 8
+      },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 1,
+        "inputTokens": 100,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 10,
+        "toolOutputBytes": 40,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 1,
+        "inputTokens": 75,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 8,
+        "toolOutputBytes": 20,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "strict",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "strict-work",
+      "taskClass": "strict-work",
+      "owner": {
+        "kind": "root",
+        "id": "root-1"
+      },
+      "phase": "strict-work",
+      "window": {
+        "kind": "equal-record-count",
+        "beforeRecords": 12,
+        "afterRecords": 12
+      },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 1,
+        "reviewCycles": 1,
+        "inputTokens": 300,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 40,
+        "toolOutputBytes": 100,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 1,
+        "reviewCycles": 1,
+        "inputTokens": 220,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 35,
+        "toolOutputBytes": 55,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "compaction",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "compaction-recovery",
+      "taskClass": "compaction-recovery",
+      "owner": {
+        "kind": "child",
+        "id": "child-1"
+      },
+      "phase": "compaction-recovery",
+      "window": {
+        "kind": "equal-record-count",
+        "beforeRecords": 9,
+        "afterRecords": 9
+      },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 150,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 25,
+        "toolOutputBytes": 70,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 110,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 20,
+        "toolOutputBytes": 35,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "wait",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "general-implementation",
+      "taskClass": "general-implementation",
+      "owner": { "kind": "child", "id": "child-1" },
+      "phase": "wait",
+      "window": { "kind": "equal-record-count", "beforeRecords": 10, "afterRecords": 10 },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 100,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 20,
+        "toolOutputBytes": 50,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 70,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 15,
+        "toolOutputBytes": 25,
+        "cacheInputTokens": null
+      }
+    },
+    {
+      "id": "tool-output",
+      "optimizationId": "baseline",
+      "optimizationSet": ["baseline"],
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "taskId": "review-response",
+      "taskClass": "review-response",
+      "owner": { "kind": "selected-reviewer", "id": "reviewer-1" },
+      "phase": "tool-output",
+      "window": { "kind": "equal-record-count", "beforeRecords": 10, "afterRecords": 10 },
+      "before": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 100,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 20,
+        "toolOutputBytes": 50,
+        "cacheInputTokens": null
+      },
+      "after": {
+        "acceptanceRuns": 1,
+        "acceptedRuns": 1,
+        "p0P1Misses": 0,
+        "proofCompleteRuns": 1,
+        "repairs": 0,
+        "reviewCycles": 0,
+        "inputTokens": 70,
+        "wallTimeMs": null,
+        "observedCostUsd": null,
+        "toolInputBytes": 15,
+        "toolOutputBytes": 25,
+        "cacheInputTokens": null
+      }
+    }
+  ],
+  "decisionInputs": [
+    {
+      "optimizationId": "baseline",
+      "comparisonIds": [
+        "simple",
+        "general",
+        "review",
+        "strict",
+        "compaction",
+        "wait",
+        "tool-output"
+      ],
+      "evidenceState": "observable",
+      "unavailableMeasures": [
+        "wallTimeMs",
+        "observedCostUsd",
+        "cacheInputTokens"
+      ]
+    }
+  ]
+}

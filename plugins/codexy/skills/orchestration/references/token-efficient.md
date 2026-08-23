@@ -198,6 +198,19 @@ audit. If an explicitly packaged runtime command is absent or differs, MUST
 record it as an install failure and MUST NOT attribute the candidate behavior to
 the installed plugin.
 
+### Efficiency Scorecard
+
+MUST run `scripts/session-audit --scorecard <scorecard-json>`; the closed
+artifacts are the three `efficiency-scorecard*.json` references.
+
+Comparisons MUST bind a safe optimization set, model, effort, task class, typed
+owner, phase, and equal window. Wait and tool-output phases MUST stay distinct.
+Unavailable measures MUST stay `null`; available capabilities MAY be null per
+row. Observable evidence MUST bind installed runs, cover every optimization, and
+satisfy every threshold. Scorecards MUST NOT contain prompts, tool arguments,
+secrets, or private metadata. The packaged schema keeps every acceptance floor
+closed; #606 owns each final adoption decision.
+
 ## Compaction Budget
 
 After compaction, rebuild only the working set:
