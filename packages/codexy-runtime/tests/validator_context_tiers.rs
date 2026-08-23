@@ -1,55 +1,14 @@
-use std::{path::Path, process::Command};
+use std::path::Path;
 
 use serde_json::{Value, json};
 
+use super::{
+    assert_context_contract_rejected as assert_rejected, check_context_contract as check,
+    CONTEXT_CONTRACT as CONTRACT, CONTEXT_TASK_CLASSES as TASK_CLASSES,
+};
 use crate::support::{self, TestResult};
 
-const CONTRACT: &str = "skills/orchestration/references/context-tiers.json";
-const TIERS: [&str; 4] = ["always_on", "task_selected", "event_delta", "refresh_only"];
 const PROFILES: [&str; 3] = ["light", "standard", "strict"];
-const SAFETY_FIELDS: [&str; 10] = [
-    "issue_pr_identity",
-    "owner_worktree",
-    "base_head_sha",
-    "dirty_index_state",
-    "checks",
-    "unresolved_review_threads",
-    "selected_reviewer_state",
-    "verification",
-    "external_gate",
-    "next_action",
-];
-
-#[test]
-fn contract_covers_every_tier_profile_and_safety_invariant() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let contract: Value = serde_json::from_str(&std::fs::read_to_string(
-        root.join("plugins/codexy").join(CONTRACT),
-    )?)?;
-
-    assert_eq!(contract["schema"], "codexy.context-tiers.v1");
-    assert_eq!(contract["tier_order"], json!(TIERS));
-    for profile in PROFILES {
-        let tiers = contract["profile_matrix"][profile]
-            .as_object()
-            .ok_or("profile tier matrix")?;
-        assert_eq!(tiers.len(), TIERS.len(), "{profile} must decide every tier");
-        assert!(TIERS.iter().all(|tier| tiers.contains_key(*tier)));
-    }
-    let fields = contract["retained_fields"]
-        .as_array()
-        .ok_or("retained fields")?;
-    for required in SAFETY_FIELDS {
-        let field = fields
-            .iter()
-            .find(|field| field["name"] == required)
-            .ok_or_else(|| format!("missing safety field {required}"))?;
-        assert_eq!(field["safety_invariant"], true);
-        assert_eq!(field["budget_exempt"], true);
-    }
-    assert_eq!(contract["budget_semantics"]["cache_metadata"], "unavailable_not_zero");
-    Ok(())
-}
 
 #[test]
 fn validator_rejects_unknown_tiers_duplicate_authority_and_safety_weakening() -> TestResult {
@@ -120,6 +79,15 @@ fn profile_tier_behavior_and_stable_volatile_identities_are_separate() -> TestRe
     )?;
     assert_ne!(baseline[0], changed[0]);
     assert_eq!(baseline[1], changed[1]);
+
+    for task_class in TASK_CLASSES {
+        let mut routed = current.clone();
+        routed["slots"]["task_classification"] = json!({"value":task_class});
+        routed["slots"]["selected_references"] =
+            contract_route(&root, task_class)?.into();
+        let retained = envelope(&root, &routed)?;
+        assert!(diagnostics(&root, &retained, &routed)?.is_empty(), "{task_class}");
+    }
     Ok(())
 }
 
@@ -147,8 +115,7 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     ] {
         let mut invalid = current.clone();
         invalid["slots"][field] = value;
-        let retained = envelope(&root, &invalid)?;
-        assert!(!diagnostics(&root, &retained, &invalid)?.is_empty(), "{field}");
+        assert!(rejected(&root, &baseline_envelope, &invalid)?, "{field}");
     }
     let mut ambiguous = current.clone();
     ambiguous["slots"]["checks"] = json!({"value":"pending","extra":true});
@@ -158,14 +125,37 @@ fn envelope_rejects_stale_or_missing_current_safety_state_and_forbidden_forwardi
     )
     .is_err());
 
+    for item in ["full_tool_payload", "raw conversation text", "full_conversation_forwarding"] {
+        let mut forwarded = baseline_envelope.clone();
+        forwarded["forwarded_context"] = json!([item]);
+        assert!(rejected(&root, &forwarded, &current)?, "{item}");
+    }
+    for item in ["retained_slot", "selected_reference", "qualifying_event_delta", "authoritative_refresh_handle"] {
+        let mut forwarded = baseline_envelope.clone();
+        forwarded["forwarded_context"] = json!([item]);
+        assert!(!rejected(&root, &forwarded, &current)?, "{item}");
+    }
+
+    for mutate in [
+        |value: &mut Value| value["schema"] = json!("other"),
+        |value: &mut Value| {
+            value["slots"].as_object_mut().expect("slots").remove("checks");
+        },
+        |value: &mut Value| value["slots"]["checks"] = json!({"value":{"raw":"pending"}}),
+    ] {
+        let mut invalid = current.clone();
+        mutate(&mut invalid);
+        assert!(codexy_runtime::validation::context_identities(
+            &root,
+            &serde_json::to_string(&invalid)?,
+        )
+        .is_err());
+    }
+
     let mut omitted_thread = baseline_envelope.clone();
     omitted_thread["slots"]["unresolved_review_threads"] =
         json!({"omitted":{"code":"not_applicable","reason":"none retained"}});
     assert!(!diagnostics(&root, &omitted_thread, &current)?.is_empty());
-
-    let mut forwarded = baseline_envelope;
-    forwarded["forwarded_context"] = json!(["full_conversation_forwarding"]);
-    assert!(!diagnostics(&root, &forwarded, &current)?.is_empty());
 
     for risk in ["unknown", "ambiguous", "high_risk", "security", "permission", "release"] {
         let mut risk_current = current.clone();
@@ -186,6 +176,15 @@ fn diagnostics(root: &Path, envelope: &Value, current: &Value) -> TestResult<Vec
         &serde_json::to_string(envelope)?,
         &serde_json::to_string(current)?,
     )?)
+}
+
+fn rejected(root: &Path, envelope: &Value, current: &Value) -> TestResult<bool> {
+    Ok(diagnostics(root, envelope, current).map_or(true, |errors| !errors.is_empty()))
+}
+
+fn contract_route(root: &Path, task_class: &str) -> TestResult<Value> {
+    let contract: Value = serde_json::from_str(&std::fs::read_to_string(root.join(CONTRACT))?)?;
+    Ok(json!({"value":contract["routing"]["task_reference_routes"][task_class]}))
 }
 
 fn current_state() -> Value {
@@ -225,25 +224,4 @@ fn envelope(root: &Path, current: &Value) -> TestResult<Value> {
         "stable_identity":identities[0],
         "volatile_identity":identities[1]
     }))
-}
-
-fn assert_rejected(
-    root: &Path,
-    path: &Path,
-    baseline: &Value,
-    mutate: impl FnOnce(&mut Value),
-) -> TestResult {
-    let mut invalid = baseline.clone();
-    mutate(&mut invalid);
-    std::fs::write(path, serde_json::to_vec(&invalid)?)?;
-    let output = check(root)?;
-    assert!(!output.status.success(), "invalid context contract passed");
-    std::fs::write(path, serde_json::to_vec(baseline)?)?;
-    Ok(())
-}
-
-fn check(root: &Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", root.to_str().ok_or("plugin root")?, "--check"])
-        .output()?)
 }

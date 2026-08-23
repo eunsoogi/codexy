@@ -5,8 +5,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use super::super::{BudgetSemantics, FORWARDED_CONTEXT_TYPES, ForwardedContext};
+
 #[rustfmt::skip]
 const SAFETY_FIELDS: [&str; 10] = ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "checks", "unresolved_review_threads", "selected_reviewer_state", "verification", "external_gate", "next_action"];
+#[rustfmt::skip]
+const TASK_CLASSES: [&str; 10] = ["orchestration/lane setup", "implementation", "review response", "GitHub/merge", "validation/QA", "documentation/skill authoring", "plugin/release", "investigation/debugging", "issue/intake only", "other"];
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -21,6 +25,7 @@ pub(super) struct Contract {
     pub routing: Routing,
     pub ordering: Ordering,
     pub budget_semantics: BudgetSemantics,
+    pub forwarded_context_types: Vec<String>,
     pub forbidden_context: Vec<String>,
 }
 
@@ -65,22 +70,6 @@ pub(super) struct Ordering {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-#[allow(dead_code)]
-pub(super) struct BudgetSemantics {
-    pub context_unit: String,
-    pub output_unit: String,
-    pub limit_source: String,
-    pub stages: Vec<String>,
-    pub context_floor: Vec<String>,
-    pub refresh_only: String,
-    pub overflow_order: Vec<String>,
-    pub required_output: Vec<String>,
-    pub cache_metadata: String,
-    pub cache_savings_claims: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Envelope {
     pub schema: String,
     pub profile: String,
@@ -88,7 +77,8 @@ pub(super) struct Envelope {
     pub route_authority: Option<String>,
     pub action_allowed: bool,
     pub slots: BTreeMap<String, Slot>,
-    pub forwarded_context: Vec<String>,
+    #[serde(rename = "forwarded_context")]
+    pub _forwarded_context: Vec<ForwardedContext>,
     pub stable_identity: String,
     pub volatile_identity: String,
 }
@@ -208,7 +198,8 @@ pub(super) fn validate(contract: &Contract, plugin_root: &std::path::Path) -> Re
     {
         bail!("profiles must decide every tier and retain always-on context");
     }
-    if contract.routing.task_reference_routes.len() != contract.routing.task_classes.len()
+    if contract.routing.task_classes != TASK_CLASSES
+        || contract.routing.task_reference_routes.len() != contract.routing.task_classes.len()
         || contract
             .routing
             .task_classes
@@ -243,6 +234,13 @@ pub(super) fn validate(contract: &Contract, plugin_root: &std::path::Path) -> Re
         || contract.budget_semantics.context_floor != ["always_on", "applicable_task_selected"]
         || contract.budget_semantics.cache_metadata != "unavailable_not_zero"
         || contract.budget_semantics.cache_savings_claims != "prohibited_without_runtime_evidence"
+        || contract.forwarded_context_types != FORWARDED_CONTEXT_TYPES
+        || contract.forbidden_context
+            != [
+                "full_conversation_forwarding",
+                "full_tool_body_forwarding",
+                "full_agent_tree_forwarding",
+            ]
     {
         bail!("context ordering, budget, omission, or forbidden-content semantics were weakened");
     }

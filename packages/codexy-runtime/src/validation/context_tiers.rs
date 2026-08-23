@@ -11,11 +11,6 @@ use self::schema::{Contract, CurrentState, Envelope, Slot, digest, parse, slot_s
 const CONTRACT_PATH: &str = "skills/orchestration/references/context-tiers.json";
 const CANONICAL_CONTRACT: &str =
     include_str!("../../../../plugins/codexy/skills/orchestration/references/context-tiers.json");
-struct Loaded {
-    contract: Contract,
-    text: String,
-}
-
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     load(plugin_root)
         .err()
@@ -23,27 +18,39 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 pub(crate) fn identities(plugin_root: &Path, current_text: &str) -> Result<[String; 2]> {
-    let loaded = load(plugin_root)?;
+    let (contract, contract_text) = load(plugin_root)?;
     let current: CurrentState = parse(current_text)?;
-    let ordered = |names: &[String]| {
+    if current.schema != "codexy.context-current-state.v1"
+        || current.slots.len() != contract.retained_fields.len()
+        || contract.retained_fields.iter().any(|field| {
+            current
+                .slots
+                .get(&field.name)
+                .is_none_or(|slot| !valid_slot(&contract, &field.name, slot))
+        })
+    {
+        bail!("current context state is incomplete or has an invalid value shape");
+    }
+    let ordered = |names: &[String]| -> Result<Vec<_>> {
         names
             .iter()
-            .filter_map(|name| {
+            .map(|name| {
                 current
                     .slots
                     .get(name)
                     .map(|slot| (name.clone(), slot.clone()))
+                    .ok_or_else(|| anyhow::anyhow!("missing ordered context field {name}"))
             })
-            .collect::<Vec<_>>()
+            .collect()
     };
     let stable = serde_json::to_vec(&(
-        loaded.text.as_bytes(),
-        ordered(&loaded.contract.ordering.stable_fields),
+        contract_text.as_bytes(),
+        ordered(&contract.ordering.stable_fields)?,
     ))?;
-    let volatile = serde_json::to_vec(&ordered(&loaded.contract.ordering.volatile_fields))?;
+    let volatile = serde_json::to_vec(&ordered(&contract.ordering.volatile_fields)?)?;
     Ok([
-        digest(&loaded.contract.ordering.stable_prefix, &stable),
-        digest(&loaded.contract.ordering.volatile_prefix, &volatile),
+        digest(&contract.ordering.stable_prefix, &stable),
+        digest(&contract.ordering.volatile_prefix, &volatile),
     ])
 }
 
@@ -52,17 +59,15 @@ pub(crate) fn validate_envelope(
     envelope_text: &str,
     current_text: &str,
 ) -> Result<Vec<String>> {
-    let loaded = load(plugin_root)?;
+    let (contract, _) = load(plugin_root)?;
     let envelope: Envelope = parse(envelope_text)?;
     let current: CurrentState = parse(current_text)?;
     let expected_identities = identities(plugin_root, current_text)?;
     let mut errors = Vec::new();
-    if envelope.schema != "codexy.context-envelope.v1"
-        || current.schema != "codexy.context-current-state.v1"
-    {
+    if envelope.schema != "codexy.context-envelope.v1" {
         errors.push("context envelope or current state has an unsupported schema".to_owned());
     }
-    let routing = &loaded.contract.routing;
+    let routing = &contract.routing;
     let ordinary = routing.task_classes.contains(&envelope.task_class);
     let fail_closed = routing.fail_closed_classes.contains(&envelope.task_class);
     if !ordinary && !fail_closed {
@@ -83,11 +88,7 @@ pub(crate) fn validate_envelope(
             errors.push("ordinary context selected references disagree with its route".to_owned());
         }
     }
-    if !loaded
-        .contract
-        .profile_matrix
-        .contains_key(&envelope.profile)
-    {
+    if !contract.profile_matrix.contains_key(&envelope.profile) {
         errors.push("context envelope has an unknown workflow profile".to_owned());
     }
     if slot_string(&envelope.slots, "workflow_profile") != Some(envelope.profile.as_str())
@@ -100,16 +101,9 @@ pub(crate) fn validate_envelope(
     {
         errors.push("context envelope identities do not match deterministic state".to_owned());
     }
-    if envelope
-        .forwarded_context
-        .iter()
-        .any(|item| loaded.contract.forbidden_context.contains(item))
-    {
-        errors.push("context envelope forwards forbidden context".to_owned());
-    }
-    for field in &loaded.contract.retained_fields {
+    for field in &contract.retained_fields {
         compare(
-            &loaded.contract,
+            &contract,
             &envelope,
             &current,
             field,
@@ -118,18 +112,12 @@ pub(crate) fn validate_envelope(
         );
     }
     let unknown = |name: &String| {
-        !loaded
-            .contract
+        !contract
             .retained_fields
             .iter()
             .any(|field| field.name == *name)
     };
-    if envelope
-        .slots
-        .keys()
-        .chain(current.slots.keys())
-        .any(unknown)
-    {
+    if envelope.slots.keys().any(unknown) {
         errors.push("context state contains an unknown retained field".to_owned());
     }
     Ok(errors)
@@ -152,7 +140,7 @@ fn compare(
     if retained != authoritative {
         errors.push(format!("stale retained field {}", field.name));
     }
-    if !valid_value(&field.name, authoritative) {
+    if !valid_slot(contract, &field.name, authoritative) {
         errors.push(format!("invalid value shape for {}", field.name));
     }
     let Slot::Omitted(omission) = retained else {
@@ -179,7 +167,7 @@ fn compare(
     }
 }
 
-fn load(plugin_root: &Path) -> Result<Loaded> {
+fn load(plugin_root: &Path) -> Result<(Contract, String)> {
     let path = plugin_root.join(CONTRACT_PATH);
     let text = std::fs::read_to_string(&path)?;
     let candidate: Value = parse(&text)?;
@@ -189,7 +177,7 @@ fn load(plugin_root: &Path) -> Result<Loaded> {
     }
     let contract: Contract = serde_json::from_value(candidate)?;
     schema::validate(&contract, plugin_root)?;
-    Ok(Loaded { contract, text })
+    Ok((contract, text))
 }
 
 fn selected_refs(slots: &std::collections::BTreeMap<String, Slot>, expected: &[String]) -> bool {
@@ -205,9 +193,13 @@ fn selected_refs(slots: &std::collections::BTreeMap<String, Slot>, expected: &[S
     })
 }
 
-fn valid_value(name: &str, slot: &Slot) -> bool {
+fn valid_slot(contract: &Contract, name: &str, slot: &Slot) -> bool {
+    if let Slot::Omitted(omission) = slot {
+        return contract.omission_reasons.contains(&omission.omitted.code)
+            && !omission.omitted.reason.trim().is_empty();
+    }
     let Slot::Present(present) = slot else {
-        return true;
+        return false;
     };
     let value = &present.value;
     match name {
@@ -222,6 +214,14 @@ fn valid_value(name: &str, slot: &Slot) -> bool {
         | "selected_references"
         | "authoritative_refresh_handles" => strings(value),
         "checks" => token(value) || strings(value),
+        "task_classification" => value.as_str().is_some_and(|task| {
+            contract
+                .routing
+                .task_classes
+                .iter()
+                .chain(&contract.routing.fail_closed_classes)
+                .any(|known| known == task)
+        }),
         _ => token(value),
     }
 }

@@ -83,6 +83,37 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
     }
 }
 
+/// Returns the LSP file extensions covered by Codexy validation metadata.
+///
+/// # Errors
+///
+/// Returns an error when the packaged LSP metadata is unreadable or malformed.
+pub fn covered_extensions(plugin_root: &Path) -> Result<Vec<String>> {
+    lsp::covered_extensions(&public_devtools_root(plugin_root))
+}
+
+/// Validates one retained context envelope against current authoritative state.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or either input is malformed.
+pub fn validate_context_envelope(
+    plugin_root: &Path,
+    envelope: &str,
+    current_state: &str,
+) -> Result<Vec<String>> {
+    context_tiers::validate_envelope(plugin_root, envelope, current_state)
+}
+
+/// Builds deterministic stable and volatile identities for current context.
+///
+/// # Errors
+///
+/// Returns an error when the packaged contract or current state is malformed.
+pub fn context_identities(plugin_root: &Path, current_state: &str) -> Result<[String; 2]> {
+    context_tiers::identities(plugin_root, current_state)
+}
+
 fn is_devtools(plugin_root: &Path) -> bool {
     std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
         .ok()
@@ -102,6 +133,16 @@ fn devtools_root(plugin_root: &Path) -> PathBuf {
         || PathBuf::from("plugins/codexy-devtools"),
         |parent| parent.join("codexy-devtools"),
     )
+}
+
+fn public_devtools_root(plugin_root: &Path) -> PathBuf {
+    if plugin_root.file_name().is_some_and(|name| name == "codexy") {
+        return plugin_root.parent().map_or_else(
+            || PathBuf::from("plugins/codexy-devtools"),
+            |parent| parent.join("codexy-devtools"),
+        );
+    }
+    plugin_root.to_path_buf()
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {

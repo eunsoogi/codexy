@@ -158,20 +158,28 @@
   "omission_reasons": ["not_applicable", "not_created", "external_surface_absent"],
   "routing": {
     "task_classes": [
-      "read_only",
-      "documentation",
+      "orchestration/lane setup",
       "implementation",
-      "review_response",
-      "validation_qa",
-      "orchestration_recovery"
+      "review response",
+      "GitHub/merge",
+      "validation/QA",
+      "documentation/skill authoring",
+      "plugin/release",
+      "investigation/debugging",
+      "issue/intake only",
+      "other"
     ],
     "task_reference_routes": {
-      "read_only": ["task_classification"],
-      "documentation": ["task_classification", "proof_completion"],
+      "orchestration/lane setup": ["task_classification", "child_routing", "execution_budget"],
       "implementation": ["task_classification", "execution_budget", "proof_completion"],
-      "review_response": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
-      "validation_qa": ["task_classification", "review_profiles", "proof_completion"],
-      "orchestration_recovery": ["task_classification", "token_efficient", "dreaming", "proof_completion"]
+      "review response": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
+      "GitHub/merge": ["task_classification", "review_profiles", "review_lifecycle", "proof_completion"],
+      "validation/QA": ["task_classification", "review_profiles", "proof_completion"],
+      "documentation/skill authoring": ["task_classification", "proof_completion"],
+      "plugin/release": ["task_classification", "execution_budget", "proof_completion"],
+      "investigation/debugging": ["task_classification", "execution_budget", "proof_completion"],
+      "issue/intake only": ["task_classification", "child_routing"],
+      "other": ["task_classification", "child_routing"]
     },
     "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],
     "fallback_authority": "child_routing",
@@ -210,5 +218,11 @@
     "cache_metadata": "unavailable_not_zero",
     "cache_savings_claims": "prohibited_without_runtime_evidence"
   },
+  "forwarded_context_types": [
+    "retained_slot",
+    "selected_reference",
+    "qualifying_event_delta",
+    "authoritative_refresh_handle"
+  ],
   "forbidden_context": ["full_conversation_forwarding", "full_tool_body_forwarding", "full_agent_tree_forwarding"]
 }
