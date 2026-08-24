@@ -44,7 +44,9 @@ def forbidden(request: Request) -> bool | str:
     recipient = data.get("threadId")
     if recipient != parent:
         return "EXPECTED_RECIPIENT"
-    return False if (data["model"], data["thinking"]) == EXPECTED else "EXPECTED_RECIPIENT"
+    return (
+        False if (data["model"], data["thinking"]) == EXPECTED else "EXPECTED_RECIPIENT"
+    )
 
 
 def _authenticated_parent(path: str, session: str) -> str | None:
@@ -56,7 +58,11 @@ def _authenticated_parent(path: str, session: str) -> str | None:
     if payload.get("id") != session or payload.get("session_id", session) != session:
         raise ValueError("session mismatch")
     context = next(
-        (index for index, item in enumerate(records) if item.get("type") == "turn_context"),
+        (
+            index
+            for index, item in enumerate(records)
+            if item.get("type") == "turn_context"
+        ),
         None,
     )
     if context is None:
@@ -89,10 +95,7 @@ def _delegated_parent(text: str) -> str | None:
     text = text.strip()
     if not text.startswith("<codex_delegation>"):
         return None
-    if (
-        text.count("<codex_delegation>") != 1
-        or text.count("</codex_delegation>") != 1
-    ):
+    if text.count("<codex_delegation>") != 1 or text.count("</codex_delegation>") != 1:
         raise ValueError("ambiguous delegation envelope")
     match = DELEGATION.fullmatch(text)
     if match is None:

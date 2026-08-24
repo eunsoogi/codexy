@@ -154,7 +154,8 @@ fn run_to(
 fn run_payload(payload: Value) -> TestResult<std::process::Output> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let payload = serde_json::to_vec(&payload)?;
-    let mut child = Command::new(root.join("hooks/codexy-thread-delivery.sh"))
+    let mut command = launcher(&root);
+    let mut child = command
         .arg("PreToolUse")
         .env("PLUGIN_ROOT", &root)
         .stdin(Stdio::piped())
@@ -171,6 +172,21 @@ fn run_payload(payload: Value) -> TestResult<std::process::Output> {
         thread::sleep(Duration::from_millis(10));
     }
     Ok(child.wait_with_output()?)
+}
+
+#[cfg(windows)]
+fn launcher(root: &Path) -> Command {
+    let mut command = Command::new("cmd");
+    command
+        .arg("/d")
+        .arg("/c")
+        .arg(root.join("hooks/codexy-thread-delivery.cmd"));
+    command
+}
+
+#[cfg(not(windows))]
+fn launcher(root: &Path) -> Command {
+    Command::new(root.join("hooks/codexy-thread-delivery.sh"))
 }
 
 fn assert_denied(output: std::process::Output) -> TestResult {
