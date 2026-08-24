@@ -11,9 +11,37 @@
   ],
   "lanes": [
     { "id": "tiny", "version": "1.0.0", "path": "lanes/tiny.json", "kind": "tiny", "profile": "standard", "seeds": [] },
-    { "id": "security", "version": "1.0.0", "path": "lanes/security.json", "kind": "security", "profile": "strict", "seeds": [{ "id": "seed-p0-authz" }] },
-    { "id": "standard", "version": "1.0.0", "path": "lanes/standard.json", "kind": "standard", "profile": "standard", "seeds": [{ "id": "seed-p1-boundary" }] },
-    { "id": "response", "version": "1.0.0", "path": "lanes/response.json", "kind": "review_response", "profile": "strict", "seeds": [{ "id": "seed-p1-regression" }] },
-    { "id": "release", "version": "1.0.0", "path": "lanes/release.json", "kind": "release", "profile": "strict", "seeds": [] }
+    {
+      "id": "security",
+      "version": "1.0.0",
+      "path": "lanes/security.json",
+      "kind": "security",
+      "profile": "strict",
+      "seeds": [{ "id": "seed-p0-authz" }]
+    },
+    {
+      "id": "standard",
+      "version": "1.0.0",
+      "path": "lanes/standard.json",
+      "kind": "standard",
+      "profile": "standard",
+      "seeds": [{ "id": "seed-p1-boundary" }]
+    },
+    {
+      "id": "response",
+      "version": "1.0.0",
+      "path": "lanes/response.json",
+      "kind": "review_response",
+      "profile": "strict",
+      "seeds": [{ "id": "seed-p1-regression" }]
+    },
+    {
+      "id": "release",
+      "version": "1.0.0",
+      "path": "lanes/release.json",
+      "kind": "release",
+      "profile": "strict",
+      "seeds": []
+    }
   ]
 }

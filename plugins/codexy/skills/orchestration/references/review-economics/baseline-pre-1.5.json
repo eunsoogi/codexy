@@ -12,14 +12,75 @@
     "timing": null
   },
   "unavailable_fields": [
-    "head_oid", "tree_oid", "policy_sha256", "corpus_sha256",
-    "tokens", "cost", "runtime_telemetry", "reviewer_receipts"
+    "head_oid",
+    "tree_oid",
+    "policy_sha256",
+    "corpus_sha256",
+    "tokens",
+    "cost",
+    "runtime_telemetry",
+    "reviewer_receipts"
   ],
   "lanes": [
-    { "id": "tiny", "kind": "tiny", "profile": "standard", "outcome": null, "implementation_ms": null, "verification_ms": null, "review_ms": null, "repair_ms": null, "tokens": null, "cost": null },
-    { "id": "security", "kind": "security", "profile": "strict", "outcome": null, "implementation_ms": null, "verification_ms": null, "review_ms": null, "repair_ms": null, "tokens": null, "cost": null },
-    { "id": "standard", "kind": "standard", "profile": "standard", "outcome": null, "implementation_ms": null, "verification_ms": null, "review_ms": null, "repair_ms": null, "tokens": null, "cost": null },
-    { "id": "response", "kind": "review_response", "profile": "strict", "outcome": null, "implementation_ms": null, "verification_ms": null, "review_ms": null, "repair_ms": null, "tokens": null, "cost": null },
-    { "id": "release", "kind": "release", "profile": "strict", "outcome": null, "implementation_ms": null, "verification_ms": null, "review_ms": null, "repair_ms": null, "tokens": null, "cost": null }
+    {
+      "id": "tiny",
+      "kind": "tiny",
+      "profile": "standard",
+      "outcome": null,
+      "implementation_ms": null,
+      "verification_ms": null,
+      "review_ms": null,
+      "repair_ms": null,
+      "tokens": null,
+      "cost": null
+    },
+    {
+      "id": "security",
+      "kind": "security",
+      "profile": "strict",
+      "outcome": null,
+      "implementation_ms": null,
+      "verification_ms": null,
+      "review_ms": null,
+      "repair_ms": null,
+      "tokens": null,
+      "cost": null
+    },
+    {
+      "id": "standard",
+      "kind": "standard",
+      "profile": "standard",
+      "outcome": null,
+      "implementation_ms": null,
+      "verification_ms": null,
+      "review_ms": null,
+      "repair_ms": null,
+      "tokens": null,
+      "cost": null
+    },
+    {
+      "id": "response",
+      "kind": "review_response",
+      "profile": "strict",
+      "outcome": null,
+      "implementation_ms": null,
+      "verification_ms": null,
+      "review_ms": null,
+      "repair_ms": null,
+      "tokens": null,
+      "cost": null
+    },
+    {
+      "id": "release",
+      "kind": "release",
+      "profile": "strict",
+      "outcome": null,
+      "implementation_ms": null,
+      "verification_ms": null,
+      "review_ms": null,
+      "repair_ms": null,
+      "tokens": null,
+      "cost": null
+    }
   ]
 }

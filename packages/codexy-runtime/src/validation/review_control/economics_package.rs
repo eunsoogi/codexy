@@ -135,7 +135,7 @@ pub(super) fn load(plugin_root: &Path) -> Result<Package> {
             || ids(&corpus_lane["seeds"])? != seeds_in_input
             || seeds_in_input
                 .iter()
-                .any(|seed_id| seeds.get(seed_id).is_none())
+                .any(|seed_id| !seeds.contains_key(seed_id))
         {
             bail!("review economics lane input is not bound to its manifest and corpus");
         }
@@ -157,7 +157,7 @@ pub(super) fn load(plugin_root: &Path) -> Result<Package> {
         .collect::<BTreeSet<_>>();
     let corpus_ids = corpus["lanes"]
         .as_array()
-        .unwrap()
+        .ok_or_else(|| anyhow::anyhow!("review economics corpus lanes are missing"))?
         .iter()
         .filter_map(|lane| lane["id"].as_str())
         .collect::<BTreeSet<_>>();
@@ -193,7 +193,7 @@ fn validate_baseline(value: &Value) -> Result<()> {
         || value["provenance"].is_null()
         || value["lanes"]
             .as_array()
-            .map_or(true, |items| items.len() != 5)
+            .is_none_or(|items| items.len() != 5)
         || required
             .iter()
             .any(|name| !fields.iter().any(|field| field.as_str() == Some(name)))
@@ -218,12 +218,12 @@ fn validate_corpus(value: &Value) -> Result<()> {
 }
 
 fn ids(value: &Value) -> Result<Vec<String>> {
-    Ok(value
+    value
         .as_array()
         .ok_or_else(|| anyhow::anyhow!("package seed ids are missing"))?
         .iter()
         .map(|item| string(item, "id").map(str::to_owned))
-        .collect::<Result<_>>()?)
+        .collect::<Result<_>>()
 }
 
 fn checked_child(root: &Path, relative: &str) -> Result<PathBuf> {
