@@ -1,7 +1,7 @@
 {
   "schema": "codexy.review-economics-corpus.v1",
   "lanes": [
-    { "id": "tiny", "kind": "tiny", "profile": "standard", "seeds": [] },
+    { "id": "tiny", "kind": "tiny", "profile": "light", "seeds": [] },
     {
       "id": "security",
       "kind": "security",

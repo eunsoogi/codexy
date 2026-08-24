@@ -21,6 +21,8 @@ mod profile_classification;
 mod issue_contract;
 #[path = "validator_review_control/blocker_class.rs"]
 mod blocker_class;
+#[path = "validator_review_control/observation.rs"]
+mod review_economics_observation;
 
 #[test]
 fn profiles_select_one_reviewer_with_fixed_models_and_escalation() -> TestResult {
@@ -187,10 +189,10 @@ fn named_inspector_precedes_generic_child_routing_without_caller_override() -> T
 }
 
 #[test]
-fn economics_rejects_missing_parity_and_review_share_overages() -> TestResult {
-    let fixture = crate::support::plugin_fixture()?; let mut valid = review_economics::report(); review_economics::bind(&mut valid, fixture.root(), &git(["rev-parse", "HEAD"]));
-    assert!(check_economics(fixture.root(), &valid)?.status.success());
-    for mutate in [|value: &mut Value| value["lanes"][1]["baseline_p0"] = json!(2), |value: &mut Value| value["lanes"][0]["review_ms"] = json!(50), review_economics::strict_overage] { let mut invalid = valid.clone(); mutate(&mut invalid); assert!(!check_economics(fixture.root(), &invalid)?.status.success()); }
+fn economics_rejects_synthetic_parity_without_verifiable_observation() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?; let mut synthetic = review_economics::report(); review_economics::bind(&mut synthetic, fixture.root(), &git(["rev-parse", "HEAD"]));
+    let output = check_economics(fixture.root(), &synthetic)?;
+    assert!(!output.status.success()); assert!(String::from_utf8_lossy(&output.stderr).contains("no callable verifier"));
     let unavailable = review_economics::unavailable();
     let output = check_economics(fixture.root(), &unavailable)?;
     assert!(!output.status.success());

@@ -1,0 +1,14 @@
+{
+  "schema": "codexy.review-economics-lane-input.v1",
+  "id": "standard",
+  "version": "1.0.0",
+  "kind": "standard",
+  "profile": "standard",
+  "seeds": [{ "id": "seed-p1-boundary" }],
+  "request": {
+    "task": "Review a normal implementation change with a seeded package-boundary defect.",
+    "scope": "maintained implementation and focused tests",
+    "expected_profile_behavior": "codexy-inspector with max reasoning",
+    "required_findings": ["seed-p1-boundary"]
+  }
+}

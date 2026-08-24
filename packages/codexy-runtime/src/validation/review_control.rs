@@ -1,10 +1,12 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 mod capture;
 mod classification;
 mod economics;
+mod economics_capture;
+mod economics_package;
 mod finding_disposition;
 mod history;
 mod history_contract;
@@ -16,6 +18,33 @@ mod policy;
 mod presence;
 mod repository;
 mod terminal;
+
+pub(super) fn checked_package_child(root: &Path, relative: &str) -> Result<PathBuf> {
+    if relative.is_empty()
+        || Path::new(relative).is_absolute()
+        || relative.starts_with('/')
+        || relative.starts_with('\\')
+        || matches!(relative.as_bytes().get(1), Some(b':'))
+        || relative
+            .split(['/', '\\'])
+            .any(|part| matches!(part, "" | "." | ".."))
+    {
+        bail!("review economics package path is unsafe");
+    }
+    let canonical_root = root.canonicalize().map_err(|error| {
+        anyhow::anyhow!("review economics package root is unavailable: {error}")
+    })?;
+    let canonical_child = canonical_root
+        .join(relative.replace('\\', "/"))
+        .canonicalize()
+        .map_err(|error| {
+            anyhow::anyhow!("review economics package path is unavailable: {error}")
+        })?;
+    if !canonical_child.starts_with(&canonical_root) {
+        bail!("review economics package path escapes its root");
+    }
+    Ok(canonical_child)
+}
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     policy::load(plugin_root)
@@ -42,6 +71,22 @@ pub(super) fn check_economics(
     economics: &str,
 ) -> Result<()> {
     economics::check(plugin_root, repository_root, economics)
+}
+
+pub(super) fn capture_economics(
+    plugin_root: &Path,
+    repository_root: &Path,
+    observer_command: &Path,
+    trusted_receipt: &Path,
+    output: &Path,
+) -> Result<()> {
+    economics_capture::capture(
+        plugin_root,
+        repository_root,
+        observer_command,
+        trusted_receipt,
+        output,
+    )
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {
