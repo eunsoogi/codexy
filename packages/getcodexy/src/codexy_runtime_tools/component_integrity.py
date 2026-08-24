@@ -30,7 +30,7 @@ COMPONENT_FILES = {
         "hooks/codexy-child-thread-creation.sh": "0e83f9eee3dfcebcdb67ec1d6ea374ecebc5d0386a5ff4429277c64b2689b0ad",
         "hooks/codexy-child-thread-creation.py": "6f0de7208940cad5a5250422f817c778343b2b9f523af800e2b472fb0ec7471a",
         "hooks/codexy_policy/child_thread_creation.py": "9ba39931e3b459e2e58dc42cb007690aebe6e90ccb8f98969c47ab45a4c20f9d",
-        "hooks/codexy_policy/envelope.py": "74172fe5c0309c34fd76ba22d3ac9bd196a15d75bbc32c957ce7c7ddb8a44536",
+        "hooks/codexy_policy/envelope.py": "57256bf03570230a792fed85d844fa5715bad7c7f3ee213fe1f8ddace314330a",
         "skills/wiki/SKILL.md": "f7036d57346d8556d8b2e70cbe50a2a8dee9f87f8a8d3d630a41523a28ca8c76",
         "skills/orchestration/scripts/agent_registration_blocks.py": "d9fee4e722e6595a29aa038d3db1404f134763c80df618593f82ecc54089069b",
         "skills/orchestration/scripts/agent_registration_fs.py": "c5f1952770d4c83d662a719d24a7d30da7a266c105f9b981b99d730a8c03298e",

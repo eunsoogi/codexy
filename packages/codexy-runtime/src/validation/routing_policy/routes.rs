@@ -16,6 +16,27 @@ pub(super) fn simple_route(
     generic_or_fallback(policy, capabilities, operation)
 }
 
+pub(super) fn child_to_root_route(
+    policy: &Policy,
+    capabilities: Option<&ThreadCapabilities>,
+    operation: &str,
+) -> Value {
+    if thread_capabilities::supports(
+        capabilities,
+        &policy.delivery.child_to_root.model,
+        &policy.delivery.child_to_root.thinking,
+    ) {
+        route(
+            "child_to_root",
+            operation,
+            &policy.delivery.child_to_root.model,
+            &policy.delivery.child_to_root.thinking,
+        )
+    } else {
+        json!({"route":policy.fallback})
+    }
+}
+
 pub(super) fn selected_general_route(
     plugin_root: &Path,
     policy: &Policy,

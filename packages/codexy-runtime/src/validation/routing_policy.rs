@@ -7,7 +7,7 @@ use super::{routing_json, routing_measurement};
 
 mod routes;
 mod thread_capabilities;
-use routes::{selected_general_route, simple_route};
+use routes::{child_to_root_route, selected_general_route, simple_route};
 use thread_capabilities::ThreadCapabilities;
 
 const POLICY_PATH: &str = "skills/orchestration/references/child-routing-policy.json";
@@ -80,7 +80,16 @@ struct Request {
     simple_predicates: Option<Predicates>,
     codex_thread_operation: String,
     #[serde(default)]
+    codex_thread_direction: Option<ThreadDirection>,
+    #[serde(default)]
     codex_thread_capabilities: Option<ThreadCapabilities>,
+}
+
+#[derive(Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum ThreadDirection {
+    ParentToGeneric,
+    ChildToRoot,
 }
 
 #[derive(Deserialize)]
@@ -116,6 +125,13 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             bail!("child routing request names an unknown packaged specialist");
         }
         return Ok(json!({"route":"named_specialist","agent_type":agent_type}));
+    }
+    if request.codex_thread_direction == Some(ThreadDirection::ChildToRoot) {
+        return Ok(child_to_root_route(
+            &policy,
+            request.codex_thread_capabilities.as_ref(),
+            &request.codex_thread_operation,
+        ));
     }
     match request.classification.as_str() {
         "simple" if simple_is_complete(request.simple_predicates.as_ref()) => Ok(simple_route(
@@ -160,6 +176,15 @@ fn parse_request(text: &str) -> Result<Request> {
         bail!("child routing request has an unsupported schema");
     }
     thread_capabilities::validate_operation(&request.codex_thread_operation)?;
+    match (
+        request.codex_thread_operation.as_str(),
+        request.codex_thread_direction,
+    ) {
+        ("create_thread", None)
+        | ("send_message_to_thread", Some(ThreadDirection::ParentToGeneric))
+        | ("send_message_to_thread", Some(ThreadDirection::ChildToRoot)) => {}
+        _ => bail!("child routing request has an invalid thread delivery direction"),
+    }
     Ok(request)
 }
 
