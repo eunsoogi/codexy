@@ -37,6 +37,10 @@ COMPONENT_FILES = {
         "skills/orchestration/scripts/agent_registration_lifecycle.py": "9b1762d6fa066ac118c04ca61e6181997b84bf7e924ebf255703954f4e25e871",
         "skills/orchestration/scripts/agent_registration_support.py": "6aeae4d9107de34d9b79cb4c3e8898d0129b0e1f74fa57bf0825f34dd940371f",
         "skills/orchestration/scripts/register_codexy_agents.py": "3364d7bae75c351ce89aea4cbfadb46dab6260854db76851a2f13559cd8ccd7d",
+        "skills/dreaming/references/handoff-runtime.schema.json": "0ca98f5c128940d99d26a36ec8e1774a818034a6d174e7610831a454779efd73",
+        "skills/dreaming/scripts/resumable-context-capsule.sh": "95c7965bc494b404fc62053bd4fbd8cc85e43dbde35f00b06fbb979d6002a17a",
+        "skills/dreaming/scripts/resumable-context-capsule.cmd": "be2d4141bd24b8ab5d04ff8a7641d9f83413ae0423fcf502dcc5afd1b6e30181",
+        "skills/dreaming/scripts/resumable_context_capsule.py": "b6714df64fc9e7a917db0d5aae0ebe6d31d6242fa9ebfd2bd3ed81dd95e61789",
     },
     "codexy-github": {
         "agents/catalog.toml": "a40af1007d226569b0856f8a1f64e022b473644092f355df21d9468e3107880d",

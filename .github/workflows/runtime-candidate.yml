@@ -61,7 +61,7 @@ jobs:
           }
       - name: Build candidate MCP runtimes
         working-directory: packages/codexy-runtime
-        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools
+        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools --bin codexy-handoff-validate
       - name: Smoke platform-local MCP protocols
         if: matrix.platform != 'windows-x86_64'
         run: |
@@ -150,6 +150,8 @@ jobs:
             cp "packages/codexy-runtime/target/release/codexy-mcp-${server}" "$path"
             chmod 755 "$path"
           done
+          cp packages/codexy-runtime/target/release/codexy-handoff-validate "runtime/codexy-handoff-validate-${PLATFORM}.bin"
+          chmod 755 "runtime/codexy-handoff-validate-${PLATFORM}.bin"
       - name: Package native Windows PE binaries
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
@@ -169,6 +171,16 @@ jobs:
           Copy-Item -LiteralPath $dispatcher -Destination $destination
           $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
           if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
+          $handoff = "runtime/codexy-handoff-validate-$env:PLATFORM.exe"
+          Copy-Item -LiteralPath "packages/codexy-runtime/target/release/codexy-handoff-validate.exe" -Destination $handoff
+          $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $handoff))[0..1]
+          if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$handoff is not a PE executable" }
+      - name: Prove native handoff bridge and installed CMD adversarial contract
+        if: matrix.platform == 'windows-x86_64'
+        shell: pwsh
+        run: |
+          cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --test suite_orchestration handoff_runtime_bridge -- --nocapture
+          uv run --locked --directory packages/getcodexy python -m unittest tests.test_resumable_context_capsule -v
       - uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ matrix.platform }}

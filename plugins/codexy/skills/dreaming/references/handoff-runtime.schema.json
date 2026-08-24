@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/eunsoogi/codexy/handoff-runtime.schema.json",
+  "title": "Codexy installed handoff runtime",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "source", "platforms"],
+  "properties": {
+    "schema": { "const": "codexy.handoff-runtime.v1" },
+    "version": { "const": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "tree": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["darwin-arm64", "linux-x86_64", "windows-x86_64"],
+      "properties": {
+        "darwin-arm64": { "$ref": "#/$defs/bridge" },
+        "linux-x86_64": { "$ref": "#/$defs/bridge" },
+        "windows-x86_64": { "$ref": "#/$defs/bridge" }
+      }
+    }
+  },
+  "$defs": {
+    "bridge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "kind"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^runtime/codexy-handoff-validate-(darwin-arm64|linux-x86_64)\\.bin$|^runtime/codexy-handoff-validate-windows-x86_64\\.exe$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "kind": { "enum": ["mach-o", "elf", "pe"] }
+      }
+    }
+  }
+}

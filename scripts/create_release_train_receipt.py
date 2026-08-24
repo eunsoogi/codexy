@@ -71,4 +71,17 @@ receipt = {
     },
     "provenance": staging["provenance"],
 }
+candidate = staging.get("candidate", {})
+core_handoff = candidate.get("classes", {}).get("coreHandoff")
+if core_handoff:
+    source = candidate["source"]
+    receipt["runtimeClasses"] = {
+        "coreHandoff": {
+            "sha256": hashlib.sha256(
+                json.dumps(core_handoff, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest(),
+            "manifestSha256": core_handoff["manifest"]["sha256"],
+            "source": {"commit": source["commit"], "tree": source["tree"]},
+        }
+    }
 output.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")

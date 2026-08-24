@@ -111,7 +111,7 @@ mod routing_measurement_schema;
 mod routing_policy;
 mod runtime;
 mod runtime_candidate_manifest;
-mod runtime_release_contract;
+pub(crate) mod runtime_release_contract;
 mod runtime_release_schema;
 mod tdd_classification;
 mod touched_loc;

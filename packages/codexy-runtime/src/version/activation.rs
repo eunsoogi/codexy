@@ -11,6 +11,13 @@ use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
+const CORE_HANDOFF_SOURCES: [&str; 4] = [
+    "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
+    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+    "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+];
+
 #[derive(Debug)]
 struct Update {
     path: PathBuf,
@@ -36,6 +43,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         bail!("repo root must be absolute: {}", repo_root.display());
     }
     super::require_semver(bootstrap_version)?;
+    let core_aware = validate_core_aware_tree(repo_root)?;
     if bootstrap_version != super::bootstrap::CANDIDATE_VERSION {
         bail!(
             "bootstrap version must be verified public candidate {}",
@@ -44,7 +52,7 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
     }
     let receipt = read_json(receipt_path, "candidate receipt")?;
     let release_tag = format!("v{bootstrap_version}");
-    let (_, candidate) = receipt::activation_from_receipt(&receipt, &release_tag)?;
+    let (_, candidate) = receipt::activation_from_receipt(&receipt, &release_tag, core_aware)?;
     let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
     let expected_manifest_sha = receipt["artifact"]["payloadManifestSha256"]
         .as_str()
@@ -68,6 +76,29 @@ fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Re
         },
     ];
     Ok(updates)
+}
+
+fn validate_core_aware_tree(repo_root: &Path) -> Result<bool> {
+    let present = CORE_HANDOFF_SOURCES
+        .iter()
+        .filter(|relative| repo_root.join(relative).is_file())
+        .count();
+    if present == CORE_HANDOFF_SOURCES.len() {
+        return Ok(true);
+    }
+    if present != 0 {
+        bail!("core-handoff source inventory is partial before activation");
+    }
+    let output = std::process::Command::new("git")
+        .args(["rev-list", "-1", "HEAD", "--"])
+        .args(CORE_HANDOFF_SOURCES)
+        .current_dir(repo_root)
+        .output()
+        .context("proving pre-#671 Git tree")?;
+    if !output.status.success() || !output.stdout.iter().all(u8::is_ascii_whitespace) {
+        bail!("core-handoff sources may both be absent only on a proven pre-#671 Git tree");
+    }
+    Ok(false)
 }
 
 fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Result<Update> {

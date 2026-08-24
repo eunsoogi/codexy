@@ -18,7 +18,7 @@ use command::run as command;
 use receipt::receipt_value;
 
 #[test]
-fn real_base_activator_authenticates_retry_and_metadata_matrix()
+fn real_pre_671_committed_tree_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
     let candidate = metadata::current_candidate_version()?;
@@ -139,7 +139,7 @@ impl Fixture {
         let activator = bin.join("activate-current-bootstrap");
         write_posix_fixture_command(
             &activator,
-            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\nbootstrap_source = pathlib.Path(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'])\nbootstrap = bootstrap_source.read_text()\nselected_version = next(\n    line.split('= ', 1)[1].strip().strip(';').strip(chr(34))\n    for line in bootstrap.splitlines()\n    if line.startswith('pub(super) const VERSION: &str = ')\n)\nruntime_release = json.loads((root / 'plugins/codexy-devtools/runtime-release.json').read_text())\nselected_tag = runtime_release['artifact']['tag']\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = selected_version\ndata['runtime']['selectedTag'] = selected_tag\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(bootstrap_source, root / 'packages/codexy-runtime/src/version/bootstrap.rs')\nPY\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
+            "#!/bin/sh\nset -eu\nroot=\nprevious=\nfor argument in \"$@\"; do\n  if [ \"$previous\" = --repo-root ]; then root=\"$argument\"; break; fi\n  previous=\"$argument\"\ndone\ntest -n \"$root\"\npython3 - \"$root\" <<'PY'\nimport json\nimport os\nimport pathlib\nimport shutil\nimport sys\nroot = pathlib.Path(sys.argv[1])\ncontract = root / '.agents/plugins/release-publish-contract.json'\nbootstrap_source = pathlib.Path(os.environ['CODEXY_TEST_BOOTSTRAP_SOURCE'])\nbootstrap = bootstrap_source.read_text()\nselected_version = next(\n    line.split('= ', 1)[1].strip().strip(';').strip(chr(34))\n    for line in bootstrap.splitlines()\n    if line.startswith('pub(super) const VERSION: &str = ')\n)\nruntime_release = json.loads((root / 'plugins/codexy-devtools/runtime-release.json').read_text())\nselected_tag = runtime_release['artifact']['tag']\ndata = json.loads(contract.read_text())\ndata['bootstrap']['selectedVersion'] = selected_version\ndata['runtime']['selectedTag'] = selected_tag\ncontract.write_text(json.dumps(data, indent=2) + '\\n')\nshutil.copyfile(bootstrap_source, root / 'packages/codexy-runtime/src/version/bootstrap.rs')\nPY\nif ! test -d \"$root/.git\"; then\n  git -C \"$root\" init -b main >/dev/null\n  git -C \"$root\" config user.name test\n  git -C \"$root\" config user.email test@example.com\n  git -C \"$root\" add .\n  git -C \"$root\" commit -m pre-671-archive >/dev/null\nfi\nexec \"$CODEXY_TEST_ACTIVATE_RUNTIME_BINARY\" \"$@\"\n",
         )?;
         let command_trace = temp.path().join("command-trace");
         write_posix_fixture_command(

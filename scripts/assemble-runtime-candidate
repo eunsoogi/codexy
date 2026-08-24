@@ -11,17 +11,27 @@ rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-cand
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
 mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
+python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
+
+core_sources="plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
+core_count=0
+for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
+case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *) echo "core-handoff source inventory is partial" >&2; exit 1 ;; esac
 for platform in darwin-arm64 linux-x86_64; do
   for server in lsp codegraph; do
     chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
   done
+  if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
 done
 
-SOURCE_COMMIT="$SOURCE_COMMIT" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" ROOT="$root" python3 - <<'PY'
+SOURCE_TREE="$(git rev-parse HEAD^{tree})"
+SOURCE_COMMIT="$SOURCE_COMMIT" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" ROOT="$root" python3 - <<'PY'
 import hashlib, json, os
 
 root = os.environ["ROOT"]
 platforms = {}
+handoff = {}
+core_aware = os.environ["CORE_AWARE"] == "1"
 for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
     inventory = {}
     for server in ("lsp", "codegraph"):
@@ -30,13 +40,36 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
         data = open(f"{root}/{path}", "rb").read()
         inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
     platforms[platform] = inventory
+    if core_aware:
+        extension = "exe" if platform == "windows-x86_64" else "bin"
+        path = f"runtime/codexy-handoff-validate-{platform}.{extension}"
+        data = open(f"{root}/{path}", "rb").read()
+        handoff[platform] = {
+            "path": path,
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "kind": {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}[platform],
+        }
+source = {"repository": "https://github.com/eunsoogi/codexy", "commit": os.environ["SOURCE_COMMIT"]}
+if core_aware:
+    source["tree"] = os.environ["SOURCE_TREE"]
+    handoff_manifest = {"schema": "codexy.handoff-runtime.v1", "version": 1, "source": {"commit": source["commit"], "tree": source["tree"]}, "platforms": handoff}
+    handoff_bytes = json.dumps(handoff_manifest, sort_keys=True, separators=(",", ":")).encode()
+    open(f"{root}/handoff-runtime.json", "wb").write(handoff_bytes)
 candidate = {
     "schema": "codexy-runtime-candidate/v1",
-    "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": os.environ["SOURCE_COMMIT"]},
+    "source": source,
     "artifact": {"stagingRunId": int(os.environ["STAGING_RUN_ID"]), "stagingRunAttempt": int(os.environ["STAGING_RUN_ATTEMPT"])},
     "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
     "platforms": platforms,
 }
+if core_aware:
+    candidate["classes"] = {
+        "devtoolsMcp": {"platforms": platforms},
+        "coreHandoff": {
+            "manifest": {"path": "handoff-runtime.json", "sha256": hashlib.sha256(handoff_bytes).hexdigest()},
+            "platforms": handoff,
+        },
+    }
 open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
 manifest_path = f"{root}/.codex-plugin/plugin.json"
 manifest = json.load(open(manifest_path, encoding="utf-8"))
@@ -44,7 +77,9 @@ manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_6
 open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) + "\n")
 PY
 
-python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
+if test "$core_aware" = 1; then
+  python3 scripts/handoff_runtime_contract.py "$root/handoff-runtime.json" "$root"
+fi
 
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
