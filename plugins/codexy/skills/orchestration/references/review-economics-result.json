@@ -9,5 +9,5 @@
   "baseline_sha256": null,
   "provenance": null,
   "lanes": [],
-  "reason": "No external Codex task/tool receipt has authenticated observed review timing and seeded-defect outcomes for this head. This tracked template is intentionally non-circular and must fail closed; authentic reports remain external artifacts bound to an already-frozen exact head and tree."
+  "reason": "No callable verifier can independently read the original Codex task/tool record, and no platform-issued signature validator with a non-caller-controlled trust root is exposed. Capture and observed-report validation fail closed; this non-circular template retains null measurements."
 }

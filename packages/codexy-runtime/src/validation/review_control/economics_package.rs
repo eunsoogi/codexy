@@ -12,6 +12,7 @@ const PACKAGE_REL: &str = "skills/orchestration/references/review-economics";
 const CORPUS_REL: &str = "skills/orchestration/references/review-economics-corpus.json";
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(super) struct Package {
     pub(super) manifest_sha256: String,
     pub(super) baseline_sha256: String,
@@ -21,6 +22,7 @@ pub(super) struct Package {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(super) struct SeedSpec {
     pub(super) path: PathBuf,
     pub(super) sha256: String,
@@ -28,6 +30,7 @@ pub(super) struct SeedSpec {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(super) struct LaneSpec {
     pub(super) id: String,
     pub(super) kind: String,

@@ -27,11 +27,12 @@ pub fn check_review_packet(
     review_control::check_packet(plugin_root, repository_root, ledger_path, packet)
 }
 
-/// Validates one typed review-economics report against parity and profile budgets.
+/// Applies the fail-closed review-economics contract to one typed report.
 ///
 /// # Errors
 ///
-/// Returns an error for corpus drift, missing seeded-defect parity, or an exceeded profile budget.
+/// Returns an error for malformed unavailable state or whenever no independent
+/// Codex task/tool authority is exposed for an observed report.
 pub fn check_review_economics(
     plugin_root: &Path,
     repository_root: &Path,

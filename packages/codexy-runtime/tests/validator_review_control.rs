@@ -189,10 +189,10 @@ fn named_inspector_precedes_generic_child_routing_without_caller_override() -> T
 }
 
 #[test]
-fn economics_rejects_synthetic_parity_without_authenticated_observation() -> TestResult {
+fn economics_rejects_synthetic_parity_without_verifiable_observation() -> TestResult {
     let fixture = crate::support::plugin_fixture()?; let mut synthetic = review_economics::report(); review_economics::bind(&mut synthetic, fixture.root(), &git(["rev-parse", "HEAD"]));
     let output = check_economics(fixture.root(), &synthetic)?;
-    assert!(!output.status.success()); assert!(String::from_utf8_lossy(&output.stderr).contains("current head and package"));
+    assert!(!output.status.success()); assert!(String::from_utf8_lossy(&output.stderr).contains("no callable verifier"));
     let unavailable = review_economics::unavailable();
     let output = check_economics(fixture.root(), &unavailable)?;
     assert!(!output.status.success());
