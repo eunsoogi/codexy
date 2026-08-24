@@ -21,7 +21,7 @@ fn resolver_prefers_luna_before_terra_for_every_generic_route() -> TestResult {
         "no_unresolved_decision": true
     });
 
-    for operation in ["create_thread", "send_message_to_thread"] {
+    for operation in ["create_thread"] {
         for (classification, simple_predicates, models, expected) in [
             (
                 "general",
@@ -90,6 +90,43 @@ fn resolver_prefers_luna_before_terra_for_every_generic_route() -> TestResult {
             assert_route(fixture.root(), request, expected)?;
         }
     }
+
+    assert_route(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"send_message_to_thread",
+            "codex_thread_direction":"child_to_root",
+            "codex_thread_capabilities":{"models":[
+                {"model":"gpt-5.6-luna","thinking":["max"]},
+                {"model":"gpt-5.6-sol","thinking":["medium"]}
+            ]}
+        }),
+        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-sol","thinking":"medium"}),
+    )?;
+    assert_route(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"send_message_to_thread",
+            "codex_thread_direction":"parent_to_generic",
+            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-luna","thinking":["max"]}]}
+        }),
+        json!({"route":"generic","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-luna","thinking":"max"}),
+    )?;
+    assert_route(
+        fixture.root(),
+        json!({
+            "schema":"codexy.child-routing-request.v1",
+            "classification":"general",
+            "codex_thread_operation":"send_message_to_thread",
+            "codex_thread_direction":"child_to_root",
+            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-luna","thinking":["max"]}]}
+        }),
+        json!({"route":"root_or_named_specialist"}),
+    )?;
 
     assert_route(
         fixture.root(),

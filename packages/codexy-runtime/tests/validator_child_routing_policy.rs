@@ -139,9 +139,10 @@ fn resolver_binds_generic_routes_to_codex_app_thread_operations() -> TestResult 
             "classification":"simple",
             "simple_predicates": predicates,
             "codex_thread_operation":"send_message_to_thread",
-            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}
+            "codex_thread_direction":"child_to_root",
+            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-sol","thinking":["medium"]}]}
         }),
-        json!({"route":"generic","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-terra","thinking":"high"}),
+        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-sol","thinking":"medium"}),
     )?;
     assert_route(
         fixture.root(),

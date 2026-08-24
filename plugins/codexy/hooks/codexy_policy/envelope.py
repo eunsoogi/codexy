@@ -16,6 +16,8 @@ class Request:
     tool: str
     tool_input: object
     cwd: object
+    session_id: object
+    transcript_path: object
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -70,9 +72,13 @@ def evaluate(
         data["tool_name"],
         data.get("tool_input"),
         data.get("cwd"),
+        data.get("session_id"),
+        data.get("transcript_path"),
     )
     try:
         blocked = forbidden(request)
     except (OSError, TypeError, ValueError):
         return deny(event, diagnostic, "RUNTIME")
+    if isinstance(blocked, str):
+        return deny(event, diagnostic, blocked)
     return deny(event, diagnostic, "DENIED") if blocked else b""
