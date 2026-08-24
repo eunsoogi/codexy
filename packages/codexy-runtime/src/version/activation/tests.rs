@@ -1,6 +1,6 @@
 use std::fs;
 
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
 use super::{activate, apply_with, canonical, prepare};
@@ -38,6 +38,13 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
             serde_json::to_string_pretty(&canonical(receipt_value()))?
         )
         .into_bytes()
+    );
+    let activated: Value = serde_json::from_slice(&fs::read(
+        fixture.path(".agents/plugins/runtime-activation.json"),
+    )?)?;
+    assert_eq!(
+        activated["candidate"]["classes"]["coreHandoff"]["manifest"]["path"],
+        "handoff-runtime.json"
     );
     for wrapper in fixture.wrappers() {
         let wrapper = fs::read_to_string(wrapper)?;
@@ -125,6 +132,29 @@ fn mismatched_staging_run_attempt_leaves_targets_byte_identical() -> Result<()> 
     reject_activation(candidate_version(), |fixture| {
         let mut receipt = receipt_value();
         receipt["candidate"]["artifact"]["stagingRunAttempt"] = json!(2);
+        fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
+        Ok(())
+    })
+}
+
+#[test]
+fn partial_core_aware_tree_is_rejected_before_mutation() -> Result<()> {
+    reject_activation(candidate_version(), |fixture| {
+        fs::remove_file(
+            fixture.path("plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd"),
+        )?;
+        Ok(())
+    })
+}
+
+#[test]
+fn candidate_without_core_handoff_class_is_rejected_before_mutation() -> Result<()> {
+    reject_activation(candidate_version(), |fixture| {
+        let mut receipt = receipt_value();
+        receipt["candidate"]
+            .as_object_mut()
+            .context("candidate object")?
+            .remove("classes");
         fs::write(&fixture.receipt, serde_json::to_vec(&receipt)?)?;
         Ok(())
     })

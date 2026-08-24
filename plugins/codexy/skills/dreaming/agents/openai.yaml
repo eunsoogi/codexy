@@ -1,6 +1,6 @@
 interface:
   display_name: "Dreaming"
   short_description: "MUST clean up compacted Codex context before continuing."
-  default_prompt: "You MUST use $dreaming after compaction or a noisy handoff to refresh current anchors, MUST separate Remember, Fix, and Forget or demote items, and MUST prevent resolved review feedback or stale branch state from being carried forward as active work."
+  default_prompt: "You MUST use $dreaming after compaction or a noisy handoff to refresh current anchors, MUST separate Remember, Fix, and Forget or demote items, and MUST validate compaction, fresh-child, or parent-handoff capsules through the installed native authority bridge before consuming them."
 policy:
   allow_implicit_invocation: true

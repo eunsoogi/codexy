@@ -18,6 +18,9 @@ mod handoff_envelope_routing;
 #[path = "../validator_handoff_envelope_replay.rs"]
 mod handoff_envelope_replay;
 
+#[path = "../validator_handoff_runtime_bridge.rs"]
+mod handoff_runtime_bridge;
+
 #[path = "../validator_read_batch.rs"]
 mod read_batch;
 

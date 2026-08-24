@@ -17,11 +17,11 @@ component_path = (
 marketplace_path = CHECKOUT / ".agents/plugins/marketplace.json"
 components = json.loads(component_path.read_text())["components"]
 marketplace = json.loads(marketplace_path.read_text())
-runtime_platforms = list(
-    json.loads((CHECKOUT / ".agents/plugins/runtime-activation.json").read_text())[
-        "candidate"
-    ]["platforms"]
-)
+activation = json.loads(
+    (CHECKOUT / ".agents/plugins/runtime-activation.json").read_text()
+)["candidate"]
+runtime_platforms = list(activation["platforms"])
+core_handoff = activation.get("classes", {}).get("coreHandoff")
 inventory = [
     (item["id"], item["plugin"], item["asset"]["packageRoot"]) for item in components
 ]
@@ -166,11 +166,30 @@ for _, plugin, package_root in inventory:
             ):
                 reject(f"unsafe archive content: {name}")
     if plugin == "codexy-devtools":
+        if core_handoff:
+            handoff_name = f"{prefix}handoff-runtime.json"
+            handoff = json.loads(entries.get(handoff_name, b"null"))
+            if (
+                handoff.get("source")
+                != {
+                    "commit": activation["source"]["commit"],
+                    "tree": activation["source"]["tree"],
+                }
+                or hashlib.sha256(entries.get(handoff_name, b"")).hexdigest()
+                != core_handoff["manifest"]["sha256"]
+                or handoff.get("platforms") != core_handoff["platforms"]
+            ):
+                reject("core-handoff manifest differs from activated class identity")
+            expected_entries.add(handoff_name)
         for platform in runtime_platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):
                 expected_entries.add(
                     f"{prefix}runtime/codexy-mcp-{server}-{platform}.{extension}"
+                )
+            if core_handoff:
+                expected_entries.add(
+                    f"{prefix}runtime/codexy-handoff-validate-{platform}.{extension}"
                 )
         expected_entries.add(f"{prefix}mcp/codexy-mcp-devtools.exe")
         expected_directories.add(f"{package_root}/runtime")

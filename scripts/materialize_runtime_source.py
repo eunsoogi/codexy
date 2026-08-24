@@ -38,6 +38,7 @@ if public_release:
         raise SystemExit("public release receipt does not match selected identity")
 
     inventory = {}
+    handoff_inventory = {}
     for path in sorted((staged / "runtime").iterdir()):
         if not path.is_file():
             raise SystemExit(
@@ -47,6 +48,27 @@ if public_release:
             r"codexy-mcp-(lsp|codegraph)-(darwin-arm64|linux-x86_64|windows-x86_64)\.(bin|exe)",
             path.name,
         )
+        handoff_match = re.fullmatch(
+            r"codexy-handoff-validate-(darwin-arm64|linux-x86_64|windows-x86_64)\.(bin|exe)",
+            path.name,
+        )
+        if handoff_match:
+            platform, extension = handoff_match.groups()
+            expected_extension = "exe" if platform == "windows-x86_64" else "bin"
+            if extension != expected_extension or platform in handoff_inventory:
+                raise SystemExit(
+                    f"public core-handoff inventory is invalid: {path.name}"
+                )
+            handoff_inventory[platform] = {
+                "path": f"runtime/{path.name}",
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                "kind": {
+                    "darwin-arm64": "mach-o",
+                    "linux-x86_64": "elf",
+                    "windows-x86_64": "pe",
+                }[platform],
+            }
+            continue
         if not match:
             raise SystemExit(
                 f"public runtime inventory contains an unexpected file: {path.name}"
@@ -72,11 +94,36 @@ if public_release:
         raise SystemExit(
             "public runtime inventory must contain lsp and codegraph per platform"
         )
+    handoff_manifest = staged / "handoff-runtime.json"
+    core_aware = bool(handoff_inventory) or handoff_manifest.exists()
+    if core_aware and (
+        set(handoff_inventory) != set(inventory) or not handoff_manifest.is_file()
+    ):
+        raise SystemExit(
+            "public runtime inventory must contain core-handoff per platform"
+        )
     candidate = {
         "source": {"commit": os.environ["STAGING_SOURCE_COMMIT"]},
         "artifact": {"stagingRunId": staging_run_id},
         "platforms": inventory,
     }
+    if core_aware:
+        handoff = json.loads(handoff_manifest.read_text())
+        if handoff.get("platforms") != handoff_inventory:
+            raise SystemExit(
+                "public core-handoff manifest differs from runtime inventory"
+            )
+        candidate["source"]["tree"] = handoff.get("source", {}).get("tree")
+        candidate["classes"] = {
+            "devtoolsMcp": {"platforms": inventory},
+            "coreHandoff": {
+                "manifest": {
+                    "path": "handoff-runtime.json",
+                    "sha256": hashlib.sha256(handoff_manifest.read_bytes()).hexdigest(),
+                },
+                "platforms": handoff_inventory,
+            },
+        }
 else:
     record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
     candidate = record["candidate"]
@@ -106,6 +153,26 @@ for platform, inventory in candidate["platforms"].items():
         path = staged / binary["path"]
         if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
             raise SystemExit(f"selected runtime digest mismatch: {binary['path']}")
+classes = candidate.get("classes", {})
+if (
+    classes
+    and classes.get("devtoolsMcp", {}).get("platforms") != candidate["platforms"]
+):
+    raise SystemExit("selected devtools class differs from runtime inventory")
+core = classes.get("coreHandoff", {})
+manifest_identity = core.get("manifest", {})
+manifest_path = staged / manifest_identity.get("path", "")
+if core and (
+    manifest_identity.get("path") != "handoff-runtime.json"
+    or not manifest_path.is_file()
+    or hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    != manifest_identity.get("sha256")
+):
+    raise SystemExit("selected core-handoff manifest identity mismatch")
+for binary in core.get("platforms", {}).values():
+    path = staged / binary["path"]
+    if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
+        raise SystemExit(f"selected core-handoff digest mismatch: {binary['path']}")
 dispatcher = staged / "mcp/codexy-mcp-devtools.exe"
 if not dispatcher.is_file() and not legacy_dispatcher_free:
     raise SystemExit(f"selected Windows dispatcher missing: {dispatcher}")
@@ -114,6 +181,10 @@ for server in ("lsp", "codegraph"):
     if legacy.exists() and not legacy_dispatcher_free:
         raise SystemExit(f"duplicate Windows server entrypoint remains: {legacy}")
 protected = {}
+if (staged / "handoff-runtime.json").is_file():
+    protected["handoff-runtime.json"] = hashlib.sha256(
+        (staged / "handoff-runtime.json").read_bytes()
+    ).hexdigest()
 for path in sorted((staged / "runtime").rglob("*")):
     if path.is_file() and not (
         legacy_dispatcher_free and path.name.endswith("-windows-x86_64.exe")

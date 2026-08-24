@@ -51,6 +51,8 @@ jobs:
           receipt=staging/runtime-staging-receipt.json
           test "$(jq -r .schema "$receipt")" = codexy-runtime-candidate-receipt/v1
           test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
+          jq -e '.candidate.source.tree | test("^[0-9a-f]{40}$")' "$receipt" >/dev/null
+          test "$(jq -r .candidate.classes.coreHandoff.manifest.path "$receipt")" = handoff-runtime.json
           test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
@@ -59,6 +61,11 @@ jobs:
           jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
           cmp receipt-provenance.json staged-provenance.json
           sha256sum staging/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 "$receipt")"
+          mkdir -p staged-plugin
+          tar -xzf staging/codexy-marketplace-plugin.tar.gz -C staged-plugin
+          core=staged-plugin/plugins/codexy-devtools
+          scripts/handoff_runtime_contract.py "$core/handoff-runtime.json" "$core"
+          sha256sum "$core/handoff-runtime.json" | grep "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
           gh attestation verify staging/codexy-marketplace-plugin.tar.gz --repo "$GITHUB_REPOSITORY"
       - name: Prepare one version-selection branch
         env:

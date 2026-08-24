@@ -16,6 +16,11 @@ tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 mkdir "$tmp_dir/extracted"
 tar --no-same-owner --no-same-permissions -xzf "$runtime_archive" -C "$tmp_dir/extracted"
+handoff_manifest="$tmp_dir/extracted/plugins/codexy-devtools/handoff-runtime.json"
+if test -f "$handoff_manifest"; then
+	python3 "$script_dir/handoff_runtime_contract.py" \
+		"$handoff_manifest" "$tmp_dir/extracted/plugins/codexy-devtools"
+fi
 
 ROOT="$root" EXTRACTED="$tmp_dir/extracted" OUTPUT="$bundle_archive" RELEASE_TAG="$RELEASE_TAG" \
 	COMPONENT_MANIFEST="$component_manifest" MARKETPLACE="$marketplace" python3 - <<'PY'

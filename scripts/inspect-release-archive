@@ -199,3 +199,14 @@ PY
     echo "${server} native smoke skipped: no executable $platform runtime"
   fi
 done
+
+bridge="$extract_root/plugins/codexy-devtools/runtime/codexy-handoff-validate-$platform.bin"
+if [ -x "$bridge" ]; then
+  set +e
+  "$bridge" --capsule "$tmp_dir/missing-capsule.json" >/dev/null 2>&1
+  bridge_status=$?
+  set -e
+  [ "$bridge_status" -eq 2 ] || { echo "native handoff smoke returned $bridge_status" >&2; exit 1; }
+else
+  echo "handoff native smoke skipped: no executable $platform runtime"
+fi

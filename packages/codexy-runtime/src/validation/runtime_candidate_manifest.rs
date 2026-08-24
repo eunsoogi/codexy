@@ -39,15 +39,27 @@ pub(super) fn check(
     let candidate: Value = serde_json::from_str(&text)
         .with_context(|| format!("invalid JSON in {}", display_relative(&path)))?;
     let candidate = object(&candidate, "candidate receipt", &path)?;
-    exact_keys(
-        candidate,
-        &["schema", "source", "artifact", "compatibility", "platforms"],
-        &path,
-    )?;
+    let core_aware = release.contains_key("classes") || candidate.contains_key("classes");
+    let fields = if core_aware {
+        &[
+            "schema",
+            "source",
+            "artifact",
+            "compatibility",
+            "platforms",
+            "classes",
+        ][..]
+    } else {
+        &["schema", "source", "artifact", "compatibility", "platforms"][..]
+    };
+    exact_keys(candidate, fields, &path)?;
     exact(string(candidate, "schema", &path)?, SCHEMA, "schema", &path)?;
     same(candidate, release, "source", &path)?;
     same(candidate, release, "compatibility", &path)?;
     same(candidate, release, "platforms", &path)?;
+    if core_aware {
+        same(candidate, release, "classes", &path)?;
+    }
     let artifact = object_field(candidate, "artifact", &path)?;
     exact_keys(artifact, &["stagingRunId", "stagingRunAttempt"], &path)?;
     for field in ["stagingRunId", "stagingRunAttempt"] {

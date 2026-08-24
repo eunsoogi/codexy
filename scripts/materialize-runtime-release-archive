@@ -90,7 +90,7 @@ legacy_dispatcher_free = os.environ["LEGACY_DISPATCHER_FREE"] == "1"
 
 def excluded(relative: Path) -> bool:
     return relative.parts[0] == "runtime" or relative.name in {
-        "runtime-release.json", "runtime-candidate.json",
+        "runtime-release.json", "runtime-candidate.json", "handoff-runtime.json",
     } or (
     relative == Path("mcp/codexy-mcp-devtools.exe")
     )

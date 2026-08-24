@@ -1,3 +1,4 @@
+pub(crate) mod core;
 mod legacy;
 
 use std::path::Path;
@@ -29,8 +30,11 @@ pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
     let path = plugin_root.join("runtime-release.json");
     let contract = load_json(&path)?;
     let root = object(&contract, "root", &path)?;
-    exact_keys(
-        root,
+    exact(string(root, "schema", &path)?, SCHEMA, "schema", &path)?;
+    let state = string(root, "state", &path)?;
+    let core_aware =
+        root.contains_key("classes") || object_field(root, "source", &path)?.contains_key("tree");
+    let fields = if state == "candidate-proven" && core_aware {
         &[
             "schema",
             "state",
@@ -38,12 +42,26 @@ pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
             "artifact",
             "compatibility",
             "platforms",
-        ],
+            "classes",
+        ][..]
+    } else {
+        &[
+            "schema",
+            "state",
+            "source",
+            "artifact",
+            "compatibility",
+            "platforms",
+        ][..]
+    };
+    exact_keys(root, fields, &path)?;
+    core::check_source(
+        object_field(root, "source", &path)?,
+        state,
+        REPOSITORY,
+        LEGACY_COMMIT,
         &path,
     )?;
-    exact(string(root, "schema", &path)?, SCHEMA, "schema", &path)?;
-    let state = string(root, "state", &path)?;
-    check_source(object_field(root, "source", &path)?, state, &path)?;
     check_artifact(object_field(root, "artifact", &path)?, state, &path)?;
     check_compatibility(object_field(root, "compatibility", &path)?, &path)?;
     check_platforms(
@@ -52,33 +70,17 @@ pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
         state,
         &path,
     )?;
+    if state == "candidate-proven" && core_aware {
+        core::check(
+            object_field(root, "classes", &path)?,
+            object_field(root, "source", &path)?,
+            object_field(root, "platforms", &path)?,
+            &path,
+        )?;
+        core::check_manifest(plugin_root, root, &path)?;
+    }
     if state == "candidate-proven" {
         crate::validation::runtime_candidate_manifest::check(plugin_root, root, &path)?;
-    }
-    Ok(())
-}
-
-fn check_source(source: &Map<String, Value>, state: &str, path: &Path) -> Result<()> {
-    exact_keys(source, &["repository", "commit"], path)?;
-    exact(
-        string(source, "repository", path)?,
-        REPOSITORY,
-        "source.repository",
-        path,
-    )?;
-    let commit = string(source, "commit", path)?;
-    if commit.len() != 40
-        || !commit
-            .bytes()
-            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
-    {
-        bail!(
-            "{} source.commit must be a lowercase 40-character commit",
-            display_relative(path)
-        );
-    }
-    if state == "legacy-public" {
-        exact(commit, LEGACY_COMMIT, "source.commit", path)?;
     }
     Ok(())
 }

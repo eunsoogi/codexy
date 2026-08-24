@@ -18,6 +18,31 @@ This skill is a thinking and handoff discipline. It does not write durable
 memory by itself, close review threads, update branches, or replace the workflow
 skill that owns the lane.
 
+## Installed capsule consumers
+
+Compaction resume, fresh-child continuation, and parent handoff MUST use the
+installed `scripts/resumable-context-capsule.sh` or
+`scripts/resumable-context-capsule.cmd` launcher before consuming a capsule. The
+launcher MUST preserve the resolver and native bridge exit status.
+
+Each capsule MUST declare exactly one directional consumer:
+
+- `compaction` resumes the same child task subject;
+- `fresh-child` moves from the parent task to the named child task subject;
+- `parent-handoff` moves from the child task to the named parent task subject.
+
+Consumers MUST NOT relabel one another. The outer consumer, subject, source
+task, and target task MUST bind to the inner #603 event kind, lane, subject,
+`parent_task`, and `child_task`.
+
+The installed Python resolver owns only artifact discovery and authentication.
+It MUST discover the permitted sibling `codexy-devtools` runtime when
+`--runtime-root` is absent, validate the closed generated manifest, selected
+platform path, digest, executable kind, and safe ancestors, then invoke only
+that selected bridge. It MUST NOT reconstruct `HandoffAuthority`, replay,
+subject binding, or role binding. Those decisions remain in the native bridge
+over the frozen #603 typed authority.
+
 ## Use When
 
 - A Codex thread resumes from compacted context, a summarized handoff, or a

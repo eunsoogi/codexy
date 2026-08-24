@@ -3,6 +3,7 @@
 
 import json
 import sys
+from importlib import import_module
 from pathlib import Path
 
 from release_archive_contract_shell import wrapper_declarations
@@ -94,9 +95,7 @@ def batch_document(root: Path) -> dict:
     try:
         document = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as error:
-        raise SystemExit(
-            "candidate source projection batch input is invalid"
-        ) from error
+        raise SystemExit("candidate projection batch input is invalid") from error
     if not isinstance(document, dict):
         raise SystemExit("candidate source projection batch input is invalid")
     if document.get("resetPaths") != list(BATCH_RESET_PATHS):
@@ -131,9 +130,7 @@ def batch_snapshots(root: Path) -> dict[str, bytes]:
     for relative in BATCH_RESET_PATHS:
         path = root / relative
         if not path.is_file():
-            raise SystemExit(
-                "candidate source projection batch reset material is missing"
-            )
+            raise SystemExit("candidate batch reset material is missing")
         snapshots[relative] = path.read_bytes()
     return snapshots
 
@@ -153,6 +150,13 @@ def candidate_assembly(root: Path) -> None:
         )
 
 
+def print_handoff(root: Path) -> None:
+    validate = import_module("handoff_runtime_contract").validate
+    manifest = validate(root / "handoff-runtime.json", root)
+    for platform in manifest["platforms"].values():
+        print(platform["path"])
+
+
 def main() -> None:
     if len(sys.argv) != 3:
         raise SystemExit("usage: inspect-release-archive-contract.py MODE PLUGIN_ROOT")
@@ -164,8 +168,7 @@ def main() -> None:
         manifest = json.loads((root / ".codex-plugin/plugin.json").read_text())
         platforms = manifest.get("supportedPlatforms")
         full = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
-        legacy = ["darwin-arm64", "linux-x86_64"]
-        if platforms not in (full, legacy):
+        if platforms not in (full, PUBLIC_PLATFORMS):
             raise SystemExit(
                 "public release archive must declare supported runtime platforms"
             )
@@ -191,7 +194,7 @@ def main() -> None:
                 raise SystemExit(
                     f"public Windows package requires the thin {server} delegate"
                 )
-        if platforms == legacy:
+        if platforms == PUBLIC_PLATFORMS:
             if (
                 dispatcher.exists()
                 or any((root / "runtime").glob("*-windows-x86_64.exe"))
@@ -208,6 +211,8 @@ def main() -> None:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):
                 print(f"runtime/codexy-mcp-{server}-{platform}.{extension}")
+        if (root / "handoff-runtime.json").is_file():
+            print_handoff(root)
         return
     if mode in {"source-projection", "source-projection-batch", "candidate-assembly"}:
         {
@@ -235,6 +240,8 @@ def main() -> None:
                 if state == "candidate-proven" and artifact.get("path") != path:
                     raise SystemExit("runtime release artifact contract is invalid")
                 print(path)
+        if state == "candidate-proven" and "classes" in release:
+            print_handoff(root)
         return
     raise SystemExit("unknown archive mode")
 

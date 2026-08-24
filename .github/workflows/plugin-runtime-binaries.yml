@@ -39,6 +39,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Prove exact-head native handoff bridge
+        run: |
+          cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --test suite_orchestration handoff_runtime_bridge -- --nocapture
+          uv run --locked --directory packages/getcodexy python -m unittest tests.test_resumable_context_capsule -v
       - name: Download and verify selected immutable bytes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,6 +114,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Prove exact-head PE bridge, installed CMD, and reparse negatives
+        shell: pwsh
+        run: |
+          cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --test suite_orchestration handoff_runtime_bridge -- --nocapture
+          if ($LASTEXITCODE -ne 0) { throw "native bridge contract failed" }
+          uv run --locked --directory packages/getcodexy python -m unittest tests.test_resumable_context_capsule -v
+          if ($LASTEXITCODE -ne 0) { throw "installed CMD adversarial contract failed" }
       - name: Verify immutable native Windows candidate bytes
         shell: pwsh
         env:

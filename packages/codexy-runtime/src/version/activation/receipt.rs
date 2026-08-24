@@ -22,6 +22,7 @@ const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 pub(super) fn activation_from_receipt(
     receipt: &Value,
     release_tag: &str,
+    core_aware: bool,
 ) -> Result<(Value, Value)> {
     let root = object(receipt, "candidate receipt")?;
     exact_keys(
@@ -38,7 +39,7 @@ pub(super) fn activation_from_receipt(
     let artifact = object_field(root, "artifact", "candidate receipt")?;
     let provenance = object_field(root, "provenance", "candidate receipt")?;
     validate_provenance(provenance)?;
-    validate_candidate(candidate, provenance)?;
+    validate_candidate(candidate, provenance, core_aware)?;
     validate_artifact(artifact)?;
     let source = object_field(candidate, "source", "candidate")?;
     let compatibility = object_field(candidate, "compatibility", "candidate")?;
@@ -54,7 +55,7 @@ pub(super) fn activation_from_receipt(
             "candidate artifact proof",
         )?,
     });
-    let release = json!({
+    let mut release = json!({
         "schema": RELEASE_SCHEMA,
         "state": "candidate-proven",
         "source": source,
@@ -62,6 +63,9 @@ pub(super) fn activation_from_receipt(
         "compatibility": compatibility,
         "platforms": release_platforms,
     });
+    if core_aware {
+        release["classes"] = candidate["classes"].clone();
+    }
     Ok((release, Value::Object(candidate.clone())))
 }
 
@@ -86,25 +90,42 @@ fn release_platforms(platforms: &Map<String, Value>) -> Result<Value> {
 fn validate_candidate(
     candidate: &Map<String, Value>,
     provenance: &Map<String, Value>,
+    core_aware: bool,
 ) -> Result<()> {
-    exact_keys(
-        candidate,
-        &["schema", "source", "artifact", "compatibility", "platforms"],
-        "candidate",
-    )?;
+    let fields = if core_aware {
+        &[
+            "schema",
+            "source",
+            "artifact",
+            "compatibility",
+            "platforms",
+            "classes",
+        ][..]
+    } else {
+        &["schema", "source", "artifact", "compatibility", "platforms"][..]
+    };
+    exact_keys(candidate, fields, "candidate")?;
     exact(
         string(candidate, "schema", "candidate")?,
         CANDIDATE_SCHEMA,
         "candidate schema",
     )?;
     let source = object_field(candidate, "source", "candidate")?;
-    exact_keys(source, &["repository", "commit"], "candidate source")?;
+    let source_fields = if core_aware {
+        &["repository", "commit", "tree"][..]
+    } else {
+        &["repository", "commit"][..]
+    };
+    exact_keys(source, source_fields, "candidate source")?;
     exact(
         string(source, "repository", "candidate source")?,
         REPOSITORY,
         "candidate repository",
     )?;
     commit(string(source, "commit", "candidate source")?)?;
+    if core_aware {
+        commit(string(source, "tree", "candidate source")?)?;
+    }
     let artifact = object_field(candidate, "artifact", "candidate")?;
     exact_keys(
         artifact,
@@ -159,6 +180,15 @@ fn validate_candidate(
             )?;
             digest(string(binary, "sha256", "candidate binary")?)?;
         }
+    }
+    if core_aware {
+        let classes = object_field(candidate, "classes", "candidate")?;
+        crate::validation::runtime_release_contract::core::check(
+            classes,
+            source,
+            platforms,
+            std::path::Path::new("candidate"),
+        )?;
     }
     Ok(())
 }
