@@ -172,6 +172,39 @@ flowchart TD
     review --> finish["PR, merge, or explicit handoff"]
 ```
 
+### Realtime voice mode
+
+The `realtime-voice-orchestration` skill adds a voice-specific routing and
+presentation layer alongside normal `$orchestration`. Normal orchestration
+remains the canonical authority for ownership, dispatch, child coordination,
+evidence, and thread state. The supported flow is:
+
+`voice input -> owning orchestrator/parent -> parent-managed child coordination -> parent result -> voice summary`
+
+For questions such as “is the work going well?” or “what is happening now?”, the
+skill resolves conversational references and available current-screen context
+against authoritative active project state. A clear parent receives the request;
+exactly one relevant standalone active thread can receive it directly; multiple
+plausible projects get one concise clarification; and no active owner gets a
+conversational response or an offer to start a task. The voice layer never
+steers a parent's children directly.
+
+| Observed context                                             | Voice route                                       | Boundary                            |
+| ------------------------------------------------------------ | ------------------------------------------------- | ----------------------------------- |
+| A clear owning orchestrator/parent exists                    | Route to that parent only                         | The parent coordinates its children |
+| Exactly one relevant standalone active project thread exists | Route directly to that thread                     | Do not invent an orchestrator       |
+| More than one project workflow remains plausible             | Ask one concise clarification                     | Do not choose by guess              |
+| No active work owner exists                                  | Respond conversationally or offer to start a task | Do not route to unrelated threads   |
+
+Voice updates wait for confirmed authoritative dispatch, use
+bounded/event-driven monitoring, and distinguish in-progress work from terminal
+success, failure, cancellation, or blocked states. An interruption yields the
+spoken response without duplicating dispatch or cancelling durable work.
+Summaries omit raw logs and opaque identifiers, and keep local verification,
+PR/merge, and public release phases separate. If current-screen or native
+thread-tool capability is unavailable, the limit is stated rather than guessed
+or patched locally; #611 remains an external host dependency.
+
 ### Supported subagents
 
 The core plugin packages seven specialists. Installing `codexy-github` adds
