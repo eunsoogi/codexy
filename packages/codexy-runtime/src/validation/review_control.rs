@@ -31,7 +31,19 @@ pub(super) fn checked_package_child(root: &Path, relative: &str) -> Result<PathB
     {
         bail!("review economics package path is unsafe");
     }
-    Ok(root.join(relative.replace('\\', "/")))
+    let canonical_root = root.canonicalize().map_err(|error| {
+        anyhow::anyhow!("review economics package root is unavailable: {error}")
+    })?;
+    let canonical_child = canonical_root
+        .join(relative.replace('\\', "/"))
+        .canonicalize()
+        .map_err(|error| {
+            anyhow::anyhow!("review economics package path is unavailable: {error}")
+        })?;
+    if !canonical_child.starts_with(&canonical_root) {
+        bail!("review economics package path escapes its root");
+    }
+    Ok(canonical_child)
 }
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {

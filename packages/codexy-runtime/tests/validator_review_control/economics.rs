@@ -61,6 +61,37 @@ fn package_rejects_cross_platform_unsafe_lane_paths() -> TestResult {
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn package_rejects_in_package_symlink_that_escapes_root() -> TestResult {
+    use std::os::unix::fs::symlink;
+
+    let fixture = crate::support::plugin_fixture_with_mutable_files(&[Path::new(MANIFEST)])?;
+    let outside = tempfile::tempdir()?;
+    fs::copy(
+        fixture.root().join(TINY_INPUT),
+        outside.path().join("tiny.json"),
+    )?;
+    symlink(
+        outside.path(),
+        fixture.root().join(PACKAGE).join("lanes/escape"),
+    )?;
+    let manifest_path = fixture.root().join(MANIFEST);
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path)?)?;
+    let tiny = manifest["lanes"]
+        .as_array_mut()
+        .and_then(|lanes| lanes.iter_mut().find(|lane| lane["id"] == "tiny"))
+        .ok_or("tiny manifest lane")?;
+    tiny["path"] = json!("lanes/escape/tiny.json");
+    fs::write(&manifest_path, serde_json::to_vec(&manifest)?)?;
+
+    let output = super::check_economics(fixture.root(), &unavailable())?;
+    assert!(!output.status.success(), "package unexpectedly accepted link escape");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("escapes"), "{stderr}");
+    Ok(())
+}
+
 #[test]
 fn package_rejects_malformed_and_cross_document_lane_paths() -> TestResult {
     let malformed = package_check(None, None, false)?;
