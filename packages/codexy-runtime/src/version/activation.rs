@@ -111,9 +111,11 @@ fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Res
     let current_tag = current_release["artifact"]["tag"]
         .as_str()
         .context("selected runtime release lost artifact tag")?;
-    if contract["bootstrap"]["selectedVersion"] != super::bootstrap::VERSION
-        || contract["runtime"]["selectedTag"] != current_tag
-    {
+    let selected_bootstrap_matches = contract["bootstrap"]["selectedVersion"]
+        .as_str()
+        .is_some_and(|selected| selected == super::bootstrap::VERSION || selected == version);
+    let selected_runtime_matches = contract["runtime"]["selectedTag"].as_str() == Some(current_tag);
+    if !selected_bootstrap_matches || !selected_runtime_matches {
         bail!("release publish contract does not match the selected runtime identity");
     }
     contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
