@@ -58,6 +58,10 @@ RUN_OPTIONS = {"text": True, "capture_output": True, "check": False}
 
 class ResumableContextCapsuleTests(unittest.TestCase):
     def setUp(self) -> None:
+        subprocess.check_call(
+            "cargo build --locked --bin codexy-handoff-validate".split(),
+            cwd=ROOT / "packages/codexy-runtime",
+        )
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         root = Path(self.temporary.name).resolve()
@@ -70,10 +74,10 @@ class ResumableContextCapsuleTests(unittest.TestCase):
     def test_component_sources_are_installed_and_integrity_pinned(self) -> None:
         missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
         self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
-        path = (
+        manifest_path = (
             ROOT / "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
         )
-        manifest = json.loads(path.read_text())
+        manifest = json.loads(manifest_path.read_text())
         core = next(item for item in manifest["components"] if item["id"] == "core")
         pinned = COMPONENT_FILES["codexy"]
         for inventory in (core["asset"]["requiredPaths"], pinned):
@@ -102,7 +106,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
     def test_selected_platform_path_digest_and_kind_fail_independently(self) -> None:
         manifest = self._install_runtime()
         capsule = self._capsule("fresh-child", self.plugins.parent / "replay.json")
-        platform_id = current_platform()
+        platform_id = f"{SYSTEMS[platform.system()]}-{MACHINES[platform.machine()]}"
         mutations = {
             "path": lambda item: item.update(path="runtime/unauthorized.bin"),
             "digest": lambda item: item.update(sha256="0" * 64),
@@ -215,10 +219,6 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             env=environment,
             **RUN_OPTIONS,
         )
-
-
-def current_platform() -> str:
-    return f"{SYSTEMS[platform.system()]}-{MACHINES[platform.machine()]}"
 
 
 def link_directory(link: Path, target: Path) -> None:
