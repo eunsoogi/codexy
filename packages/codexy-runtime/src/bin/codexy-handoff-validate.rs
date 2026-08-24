@@ -1,14 +1,19 @@
 use std::{
-    fs,
+    fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context as _, Result, bail, ensure};
 use codexy_runtime::validation::{
-    HandoffAuthority, IssuePrIdentity, StableHandoff, validate_handoff_batch,
+    HandoffAuthority, HandoffVolatile, IssuePrIdentity, StableHandoff, validate_handoff_batch,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+#[cfg(unix)]
+use std::os::fd::AsRawFd as _;
+#[cfg(windows)]
+use std::{os::windows::fs::OpenOptionsExt as _, thread, time::Duration};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -19,7 +24,6 @@ struct Capsule {
     source_task: String,
     target_task: String,
     replay_path: PathBuf,
-    authority: Authority,
     envelope: String,
 }
 
@@ -34,6 +38,7 @@ enum Consumer {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct Authority {
+    schema: String,
     current_head: String,
     owner: String,
     worktree: String,
@@ -62,7 +67,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let path = capsule_argument()?;
+    let (path, authority_path) = arguments()?;
     let capsule: Capsule = serde_json::from_slice(
         &fs::read(&path).with_context(|| format!("reading capsule: {}", path.display()))?,
     )
@@ -71,18 +76,28 @@ fn run() -> Result<()> {
         capsule.schema == "codexy.resumable-context-capsule.v1",
         "capsule schema"
     );
-    let authority = HandoffAuthority::new(
-        &capsule.authority.current_head,
-        &capsule.authority.owner,
-        &capsule.authority.worktree,
-        IssuePrIdentity {
-            issue: capsule.authority.issue,
-            pr: capsule.authority.pr,
-        },
-        &capsule.authority.branch,
-        &capsule.authority.base,
+    let trusted: Authority = serde_json::from_slice(
+        &fs::read(&authority_path)
+            .with_context(|| format!("reading authority: {}", authority_path.display()))?,
     )
-    .with_stable(capsule.authority.stable.clone());
+    .context("invalid authority JSON")?;
+    ensure!(
+        trusted.schema == "codexy.handoff-authority.v1",
+        "authority schema"
+    );
+    let authority = HandoffAuthority::new(
+        &trusted.current_head,
+        &trusted.owner,
+        &trusted.worktree,
+        IssuePrIdentity {
+            issue: trusted.issue,
+            pr: trusted.pr,
+        },
+        &trusted.branch,
+        &trusted.base,
+    )
+    .with_stable(trusted.stable);
+    let _lock = lock_replay(&capsule.replay_path)?;
     let mut replay = read_replay(&capsule.replay_path)?;
     replay.push(capsule.envelope.clone());
     let texts = replay.iter().map(String::as_str).collect::<Vec<_>>();
@@ -105,18 +120,77 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn capsule_argument() -> Result<PathBuf> {
+fn arguments() -> Result<(PathBuf, PathBuf)> {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
-    if arguments.len() != 2 || arguments[0] != "--capsule" {
-        bail!("usage: codexy-handoff-validate --capsule PATH");
+    if arguments.len() != 4 {
+        bail!("usage: codexy-handoff-validate --capsule PATH --authority PATH");
     }
-    Ok(PathBuf::from(&arguments[1]))
+    let mut capsule = None;
+    let mut authority = None;
+    for pair in arguments.chunks_exact(2) {
+        match pair[0].to_str() {
+            Some("--capsule") if capsule.is_none() => capsule = Some(PathBuf::from(&pair[1])),
+            Some("--authority") if authority.is_none() => {
+                authority = Some(PathBuf::from(&pair[1]));
+            }
+            _ => bail!("usage: codexy-handoff-validate --capsule PATH --authority PATH"),
+        }
+    }
+    Ok((
+        capsule.context("missing --capsule")?,
+        authority.context("missing --authority")?,
+    ))
 }
 
-fn bind_direction(
-    capsule: &Capsule,
-    volatile: &codexy_runtime::validation::HandoffVolatile,
-) -> Result<()> {
+fn lock_replay(path: &Path) -> Result<File> {
+    let name = path.file_name().context("replay path has no file name")?;
+    let lock_path = path.with_file_name(format!("{}.lock", name.to_string_lossy()));
+    let lock = open_lock(&lock_path)?;
+    ensure!(
+        fs::symlink_metadata(&lock_path)?.file_type().is_file(),
+        "replay lock must be a regular file"
+    );
+    Ok(lock)
+}
+
+fn lock_options() -> OpenOptions {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    options
+}
+
+#[cfg(unix)]
+fn open_lock(path: &Path) -> Result<File> {
+    let lock = lock_options()
+        .open(path)
+        .with_context(|| format!("opening replay lock: {}", path.display()))?;
+    // SAFETY: flock borrows this live descriptor; the returned File holds the lock.
+    let status = unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) };
+    if status == 0 {
+        Ok(lock)
+    } else {
+        Err(std::io::Error::last_os_error())
+            .with_context(|| format!("locking replay: {}", path.display()))
+    }
+}
+
+#[cfg(windows)]
+fn open_lock(path: &Path) -> Result<File> {
+    loop {
+        match lock_options().share_mode(0).open(path) {
+            Ok(file) => return Ok(file),
+            Err(error) if matches!(error.raw_os_error(), Some(32 | 33)) => {
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => {
+                return Err(error)
+                    .with_context(|| format!("opening replay lock: {}", path.display()));
+            }
+        }
+    }
+}
+
+fn bind_direction(capsule: &Capsule, volatile: &HandoffVolatile) -> Result<()> {
     let event = &volatile.event;
     ensure!(event.subject == capsule.subject, "capsule subject binding");
     let child = volatile

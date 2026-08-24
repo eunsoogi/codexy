@@ -23,7 +23,11 @@ skill that owns the lane.
 Compaction resume, fresh-child continuation, and parent handoff MUST use the
 installed `scripts/resumable-context-capsule.sh` or
 `scripts/resumable-context-capsule.cmd` launcher before consuming a capsule. The
-launcher MUST preserve the resolver and native bridge exit status.
+launcher MUST preserve the resolver and native bridge exit status. The consumer
+MUST derive current HEAD, owner, worktree, issue/PR, branch, base, and stable
+policy from its trusted live lane state, write them as a closed
+`codexy.handoff-authority.v1` document outside the untrusted capsule, and pass
+that document with `--authority`.
 
 Each capsule MUST declare exactly one directional consumer:
 
@@ -36,12 +40,14 @@ task, and target task MUST bind to the inner #603 event kind, lane, subject,
 `parent_task`, and `child_task`.
 
 The installed Python resolver owns only artifact discovery and authentication.
-It MUST discover the permitted sibling `codexy-devtools` runtime when
-`--runtime-root` is absent, validate the closed generated manifest, selected
-platform path, digest, executable kind, and safe ancestors, then invoke only
-that selected bridge. It MUST NOT reconstruct `HandoffAuthority`, replay,
-subject binding, or role binding. Those decisions remain in the native bridge
-over the frozen #603 typed authority.
+When `--runtime-root` is absent, it MUST prefer the core-owned runtime packaged
+with `codexy` and retain sibling `codexy-devtools` discovery for compatible
+combined installs. It MUST validate the closed generated manifest, selected
+platform path, digest, executable kind, authority document, and safe ancestors,
+then invoke only that selected bridge. It MUST NOT reconstruct
+`HandoffAuthority`, replay, subject binding, or role binding. Those decisions
+remain in the native bridge over the trusted consumer authority and frozen #603
+types.
 
 ## Use When
 

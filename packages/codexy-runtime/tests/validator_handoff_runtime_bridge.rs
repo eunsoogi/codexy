@@ -8,9 +8,7 @@ fn native_bridge_binds_each_direction_and_rejects_pairwise_relabeling() -> TestR
     let bridge = bridge();
     for consumer in ["compaction", "fresh-child", "parent-handoff"] {
         let fixture = CapsuleFixture::new(consumer)?;
-        let output = Command::new(bridge)
-            .args(["--capsule", fixture.path()?])
-            .output()?;
+        let output = fixture.command(bridge).output()?;
         assert!(
             output.status.success(),
             "{}",
@@ -25,12 +23,7 @@ fn native_bridge_binds_each_direction_and_rejects_pairwise_relabeling() -> TestR
         ("parent-handoff", "compaction"),
     ] {
         let fixture = CapsuleFixture::relabeled(original, relabeled)?;
-        assert!(
-            !Command::new(bridge)
-                .args(["--capsule", fixture.path()?])
-                .status()?
-                .success()
-        );
+        assert!(!fixture.command(bridge).status()?.success());
     }
     Ok(())
 }
@@ -39,25 +32,30 @@ fn native_bridge_binds_each_direction_and_rejects_pairwise_relabeling() -> TestR
 fn native_bridge_rejects_subject_role_conflicts_and_duplicate_replay() -> TestResult {
     let bridge = bridge();
     let fixture = CapsuleFixture::new("fresh-child")?;
-    assert!(
-        Command::new(bridge)
-            .args(["--capsule", fixture.path()?])
-            .status()?
-            .success()
-    );
-    assert!(
-        !Command::new(bridge)
-            .args(["--capsule", fixture.path()?])
-            .status()?
-            .success()
-    );
+    assert!(fixture.command(bridge).status()?.success());
+    assert!(!fixture.command(bridge).status()?.success());
     let fixture = CapsuleFixture::subject_conflict()?;
-    assert!(
-        !Command::new(bridge)
-            .args(["--capsule", fixture.path()?])
-            .status()?
-            .success()
-    );
+    assert!(!fixture.command(bridge).status()?.success());
+    let fixture = CapsuleFixture::authority_conflict()?;
+    assert!(!fixture.command(bridge).status()?.success());
+    Ok(())
+}
+
+#[test]
+fn native_bridge_serializes_concurrent_replay_updates() -> TestResult {
+    let bridge = bridge();
+    let fixture = CapsuleFixture::new("fresh-child")?;
+    let children = (0..20)
+        .map(|_| fixture.command(bridge).spawn())
+        .collect::<Result<Vec<_>, _>>()?;
+    let successes = children
+        .into_iter()
+        .map(|mut child| child.wait())
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter(std::process::ExitStatus::success)
+        .count();
+    assert_eq!(successes, 1, "exactly one concurrent replay may commit");
     Ok(())
 }
 
@@ -70,22 +68,32 @@ fn bridge() -> &'static str {
 struct CapsuleFixture {
     _temporary: tempfile::TempDir,
     capsule: std::path::PathBuf,
+    authority: std::path::PathBuf,
 }
 
 impl CapsuleFixture {
     fn new(consumer: &str) -> TestResult<Self> {
-        Self::build(consumer, consumer, false)
+        Self::build(consumer, consumer, false, false)
     }
 
     fn relabeled(original: &str, relabeled: &str) -> TestResult<Self> {
-        Self::build(original, relabeled, false)
+        Self::build(original, relabeled, false, false)
     }
 
     fn subject_conflict() -> TestResult<Self> {
-        Self::build("fresh-child", "fresh-child", true)
+        Self::build("fresh-child", "fresh-child", true, false)
     }
 
-    fn build(original: &str, consumer: &str, conflict: bool) -> TestResult<Self> {
+    fn authority_conflict() -> TestResult<Self> {
+        Self::build("fresh-child", "fresh-child", false, true)
+    }
+
+    fn build(
+        original: &str,
+        consumer: &str,
+        subject_conflict: bool,
+        authority_conflict: bool,
+    ) -> TestResult<Self> {
         let temporary = tempfile::tempdir()?;
         let parent = "parent-679";
         let child = "child-679";
@@ -101,10 +109,23 @@ impl CapsuleFixture {
             "parent-handoff" => ("parent-handoff", "parent-handoff", parent, child, parent),
             _ => unreachable!(),
         };
-        let event_subject = if conflict { "other-task" } else { subject };
-        let volatile = volatile(kind, lane, event_subject, parent, child);
+        let event_subject = if subject_conflict {
+            "other-task"
+        } else {
+            subject
+        };
+        let volatile = volatile(kind, lane, event_subject, parent, child, authority_conflict);
         let envelope = HandoffEnvelope::new(stable(), volatile).canonical_json()?;
         let capsule = temporary.path().join("capsule.json");
+        let authority = temporary.path().join("authority.json");
+        std::fs::write(
+            &authority,
+            serde_json::to_vec(&json!({
+                "schema": "codexy.handoff-authority.v1",
+                "currentHead": "head", "owner": "child-owned", "worktree": "worktree",
+                "issue": 679, "pr": null, "branch": "branch", "base": "base", "stable": stable(),
+            }))?,
+        )?;
         std::fs::write(
             &capsule,
             serde_json::to_vec(&json!({
@@ -114,21 +135,24 @@ impl CapsuleFixture {
                 "sourceTask": source,
                 "targetTask": target,
                 "replayPath": temporary.path().join("replay.json"),
-                "authority": {
-                    "currentHead": "head", "owner": "child-owned", "worktree": "worktree",
-                    "issue": 679, "pr": null, "branch": "branch", "base": "base", "stable": stable(),
-                },
                 "envelope": envelope,
             }))?,
         )?;
         Ok(Self {
             _temporary: temporary,
             capsule,
+            authority,
         })
     }
 
-    fn path(&self) -> TestResult<&str> {
-        self.capsule.to_str().ok_or_else(|| "capsule path".into())
+    fn command(&self, bridge: &str) -> Command {
+        let mut command = Command::new(bridge);
+        command
+            .arg("--capsule")
+            .arg(&self.capsule)
+            .arg("--authority")
+            .arg(&self.authority);
+        command
     }
 }
 
@@ -147,20 +171,32 @@ fn stable() -> StableHandoff {
     }
 }
 
-fn volatile(kind: &str, lane: &str, subject: &str, parent: &str, child: &str) -> HandoffVolatile {
+fn volatile(
+    kind: &str,
+    lane: &str,
+    subject: &str,
+    parent: &str,
+    child: &str,
+    conflict: bool,
+) -> HandoffVolatile {
+    let (owner, branch, head) = if conflict {
+        ("forged-owner", "forged-branch", "forged-head")
+    } else {
+        ("child-owned", "branch", "head")
+    };
     HandoffVolatile {
         issue_pr_identity: IssuePrIdentity {
             issue: Some(679),
             pr: None,
         },
         owner_worktree: OwnerWorktree {
-            owner: "child-owned".into(),
-            branch: "branch".into(),
+            owner: owner.into(),
+            branch: branch.into(),
             worktree: "worktree".into(),
         },
         base_head_sha: BaseHeadSha {
             base: "base".into(),
-            head: "head".into(),
+            head: head.into(),
         },
         dirty_index_state: DirtyIndexState {
             dirty: false,

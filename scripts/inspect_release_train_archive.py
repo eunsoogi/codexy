@@ -120,6 +120,33 @@ if entries[".agents/plugins/marketplace.json"] != marketplace_path.read_bytes():
     reject("bundle marketplace metadata differs from activation checkout")
 expected_entries = {".agents/plugins/marketplace.json"}
 expected_directories = {".agents", ".agents/plugins"}
+
+
+def admit_handoff(prefix: str, label: str) -> None:
+    if not core_handoff:
+        return
+    manifest_name = f"{prefix}handoff-runtime.json"
+    manifest_bytes = entries.get(manifest_name, b"")
+    handoff = json.loads(manifest_bytes or b"null")
+    if (
+        handoff.get("source")
+        != {
+            "commit": activation["source"]["commit"],
+            "tree": activation["source"]["tree"],
+        }
+        or hashlib.sha256(manifest_bytes).hexdigest()
+        != core_handoff["manifest"]["sha256"]
+        or handoff.get("platforms") != core_handoff["platforms"]
+    ):
+        reject(f"{label} handoff manifest differs from activated class identity")
+    expected_entries.add(manifest_name)
+    for binary in core_handoff["platforms"].values():
+        name = f"{prefix}{binary['path']}"
+        if hashlib.sha256(entries.get(name, b"")).hexdigest() != binary["sha256"]:
+            reject(f"{label} handoff binary differs from activated class identity")
+        expected_entries.add(name)
+
+
 for _, plugin, package_root in inventory:
     prefix = f"{package_root}/"
     expected_directories.add(package_root)
@@ -165,31 +192,16 @@ for _, plugin, package_root in inventory:
                 content,
             ):
                 reject(f"unsafe archive content: {name}")
+    if plugin == "codexy" and core_handoff:
+        admit_handoff(prefix, "core-owned")
+        expected_directories.add(f"{package_root}/runtime")
     if plugin == "codexy-devtools":
-        if core_handoff:
-            handoff_name = f"{prefix}handoff-runtime.json"
-            handoff = json.loads(entries.get(handoff_name, b"null"))
-            if (
-                handoff.get("source")
-                != {
-                    "commit": activation["source"]["commit"],
-                    "tree": activation["source"]["tree"],
-                }
-                or hashlib.sha256(entries.get(handoff_name, b"")).hexdigest()
-                != core_handoff["manifest"]["sha256"]
-                or handoff.get("platforms") != core_handoff["platforms"]
-            ):
-                reject("core-handoff manifest differs from activated class identity")
-            expected_entries.add(handoff_name)
+        admit_handoff(prefix, "devtools")
         for platform in runtime_platforms:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in ("lsp", "codegraph"):
                 expected_entries.add(
                     f"{prefix}runtime/codexy-mcp-{server}-{platform}.{extension}"
-                )
-            if core_handoff:
-                expected_entries.add(
-                    f"{prefix}runtime/codexy-handoff-validate-{platform}.{extension}"
                 )
         expected_entries.add(f"{prefix}mcp/codexy-mcp-devtools.exe")
         expected_directories.add(f"{package_root}/runtime")

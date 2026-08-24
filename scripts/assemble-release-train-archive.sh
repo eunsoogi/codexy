@@ -51,6 +51,14 @@ for _, plugin, package_root in expected:
     if not source.is_dir():
         raise SystemExit(f"missing component source: {package_root}")
     shutil.copytree(source, destination, symlinks=True)
+    runtime_source = staged / "plugins/codexy-devtools"
+    if plugin == "codexy" and (runtime_source / "handoff-runtime.json").is_file():
+        shutil.copy2(runtime_source / "handoff-runtime.json", destination)
+        (destination / "runtime").mkdir()
+        for platform in runtime_platforms:
+            extension = "exe" if platform == "windows-x86_64" else "bin"
+            name = f"codexy-handoff-validate-{platform}.{extension}"
+            shutil.copy2(runtime_source / "runtime" / name, destination / "runtime" / name)
     if plugin == "codexy-devtools" and any((destination / name).exists() for name in ("runtime-candidate.json", "runtime-release.json")):
         raise SystemExit("release train may not retain runtime contracts")
     manifest = json.loads((destination / ".codex-plugin/plugin.json").read_text())

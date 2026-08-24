@@ -96,7 +96,11 @@ def platform_id() -> str:
 
 
 def default_runtime_root(plugin_root: Path) -> Path:
-    root = plugin_root.parent / "codexy-devtools"
+    root = (
+        plugin_root
+        if (plugin_root / "handoff-runtime.json").is_file()
+        else plugin_root.parent / "codexy-devtools"
+    )
     safe_ancestors(root, directory=True, label="runtime")
     return root
 
@@ -155,12 +159,15 @@ def selected_bridge(root: Path, platforms: dict[str, object]) -> Path:
     return bridge
 
 
-def invoke(bridge: Path, capsule: Path, output: Path | None) -> int:
+def invoke(bridge: Path, capsule: Path, authority: Path, output: Path | None) -> int:
     safe_ancestors(capsule, directory=False, label="capsule")
+    safe_ancestors(authority, directory=False, label="authority")
     if output is not None:
         safe_ancestors(output.parent, directory=True, label="output")
     result = subprocess.run(
-        [bridge, "--capsule", capsule], capture_output=True, check=False
+        [bridge, "--capsule", capsule, "--authority", authority],
+        capture_output=True,
+        check=False,
     )
     if result.returncode:
         sys.stderr.buffer.write(result.stderr)
@@ -184,6 +191,7 @@ def invoke(bridge: Path, capsule: Path, output: Path | None) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--capsule", required=True, type=Path)
+    parser.add_argument("--authority", required=True, type=Path)
     parser.add_argument("--runtime-root", type=Path)
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
@@ -196,7 +204,10 @@ def main() -> int:
     safe_ancestors(runtime_root, directory=True, label="runtime")
     platforms, _ = load_manifest(runtime_root)
     return invoke(
-        selected_bridge(runtime_root, platforms), arguments.capsule, arguments.output
+        selected_bridge(runtime_root, platforms),
+        arguments.capsule,
+        arguments.authority,
+        arguments.output,
     )
 
 
