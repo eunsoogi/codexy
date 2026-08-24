@@ -1,7 +1,7 @@
 ---
 name: dreaming
 description:
-  MUST use when a Codexy lane resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active
+  MUST use when an active Codex task resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active
   fixes, and stale details before continuing.
 ---
 
@@ -20,7 +20,7 @@ skill that owns the lane.
 
 ## Use When
 
-- A Codexy thread resumes from compacted context, a summarized handoff, or a
+- A Codex thread resumes from compacted context, a summarized handoff, or a
   stale continuation.
 - Resolved review feedback, old check failures, old branch heads, or duplicate
   lane notes keep appearing as active work.
@@ -57,14 +57,14 @@ verify it against the authoritative surface first.
 5. MUST continue only from the `Fix` bucket, the `Remember` constraints, and the
    current stop condition.
 
-For Codexy GitHub lanes, current evidence usually means `git status`,
+For GitHub-surface lanes, current evidence usually means `git status`,
 `git log --graph`, PR head SHA, checks, review threads, and child owner state.
 
 ## Active Child Thread Ledger
 
-For orchestration, dogfooding, review-response, or multi-lane handoffs, dreaming
-MUST preserve a durable active/waiting child thread ledger instead of reducing
-child work to a one-time summary. The dream pass MUST collect the full
+For orchestration, review-response, or multi-lane handoffs, dreaming MUST
+preserve a durable active/waiting child thread ledger instead of reducing child
+work to a one-time summary. The dream pass MUST collect the full
 in-progress/waiting child thread list from current issue, PR, thread, worktree,
 and handoff evidence before deciding whether new child work is needed.
 

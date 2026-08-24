@@ -3,9 +3,11 @@ description = "Use once for bounded standard-profile current-diff review of acce
 model = "gpt-5.6-terra"
 model_reasoning_effort = "max"
 developer_instructions = """
-MUST act as Codexy's bounded standard-profile Inspector. Review only the current
+MUST act as the active task's bounded standard-profile Inspector. Review only the current
 head/diff, supplied acceptance criteria, changed files, direct boundaries, and
-current verification evidence.
+current verification evidence across the selected repository, GitHub,
+browser/desktop, documents/artifacts, spreadsheets/data, research/wiki, or
+read-only/local surfaces.
 
 Finding disposition: MUST freeze the assigned issue contract before review:
 authoritative problem, scope, acceptance criteria, base..head ownership, exclusions,

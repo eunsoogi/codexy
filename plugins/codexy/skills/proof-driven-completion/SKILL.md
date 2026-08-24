@@ -28,8 +28,8 @@ MUST also follow
 3. For each item, name the evidence that would prove it:
    - file content or diff for documentation and configuration,
    - parser/schema output for structured data,
-   - `scripts/validate-plugin-config.sh --check` for Codexy plugin architecture
-     surfaces when the validator exists,
+   - the installed package's structured validator for plugin architecture
+     surfaces when one is supplied,
    - lint/typecheck/unit/integration output for code,
    - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
      user-visible or external behavior,
@@ -55,18 +55,19 @@ MUST also follow
 - MUST keep strict safety, current-head, external-surface, and LOC gates
   independent from `engineering_tdd_required`; absent RED is not a proof gap for
   a non-engineering boundary.
-- For Codexy plugin architecture changes, validate LSP config, MCP config, role
-  metadata or custom agent TOMLs, and thread/worktree orchestration wording.
-  MUST run `scripts/validate-plugin-config.sh --check` when that script is
-  present in the current revision.
+- For installed plugin architecture changes, validate LSP config, MCP config,
+  role metadata or custom-agent TOMLs, and task/thread/worktree behavior. MUST
+  run the active project's package or schema validator when one is supplied;
+  repository-only policy checks stay outside installed Core instructions.
 - For code-touching or code-adjacent runtime changes, include Codexy `codegraph`
   MCP exploration evidence when the MCP is available, plus direct file-read
   confirmation before claiming the touched surface is understood.
-- For non-trivial code, validator, harness, or workflow-rule changes, MUST run a
-  touched implementation-file LOC gate before PR readiness or handoff:
-  `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>`.
-  MUST treat files over the 250 LOC target as failing evidence. Every governed
-  file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC exceptions.
+- For non-trivial code, validator, harness, or workflow-rule changes, MUST run
+  the package-owned governed-code checker against explicit applicable paths
+  before PR readiness or handoff. MUST treat files over the 250 LOC target as
+  failing evidence. Every governed file MUST stay at or below 250 LOC. MUST NOT
+  use or authorize LOC exceptions. The checker MUST be proportional for non-code
+  tasks and MUST NOT assume an active checkout root.
 - MUST record why a LOC reduction is structural rather than formatting-only.
   MUST NOT treat blank-line deletion or collapsed readable multiline content as
   structural remediation evidence; MUST name the helper, module, test target,
@@ -76,11 +77,10 @@ MUST also follow
 - For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
   and review threads.
 - When a handoff or final answer reports addressed review feedback, MUST include
-  GraphQL `reviewThreads.nodes` in the PR state evidence and MUST run
-  `scripts/validate-plugin-config.sh --check-completion-handoff`; addressed
-  unresolved threads, including outdated-but-fixed threads, MUST be resolved or
-  covered by an accepted no-change rationale before readiness evidence is
-  accepted.
+  current review-thread state in the PR evidence and MUST run the active
+  project's completion-handoff check; addressed unresolved threads, including
+  outdated-but-fixed threads, MUST be resolved or covered by an accepted
+  no-change rationale before readiness evidence is accepted.
 - For child-owned PRs, MUST route actionable review feedback back to the owning
   child thread. The parent thread may coordinate, but it MUST NOT merge until
   the child thread returns current verification or a documented non-change
@@ -91,10 +91,10 @@ MUST also follow
   parent MUST NOT accept handoff prose when those current surfaces contradict
   it.
 - If a child-owned PR handoff or final-answer evidence mentions parent-authored
-  implementation or review-response commits, MUST run
-  `scripts/validate-plugin-config.sh --check-child-lane-ownership --evidence-file <path>`.
-  A failing result blocks completion unless the evidence records explicit
-  maintainer reassignment of implementation ownership to the parent.
+  implementation or review-response commits, MUST run the owning project's
+  child-lane ownership policy check against the evidence. A failing result
+  blocks completion unless the evidence records explicit maintainer reassignment
+  of implementation ownership to the parent.
 - For delegated lanes that need their own branch, worktree, PR, or durable child
   context, MUST require evidence that the child was created, forked, or assigned
   before implementation patches began. If parent-authored draft edits exist,
@@ -105,9 +105,8 @@ MUST also follow
   PR that remains open as completion unless the maintainer explicitly requested
   stop, wait, draft-only, no-merge, or leave-open behavior. When a final answer
   or handoff artifact may claim completion while the matching PR is open, MUST
-  run
-  `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <report> --pr-state-file <gh-pr-view-json>`
-  against current PR state before accepting the claim.
+  run the active project's completion-handoff check against current PR state
+  before accepting the claim.
 - For every non-trivial atomic unit, MUST require evidence that the owning
   thread followed machine-owned `orchestration/references/review-profiles.json`:
   light has no LLM reviewer, standard has `codexy-inspector`, and strict has

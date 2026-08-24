@@ -23,7 +23,7 @@
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Run Codex work through atomic orchestration, evidence, review, and merge gates.",
-    "longDescription": "Codexy starts as an orchestrator for Codex work: it decomposes broad requests into issue-sized lanes, routes work through specialist roles and skills, verifies real surfaces, and keeps pull requests behind review and squash-merge gates.",
+    "longDescription": "Codex orchestrator for task-selected workflows, specialist roles, evidence capture, and safe review gates across repository, external, artifact, data, research, and local work.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
     "capabilities": [
@@ -35,8 +35,8 @@
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
-      "You MUST use $orchestration first to classify Codexy work and coordinate its execution.",
-      "You MUST track goals/todos; MUST assign specialist roles for agent/thread work; MUST verify proof; MUST use squash-merge gates.",
+      "You MUST use $orchestration first to classify the active Codex task and select its workflow surface.",
+      "You MUST apply selected surface gates and use applicable repository, GitHub, browser, artifact, data, research, or local proof.",
       "For Korean replies, you MUST use plain, idiomatic Korean and MUST keep machine-readable evidence separate from the user summary."
     ],
     "brandColor": "#2F6F5E",

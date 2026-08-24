@@ -10,15 +10,17 @@ dependency inversion, naming cleanup, and review-driven maintainability work.
 
 - MUST keep code files at or below 250 lines of code by default.
 - MUST treat the 250 LOC target as a design pressure, not permission for churn.
-- Before PR readiness or handoff, MUST run
-  `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>` over
-  the current branch and include the command output in evidence.
+- Before PR readiness or handoff, MUST run the package-owned governed-code
+  checker against explicit applicable paths and include its output in evidence.
 - Every governed file MUST stay at or below 250 LOC. MUST NOT use or authorize
   LOC exceptions.
 - MUST NOT split files mechanically when the result obscures public contracts,
   makes navigation worse, or creates circular dependencies.
 - MUST reach at or below 250 LOC through coherent structural refactoring, not
   merely numeric compliance.
+- The checker MUST be portable: it MUST resolve its policy from the installed
+  package, accept explicit paths, avoid current-checkout assumptions, and remain
+  proportional when the selected task is non-code.
 - Blank-line deletion alone MUST NOT satisfy the LOC target.
 - MUST NOT collapse readable multiline code, tests, or instructions solely to
   meet the LOC target.

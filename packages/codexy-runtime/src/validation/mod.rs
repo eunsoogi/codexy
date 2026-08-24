@@ -191,15 +191,14 @@ pub fn resolve_tdd_classification(plugin_root: &Path, request: &str) -> Result<s
     tdd_classification::resolve(plugin_root, request)
 }
 
-pub use review::{
-    build_review_pr_state, check_review_economics, check_review_packet, resolve_review_profile,
-};
-
 pub use handoff_envelope::{
     BaseHeadSha, DirtyIndexState, HandoffAuthority, HandoffEnvelope, HandoffEvent, HandoffVolatile,
-    IssuePrIdentity, LegacyContext, OmissionReason, OwnerWorktree, ReviewThread, StableHandoff,
-    canonicalize_handoff, migrate_legacy_handoff, stable_policy_digest, validate_handoff,
-    validate_handoff_batch,
+    IssuePrIdentity, LegacyContext, OmissionReason, OwnerWorktree, ReviewThread,
+    StableClassification, StableHandoff, StructuredClassification, canonicalize_handoff,
+    migrate_legacy_handoff, stable_policy_digest, validate_handoff, validate_handoff_batch,
+};
+pub use review::{
+    build_review_pr_state, check_review_economics, check_review_packet, resolve_review_profile,
 };
 
 fn require_string(value: Option<&serde_json::Value>, field: &str, path: &Path) -> Result<String> {

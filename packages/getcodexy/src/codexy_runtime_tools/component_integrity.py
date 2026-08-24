@@ -16,14 +16,14 @@ from .updater import _absolute, _validate_real_path
 
 COMPONENT_FILES = {
     "codexy": {
-        "agents/catalog.toml": "a082c51976773ee5ec2e1f1a6589b48b6f28c6309298236ffd165ddb9c6e1858",
-        "agents/codexy-architect.toml": "836531b20493580d8c89628ffe49d198c54c92e8b6c5eb4eab2d907edfde015a",
-        "agents/codexy-auditor.toml": "98929f2e94d9562fbc6ea7b54c97ad8a2769ce1bee1d769619147ab2bd0427f0",
-        "agents/codexy-cartographer.toml": "459496f918693ff574e6913be95ed601c78187c3742d4d00e4a88e979487641f",
-        "agents/codexy-inspector.toml": "183e7db642ebad22feed3cddc1358c954a953fe2fc296836bddd9ff4d85d9bfd",
-        "agents/codexy-sentinel.toml": "b6d724656084ca8b2200d80b2e47121485052360d9d4801df6a7f019c5dcb82b",
-        "agents/codexy-shipwright.toml": "f2f22cd0b857ae40aeb7d5a91d49653f2e87f48a752508f601308f0ac2cae508",
-        "agents/codexy-warden.toml": "f58f37cedbc1f56ce8ba8a3ac2f60a55560d7903fc915d2df2457f0263b2db86",
+        "agents/catalog.toml": "dc367f48bb175024b772bf912705e026696d636b338d29b5076a66195f6f2486",
+        "agents/codexy-architect.toml": "d1bf015357395decaf94bfd3540404e896f693097141fc060f5527f6cb8c3d84",
+        "agents/codexy-auditor.toml": "d95168d14419d7b206a1cf06cbdddbc813f74de7b9f77ac943a301049d9e4c0f",
+        "agents/codexy-cartographer.toml": "2e6b63d15758035f99efa018d905150aa71b1b559e239a6aac3d2aec35d351e8",
+        "agents/codexy-inspector.toml": "7f936f672701c475fd07a96166f058136704cfefa075231821665142c9a8fe49",
+        "agents/codexy-sentinel.toml": "db0bedcc382d66c7e924b33bdf3f5668a0c83f531be4fcdc7fb04dec5c5d45a3",
+        "agents/codexy-shipwright.toml": "f304a2bc88aafb100b54813eedb2b8122405a97bda24e887a0badd4cfa10a60b",
+        "agents/codexy-warden.toml": "57bb2825037a5a42a0d33282ca0c800de31985c88a15d12c5d35929055c1d9ca",
         "hooks/codexy-thread-delivery.cmd": "a00b46db11963bedc90589bb644b38740491be95b9c36f962ab9f31d0e6a4797",
         "hooks/codexy-thread-delivery.sh": "70f8cc7c6415573cf61389b4a55dfd3b5bb6b037ce8549a50022e69306fe4146",
         "hooks/codexy-child-thread-creation.cmd": "9450762b7e1f7bbafc71bd6e0e8000ccb459baf5aa0aeee768236637e2e2197f",
@@ -31,7 +31,7 @@ COMPONENT_FILES = {
         "hooks/codexy-child-thread-creation.py": "6f0de7208940cad5a5250422f817c778343b2b9f523af800e2b472fb0ec7471a",
         "hooks/codexy_policy/child_thread_creation.py": "9ba39931e3b459e2e58dc42cb007690aebe6e90ccb8f98969c47ab45a4c20f9d",
         "hooks/codexy_policy/envelope.py": "74172fe5c0309c34fd76ba22d3ac9bd196a15d75bbc32c957ce7c7ddb8a44536",
-        "skills/wiki/SKILL.md": "a804ce625b1fc2e293fcb9ebe398af27be0d44000a07f35b317cd04d53b2bad7",
+        "skills/wiki/SKILL.md": "f7036d57346d8556d8b2e70cbe50a2a8dee9f87f8a8d3d630a41523a28ca8c76",
         "skills/orchestration/scripts/agent_registration_blocks.py": "d9fee4e722e6595a29aa038d3db1404f134763c80df618593f82ecc54089069b",
         "skills/orchestration/scripts/agent_registration_fs.py": "c5f1952770d4c83d662a719d24a7d30da7a266c105f9b981b99d730a8c03298e",
         "skills/orchestration/scripts/agent_registration_lifecycle.py": "9b1762d6fa066ac118c04ca61e6181997b84bf7e924ebf255703954f4e25e871",
@@ -55,7 +55,7 @@ COMPONENT_FILES = {
 }
 
 MANIFEST_CONTENT_DIGESTS = {
-    "codexy": "7f1cfa40bc4fda532de26d396d9cbe41aa5966a3549951f124da8a481160b8dd",
+    "codexy": "5d7ceb9bd6bcb53bed92462a868ad6ab8716105138d731153197ea0950f5102b",
     "codexy-github": "626de0d0be97ea6241d0353a92f94799b73b654b8469d0d6b7ae80a88e41b197",
 }
 

@@ -1,7 +1,9 @@
+mod classification;
 mod legacy;
 mod replay;
 mod schema;
 use anyhow::{Result, bail, ensure};
+pub use classification::{StableClassification, StructuredClassification};
 pub use legacy::LegacyContext;
 pub use schema::{
     BaseHeadSha, DirtyIndexState, HandoffEnvelope, HandoffEvent, HandoffVolatile, IssuePrIdentity,
@@ -162,7 +164,7 @@ fn validate_intrinsic(envelope: &HandoffEnvelope) -> Result<()> {
     Ok(())
 }
 fn validate_stable(stable: &StableHandoff) -> Result<()> {
-    let policy: Value = serde_json::from_str(POLICY)?;
+    let policy: serde_json::Value = serde_json::from_str(POLICY)?;
     let profiles = policy
         .get("profile_matrix")
         .and_then(Value::as_object)
@@ -171,50 +173,22 @@ fn validate_stable(stable: &StableHandoff) -> Result<()> {
         profiles.contains_key(&stable.workflow_profile),
         "handoff has an unknown workflow profile"
     );
-    let routing = policy
-        .get("routing")
-        .and_then(Value::as_object)
-        .ok_or_else(|| anyhow::anyhow!("canonical policy has no routing contract"))?;
-    let tasks = strings(routing.get("task_classes"))?;
-    let fail_closed = strings(routing.get("fail_closed_classes"))?;
-    ensure!(
-        tasks.contains(&stable.task_classification)
-            || fail_closed.contains(&stable.task_classification),
-        "handoff has an unknown task classification"
-    );
+    let route = classification::route(&policy, &stable.task_classification)?;
     schema::validate_unique_strings(&stable.selected_references, "selected_references")?;
     stable
         .selected_references
         .iter()
         .try_for_each(|item| schema::token(item, "selected reference"))?;
-    if tasks.contains(&stable.task_classification) {
-        let routes = routing
-            .get("task_reference_routes")
-            .and_then(Value::as_object)
-            .ok_or_else(|| anyhow::anyhow!("canonical policy has no task routes"))?;
-        let expected = strings(routes.get(&stable.task_classification))?;
-        ensure!(
-            stable.selected_references == expected,
-            "handoff selected references disagree with the canonical task route"
-        );
-    } else {
+    ensure!(
+        stable.selected_references == route.references,
+        "handoff selected references disagree with the canonical route"
+    );
+    if route.fail_closed {
         ensure!(
             stable.workflow_profile == "strict",
             "fail-closed handoff must use the strict profile"
         );
     }
     schema::token(&stable.workflow_profile, "workflow profile")?;
-    schema::token(&stable.task_classification, "task classification")
-}
-fn strings(value: Option<&Value>) -> Result<Vec<String>> {
-    value
-        .and_then(Value::as_array)
-        .ok_or_else(|| anyhow::anyhow!("policy route must be an array of strings"))?
-        .iter()
-        .map(|item| {
-            item.as_str()
-                .map(ToOwned::to_owned)
-                .ok_or_else(|| anyhow::anyhow!("policy route contains a non-string"))
-        })
-        .collect()
+    Ok(())
 }

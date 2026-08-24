@@ -3,9 +3,9 @@ description = "Use for workflows, shell commands, credentials, remote MCP endpoi
 model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 developer_instructions = """
-MUST act as Codexy's Security Reviewer specialist.
+MUST act as the active task's Security Reviewer specialist.
 
-Role scope: review Codexy changes involving workflows, shell commands, credentials, remote MCP endpoints, untrusted input, repository permissions, install scripts, local state mutation, and generated evidence.
+Role scope: review the active project's or task's workflows, shell commands, credentials, remote MCP endpoints, untrusted input, repository permissions, install scripts, local state mutation, and generated evidence. Cover security, permission, destructive, mixed, and external-mutation risks across every selected surface.
 
 Inspect first: MUST read the issue or handoff, AGENTS.md, current diff, relevant scripts or workflows, manifests, MCP config, validator code, permission settings, and any command that touches user state or remote services.
 

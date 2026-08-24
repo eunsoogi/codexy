@@ -242,6 +242,96 @@
       ],
       "other": ["workflow_profiles", "task_classification", "tdd_classification_policy", "child_routing"]
     },
+    "surface_names": [
+      "repository engineering",
+      "GitHub",
+      "browser/desktop",
+      "documents/artifacts",
+      "spreadsheets/data",
+      "research/wiki",
+      "read-only/local"
+    ],
+    "surface_reference_routes": {
+      "repository engineering": [
+        "workflow_profiles",
+        "task_classification",
+        "tdd_classification_policy",
+        "execution_budget",
+        "proof_completion"
+      ],
+      "GitHub": [
+        "workflow_profiles",
+        "task_classification",
+        "review_profiles",
+        "review_lifecycle",
+        "proof_completion",
+        "public_extension_contracts"
+      ],
+      "browser/desktop": ["workflow_profiles", "task_classification", "proof_completion"],
+      "documents/artifacts": ["workflow_profiles", "task_classification", "proof_completion"],
+      "spreadsheets/data": ["workflow_profiles", "task_classification", "proof_completion"],
+      "research/wiki": ["workflow_profiles", "task_classification", "dreaming", "proof_completion"],
+      "read-only/local": ["workflow_profiles", "task_classification"]
+    },
+    "surface_non_applicable_fields": {
+      "repository engineering": [],
+      "GitHub": ["owner_worktree", "dirty_index_state"],
+      "browser/desktop": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "documents/artifacts": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "spreadsheets/data": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "research/wiki": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ],
+      "read-only/local": [
+        "issue_pr_identity",
+        "owner_worktree",
+        "base_head_sha",
+        "dirty_index_state",
+        "unresolved_review_threads",
+        "selected_reviewer_state"
+      ]
+    },
+    "risk_names": ["mixed", "security", "permission", "destructive", "external_mutation"],
+    "risk_reference_routes": {
+      "mixed": ["workflow_profiles", "task_classification", "child_routing"],
+      "security": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
+      "permission": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
+      "destructive": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
+      "external_mutation": [
+        "workflow_profiles",
+        "task_classification",
+        "child_routing",
+        "proof_completion",
+        "public_extension_contracts"
+      ]
+    },
+    "fallback_reference_route": ["workflow_profiles", "task_classification", "child_routing"],
     "fail_closed_classes": ["unknown", "ambiguous", "high_risk", "security", "permission", "release"],
     "fallback_authority": "child_routing",
     "fail_closed_preserves_all_safety_fields": true

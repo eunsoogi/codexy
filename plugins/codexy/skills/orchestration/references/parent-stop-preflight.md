@@ -16,7 +16,7 @@ branch, worktree, PR, durable child context, or review-response ownership:
    state to the child instead of continuing implementation.
 4. When handoff or final-answer evidence for a child-owned PR includes
    parent-authored implementation, implementation setup, or review-response
-   commits, MUST run
-   `scripts/validate-plugin-config.sh --check-child-lane-ownership --evidence-file <path>`.
+   commits, MUST run the active project's child-lane ownership policy check
+   against the evidence.
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.

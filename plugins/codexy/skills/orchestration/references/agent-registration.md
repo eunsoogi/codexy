@@ -12,21 +12,20 @@ and independent schema/invocation preflight. MUST NOT treat
 
 ## Source-Only Pre-Session Update
 
-The repository source includes a pre-session updater implementation for future
-activation work. It MUST NOT be presented as an installed or public command
-until the matching package release has published its console entry point.
-No-change execution remains a source-level behavior covered by its dedicated
-tests. The packaged `check-codexy-agents` entrypoint remains an explicit
-read-only validator and MUST report `UPDATE_REQUIRED` when installed projections
-differ from the current package; lifecycle hooks MUST NOT invoke it.
+The installed package may include a pre-session updater implementation for
+activation work. It MUST NOT be presented as a public command until the package
+has published its console entry point. No-change execution remains a packaged
+behavior covered by dedicated tests. The packaged `check-codexy-agents`
+entrypoint remains an explicit read-only validator and MUST report
+`UPDATE_REQUIRED` when installed projections differ from the current package;
+lifecycle hooks MUST NOT invoke it.
 
-When an exact Codexy `agent_type` is unavailable, MUST resolve this selected
-skill's installed directory and run its sibling
+When an exact packaged `agent_type` is unavailable, MUST resolve this selected
+skill's installed directory and run its package-owned sibling
 `scripts/bootstrap-codexy-agents` entrypoint. MUST NOT resolve the entrypoint
-from the target repository, a Codexy source checkout, or a hard-coded plugin
-cache path. The bootstrap diagnoses the installed state before mutation and
-invokes `register_codexy_agents.py` only when packaged role discovery is
-incomplete.
+from the active project, an unrelated source checkout, or a hard-coded cache
+path. The bootstrap diagnoses the installed state before mutation and invokes
+`register_codexy_agents.py` only when packaged role discovery is incomplete.
 
 If the bootstrap reports `D bootstrap: RESTART_REQUIRED`, MUST stop specialist
 dispatch in the current task and MUST tell the user to restart Codex or start a
@@ -41,8 +40,8 @@ or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
 
 The registration bridge and update checker MUST NOT run from SessionStart,
 UserPromptSubmit, or another lifecycle hook. Codexy MUST NOT commit generated
-MCP binaries to the source plugin; the existing GitHub Release runtime bootstrap
-remains the supported MCP installation path.
+MCP binaries to the package source; the published runtime bootstrap remains the
+supported MCP installation path.
 
 ## Registration Lifecycle
 

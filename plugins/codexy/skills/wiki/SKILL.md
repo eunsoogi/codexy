@@ -5,10 +5,10 @@ description: A bounded, source-backed topic-wiki workflow for initialization, in
 
 # LLM Wiki
 
-This repository-owned skill provides a compact, topic-scoped LLM memory loop.
-The active topic is the bounded context; MUST NOT inspect other topics unless
-the user explicitly expands scope. MUST keep user prompts and tool metadata
-outside the context budget.
+This installed skill provides a compact, topic-scoped LLM memory loop. The
+active topic is the bounded context; MUST NOT inspect other topics unless the
+user explicitly expands scope. MUST keep user prompts and tool metadata outside
+the context budget.
 
 ## Topic root
 

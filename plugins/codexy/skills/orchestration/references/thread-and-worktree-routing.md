@@ -46,9 +46,9 @@ or `create_thread` with a worktree environment.
 ## Live Worktree Reservation Preflight
 
 MUST run this before creating, forking, reusing, or recycling a Codex app
-worktree. This is a repository-side fail-closed diagnostic; it does not claim to
-atomically control the host allocator. The live worktree reservation preflight
-is the required repository-side check.
+worktree for a repository-owned task. This is an active-project fail-closed
+diagnostic; it does not claim to atomically control the host allocator. The live
+worktree reservation preflight is the required project-side check.
 
 1. MUST rebuild the reservation map from the active/waiting child ledger and
    every active or waiting specialist or Sentinel. Each reservation MUST name
@@ -122,7 +122,7 @@ git rev-parse --verify origin/<branch>
   available, the orchestrator MUST rename it with `set_thread_title` when that
   tool is available.
 - The child thread title MUST clearly include the project, issue number, and
-  lane purpose, such as `Codexy #52 refactoring skill agent lane`.
+  lane purpose, such as `<project> #<issue> implementation lane`.
 - If title renaming is unavailable, mention that limitation in orchestration
   status or child handoff and continue the lane.
 - Child thread title renaming is a clarity policy, not a merge blocker for

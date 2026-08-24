@@ -119,6 +119,15 @@ mod validator_tdd_classification_policy;
 #[path = "../validator_context_tiers.rs"]
 mod validator_context_tiers;
 
+#[path = "../validator_task_surface_routing.rs"]
+mod validator_task_surface_routing;
+
+#[path = "../validator_project_neutral_core.rs"]
+mod validator_project_neutral_core;
+
+#[path = "../validator_portable_governed_code.rs"]
+mod validator_portable_governed_code;
+
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 

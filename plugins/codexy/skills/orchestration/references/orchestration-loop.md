@@ -13,12 +13,12 @@ necessity, or classification from rationale wording.
 1. Intake:
    - MUST use `$orchestration` before setup, delegation, implementation,
      validation, PR handling, review-response routing, or merge coordination.
-   - MUST read the latest request, repository instructions, active issue, and
-     relevant local skills.
+   - MUST read the latest request, active project instructions, active issue,
+     and relevant local skills.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
-   - MUST use Codexy `codegraph` MCP to map relevant files and neighbors when
-     available.
+   - MUST use the available `codegraph` MCP to map relevant code files and
+     neighbors when the selected task has a code or repository surface.
 2. Plan:
    - MUST create a short `update_plan` with atomic outcomes.
    - MUST mark exactly one step `in_progress`.
@@ -37,7 +37,7 @@ necessity, or classification from rationale wording.
      delegation prohibition.
      `MUST NOT spawn, delegate to, or create any additional agent, helper, reviewer, task, or thread.`
    - For bounded helper work, the owning thread MUST route to the packaged
-     Codexy specialist whose stated scope clearly matches the task, or record a
+     specialist whose stated scope clearly matches the task surface, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
    - For issue-sized implementation lanes, the root orchestrator MUST start or
@@ -59,9 +59,9 @@ necessity, or classification from rationale wording.
      ownership.
 5. MUST verify:
    - MUST run local checks in the owning worktree.
-   - MUST drive external surfaces directly when the task changes GitHub,
-     browser, CLI, desktop, plugin, marketplace, or repository settings
-     behavior.
+   - MUST drive the selected external surface directly when the task changes
+     GitHub, browser/desktop, CLI, plugin, marketplace, documents/artifacts,
+     spreadsheets/data, research/wiki, or project settings behavior.
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
 6. Finish:
