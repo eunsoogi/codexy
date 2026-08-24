@@ -1,0 +1,6 @@
+interface:
+  display_name: "Realtime Voice Orchestration"
+  short_description: "Route voice updates to authoritative project owners."
+  default_prompt: "Use $realtime-voice-orchestration after $orchestration selects a realtime voice route to resolve the owning project context, report confirmed progress, handle interruption-first speech, and preserve parent ownership."
+policy:
+  allow_implicit_invocation: true
