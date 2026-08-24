@@ -89,6 +89,7 @@ mod merge_message;
 mod mode;
 mod mode_dispatch;
 mod prompt_yaml;
+pub mod read_batch;
 mod readiness_context;
 mod readiness_state;
 mod release_publish_contract;

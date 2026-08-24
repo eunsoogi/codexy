@@ -238,3 +238,6 @@ mod validator_runtime_contract;
 
 #[path = "../worktree_reservation_harness.rs"]
 mod worktree_reservation_harness;
+
+#[path = "../validator_read_batch_scorecard.rs"]
+mod read_batch_scorecard;

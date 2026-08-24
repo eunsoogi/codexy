@@ -1,0 +1,20 @@
+{
+  "operations": [
+    {
+      "id": "issue:674",
+      "reference": {
+        "kind": "issue",
+        "locator": "#674",
+        "readOnly": true,
+        "independent": true
+      },
+      "outputBound": 1024
+    }
+  ],
+  "aggregateOutputBound": 1024,
+  "outcomes": [],
+  "measurements": {
+    "inputTokens": { "value": 0 },
+    "outputBytes": 0
+  }
+}
