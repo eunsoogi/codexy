@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 mod capture;
 mod classification;
@@ -18,6 +18,21 @@ mod policy;
 mod presence;
 mod repository;
 mod terminal;
+
+pub(super) fn checked_package_child(root: &Path, relative: &str) -> Result<PathBuf> {
+    if relative.is_empty()
+        || Path::new(relative).is_absolute()
+        || relative.starts_with('/')
+        || relative.starts_with('\\')
+        || matches!(relative.as_bytes().get(1), Some(b':'))
+        || relative
+            .split(['/', '\\'])
+            .any(|part| matches!(part, "" | "." | ".."))
+    {
+        bail!("review economics package path is unsafe");
+    }
+    Ok(root.join(relative.replace('\\', "/")))
+}
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     policy::load(plugin_root)

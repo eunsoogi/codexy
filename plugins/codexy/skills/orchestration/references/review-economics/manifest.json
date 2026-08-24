@@ -10,7 +10,7 @@
     { "id": "seed-p1-regression", "version": "1.0.0", "path": "seeds/seed-p1-regression.json", "severity": "p1" }
   ],
   "lanes": [
-    { "id": "tiny", "version": "1.0.0", "path": "lanes/tiny.json", "kind": "tiny", "profile": "standard", "seeds": [] },
+    { "id": "tiny", "version": "1.0.0", "path": "lanes/tiny.json", "kind": "tiny", "profile": "light", "seeds": [] },
     {
       "id": "security",
       "version": "1.0.0",

@@ -52,7 +52,7 @@ pub(super) fn load(plugin_root: &Path) -> Result<Package> {
     {
         bail!("review economics package manifest is not the frozen v1 contract");
     }
-    let baseline_path = checked_child(&root, string(&manifest, "baseline")?)?;
+    let baseline_path = super::checked_package_child(&root, string(&manifest, "baseline")?)?;
     let baseline_bytes = fs::read(&baseline_path)?;
     validate_baseline(&serde_json::from_slice(&baseline_bytes)?)?;
     let corpus_path = plugin_root.join(CORPUS_REL);
@@ -70,7 +70,7 @@ pub(super) fn load(plugin_root: &Path) -> Result<Package> {
         let id = string(reference, "id")?.to_owned();
         let version = string(reference, "version")?;
         let severity = string(reference, "severity")?.to_owned();
-        let path = checked_child(&root, string(reference, "path")?)?;
+        let path = super::checked_package_child(&root, string(reference, "path")?)?;
         let bytes = fs::read(&path)?;
         let seed: Value = serde_json::from_slice(&bytes)?;
         let findings = seed["expected_findings"]
@@ -112,7 +112,7 @@ pub(super) fn load(plugin_root: &Path) -> Result<Package> {
     }
     let mut lanes = Vec::new();
     for reference in lane_refs {
-        let path = checked_child(&root, string(reference, "path")?)?;
+        let path = super::checked_package_child(&root, string(reference, "path")?)?;
         let bytes = fs::read(&path)?;
         let input: Value = serde_json::from_slice(&bytes)?;
         let seeds_in_input = ids(&input["seeds"])?;
@@ -224,18 +224,6 @@ fn ids(value: &Value) -> Result<Vec<String>> {
         .iter()
         .map(|item| string(item, "id").map(str::to_owned))
         .collect::<Result<_>>()
-}
-
-fn checked_child(root: &Path, relative: &str) -> Result<PathBuf> {
-    if relative.is_empty()
-        || Path::new(relative).is_absolute()
-        || relative
-            .split('/')
-            .any(|part| matches!(part, "" | "." | ".."))
-    {
-        bail!("review economics package path is unsafe");
-    }
-    Ok(root.join(relative))
 }
 
 fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str> {

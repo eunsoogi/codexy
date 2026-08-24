@@ -25,7 +25,7 @@
     {
       "id": "tiny",
       "kind": "tiny",
-      "profile": "standard",
+      "profile": "light",
       "outcome": null,
       "implementation_ms": null,
       "verification_ms": null,

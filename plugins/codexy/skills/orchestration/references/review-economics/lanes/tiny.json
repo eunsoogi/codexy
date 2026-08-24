@@ -3,11 +3,11 @@
   "id": "tiny",
   "version": "1.0.0",
   "kind": "tiny",
-  "profile": "standard",
+  "profile": "light",
   "seeds": [],
   "request": {
     "task": "Inspect a one-file documentation-only change and report the observed review outcome.",
     "scope": "single maintained file",
-    "expected_profile_behavior": "codexy-inspector with max reasoning"
+    "expected_profile_behavior": "light profile with no reviewer"
   }
 }
