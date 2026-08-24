@@ -13,13 +13,18 @@ handoffs, and thread state.
 
 ## Canonical flow
 
-The only supported ownership flow is:
+The supported ownership flow is parent-or-standalone-owner:
 
-`voice input -> owning orchestrator/parent -> parent-managed child coordination -> parent result -> voice summary`
+- Parent-owned:
+  `voice input -> owning orchestrator/parent -> parent-managed child coordination -> parent result -> voice summary`
+- Standalone-owned:
+  `voice input -> exactly one relevant standalone active project owner -> owner result -> voice summary`
 
 - MUST route a project request to its owning parent/orchestrator when one is
-  known. The voice layer MUST NOT steer, poll, or decide for that parent's
-  children directly.
+  known, or directly to exactly one relevant standalone active project owner
+  when no parent exists. The voice layer MUST NOT steer, poll, or decide for a
+  parent's children directly, invent an orchestrator for a standalone owner, or
+  route to an unrelated thread.
 - MUST NOT assume that the visible voice thread owns the project. A voice thread
   may be separate from the project parent or a standalone work owner.
 - MAY inspect enough authoritative parent state to resolve context and report
