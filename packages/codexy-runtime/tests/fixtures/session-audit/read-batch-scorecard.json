@@ -1,0 +1,12 @@
+{
+  "sequential": {
+    "input_tokens": 180,
+    "output_bytes": 420,
+    "turns": 3
+  },
+  "batched": {
+    "input_tokens": 120,
+    "output_bytes": 400,
+    "turns": 1
+  }
+}
