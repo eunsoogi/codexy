@@ -102,13 +102,17 @@ fn package_check(
 }
 
 pub(super) fn report() -> Value {
-    json!({"schema":"codexy.review-economics.v2","status":"observed","head_oid":"","policy_sha256":"","corpus_sha256":"","lanes":[
-        lane("tiny", "tiny", "standard", 30, 1, 0, 0, 0, 0, 0, 0, None),
+    let mut report = json!({"schema":"codexy.review-economics.v2","status":"observed","head_oid":"","policy_sha256":"","corpus_sha256":"","lanes":[
+        lane("tiny", "tiny", "light", 30, 1, 0, 0, 0, 0, 0, 0, None),
         lane("security", "security", "strict", 50, 1, 0, 1, 0, 1, 1, 0, Some(10)),
         lane("standard", "standard", "standard", 30, 1, 0, 0, 0, 0, 0, 1, None),
         lane("response", "review_response", "strict", 50, 1, 1, 1, 1, 0, 0, 1, None),
         lane("release", "release", "strict", 50, 1, 0, 0, 0, 0, 0, 0, None)
-    ]})
+    ]});
+    report["lanes"][0]["reviewer"] = Value::Null;
+    assert_eq!(report["lanes"][0]["profile"], "light");
+    assert!(report["lanes"][0]["reviewer"].is_null());
+    report
 }
 
 pub(super) fn bind(value: &mut Value, root: &Path, head: &str) {

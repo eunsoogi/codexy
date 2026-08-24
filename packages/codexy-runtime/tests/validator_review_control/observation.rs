@@ -50,6 +50,31 @@ fn fixture_subprocess_can_never_provide_verifiable_observation() -> TestResult {
 
 #[cfg(unix)]
 #[test]
+fn complete_forgery_fixture_is_bound_to_current_tiny_contract() -> TestResult {
+    let fixture = crate::support::plugin_fixture()?;
+    let temp = tempfile::tempdir()?;
+    let receipt_path = write_complete_forged_receipt(fixture.root(), temp.path())?;
+    let receipt: Value = serde_json::from_slice(&fs::read(receipt_path)?)?;
+    let tiny = receipt["lanes"]
+        .as_array()
+        .and_then(|lanes| lanes.iter().find(|lane| lane["id"] == "tiny"))
+        .ok_or("tiny forged lane")?;
+    let package_tiny: Value = serde_json::from_slice(&fs::read(
+        fixture
+            .root()
+            .join("skills/orchestration/references/review-economics/lanes/tiny.json"),
+    )?)?;
+    assert_eq!(package_tiny["profile"], "light");
+    assert_eq!(
+        tiny["profile"], package_tiny["profile"],
+        "complete forgery is stale against the current economics package"
+    );
+    assert!(tiny["reviewer"].is_null(), "tiny light lane must have no reviewer");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn capture_runner_rejects_complete_forged_codex_receipt() -> TestResult {
     let fixture = crate::support::plugin_fixture()?;
     let temp = tempfile::tempdir()?;
@@ -88,7 +113,7 @@ fn write_complete_forged_receipt(plugin: &Path, directory: &Path) -> TestResult<
     let tree = git(repository, ["rev-parse", "HEAD^{tree}"])?;
     let policy = plugin.join("skills/orchestration/references/review-profiles.json");
     let specs = [
-        ("tiny", "standard", "tiny", None),
+        ("tiny", "light", "tiny", None),
         ("security", "strict", "security", Some(("seed-p0-authz", "p0"))),
         ("standard", "standard", "standard", Some(("seed-p1-boundary", "p1"))),
         ("response", "strict", "review_response", Some(("seed-p1-regression", "p1"))),
