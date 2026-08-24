@@ -14,7 +14,7 @@
   "aggregateOutputBound": 1024,
   "outcomes": [],
   "measurements": {
-    "inputTokens": {"value": 0},
+    "inputTokens": { "value": 0 },
     "outputBytes": 0
   }
 }

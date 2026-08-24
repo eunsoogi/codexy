@@ -12,32 +12,32 @@
         "type": "object",
         "required": ["id", "reference", "outputBound"],
         "properties": {
-          "id": {"type": "string", "minLength": 1},
+          "id": { "type": "string", "minLength": 1 },
           "reference": {
             "type": "object",
             "required": ["kind", "locator", "readOnly", "independent"],
             "properties": {
-              "kind": {"type": "string", "minLength": 1},
-              "locator": {"type": "string", "minLength": 1},
-              "readOnly": {"type": "boolean", "const": true},
-              "independent": {"type": "boolean", "const": true}
+              "kind": { "type": "string", "minLength": 1 },
+              "locator": { "type": "string", "minLength": 1 },
+              "readOnly": { "type": "boolean", "const": true },
+              "independent": { "type": "boolean", "const": true }
             }
           },
-          "outputBound": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}
+          "outputBound": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
         }
       }
     },
-    "aggregateOutputBound": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+    "aggregateOutputBound": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
     "outcomes": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "outputBytes", "attempts", "status"],
         "properties": {
-          "id": {"type": "string", "minLength": 1},
-          "outputBytes": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
-          "attempts": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
-          "status": {"enum": ["success", "failed"]}
+          "id": { "type": "string", "minLength": 1 },
+          "outputBytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+          "attempts": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+          "status": { "enum": ["success", "failed"] }
         }
       }
     },
@@ -48,9 +48,9 @@
         "inputTokens": {
           "type": "object",
           "required": ["value"],
-          "properties": {"value": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}}
+          "properties": { "value": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 } }
         },
-        "outputBytes": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}
+        "outputBytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
       }
     }
   }
