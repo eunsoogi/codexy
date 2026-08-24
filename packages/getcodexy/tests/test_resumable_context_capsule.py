@@ -20,18 +20,12 @@ PLUGIN_FILES = (
     "skills/dreaming/scripts/resumable_context_capsule.py",
 )
 KINDS = {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}
-SYSTEMS = {"Darwin": "darwin", "Linux": "linux", "Windows": "windows"}
 MACHINES = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x86_64", "AMD64": "x86_64"}
 EVENT_KINDS = {
     "compaction": "compaction-resume",
     "fresh-child": "fresh-child-continuation",
     "parent-handoff": "parent-handoff",
 }
-STABLE_TEMPLATE = json.loads(
-    '{"workflow_profile":"strict","task_classification":"implementation",'
-    '"selected_references":["workflow_profiles","task_classification","tdd_classification_policy",'
-    '"execution_budget","proof_completion"]}'
-)
 AUTHORITY_TEMPLATE = json.loads(
     '{"currentHead":"head","owner":"child-owned","worktree":"worktree","issue":679,'
     '"pr":null,"branch":"branch","base":"base"}'
@@ -49,10 +43,12 @@ VOLATILE_TEMPLATE = json.loads(
 POLICY = ROOT / "plugins/codexy/skills/orchestration/references/context-tiers.json"
 STABLE = {
     "policy_digest": f"sha256:{hashlib.sha256(POLICY.read_bytes()).hexdigest()}",
-    **STABLE_TEMPLATE,
+    **json.loads(
+        '{"workflow_profile":"strict","task_classification":"implementation",'
+        '"selected_references":["workflow_profiles","task_classification","tdd_classification_policy",'
+        '"execution_budget","proof_completion"]}'
+    ),
 }
-AUTHORITY = dict(AUTHORITY_TEMPLATE)
-AUTHORITY["stable"] = STABLE
 RUN_OPTIONS = {"text": True, "capture_output": True, "check": False}
 
 
@@ -62,10 +58,12 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             "cargo build --locked --bin codexy-handoff-validate".split(),
             cwd=ROOT / "packages/codexy-runtime",
         )
+        self._new_fixture()
+
+    def _new_fixture(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        root = Path(self.temporary.name).resolve()
-        self.plugins = root / "plugins"
+        self.plugins = Path(self.temporary.name).resolve() / "plugins"
         self.plugin = self.plugins / "codexy"
         self.runtime = self.plugins / "codexy-devtools"
         shutil.copytree(ROOT / "plugins/codexy", self.plugin)
@@ -106,7 +104,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
     def test_selected_platform_path_digest_and_kind_fail_independently(self) -> None:
         manifest = self._install_runtime()
         capsule = self._capsule("fresh-child", self.plugins.parent / "replay.json")
-        platform_id = f"{SYSTEMS[platform.system()]}-{MACHINES[platform.machine()]}"
+        platform_id = f"{platform.system().lower()}-{MACHINES[platform.machine()]}"
         mutations = {
             "path": lambda item: item.update(path="runtime/unauthorized.bin"),
             "digest": lambda item: item.update(sha256="0" * 64),
@@ -123,9 +121,11 @@ class ResumableContextCapsuleTests(unittest.TestCase):
                 self._install_runtime()
 
     def test_distinct_linked_and_reparse_ancestors_are_rejected(self) -> None:
-        capsule = self._capsule("parent-handoff", self.plugins.parent / "replay.json")
         for case in ("runtime", "output", "native bridge", "authority"):
             with self.subTest(case=case):
+                self._new_fixture()
+                replay = self.plugins.parent / "replay.json"
+                capsule = self._capsule("parent-handoff", replay)
                 self._install_runtime()
                 arguments: list[str] = []
                 if case == "runtime":
@@ -195,7 +195,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             "sourceTask": source,
             "targetTask": target,
             "replayPath": str(replay),
-            "authority": AUTHORITY,
+            "authority": {**AUTHORITY_TEMPLATE, "stable": STABLE},
             "envelope": canonical_envelope(
                 EVENT_KINDS[consumer], consumer, subject, parent, child
             ),
