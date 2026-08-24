@@ -170,25 +170,25 @@ flowchart TD
 ### 실시간 음성 모드
 
 `realtime-voice-orchestration` skill은 일반 `$orchestration`과 함께 사용하는
-음성 전용 routing·표현 계층입니다. 담당자, dispatch, child 조정, 근거,
-thread 상태의 최종 권한은 계속 일반 오케스트레이션에 있습니다. 지원하는
-흐름은 다음과 같습니다.
+음성 전용 routing·표현 계층입니다. 담당자, dispatch, child 조정, 근거, thread
+상태의 최종 권한은 계속 일반 오케스트레이션에 있습니다. 지원하는 흐름은 다음과
+같습니다.
 
 `voice input -> owning orchestrator/parent -> parent-managed child coordination -> parent result -> voice summary`
 
-“지금 잘 되고 있어?”나 “현재 뭐가 진행 중이야?” 같은 질문은 대화 속 표현과
-사용 가능한 현재 화면 context를 authoritative한 활성 project 상태와 대조해
+“지금 잘 되고 있어?”나 “현재 뭐가 진행 중이야?” 같은 질문은 대화 속 표현과 사용
+가능한 현재 화면 context를 authoritative한 활성 project 상태와 대조해
 해석합니다. 분명한 parent가 있으면 parent로 보내고, 관련 standalone 활성
-thread가 정확히 하나면 그 thread로 직접 보냅니다. 여러 project가 가능하면
-짧은 확인을 한 번만 요청하고, 담당자가 없으면 대화로 답하거나 새 task 시작을
+thread가 정확히 하나면 그 thread로 직접 보냅니다. 여러 project가 가능하면 짧은
+확인을 한 번만 요청하고, 담당자가 없으면 대화로 답하거나 새 task 시작을
 제안합니다. 음성 계층은 parent의 child를 직접 지휘하지 않습니다.
 
-| 확인한 context | 음성 routing | 음성 계층의 경계 |
-| --- | --- | --- |
-| 분명한 owning orchestrator/parent가 있음 | 그 parent로만 보냄 | child 조정은 parent가 담당 |
-| 관련 standalone 활성 project thread가 정확히 하나 있음 | 그 thread로 직접 보냄 | orchestrator를 임의로 만들지 않음 |
-| 가능한 project workflow가 둘 이상임 | 짧은 확인을 한 번 요청 | 추측으로 고르지 않음 |
-| 활성 work owner가 없음 | 대화로 답하거나 task 시작을 제안 | 무관한 thread로 보내지 않음 |
+| 확인한 context                                         | 음성 routing                     | 음성 계층의 경계                  |
+| ------------------------------------------------------ | -------------------------------- | --------------------------------- |
+| 분명한 owning orchestrator/parent가 있음               | 그 parent로만 보냄               | child 조정은 parent가 담당        |
+| 관련 standalone 활성 project thread가 정확히 하나 있음 | 그 thread로 직접 보냄            | orchestrator를 임의로 만들지 않음 |
+| 가능한 project workflow가 둘 이상임                    | 짧은 확인을 한 번 요청           | 추측으로 고르지 않음              |
+| 활성 work owner가 없음                                 | 대화로 답하거나 task 시작을 제안 | 무관한 thread로 보내지 않음       |
 
 음성 상태 안내는 dispatch가 authoritative하게 확인된 뒤에만 시작하며,
 bounded/event-driven 방식으로 상태를 확인합니다. 진행 중, 성공, 실패, 취소,
