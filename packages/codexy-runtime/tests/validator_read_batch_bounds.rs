@@ -95,7 +95,10 @@ struct ScalarCase {
 }
 
 fn scalar_cases(field: ScalarField) -> Vec<ScalarCase> {
-    let zero_expected = !matches!(field, ScalarField::OutcomesAttempts);
+    let zero_expected = !matches!(
+        field,
+        ScalarField::OperationsOutputBound | ScalarField::OutcomesAttempts
+    );
     let positive_label = if matches!(field, ScalarField::OutcomesAttempts) {
         "attempts=1"
     } else {

@@ -23,7 +23,7 @@
               "independent": { "type": "boolean", "const": true }
             }
           },
-          "outputBound": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
+          "outputBound": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 }
         }
       }
     },

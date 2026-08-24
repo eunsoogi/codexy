@@ -1,3 +1,4 @@
+use serde::{Deserialize, Deserializer, de::Error as _};
 use serde_json::{Number, Value};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
@@ -38,10 +39,25 @@ pub fn validate_scalar(field: ScalarField, value: &Value) -> Result<u64, String>
         .as_number()
         .and_then(parse_json_integer)
         .ok_or_else(|| format!("{} must be a non-negative JSON integer", field.path()))?;
-    if matches!(field, ScalarField::OutcomesAttempts) && parsed == 0 {
+    if matches!(
+        field,
+        ScalarField::OperationsOutputBound | ScalarField::OutcomesAttempts
+    ) && parsed == 0
+    {
         return Err(format!("{} must be at least one", field.path()));
     }
     Ok(parsed)
+}
+
+pub(super) fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    value
+        .as_number()
+        .and_then(parse_json_integer)
+        .ok_or_else(|| D::Error::custom("expected a non-negative JSON integer within u64"))
 }
 
 fn parse_json_integer(number: &Number) -> Option<u64> {
