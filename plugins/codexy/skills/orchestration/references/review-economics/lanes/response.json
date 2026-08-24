@@ -1,0 +1,14 @@
+{
+  "schema": "codexy.review-economics-lane-input.v1",
+  "id": "response",
+  "version": "1.0.0",
+  "kind": "review_response",
+  "profile": "strict",
+  "seeds": [{ "id": "seed-p1-regression" }],
+  "request": {
+    "task": "Review a response to a blocking finding with a seeded regression in the repaired path.",
+    "scope": "replacement head and prior finding lineage",
+    "expected_profile_behavior": "codexy-sentinel with xhigh reasoning",
+    "required_findings": ["seed-p1-regression"]
+  }
+}

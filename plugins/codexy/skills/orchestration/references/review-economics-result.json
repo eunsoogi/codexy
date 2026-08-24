@@ -2,8 +2,12 @@
   "schema": "codexy.review-economics.v2",
   "status": "unavailable",
   "head_oid": null,
+  "tree_oid": null,
   "policy_sha256": null,
   "corpus_sha256": null,
+  "package_sha256": null,
+  "baseline_sha256": null,
+  "provenance": null,
   "lanes": [],
-  "reason": "No repository-owned observed review timing and seeded-defect outcomes have been captured for this head. This record is intentionally null and must fail closed until a current observed report binds the policy, corpus, and head."
+  "reason": "No external Codex task/tool receipt has authenticated observed review timing and seeded-defect outcomes for this head. This tracked template is intentionally non-circular and must fail closed; authentic reports remain external artifacts bound to an already-frozen exact head and tree."
 }

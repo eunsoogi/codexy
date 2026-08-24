@@ -1,0 +1,19 @@
+{
+  "schema": "codexy.review-economics-package.v1",
+  "version": "1.0.0",
+  "corpus": "../review-economics-corpus.json",
+  "baseline": "baseline-pre-1.5.json",
+  "capture_protocol": "codexy.review-economics-capture.v1",
+  "seeds": [
+    { "id": "seed-p0-authz", "version": "1.0.0", "path": "seeds/seed-p0-authz.json", "severity": "p0" },
+    { "id": "seed-p1-boundary", "version": "1.0.0", "path": "seeds/seed-p1-boundary.json", "severity": "p1" },
+    { "id": "seed-p1-regression", "version": "1.0.0", "path": "seeds/seed-p1-regression.json", "severity": "p1" }
+  ],
+  "lanes": [
+    { "id": "tiny", "version": "1.0.0", "path": "lanes/tiny.json", "kind": "tiny", "profile": "standard", "seeds": [] },
+    { "id": "security", "version": "1.0.0", "path": "lanes/security.json", "kind": "security", "profile": "strict", "seeds": [{ "id": "seed-p0-authz" }] },
+    { "id": "standard", "version": "1.0.0", "path": "lanes/standard.json", "kind": "standard", "profile": "standard", "seeds": [{ "id": "seed-p1-boundary" }] },
+    { "id": "response", "version": "1.0.0", "path": "lanes/response.json", "kind": "review_response", "profile": "strict", "seeds": [{ "id": "seed-p1-regression" }] },
+    { "id": "release", "version": "1.0.0", "path": "lanes/release.json", "kind": "release", "profile": "strict", "seeds": [] }
+  ]
+}

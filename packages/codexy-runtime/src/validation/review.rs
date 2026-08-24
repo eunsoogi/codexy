@@ -37,6 +37,29 @@ pub fn check_review_economics(
     repository_root: &Path,
     economics: &str,
 ) -> Result<()> {
+    if let Ok(request) = serde_json::from_str::<serde_json::Value>(economics) {
+        if request["schema"] == "codexy.review-economics-capture-request.v1" {
+            return review_control::capture_economics(
+                plugin_root,
+                repository_root,
+                Path::new(
+                    request["observer_command"]
+                        .as_str()
+                        .ok_or_else(|| anyhow::anyhow!("capture observer command is missing"))?,
+                ),
+                Path::new(
+                    request["trusted_receipt"]
+                        .as_str()
+                        .ok_or_else(|| anyhow::anyhow!("capture trusted receipt is missing"))?,
+                ),
+                Path::new(
+                    request["output"]
+                        .as_str()
+                        .ok_or_else(|| anyhow::anyhow!("capture output is missing"))?,
+                ),
+            );
+        }
+    }
     review_control::check_economics(plugin_root, repository_root, economics)
 }
 

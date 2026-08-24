@@ -14,13 +14,15 @@ struct Cli {
     repository_root: Option<PathBuf>,
     #[arg(long)]
     ledger: Option<PathBuf>,
-    #[arg(long, conflicts_with_all = ["check_packet", "check_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["check_packet", "check_economics", "capture_economics", "build_pr_state"])]
     resolve_profile: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics", "capture_economics", "build_pr_state"])]
     check_packet: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "capture_economics", "build_pr_state"])]
     check_economics: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "build_pr_state"])]
+    capture_economics: bool,
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "capture_economics"])]
     build_pr_state: bool,
     #[arg(long)]
     input: Option<PathBuf>,
@@ -30,12 +32,29 @@ struct Cli {
     review_control_state_file: Option<PathBuf>,
     #[arg(long)]
     output: Option<PathBuf>,
+    #[arg(long)]
+    observer_command: Option<PathBuf>,
+    #[arg(long)]
+    trusted_receipt: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let root = cli.plugin_root.unwrap_or_else(paths::plugin_root);
-    if cli.build_pr_state {
+    if cli.capture_economics {
+        let request = serde_json::json!({
+            "schema":"codexy.review-economics-capture-request.v1",
+            "observer_command":cli.observer_command.ok_or_else(|| anyhow::anyhow!("--observer-command is required"))?,
+            "trusted_receipt":cli.trusted_receipt.ok_or_else(|| anyhow::anyhow!("--trusted-receipt is required"))?,
+            "output":cli.output.ok_or_else(|| anyhow::anyhow!("--output is required"))?
+        });
+        validation::check_review_economics(
+            &root,
+            &cli.repository_root
+                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
+            &serde_json::to_string(&request)?,
+        )?;
+    } else if cli.build_pr_state {
         let base = fs::read_to_string(
             cli.base_pr_state_file
                 .ok_or_else(|| anyhow::anyhow!("--base-pr-state-file is required"))?,

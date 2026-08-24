@@ -5,6 +5,8 @@ use anyhow::Result;
 mod capture;
 mod classification;
 mod economics;
+mod economics_capture;
+mod economics_package;
 mod finding_disposition;
 mod history;
 mod history_contract;
@@ -42,6 +44,22 @@ pub(super) fn check_economics(
     economics: &str,
 ) -> Result<()> {
     economics::check(plugin_root, repository_root, economics)
+}
+
+pub(super) fn capture_economics(
+    plugin_root: &Path,
+    repository_root: &Path,
+    observer_command: &Path,
+    trusted_receipt: &Path,
+    output: &Path,
+) -> Result<()> {
+    economics_capture::capture(
+        plugin_root,
+        repository_root,
+        observer_command,
+        trusted_receipt,
+        output,
+    )
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {

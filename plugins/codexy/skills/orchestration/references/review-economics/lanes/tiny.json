@@ -1,0 +1,13 @@
+{
+  "schema": "codexy.review-economics-lane-input.v1",
+  "id": "tiny",
+  "version": "1.0.0",
+  "kind": "tiny",
+  "profile": "standard",
+  "seeds": [],
+  "request": {
+    "task": "Inspect a one-file documentation-only change and report the observed review outcome.",
+    "scope": "single maintained file",
+    "expected_profile_behavior": "codexy-inspector with max reasoning"
+  }
+}
