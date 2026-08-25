@@ -5,6 +5,8 @@
 *.yml text eol=lf
 *.sh text eol=lf
 *.cmd text eol=lf
+*.json text eol=lf
+*.py text eol=lf
 
 # Versioned executable contract inputs without filename extensions.
 scripts/** text eol=lf
