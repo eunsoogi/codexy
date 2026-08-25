@@ -131,16 +131,12 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                 synchronized[0][0],
                 synchronized[2][0],
             ]
-            expected = [
-                (path, home_alias / ".codex") for path in expected_plugin_roots
-            ]
+            expected = [(path, home_alias / ".codex") for path in expected_plugin_roots]
             self.assertEqual(
                 [path for path, _ in synchronized],
                 [path for path, _ in expected],
             )
-            for (_, actual_home), (_, expected_home) in zip(
-                synchronized, expected
-            ):
+            for (_, actual_home), (_, expected_home) in zip(synchronized, expected):
                 self.assertTrue(actual_home.samefile(expected_home))
             self.assertNotIn(core.resolve(), [path for path, _ in synchronized])
             self.assertNotIn(github.resolve(), [path for path, _ in synchronized])
