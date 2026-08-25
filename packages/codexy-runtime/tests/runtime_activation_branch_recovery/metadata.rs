@@ -52,6 +52,14 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         fs::create_dir_all(target.parent().ok_or("component contract parent")?)?;
         fs::copy(root.join(relative), target)?;
     }
+    let current_contract: Value = serde_json::from_slice(&fs::read(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
+    let mut contract: Value = serde_json::from_slice(&fs::read(&contract_path)?)?;
+    contract["bootstrap"]["candidateVersion"] =
+        current_contract["bootstrap"]["candidateVersion"].clone();
+    fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
     reset_github_version(repo, &baseline_version)?;
     Ok(())
 }
@@ -171,7 +179,11 @@ pub(super) fn select_current_bootstrap(repo: &Path) -> Result<(), Box<dyn std::e
     let contract_path = repo.join(".agents/plugins/release-publish-contract.json");
     let mut contract: Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
     contract["bootstrap"]["selectedVersion"] = json!(selected_version);
+    contract["bootstrap"]["candidateVersion"] = json!(selected_version);
     contract["runtime"]["selectedTag"] = json!(selected_tag);
+    assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
+    assert_eq!(contract["bootstrap"]["candidateVersion"], selected_version);
+    assert_eq!(contract["runtime"]["selectedTag"], selected_tag);
     fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
     fs::copy(
         codexy_runtime::paths::runtime_package_root().join("src/version/bootstrap.rs"),
