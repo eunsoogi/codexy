@@ -33,6 +33,16 @@ connector automatic review MUST remain disabled.
 7. [material-expansion-exception] Another connector review MUST NOT be requested
    unless a maintainer explicitly authorizes it after material scope expansion.
 
+## 2/3 Connector-Repair Disposition
+
+When connector feedback changes the current head after the strict full BLOCK and
+same-reviewer delta PASS, the only lawful pre-cap handoff disposition is the
+typed `CONNECTOR_REPAIR_CURRENT_HEAD_NON_READY`. It MUST retain the two-event
+`full -> delta` ledger at 2/3, identify current-head selected-review proof as
+the actionable repair blocker, and omit terminal `APPROVED` and
+`PARENT_DECISION` state. It MUST request neither a fourth profile-selected
+review nor a fabricated verdict or another connector review.
+
 Human review, selected-profile review evidence, title, label,
 completion-handoff, CI, review-thread resolution, and merge-message gates MUST
 remain required. Existing actionable human or connector review threads MUST

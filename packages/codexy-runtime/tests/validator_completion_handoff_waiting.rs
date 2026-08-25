@@ -194,6 +194,7 @@ fn validator_classifies_bounded_wait_subject_state_events() -> TestResult {
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",
+        "Blocked: CONNECTOR_REPAIR_CURRENT_HEAD_NON_READY; connector repair changed the current head, so current-head selected-review proof is the actionable repair blocker; 2/3 ledger retained; no fourth profile-selected review; no fabricated verdict; no another connector review.",
         "Blocked: requested changes are not resolved.",
         "Blocked: required status checks are failing.",
         "Blocked: required checks failed during a hard investigation.",
@@ -207,6 +208,20 @@ fn validator_preserves_real_blockers() -> TestResult {
             "real blocker was rejected: {handoff}\n{}",
             stderr(&output)
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_mixed_connector_repair_dispositions() -> TestResult {
+    for suffix in [
+        "request a fourth profile-selected review.",
+        "PARENT_DECISION.",
+        "fabricated PASS.",
+        "request another connector review.",
+    ] {
+        let output = validate(&format!("Blocked: CONNECTOR_REPAIR_CURRENT_HEAD_NON_READY; {suffix}"))?;
+        assert!(!output.status.success() && stderr(&output).contains("connector-repair disposition"));
     }
     Ok(())
 }

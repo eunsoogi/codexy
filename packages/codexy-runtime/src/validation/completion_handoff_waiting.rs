@@ -19,6 +19,13 @@ const DISALLOWED_BLOCKED_RATIONALE: &str =
     "maintainer input|human input|external state change|true impasse";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
+    if has_unnegated_phrase(&text, "connector_repair_current_head_non_ready", 16)
+        && "parent_decision|approved|fourth profile-selected review|fourth review|another connector review|fabricated"
+            .split('|')
+            .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
+    {
+        return Some("connector-repair disposition must omit terminal or additional review claims".into());
+    }
     if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
         return Some(error);
     }
