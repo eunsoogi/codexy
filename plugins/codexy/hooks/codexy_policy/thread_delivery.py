@@ -18,16 +18,10 @@ DELEGATION = re.compile(
 
 
 def forbidden(request: Request) -> bool | str:
-    data = request.tool_input
-    if not isinstance(data, dict) or any(
-        not isinstance(data.get(field), str) or not data[field].strip()
-        for field in FIELDS
-    ):
-        return True
     session = request.session_id
     transcript = request.transcript_path
     if session is None and transcript is None:
-        return False
+        return "EXPECTED_RECIPIENT"
     if (
         not isinstance(session, str)
         or not session.strip()
@@ -35,6 +29,12 @@ def forbidden(request: Request) -> bool | str:
         or not transcript.strip()
     ):
         return "EXPECTED_RECIPIENT"
+    data = request.tool_input
+    if not isinstance(data, dict) or any(
+        not isinstance(data.get(field), str) or not data[field].strip()
+        for field in FIELDS
+    ):
+        return True
     try:
         parent = _authenticated_parent(transcript, session)
     except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
