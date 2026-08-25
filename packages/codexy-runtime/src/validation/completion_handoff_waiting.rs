@@ -15,6 +15,8 @@ const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fata
 const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
 const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
 const NONTERMINAL_GATE_WAIT: &str = "sentinel|ci|connector review|parent authorization|dependency integration|dependency merge|resource slot|alternate evidence|event-idle child";
+const BARE_CONNECTOR_PASS: &str =
+    "connector review pass|connector review passed|connector review: pass|connector review: passed";
 const DISALLOWED_BLOCKED_RATIONALE: &str =
     "maintainer input|human input|external state change|true impasse";
 pub(super) fn check(handoff: &str) -> Option<String> {
@@ -76,6 +78,7 @@ fn mentions_non_blocking_wait(text: &str) -> bool {
         || mentions_async_completion(text)
         || mentions_return_wait(text)
         || classify_wait_text(text) == Some(WaitDisposition::Nonterminal)
+        || has_any(text, BARE_CONNECTOR_PASS)
         || has_any(text, DISALLOWED_BLOCKED_RATIONALE)
         || (has_any(text, NONTERMINAL_GATE_WAIT) && mentions_waiting_context(text))
         || (has_any(text, CHILD_WORK)

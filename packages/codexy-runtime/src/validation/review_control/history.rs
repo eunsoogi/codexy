@@ -95,9 +95,6 @@ fn valid_path(events: &[Event]) -> bool {
         }
         [first, second, third] => {
             (full_review(first) && delta_after(first, second) && passed_after(second, third, 1))
-                || (full_review(first)
-                    && delta_after(first, second)
-                    && parent_decision(second, third))
                 || (escalated_full(first, second) && passed_after(second, third, 0))
                 || (escalated_full(first, second) && delta_after(second, third))
         }
@@ -174,10 +171,11 @@ fn passed_after(prior: &Event, passed: &Event, delta_used: u8) -> bool {
 fn parent_decision(delta: &Event, decision: &Event) -> bool {
     decision.state == "parent_decision"
         && decision.profile == delta.profile
-        && decision.head_oid == delta.head_oid
+        && decision.base_oid == delta.head_oid
         && decision.escalation.is_none()
         && (decision.full_used, decision.delta_used) == (1, 1)
-        && preserves_scope(delta, decision)
+        && decision.boundaries == delta.boundaries
+        && history_contract::preserves(delta, decision)
         && preserves_blockers(delta, decision)
 }
 
