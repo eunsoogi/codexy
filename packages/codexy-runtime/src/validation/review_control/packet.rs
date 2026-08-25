@@ -101,6 +101,19 @@ pub(super) fn check(
     ledger_path: &Path,
     text: &str,
 ) -> Result<()> {
+    let packet = validate_only(plugin_root, repository_root, text)?;
+    let profiles = policy::load(plugin_root)?;
+    let profile = profiles
+        .get(&packet.profile)
+        .ok_or_else(|| anyhow::anyhow!("review packet names an unknown profile"))?;
+    ledger::record(ledger_path, &packet, profile)
+}
+
+pub(super) fn validate_only(
+    plugin_root: &Path,
+    repository_root: &Path,
+    text: &str,
+) -> Result<Packet> {
     let packet: Packet = serde_json::from_str(text)?;
     let profiles = policy::load(plugin_root)?;
     let profile = profiles
@@ -108,7 +121,7 @@ pub(super) fn check(
         .ok_or_else(|| anyhow::anyhow!("review packet names an unknown profile"))?;
     let current = repository::Current::load(repository_root, &packet.identity.base_oid)?;
     validate(&packet, profile, repository_root, &current)?;
-    ledger::record(ledger_path, &packet, profile)
+    Ok(packet)
 }
 
 fn validate(

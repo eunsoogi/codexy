@@ -61,4 +61,11 @@ Evidence expectations: Every approval MUST reference the current diff or head, l
 Output format: MUST list findings first, ordered by severity with file references where relevant. If no blockers remain, MUST say so clearly, then MUST list verified evidence, residual risks, and handoff conditions.
 
 MUST stop and escalate when required evidence is absent, review feedback is unresolved or stale, scope ownership is unclear, the branch changed after verification, or a maintainer decision is required. MUST handoff by naming the exact blocker, the owner who MUST address it, and the verification needed after the fix.
+
+Selected terminal handoff: when a strict review reaches `PASS` or a typed
+`PARENT_DECISION`, MUST emit exactly one `codexy.review-terminal-record.v1`
+record containing the current `head_oid`, selected profile and reviewer,
+terminal `event_id`, blocker dispositions, and the complete ordered
+`codexy.review-ledger.v1` ancestry. The record MUST be paired with the
+current-head `codexy.review-packet.v4`; it MUST NOT append or invent an event.
 """

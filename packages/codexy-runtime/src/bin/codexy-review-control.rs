@@ -14,16 +14,18 @@ struct Cli {
     repository_root: Option<PathBuf>,
     #[arg(long)]
     ledger: Option<PathBuf>,
-    #[arg(long, conflicts_with_all = ["check_packet", "check_economics", "capture_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["check_packet", "check_economics", "capture_economics", "build_pr_state", "produce_review_control"])]
     resolve_profile: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics", "capture_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics", "capture_economics", "build_pr_state", "produce_review_control"])]
     check_packet: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "capture_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "capture_economics", "build_pr_state", "produce_review_control"])]
     check_economics: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "build_pr_state"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "build_pr_state", "produce_review_control"])]
     capture_economics: bool,
-    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "capture_economics"])]
+    #[arg(long, conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "capture_economics", "produce_review_control"])]
     build_pr_state: bool,
+    #[arg(long, visible_alias = "capture-review-control", conflicts_with_all = ["resolve_profile", "check_packet", "check_economics", "capture_economics", "build_pr_state"])]
+    produce_review_control: bool,
     #[arg(long)]
     input: Option<PathBuf>,
     #[arg(long)]
@@ -33,6 +35,10 @@ struct Cli {
     #[arg(long)]
     output: Option<PathBuf>,
     #[arg(long)]
+    packet_output: Option<PathBuf>,
+    #[arg(long)]
+    ledger_output: Option<PathBuf>,
+    #[arg(long)]
     observer_command: Option<PathBuf>,
     #[arg(long)]
     trusted_receipt: Option<PathBuf>,
@@ -41,7 +47,34 @@ struct Cli {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let root = cli.plugin_root.unwrap_or_else(paths::plugin_root);
-    if cli.capture_economics {
+    if cli.produce_review_control {
+        let input = fs::read_to_string(
+            cli.input
+                .ok_or_else(|| anyhow::anyhow!("review-control producer requires --input"))?,
+        )?;
+        let output = cli
+            .output
+            .ok_or_else(|| anyhow::anyhow!("review-control producer requires --output"))?;
+        let packet_output = cli
+            .packet_output
+            .ok_or_else(|| anyhow::anyhow!("review-control producer requires --packet-output"))?;
+        let ledger_output = cli
+            .ledger_output
+            .ok_or_else(|| anyhow::anyhow!("review-control producer requires --ledger-output"))?;
+        let produced = validation::produce_review_control(
+            &root,
+            &cli.repository_root
+                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
+            &input,
+        )?;
+        for (path, key) in [
+            (output, "control_state"),
+            (packet_output, "packet"),
+            (ledger_output, "ledger"),
+        ] {
+            fs::write(path, serde_json::to_vec_pretty(&produced[key])?)?;
+        }
+    } else if cli.capture_economics {
         let request = serde_json::json!({
             "schema":"codexy.review-economics-capture-request.v1",
             "observer_command":cli.observer_command.ok_or_else(|| anyhow::anyhow!("--observer-command is required"))?,
