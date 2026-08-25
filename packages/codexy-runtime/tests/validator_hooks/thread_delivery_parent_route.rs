@@ -10,9 +10,35 @@ use serde_json::{Value, json};
 
 use crate::support::TestResult;
 
-const CHILD: &str = "01a03242-c99a-74f3-b555-8e8c55d6afbc";
+const CHILD: &str = "01a03690-a037-7141-af1c-1d7cdb093087";
 const PARENT: &str = "01a02ebc-804e-7702-a0ca-503c50741db8";
 const OTHER: &str = "01a031f2-da35-7960-9686-502b7e373676";
+
+#[test]
+fn authoritative_and_installed_hooks_reject_missing_identity() -> TestResult {
+    let payload = json!({
+        "hook_event_name":"PreToolUse",
+        "tool_name":"codex_app__send_message_to_thread",
+        "tool_input":{"threadId":PARENT,"model":"gpt-5.6-luna","thinking":"max"}
+    });
+    assert_denied(run_payload(payload.clone())?)?;
+
+    let temp = tempfile::tempdir()?;
+    let installed = temp.path().join("installed");
+    crate::support::copy_dir(
+        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &installed,
+    )?;
+    assert_denied(run_payload_at(&installed, payload)?)?;
+    let malformed = json!({
+        "hook_event_name":"PreToolUse",
+        "tool_name":"codex_app__send_message_to_thread",
+        "tool_input":{"threadId":PARENT,"thinking":""}
+    });
+    assert_denied(run_payload(malformed.clone())?)?;
+    assert_denied(run_payload_at(&installed, malformed)?)?;
+    Ok(())
+}
 
 #[test]
 fn installed_hook_preserves_authenticated_parent_route() -> TestResult {
@@ -88,18 +114,18 @@ fn installed_hook_preserves_root_to_child_and_rejects_partial_context() -> TestR
         &transcript,
         format!(
             "{}\n{}\n{}\n{}\n",
-            json!({"type":"session_meta","payload":{"id":CHILD,"session_id":CHILD}}),
+            json!({"type":"session_meta","payload":{"id":PARENT,"session_id":PARENT}}),
             json!({"type":"turn_context","payload":{}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Document the literal <codex_delegation> marker in a root-owned task."}]}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":format!("<codex_delegation><source_thread_id>{PARENT}</source_thread_id><input>Later receipt.</input></codex_delegation>")}]}}),
         ),
     )?;
-    let generic = run_to(&transcript, CHILD, OTHER, "gpt-5.6-luna", "max")?;
+    let generic = run_to(&transcript, PARENT, CHILD, "gpt-5.6-luna", "max")?;
     assert!(generic.stdout.is_empty(), "root-to-child delivery was denied");
     let partial = run_payload(json!({
         "hook_event_name":"PreToolUse",
         "tool_name":"codex_app__send_message_to_thread",
-        "session_id":CHILD,
+        "session_id":PARENT,
         "tool_input":{"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"medium"}
     }))?;
     assert_denied(partial)?;
@@ -153,6 +179,10 @@ fn run_to(
 
 fn run_payload(payload: Value) -> TestResult<std::process::Output> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    run_payload_at(&root, payload)
+}
+
+fn run_payload_at(root: &Path, payload: Value) -> TestResult<std::process::Output> {
     let payload = serde_json::to_vec(&payload)?;
     let mut command = launcher(&root);
     let mut child = command

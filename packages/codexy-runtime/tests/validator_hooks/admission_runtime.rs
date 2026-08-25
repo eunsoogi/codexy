@@ -83,7 +83,7 @@ fn thread_delivery_requires_nonempty_model_and_thinking() -> TestResult {
         &root,
         "codex_app__send_message_to_thread",
         json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":"medium"}),
-        false,
+        true,
     )?;
     for input in [
         json!({"threadId":"parent","thinking":"medium"}),
