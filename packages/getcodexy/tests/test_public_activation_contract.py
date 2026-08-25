@@ -4,7 +4,10 @@ import re
 import tomllib
 import unittest
 from pathlib import Path
+from subprocess import run
+from tempfile import TemporaryDirectory
 
+from codexy_runtime_tools.component_integrity import verify_component
 from codexy_runtime_tools import updater
 from codexy_runtime_tools.github_pre_session import run_github_pre_session
 from codexy_runtime_tools.pre_session import run_pre_session
@@ -227,6 +230,20 @@ class PublicActivationContractTests(unittest.TestCase):
 
         self.assertTrue(callable(updater.main))
         self.assertTrue(callable(run_pre_session))
+
+    # fmt: off
+    def test_tracked_cmd_integrity_inputs_require_lf(self) -> None:
+        repo, paths = Path(__file__).resolve().parents[3], ("plugins/codexy-github/hooks/codexy-destructive-command.cmd", "plugins/codexy/hooks/codexy-thread-delivery.cmd")
+        with TemporaryDirectory() as temporary:
+            checkout = Path(temporary) / "checkout"
+            run(["git", "clone", "--no-local", "--config", "core.autocrlf=true", repo, checkout], check=True, capture_output=True, text=True)
+            self.assertEqual((result := run(["git", "-C", checkout, "check-attr", "eol", "--", *paths], check=True, capture_output=True, text=True)).stdout.splitlines(), [f"{path}: eol: lf" for path in paths])
+            self.assertFalse(any(b"\r\n" in (checkout / path).read_bytes() for path in paths))
+            (mutated := checkout / paths[0]).write_bytes(mutated.read_bytes().replace(b"\n", b"\r\n"))
+            self.assertRaisesRegex(ValueError, "component integrity mismatch", verify_component, checkout / "plugins/codexy-github", "codexy-github")
+
+
+# fmt: on
 
 
 if __name__ == "__main__":
