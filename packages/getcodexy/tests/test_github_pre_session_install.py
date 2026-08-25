@@ -108,8 +108,8 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                 package_version=version(core),
             )
 
-            self.assertEqual(result.core_root, core.resolve())
-            self.assertEqual(result.github_root, github.resolve())
+            self.assertTrue(result.core_root.samefile(core))
+            self.assertTrue(result.github_root.samefile(github))
             self.assertTrue(result.changed)
             self.assertEqual(
                 calls,

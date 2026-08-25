@@ -237,7 +237,7 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertTrue({path.suffix for path in paths} >= {".py", ".json", ".cmd"})
         with TemporaryDirectory() as temporary:
             run(["git", "clone", "--no-local", "--config", "core.autocrlf=true", repo, (checkout := Path(temporary) / "checkout")], check=True, capture_output=True, text=True)
-            self.assertEqual(run(["git", "-C", checkout, "check-attr", "eol", "--", *paths], check=True, capture_output=True, text=True).stdout.splitlines(), [f"{path}: eol: lf" for path in paths])
+            self.assertTrue((fields := run(["git", "-C", checkout, "check-attr", "-z", "eol", "--", *paths], check=True, capture_output=True).stdout.split(b"\0"))[-1] == b"" and len(fields) == len(paths) * 3 + 1 and all(fields[:-1:3]) and fields[1:-1:3] == [b"eol"] * len(paths) and fields[2:-1:3] == [b"lf"] * len(paths))
             self.assertTrue(all(b"\r\n" not in (checkout / path).read_bytes() for path in paths) and all(verify_component(checkout / "plugins" / component, component) for component in COMPONENT_FILES))
             (mutated := checkout / (py_path := next(path for path in paths if path.suffix == ".py"))).write_bytes(mutated.read_bytes().replace(b"\n", b"\r\n"))
             self.assertRaisesRegex(ValueError, "component integrity mismatch", verify_component, checkout / "plugins" / py_path.parts[1], py_path.parts[1])
