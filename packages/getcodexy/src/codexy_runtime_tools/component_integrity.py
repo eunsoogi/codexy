@@ -21,7 +21,7 @@ COMPONENT_FILES = {
         "agents/codexy-auditor.toml": "d95168d14419d7b206a1cf06cbdddbc813f74de7b9f77ac943a301049d9e4c0f",
         "agents/codexy-cartographer.toml": "2e6b63d15758035f99efa018d905150aa71b1b559e239a6aac3d2aec35d351e8",
         "agents/codexy-inspector.toml": "7f936f672701c475fd07a96166f058136704cfefa075231821665142c9a8fe49",
-        "agents/codexy-sentinel.toml": "db0bedcc382d66c7e924b33bdf3f5668a0c83f531be4fcdc7fb04dec5c5d45a3",
+        "agents/codexy-sentinel.toml": "378e87a0735551d6b747a12b36292f5fd3aa928ec4eb49b1c23516e244a7f543",
         "agents/codexy-shipwright.toml": "f304a2bc88aafb100b54813eedb2b8122405a97bda24e887a0badd4cfa10a60b",
         "agents/codexy-warden.toml": "57bb2825037a5a42a0d33282ca0c800de31985c88a15d12c5d35929055c1d9ca",
         "hooks/codexy-thread-delivery.cmd": "a00b46db11963bedc90589bb644b38740491be95b9c36f962ab9f31d0e6a4797",
