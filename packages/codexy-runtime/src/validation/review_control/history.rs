@@ -174,9 +174,9 @@ fn passed_after(prior: &Event, passed: &Event, delta_used: u8) -> bool {
 fn parent_decision(delta: &Event, decision: &Event) -> bool {
     decision.state == "parent_decision"
         && decision.profile == delta.profile
-        && decision.head_oid == delta.head_oid
         && decision.escalation.is_none()
         && (decision.full_used, decision.delta_used) == (1, 1)
+        && decision.blockers.iter().all(|blocker| blocker.resolved)
         && preserves_scope(delta, decision)
         && preserves_blockers(delta, decision)
 }
