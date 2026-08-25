@@ -51,6 +51,16 @@ fn parent_decision_requires_post_cap_descendant_and_delta_lineage() -> TestResul
     let post_cap_head = git_at(repo.path(), ["rev-parse", "HEAD"])?;
     let changed_head = parent_packet(repo.path(), &delta_head, "e-parent-changed-head", "e-delta")?;
     assert!(!check_packet_at(fixture.root(), repo.path(), &changed_ledger, &changed_head)?.status.success());
+    let connector_ledger = ledgers.path().join("connector.json");
+    fs::copy(&changed_ledger, &connector_ledger)?;
+    let mut connector_repair = changed_head.clone();
+    connector_repair["event_id"] = json!("e-connector-repair");
+    connector_repair["state"] = json!("connector_repair");
+    connector_repair["findings"][0]["resolved"] = json!(true);
+    connector_repair["resolution"] = json!({"repaired_finding_ids":["f-1"],"changed_boundaries":["validator"]});
+    connector_repair["readiness_export"]["unresolved_blocker_ids"] = json!([]);
+    connector_repair["readiness_export"]["parent_decision_required"] = json!(false);
+    assert!(check_packet_at(fixture.root(), repo.path(), &connector_ledger, &connector_repair)?.status.success());
 
     let dropped = parent_packet(repo.path(), &delta_head, "e-parent-dropped-delta", "e-full")?;
     assert!(!check_packet_at(fixture.root(), repo.path(), &dropped_ledger, &dropped)?.status.success());
@@ -131,6 +141,13 @@ fn escalated_delta_can_stop_for_parent_decision() -> TestResult {
     decision["readiness_export"]["unresolved_blocker_ids"] = json!([]);
     decision["readiness_export"]["budget_exhausted"] = json!(true);
     decision["readiness_export"]["parent_decision_required"] = json!(true);
+    let connector_ledger = repo.path().join("connector-review-ledger.json");
+    fs::copy(&ledger, &connector_ledger)?;
+    let mut connector_repair = decision.clone();
+    connector_repair["event_id"] = json!("e-connector-repair");
+    connector_repair["state"] = json!("connector_repair");
+    connector_repair["readiness_export"]["parent_decision_required"] = json!(false);
+    assert!(check_packet_at(fixture.root(), repo.path(), &connector_ledger, &connector_repair)?.status.success());
     assert!(check_packet_at(fixture.root(), repo.path(), &ledger, &decision)?.status.success());
 
     decision["event_id"] = json!("e-detached-parent");

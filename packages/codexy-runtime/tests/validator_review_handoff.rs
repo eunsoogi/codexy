@@ -65,7 +65,7 @@ fn completion_handoff_accepts_the_escalated_parent_decision_cycle() -> TestResul
     for mutate in [
         |state: &mut Value| state["reviewLedger"]["events"][3]["predecessor_event_id"] = json!("e-strict"),
         |state: &mut Value| state["reviewLedger"]["events"][3]["head_oid"] = json!("stale"),
-        |state: &mut Value| state["reviewLedger"]["events"][3]["base_oid"] = json!("reviewed"),
+        |state: &mut Value| { state["reviewDecision"] = json!("APPROVED"); state["reviewEvidence"]["state"] = json!("connector_repair"); state["reviewLedger"]["events"][3]["state"] = json!("connector_repair"); },
         |state: &mut Value| state["reviewLedger"]["events"][3]["boundaries"] = json!(["other"]),
     ] {
         assert!(!validate_escalated_parent_decision(mutate)?.status.success());
