@@ -60,8 +60,8 @@ fn completion_handoff_accepts_the_recordable_escalated_delta_cycle() -> TestResu
 }
 
 #[test]
-fn completion_handoff_accepts_the_post_cap_parent_decision_cycle() -> TestResult {
-    assert!(validate_escalated_parent_decision(|_| {})?.status.success());
+fn completion_handoff_rejects_a_sibling_post_cap_parent_decision() -> TestResult {
+    assert!(!validate_escalated_parent_decision(|_| {})?.status.success());
     for mutate in [
         |state: &mut Value| state["reviewLedger"]["events"][3]["predecessor_event_id"] = json!("e-strict"),
         |state: &mut Value| state["reviewLedger"]["events"][3]["head_oid"] = json!("stale"),

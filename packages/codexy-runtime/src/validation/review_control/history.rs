@@ -177,8 +177,19 @@ fn parent_decision(delta: &Event, decision: &Event) -> bool {
         && decision.escalation.is_none()
         && (decision.full_used, decision.delta_used) == (1, 1)
         && decision.blockers.iter().all(|blocker| blocker.resolved)
-        && preserves_scope(delta, decision)
+        && preserves_decision_scope(delta, decision)
         && preserves_blockers(delta, decision)
+}
+
+fn preserves_decision_scope(prior: &Event, next: &Event) -> bool {
+    let expected_base = if next.head_oid == prior.head_oid {
+        prior.base_oid.as_str()
+    } else {
+        prior.head_oid.as_str()
+    };
+    next.base_oid == expected_base
+        && next.boundaries == prior.boundaries
+        && history_contract::preserves(prior, next)
 }
 
 fn preserves_scope(prior: &Event, next: &Event) -> bool {
