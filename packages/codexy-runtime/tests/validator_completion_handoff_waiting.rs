@@ -219,6 +219,7 @@ fn validator_rejects_mixed_connector_repair_dispositions() -> TestResult {
         "PARENT_DECISION.",
         "fabricated PASS.",
         "request another connector review.",
+        "PASS; review feedback requested changes remain unresolved.",
     ] {
         let output = validate(&format!("Blocked: CONNECTOR_REPAIR_CURRENT_HEAD_NON_READY; {suffix}"))?;
         assert!(!output.status.success() && stderr(&output).contains("connector-repair disposition"));

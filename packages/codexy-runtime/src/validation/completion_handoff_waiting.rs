@@ -20,7 +20,7 @@ const DISALLOWED_BLOCKED_RATIONALE: &str =
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     if has_unnegated_phrase(&text, "connector_repair_current_head_non_ready", 16)
-        && "parent_decision|approved|fourth profile-selected review|fourth review|another connector review|fabricated"
+        && "parent_decision|approved|fourth profile-selected review|fourth review|another connector review|fabricated|pass"
             .split('|')
             .any(|phrase| has_unnegated_phrase(&text, phrase, 16))
     {
