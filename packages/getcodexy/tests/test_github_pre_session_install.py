@@ -60,6 +60,8 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
     def test_github_install_resolves_core_then_activates_both_packages(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            home = root / "home/.codex"
+            home.mkdir(parents=True)
             market = root / "marketplace"
             core = plugin(market / "plugins/codexy", "codexy")
             github = plugin(market / "plugins/codexy-github", "codexy-github")
@@ -98,7 +100,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                 )
 
             result = run_github_pre_session(
-                root / "home/.codex",
+                home,
                 codex=codex,
                 runner=runner,
                 synchronize=synchronize,
@@ -121,15 +123,25 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     (str(codex), "plugin", "list", "--json"),
                 ],
             )
+            home_alias = root / "home-alias"
+            home_alias.symlink_to(home.parent, target_is_directory=True)
+            self.assertEqual(len(synchronized), 3)
+            expected_plugin_roots = [
+                synchronized[0][0],
+                synchronized[0][0],
+                synchronized[2][0],
+            ]
+            expected = [
+                (path, home_alias / ".codex") for path in expected_plugin_roots
+            ]
             self.assertEqual(
-                synchronized,
-                [
-                    *[
-                        (path, (root / "home/.codex").resolve())
-                        for path, _ in synchronized
-                    ],
-                ],
+                [path for path, _ in synchronized],
+                [path for path, _ in expected],
             )
+            for (_, actual_home), (_, expected_home) in zip(
+                synchronized, expected
+            ):
+                self.assertTrue(actual_home.samefile(expected_home))
             self.assertNotIn(core.resolve(), [path for path, _ in synchronized])
             self.assertNotIn(github.resolve(), [path for path, _ in synchronized])
 
