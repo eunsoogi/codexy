@@ -113,9 +113,13 @@ fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Res
         .context("selected runtime release lost artifact tag")?;
     let selected_bootstrap_matches = contract["bootstrap"]["selectedVersion"]
         .as_str()
-        .is_some_and(|selected| selected == super::bootstrap::VERSION || selected == version);
+        .is_some_and(|selected| selected == super::bootstrap::VERSION);
+    let candidate_overlay_matches = contract["bootstrap"]["selectedVersion"]
+        .as_str()
+        .is_some_and(|selected| selected == version)
+        && contract["bootstrap"]["candidateVersion"].as_str() == Some(version);
     let selected_runtime_matches = contract["runtime"]["selectedTag"].as_str() == Some(current_tag);
-    if !selected_bootstrap_matches || !selected_runtime_matches {
+    if (!selected_bootstrap_matches && !candidate_overlay_matches) || !selected_runtime_matches {
         bail!("release publish contract does not match the selected runtime identity");
     }
     contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
@@ -216,3 +220,26 @@ fn read_json(path: &Path, label: &str) -> Result<Value> {
 #[cfg(test)]
 #[path = "activation/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod candidate_overlay_tests {
+    use super::*;
+
+    #[test]
+    fn stale_candidate_version_rejects_before_mutation() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let root = temp.path();
+        fs::create_dir_all(root.join(".agents/plugins"))?;
+        fs::create_dir_all(root.join("plugins/codexy-devtools"))?;
+        let contract = br#"{"bootstrap":{"selectedVersion":"1.5.0","candidateVersion":"1.4.0"},"runtime":{"selectedTag":"v1.2.2"}}"#;
+        let path = root.join(".agents/plugins/release-publish-contract.json");
+        fs::write(&path, contract)?;
+        fs::write(
+            root.join("plugins/codexy-devtools/runtime-release.json"),
+            r#"{"artifact":{"tag":"v1.2.2"}}"#,
+        )?;
+        assert!(publish_contract_update(root, "1.5.0", "v1.5.0").is_err());
+        assert_eq!(fs::read(path)?, contract);
+        Ok(())
+    }
+}
