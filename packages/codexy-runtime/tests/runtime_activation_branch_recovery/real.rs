@@ -5,9 +5,6 @@ use std::{
     process::{Command, Output},
 };
 
-use serde_json::{Value, json};
-use sha2::{Digest as _, Sha256};
-
 use crate::support::{
     FixtureCommand, write_posix_fixture_command,
 };
@@ -94,6 +91,7 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
+        for relative in ["plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd", "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"] { fs::remove_file(repo.join(relative))?; }
         let runtime = repo.join("packages/codexy-runtime");
         fs::create_dir_all(runtime.join("src/version"))?;
         let suite = runtime.join("tests/suites/all.rs");
@@ -136,7 +134,7 @@ impl Fixture {
         metadata::select_current_bootstrap(&repo)?;
         let candidate = metadata::current_candidate_version()?;
         let receipt = temp.path().join("receipt.json");
-        fs::write(&receipt, serde_json::to_vec(&core_aware_receipt_value()?)?)?;
+        fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
         let bin = temp.path().join("bin");
         fs::create_dir(&bin)?;
         let activator = bin.join("activate-current-bootstrap");
@@ -203,11 +201,7 @@ impl Fixture {
             .current_dir(&self.repo);
         command
             .env("CODEXY_TEST_MODE", "1")
-            .env("GIT_CONFIG_COUNT", "2")
-            .env("GIT_CONFIG_KEY_0", "maintenance.auto")
-            .env("GIT_CONFIG_VALUE_0", "false")
-            .env("GIT_CONFIG_KEY_1", "gc.auto")
-            .env("GIT_CONFIG_VALUE_1", "0")
+            .envs([("GIT_CONFIG_COUNT", "2"), ("GIT_CONFIG_KEY_0", "maintenance.auto"), ("GIT_CONFIG_VALUE_0", "false"), ("GIT_CONFIG_KEY_1", "gc.auto"), ("GIT_CONFIG_VALUE_1", "0")])
             .env_path(
                 "CODEXY_FIXTURE_VERIFY_RUNTIME_ACTIVATION_BRANCH",
                 self.repo.join("scripts/verify-runtime-activation-branch"),
@@ -251,75 +245,4 @@ impl Fixture {
     }
 }
 
-fn core_aware_receipt_value() -> Result<Value, Box<dyn std::error::Error>> {
-    let mut receipt = receipt_value();
-    let candidate = receipt
-        .get_mut("candidate")
-        .and_then(Value::as_object_mut)
-        .ok_or("candidate object")?;
-    candidate
-        .get_mut("source")
-        .and_then(Value::as_object_mut)
-        .ok_or("candidate source object")?
-        .insert("tree".to_owned(), Value::String("b".repeat(40)));
-
-    let mut handoff_platforms = serde_json::Map::new();
-    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
-        let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
-        let kind = match platform {
-            "darwin-arm64" => "mach-o",
-            "linux-x86_64" => "elf",
-            "windows-x86_64" => "pe",
-            _ => unreachable!(),
-        };
-        handoff_platforms.insert(
-            platform.to_owned(),
-            json!({
-                "path": format!("runtime/codexy-handoff-validate-{platform}.{extension}"),
-                "sha256": "d".repeat(64),
-                "kind": kind,
-            }),
-        );
-    }
-    let platforms = candidate
-        .get("platforms")
-        .cloned()
-        .ok_or("candidate platforms")?;
-    candidate.insert(
-        "classes".to_owned(),
-        json!({
-            "devtoolsMcp": {"platforms": platforms},
-            "coreHandoff": {
-                "manifest": {"path": "handoff-runtime.json", "sha256": "c".repeat(64)},
-                "platforms": handoff_platforms,
-            },
-        }),
-    );
-    let canonical_candidate = canonical(Value::Object(candidate.clone()));
-    let candidate_bytes = serde_json::to_vec(&canonical_candidate)?;
-    receipt["artifact"]["payloadManifestSha256"] = Value::String(
-        format!("{:x}", Sha256::digest(candidate_bytes)),
-    );
-    Ok(receipt)
-}
-
-fn canonical(value: Value) -> Value {
-    match value {
-        Value::Object(map) => {
-            let mut entries = map.into_iter().collect::<Vec<_>>();
-            entries.sort_by(|left, right| left.0.cmp(&right.0));
-            Value::Object(
-                entries
-                    .into_iter()
-                    .map(|(key, value)| (key, canonical(value)))
-                    .collect(),
-            )
-        }
-        Value::Array(values) => Value::Array(values.into_iter().map(canonical).collect()),
-        other => other,
-    }
-}
-
-fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-    command(Command::new("git").args(args).current_dir(root))
-}
+fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> { command(Command::new("git").args(args).current_dir(root)) }
