@@ -1,6 +1,6 @@
 {
   "name": "codexy-github",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Optional GitHub issue, pull request, review, and merge workflow for Codexy.",
   "author": {
     "name": "Eunsoo Lee",
@@ -9,8 +9,17 @@
   "homepage": "https://github.com/eunsoogi/codexy#readme",
   "repository": "https://github.com/eunsoogi/codexy",
   "license": "MIT",
-  "keywords": ["codex", "github", "pull-request", "review", "workflow"],
-  "supportedPlatforms": ["darwin-arm64", "linux-x86_64"],
+  "keywords": [
+    "codex",
+    "github",
+    "pull-request",
+    "review",
+    "workflow"
+  ],
+  "supportedPlatforms": [
+    "darwin-arm64",
+    "linux-x86_64"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Codexy GitHub",
@@ -18,7 +27,11 @@
     "longDescription": "Codexy GitHub adds optional generic issue, pull request, review, CI, and merge workflow to the public Codexy orchestration contract.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/eunsoogi/codexy",
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
