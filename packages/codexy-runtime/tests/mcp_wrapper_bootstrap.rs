@@ -20,6 +20,20 @@ fn install_fake_uvx(
     Ok(())
 }
 
+fn selected_runtime_version() -> Result<String, Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        root.join(".agents/plugins/release-publish-contract.json"),
+    )?)?;
+    let tag = contract["runtime"]["selectedTag"]
+        .as_str()
+        .ok_or("selected runtime tag must be a string")?;
+    Ok(tag
+        .strip_prefix('v')
+        .ok_or("selected runtime tag must start with v")?
+        .to_owned())
+}
+
 #[test]
 fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::error::Error>> {
     let server = "lsp";
@@ -38,19 +52,23 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
         .args(["--stdio", "value with spaces", "--literal=--"]);
     assert!(run_wrapper_command(&mut command)?.status.success());
     let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
+    let selected_version = selected_runtime_version()?;
     assert_eq!(
-        std::fs::read_to_string(log)?.lines().collect::<Vec<_>>(),
-        [
-            "--from",
-            "getcodexy==1.2.2",
-            "codexy-mcp-runtime",
-            server,
-            "--plugin-root",
-            plugin_root.as_str(),
-            "--",
-            "--stdio",
-            "value with spaces",
-            "--literal=--",
+        std::fs::read_to_string(log)?
+            .lines()
+            .map(str::to_owned)
+            .collect::<Vec<_>>(),
+        vec![
+            "--from".to_owned(),
+            format!("getcodexy=={selected_version}"),
+            "codexy-mcp-runtime".to_owned(),
+            server.to_owned(),
+            "--plugin-root".to_owned(),
+            plugin_root,
+            "--".to_owned(),
+            "--stdio".to_owned(),
+            "value with spaces".to_owned(),
+            "--literal=--".to_owned(),
         ]
     );
     Ok(())

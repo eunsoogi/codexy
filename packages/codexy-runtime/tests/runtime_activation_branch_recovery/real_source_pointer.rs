@@ -7,30 +7,23 @@ use std::{
 use serde_json::Value;
 
 #[test]
-fn current_source_checkout_keeps_the_base_public_bootstrap_control() -> Result<(), Box<dyn std::error::Error>> {
-    assert_base_source_pointer(codexy_runtime::paths::repository_root())
+fn current_source_checkout_exposes_the_selected_runtime_pointer() -> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let selected_version = selected_runtime_version(&root)?;
+    assert_activated_source_pointer(&root, &selected_version)
 }
 
-pub(super) fn assert_base_source_pointer(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let release: Value = serde_json::from_slice(&fs::read(
-        root.join("plugins/codexy-devtools/runtime-release.json"),
+fn selected_runtime_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let contract: Value = serde_json::from_slice(&fs::read(
+        root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
-    assert_eq!(release["state"], "legacy-public");
-    assert_eq!(release["artifact"]["tag"], "v1.2.2");
-    assert_eq!(
-        release["source"]["commit"],
-        "6890b3089dcffc2293f8f63b761e33562250eac6"
-    );
-    assert_eq!(
-        release["platforms"].as_object().map(|items| items.len()),
-        Some(2)
-    );
-    let wrapper = fs::read_to_string(root.join(
-        "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
-    ))?;
-    assert!(wrapper.contains("exec uvx --from getcodexy==1.2.2"));
-    assert!(!wrapper.contains("getcodexy==1.5.0"));
-    Ok(())
+    let tag = contract["runtime"]["selectedTag"]
+        .as_str()
+        .ok_or("selected runtime tag must be a string")?;
+    Ok(tag
+        .strip_prefix('v')
+        .ok_or("selected runtime tag must start with v")?
+        .to_owned())
 }
 
 pub(super) fn assert_activated_source_pointer(
@@ -40,7 +33,9 @@ pub(super) fn assert_activated_source_pointer(
     let release: Value = serde_json::from_slice(&fs::read(
         root.join("plugins/codexy-devtools/runtime-release.json"),
     )?)?;
+    let selected_version = selected_runtime_version(root)?;
     assert_eq!(release["state"], "source-selected");
+    assert_eq!(selected_version, expected_version);
     assert_eq!(release["artifact"]["tag"], format!("v{expected_version}"));
     assert_eq!(release["source"]["repository"], "https://github.com/eunsoogi/codexy");
     assert!(release["source"]["commit"].as_str().is_some_and(|value| value.len() == 40));

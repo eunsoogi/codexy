@@ -1,38 +1,99 @@
 {
-  "schema": "codexy-runtime-release/v1",
-  "state": "legacy-public",
-  "source": {
-    "repository": "https://github.com/eunsoogi/codexy",
-    "commit": "6890b3089dcffc2293f8f63b761e33562250eac6"
-  },
   "artifact": {
-    "tag": "v1.2.2",
-    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.2.2/codexy-marketplace-plugin.tar.gz",
-    "sha256": "6cd61a3472d9a70d818251f1abd3e264e27a59ade4a05929014afc1c9de96293",
-    "payloadManifestSha256": "0056e191fa5d837f770bc5e5f8a2be855b9252e299847522b0d88e6b186b42f2"
+    "payloadManifestSha256": "c996c014f991574b4bb11eaed8a4ad893e7ce2129cd767cc2fa546486032d32e",
+    "sha256": "2d887c2bbc8e2b63445a471eabbad5f1733692e2fcc1cfd210b803172ba6a63e",
+    "tag": "v1.5.1",
+    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.5.1/codexy-runtime-package.tar.gz"
+  },
+  "classes": {
+    "coreHandoff": {
+      "manifest": {
+        "path": "handoff-runtime.json",
+        "sha256": "6c67cee8a7d4a959b25ee0ee573d4a4f00ff5bd892d68a0142df88cfba057193"
+      },
+      "platforms": {
+        "darwin-arm64": {
+          "kind": "mach-o",
+          "path": "runtime/codexy-handoff-validate-darwin-arm64.bin",
+          "sha256": "5c147c1f78c7378362416c18a7ebb4bd96fc12eec615f25efe01242abac0bccb"
+        },
+        "linux-x86_64": {
+          "kind": "elf",
+          "path": "runtime/codexy-handoff-validate-linux-x86_64.bin",
+          "sha256": "58dd729fcb3e325c997bc77b067eb67a951d3e3482ca1fc9b081139415494b07"
+        },
+        "windows-x86_64": {
+          "kind": "pe",
+          "path": "runtime/codexy-handoff-validate-windows-x86_64.exe",
+          "sha256": "27a7b011aad43ecf2a75024d534fef1fc6a6eb528a833f2c8eac51552080d950"
+        }
+      }
+    },
+    "devtoolsMcp": {
+      "platforms": {
+        "darwin-arm64": {
+          "codegraph": {
+            "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
+            "sha256": "7c2fac44db1882f3c7c0caa9befc84b888f89a0740697c5d673d4e85f9f4b516"
+          },
+          "lsp": {
+            "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
+            "sha256": "5bd310f0d8b375c29558e383d2e88e1422b4f15120d6518cef65c498841448a9"
+          }
+        },
+        "linux-x86_64": {
+          "codegraph": {
+            "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
+            "sha256": "51477a8de9879387e22bc6208d46ea75a937c92e7fc4589a0c43f662d077075f"
+          },
+          "lsp": {
+            "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
+            "sha256": "af6bc0564a7905f4f977d229ea1302d4571e11452ae554e28ceddd94994f75e0"
+          }
+        }
+      }
+    }
   },
   "compatibility": {
     "bootstrapApi": 1,
+    "mcpProtocol": "2024-11-05",
     "pluginRuntimeApi": 1,
-    "transport": "stdio-newline-v1",
-    "mcpProtocol": "2024-11-05"
+    "transport": "stdio-newline-v1"
   },
   "platforms": {
     "darwin-arm64": {
-      "lsp": {
-        "sha256": "0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706"
-      },
       "codegraph": {
-        "sha256": "f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6"
+        "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
+        "sha256": "7c2fac44db1882f3c7c0caa9befc84b888f89a0740697c5d673d4e85f9f4b516"
+      },
+      "lsp": {
+        "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
+        "sha256": "5bd310f0d8b375c29558e383d2e88e1422b4f15120d6518cef65c498841448a9"
       }
     },
     "linux-x86_64": {
-      "lsp": {
-        "sha256": "7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663"
-      },
       "codegraph": {
-        "sha256": "218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2"
+        "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
+        "sha256": "51477a8de9879387e22bc6208d46ea75a937c92e7fc4589a0c43f662d077075f"
+      },
+      "lsp": {
+        "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
+        "sha256": "af6bc0564a7905f4f977d229ea1302d4571e11452ae554e28ceddd94994f75e0"
       }
     }
-  }
+  },
+  "provenance": {
+    "repositoryId": 1269350143,
+    "runAttempt": 1,
+    "runId": 32976216998,
+    "workflowPath": ".github/workflows/runtime-candidate.yml",
+    "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/32976216998"
+  },
+  "schema": "codexy-runtime-release/v1",
+  "source": {
+    "commit": "928ca0365c0836359ae2b6ff045337bb8e13a55c",
+    "repository": "https://github.com/eunsoogi/codexy",
+    "tree": "33c289404fefc78f1107488921583c2e779bfc9e"
+  },
+  "state": "source-selected"
 }

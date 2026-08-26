@@ -1,8 +1,8 @@
 {
   "contentEquivalent": true,
   "contentProof": {
-    "sourceManifestSha256": "fa6865e15ab165b07058bd4c8d6dd703fdf469c972355bb5ded1da08bf00892d",
-    "installedManifestSha256": "fa6865e15ab165b07058bd4c8d6dd703fdf469c972355bb5ded1da08bf00892d",
+    "sourceManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
+    "installedManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
     "sourceChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
