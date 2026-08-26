@@ -4,11 +4,11 @@
   "version": "1.5.0",
   "bootstrap": {
     "selectedVersion": "1.5.0",
-    "candidateVersion": "1.5.0",
+    "candidateVersion": "1.5.1",
     "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
   },
   "runtime": {
-    "selectedTag": "v1.5.0",
+    "selectedTag": "v1.2.2",
     "stagingWorkflow": ".github/workflows/runtime-candidate.yml",
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
     "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",

@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "getcodexy"
-version = "1.5.0"
+version = "1.5.1"
 description = "Version-pinned MCP runtime bootstrap tools for Codexy"
 requires-python = ">=3.10"
 license = "MIT"
