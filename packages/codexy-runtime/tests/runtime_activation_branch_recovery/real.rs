@@ -91,6 +91,7 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
+        for relative in ["plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd", "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"] { fs::remove_file(repo.join(relative))?; }
         let runtime = repo.join("packages/codexy-runtime");
         fs::create_dir_all(runtime.join("src/version"))?;
         let suite = runtime.join("tests/suites/all.rs");
@@ -200,6 +201,7 @@ impl Fixture {
             .current_dir(&self.repo);
         command
             .env("CODEXY_TEST_MODE", "1")
+            .envs([("GIT_CONFIG_COUNT", "2"), ("GIT_CONFIG_KEY_0", "maintenance.auto"), ("GIT_CONFIG_VALUE_0", "false"), ("GIT_CONFIG_KEY_1", "gc.auto"), ("GIT_CONFIG_VALUE_1", "0")])
             .env_path(
                 "CODEXY_FIXTURE_VERIFY_RUNTIME_ACTIVATION_BRANCH",
                 self.repo.join("scripts/verify-runtime-activation-branch"),
@@ -243,6 +245,4 @@ impl Fixture {
     }
 }
 
-fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
-    command(Command::new("git").args(args).current_dir(root))
-}
+fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> { command(Command::new("git").args(args).current_dir(root)) }
