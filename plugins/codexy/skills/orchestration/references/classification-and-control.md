@@ -130,3 +130,19 @@ an accepted no-change rationale.
 
 A checked contract is the sole merge authorization; generic finish, completion,
 silence, clean gates, and a ready PR are non-authoritative signals.
+
+## Typed Review-Producer Handoff
+
+The selected strict Sentinel terminal record is the only producer input for a
+review-control capture. The packaged producer MUST reject missing or unknown
+fields, stale Git identity, a non-selected reviewer, a mismatched issue
+contract, and duplicate or out-of-order ledger ancestry. Its binding MUST carry
+the issue number, PR number, base/head and diff identity, profile, reviewer,
+event predecessor, issue-contract value, and the issue-wide terminal budget.
+
+For the current bounded lane, the producer consumes the existing `2/3` budget
+and MUST emit ephemeral `codexy.review-packet.v4`, `codexy.review-ledger.v1`,
+and `codexy.review-control-state.v1` artifacts without synthesizing a third
+selected-review event. The control-state artifact is then the sole namespaced
+input to `build-pr-state` and the completion-handoff validator; generated
+evidence MUST remain outside tracked source.

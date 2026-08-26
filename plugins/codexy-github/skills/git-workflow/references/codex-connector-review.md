@@ -25,9 +25,11 @@ connector automatic review MUST remain disabled.
    profile-review slot remains, it MUST run only the permitted same-profile
    delta recheck on the repaired exact head. When the issue-wide terminal
    profile-review quota is exhausted, it MUST instead record the typed post-cap
-   connector-repair disposition, repair every in-scope connector finding, and
-   produce current exact-head proof without fabricating `PASS`, requesting a
-   fourth profile review, or requesting another connector review.
+   `connector_repair` non-terminal disposition against the authentic delta head,
+   keep the repaired current head non-ready, repair every in-scope connector
+   finding, and produce current exact-head proof without fabricating `PASS`,
+   `APPROVED`, or `PARENT_DECISION`, requesting a fourth profile review, or
+   requesting another connector review.
 6. [no-automatic-or-duplicate] Automatic, per-push, duplicate, unchanged-head,
    and piecemeal Codex connector review requests MUST NOT be made.
 7. [material-expansion-exception] Another connector review MUST NOT be requested
@@ -44,7 +46,7 @@ no-change rationale covers them.
 Only the parent/orchestrator requests the one connector review and waits for its
 terminal output. The owning child receives the batched actionable findings, owns
 any repair and the quota-permitted delta recheck or typed post-cap
-connector-repair disposition, and MUST NOT request a connector review. This
+`connector_repair` disposition, and MUST NOT request a connector review. This
 procedure does not enable automatic connector review or replace any existing
 human, selected-profile, title, label, completion-handoff, CI, or merge-message
 gate.

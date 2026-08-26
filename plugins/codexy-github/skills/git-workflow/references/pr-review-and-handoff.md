@@ -111,9 +111,34 @@ jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
   '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
   "$state_dir/pr-state.base.json" > "$state_dir/pr-state.unreviewed.json"
 mv "$state_dir/pr-state.unreviewed.json" pr-state.json
+```
+
 Ask the installed `$orchestration` skill to apply its **completion-handoff**
 contract to the captured report and PR state.
+
+When a child owns a typed review-control capture, it MUST consume the actual
+selected Sentinel terminal record and write the three ephemeral artifacts before
+building PR state:
+
+```sh
+codexy-review-control --produce-review-control \
+  --plugin-root plugins/codexy --repository-root . \
+  --input "$state_dir/review-producer-request.json" \
+  --output "$state_dir/review-control-state.json" \
+  --packet-output "$state_dir/review-packet.json" \
+  --ledger-output "$state_dir/review-ledger.json"
+CODEXY_REVIEW_CONTROL_BIN=codexy-review-control scripts/build-pr-state \
+  --base-pr-state-file "$state_dir/pr-state.base.json" \
+  --review-control-state-file "$state_dir/review-control-state.json" \
+  --output "$state_dir/pr-state.json"
 ```
+
+The request MUST bind issue/PR, base/head/diff, selected profile/reviewer, event
+ancestry, issue contract, and the current issue-wide budget. The producer MUST
+preserve the supplied ledger tip and MUST reject stale, forged, duplicate, or
+out-of-order records; it MUST NOT create a third selected-review event.
+Generated packet, ledger, control, and PR-state files belong in the temporary
+evidence directory and MUST NOT be committed.
 
 For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
 GitHub does not populate PR `closingIssuesReferences` from closing keywords. The

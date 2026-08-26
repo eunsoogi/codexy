@@ -76,3 +76,17 @@ pub fn build_review_pr_state(
 ) -> Result<serde_json::Value> {
     review_control::build_pr_state(plugin_root, base, control)
 }
+
+/// Captures an authentic selected terminal record into ephemeral typed review artifacts.
+///
+/// # Errors
+///
+/// Returns an error when the terminal record, packet, ledger, or current Git
+/// binding is missing, forged, stale, or otherwise outside the selected lane.
+pub fn produce_review_control(
+    plugin_root: &Path,
+    repository_root: &Path,
+    request: &str,
+) -> Result<serde_json::Value> {
+    review_control::produce(plugin_root, repository_root, request)
+}

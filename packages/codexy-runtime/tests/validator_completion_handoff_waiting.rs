@@ -23,6 +23,7 @@ fn validator_rejects_non_blocking_waits_described_as_blocked() -> TestResult {
         "Blocked while waiting for a Sentinel result.",
         "Blocked while waiting for CI completion.",
         "Blocked while waiting for connector review.",
+        "Blocked: connector review PASS.",
         "Blocked while reviewer feedback is pending.",
         "Blocked while waiting for reviewer feedback; no actionable feedback has arrived.",
         "Blocked after repeated true impasse: cannot make meaningful progress without maintainer input.",
@@ -194,6 +195,7 @@ fn validator_classifies_bounded_wait_subject_state_events() -> TestResult {
 fn validator_preserves_real_blockers() -> TestResult {
     for handoff in [
         "Blocked: review feedback requested changes remain unresolved.",
+        "Blocked: connector review PASS, but requested changes remain unresolved.",
         "Blocked: requested changes are not resolved.",
         "Blocked: required status checks are failing.",
         "Blocked: required checks failed during a hard investigation.",

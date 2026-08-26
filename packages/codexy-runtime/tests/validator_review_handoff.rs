@@ -65,7 +65,7 @@ fn completion_handoff_accepts_the_escalated_parent_decision_cycle() -> TestResul
     for mutate in [
         |state: &mut Value| state["reviewLedger"]["events"][3]["predecessor_event_id"] = json!("e-strict"),
         |state: &mut Value| state["reviewLedger"]["events"][3]["head_oid"] = json!("stale"),
-        |state: &mut Value| state["reviewLedger"]["events"][3]["base_oid"] = json!("other"),
+        |state: &mut Value| { state["reviewDecision"] = json!("APPROVED"); state["reviewEvidence"]["state"] = json!("connector_repair"); state["reviewLedger"]["events"][3]["state"] = json!("connector_repair"); },
         |state: &mut Value| state["reviewLedger"]["events"][3]["boundaries"] = json!(["other"]),
     ] {
         assert!(!validate_escalated_parent_decision(mutate)?.status.success());
@@ -210,14 +210,14 @@ fn validate_escalated_parent_decision(
     let state_path = temp.path().join("state.json");
     fs::write(&handoff, "Maintainer requested leave-open; implementation complete.\n")?;
     let mut state = json!({
-        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"repair", "reviewDecision":"PARENT_DECISION",
+        "state":"OPEN", "isDraft":true, "mergeStateStatus":"CLEAN", "headRefOid":"post-cap-repair", "reviewDecision":"PARENT_DECISION",
         "reviewProfile":"strict",
-        "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"repair","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"parent_decision","event_id":"e-parent","blockers":[]},
+        "reviewEvidence":{"schema":"codexy.review-readiness.v1","head_oid":"post-cap-repair","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"parent_decision","event_id":"e-parent","blockers":[]},
         "reviewLedger":{"schema":"codexy.review-ledger.v1","events":[
             {"id":"e-unobservable","predecessor_event_id":null,"profile":"standard","base_oid":"base","head_oid":"reviewed","state":"unobservable","full_used":0,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":null},
             {"id":"e-strict","predecessor_event_id":"e-unobservable","profile":"strict","base_oid":"base","head_oid":"reviewed","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"escalation":{"from_profile":"standard","predecessor_event_id":"e-unobservable","discarded_lower_profile":true}},
             {"id":"e-delta","predecessor_event_id":"e-strict","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"delta","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null},
-            {"id":"e-parent","predecessor_event_id":"e-delta","profile":"strict","base_oid":"reviewed","head_oid":"repair","state":"parent_decision","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
+            {"id":"e-parent","predecessor_event_id":"e-delta","profile":"strict","base_oid":"repair","head_oid":"post-cap-repair","state":"parent_decision","full_used":1,"delta_used":1,"blockers":[],"boundaries":["validator"],"escalation":null}
         ]}
     });
     contracts::bind_ledger(&mut state);

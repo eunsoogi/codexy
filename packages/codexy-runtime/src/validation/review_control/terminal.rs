@@ -4,9 +4,11 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::{
+    capture::ProducerRequest,
     history::{Blocker, History},
     policy::{self, Profile, Reviewer},
     presence::OptionalField,
+    repository,
 };
 
 const LIFECYCLE_SCHEMA: &str = "codexy.review-terminal-record.v1";
@@ -22,6 +24,8 @@ struct Evidence {
     state: String,
     event_id: String,
     blockers: Vec<Blocker>,
+    #[serde(default)]
+    binding: Option<Value>,
 }
 
 #[derive(Deserialize)]
@@ -140,6 +144,7 @@ fn terminal_matches(
         && evidence.profile == selected
         && evidence.head_oid == head
         && evidence.reviewer == profile.reviewer
+        && evidence.binding.as_ref().is_none_or(Value::is_object)
         && history.events.last().is_some_and(|event| {
             event.id == evidence.event_id
                 && event.profile == selected
@@ -156,5 +161,51 @@ fn decision_matches(decision: &str, terminal_state: &str) -> bool {
     matches!(
         (decision, terminal_state),
         ("APPROVED", "passed") | ("PARENT_DECISION", "parent_decision")
+    )
+}
+
+pub(super) fn validate_packet_binding(
+    request: &ProducerRequest,
+    current: &repository::Current,
+) -> Result<(), String> {
+    let packet = &request.packet;
+    let identity = packet
+        .get("identity")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "review-control producer packet identity is missing".to_owned())?;
+    let event = request
+        .terminal_record
+        .ledger
+        .events
+        .last()
+        .ok_or_else(|| "review-control producer packet has no ledger tip".to_owned())?;
+    let predecessor = serde_json::to_value(&request.binding.predecessor_event_id)
+        .map_err(|_| "review-control producer packet predecessor is invalid".to_owned())?;
+    let reviewer = serde_json::to_value(&request.binding.reviewer)
+        .map_err(|_| "review-control producer packet reviewer is invalid".to_owned())?;
+    let boundaries = serde_json::json!(&event.boundaries);
+    let budget = serde_json::json!({"full_used":event.full_used,"delta_used":event.delta_used});
+    if packet.get("event_id").and_then(Value::as_str) != Some(event.id.as_str())
+        || packet.get("predecessor_event_id") != Some(&predecessor)
+        || packet.get("profile").and_then(Value::as_str) != Some(request.binding.profile.as_str())
+        || packet.get("state").and_then(Value::as_str) != Some(event.state.as_str())
+        || packet.get("reviewer") != Some(&reviewer)
+        || identity.get("base_oid").and_then(Value::as_str) != Some(current.base_oid.as_str())
+        || identity.get("head_oid").and_then(Value::as_str) != Some(current.head_oid.as_str())
+        || identity.get("diff_sha256").and_then(Value::as_str) != Some(current.diff_sha256.as_str())
+        || packet.get("issue_contract") != Some(&request.binding.issue_contract)
+        || packet.get("direct_boundaries") != Some(&boundaries)
+        || packet.get("budget") != Some(&budget)
+    {
+        return Err("review-control producer packet is forged, stale, or out of order".into());
+    }
+    Ok(())
+}
+
+pub(super) fn digest(value: &Value) -> String {
+    use sha2::{Digest as _, Sha256};
+    format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(value).unwrap_or_default())
     )
 }

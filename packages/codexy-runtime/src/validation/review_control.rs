@@ -104,3 +104,11 @@ pub(super) fn build_pr_state(
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
     terminal::is_lifecycle_terminal(plugin_root, record)
 }
+
+pub(super) fn produce(
+    plugin_root: &Path,
+    repository_root: &Path,
+    request_text: &str,
+) -> Result<serde_json::Value> {
+    capture::produce(plugin_root, repository_root, request_text)
+}
