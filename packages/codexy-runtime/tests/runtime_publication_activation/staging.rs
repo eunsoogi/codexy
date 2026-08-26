@@ -32,6 +32,27 @@ fn runtime_staging_uses_authenticated_actions_artifacts_not_candidate_releases()
 }
 
 #[test]
+fn windows_runtime_candidate_provisions_uv_before_installed_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let staging = workflow("runtime-candidate.yml")?;
+    let setup = staging
+        .1
+        .find("- uses: astral-sh/setup-uv@v7")
+        .ok_or("Windows runtime candidate must provision uv")?;
+    let contract = staging
+        .1
+        .find("- name: Prove native handoff bridge and installed CMD adversarial contract")
+        .ok_or("Windows installed adversarial contract step missing")?;
+    let setup_block = &staging.1[setup..contract];
+    assert!(
+        setup_block.contains("if: matrix.platform == 'windows-x86_64'"),
+        "uv provisioning must be scoped to the Windows candidate"
+    );
+    assert!(setup < contract, "uv must be provisioned before the Windows uv run");
+    Ok(())
+}
+
+#[test]
 fn final_publisher_is_version_only() -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
     assert!(has_dispatch(&publisher.2), "final publisher needs workflow_dispatch");

@@ -175,6 +175,8 @@ jobs:
           Copy-Item -LiteralPath "packages/codexy-runtime/target/release/codexy-handoff-validate.exe" -Destination $handoff
           $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $handoff))[0..1]
           if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$handoff is not a PE executable" }
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.platform == 'windows-x86_64'
       - name: Prove native handoff bridge and installed CMD adversarial contract
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
