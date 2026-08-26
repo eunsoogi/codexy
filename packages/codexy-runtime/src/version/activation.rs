@@ -1,29 +1,9 @@
 mod receipt;
+mod updates;
 
-use std::{
-    fs,
-    io::Write as _,
-    path::{Path, PathBuf},
-};
-
-use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
-use sha2::{Digest as _, Sha256};
-use tempfile::NamedTempFile;
 
-const CORE_HANDOFF_SOURCES: [&str; 4] = [
-    "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
-    "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
-];
-
-#[derive(Debug)]
-struct Update {
-    path: PathBuf,
-    bytes: Vec<u8>,
-    delete: bool,
-}
+use updates::{apply_with, prepare};
 
 /// Validates a candidate receipt and atomically stages its activation updates.
 /// No publication, commit, branch, or pull request action is performed here.
@@ -32,171 +12,17 @@ struct Update {
 ///
 /// Returns an error when the candidate receipt or activation targets are invalid,
 /// or when atomic staging cannot complete.
-pub fn activate(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Result<usize> {
+pub fn activate(
+    repo_root: &std::path::Path,
+    bootstrap_version: &str,
+    receipt_path: &std::path::Path,
+) -> anyhow::Result<usize> {
     let updates = prepare(repo_root, bootstrap_version, receipt_path)?;
-    apply_with(&updates, write_staged)?;
+    apply_with(&updates, updates::write_staged)?;
     Ok(updates.len())
 }
 
-fn prepare(repo_root: &Path, bootstrap_version: &str, receipt_path: &Path) -> Result<Vec<Update>> {
-    if !repo_root.is_absolute() {
-        bail!("repo root must be absolute: {}", repo_root.display());
-    }
-    super::require_semver(bootstrap_version)?;
-    let core_aware = validate_core_aware_tree(repo_root)?;
-    if bootstrap_version != super::bootstrap::CANDIDATE_VERSION {
-        bail!(
-            "bootstrap version must be verified public candidate {}",
-            super::bootstrap::CANDIDATE_VERSION
-        );
-    }
-    let receipt = read_json(receipt_path, "candidate receipt")?;
-    let release_tag = format!("v{bootstrap_version}");
-    let (_, candidate) = receipt::activation_from_receipt(&receipt, &release_tag, core_aware)?;
-    let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
-    let expected_manifest_sha = receipt["artifact"]["payloadManifestSha256"]
-        .as_str()
-        .context("validated receipt lost payload manifest SHA")?;
-    let actual_manifest_sha = format!("{:x}", Sha256::digest(&candidate_bytes));
-    if actual_manifest_sha != expected_manifest_sha {
-        bail!("candidate manifest bytes do not match receipt payload SHA-256");
-    }
-    let updates = vec![
-        bootstrap_update(repo_root, bootstrap_version)?,
-        publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
-        Update {
-            path: repo_root.join(".agents/plugins/runtime-activation.json"),
-            bytes: format!("{}\n", serde_json::to_string_pretty(&canonical(receipt))?).into_bytes(),
-            delete: false,
-        },
-        Update {
-            path: repo_root.join("plugins/codexy-devtools/runtime-candidate.json"),
-            bytes: Vec::new(),
-            delete: true,
-        },
-    ];
-    Ok(updates)
-}
-
-fn validate_core_aware_tree(repo_root: &Path) -> Result<bool> {
-    let present = CORE_HANDOFF_SOURCES
-        .iter()
-        .filter(|relative| repo_root.join(relative).is_file())
-        .count();
-    if present == CORE_HANDOFF_SOURCES.len() {
-        return Ok(true);
-    }
-    if present != 0 {
-        bail!("core-handoff source inventory is partial before activation");
-    }
-    let output = std::process::Command::new("git")
-        .args(["rev-list", "-1", "HEAD", "--"])
-        .args(CORE_HANDOFF_SOURCES)
-        .current_dir(repo_root)
-        .output()
-        .context("proving pre-#671 Git tree")?;
-    if !output.status.success() || !output.stdout.iter().all(u8::is_ascii_whitespace) {
-        bail!("core-handoff sources may both be absent only on a proven pre-#671 Git tree");
-    }
-    Ok(false)
-}
-
-fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Result<Update> {
-    let path = root.join(".agents/plugins/release-publish-contract.json");
-    let mut contract = read_json(&path, "release publish contract")?;
-    let current_release = read_json(
-        &root.join("plugins/codexy-devtools/runtime-release.json"),
-        "selected runtime release",
-    )?;
-    let current_tag = current_release["artifact"]["tag"]
-        .as_str()
-        .context("selected runtime release lost artifact tag")?;
-    let selected_bootstrap_matches = contract["bootstrap"]["selectedVersion"]
-        .as_str()
-        .is_some_and(|selected| selected == super::bootstrap::VERSION);
-    let candidate_overlay_matches = contract["bootstrap"]["selectedVersion"]
-        .as_str()
-        .is_some_and(|selected| selected == version)
-        && contract["bootstrap"]["candidateVersion"].as_str() == Some(version);
-    let selected_runtime_matches = contract["runtime"]["selectedTag"].as_str() == Some(current_tag);
-    if (!selected_bootstrap_matches && !candidate_overlay_matches) || !selected_runtime_matches {
-        bail!("release publish contract does not match the selected runtime identity");
-    }
-    contract["bootstrap"]["selectedVersion"] = Value::String(version.to_owned());
-    contract["runtime"]["selectedTag"] = Value::String(release_tag.to_owned());
-    Ok(Update {
-        path,
-        bytes: format!("{}\n", serde_json::to_string_pretty(&contract)?).into_bytes(),
-        delete: false,
-    })
-}
-
-fn bootstrap_update(root: &Path, version: &str) -> Result<Update> {
-    let path = super::runtime_package_path(root, "src/version/bootstrap.rs");
-    let source = fs::read_to_string(&path)
-        .with_context(|| format!("reading selected bootstrap metadata: {}", path.display()))?;
-    let previous = format!(
-        "pub(super) const VERSION: &str = \"{}\";",
-        super::bootstrap::VERSION
-    );
-    let replacement = format!("pub(super) const VERSION: &str = \"{version}\";");
-    if source.matches(&previous).count() != 1 {
-        bail!("selected bootstrap metadata must contain exactly one current VERSION");
-    }
-    Ok(Update {
-        path,
-        bytes: source.replacen(&previous, &replacement, 1).into_bytes(),
-        delete: false,
-    })
-}
-
-fn apply_with<F>(updates: &[Update], apply: F) -> Result<()>
-where
-    F: FnOnce(&[Update]) -> Result<()>,
-{
-    apply(updates)
-}
-
-fn write_staged(updates: &[Update]) -> Result<()> {
-    let staged = updates
-        .iter()
-        .filter(|update| !update.delete)
-        .map(stage)
-        .collect::<Result<Vec<_>>>()?;
-    for (target, temporary) in staged {
-        temporary
-            .persist(&target)
-            .map_err(|error| anyhow::anyhow!("replacing {}: {}", target.display(), error.error))?;
-    }
-    for update in updates.iter().filter(|update| update.delete) {
-        if update.path.exists() {
-            fs::remove_file(&update.path)
-                .with_context(|| format!("removing {}", update.path.display()))?;
-        }
-    }
-    Ok(())
-}
-
-fn stage(update: &Update) -> Result<(PathBuf, NamedTempFile)> {
-    let parent = update
-        .path
-        .parent()
-        .context("activation target has no parent")?;
-    let mut temporary = NamedTempFile::new_in(parent)
-        .with_context(|| format!("staging {}", update.path.display()))?;
-    temporary.write_all(&update.bytes)?;
-    temporary.as_file().sync_all()?;
-    match fs::metadata(&update.path) {
-        Ok(metadata) => fs::set_permissions(temporary.path(), metadata.permissions())?,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(error).with_context(|| format!("reading {}", update.path.display()));
-        }
-    }
-    Ok((update.path.clone(), temporary))
-}
-
-fn canonical(value: Value) -> Value {
+pub(super) fn canonical(value: Value) -> Value {
     match value {
         Value::Object(map) => {
             let mut entries = map.into_iter().collect::<Vec<_>>();
@@ -213,33 +39,6 @@ fn canonical(value: Value) -> Value {
     }
 }
 
-fn read_json(path: &Path, label: &str) -> Result<Value> {
-    super::load_json(path).with_context(|| format!("invalid {label} JSON: {}", path.display()))
-}
-
 #[cfg(test)]
 #[path = "activation/tests.rs"]
 mod tests;
-
-#[cfg(test)]
-mod candidate_overlay_tests {
-    use super::*;
-
-    #[test]
-    fn stale_candidate_version_rejects_before_mutation() -> Result<()> {
-        let temp = tempfile::tempdir()?;
-        let root = temp.path();
-        fs::create_dir_all(root.join(".agents/plugins"))?;
-        fs::create_dir_all(root.join("plugins/codexy-devtools"))?;
-        let contract = br#"{"bootstrap":{"selectedVersion":"1.4.0","candidateVersion":"1.4.0"},"runtime":{"selectedTag":"v1.2.2"}}"#;
-        let path = root.join(".agents/plugins/release-publish-contract.json");
-        fs::write(&path, contract)?;
-        fs::write(
-            root.join("plugins/codexy-devtools/runtime-release.json"),
-            r#"{"artifact":{"tag":"v1.2.2"}}"#,
-        )?;
-        assert!(publish_contract_update(root, "1.5.0", "v1.5.0").is_err());
-        assert_eq!(fs::read(path)?, contract);
-        Ok(())
-    }
-}

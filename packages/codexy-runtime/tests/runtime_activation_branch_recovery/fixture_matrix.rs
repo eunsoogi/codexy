@@ -11,7 +11,7 @@ mod fixture_matrix_commands;
 use crate::support::{self, FixtureCommand};
 use fixture_matrix_commands::{fake_activator, fake_gh, fake_sync_version};
 use serde_json::Value;
-const AUTHORIZED: [&str; 11] = [
+const AUTHORIZED: [&str; 13] = [
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
     ".agents/plugins/marketplace.json",
@@ -23,11 +23,12 @@ const AUTHORIZED: [&str; 11] = [
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/getcodexy/uv.lock",
     "packages/codexy-runtime/src/version/bootstrap.rs",
+    "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
+    "plugins/codexy-devtools/runtime-release.json",
 ];
-const PRESERVED: [&str; 3] = [
+const PRESERVED: [&str; 2] = [
     "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
     "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
-    "plugins/codexy-devtools/runtime-release.json",
 ];
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Change {

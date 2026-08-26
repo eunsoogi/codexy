@@ -28,6 +28,8 @@ for path in \
   packages/getcodexy/uv.lock \
   plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
   plugins/codexy-devtools/mcp/codexy-mcp-lsp \
+  plugins/codexy-devtools/mcp/codexy-mcp-devtools \
+  plugins/codexy-devtools/runtime-release.json \
   packages/codexy-runtime/src/version/bootstrap.rs
 do
   mkdir -p "$root/$(dirname "$path")"

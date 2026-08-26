@@ -42,7 +42,7 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
         std::fs::read_to_string(log)?.lines().collect::<Vec<_>>(),
         [
             "--from",
-            "getcodexy==1.2.2",
+            "getcodexy==1.5.0",
             "codexy-mcp-runtime",
             server,
             "--plugin-root",

@@ -1,4 +1,5 @@
 mod fields;
+mod source_projection;
 
 #[cfg(test)]
 mod tests;
@@ -12,7 +13,6 @@ use fields::{
 
 const RECEIPT_SCHEMA: &str = "codexy-runtime-candidate-receipt/v1";
 const CANDIDATE_SCHEMA: &str = "codexy-runtime-candidate/v1";
-const RELEASE_SCHEMA: &str = "codexy-runtime-release/v1";
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
 const REPOSITORY_ID: i64 = 1_269_350_143;
 const WORKFLOW_PATH: &str = ".github/workflows/runtime-candidate.yml";
@@ -41,50 +41,9 @@ pub(super) fn activation_from_receipt(
     validate_provenance(provenance)?;
     validate_candidate(candidate, provenance, core_aware)?;
     validate_artifact(artifact)?;
-    let source = object_field(candidate, "source", "candidate")?;
-    let compatibility = object_field(candidate, "compatibility", "candidate")?;
-    let platforms = object_field(candidate, "platforms", "candidate")?;
-    let release_platforms = release_platforms(platforms)?;
-    let release_artifact = json!({
-        "tag": release_tag,
-        "url": format!("{REPOSITORY}/releases/download/{release_tag}/codexy-runtime-package.tar.gz"),
-        "sha256": string(artifact, "sha256", "candidate artifact proof")?,
-        "payloadManifestSha256": string(
-            artifact,
-            "payloadManifestSha256",
-            "candidate artifact proof",
-        )?,
-    });
-    let mut release = json!({
-        "schema": RELEASE_SCHEMA,
-        "state": "candidate-proven",
-        "source": source,
-        "artifact": release_artifact,
-        "compatibility": compatibility,
-        "platforms": release_platforms,
-    });
-    if core_aware {
-        release["classes"] = candidate["classes"].clone();
-    }
+    let release =
+        source_projection::build(candidate, artifact, provenance, release_tag, core_aware)?;
     Ok((release, Value::Object(candidate.clone())))
-}
-
-fn release_platforms(platforms: &Map<String, Value>) -> Result<Value> {
-    let entries = PLATFORMS
-        .into_iter()
-        .map(|platform| {
-            let inventory = object_field(platforms, platform, "candidate platforms")?;
-            let binaries = SERVERS
-                .into_iter()
-                .map(|server| {
-                    let binary = object_field(inventory, server, "candidate platform")?;
-                    Ok((server.to_owned(), Value::Object(binary.clone())))
-                })
-                .collect::<Result<Map<_, _>>>()?;
-            Ok((platform.to_owned(), Value::Object(binaries)))
-        })
-        .collect::<Result<Map<_, _>>>()?;
-    Ok(Value::Object(entries))
 }
 
 fn validate_candidate(

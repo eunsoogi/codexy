@@ -1,16 +1,15 @@
 use std::path::Path;
 
-use sha2::{Digest as _, Sha256};
-
 use super::*;
 use crate::support::FixtureCommand;
+use sha2::{Digest as _, Sha256};
 
 #[test]
 fn archive_gate_accepts_a_complete_candidate_proven_windows_package() {
     let root = tempdir().expect("candidate package root");
     let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
     let archive = root.path().join("candidate-proven-windows.tar.gz");
-    make_candidate_proven_windows_package(&plugin_root);
+    make_core_aware_candidate_proven_windows_package(&plugin_root);
     create_archive(root.path(), &archive).expect("candidate archive");
     let output = run_candidate_gate(root.path(), &archive, &plugin_root);
     assert!(
@@ -49,11 +48,8 @@ fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     )
     .expect("malformed candidate release");
     create_archive(root.path(), &archive).expect("candidate archive");
-    assert!(
-        !run_candidate_gate(root.path(), &archive, &plugin_root)
-            .status
-            .success()
-    );
+    let status = run_candidate_gate(root.path(), &archive, &plugin_root).status;
+    assert!(!status.success());
 }
 fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::process::Output {
     let repo_root = root.join("candidate-repository");
@@ -98,12 +94,20 @@ pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output 
         .output()
         .expect("source projection should start")
 }
+pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
+    make_candidate_proven_windows_package_with_core(plugin_root, false);
+}
+fn make_core_aware_candidate_proven_windows_package(plugin_root: &Path) {
+    make_candidate_proven_windows_package_with_core(plugin_root, true);
+}
 fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let source = codexy_runtime::paths::repository_root().join(relative);
     let target = repo_root.join(relative);
     std::fs::copy(source, target).expect("candidate source contract");
 }
-pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
+fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_aware: bool) {
+    let digest =
+        |path: &Path| format!("{:x}", Sha256::digest(std::fs::read(path).expect("digest")));
     let mut manifest: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join(".codex-plugin/plugin.json")).expect("manifest"),
     )
@@ -143,6 +147,40 @@ pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
     dispatcher[0x100] = 3;
     std::fs::write(plugin_root.join("mcp/codexy-mcp-devtools.exe"), dispatcher)
         .expect("Windows dispatcher");
+    let mut core_platforms = serde_json::Map::new();
+    if core_aware {
+        let host_platform = release_archive_support::fixture_host_platform(
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+        )
+        .expect("host platform");
+        for (platform, extension, kind) in [
+            ("darwin-arm64", "bin", "mach-o"),
+            ("linux-x86_64", "bin", "elf"),
+            ("windows-x86_64", "exe", "pe"),
+        ] {
+            let relative = format!("runtime/codexy-handoff-validate-{platform}.{extension}");
+            let path = plugin_root.join(&relative);
+            if platform == host_platform {
+                std::fs::copy(env!("CARGO_BIN_EXE_codexy-handoff-validate"), &path)
+                    .expect("native core handoff runtime");
+            } else {
+                std::fs::write(&path, format!("fixture core handoff {platform}\n"))
+                    .expect("core handoff runtime");
+            }
+            if extension == "bin" || platform == host_platform {
+                make_executable(&path).expect("executable");
+            }
+            core_platforms.insert(
+                platform.to_owned(),
+                serde_json::json!({
+                    "path": relative,
+                    "sha256": digest(&path),
+                    "kind": kind,
+                }),
+            );
+        }
+    }
     let mut release: serde_json::Value = serde_json::from_slice(
         &std::fs::read(plugin_root.join("runtime-release.json")).expect("release contract"),
     )
@@ -161,29 +199,50 @@ pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
                 "bin"
             };
             let path = format!("runtime/codexy-mcp-{server}-{platform}.{extension}");
-            let digest = hex_digest(&std::fs::read(plugin_root.join(&path)).expect("runtime"));
+            let digest = digest(&plugin_root.join(&path));
             release["platforms"][platform][server] =
                 serde_json::json!({"path": path, "sha256": digest});
         }
     }
-    let candidate = serde_json::json!({
+    let mut candidate = serde_json::json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": release["source"].clone(),
         "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
         "compatibility": release["compatibility"].clone(),
         "platforms": release["platforms"].clone(),
     });
-    let candidate_bytes = serde_json::to_vec(&candidate).expect("candidate JSON");
-    release["artifact"]["payloadManifestSha256"] = serde_json::json!(hex_digest(&candidate_bytes));
-    std::fs::write(plugin_root.join("runtime-candidate.json"), candidate_bytes)
-        .expect("candidate contract");
+    if core_aware {
+        release["classes"]["devtoolsMcp"]["platforms"] = release["platforms"].clone();
+        let handoff = serde_json::json!({
+            "schema": "codexy.handoff-runtime.v1",
+            "version": 1,
+            "source": {
+                "commit": release["source"]["commit"].clone(),
+                "tree": release["source"]["tree"].clone(),
+            },
+            "platforms": core_platforms,
+        });
+        let handoff_bytes = serde_json::to_vec(&handoff).expect("handoff JSON");
+        std::fs::write(plugin_root.join("handoff-runtime.json"), handoff_bytes).expect("handoff");
+        release["classes"]["coreHandoff"] = serde_json::json!({
+            "manifest": {
+                "path": "handoff-runtime.json",
+                "sha256": digest(&plugin_root.join("handoff-runtime.json")),
+            },
+            "platforms": handoff["platforms"].clone(),
+        });
+        candidate["classes"] = release["classes"].clone();
+    }
+    let candidate_path = plugin_root.join("runtime-candidate.json");
+    std::fs::write(
+        &candidate_path,
+        serde_json::to_vec(&candidate).expect("candidate JSON"),
+    )
+    .expect("candidate contract");
+    release["artifact"]["payloadManifestSha256"] = serde_json::json!(digest(&candidate_path));
     std::fs::write(
         plugin_root.join("runtime-release.json"),
         serde_json::to_vec_pretty(&release).expect("release JSON"),
     )
     .expect("candidate release");
-}
-
-fn hex_digest(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
 }

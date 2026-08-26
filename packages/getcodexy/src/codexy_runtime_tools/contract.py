@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-import tarfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,18 +17,29 @@ from .identity import (
     platforms,
     string,
 )
-
+from .release_contract_validation import (
+    canonical_digest,
+    encoded as _encoded,
+    source_platforms,
+    validate_classes,
+    validate_provenance,
+    verify_archive,
+)
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 RELEASE_SCHEMA = "codexy-runtime-release/v1"
-CANDIDATE_SCHEMA = "codexy-runtime-candidate/v1"
 _COMMIT = re.compile(r"[0-9a-f]{40}\Z")
+
+
+def _canonical(value: Any) -> str:
+    return canonical_digest(value)
 
 
 @dataclass(frozen=True)
 class Source:
     repository: str
     commit: str
+    tree: str | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +57,8 @@ class RuntimeRelease:
     artifact: Artifact
     compatibility: Compatibility
     platforms: dict[str, dict[str, dict[str, str]]]
+    provenance: dict[str, Any] | None = None
+    classes: dict[str, Any] | None = None
 
     def advertises(self, *, platform: str) -> bool:
         return platform in self.platforms
@@ -80,16 +91,25 @@ class RuntimeRelease:
         binary = self.platforms.get(platform, {}).get(server)
         if binary is None:
             raise ValueError("runtime release does not advertise the selected binary")
-        return {
+        source = {"repository": self.source.repository, "commit": self.source.commit}
+        if self.source.tree is not None:
+            source["tree"] = self.source.tree
+        identity = {
             "schema": RELEASE_SCHEMA,
             "state": self.state,
-            "source": self.source.__dict__,
+            "source": source,
             "artifact": self.artifact.__dict__,
             "compatibility": self.compatibility.__dict__,
+            "platforms": self.platforms,
             "platform": platform,
             "server": server,
             "binarySha256": binary["sha256"],
         }
+        if self.provenance is not None:
+            identity["provenance"] = self.provenance
+        if self.classes is not None:
+            identity["classes"] = self.classes
+        return identity
 
     def marker(
         self, *, platform: str, server: str, binary_sha256: str
@@ -110,77 +130,54 @@ class RuntimeRelease:
         )
 
     def package_plugin_root(self) -> str:
-        return "codexy-devtools" if self.state == "candidate-proven" else "codexy"
+        return (
+            "codexy-devtools"
+            if self.state in {"candidate-proven", "source-selected"}
+            else "codexy"
+        )
 
     def verify_archive(self, archive: Path, *, platform: str) -> bool:
         if self.state == "legacy-public":
             return True
-        try:
-            with tarfile.open(archive, "r:gz") as package:
-                names = [member.name for member in package.getmembers()]
-                if len({name.casefold() for name in names}) != len(names):
-                    raise ValueError("runtime archive has duplicate or casefold paths")
-                plugin_root = self.package_plugin_root()
-                package.getmember(f"plugins/{plugin_root}/.codex-plugin/plugin.json")
-                candidate = document(
-                    package.extractfile(
-                        f"plugins/{plugin_root}/runtime-candidate.json"
-                    ).read()
-                )
-                if _canonical(candidate) != self.artifact.payload_manifest_sha256:
-                    raise ValueError("runtime candidate digest does not match release")
-                _validate_candidate(candidate, self, package, platform, plugin_root)
-        except (
-            AttributeError,
-            KeyError,
-            OSError,
-            tarfile.TarError,
-            TypeError,
-            json.JSONDecodeError,
-        ) as error:
-            raise ValueError(f"invalid runtime candidate: {error}") from error
-        return True
-
-
-def _canonical(value: Any) -> str:
-    return hashlib.sha256(_encoded(value)).hexdigest()
-
-
-def _encoded(value: Any) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+        return verify_archive(self, archive, platform=platform)
 
 
 def load(plugin_root: Path) -> RuntimeRelease:
     path = plugin_root / "runtime-release.json"
     try:
         value = document(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, ValueError) as error:
         raise ValueError(f"runtime release is missing or invalid: {error}") from error
     value = object(value, "document")
-    if set(value) != {
-        "schema",
-        "state",
-        "source",
-        "artifact",
-        "compatibility",
-        "platforms",
-    }:
+    state = string(value.get("state"), "state")
+    if state not in {"legacy-public", "candidate-proven", "source-selected"}:
+        raise ValueError("runtime release state is unsupported")
+    source = object(value.get("source"), "source")
+    core_aware = "tree" in source or "classes" in value
+    source_fields = (
+        {"repository", "commit", "tree"} if core_aware else {"repository", "commit"}
+    )
+    expected = {"schema", "state", "source", "artifact", "compatibility", "platforms"}
+    if state == "source-selected":
+        expected.add("provenance")
+    if core_aware:
+        expected.add("classes")
+    if set(value) != expected:
         raise ValueError("runtime release has unknown or missing fields")
+    if set(source) != source_fields:
+        raise ValueError("runtime release source has unknown or missing fields")
     if value.get("schema") != RELEASE_SCHEMA:
         raise ValueError("runtime release schema must be codexy-runtime-release/v1")
-    state = value.get("state")
-    if state not in {"legacy-public", "candidate-proven"}:
-        raise ValueError(
-            "runtime release state must be legacy-public or candidate-proven"
-        )
-    source = object(value.get("source"), "source")
-    if set(source) != {"repository", "commit"}:
-        raise ValueError("runtime release source has unknown or missing fields")
     commit = string(source.get("commit"), "source.commit")
     if source.get("repository") != REPOSITORY or not _COMMIT.fullmatch(commit):
         raise ValueError(
             "runtime release source must use the canonical repository and lowercase commit"
         )
+    tree = None
+    if core_aware:
+        tree = string(source.get("tree"), "source.tree")
+        if not _COMMIT.fullmatch(tree):
+            raise ValueError("runtime release source tree must be lowercase 40-hex")
     artifact = object(value.get("artifact"), "artifact")
     if set(artifact) != {"tag", "url", "sha256", "payloadManifestSha256"}:
         raise ValueError("runtime release artifact has unknown or missing fields")
@@ -190,14 +187,29 @@ def load(plugin_root: Path) -> RuntimeRelease:
         raise ValueError("runtime release must use a version-only tag")
     asset = (
         "codexy-runtime-package.tar.gz"
-        if state == "candidate-proven"
+        if state != "legacy-public"
         else "codexy-marketplace-plugin.tar.gz"
     )
     if url != f"{REPOSITORY}/releases/download/{tag}/{asset}":
         raise ValueError("runtime release artifact URL is not canonical")
+    parsed_platforms = (
+        source_platforms(value.get("platforms"))
+        if state == "source-selected"
+        else platforms(value.get("platforms"), require_path=state == "candidate-proven")
+    )
+    provenance = (
+        validate_provenance(value.get("provenance"))
+        if state == "source-selected"
+        else None
+    )
+    classes = (
+        validate_classes(value.get("classes"), parsed_platforms, source)
+        if core_aware
+        else None
+    )
     return RuntimeRelease(
         state,
-        Source(REPOSITORY, commit),
+        Source(REPOSITORY, commit, tree),
         Artifact(
             tag,
             url,
@@ -207,42 +219,7 @@ def load(plugin_root: Path) -> RuntimeRelease:
             ),
         ),
         compatibility(value.get("compatibility")),
-        platforms(value.get("platforms"), require_path=state == "candidate-proven"),
+        parsed_platforms,
+        provenance,
+        classes,
     )
-
-
-def _validate_candidate(
-    candidate: Any,
-    release: RuntimeRelease,
-    package: tarfile.TarFile,
-    platform: str,
-    plugin_root: str,
-) -> None:
-    candidate = object(candidate, "candidate")
-    if release.state != "candidate-proven":
-        raise ValueError("legacy runtime release has no candidate payload")
-    if (
-        set(candidate) != {"schema", "source", "artifact", "compatibility", "platforms"}
-        or candidate.get("schema") != CANDIDATE_SCHEMA
-        or candidate.get("source")
-        != {"repository": release.source.repository, "commit": release.source.commit}
-    ):
-        raise ValueError("runtime candidate identity does not match release")
-    artifact = candidate.get("artifact")
-    if (
-        not isinstance(artifact, dict)
-        or set(artifact) != {"stagingRunId", "stagingRunAttempt"}
-        or not all(type(artifact[key]) is int and artifact[key] > 0 for key in artifact)
-        or compatibility(candidate.get("compatibility")) != release.compatibility
-    ):
-        raise ValueError("runtime candidate metadata does not match release")
-    inventory = platforms(candidate.get("platforms"), require_path=True)
-    if inventory != release.platforms or platform not in inventory:
-        raise ValueError("runtime candidate inventory does not match release")
-    for binary in inventory[platform].values():
-        member = package.extractfile(f"plugins/{plugin_root}/{binary['path']}")
-        if (
-            member is None
-            or hashlib.sha256(member.read()).hexdigest() != binary["sha256"]
-        ):
-            raise ValueError("runtime candidate binary digest does not match")

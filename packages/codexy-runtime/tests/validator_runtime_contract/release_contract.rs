@@ -21,6 +21,26 @@ fn validator_accepts_contract_free_public_bootstrap_source() -> Result<(), Box<d
 }
 
 #[test]
+fn validator_accepts_source_selected_pointer_without_tracked_candidate() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = copy_plugin_to(temp.path())?;
+    declare_bundled_platforms(&plugin_root)?;
+    std::fs::write(
+        plugin_root.join("runtime-release.json"),
+        serde_json::to_string_pretty(&source_selected_release())?,
+    )?;
+    assert!(!plugin_root.join("runtime-candidate.json").exists());
+
+    let output = validate(&plugin_root)?;
+    assert!(
+        output.status.success(),
+        "source-selected pointer rejected: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
@@ -74,6 +94,18 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     let path = plugin_root.join("runtime-release.json");
     let mut release: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     release["state"] = serde_json::json!("candidate-proven");
+    release
+        .as_object_mut()
+        .ok_or("runtime release object")?
+        .remove("provenance");
+    release
+        .as_object_mut()
+        .ok_or("runtime release object")?
+        .remove("classes");
+    release["source"]
+        .as_object_mut()
+        .ok_or("runtime release source object")?
+        .remove("tree");
     release["artifact"]["tag"] = serde_json::json!(tag);
     release["artifact"]["url"] = serde_json::json!(format!("https://github.com/eunsoogi/codexy/releases/download/{tag}/codexy-runtime-package.tar.gz"));
     for platform in ["darwin-arm64", "linux-x86_64"] {
@@ -91,6 +123,59 @@ fn write_candidate_release(plugin_root: &std::path::Path, tag: &str) -> Result<(
     });
     std::fs::write(plugin_root.join("runtime-candidate.json"), serde_json::to_string(&candidate)?)?;
     Ok(())
+}
+
+fn source_selected_release() -> serde_json::Value {
+    let source_platforms = serde_json::json!({
+        "darwin-arm64": {
+            "lsp": {"path": "runtime/codexy-mcp-lsp-darwin-arm64.bin", "sha256": "b".repeat(64)},
+            "codegraph": {"path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "sha256": "c".repeat(64)}
+        },
+        "linux-x86_64": {
+            "lsp": {"path": "runtime/codexy-mcp-lsp-linux-x86_64.bin", "sha256": "d".repeat(64)},
+            "codegraph": {"path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "sha256": "e".repeat(64)}
+        }
+    });
+    serde_json::json!({
+        "schema": "codexy-runtime-release/v1",
+        "state": "source-selected",
+        "source": {
+            "repository": "https://github.com/eunsoogi/codexy",
+            "commit": "a".repeat(40),
+            "tree": "b".repeat(40)
+        },
+        "artifact": {
+            "tag": "v1.5.0",
+            "url": "https://github.com/eunsoogi/codexy/releases/download/v1.5.0/codexy-runtime-package.tar.gz",
+            "sha256": "c".repeat(64),
+            "payloadManifestSha256": "d".repeat(64)
+        },
+        "provenance": {
+            "repositoryId": 1269350143,
+            "workflowPath": ".github/workflows/runtime-candidate.yml",
+            "runId": 42,
+            "runAttempt": 1,
+            "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"
+        },
+        "compatibility": {
+            "bootstrapApi": 1,
+            "pluginRuntimeApi": 1,
+            "transport": "stdio-newline-v1",
+            "mcpProtocol": "2024-11-05"
+        },
+        "platforms": source_platforms,
+        "classes": {
+            "devtoolsMcp": {"platforms": source_platforms},
+            "coreHandoff": {
+                "manifest": {"path": "handoff-runtime.json", "sha256": "e".repeat(64)},
+                "platforms": {
+                    "darwin-arm64": {"path": "runtime/codexy-handoff-validate-darwin-arm64.bin", "sha256": "f".repeat(64), "kind": "mach-o"},
+                    "linux-x86_64": {"path": "runtime/codexy-handoff-validate-linux-x86_64.bin", "sha256": "0".repeat(64), "kind": "elf"},
+                    "windows-x86_64": {"path": "runtime/codexy-handoff-validate-windows-x86_64.exe", "sha256": "1".repeat(64), "kind": "pe"}
+                }
+            }
+        }
+    })
 }
 
 fn validate(plugin_root: &std::path::Path) -> std::io::Result<std::process::Output> {
