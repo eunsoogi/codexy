@@ -165,7 +165,8 @@ fn capture_output(review: Value) -> TestResult<std::process::Output> {
 }
 
 fn producer_request() -> TestResult<Value> {
-    let base = git(&["rev-parse", "origin/main"]);
+    // Use HEAD^ so the fixture remains non-empty after a PR merges into main.
+    let base = git(&["rev-parse", "HEAD^"]);
     let head = git(&["rev-parse", "HEAD"]);
     let range = format!("{base}..{head}");
     let diff = git_bytes(&["diff", "--no-ext-diff", "--binary", &range]);
