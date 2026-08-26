@@ -62,8 +62,8 @@ fn activation_promotes_the_authenticated_source_selected_runtime_pointer() -> Re
     );
     let wrapper =
         fs::read_to_string(fixture.path("plugins/codexy-devtools/mcp/codexy-mcp-devtools"))?;
-    assert!(wrapper.contains("getcodexy==1.5.0"));
-    assert!(!wrapper.contains("getcodexy==1.2.2"));
+    assert!(wrapper.contains(&format!("getcodexy=={}", candidate_version())));
+    assert!(!wrapper.contains(&format!("getcodexy=={}", fixture.prior_runtime_version())));
     assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
     let manifest: Value = serde_json::from_str(&fs::read_to_string(
         fixture.path("plugins/codexy-devtools/.codex-plugin/plugin.json"),
