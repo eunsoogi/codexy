@@ -8,10 +8,9 @@ use crate::support::{FixtureCommand, TestResult};
 #[test]
 fn review_control_producer_captures_a_bound_terminal_without_appending_an_event() -> TestResult {
     let fixture = crate::support::plugin_fixture()?;
-    let temp = tempfile::tempdir()?;
-    let input = temp.path().join("producer-request.json");
-    fs::write(&input, serde_json::to_vec(&producer_request()?)?)?;
-    let output = run_producer(fixture.root(), &input, temp.path())?;
+    let repository = tempfile::tempdir()?; let base = init_producer_repository(repository.path())?;
+    let temp = tempfile::tempdir()?; let input = temp.path().join("producer-request.json"); fs::write(&input, serde_json::to_vec(&producer_request(repository.path(), &base)?)?)?;
+    let output = run_producer(fixture.root(), repository.path(), &input, temp.path())?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let control: Value = serde_json::from_slice(&fs::read(temp.path().join("control.json"))?)?;
     let packet: Value = serde_json::from_slice(&fs::read(temp.path().join("packet.json"))?)?;
@@ -164,17 +163,18 @@ fn capture_output(review: Value) -> TestResult<std::process::Output> {
     run_capture(&base, &control, &output)
 }
 
-fn producer_request() -> TestResult<Value> {
-    let base = git(&["rev-parse", "origin/main"]);
-    let head = git(&["rev-parse", "HEAD"]);
+fn producer_request(root: &Path, base: &str) -> TestResult<Value> {
+    // Bind the range to the fixture base, not the incidental tip commit.
+    let head = git(root, &["rev-parse", "HEAD"]);
     let range = format!("{base}..{head}");
-    let diff = git_bytes(&["diff", "--no-ext-diff", "--binary", &range]);
-    let files = git(&["diff", "--name-only", "--diff-filter=ACMRD", &range])
+    let diff = git_bytes(root, &["diff", "--no-ext-diff", "--binary", &range]);
+    let files = git(root, &["diff", "--name-only", "--diff-filter=ACMRD", &range])
         .lines()
         .map(str::to_owned)
         .collect::<Vec<_>>();
-    let evidence_path = files.first().ok_or("producer needs changed-file evidence")?;
-    let evidence = git_bytes(&["show", &format!("{head}:{evidence_path}")]);
+    let evidence_path = "stable.json";
+    assert!(files.iter().any(|file| file == evidence_path));
+    let evidence = git_bytes(root, &["show", &format!("{head}:{evidence_path}")]);
     let diff_sha = format!("{:x}", Sha256::digest(diff));
     let evidence_sha = format!("{:x}", Sha256::digest(evidence));
     let mut ledger = strict_control()["ledger"].clone();
@@ -186,26 +186,27 @@ fn producer_request() -> TestResult<Value> {
     Ok(json!({"schema":"codexy.review-control-producer-request.v1","binding":{"issue_number":693,"pull_request_number":694,"base_oid":base,"head_oid":head,"diff_sha256":diff_sha,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"event_id":"e-passed","predecessor_event_id":"e-full","issue_contract":contract,"budget":{"full_used":1,"delta_used":0,"terminal_used":2,"terminal_limit":3}},"terminal_record":{"schema":"codexy.review-terminal-record.v1","head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[],"ledger":ledger},"packet":{"schema":"codexy.review-packet.v4","event_id":"e-passed","predecessor_event_id":"e-full","profile":"strict","state":"passed","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":diff_sha},"issue_contract":contract,"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":evidence_sha}],"findings":[],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"unresolved_blocker_ids":[],"budget_exhausted":false,"parent_decision_required":false}}}))
 }
 
-fn run_producer(root: &Path, input: &Path, output_dir: &Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--plugin-root", root.to_str().ok_or("plugin root")?, "--produce-review-control", "--input"])
-        .arg(input)
-        .args(["--output"])
-        .arg(output_dir.join("control.json"))
-        .args(["--packet-output"])
-        .arg(output_dir.join("packet.json"))
-        .args(["--ledger-output"])
-        .arg(output_dir.join("ledger.json"))
-        .output()?)
+fn run_producer(root: &Path, repository: &Path, input: &Path, output_dir: &Path) -> TestResult<std::process::Output> {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"));
+    command.args(["--plugin-root", root.to_str().ok_or("plugin root")?, "--repository-root"]).arg(repository)
+        .args(["--produce-review-control", "--input"]).arg(input)
+        .args(["--output"]).arg(output_dir.join("control.json"))
+        .args(["--packet-output"]).arg(output_dir.join("packet.json"))
+        .args(["--ledger-output"]).arg(output_dir.join("ledger.json"));
+    Ok(command.output()?)
 }
 
-fn git(args: &[&str]) -> String {
-    String::from_utf8(Command::new("git").current_dir(codexy_runtime::paths::repository_root()).args(args).output().unwrap().stdout).unwrap().trim().to_owned()
+fn init_producer_repository(root: &Path) -> TestResult<String> {
+    git(root, &["init"]); git(root, &["config", "user.email", "test@example.invalid"]); git(root, &["config", "user.name", "Test"]);
+    fs::write(root.join("stable.json"), "{\"state\":\"base\"}\n")?; fs::write(root.join("removed.json"), "{\"state\":\"base\"}\n")?;
+    git(root, &["add", "."]); git(root, &["commit", "-m", "base"]); let base = git(root, &["rev-parse", "HEAD"]);
+    fs::write(root.join("stable.json"), "{\"state\":\"changed\"}\n")?; git(root, &["add", "stable.json"]); git(root, &["commit", "-m", "change"]);
+    fs::remove_file(root.join("removed.json"))?; git(root, &["add", "-u"]); git(root, &["commit", "-m", "delete-only tip"]); git(root, &["commit", "--allow-empty", "-m", "empty tip"]); Ok(base)
 }
 
-fn git_bytes(args: &[&str]) -> Vec<u8> {
-    Command::new("git").current_dir(codexy_runtime::paths::repository_root()).args(args).output().unwrap().stdout
-}
+fn git(root: &Path, args: &[&str]) -> String { String::from_utf8(Command::new("git").current_dir(root).args(args).output().unwrap().stdout).unwrap().trim().to_owned() }
+
+fn git_bytes(root: &Path, args: &[&str]) -> Vec<u8> { Command::new("git").current_dir(root).args(args).output().unwrap().stdout }
 
 fn state_files(root: &std::path::Path, review: &Value) -> TestResult<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
     let base = root.join("base.json");
