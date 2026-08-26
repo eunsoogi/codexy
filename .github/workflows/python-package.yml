@@ -85,44 +85,24 @@ jobs:
           major, minor, patch = (int(part) for part in current_version.split("."))
           target_version = f"{major}.{minor}.{patch + 1}"
           bootstrap = root / "packages/codexy-runtime/src/version/bootstrap.rs"
-          selected_marker = (
-              f'pub(super) const VERSION: &str = "{current_version}";'
-          )
-          selected_target_marker = (
-              f'pub(super) const VERSION: &str = "{target_version}";'
-          )
-          candidate_current_marker = (
-              f'pub(super) const CANDIDATE_VERSION: &str = "{current_version}";'
-          )
-          candidate_target_marker = (
-              f'pub(super) const CANDIDATE_VERSION: &str = "{target_version}";'
-          )
+          selected_marker = f'pub(super) const VERSION: &str = "{current_version}";'
+          selected_target_marker = f'pub(super) const VERSION: &str = "{target_version}";'
+          candidate_current_marker = f'pub(super) const CANDIDATE_VERSION: &str = "{current_version}";'
+          candidate_target_marker = f'pub(super) const CANDIDATE_VERSION: &str = "{target_version}";'
           bootstrap_text = bootstrap.read_text(encoding="utf-8")
           if bootstrap_text.count(selected_marker) != 1:
               raise SystemExit("selected bootstrap version fixture is not canonical")
-          candidate_count = sum(
-              bootstrap_text.count(marker)
-              for marker in (candidate_current_marker, candidate_target_marker)
-          )
+          candidate_count = sum(bootstrap_text.count(marker) for marker in (candidate_current_marker, candidate_target_marker))
           if candidate_count != 1:
               raise SystemExit("candidate bootstrap version fixture is not canonical")
-          bootstrap_text = bootstrap_text.replace(
-              selected_marker,
-              selected_target_marker,
-              1,
-          )
-          bootstrap_text = bootstrap_text.replace(
-              candidate_current_marker, candidate_target_marker, 1
-          )
+          bootstrap_text = bootstrap_text.replace(selected_marker, selected_target_marker, 1)
+          bootstrap_text = bootstrap_text.replace(candidate_current_marker, candidate_target_marker, 1)
           if (
               bootstrap_text.count(selected_target_marker) != 1
               or bootstrap_text.count(candidate_target_marker) != 1
           ):
               raise SystemExit("candidate bootstrap target fixture is not canonical")
-          bootstrap.write_text(
-              bootstrap_text,
-              encoding="utf-8",
-          )
+          bootstrap.write_text(bootstrap_text, encoding="utf-8")
           contract_path = root / ".agents/plugins/release-publish-contract.json"
           contract = json.loads(contract_path.read_text(encoding="utf-8"))
           contract["version"] = target_version
