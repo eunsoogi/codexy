@@ -3,8 +3,7 @@ use std::{fs, path::Path, process::Command};
 use serde_json::{Value, json};
 
 use super::isolation::{
-    bootstrap_candidate_version, fixture_version, next_patch_version, prior_runtime_version,
-    version_surface_contents,
+    bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
 
 #[test]
@@ -14,9 +13,9 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
     let archive = super::shared_repository_archive()?;
     let current = super::archive_repository(archive, &temp, "current")?;
     let current_version = fixture_version(&current)?;
-    let prior_version = prior_runtime_version(&current)?;
+    let non_selected_version = next_patch_version(&current_version)?;
     assert!(admit(&current, &current_version)?.status.success());
-    assert!(!admit(&current, &prior_version)?.status.success());
+    assert!(!admit(&current, &non_selected_version)?.status.success());
 
     for case in ["exact", "stale-bootstrap", "stale-runtime", "legacy-runtime", "wrapper-drift"] {
         let root = super::archive_repository(archive, &temp, case)?;

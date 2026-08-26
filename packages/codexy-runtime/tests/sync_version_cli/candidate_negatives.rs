@@ -8,8 +8,7 @@ use serde_json::{Value, json};
 
 use super::archive::RepositoryArchive;
 use super::isolation::{
-    bootstrap_candidate_version, fixture_version, next_patch_version, prior_runtime_version,
-    version_surface_contents,
+    bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
 use super::{archive_repository, shared_repository_archive};
 
@@ -41,7 +40,6 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
         let root = selected_fixture(archive, &temp, case_name(case))?;
         let selected_version = fixture_version(&root)?;
         let candidate_version = next_patch_version(&selected_version)?;
-        let prior_version = prior_runtime_version(&root)?;
         match case {
             NegativeCase::CandidateNotAdvanced => {
                 reject(
@@ -75,7 +73,9 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
                 prepare_candidate(&root)?;
                 mutate_json(
                     &root.join(".agents/plugins/release-publish-contract.json"),
-                    |value| value["bootstrap"]["selectedVersion"] = json!(prior_version.clone()),
+                    |value| {
+                        value["bootstrap"]["selectedVersion"] = json!(candidate_version.clone())
+                    },
                 )?;
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }

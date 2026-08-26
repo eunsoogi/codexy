@@ -23,11 +23,12 @@ pub(super) fn check_source(
     legacy_commit: &str,
     path: &Path,
 ) -> Result<()> {
-    let fields = if state == "candidate-proven" && source.contains_key("tree") {
-        &["repository", "commit", "tree"][..]
-    } else {
-        &["repository", "commit"][..]
-    };
+    let fields =
+        if matches!(state, "candidate-proven" | "source-selected") && source.contains_key("tree") {
+            &["repository", "commit", "tree"][..]
+        } else {
+            &["repository", "commit"][..]
+        };
     exact_keys(source, fields, path)?;
     exact(
         string(source, "repository", path)?,
@@ -44,6 +45,34 @@ pub(super) fn check_source(
     } else {
         Ok(())
     }
+}
+
+pub(super) fn check_source_surface(plugin_root: &Path, supported: &[String]) -> Result<()> {
+    let public = ["darwin-arm64".to_owned(), "linux-x86_64".to_owned()];
+    if supported == public.as_slice() {
+        return Ok(());
+    }
+    let wrapper_path = plugin_root.join("mcp/codexy-mcp-devtools");
+    let wrapper = fs::read_to_string(&wrapper_path)?;
+    let actual = wrapper
+        .lines()
+        .find_map(|line| line.strip_prefix("bundled_platforms=\"")?.strip_suffix('"'))
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    if actual != supported {
+        bail!(
+            "{} bundled platforms must match supportedPlatforms: expected {:?}, got {:?}",
+            display_relative(&wrapper_path),
+            supported,
+            actual
+        );
+    }
+    bail!(
+        "{} source marketplace must retain the darwin/linux public-bootstrap platforms",
+        display_relative(&plugin_root.join(".github/workflows/plugin-runtime-binaries.yml"))
+    )
 }
 
 pub(crate) fn check(

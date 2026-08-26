@@ -8,10 +8,9 @@ verify_case() {
 	receipt="${4:?candidate receipt is required}"
 	base_package_version="$(git show "$base:packages/getcodexy/pyproject.toml" | sed -n 's/^version = "\(.*\)"/\1/p' | head -n 1)"
 	component_manifest=packages/getcodexy/src/codexy_runtime_tools/component-manifest.json
-	preserved="$(printf '%s\n' \
+	 preserved="$(printf '%s\n' \
     plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
-    plugins/codexy-devtools/mcp/codexy-mcp-lsp \
-    plugins/codexy-devtools/runtime-release.json)"
+    plugins/codexy-devtools/mcp/codexy-mcp-lsp)"
   git diff --quiet
   git diff --cached --quiet
   expected_root="$(mktemp -d)"
@@ -71,7 +70,9 @@ verify_case() {
 			plugins/codexy-devtools/.codex-plugin/plugin.json \
 			plugins/codexy-github/.codex-plugin/plugin.json \
 			packages/getcodexy/uv.lock \
-			packages/codexy-runtime/src/version/bootstrap.rs
+			packages/codexy-runtime/src/version/bootstrap.rs \
+			plugins/codexy-devtools/mcp/codexy-mcp-devtools \
+			plugins/codexy-devtools/runtime-release.json
 		if test "$component_manifest_reconstructed" -eq 1; then
 			printf '%s\n' "$component_manifest"
 		fi

@@ -13,6 +13,7 @@ mod metadata;
 mod receipt;
 mod shell_runner;
 mod command;
+mod real_source_pointer;
 
 use command::run as command;
 use receipt::receipt_value;
@@ -24,7 +25,7 @@ fn real_pre_671_committed_tree_authenticates_retry_and_metadata_matrix()
     let candidate = metadata::current_candidate_version()?;
     metadata::assert_canonical_default_prompt(&fixture.repo)?;
     metadata::assert_canonical_preserved_eol(&fixture.repo)?;
-    assert_result(fixture.verify("main", &candidate)?, true, "exact retry");
+    real_source_pointer::assert_result(fixture.verify("main", &candidate)?, true, "exact retry");
     assert_eq!(
         fixture.cargo_invocations()?,
         0,
@@ -45,18 +46,8 @@ fn real_base_activator_preserves_candidate_bytes_with_autocrlf()
     let candidate = metadata::current_candidate_version()?;
     metadata::enable_autocrlf(&fixture.repo)?;
     metadata::assert_canonical_preserved_eol(&fixture.repo)?;
-    assert_result(fixture.verify("main", &candidate)?, true, "autocrlf retry");
+    real_source_pointer::assert_result(fixture.verify("main", &candidate)?, true, "autocrlf retry");
     Ok(())
-}
-
-fn assert_result(output: Output, success: bool, case: &str) {
-    assert_eq!(
-        output.status.success(),
-        success,
-        "unexpected {case} result\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
 }
 
 struct Fixture {
@@ -107,6 +98,7 @@ impl Fixture {
             }
         }
         metadata::synchronize_current_plugin_validation_inputs(&repo)?;
+        real_source_pointer::restore_pre_activation_runtime_inputs(&repo, &pre_activation_revision)?;
         metadata::make_uv_lock_stale(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
         let workflow_target = repo.join(workflow);
@@ -149,6 +141,7 @@ impl Fixture {
         )?;
         let external_activation_process_invocations = Cell::new(0);
         codexy_runtime::version::activation::activate(&repo, &candidate, &receipt)?;
+        real_source_pointer::assert_activated_source_pointer(&repo, &candidate)?;
         let mut sync = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"));
         sync.args(["--version", &candidate])
             .current_dir(&repo)

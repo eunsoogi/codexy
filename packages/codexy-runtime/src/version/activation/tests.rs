@@ -16,15 +16,29 @@ use fixture::{
 };
 
 #[test]
-fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result<()> {
-    let fixture = Fixture::new()?;
+fn activation_promotes_the_authenticated_source_selected_runtime_pointer() -> Result<()> {
+    let fixture = new_fixture()?;
     assert_eq!(
         activate(&fixture.root, candidate_version(), &fixture.receipt)?,
-        4
+        6
+    );
+    let release: Value = serde_json::from_slice(&fs::read(
+        fixture.path("plugins/codexy-devtools/runtime-release.json"),
+    )?)?;
+    assert_eq!(release["state"], "source-selected");
+    assert_eq!(release["source"], receipt_value()["candidate"]["source"]);
+    assert_eq!(
+        release["artifact"]["tag"],
+        format!("v{}", candidate_version())
+    );
+    assert_eq!(release["artifact"]["sha256"], "f".repeat(64));
+    assert_eq!(
+        release["platforms"].as_object().map(|map| map.len()),
+        Some(2)
     );
     assert_eq!(
-        fs::read_to_string(fixture.path("plugins/codexy-devtools/runtime-release.json"))?,
-        fixture.prior_runtime_release()
+        release["classes"]["devtoolsMcp"]["platforms"],
+        release["platforms"]
     );
     assert!(
         !fixture
@@ -46,11 +60,11 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
         activated["candidate"]["classes"]["coreHandoff"]["manifest"]["path"],
         "handoff-runtime.json"
     );
-    for wrapper in fixture.wrappers() {
-        let wrapper = fs::read_to_string(wrapper)?;
-        assert!(wrapper.contains(&format!("getcodexy=={}", fixture.prior_runtime_version())));
-        assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
-    }
+    let wrapper =
+        fs::read_to_string(fixture.path("plugins/codexy-devtools/mcp/codexy-mcp-devtools"))?;
+    assert!(wrapper.contains("getcodexy==1.5.0"));
+    assert!(!wrapper.contains("getcodexy==1.2.2"));
+    assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
     let manifest: Value = serde_json::from_str(&fs::read_to_string(
         fixture.path("plugins/codexy-devtools/.codex-plugin/plugin.json"),
     )?)?;
@@ -71,10 +85,10 @@ fn activation_preserves_the_prior_public_runtime_until_final_release() -> Result
 
 #[test]
 fn activation_updates_the_publication_identity_without_repointing_runtime() -> Result<()> {
-    let fixture = Fixture::new()?;
+    let fixture = new_fixture()?;
     assert_eq!(
         activate(&fixture.root, candidate_version(), &fixture.receipt)?,
-        4
+        6
     );
     let publish: Value = serde_json::from_str(&fs::read_to_string(
         fixture.path(".agents/plugins/release-publish-contract.json"),
@@ -96,9 +110,10 @@ fn activation_updates_the_publication_identity_without_repointing_runtime() -> R
 }
 
 #[test]
-fn selected_bootstrap_cannot_activate_a_candidate() -> Result<()> {
-    let fixture = Fixture::new()?;
-    assert_activation_rejected_without_mutation(&fixture, fixture.prior_runtime_version())
+fn non_candidate_bootstrap_version_cannot_activate() -> Result<()> {
+    let fixture = new_fixture()?;
+    let non_candidate = next_patch_version(candidate_version())?;
+    assert_activation_rejected_without_mutation(&fixture, &non_candidate)
 }
 
 #[test]
@@ -177,16 +192,32 @@ fn mismatched_selected_publish_identity_leaves_targets_byte_identical() -> Resul
 
 #[test]
 fn injected_staging_failure_leaves_targets_byte_identical() -> Result<()> {
-    let fixture = Fixture::new()?;
+    let fixture = new_fixture()?;
+    let wrapper_path = fixture.path("plugins/codexy-devtools/mcp/codexy-mcp-devtools");
+    let wrapper_before = fs::read(&wrapper_path)?;
     let before = fixture.tracked()?;
     let updates = prepare(&fixture.root, candidate_version(), &fixture.receipt)?;
     assert!(apply_with(&updates, |_| bail!("injected staging failure")).is_err());
     assert_eq!(fixture.tracked()?, before);
+    assert_eq!(fs::read(wrapper_path)?, wrapper_before);
     Ok(())
 }
 
 fn reject_activation(version: &str, mutate: impl FnOnce(&Fixture) -> Result<()>) -> Result<()> {
-    let fixture = Fixture::new()?;
+    let fixture = new_fixture()?;
     mutate(&fixture)?;
     assert_activation_rejected_without_mutation(&fixture, version)
+}
+
+fn new_fixture() -> Result<Fixture> {
+    let fixture = Fixture::new()?;
+    write(
+        &fixture.root,
+        "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
+        format!(
+            "#!/bin/sh\nbundled_platforms=\"darwin-arm64 linux-x86_64\"\nexec uvx --from getcodexy=={} codexy-mcp-runtime lsp -- \"$@\"\n",
+            fixture.prior_runtime_version()
+        ),
+    )?;
+    Ok(fixture)
 }

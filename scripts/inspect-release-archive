@@ -58,6 +58,7 @@ PY
 )
 case "$release_state" in
   legacy-public) ;;
+  source-selected) ;;
   candidate-proven)
     candidate_contract="$extract_root/plugins/codexy-devtools/runtime-candidate.json"
     [ -f "$candidate_contract" ] || { echo "candidate-proven package lacks runtime-candidate.json" >&2; exit 1; }

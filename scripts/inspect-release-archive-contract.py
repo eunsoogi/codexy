@@ -227,7 +227,7 @@ def main() -> None:
         platforms = release.get("platforms", {})
         expected = (
             ("darwin-arm64", "linux-x86_64")
-            if state == "legacy-public"
+            if state in {"legacy-public", "source-selected"}
             else ("darwin-arm64", "linux-x86_64", "windows-x86_64")
         )
         if set(platforms) != set(expected):
