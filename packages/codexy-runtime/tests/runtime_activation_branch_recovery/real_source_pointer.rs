@@ -7,23 +7,19 @@ use std::{
 use serde_json::Value;
 
 #[test]
-fn current_source_checkout_binds_the_authenticated_runtime_pointer() -> Result<(), Box<dyn std::error::Error>> {
-    assert_source_pointer(codexy_runtime::paths::repository_root())
+fn current_source_checkout_keeps_the_base_public_bootstrap_control() -> Result<(), Box<dyn std::error::Error>> {
+    assert_base_source_pointer(codexy_runtime::paths::repository_root())
 }
 
-pub(super) fn assert_source_pointer(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn assert_base_source_pointer(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let release: Value = serde_json::from_slice(&fs::read(
         root.join("plugins/codexy-devtools/runtime-release.json"),
     )?)?;
-    assert_eq!(release["state"], "source-selected");
-    assert_eq!(release["artifact"]["tag"], "v1.5.0");
+    assert_eq!(release["state"], "legacy-public");
+    assert_eq!(release["artifact"]["tag"], "v1.2.2");
     assert_eq!(
         release["source"]["commit"],
-        "438febe7f538e2d3f435d74d09d85b1541fcffb0"
-    );
-    assert_eq!(
-        release["source"]["tree"],
-        "29610952b0a7bddae8eb0825f6831d33f4f8d586"
+        "6890b3089dcffc2293f8f63b761e33562250eac6"
     );
     assert_eq!(
         release["platforms"].as_object().map(|items| items.len()),
@@ -32,8 +28,8 @@ pub(super) fn assert_source_pointer(root: &Path) -> Result<(), Box<dyn std::erro
     let wrapper = fs::read_to_string(root.join(
         "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
     ))?;
-    assert!(wrapper.contains("exec uvx --from getcodexy==1.5.0"));
-    assert!(!wrapper.contains("getcodexy==1.2.2"));
+    assert!(wrapper.contains("exec uvx --from getcodexy==1.2.2"));
+    assert!(!wrapper.contains("getcodexy==1.5.0"));
     Ok(())
 }
 

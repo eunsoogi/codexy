@@ -34,18 +34,15 @@ mod tests {
     use super::{selected_tag, wrapper_version};
 
     #[test]
-    fn wrapper_version_follows_the_source_selected_runtime_pointer() -> anyhow::Result<()> {
+    fn wrapper_version_remains_bound_to_the_prior_public_runtime() -> anyhow::Result<()> {
         let temporary = tempfile::tempdir()?;
         let root = temporary.path();
         let release = root.join("plugins/codexy-devtools/runtime-release.json");
         fs::create_dir_all(release.parent().expect("release parent"))?;
-        let current = fs::read_to_string(
-            crate::paths::repository_root().join("plugins/codexy-devtools/runtime-release.json"),
-        )?;
-        fs::write(&release, current)?;
-        assert_eq!(selected_tag(root)?, "v1.5.0");
-        assert_eq!(wrapper_version(root)?, "1.5.0");
-        fs::write(&release, r#"{"artifact":{"tag":"1.5.0"}}"#)?;
+        fs::write(&release, r#"{"artifact":{"tag":"v1.2.2"}}"#)?;
+        assert_eq!(selected_tag(root)?, "v1.2.2");
+        assert_eq!(wrapper_version(root)?, "1.2.2");
+        fs::write(&release, r#"{"artifact":{"tag":"1.2.2"}}"#)?;
         assert!(wrapper_version(root).is_err());
         Ok(())
     }

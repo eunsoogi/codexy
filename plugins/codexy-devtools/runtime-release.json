@@ -1,23 +1,15 @@
 {
   "schema": "codexy-runtime-release/v1",
-  "state": "source-selected",
+  "state": "legacy-public",
   "source": {
     "repository": "https://github.com/eunsoogi/codexy",
-    "commit": "438febe7f538e2d3f435d74d09d85b1541fcffb0",
-    "tree": "29610952b0a7bddae8eb0825f6831d33f4f8d586"
+    "commit": "6890b3089dcffc2293f8f63b761e33562250eac6"
   },
   "artifact": {
-    "tag": "v1.5.0",
-    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.5.0/codexy-runtime-package.tar.gz",
-    "sha256": "f4e953320e709c63b0755146dae29956d17390cc5acbdffece3b79ee4f4379ba",
-    "payloadManifestSha256": "141ecfa3e305548438ecc53f5c031e20bb56c3156bf60a4d21efa781a9cb1857"
-  },
-  "provenance": {
-    "repositoryId": 1269350143,
-    "workflowPath": ".github/workflows/runtime-candidate.yml",
-    "runId": 32926967608,
-    "runAttempt": 1,
-    "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/32926967608"
+    "tag": "v1.2.2",
+    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.2.2/codexy-marketplace-plugin.tar.gz",
+    "sha256": "6cd61a3472d9a70d818251f1abd3e264e27a59ade4a05929014afc1c9de96293",
+    "payloadManifestSha256": "0056e191fa5d837f770bc5e5f8a2be855b9252e299847522b0d88e6b186b42f2"
   },
   "compatibility": {
     "bootstrapApi": 1,
@@ -28,71 +20,18 @@
   "platforms": {
     "darwin-arm64": {
       "lsp": {
-        "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
-        "sha256": "b03d99469117c09d487ca9a43838439fb6fc95da56c512aaf62b6a8f04a9ce88"
+        "sha256": "0a6eda4597abd517f61c230aeabf6e81666e619aaeecc324275a2d26cdc70706"
       },
       "codegraph": {
-        "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
-        "sha256": "b8bfdd685937c4ea1e5b2ed62f91b5dd2f65e764392687ad50a5662a60b053ab"
+        "sha256": "f6ac5faee4261167c7783e6cd69a0610b3cbf4abcbf5944d395213868d356dc6"
       }
     },
     "linux-x86_64": {
       "lsp": {
-        "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
-        "sha256": "a1d3dcf7815dac6d31cfe452c0b08a0c3dd21458264dcb5037296c2d49e6a223"
+        "sha256": "7504edd84efa75c346c478a6bff6076950b8339eaf95472a9754147ae6529663"
       },
       "codegraph": {
-        "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
-        "sha256": "9740cf8a2fda277824daf69f52d5b5a97044dc27bc46c4b79ae191d000e87550"
-      }
-    }
-  },
-  "classes": {
-    "devtoolsMcp": {
-      "platforms": {
-        "darwin-arm64": {
-          "lsp": {
-            "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
-            "sha256": "b03d99469117c09d487ca9a43838439fb6fc95da56c512aaf62b6a8f04a9ce88"
-          },
-          "codegraph": {
-            "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
-            "sha256": "b8bfdd685937c4ea1e5b2ed62f91b5dd2f65e764392687ad50a5662a60b053ab"
-          }
-        },
-        "linux-x86_64": {
-          "lsp": {
-            "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
-            "sha256": "a1d3dcf7815dac6d31cfe452c0b08a0c3dd21458264dcb5037296c2d49e6a223"
-          },
-          "codegraph": {
-            "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
-            "sha256": "9740cf8a2fda277824daf69f52d5b5a97044dc27bc46c4b79ae191d000e87550"
-          }
-        }
-      }
-    },
-    "coreHandoff": {
-      "manifest": {
-        "path": "handoff-runtime.json",
-        "sha256": "de394cb4538625be71628d8a41871f9b4264b80826ca5a21511752b1eff39dad"
-      },
-      "platforms": {
-        "darwin-arm64": {
-          "path": "runtime/codexy-handoff-validate-darwin-arm64.bin",
-          "sha256": "1554d139de0a18ed1c6ab758b8e0113503fcea0b9e825de1c93d139665e185f7",
-          "kind": "mach-o"
-        },
-        "linux-x86_64": {
-          "path": "runtime/codexy-handoff-validate-linux-x86_64.bin",
-          "sha256": "f7b293153c87d6452b1eea51cb520b30d8186466134499826bbdd2d846110eb1",
-          "kind": "elf"
-        },
-        "windows-x86_64": {
-          "path": "runtime/codexy-handoff-validate-windows-x86_64.exe",
-          "sha256": "cadb4e1dd2f56d659c247426dd0e59a091bb117ab64e1b90b2ba69c47b777f11",
-          "kind": "pe"
-        }
+        "sha256": "218c5d896f912333c38c74034f6df6f0e54a70cf1fc418e1b04f808f29bea2b2"
       }
     }
   }

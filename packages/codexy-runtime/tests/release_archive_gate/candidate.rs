@@ -186,6 +186,7 @@ fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_awar
     )
     .expect("release contract JSON");
     release["state"] = serde_json::json!("candidate-proven");
+    release["source"]["tree"] = serde_json::json!("b".repeat(40));
     release["artifact"]["tag"] = serde_json::json!("v1.3.0");
     release["artifact"]["url"] = serde_json::json!(
         "https://github.com/eunsoogi/codexy/releases/download/v1.3.0/codexy-runtime-package.tar.gz"

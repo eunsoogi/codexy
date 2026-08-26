@@ -11,7 +11,7 @@ fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
     let wrapper = std::fs::read_to_string(&path)?;
     let override_index = required(&wrapper, "CODEXY_RUNTIME_DIR", &path)?;
     let bundled_index = required(&wrapper, "bundled_runtime=", &path)?;
-    let uvx_index = required(&wrapper, "exec uvx --from getcodexy==1.5.0", &path)?;
+    let uvx_index = required(&wrapper, "exec uvx --from getcodexy==1.2.2", &path)?;
     assert!(override_index < bundled_index && bundled_index < uvx_index);
     Ok(())
 }
