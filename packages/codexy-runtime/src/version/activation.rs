@@ -231,7 +231,7 @@ mod candidate_overlay_tests {
         let root = temp.path();
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(root.join("plugins/codexy-devtools"))?;
-        let contract = br#"{"bootstrap":{"selectedVersion":"1.5.0","candidateVersion":"1.4.0"},"runtime":{"selectedTag":"v1.2.2"}}"#;
+        let contract = br#"{"bootstrap":{"selectedVersion":"1.4.0","candidateVersion":"1.4.0"},"runtime":{"selectedTag":"v1.2.2"}}"#;
         let path = root.join(".agents/plugins/release-publish-contract.json");
         fs::write(&path, contract)?;
         fs::write(

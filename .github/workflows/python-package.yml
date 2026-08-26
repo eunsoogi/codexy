@@ -77,39 +77,65 @@ jobs:
           from pathlib import Path
 
           root = Path(os.environ["CANDIDATE"])
+          current_version = json.loads(
+              (root / "plugins/codexy/.codex-plugin/plugin.json").read_text(
+                  encoding="utf-8"
+              )
+          )["version"]
+          major, minor, patch = (int(part) for part in current_version.split("."))
+          target_version = f"{major}.{minor}.{patch + 1}"
           bootstrap = root / "packages/codexy-runtime/src/version/bootstrap.rs"
+          marker = f'VERSION: &str = "{current_version}"'
+          bootstrap_text = bootstrap.read_text(encoding="utf-8")
+          if bootstrap_text.count(marker) != 2:
+              raise SystemExit("candidate bootstrap version fixture is not canonical")
           bootstrap.write_text(
-              bootstrap.read_text(encoding="utf-8")
-              .replace('VERSION: &str = "1.3.0"', 'VERSION: &str = "1.4.0"')
-              .replace('CANDIDATE_VERSION: &str = "1.3.0"', 'CANDIDATE_VERSION: &str = "1.4.0"'),
+              bootstrap_text.replace(marker, f'VERSION: &str = "{target_version}"'),
               encoding="utf-8",
           )
           contract_path = root / ".agents/plugins/release-publish-contract.json"
           contract = json.loads(contract_path.read_text(encoding="utf-8"))
-          contract["version"] = "1.4.0"
-          contract["bootstrap"].update(selectedVersion="1.4.0", candidateVersion="1.4.0")
-          contract["runtime"]["selectedTag"] = "v1.4.0"
+          contract["version"] = target_version
+          contract["bootstrap"].update(
+              selectedVersion=target_version, candidateVersion=target_version
+          )
+          contract["runtime"]["selectedTag"] = f"v{target_version}"
           contract["currentMarketplace"].update(
-              ref="v1.4.0",
-              installCommand="codex plugin marketplace add eunsoogi/codexy --ref v1.4.0",
+              ref=f"v{target_version}",
+              installCommand=f"codex plugin marketplace add eunsoogi/codexy --ref v{target_version}",
           )
           contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
           PY
           (
             cd "$candidate"
-            scripts/sync-plugin-version.sh --admit-version 1.4.0
-            scripts/sync-plugin-version.sh --version 1.4.0
+            target_version="$(python -c 'import json; print(json.load(open(".agents/plugins/release-publish-contract.json"))["version"])')"
+            scripts/sync-plugin-version.sh --admit-version "$target_version"
+            scripts/sync-plugin-version.sh --version "$target_version"
             scripts/sync-plugin-version.sh --check
             python -m build --outdir "$candidate_dist" packages/getcodexy
           )
           python -m venv "$candidate_venv"
-          "$candidate_venv/bin/pip" install --no-index --find-links "$candidate_dist" 'getcodexy==1.4.0'
+          target_version="$(python -c 'import json, sys; print(json.load(open(sys.argv[1]))["version"])' "$candidate/.agents/plugins/release-publish-contract.json")"
+          TARGET_VERSION="$target_version" TEST_SOURCE="$candidate/packages/getcodexy/tests/test_monolith_migration_candidate_distribution.py" python - <<'PY'
+          import os
+          from pathlib import Path
+
+          test_source = Path(os.environ["TEST_SOURCE"])
+          source = test_source.read_text(encoding="utf-8")
+          if source.count("1.4.0") != 4:
+              raise SystemExit("migration fixture target assertions are not canonical")
+          test_source.write_text(
+              source.replace("1.4.0", os.environ["TARGET_VERSION"]),
+              encoding="utf-8",
+          )
+          PY
+          "$candidate_venv/bin/pip" install --no-index --find-links "$candidate_dist" "getcodexy==$target_version"
           test -d "$candidate/plugins/codexy"
           test -d "$legacy/plugins/codexy"
           GETCODEXY_REQUIRE_MIGRATION_CANDIDATE=1 \
           GETCODEXY_MIGRATION_CANDIDATE_ROOT="$candidate" \
           GETCODEXY_MIGRATION_LEGACY_ROOT="$legacy/plugins/codexy" \
-          PYTHONPATH=packages/getcodexy/tests \
+          PYTHONPATH="$candidate/packages/getcodexy/tests" \
           "$candidate_venv/bin/python" -m unittest test_monolith_migration_candidate_distribution
       - uses: actions/upload-artifact@v7
         with:

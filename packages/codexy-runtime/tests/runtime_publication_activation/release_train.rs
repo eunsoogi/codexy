@@ -1,5 +1,8 @@
 use std::{fs, path::{Path, PathBuf}};
 
+use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
+
 use crate::support::{self, FixtureCommand as Command};
 
 use super::final_archive_fixture::FinalArchiveFixture;
@@ -79,6 +82,7 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     let bundle = temporary.path().join("bundle.tar.gz");
     let staged = temporary.path().join("staged/plugins/codexy-devtools");
     support::copy_dir(&checkout.join("plugins/codexy-devtools"), &staged)?;
+    materialize_core_handoff_fixture(&checkout, &staged)?;
     for contract in ["runtime-candidate.json", "runtime-release.json"] {
         let path = staged.join(contract);
         if path.exists() {
@@ -186,6 +190,63 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     Ok(())
 }
 
+fn materialize_core_handoff_fixture(
+    checkout: &Path,
+    staged: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let activation_path = checkout.join(".agents/plugins/runtime-activation.json");
+    let mut activation: Value = serde_json::from_slice(&fs::read(&activation_path)?)?;
+    let source = json!({
+        "commit": activation["candidate"]["source"]["commit"].clone(),
+        "tree": activation["candidate"]["source"]["tree"].clone(),
+    });
+    let mut platforms = serde_json::Map::new();
+    fs::create_dir_all(staged.join("runtime"))?;
+    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
+        let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
+        let kind = match platform {
+            "darwin-arm64" => "mach-o",
+            "linux-x86_64" => "elf",
+            "windows-x86_64" => "pe",
+            _ => unreachable!(),
+        };
+        let relative = format!("runtime/codexy-handoff-validate-{platform}.{extension}");
+        let path = staged.join(&relative);
+        fs::write(&path, format!("fixture core handoff {platform}\n"))?;
+        if platform != "windows-x86_64" {
+            support::make_executable(&path)?;
+        }
+        platforms.insert(
+            platform.to_owned(),
+            json!({
+                "path": relative,
+                "sha256": format!("{:x}", Sha256::digest(fs::read(&path)?)),
+                "kind": kind,
+            }),
+        );
+    }
+    let handoff = json!({
+        "schema": "codexy.handoff-runtime.v1",
+        "version": 1,
+        "source": source,
+        "platforms": platforms,
+    });
+    let handoff_bytes = serde_json::to_vec(&handoff)?;
+    fs::write(staged.join("handoff-runtime.json"), &handoff_bytes)?;
+    activation["candidate"]["classes"]["coreHandoff"] = json!({
+        "manifest": {
+            "path": "handoff-runtime.json",
+            "sha256": format!("{:x}", Sha256::digest(&handoff_bytes)),
+        },
+        "platforms": handoff["platforms"].clone(),
+    });
+    fs::write(
+        activation_path,
+        format!("{}\n", serde_json::to_string_pretty(&activation)?),
+    )?;
+    Ok(())
+}
+
 fn component_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let manifest: serde_json::Value = serde_json::from_slice(&fs::read(root.join(COMPONENT_MANIFEST))?)?;
     manifest["components"]
@@ -237,6 +298,7 @@ fn release_checkout(
     for script in [
         "assemble-release-train-archive.sh",
         "create_release_train_receipt.py",
+        "handoff_runtime_contract.py",
     ] {
         let target = checkout.join("scripts").join(script);
         fs::copy(root.join("scripts").join(script), &target)?;
