@@ -11,7 +11,7 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
     let starts = Arc::new(Barrier::new(LAUNCHERS.len() * 2));
     let mut joins = Vec::new();
     for event in ["PermissionRequest", "PreToolUse"] {
-        for launcher in LAUNCHERS {
+        for launcher in LAUNCHERS.iter().copied() {
             let root = root.clone();
             let cwd = temp.path().to_path_buf();
             let output_dir = output_dir.clone();
@@ -48,7 +48,12 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         } else {
             assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
         }
-        assert!(String::from_utf8(output.stdout)?.contains("_RUNTIME"));
+        let diagnostic = if launcher == "codexy-repository-issue" {
+            "_ENVELOPE"
+        } else {
+            "_RUNTIME"
+        };
+        assert!(String::from_utf8(output.stdout)?.contains(diagnostic));
     }
     let leftovers = std::fs::read_dir(output_dir)?
         .filter_map(Result::ok)
