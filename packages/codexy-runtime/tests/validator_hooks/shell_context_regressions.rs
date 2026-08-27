@@ -40,52 +40,69 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let eligible = [
-        "gh issue create --repo eunsoogi/codexy --title 'Valid issue' --body note --label bug --assignee eunsoogi --milestone 23",
-        "gh issue edit 17 --repo eunsoogi/codexy --title 'Updated issue' --body note",
-        "gh issue close 17 --repo eunsoogi/codexy --reason completed",
-        "gh issue reopen 17 --repo eunsoogi/codexy",
-        "gh issue comment 17 --repo eunsoogi/codexy --body note",
-        "gh issue edit 17 --repo eunsoogi/codexy --add-label bug --remove-label old",
-        "gh issue edit 17 --repo eunsoogi/codexy --add-assignee eunsoogi --remove-assignee old",
-        "gh issue edit 17 --repo eunsoogi/codexy --milestone 23",
-        "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): admit safe mutations' --head topic --base main --body note --draft --no-maintainer-edit",
-        "gh pr edit 17 --repo eunsoogi/codexy --title 'fix(hooks): update metadata' --body note --base main --no-maintainer-edit",
-        "gh pr close 17 --repo eunsoogi/codexy",
-        "gh pr reopen 17 --repo eunsoogi/codexy",
-        "gh pr comment 17 --repo eunsoogi/codexy --body note",
-        "gh pr review 17 --repo eunsoogi/codexy --approve --body LGTM",
-        "gh pr edit 17 --repo eunsoogi/codexy --add-reviewer eunsoogi --remove-reviewer old",
-        "gh pr ready 17 --repo eunsoogi/codexy --undo",
-        "gh pr ready 17 --repo eunsoogi/codexy",
-        "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -f body=note",
-        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f title='Updated issue' -f body=note",
-        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f state=closed -f state_reason=completed",
-        "gh api --method POST repos/eunsoogi/codexy/issues/17/comments -f body=note",
-        "gh api --method POST repos/eunsoogi/codexy/issues/17/labels -f labels=bug",
-        "gh api --method POST repos/eunsoogi/codexy/issues/17/assignees -f assignees=eunsoogi",
-        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F milestone=23",
-        "gh api --method POST repos/eunsoogi/codexy/pulls -f title='fix(hooks): create safe PR' -f head=topic -f base=main",
-        "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'",
-        "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed",
-        "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -f reviewers=eunsoogi",
-        "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM",
+        ("P-ISS-01", "gh issue create --repo eunsoogi/codexy --title 'Valid issue' --body note --label bug --assignee eunsoogi --milestone 23"),
+        ("P-ISS-02", "gh issue edit 17 --repo eunsoogi/codexy --title 'Updated issue' --body note"),
+        ("P-ISS-03", "gh issue close 17 --repo eunsoogi/codexy --reason completed"),
+        ("P-ISS-03-reopen", "gh issue reopen 17 --repo eunsoogi/codexy"),
+        ("P-ISS-04", "gh issue comment 17 --repo eunsoogi/codexy --body note"),
+        ("P-ISS-05", "gh issue edit 17 --repo eunsoogi/codexy --add-label bug --remove-label old"),
+        ("P-ISS-06", "gh issue edit 17 --repo eunsoogi/codexy --add-assignee eunsoogi --remove-assignee old"),
+        ("P-ISS-07", "gh issue edit 17 --repo eunsoogi/codexy --milestone 23"),
+        ("P-PR-01", "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): admit safe mutations' --head topic --base main --body note --draft --no-maintainer-edit"),
+        ("P-PR-02", "gh pr edit 17 --repo eunsoogi/codexy --title 'fix(hooks): update metadata' --body note --base main --no-maintainer-edit"),
+        ("P-PR-03", "gh pr close 17 --repo eunsoogi/codexy"),
+        ("P-PR-03-reopen", "gh pr reopen 17 --repo eunsoogi/codexy"),
+        ("P-PR-04", "gh pr comment 17 --repo eunsoogi/codexy --body note"),
+        ("P-PR-05", "gh pr review 17 --repo eunsoogi/codexy --approve --body LGTM"),
+        ("P-PR-06", "gh pr edit 17 --repo eunsoogi/codexy --add-reviewer eunsoogi --remove-reviewer old"),
+        ("P-PR-07", "gh pr ready 17 --repo eunsoogi/codexy --undo"),
+        ("P-PR-08", "gh pr ready 17 --repo eunsoogi/codexy"),
+        ("P-ISS-01-rest", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -f body=note"),
+        ("P-ISS-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f title='Updated issue' -f body=note"),
+        ("P-ISS-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f state=closed -f state_reason=completed"),
+        ("P-ISS-04-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/comments -f body=note"),
+        ("P-ISS-05-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/labels -F 'labels=[\"bug\"]'"),
+        ("P-ISS-06-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"eunsoogi\"]'"),
+        ("P-ISS-05-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'labels=[]'"),
+        ("P-ISS-06-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'assignees=[]'"),
+        ("P-ISS-07-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F milestone=23"),
+        ("P-PR-01-rest", "gh api --method POST repos/eunsoogi/codexy/pulls -f title='fix(hooks): create safe PR' -f head=topic -f base=main"),
+        ("P-PR-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'"),
+        ("P-PR-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed"),
+        ("P-PR-06-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]'"),
+        ("P-PR-05-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM"),
     ];
-    for command in eligible {
-        assert_case(&root, &owned, command, false, &[])?;
+    for (case_id, command) in eligible {
+        for event in ["PermissionRequest", "PreToolUse"] {
+            assert_event_case(&root, event, &owned, command, false, &[])
+                .map_err(|error| format!("{case_id}: {error}"))?;
+        }
     }
     let denied = [
-        "gh issue edit 17 --repo eunsoogi/codexy --title 'Updated issue' --add-label bug",
-        "gh issue edit 17 --repo eunsoogi/codexy",
-        "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): missing base' --head topic",
-        "gh pr edit 17 --repo eunsoogi/codexy --state closed",
-        "gh pr merge 17 --repo eunsoogi/codexy --squash",
-        "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
-        "gh api",
-        "gh api --method POST repos/other-org/other-repo/issues -f title='Wrong repository'",
-        "gh api --method POST repos/eunsoogi/codexy/issues/17 -f state=closed -f title='mixed operation'",
+        ("N-01", "gh api --method DELETE repos/eunsoogi/codexy"),
+        ("N-02", "gh api --method DELETE repos/eunsoogi/codexy/git/refs/heads/topic"),
+        ("N-03", "gh api --method PUT repos/eunsoogi/codexy/branches/main/protection -f required_status_checks='{}'"),
+        ("N-04", "gh api --method PUT repos/eunsoogi/codexy/actions/secrets/BUILD_KEY -f encrypted_value=fixture"),
+        ("N-05", "gh api --method PUT repos/eunsoogi/codexy/collaborators/mallory -f permission=push"),
+        ("N-06", "gh api --method POST repos/eunsoogi/codexy/hooks -f name=fixture"),
+        ("N-07", "gh workflow run deploy.yml --repo eunsoogi/codexy"),
+        ("N-08", "gh release create v9 --repo eunsoogi/codexy"),
+        ("N-09", "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed"),
+        ("N-10", "gh pr merge 42 --repo eunsoogi/codexy --squash"),
+        ("N-11", "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture"),
+        ("N-12", "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'"),
+        ("N-13", "gh api --method POST repos/other-org/other-repo/issues -f title='Wrong repository'"),
+        ("N-14", "gh api -H 'Authorization: Bearer fixture-secret' repos/eunsoogi/codexy/labels"),
+        ("N-15", "rm -rf /"),
+        ("N-16", "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        ("N-17", "gh api --method POST repos/eunsoogi/codexy/issues"),
+        ("N-17-review-without-body", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT"),
     ];
-    for command in denied {
-        assert_case(&root, &owned, command, true, &[])?;
+    for (case_id, command) in denied {
+        for event in ["PermissionRequest", "PreToolUse"] {
+            assert_event_case(&root, event, &owned, command, true, &[])
+                .map_err(|error| format!("{case_id}: {error}"))?;
+        }
     }
     Ok(())
 }

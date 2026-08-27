@@ -1,45 +1,14 @@
 """Typed GitHub form mutation parsing and evidence models."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
 from .github_target import PullRequestSelector, pull_request
+from .merge import cli as cli_merge
 from .repository import read_text
 
 
-FORM_VALUES = {
-    "issue-create": (
-        "--assignee",
-        "-a",
-        "--label",
-        "-l",
-        "--milestone",
-        "-m",
-    ),
-    "issue-update": (
-        "--add-assignee",
-        "--remove-assignee",
-        "--add-label",
-        "--remove-label",
-        "--milestone",
-        "-m",
-    ),
-    "pr-create": (
-        "--base",
-        "-B",
-        "--head",
-        "-H",
-    ),
-    "pr-update": (
-        "--base",
-        "-B",
-        "--add-reviewer",
-        "--remove-reviewer",
-    ),
-}
 FORM_FLAGS = {
     "issue-create": {"--web"},
     "issue-update": {"--remove-milestone"},
@@ -48,22 +17,29 @@ FORM_FLAGS = {
 }
 FORM_FIELDS = {
     "issue-create": {
-        "--assignee": "assignees", "-a": "assignees",
-        "--label": "labels", "-l": "labels",
-        "--milestone": "milestone", "-m": "milestone",
+        "--assignee": "assignees",
+        "-a": "assignees",
+        "--label": "labels",
+        "-l": "labels",
+        "--milestone": "milestone",
+        "-m": "milestone",
     },
     "issue-update": {
-        "--add-assignee": "assignees", "--remove-assignee": "assignees",
-        "--add-label": "labels", "--remove-label": "labels",
-        "--milestone": "milestone", "-m": "milestone",
+        "--add-assignee": "assignees",
+        "--remove-assignee": "assignees",
+        "--add-label": "labels",
+        "--remove-label": "labels",
+        "--milestone": "milestone",
+        "-m": "milestone",
     },
     "pr-create": {"--base": "base", "-B": "base", "--head": "head", "-H": "head"},
     "pr-update": {
-        "--base": "base", "-B": "base",
-        "--add-reviewer": "reviewers", "--remove-reviewer": "reviewers",
+        "--base": "base",
+        "-B": "base",
+        "--add-reviewer": "reviewers",
+        "--remove-reviewer": "reviewers",
     },
 }
-LIST_FIELDS = {"assignees", "labels", "reviewers"}
 
 
 class MutationKind(Enum):
@@ -151,7 +127,9 @@ def form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
             body_source, index = BodySource.FILE, next_index
             payload["body"] = body
             continue
-        matched, value, next_index, option_name = option(args, index, FORM_VALUES[kind.value])
+        matched, value, next_index, option_name = option(
+            args, index, tuple(FORM_FIELDS[kind.value])
+        )
         if matched:
             if value is None or not value:
                 return None
@@ -207,7 +185,12 @@ def option(
     arg = args[index]
     for option_name in options:
         if arg == option_name:
-            return True, args[index + 1] if index + 1 < len(args) else None, index + 2, option_name
+            return (
+                True,
+                args[index + 1] if index + 1 < len(args) else None,
+                index + 2,
+                option_name,
+            )
         if arg.startswith(option_name + "="):
             return True, arg.split("=", 1)[1], index + 1, option_name
         if len(option_name) == 2 and arg.startswith(option_name) and len(arg) > 2:
@@ -216,10 +199,51 @@ def option(
 
 
 def _put(payload: dict[str, Any], field: str, value: str) -> bool:
-    if field in LIST_FIELDS:
+    if field in {"assignees", "labels", "reviewers"}:
         payload.setdefault(field, []).append(value)
         return True
     if field in payload:
         return False
     payload[field] = value
     return True
+
+
+def merge(args: list[str], cwd: str) -> Mutation | None:
+    parsed = cli_merge(args, cwd)
+    if parsed is None:
+        return None
+    selector, method, subject, body = parsed
+    return Mutation(
+        MutationKind.PR_MERGE,
+        True,
+        selector.number,
+        subject,
+        BodyEvidence(body, BodySource.INLINE) if body is not None else None,
+        merge_method=method,
+        selector=selector,
+    )
+
+
+_READS = {
+    "issue": {"list", "view"},
+    "label": {"list"},
+    "pr": {"list", "view", "diff", "checks", "status"},
+    "release": {"list", "view"},
+    "repo": {"list", "view"},
+    "run": {"list", "view", "watch"},
+    "workflow": {"list", "view"},
+    "auth": {"status"},
+    "search": {"code", "commits", "issues", "prs", "repos"},
+    "project": {"list", "view"},
+}
+
+
+def read_command(args: list[str]) -> bool:
+    if not args or args[0] in {"--help", "--version", "version", "status", "help"}:
+        return True
+    if len(args) < 2 or args[0] not in _READS or args[1] not in _READS[args[0]]:
+        return False
+    return not (
+        args[:2] == ["auth", "status"]
+        and any(option in {"--show-token", "--with-token"} for option in args[2:])
+    )

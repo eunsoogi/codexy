@@ -22,5 +22,18 @@ def owns_invocation(invocation: Invocation) -> bool:
     """Classify an already parsed opaque invocation without reparsing its data."""
     if invocation.executable != "git":
         return unresolved_invocation(invocation)
-    operation = next((arg for arg in invocation.arguments if not arg.startswith("-")), None)
-    return operation not in {"show", "status", "log", "diff", "rev-parse", "worktree", "branch", "ls-remote", "check-ref-format", "fetch"}
+    operation = next(
+        (arg for arg in invocation.arguments if not arg.startswith("-")), None
+    )
+    return operation not in {
+        "show",
+        "status",
+        "log",
+        "diff",
+        "rev-parse",
+        "worktree",
+        "branch",
+        "ls-remote",
+        "check-ref-format",
+        "fetch",
+    }

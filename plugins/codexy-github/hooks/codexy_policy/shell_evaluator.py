@@ -86,6 +86,7 @@ class _CredentialPolicy:
             return None
         return (
             invocation.arguments[:2] == ["auth", "token"]
+            or _auth_status_exposes_token(invocation.arguments)
             or _credential_header(invocation.arguments),
             CommandEffect(outer),
         )
@@ -96,7 +97,9 @@ def credential_exposure(
 ) -> bool:
     walked = resolved_segments(command, context)
     if walked is not None and any(
-        _credential_assignment(segment.tokens[: len(segment.tokens) - len(segment.command)])
+        _credential_assignment(
+            segment.tokens[: len(segment.tokens) - len(segment.command)]
+        )
         for segment in walked
     ):
         return True
@@ -106,14 +109,22 @@ def credential_exposure(
 def _credential_assignment(tokens: tuple[str, ...]) -> bool:
     return any(
         assignment(token)
-        and token.split("=", 1)[0] in {"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"}
+        and token.split("=", 1)[0]
+        in {
+            "GH_TOKEN",
+            "GITHUB_TOKEN",
+            "GH_ENTERPRISE_TOKEN",
+            "GITHUB_ENTERPRISE_TOKEN",
+        }
         and bool(token.split("=", 1)[1])
         for token in tokens
     )
 
 
 def _credential_environment(context: ExecutionContext) -> bool:
-    return _credential_assignment(tuple(f"{key}={value}" for key, value in context.environment))
+    return _credential_assignment(
+        tuple(f"{key}={value}" for key, value in context.environment)
+    )
 
 
 def _credential_header(arguments: list[str]) -> bool:
@@ -128,9 +139,19 @@ def _credential_header(arguments: list[str]) -> bool:
         if header is None:
             continue
         name, separator, value = header.partition(":")
-        if separator and name.casefold() in {"authorization", "x-github-token"} and value.strip():
+        if (
+            separator
+            and name.casefold() in {"authorization", "x-github-token"}
+            and value.strip()
+        ):
             return True
     return False
+
+
+def _auth_status_exposes_token(arguments: list[str]) -> bool:
+    return arguments[:2] == ["auth", "status"] and any(
+        option in {"--show-token", "--with-token"} for option in arguments[2:]
+    )
 
 
 def _segment(

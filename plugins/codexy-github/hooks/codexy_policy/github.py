@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from .github_api import forbidden as api_forbidden
 from .github_mutation import (
-    BodyEvidence,
-    BodySource,
     Mutation,
     MutationKind,
     cli_number,
     form,
+    merge as _merge,
+    read_command as _read_command,
     target,
 )
-from .merge import cli as cli_merge, message_valid, positive_int
+from .merge import positive_int
 from .repository import (
     github_identity,
     read_text,
@@ -49,7 +49,7 @@ def forbidden(
     if selected_target is None:
         return True
     filtered, default_owned, repository = selected_target
-    operation = filtered[:2]
+    operation = tuple(filtered[:2])
     if filtered[:1] == ["api"]:
         api_owned = (
             default_owned
@@ -66,122 +66,183 @@ def forbidden(
         )
     if _read_command(filtered):
         return False
-    if operation == ["pr", "merge"]:
+    if len(operation) != 2:
+        return True
+    if operation == ("pr", "merge"):
         mutation = _merge(filtered[2:], cwd)
-    elif operation == ["pr", "create"]:
-        mutation = form(MutationKind.PR_CREATE, filtered[2:], cwd)
-    elif operation == ["pr", "edit"]:
-        mutation = form(MutationKind.PR_UPDATE, filtered[2:], cwd)
-    elif operation == ["issue", "create"]:
-        mutation = form(MutationKind.ISSUE_CREATE, filtered[2:], cwd)
-    elif operation == ["issue", "edit"]:
-        mutation = form(MutationKind.ISSUE_UPDATE, filtered[2:], cwd)
-    elif operation == ["issue", "close"]:
-        mutation = _state(MutationKind.ISSUE_UPDATE, filtered[2:], "issue.set_state", cwd)
-    elif operation == ["issue", "reopen"]:
-        mutation = _state(MutationKind.ISSUE_UPDATE, filtered[2:], "issue.set_state", cwd, "open")
-    elif operation == ["issue", "comment"]:
-        mutation = _comment(MutationKind.ISSUE_UPDATE, filtered[2:], "issue.comment", cwd)
-    elif operation == ["pr", "close"]:
-        mutation = _state(MutationKind.PR_UPDATE, filtered[2:], "pull_request.set_state", cwd, "closed")
-    elif operation == ["pr", "reopen"]:
-        mutation = _state(MutationKind.PR_UPDATE, filtered[2:], "pull_request.set_state", cwd, "open")
-    elif operation == ["pr", "comment"]:
-        mutation = _comment(MutationKind.PR_UPDATE, filtered[2:], "pull_request.comment", cwd)
-    elif operation == ["pr", "review"]:
+    elif operation[0] in {"issue", "pr"} and operation[1] in {"create", "edit"}:
+        kind = (
+            MutationKind.ISSUE_CREATE
+            if operation == ("issue", "create")
+            else MutationKind.ISSUE_UPDATE
+            if operation == ("issue", "edit")
+            else MutationKind.PR_CREATE
+            if operation == ("pr", "create")
+            else MutationKind.PR_UPDATE
+        )
+        mutation = form(kind, filtered[2:], cwd)
+    elif operation[0] in {"issue", "pr"} and operation[1] in {"close", "reopen"}:
+        kind = (
+            MutationKind.ISSUE_UPDATE
+            if operation[0] == "issue"
+            else MutationKind.PR_UPDATE
+        )
+        subject = "issue" if operation[0] == "issue" else "pull_request"
+        mutation = _state(
+            kind,
+            filtered[2:],
+            f"{subject}.set_state",
+            cwd,
+            "open" if operation[1] == "reopen" else "closed",
+        )
+    elif operation[1] == "comment" and operation[0] in {"issue", "pr"}:
+        kind = (
+            MutationKind.ISSUE_UPDATE
+            if operation[0] == "issue"
+            else MutationKind.PR_UPDATE
+        )
+        mutation = _comment(
+            kind,
+            filtered[2:],
+            f"{operation[0] if operation[0] == 'issue' else 'pull_request'}.comment",
+            cwd,
+        )
+    elif operation == ("pr", "review"):
         mutation = _review(filtered[2:], cwd)
-    elif operation == ["pr", "ready"]:
+    elif operation == ("pr", "ready"):
         mutation = _ready(filtered[2:])
     else:
         return True
     if mutation is None:
         return True
-    selector_repository = (
-        mutation.selector.repository if mutation.selector is not None else None
-    )
+    selector_repository = getattr(mutation.selector, "repository", None)
     if repository is not None and selector_repository is not None:
         if github_identity(repository) != github_identity(selector_repository):
             return True
     selected_repository = selector_repository or repository
-    owned = (
+    if not (
         default_owned
         if selected_repository is None
         else github_identity(selected_repository) == owned_identity
-    )
-    if not owned:
+    ):
         return True
     return not admitted(mutation)
 
 
-def _merge(args: list[str], cwd: str) -> Mutation | None:
-    parsed = cli_merge(args, cwd)
-    if parsed is None:
+def _state(
+    kind: MutationKind,
+    args: list[str],
+    operation: str,
+    cwd: str,
+    state: str | None = None,
+) -> Mutation | None:
+    if not args or not positive_int(cli_number(args[0])):
         return None
-    selector, method, subject, body = parsed
-    return Mutation(
-        MutationKind.PR_MERGE,
-        True,
-        selector.number,
-        subject,
-        BodyEvidence(body, BodySource.INLINE) if body is not None else None,
-        merge_method=method,
-        selector=selector,
+    rest = args[1:]
+    if not rest:
+        reason = None
+    elif len(rest) == 2 and rest[0] in {"--reason", "-r"}:
+        reason = rest[1]
+    elif len(rest) == 1 and rest[0].startswith("--reason="):
+        reason = rest[0].split("=", 1)[1]
+    else:
+        return None
+    payload = {"state": state or "closed"}
+    if reason is not None:
+        payload["state_reason"] = reason.replace("-", "_").replace(" ", "_")
+    return Mutation(kind, True, int(args[0]), operation=operation, payload=payload)
+
+
+def _comment(
+    kind: MutationKind, args: list[str], operation: str, cwd: str
+) -> Mutation | None:
+    if not args or not positive_int(cli_number(args[0])):
+        return None
+    body = _body(args[1:], cwd)
+    return (
+        None
+        if body is None
+        else Mutation(
+            kind, True, int(args[0]), operation=operation, payload={"comment": body}
+        )
     )
 
 
-def _state(kind: MutationKind, args: list[str], operation: str, cwd: str, state: str | None = None) -> Mutation | None:
-    if not args or not positive_int(cli_number(args[0])): return None
-    number, rest, reason, index = int(args[0]), args[1:], None, 0
-    while index < len(rest):
-        if rest[index] in {"--reason", "-r"} and index + 1 < len(rest) and reason is None:
-            reason = rest[index + 1].replace("-", "_").replace(" ", "_"); index += 2
-        elif rest[index].startswith("--reason=") and reason is None:
-            reason = rest[index].split("=", 1)[1].replace("-", "_"); index += 1
-        else: return None
-    return Mutation(kind, True, number, operation=operation, payload={"state": state or "closed", **({"state_reason": reason} if reason is not None else {})})
-
-
-def _comment(kind: MutationKind, args: list[str], operation: str, cwd: str) -> Mutation | None:
-    if not args or not positive_int(cli_number(args[0])): return None
-    body, rest, index = None, args[1:], 0
-    while index < len(rest):
-        if rest[index] in {"--body", "-b"} and index + 1 < len(rest) and body is None:
-            body, index = rest[index + 1], index + 2
-        elif rest[index].startswith("--body=") and body is None:
-            body, index = rest[index].split("=", 1)[1], index + 1
-        elif rest[index] in {"--body-file", "-F"} and index + 1 < len(rest) and body is None:
-            body, index = read_text(cwd, rest[index + 1]), index + 2
-        else: return None
-    return None if body is None else Mutation(kind, True, int(args[0]), operation=operation, payload={"comment": body})
+def _body(args: list[str], cwd: str) -> str | None:
+    if len(args) == 1 and args[0].startswith("--body="):
+        return args[0].split("=", 1)[1]
+    if len(args) != 2:
+        return None
+    if args[0] in {"--body", "-b"}:
+        return args[1]
+    return read_text(cwd, args[1]) if args[0] in {"--body-file", "-F"} else None
 
 
 def _review(args: list[str], cwd: str) -> Mutation | None:
-    if not args or not positive_int(cli_number(args[0])): return None
-    action, body, commit, rest, index = None, None, None, args[1:], 0
-    while index < len(rest):
-        token = rest[index]
-        if token in {"--approve", "--comment", "--request-changes"} and action is None:
-            action = {"--approve": "APPROVE", "--comment": "COMMENT", "--request-changes": "REQUEST_CHANGES"}[token]; index += 1
-        elif token in {"--body", "-b", "--body-file", "-F"} and index + 1 < len(rest) and body is None:
-            body = read_text(cwd, rest[index + 1]) if token in {"--body-file", "-F"} else rest[index + 1]; index += 2
-        elif token in {"--commit", "--commit-id"} and index + 1 < len(rest) and commit is None:
-            commit, index = rest[index + 1], index + 2
-        else: return None
-    if action is None or action in {"COMMENT", "REQUEST_CHANGES"} and body is None: return None
-    return Mutation(MutationKind.PR_UPDATE, True, int(args[0]), operation="pull_request.submit_review", payload={"action": action, **({"body": body} if body is not None else {}), **({"commit_id": commit} if commit is not None else {})})
+    if not args or not positive_int(cli_number(args[0])):
+        return None
+    actions = {
+        "--approve": "APPROVE",
+        "--comment": "COMMENT",
+        "--request-changes": "REQUEST_CHANGES",
+    }
+    action, body, commit, body_present, index = None, None, None, False, 1
+    while index < len(args):
+        token = args[index]
+        if token in actions and action is None:
+            action, index = actions[token], index + 1
+        elif (
+            token in {"--body", "-b", "--body-file", "-F"}
+            and not body_present
+            and index + 1 < len(args)
+        ):
+            body = (
+                read_text(cwd, args[index + 1])
+                if token in {"--body-file", "-F"}
+                else args[index + 1]
+            )
+            if body is None:
+                return None
+            body_present, index = True, index + 2
+        elif (
+            token in {"--commit", "--commit-id"}
+            and commit is None
+            and index + 1 < len(args)
+        ):
+            commit, index = args[index + 1], index + 2
+        else:
+            return None
+    if action is None or action in {"COMMENT", "REQUEST_CHANGES"} and not body_present:
+        return None
+    payload = {"action": action}
+    if body_present:
+        payload["body"] = body
+    if commit is not None:
+        payload["commit_id"] = commit
+    return Mutation(
+        MutationKind.PR_UPDATE,
+        True,
+        int(args[0]),
+        operation="pull_request.submit_review",
+        payload=payload,
+    )
 
 
 def _ready(args: list[str]) -> Mutation | None:
-    if not args or not positive_int(cli_number(args[0])) or len(args) > 2 or (len(args) == 2 and args[1] != "--undo"): return None
-    return Mutation(MutationKind.PR_UPDATE, True, int(args[0]), operation="pull_request.convert_to_draft" if len(args) == 2 else "pull_request.mark_ready", payload={"transition": "draft" if len(args) == 2 else "ready"})
-
-
-def _read_command(args: list[str]) -> bool:
-    if not args or args[0] in {"--help", "--version", "version", "status", "help"}: return True
-    reads = {
-        "issue": {"list", "view"}, "label": {"list"}, "pr": {"list", "view", "diff", "checks", "status"},
-        "release": {"list", "view"}, "repo": {"list", "view"}, "run": {"list", "view", "watch"},
-        "workflow": {"list", "view"}, "auth": {"status"}, "search": {"code", "commits", "issues", "prs", "repos"},
-        "project": {"list", "view"},
-    }
-    return len(args) >= 2 and args[0] in reads and args[1] in reads[args[0]]
+    if not args or not positive_int(cli_number(args[0])) or len(args) > 2:
+        return None
+    if len(args) == 2 and args[1] != "--undo":
+        return None
+    transition = "draft" if len(args) == 2 else "ready"
+    operation = (
+        "pull_request.convert_to_draft"
+        if transition == "draft"
+        else "pull_request.mark_ready"
+    )
+    return Mutation(
+        MutationKind.PR_UPDATE,
+        True,
+        int(args[0]),
+        operation=operation,
+        payload={"transition": transition},
+    )

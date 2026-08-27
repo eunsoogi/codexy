@@ -5,7 +5,7 @@ if /I "%event%"=="PreToolUse" goto evaluate
 if /I "%event%"=="PermissionRequest" goto evaluate
 set "event=PreToolUse"
 :evaluate
-py -3 -I -B "%~dp0codexy-repository-issue.py" --event "%event%" 2>nul
+py -3 -I -B -c "import subprocess,sys; p=subprocess.run([sys.executable,'-I','-B',sys.argv[1],*sys.argv[2:]],capture_output=True); sys.stdout.buffer.write(p.stdout if p.returncode==0 else b''); sys.stderr.buffer.write(p.stderr); raise SystemExit(p.returncode)" "%~dp0codexy-repository-issue.py" --event "%event%" 2>nul
 set "status=%errorlevel%"
 if "%status%"=="0" exit /b 0
 if /I "%event%"=="PermissionRequest" goto permission_deny
