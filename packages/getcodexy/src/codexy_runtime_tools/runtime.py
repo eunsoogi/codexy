@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from .cache import releases_match, runtime_cache_key
+from .cache import runtime_cache_key
 from .installer import executable, execute, install_git, install_package
 from .runtime_configuration import REPOSITORY, Configuration
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
@@ -25,6 +25,22 @@ def _fail(message: str) -> NoReturn:
 
 def _notice(message: str) -> None:
     print(f"codexy runtime: {message}", file=sys.stderr)
+
+
+def _manifest_identity(expected_manifest: Path, observed_manifest: Path) -> tuple[bool, str]:
+    try:
+        expected = json.loads(expected_manifest.read_text(encoding="utf-8"))
+        observed = json.loads(observed_manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return False, f"runtime package manifest identity mismatch: {error}"
+    fields = ("name", "repository", "version")
+    if not isinstance(expected, dict) or not isinstance(observed, dict):
+        return False, "runtime package manifest identity mismatch: invalid JSON object"
+    expected_identity = tuple(expected.get(field) for field in fields)
+    observed_identity = tuple(observed.get(field) for field in fields)
+    if expected_identity != observed_identity:
+        return False, f"runtime package manifest identity mismatch: expected {expected_identity}, observed {observed_identity}"
+    return True, ""
 
 
 def _absolute_env_path(name: str) -> Path | None:
@@ -112,11 +128,16 @@ def run(config: Configuration) -> NoReturn:
         ],
     )
     install_root = _cache_root(config.server) / key
-    installed, marker = (
-        install_root / "bin" / f"codexy-mcp-{config.server}",
-        install_root / "runtime-marker.json",
-    )
+    installed = install_root / "bin" / f"codexy-mcp-{config.server}"
+    marker = install_root / "runtime-marker.json"
     if executable(installed):
+        matches, message = (
+            (True, "")
+            if config.package_override
+            else _manifest_identity(config.manifest, install_root / "plugin.json")
+        )
+        if not matches and config.offline:
+            _fail(message)
         if marker.is_file():
             try:
                 valid = source_identity.valid_marker(
@@ -127,15 +148,12 @@ def run(config: Configuration) -> NoReturn:
                 )
             except (OSError, ValueError, json.JSONDecodeError):
                 valid = False
-            if valid and (
-                config.package_override
-                or releases_match(config.manifest, install_root / "plugin.json")[0]
-            ):
+            if valid and matches:
                 _execute(config, installed)
         elif (
             source_identity.cache_key(platform=config.platform, server=config.server)
             is None
-            and releases_match(config.manifest, install_root / "plugin.json")[0]
+            and matches
         ):
             _execute(config, installed)
     if not config.offline:
@@ -150,7 +168,7 @@ def run(config: Configuration) -> NoReturn:
                 binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest(),
             )
             if not config.package_override:
-                matches, message = releases_match(
+                matches, message = _manifest_identity(
                     config.manifest, install_root / "plugin.json"
                 )
                 if not matches:

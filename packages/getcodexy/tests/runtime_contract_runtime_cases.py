@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib
+import io
 import json
 import os
 from pathlib import Path
@@ -15,6 +16,10 @@ class RuntimeContractRuntimeCases:
         self,
     ) -> None:
         root, _ = self.load(release(), plugin_version="1.3.0")
+        (root / ".codex-plugin/plugin.json").write_text(
+            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            encoding="utf-8",
+        )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
         cache = root / "cache"
 
@@ -40,6 +45,83 @@ class RuntimeContractRuntimeCases:
         self.assertEqual(failure.exception.code, 127)
         execute.assert_not_called()
         self.assertEqual(list(cache.rglob("runtime-marker.json")), [])
+
+    def test_selected_release_rejects_same_version_wrong_package_identity(self) -> None:
+        root, _ = self.load(release(), plugin_version="1.3.0")
+        (root / ".codex-plugin/plugin.json").write_text(
+            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            encoding="utf-8",
+        )
+        runtime = importlib.import_module("codexy_runtime_tools.runtime")
+
+        def install_wrong(_config, install_root: Path, installed: Path) -> None:
+            installed.parent.mkdir(parents=True)
+            installed.write_bytes(b"wrong identity runtime")
+            installed.chmod(0o755)
+            (install_root / "plugin.json").write_text(
+                '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+                encoding="utf-8",
+            )
+
+        with (
+            mock.patch.dict(
+                os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(root / "cache")}, clear=True
+            ),
+            mock.patch.object(runtime, "install_package", side_effect=install_wrong),
+            mock.patch.object(runtime, "_execute") as execute,
+            self.assertRaises(SystemExit) as failure,
+        ):
+            runtime.run(runtime.Configuration.load("lsp", root, []))
+
+        self.assertEqual(failure.exception.code, 127)
+        execute.assert_not_called()
+
+    def test_offline_cached_manifest_mismatch_reports_identity(self) -> None:
+        root, _ = self.load(release(), plugin_version="1.3.0")
+        (root / ".codex-plugin/plugin.json").write_text(
+            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            encoding="utf-8",
+        )
+        runtime = importlib.import_module("codexy_runtime_tools.runtime")
+        cache = root / "cache"
+        with mock.patch.dict(
+            os.environ,
+            {"CODEXY_RUNTIME_CACHE_DIR": str(cache), "UV_OFFLINE": "1"},
+            clear=True,
+        ):
+            configuration = runtime.Configuration.load("lsp", root, [])
+            identity = configuration.source_identity
+            assert identity is not None
+            install_root = cache / identity.cache_key(
+                platform=configuration.platform, server="lsp"
+            )
+            installed = install_root / "bin/codexy-mcp-lsp"
+            installed.parent.mkdir(parents=True)
+            binary = b"cached wrong identity runtime"
+            installed.write_bytes(binary)
+            installed.chmod(0o755)
+            (install_root / "plugin.json").write_text(
+                '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+                encoding="utf-8",
+            )
+            marker = identity.marker(
+                platform=configuration.platform,
+                server="lsp",
+                binary_sha256=hashlib.sha256(binary).hexdigest(),
+            )
+            (install_root / "runtime-marker.json").write_text(
+                json.dumps(marker), encoding="utf-8"
+            )
+            with (
+                mock.patch("sys.stderr", new_callable=io.StringIO) as error,
+                mock.patch.object(runtime, "_execute") as execute,
+                self.assertRaises(SystemExit) as failure,
+            ):
+                runtime.run(configuration)
+
+        self.assertEqual(failure.exception.code, 127)
+        self.assertIn("manifest identity mismatch", error.getvalue())
+        execute.assert_not_called()
 
     def test_explicit_override_cannot_poison_selected_release_cache(self) -> None:
         root, _ = self.load(legacy())
