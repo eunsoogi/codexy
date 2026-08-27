@@ -48,6 +48,13 @@ impl McpClient {
     }
 }
 
+fn parse_status(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+    let text = response["result"]["content"][0]["text"]
+        .as_str()
+        .ok_or("text")?;
+    Ok(serde_json::from_str(text)?)
+}
+
 #[test]
 fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect() -> TestResult {
     let root = tempfile::tempdir()?;
@@ -55,6 +62,7 @@ fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect() -> TestResu
 
     let mut client = McpClient::spawn()?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
     assert_eq!(
         init["result"]["serverInfo"]["version"],
         codexy_runtime::version::runtime_version()
@@ -64,11 +72,7 @@ fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect() -> TestResu
         "jsonrpc":"2.0","id":2,"method":"tools/call",
         "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":"sample.rs"}}
     }))?;
-    let status_payload: Value = serde_json::from_str(
-        status["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("text")?,
-    )?;
+    let status_payload = parse_status(&status)?;
 
     assert_eq!(status_payload["server"]["id"], "rust-analyzer");
     assert_eq!(status_payload["available"], false);
@@ -92,18 +96,16 @@ fn lsp_status_matches_html_to_web_language_server() -> TestResult {
     std::fs::write(root.path().join("index.html"), "<main>Hello</main>\n")?;
 
     let mut client = McpClient::spawn()?;
-    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
 
     let status = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
         "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":"index.html"}}
     }))?;
-    let status_payload: Value = serde_json::from_str(
-        status["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("text")?,
-    )?;
+    let status_payload = parse_status(&status)?;
 
+    assert_ne!(status_payload["server"]["id"], "unmatched");
     assert_eq!(status_payload["server"]["id"], "html-language-server");
     assert_eq!(status_payload["server"]["language"], "HTML");
     assert_eq!(status_payload["extension"], ".html");
@@ -117,7 +119,8 @@ fn lsp_status_preserves_scss_and_less_language_ids() -> TestResult {
     std::fs::write(root.path().join("styles.less"), "@color: #111;\n")?;
 
     let mut client = McpClient::spawn()?;
-    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
 
     for (id, path, extension, language) in [
         ("scss", "styles.scss", ".scss", "scss"),
@@ -127,11 +130,7 @@ fn lsp_status_preserves_scss_and_less_language_ids() -> TestResult {
             "jsonrpc":"2.0","id":id,"method":"tools/call",
             "params":{"name":"lsp_status","arguments":{"root":root.path(),"path":path}}
         }))?;
-        let status_payload: Value = serde_json::from_str(
-            status["result"]["content"][0]["text"]
-                .as_str()
-                .ok_or("text")?,
-        )?;
+        let status_payload = parse_status(&status)?;
 
         assert_eq!(status_payload["server"]["id"], "css-language-server");
         assert_eq!(status_payload["extension"], extension);
@@ -209,6 +208,7 @@ fn candidate_version_drives_both_mcp_server_info() -> TestResult {
         .checked_add(1)
         .ok_or("patch overflow")?;
     let candidate = format!("{prefix}.{next_patch}");
+    assert_ne!(candidate, env!("CARGO_PKG_VERSION"));
     let root = tempfile::tempdir()?;
     let package = root.path().join("packages/codexy-runtime");
     let extraction = Command::new("sh")
