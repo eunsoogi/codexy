@@ -6,6 +6,13 @@ use crate::support::FixtureCommand as Command;
 
 use super::super::{copy_github as copy, read, text, validate};
 
+const ISSUE_MATCHER: &str = "^mcp__codex_apps__github_(?:add_comment_to_issue|add_issue_assignees|add_issue_labels|add_reaction_to_issue_comment|add_reaction_to_pr|add_reaction_to_pr_review_comment|add_review_to_pr|compare_commits|convert_pull_request_to_draft|create_blob|create_branch|create_commit|create_file|create_issue|create_tree|delete_file|dismiss_pull_request_review|download_user_content|download_workflow_artifact|fetch|fetch_blob|fetch_commit|fetch_commit_workflow_runs|fetch_file|fetch_issue|fetch_issue_comments|fetch_pr|fetch_pr_comments|fetch_pr_file_patch|fetch_pr_patch|fetch_workflow_job_logs|fetch_workflow_job_steps|fetch_workflow_run_artifacts|fetch_workflow_run_jobs|get_commit_combined_status|get_issue_comment_reactions|get_pr_diff|get_pr_info|get_pr_reactions|get_pr_review_comment_reactions|get_profile|get_repo|get_repo_collaborator_permission|get_user_login|get_users_recent_prs_in_repo|label_pr|list_installations|list_installed_accounts|list_pr_changed_filenames|list_pull_request_review_threads|list_pull_request_reviews|list_recent_issues|list_repositories|list_repositories_by_affiliation|list_repositories_by_installation|list_user_org_memberships|list_user_orgs|lock_issue_conversation|mark_pull_request_ready_for_review|remove_issue_assignees|remove_issue_label|remove_pull_request_reviewers|remove_reaction_from_issue_comment|remove_reaction_from_pr|remove_reaction_from_pr_review_comment|reply_to_review_comment|request_pull_request_reviewers|rerun_failed_workflow_run_jobs|rerun_workflow_job|resolve_review_thread|search|search_branches|search_commits|search_installed_repositories_streaming|search_installed_repositories_v2|search_issues|search_prs|search_repositories|unlock_issue_conversation|unresolve_review_thread|update_file|update_issue|update_issue_comment|update_ref|update_review_comment)$";
+const CONNECTOR_HOOKS: &[(&str, &str)] = &[
+    (ISSUE_MATCHER, "codexy-repository-issue"),
+    ("^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request"),
+    ("^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge"),
+];
+
 #[test]
 fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -13,7 +20,7 @@ fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn st
     let hooks = read(&root.join("hooks/hooks.json"))?;
     assert_eq!(hooks["hooks"]["UserPromptSubmit"].as_array().ok_or("prompt hooks")?.len(), 1);
     let pre_tool_use = hooks["hooks"]["PreToolUse"].as_array().ok_or("admission hooks")?;
-    assert_eq!(pre_tool_use.len(), 5);
+    assert_eq!(pre_tool_use.len(), 7);
     for group in &pre_tool_use[..2] {
         let handler = &group["hooks"][0];
         assert_eq!(handler["type"], "command");
@@ -21,17 +28,22 @@ fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn st
         assert!(handler["command"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission.sh"));
         assert!(handler["commandWindows"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission-"));
     }
-    assert_connector_hook(&pre_tool_use[2], "PreToolUse")?;
-    assert_generic_command_safety_hooks(&pre_tool_use[3..], "PreToolUse")?;
+    for (group, (matcher, launcher)) in pre_tool_use[2..5].iter().zip(CONNECTOR_HOOKS) {
+        assert_connector_hook(group, "PreToolUse", matcher, launcher)?;
+    }
+    assert_generic_command_safety_hooks(&pre_tool_use[5..], "PreToolUse")?;
     let permission = hooks["hooks"]["PermissionRequest"]
         .as_array()
         .ok_or("permission hooks")?;
-    assert_connector_hook(&permission[0], "PermissionRequest")?;
-    assert_generic_command_safety_hooks(&permission[1..], "PermissionRequest")?;
+    assert_eq!(permission.len(), 5);
+    for (group, (matcher, launcher)) in permission[..3].iter().zip(CONNECTOR_HOOKS) {
+        assert_connector_hook(group, "PermissionRequest", matcher, launcher)?;
+    }
+    assert_generic_command_safety_hooks(&permission[3..], "PermissionRequest")?;
     let installed = hooks.to_string();
-    assert!(installed.contains("codexy-repository-issue"));
-    assert!(!installed.contains("codexy-repository-pull-request"));
-    assert!(!installed.contains("codexy-repository-merge"));
+    for (_, launcher) in CONNECTOR_HOOKS {
+        assert!(installed.contains(launcher));
+    }
     let path = root.join("hooks/hooks.json");
     let mut missing_permission = read(&path)?;
     missing_permission["hooks"]
@@ -52,13 +64,15 @@ fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn st
 fn assert_connector_hook(
     group: &serde_json::Value,
     event: &str,
+    matcher: &str,
+    launcher: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    assert_eq!(group["matcher"], "^mcp__codex_apps__github_(?:add_comment_to_issue|add_issue_assignees|add_issue_labels|add_reaction_to_issue_comment|add_reaction_to_pr|add_reaction_to_pr_review_comment|add_review_to_pr|compare_commits|convert_pull_request_to_draft|create_blob|create_branch|create_commit|create_file|create_issue|create_pull_request|create_tree|delete_file|dismiss_pull_request_review|download_user_content|download_workflow_artifact|enable_auto_merge|fetch|fetch_blob|fetch_commit|fetch_commit_workflow_runs|fetch_file|fetch_issue|fetch_issue_comments|fetch_pr|fetch_pr_comments|fetch_pr_file_patch|fetch_pr_patch|fetch_workflow_job_logs|fetch_workflow_job_steps|fetch_workflow_run_artifacts|fetch_workflow_run_jobs|get_commit_combined_status|get_issue_comment_reactions|get_pr_diff|get_pr_info|get_pr_reactions|get_pr_review_comment_reactions|get_profile|get_repo|get_repo_collaborator_permission|get_user_login|get_users_recent_prs_in_repo|label_pr|list_installations|list_installed_accounts|list_pr_changed_filenames|list_pull_request_review_threads|list_pull_request_reviews|list_recent_issues|list_repositories|list_repositories_by_affiliation|list_repositories_by_installation|list_user_org_memberships|list_user_orgs|lock_issue_conversation|mark_pull_request_ready_for_review|merge_pull_request|remove_issue_assignees|remove_issue_label|remove_pull_request_reviewers|remove_reaction_from_issue_comment|remove_reaction_from_pr|remove_reaction_from_pr_review_comment|reply_to_review_comment|request_pull_request_reviewers|rerun_failed_workflow_run_jobs|rerun_workflow_job|resolve_review_thread|search|search_branches|search_commits|search_installed_repositories_streaming|search_installed_repositories_v2|search_issues|search_prs|search_repositories|unlock_issue_conversation|unresolve_review_thread|update_file|update_issue|update_issue_comment|update_pull_request|update_ref|update_review_comment)$");
+    assert_eq!(group["matcher"], matcher);
     let handler = &group["hooks"][0];
     assert_eq!(handler["type"], "command");
     assert_eq!(handler["timeout"], 5);
-    assert_eq!(handler["command"], format!("\"${{PLUGIN_ROOT}}/hooks/codexy-repository-issue.sh\" {event}"));
-    assert_eq!(handler["commandWindows"], format!("\"${{PLUGIN_ROOT}}/hooks/codexy-repository-issue.cmd\" {event}"));
+    assert_eq!(handler["command"], format!("\"${{PLUGIN_ROOT}}/hooks/{launcher}.sh\" {event}"));
+    assert_eq!(handler["commandWindows"], format!("\"${{PLUGIN_ROOT}}/hooks/{launcher}.cmd\" {event}"));
     Ok(())
 }
 
