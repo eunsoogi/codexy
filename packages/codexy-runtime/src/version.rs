@@ -33,6 +33,11 @@ pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::{admit_candidate, check_candidate, prepare_candidate, set_version};
 pub(crate) use semver::require as require_semver;
 
+#[must_use]
+pub const fn runtime_version() -> &'static str {
+    bootstrap::CANDIDATE_VERSION
+}
+
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
 }

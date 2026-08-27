@@ -45,6 +45,7 @@ fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect()
     let mut client = McpClient::spawn()?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    assert_eq!(init["result"]["serverInfo"]["version"], codexy_runtime::version::runtime_version());
 
     let status = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
