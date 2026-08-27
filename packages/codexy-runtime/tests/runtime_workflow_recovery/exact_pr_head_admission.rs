@@ -1,21 +1,17 @@
 use std::{env, fs, process::Command};
-
-use serde_json::json;
+use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
 use tempfile::tempdir;
-
 #[path = "../runtime_candidate_assembly_contract/fixture.rs"]
 #[allow(dead_code)]
 mod candidate_fixture;
-
 use super::{script, workflow};
 use crate::support;
 use candidate_fixture::CandidateFixture;
-
 const REPOSITORY: &str = "eunsoogi/codexy";
 
 #[test]
-fn exact_pr_mode_has_typed_admission_two_checks_and_isolated_artifacts()
--> Result<(), Box<dyn std::error::Error>> {
+fn exact_pr_mode_contract() -> Result<(), Box<dyn std::error::Error>> {
     let raw = fs::read_to_string(
         codexy_runtime::paths::repository_root().join(".github/workflows/runtime-candidate.yml"),
     )?;
@@ -88,7 +84,6 @@ fn exact_pr_mode_has_typed_admission_two_checks_and_isolated_artifacts()
     );
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn exact_pr_admission_accepts_only_the_current_same_repository_head()
@@ -97,7 +92,6 @@ fn exact_pr_admission_accepts_only_the_current_same_repository_head()
     let valid = pr_json(7, REPOSITORY, REPOSITORY, "main", "open", None, &source);
     let accepted = run_helper(&source, "7", &valid)?;
     assert!(accepted.status.success(), "valid admission: {}", stderr(&accepted));
-
     let cases = [
         ("fork", source.clone(), "7", pr_json(7, "attacker/codexy", REPOSITORY, "main", "open", None, &source)),
         ("wrong PR", source.clone(), "7", pr_json(8, REPOSITORY, REPOSITORY, "main", "open", None, &source)),
@@ -118,12 +112,16 @@ fn exact_pr_admission_accepts_only_the_current_same_repository_head()
     }
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn exact_pr_archive_rejects_symlinks_and_source_runtime_material() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = CandidateFixture::new("bundled_platforms=\"darwin-arm64 linux-x86_64\"\n")?;
     let root = fixture.root();
+    let protected = fixture.assemble();
+    assert!(protected.status.success(), "protected assembly failed: {}", stderr(&protected));
+    let protected_receipt = read_receipt(root)?;
+    assert_eq!(protected_receipt["schema"], "codexy-runtime-candidate-receipt/v1");
+    assert_keys(&protected_receipt, "artifact,candidate,provenance,schema");
     let plugin = root.join("plugins/codexy-devtools");
     fs::create_dir_all(plugin.join("runtime"))?;
     fs::write(plugin.join("runtime/codexy-mcp-lsp-darwin-arm64.bin"), b"poison")?;
@@ -145,36 +143,36 @@ fn exact_pr_archive_rejects_symlinks_and_source_runtime_material() -> Result<(),
     let source_at = || -> Result<String, Box<dyn std::error::Error>> {
         Ok(String::from_utf8(Command::new("git").args(["-C", directory, "rev-parse", "HEAD"]).output()?.stdout)?.trim().to_owned())
     };
-    let run = |source: &str| {
+    let source = source_at()?;
+    git(&["-c", "user.email=test@example.invalid", "-c", "user.name=Exact PR fixture", "commit", "--allow-empty", "-qm", "trusted workflow"])?;
+    let workflow = source_at()?;
+    let run = |source: &str, workflow: &str, pr: &str| {
         Command::new("sh").arg(root.join("scripts/assemble-runtime-candidate")).current_dir(root)
-            .env("SOURCE_COMMIT", source).env("WORKFLOW_SHA", source).env("EXACT_PR_NUMBER", "7")
+            .env("SOURCE_COMMIT", source).env("WORKFLOW_SHA", workflow).env("EXACT_PR_NUMBER", pr)
+            .env("ARTIFACT_NAME", if pr.is_empty() { "runtime-staging-1-1" } else { "runtime-pr-head-1-1" })
             .env("STAGING_RUN_ID", "1").env("STAGING_RUN_ATTEMPT", "1")
             .env("GITHUB_SERVER_URL", "https://github.invalid").env("GITHUB_REPOSITORY", REPOSITORY).env("PATH", &path).output()
     };
-    let source = source_at()?;
-    let output = run(&source)?;
+    let output = run(&source, &workflow, "7")?;
     assert!(output.status.success(), "poisoned runtime assembly failed: {}", stderr(&output));
     assert_eq!(fs::read(root.join("dist/candidate/plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin"))?, fs::read(root.join("staged-runtime/codexy-mcp-lsp-darwin-arm64.bin"))?);
     assert!(!root.join("dist/candidate/plugins/codexy-devtools/runtime-release.json").exists());
     assert!(!root.join("dist/candidate/plugins/codexy-devtools/handoff-runtime.json").exists());
+    let exact_receipt = read_receipt(root)?;
+    assert_exact_receipt(&exact_receipt, root, &source, &workflow)?;
     fs::remove_file(plugin.join("runtime-candidate.json"))?;
     std::os::unix::fs::symlink("../../scripts/inspect-release-archive-contract.py", plugin.join("runtime-candidate.json"))?;
     git(&["add", "."])?;
     git(&["-c", "user.email=test@example.invalid", "-c", "user.name=Exact PR fixture", "commit", "-qm", "symlink fixture"])?;
     let before = fs::read(root.join("scripts/inspect-release-archive-contract.py"))?;
-    let output = run(&source_at()?)?;
+    let output = run(&source_at()?, &source_at()?, "7")?;
     assert!(!output.status.success(), "symlinked exact source was accepted");
     assert_eq!(fs::read(root.join("scripts/inspect-release-archive-contract.py"))?, before, "trusted validator was modified");
     Ok(())
 }
-
 #[test]
 fn exact_pr_receipt_and_all_allowed_paths_stay_within_the_hard_limit()
 -> Result<(), Box<dyn std::error::Error>> {
-    let assembly = script("assemble-runtime-candidate")?;
-    for literal in "EXACT_PR_NUMBER WORKFLOW_SHA ARTIFACT_NAME workflowSha artifactName admission sourceSha pullRequestNumber headRepository codexy-runtime-pr-head-candidate-receipt/v1 runId runAttempt ARCHIVE_SHA payloadManifestSha256 workflowRunUrl".split_whitespace() {
-        assert!(assembly.contains(literal), "missing receipt literal {literal}");
-    }
     let root = codexy_runtime::paths::repository_root();
     for path in [
         ".github/workflows/runtime-candidate.yml",
@@ -187,7 +185,31 @@ fn exact_pr_receipt_and_all_allowed_paths_stay_within_the_hard_limit()
     }
     Ok(())
 }
-
+fn read_receipt(root: &std::path::Path) -> Result<Value, Box<dyn std::error::Error>> {
+    Ok(serde_json::from_slice(&fs::read(root.join("dist/runtime-staging-receipt.json"))?)?)
+}
+fn digest(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(format!("{:x}", Sha256::digest(fs::read(path)?)))
+}
+fn assert_keys(value: &Value, expected: &str) {
+    let keys = value.as_object().expect("receipt object").keys().map(String::as_str).collect::<Vec<_>>();
+    assert_eq!(keys.join(","), expected);
+}
+fn assert_exact_receipt(receipt: &Value, root: &std::path::Path, source: &str, workflow: &str) -> Result<(), Box<dyn std::error::Error>> {
+    assert_keys(receipt, "admission,artifact,candidate,provenance,schema");
+    assert_keys(&receipt["admission"], "baseRef,baseRepository,headRepository,mergedAt,pullRequestNumber,sourceSha,state,workflowSha");
+    assert_keys(&receipt["provenance"], "artifactName,mode,repositoryId,runAttempt,runId,sourceCommit,workflowPath,workflowRunUrl,workflowSha");
+    let archive_sha = digest(&root.join("dist/codexy-marketplace-plugin.tar.gz"))?;
+    let manifest_sha = digest(&root.join("dist/candidate/plugins/codexy-devtools/runtime-candidate.json"))?;
+    assert_eq!(receipt["schema"], "codexy-runtime-pr-head-candidate-receipt/v1");
+    assert_eq!(receipt["admission"]["pullRequestNumber"], 7);
+    assert_eq!(receipt["admission"]["sourceSha"], source);
+    assert_eq!(receipt["admission"]["workflowSha"], workflow);
+    assert_eq!(receipt["provenance"]["artifactName"], "runtime-pr-head-1-1");
+    assert_eq!(receipt["artifact"]["sha256"], archive_sha);
+    assert_eq!(receipt["artifact"]["payloadManifestSha256"], manifest_sha);
+    Ok(())
+}
 #[cfg(unix)]
 fn run_helper(source: &str, pr_number: &str, response: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let temporary = tempdir()?;
@@ -199,9 +221,8 @@ fn run_helper(source: &str, pr_number: &str, response: &str) -> Result<std::proc
     support::make_executable(&gh)?;
     let mut paths = vec![bin];
     paths.extend(env::split_paths(&env::var_os("PATH").ok_or("PATH")?));
-    let helper = codexy_runtime::paths::repository_root().join("scripts/verify-runtime-candidate-source.sh");
-    Ok(Command::new("sh")
-        .arg(helper)
+    let output = Command::new("sh")
+        .arg("scripts/verify-runtime-candidate-source.sh")
         .current_dir(codexy_runtime::paths::repository_root())
         .env("SOURCE_COMMIT", source)
         .env("EXACT_PR_NUMBER", pr_number)
@@ -210,41 +231,20 @@ fn run_helper(source: &str, pr_number: &str, response: &str) -> Result<std::proc
         .env("FAKE_PR_JSON", response)
         .env("GH_ARGS_LOG", &args_log)
         .env("PATH", env::join_paths(paths)?)
-        .output()?)
-        .and_then(|output| {
-            if source.len() == 40 && pr_number == "7" {
-                assert_eq!(
-                    fs::read_to_string(&args_log)?,
-                    "api\n--method\nGET\n--header\nAccept: application/vnd.github+json\nrepos/eunsoogi/codexy/pulls/7\n"
-                );
-            } else {
-                assert!(!args_log.exists(), "invalid inputs must not call GitHub");
-            }
-            Ok(output)
-        })
+        .output()?;
+    if source.len() == 40 && pr_number == "7" {
+        assert_eq!(fs::read_to_string(&args_log)?, "api\n--method\nGET\n--header\nAccept: application/vnd.github+json\nrepos/eunsoogi/codexy/pulls/7\n");
+    } else {
+        assert!(!args_log.exists(), "invalid inputs must not call GitHub");
+    }
+    Ok(output)
 }
-
 #[cfg(unix)]
 fn pr_json(
-    number: u64,
-    head_repository: &str,
-    base_repository: &str,
-    base_ref: &str,
-    state: &str,
-    merged_at: Option<&str>,
-    head_sha: &str,
+    number: u64, head_repository: &str, base_repository: &str, base_ref: &str,
+    state: &str, merged_at: Option<&str>, head_sha: &str,
 ) -> String {
-    json!({
-        "number": number,
-        "state": state,
-        "merged_at": merged_at,
-        "base": {"ref": base_ref, "repo": {"full_name": base_repository}},
-        "head": {"sha": head_sha, "repo": {"full_name": head_repository}},
-    })
-    .to_string()
+    json!({"number": number, "state": state, "merged_at": merged_at, "base": {"ref": base_ref, "repo": {"full_name": base_repository}}, "head": {"sha": head_sha, "repo": {"full_name": head_repository}}}).to_string()
 }
-
 #[cfg(unix)]
-fn stderr(output: &std::process::Output) -> String {
-    String::from_utf8_lossy(&output.stderr).into_owned()
-}
+fn stderr(output: &std::process::Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }
