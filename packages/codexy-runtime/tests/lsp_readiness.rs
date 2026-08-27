@@ -213,7 +213,7 @@ fn candidate_version_drives_both_mcp_server_info() -> Result<(), Box<dyn std::er
     let package = root.path().join("packages/codexy-runtime");
     let extraction = Command::new("sh")
         .arg("-c")
-        .arg("set -eu; git -C \"$S\" archive HEAD packages/codexy-runtime | tar -x -C \"$D\"; test -f \"$D/packages/codexy-runtime/Cargo.toml\"")
+        .arg("set -eu; git -C \"$S\" archive HEAD | tar -x -C \"$D\"; test -f \"$D/packages/codexy-runtime/Cargo.toml\"")
         .env("S", codexy_runtime::paths::repository_root())
         .env("D", root.path())
         .status()?;
