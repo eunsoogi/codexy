@@ -245,5 +245,5 @@ def read_command(args: list[str]) -> bool:
         return False
     return not (
         args[:2] == ["auth", "status"]
-        and any(option in {"--show-token", "--with-token"} for option in args[2:])
+        and any(option in {"-t", "--show-token", "--with-token"} for option in args[2:])
     )

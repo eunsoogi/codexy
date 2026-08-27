@@ -150,7 +150,7 @@ def _credential_header(arguments: list[str]) -> bool:
 
 def _auth_status_exposes_token(arguments: list[str]) -> bool:
     return arguments[:2] == ["auth", "status"] and any(
-        option in {"--show-token", "--with-token"} for option in arguments[2:]
+        option in {"-t", "--show-token", "--with-token"} for option in arguments[2:]
     )
 
 

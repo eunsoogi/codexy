@@ -133,6 +133,7 @@ fn credential_operations_use_resolved_identity_for_both_events() -> TestResult {
         assert_event_case(&root, event, &owned, "gh auth token", true, &[])?;
         assert_event_case(&root, event, &owned, "gh auth status --show-token", true, &[])?;
         assert_event_case(&root, event, &owned, "gh auth status --with-token", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh auth status -t", true, &[])?;
         assert_event_case(&root, event, &owned, "GH_TOKEN=fixture gh issue list", true, &[])?;
         assert_event_case(&root, event, &owned, "gh api -H 'Authorization: Bearer fixture'", true, &[])?;
         assert_event_case(&root, event, &owned, "eval 'gh auth token'", true, &[])?;
