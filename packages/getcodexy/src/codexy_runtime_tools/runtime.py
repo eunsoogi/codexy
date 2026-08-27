@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from .cache import releases_match, runtime_cache_key
+from .cache import runtime_cache_key
 from .installer import executable, execute, install_git, install_package
 from .runtime_configuration import REPOSITORY, Configuration
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
@@ -25,6 +25,69 @@ def _fail(message: str) -> NoReturn:
 
 def _notice(message: str) -> None:
     print(f"codexy runtime: {message}", file=sys.stderr)
+
+
+def _manifest_identity(
+    expected_manifest: Path, observed_manifest: Path
+) -> tuple[bool, str]:
+    try:
+        expected = json.loads(expected_manifest.read_text(encoding="utf-8"))
+        observed = json.loads(observed_manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return False, f"runtime package manifest identity mismatch: {error}"
+    fields = ("name", "repository", "version")
+    if not isinstance(expected, dict) or not isinstance(observed, dict):
+        return False, "runtime package manifest identity mismatch: invalid JSON object"
+    identities = tuple(
+        tuple(manifest.get(field) for field in fields)
+        for manifest in (expected, observed)
+    )
+    complete = all(
+        isinstance(value, str) and value.strip()
+        for identity in identities
+        for value in identity
+    )
+    if identities[0] != identities[1] or not complete:
+        return (
+            False,
+            "runtime package manifest identity mismatch: "
+            f"expected {identities[0]}, observed {identities[1]}",
+        )
+    return True, ""
+
+
+def _manifest_check(config: Configuration, install_root: Path) -> tuple[bool, str]:
+    if config.package_override:
+        return True, ""
+    return _manifest_identity(config.manifest, install_root / "plugin.json")
+
+
+def _marker_valid(
+    identity: RuntimeSourceIdentity, marker: Path, config: Configuration, binary: Path
+) -> bool:
+    if not executable(binary):
+        return False
+    try:
+        return identity.valid_marker(
+            json.loads(marker.read_text()),
+            platform=config.platform,
+            server=config.server,
+            binary=binary.read_bytes(),
+        )
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+
+
+def _write_marker(
+    identity: RuntimeSourceIdentity, marker: Path, config: Configuration, binary: Path
+) -> None:
+    marker_data = identity.marker(
+        platform=config.platform,
+        server=config.server,
+        binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
+    )
+    if marker_data is not None:
+        marker.write_text(json.dumps(marker_data, sort_keys=True), encoding="utf-8")
 
 
 def _absolute_env_path(name: str) -> Path | None:
@@ -112,27 +175,16 @@ def run(config: Configuration) -> NoReturn:
         ],
     )
     install_root = _cache_root(config.server) / key
-    installed, marker = (
-        install_root / "bin" / f"codexy-mcp-{config.server}",
-        install_root / "runtime-marker.json",
-    )
+    installed = install_root / "bin" / f"codexy-mcp-{config.server}"
+    marker = install_root / "runtime-marker.json"
     if executable(installed):
-        if marker.is_file():
-            try:
-                valid = source_identity.valid_marker(
-                    json.loads(marker.read_text()),
-                    platform=config.platform,
-                    server=config.server,
-                    binary=installed.read_bytes(),
-                )
-            except (OSError, ValueError, json.JSONDecodeError):
-                valid = False
-            if valid:
-                _execute(config, installed)
+        matches, _ = _manifest_check(config, install_root)
+        if _marker_valid(source_identity, marker, config, installed) and matches:
+            _execute(config, installed)
         elif (
             source_identity.cache_key(platform=config.platform, server=config.server)
             is None
-            and releases_match(config.manifest, install_root / "plugin.json")[0]
+            and matches
         ):
             _execute(config, installed)
     if not config.offline:
@@ -141,15 +193,10 @@ def run(config: Configuration) -> NoReturn:
                 f"acquiring exact release package v{config.release} for {config.server}"
             )
             install_package(config, install_root, installed)
-            source_marker = source_identity.marker(
-                platform=config.platform,
-                server=config.server,
-                binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest(),
-            )
-            if source_marker:
-                marker.write_text(
-                    json.dumps(source_marker, sort_keys=True), encoding="utf-8"
-                )
+            matches, message = _manifest_check(config, install_root)
+            if not matches:
+                raise RuntimeError(message)
+            _write_marker(source_identity, marker, config, installed)
             _execute(config, installed)
         except (OSError, RuntimeError, ValueError) as package_error:
             if config.package_override:
@@ -178,37 +225,15 @@ def run(config: Configuration) -> NoReturn:
     git_root = _cache_root(config.server) / git_key
     git_installed = git_root / "bin" / f"codexy-mcp-{config.server}"
     git_marker = git_root / "runtime-marker.json"
-    if executable(git_installed) and git_marker.is_file():
-        try:
-            valid = git_identity.valid_marker(
-                json.loads(git_marker.read_text()),
-                platform=config.platform,
-                server=config.server,
-                binary=git_installed.read_bytes(),
-            )
-        except (OSError, ValueError, json.JSONDecodeError):
-            valid = False
-        if valid:
-            _execute(config, git_installed)
+    if _marker_valid(git_identity, git_marker, config, git_installed):
+        _execute(config, git_installed)
     if config.offline:
         _fail(
             f"codexy-mcp-{config.server} offline mode has no cached or bundled runtime for {config.platform}"
         )
     try:
         install_git(config, git_root, git_installed)
-        git_marker.write_text(
-            json.dumps(
-                git_identity.marker(
-                    platform=config.platform,
-                    server=config.server,
-                    binary_sha256=hashlib.sha256(
-                        git_installed.read_bytes()
-                    ).hexdigest(),
-                ),
-                sort_keys=True,
-            ),
-            encoding="utf-8",
-        )
+        _write_marker(git_identity, git_marker, config, git_installed)
         _execute(config, git_installed)
     except (OSError, RuntimeError) as git_error:
         _fail(f"codexy-mcp-{config.server} pinned Git runtime failed: {git_error}")

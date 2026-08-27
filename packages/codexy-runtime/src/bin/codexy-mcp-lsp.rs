@@ -4,7 +4,7 @@ fn main() -> Result<()> {
     let tools = codexy_runtime::lsp::tools();
     codexy_runtime::mcp::run_stdio_server(
         codexy_runtime::lsp::server_name(),
-        env!("CARGO_PKG_VERSION"),
+        codexy_runtime::version::runtime_version(),
         &tools,
         codexy_runtime::lsp::call_tool,
     )

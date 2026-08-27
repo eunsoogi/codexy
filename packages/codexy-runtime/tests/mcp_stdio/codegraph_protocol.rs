@@ -15,6 +15,7 @@ fn codegraph_stdio_preserves_protocol_and_search_boundaries()
     )?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
+    assert_eq!(init["result"]["serverInfo"]["version"], codexy_runtime::version::runtime_version());
     codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(&mut client)?;
     codegraph_stdio_matches_absolute_paths_when_root_is_relative(
         &mut client,
