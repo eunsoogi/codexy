@@ -14,57 +14,57 @@
     "pluginId": "codexy@codexy",
     "version": "1.2.2",
     "cacheRootRelative": "codexy/1.2.2",
-    "manifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
+    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "changedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "6354c9a7bd0d764bb5f39c0e59c17909cc683b3e01a9b48433f2027bc6299680"
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "940869293ff9600b677008452f833eac38118b5425b03b96057c42954aa2286a"
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
     ],
     "contentEquivalent": true,
     "contentProof": {
-      "sourceManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
-      "installedManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
+      "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "installedManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "sourceChangedFiles": [
         {
           "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "6354c9a7bd0d764bb5f39c0e59c17909cc683b3e01a9b48433f2027bc6299680"
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "940869293ff9600b677008452f833eac38118b5425b03b96057c42954aa2286a"
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "installedChangedFiles": [
         {
           "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "6354c9a7bd0d764bb5f39c0e59c17909cc683b3e01a9b48433f2027bc6299680"
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "940869293ff9600b677008452f833eac38118b5425b03b96057c42954aa2286a"
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ]
     }
   },
   "audit": {
-    "inputSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "inputSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "observationalOnly": true,
     "comparison": {
       "ownerBoundary": {
@@ -79,7 +79,7 @@
       },
       "before": {
         "sessionId": "controlled-before",
-        "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
+        "inputSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "window": {
           "recordsObserved": 2,
           "turnEvents": 2
@@ -88,7 +88,7 @@
       },
       "after": {
         "sessionId": "controlled-after",
-        "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
+        "inputSha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "window": {
           "recordsObserved": 2,
           "turnEvents": 2
@@ -100,7 +100,7 @@
       {
         "sessionId": "controlled-before",
         "ownerRootThreadId": "owner-486",
-        "inputSha256": "cefd8f19beca3fa2ea408c48a589c94a9ed6bb0c80d62492ec49c224d40dcbf0",
+        "inputSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 200,
@@ -120,7 +120,7 @@
       {
         "sessionId": "controlled-after",
         "ownerRootThreadId": "owner-486",
-        "inputSha256": "ded5374eac31242961665b1ee335820f313108d93d8acaefc0d93eaf64785ce8",
+        "inputSha256": "0000000000000000000000000000000000000000000000000000000000000000",
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 150,
