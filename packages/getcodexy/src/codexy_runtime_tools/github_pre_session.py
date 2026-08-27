@@ -80,18 +80,18 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
-        for root, component in (
-            (core_root, "core"),
-            (github_root, "github"),
-        ):
-            if not valid_registration(root, component):
-                raise ValueError(f"{component} component registration is invalid")
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,
             frozen_component(
                 github_root, "codexy-github", github_version
             ) as trusted_github,
         ):
+            for root, component in (
+                (trusted_core, "core"),
+                (trusted_github, "github"),
+            ):
+                if not valid_registration(root, component):
+                    raise ValueError(f"{component} component registration is invalid")
             core_changed = activate_core(trusted_core, home, synchronize)
             activate = activate_github or sync_github_agent
             github_changed = activate(trusted_github, home)

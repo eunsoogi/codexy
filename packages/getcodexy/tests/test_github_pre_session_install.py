@@ -6,7 +6,9 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import codexy_runtime_tools.github_pre_session as github_pre_session
 from codexy_runtime_tools.component_integrity import frozen_component
 from codexy_runtime_tools.github_pre_session import (
     run_github_pre_session,
@@ -99,20 +101,30 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     (),
                 )
 
-            result = run_github_pre_session(
-                home,
-                codex=codex,
-                runner=runner,
-                synchronize=synchronize,
-                activate_github=lambda plugin_root, home: synchronized.append(
-                    (plugin_root, home)
-                ),
-                package_version=version(core),
-            )
+            with mock.patch.object(
+                github_pre_session,
+                "valid_registration",
+                wraps=github_pre_session.valid_registration,
+            ) as registration:
+                result = run_github_pre_session(
+                    home,
+                    codex=codex,
+                    runner=runner,
+                    synchronize=synchronize,
+                    activate_github=lambda plugin_root, home: synchronized.append(
+                        (plugin_root, home)
+                    ),
+                    package_version=version(core),
+                )
 
             self.assertTrue(result.core_root.samefile(core))
             self.assertTrue(result.github_root.samefile(github))
             self.assertTrue(result.changed)
+            registered = [call.args for call in registration.call_args_list]
+            self.assertEqual(
+                {path for path, _ in registered},
+                {path for path, _ in synchronized},
+            )
             self.assertEqual(
                 calls,
                 [
