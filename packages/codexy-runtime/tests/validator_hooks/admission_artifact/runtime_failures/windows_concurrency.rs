@@ -11,7 +11,7 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
     let starts = Arc::new(Barrier::new(LAUNCHERS.len() * 2));
     let mut joins = Vec::new();
     for event in ["PermissionRequest", "PreToolUse"] {
-        for launcher in LAUNCHERS {
+        for launcher in LAUNCHERS.iter().copied() {
             let root = root.clone();
             let cwd = temp.path().to_path_buf();
             let output_dir = output_dir.clone();
