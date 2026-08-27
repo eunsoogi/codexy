@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-case "${STAGING_RUN_ID:?}" in *[!0-9]*|'') exit 1;; esac
-case "${STAGING_RUN_ATTEMPT:?}" in *[!0-9]*|'') exit 1;; esac
+case "${STAGING_RUN_ID:?}" in *[!0-9]* | '') exit 1 ;; esac
+case "${STAGING_RUN_ATTEMPT:?}" in *[!0-9]* | '') exit 1 ;; esac
 source_commit=${SOURCE_COMMIT:?}
 pull_request=${EXACT_PR_NUMBER:-}
 workflow_sha=${WORKFLOW_SHA:-$(git rev-parse HEAD)}
@@ -12,21 +12,21 @@ mode=protected-main
 root=dist/candidate/plugins/codexy-devtools
 mkdir -p dist/candidate/plugins
 if test -n "$pull_request"; then
-  test "$(git rev-parse HEAD)" = "$workflow_sha"
-  rm -rf dist/candidate
-  mkdir -p dist/candidate
-  root_mode="$(git ls-tree "$source_commit" -- plugins/codexy-devtools | awk '{print $1}')"
-  test "$root_mode" = 040000
-  tree_entries="$(git ls-tree -r "$source_commit" -- plugins/codexy-devtools)"
-  test -z "$(printf '%s\n' "$tree_entries" | awk '$1 == "120000" || $1 == "160000" {print; exit}')"
-  git archive "$source_commit" plugins/codexy-devtools | tar -x -C dist/candidate
-  test -d "$root"
-  test -z "$(find "$root" -type l -print -quit)" || exit 1
-  rm -rf "$root/runtime" "$root/runtime-release.json" "$root/runtime-candidate.json" "$root/handoff-runtime.json" "$root/mcp/codexy-mcp-devtools.exe"
-  mode=exact-pr-head
+	test "$(git rev-parse HEAD)" = "$workflow_sha"
+	rm -rf dist/candidate
+	mkdir -p dist/candidate
+	root_mode="$(git ls-tree "$source_commit" -- plugins/codexy-devtools | awk '{print $1}')"
+	test "$root_mode" = 040000
+	tree_entries="$(git ls-tree -r "$source_commit" -- plugins/codexy-devtools)"
+	test -z "$(printf '%s\n' "$tree_entries" | awk '$1 == "120000" || $1 == "160000" {print; exit}')"
+	git archive "$source_commit" plugins/codexy-devtools | tar -x -C dist/candidate
+	test -d "$root"
+	test -z "$(find "$root" -type l -print -quit)" || exit 1
+	rm -rf "$root/runtime" "$root/runtime-release.json" "$root/runtime-candidate.json" "$root/handoff-runtime.json" "$root/mcp/codexy-mcp-devtools.exe"
+	mode=exact-pr-head
 else
-  test "$(git rev-parse HEAD)" = "$source_commit"
-  rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
+	test "$(git rev-parse HEAD)" = "$source_commit"
+	rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
 fi
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
@@ -36,12 +36,16 @@ python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 core_sources="plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
 core_count=0
 for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
-case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *) echo "core-handoff source inventory is partial" >&2; exit 1 ;; esac
+case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *)
+	echo "core-handoff source inventory is partial" >&2
+	exit 1
+	;;
+esac
 for platform in darwin-arm64 linux-x86_64; do
-  for server in lsp codegraph; do
-    chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
-  done
-  if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
+	for server in lsp codegraph; do
+		chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
+	done
+	if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
 done
 
 SOURCE_TREE="$(git rev-parse "${source_commit}^{tree}")"
@@ -100,7 +104,7 @@ open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) 
 PY
 
 if test "$core_aware" = 1; then
-  python3 scripts/handoff_runtime_contract.py "$root/handoff-runtime.json" "$root"
+	python3 scripts/handoff_runtime_contract.py "$root/handoff-runtime.json" "$root"
 fi
 
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
