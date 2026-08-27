@@ -60,11 +60,10 @@ def _rest_allowed(
     owned_identity: tuple[str, str, str] | None,
 ) -> bool:
     match = REPOSITORY.match(endpoint)
-    selected = (
-        github_identity(f"{match.group(1)}/{match.group(2)}")
-        if match is not None
-        else None
-    )
+    target = "/".join(match.groups()) if match is not None else ""
+    selected = github_identity(target)
+    if target.casefold() == "{owner}/{repo}":
+        selected = owned_identity
     if (
         match is None
         or selected is None
@@ -109,7 +108,7 @@ def _rest_allowed(
                     "team_reviewers",
                 }
                 and bool(fields)
-                and all(_list_field(fields, key) for key in fields)
+                and all(_list_value(fields[key]) for key in fields)
             )
     return False
 
@@ -156,7 +155,7 @@ def _issue_create(fields: dict[str, str]) -> bool:
         set(fields) <= allowed
         and bool(fields.get("title"))
         and all(
-            _list_field(fields, key, allow_empty=True)
+            _list_value(fields[key], allow_empty=True)
             for key in ("labels", "assignees")
             if key in fields
         )
@@ -207,13 +206,13 @@ def _review(fields: dict[str, str]) -> bool:
 def _review_fields(fields: dict[str, str]) -> bool:
     if "commit_id" in fields and not fields["commit_id"]:
         return False
-    if "comments" not in fields:
+    comments = fields.get("comments")
+    if comments is None:
         return True
     try:
-        comments = json.loads(fields["comments"])
+        return entries(json.loads(comments))
     except json.JSONDecodeError:
         return False
-    return entries(comments)
 
 
 def _list_field(fields: dict[str, str], key: str, *, allow_empty: bool = False) -> bool:

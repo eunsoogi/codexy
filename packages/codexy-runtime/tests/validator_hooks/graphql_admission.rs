@@ -5,7 +5,15 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
-    let bindings = "-f owner=eunsoogi -f name=codexy -f repository_id=REPO_owned -f issue_id=ISS_owned -f pull_request_id=PR_owned -f subject_id=ISS_owned -f labelable_id=ISS_owned -f assignable_id=ISS_owned -f duplicate_issue_id=ISS_duplicate -f milestone_id=MILESTONE -f label_ids='[\"LABEL\"]' -f assignee_ids='[\"USER\"]' -f user_ids='[\"USER\"]' -f user_logins='[\"eunsoogi\"]' -f client_mutation_id=CLIENT";
+    let bindings = "-f owner=eunsoogi -f name=codexy -f repository_id=R_kgDOS6i-_w -f issue_id=I_kwDOS6i-_88AAAABOYgYLw -f pull_request_id=PR_kwDOS6i-_88AAAABBJnhRQ -f subject_id=I_kwDOS6i-_88AAAABOYgYLw -f labelable_id=I_kwDOS6i-_88AAAABOYgYLw -f assignable_id=I_kwDOS6i-_88AAAABOYgYLw -f duplicate_issue_id=I_kwDOS6i-_88AAAABOYgYLw -f milestone_id=M_kwDOS6i-_88AAAABOYgYLw -f label_ids='[\"LABEL\"]' -f assignee_ids='[\"USER\"]' -f user_ids='[\"USER\"]' -f user_logins='[\"eunsoogi\"]' -f client_mutation_id=CLIENT";
+    let bind_query = |query: &str| {
+        query
+            .replace("REPO_owned", "R_kgDOS6i-_w")
+            .replace("ISS_owned", "I_kwDOS6i-_88AAAABOYgYLw")
+            .replace("ISS_duplicate", "I_kwDOS6i-_88AAAABOYgYLw")
+            .replace("MILESTONE", "M_kwDOS6i-_88AAAABOYgYLw")
+            .replace("PR_owned", "PR_kwDOS6i-_88AAAABBJnhRQ")
+    };
     for query in [
         "query { viewer { login } }",
         "query { search(query:\"mutation { mergePullRequest }\",type:ISSUE,first:1) { issueCount } }",
@@ -19,6 +27,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("P-PR-01", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"fix(hooks): create PR\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
         ("P-PR-08", "mutation { markPullRequestReadyForReview(input:{pullRequestId:\"PR_owned\"}) { pullRequest { number } } }"),
     ] {
+        let query = bind_query(query);
         assert_case(&root, &owned, &format!("gh api graphql {bindings} -f query='{query}'"), false, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
@@ -41,14 +50,19 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("P-PR-06-login", "mutation { requestReviewsByLogin(input:{pullRequestId:\"PR_owned\",userLogins:[\"eunsoogi\"],union:false}) { pullRequest { number } } }"),
         ("P-PR-07", "mutation { convertPullRequestToDraft(input:{pullRequestId:\"PR_owned\"}) { pullRequest { number } } }"),
     ] {
+        let query = bind_query(query);
         assert_case(&root, &owned, &format!("gh api graphql {bindings} -f query='{query}'"), false, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
-    let pr_bindings = bindings.replace("subject_id=ISS_owned", "subject_id=PR_owned");
+    let pr_bindings = bindings.replace(
+        "subject_id=I_kwDOS6i-_88AAAABOYgYLw",
+        "subject_id=PR_kwDOS6i-_88AAAABBJnhRQ",
+    );
     for (case_id, query) in [
         ("P-PR-02", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",body:\"note\",maintainerCanModify:false}) { pullRequest { number } } }"),
         ("P-PR-04", "mutation { addComment(input:{subjectId:\"PR_owned\",body:\"note\"}) { comment { id } } }"),
     ] {
+        let query = bind_query(query);
         assert_case(&root, &owned, &format!("gh api graphql {pr_bindings} -f query='{query}'"), false, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
@@ -61,6 +75,36 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         &[],
     )
     .map_err(|error| format!("P-ISS-02-variable-bound: {error}"))?;
+    let foreign_issue = "I_kwDOOYsS4c6S31kB";
+    let foreign_issue_bindings = bindings.replace(
+        "issue_id=I_kwDOS6i-_88AAAABOYgYLw",
+        &format!("issue_id={foreign_issue}"),
+    );
+    assert_case(
+        &root,
+        &owned,
+        &format!(
+            "gh api graphql {foreign_issue_bindings} -f query='mutation {{ updateIssue(input:{{issueId:\"{foreign_issue}\",title:\"Foreign issue\"}}) {{ issue {{ number }} }} }}'"
+        ),
+        true,
+        &[],
+    )
+    .map_err(|error| format!("N-13-foreign-node-bound-issue: {error}"))?;
+    let foreign_pr = "PR_kwDOOYsS4c6S31kB";
+    let foreign_pr_bindings = bindings.replace(
+        "pull_request_id=PR_kwDOS6i-_88AAAABBJnhRQ",
+        &format!("pull_request_id={foreign_pr}"),
+    );
+    assert_case(
+        &root,
+        &owned,
+        &format!(
+            "gh api graphql {foreign_pr_bindings} -f query='mutation {{ updatePullRequest(input:{{pullRequestId:\"{foreign_pr}\",body:\"Foreign PR\"}}) {{ pullRequest {{ number }} }} }}'"
+        ),
+        true,
+        &[],
+    )
+    .map_err(|error| format!("N-13-foreign-node-bound-pr: {error}"))?;
     let clear_bindings = bindings
         .replace("label_ids='[\"LABEL\"]'", "label_ids='[]'")
         .replace("assignee_ids='[\"USER\"]'", "assignee_ids='[]'");
@@ -68,6 +112,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("P-ISS-05-clear", "mutation { updateIssue(input:{issueId:\"ISS_owned\",labelIds:[]}) { issue { number } } }"),
         ("P-ISS-06-clear", "mutation { updateIssue(input:{issueId:\"ISS_owned\",assigneeIds:[]}) { issue { number } } }"),
     ] {
+        let query = bind_query(query);
         assert_case(&root, &owned, &format!("gh api graphql {clear_bindings} -f query='{query}'"), false, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
@@ -79,6 +124,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("N-13-foreign-node", "mutation { updateIssue(input:{issueId:\"ISS_foreign\",title:\"Updated issue\"}) { issue { number } } }"),
         ("N-17-review-without-body", "mutation { addPullRequestReview(input:{pullRequestId:\"PR_owned\",event:COMMENT}) { pullRequestReview { id } } }"),
     ] {
+        let query = bind_query(query);
         assert_case(&root, &owned, &format!("gh api graphql {bindings} -f query='{query}'"), true, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }

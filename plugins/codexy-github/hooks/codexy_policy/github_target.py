@@ -84,8 +84,7 @@ def graph_bound(value: object, transport: dict[str, str], *keys: str) -> bool:
 
 
 def graph_id(payload: dict[str, object], key: str, transport: dict[str, str]) -> bool:
-    value = payload.get(key)
-    return graph_bound(value, transport, *graph_keys(key))
+    return graph_bound(payload.get(key), transport, *graph_keys(key))
 
 
 def graph_common(
@@ -175,30 +174,27 @@ def parse_api_args(
             if method is not None or index + 1 >= len(args):
                 return None
             method, index = args[index + 1].upper(), index + 2
-        elif token.startswith(("--method=", "-X=")):
+        elif token.startswith(("--method=", "-X=")) or (
+            token.startswith("-X") and len(token) > 2
+        ):
             if method is not None:
                 return None
-            method, index = token.split("=", 1)[1].upper(), index + 1
-        elif token.startswith("-X") and len(token) > 2:
-            if method is not None:
-                return None
-            method, index = token[2:].removeprefix("=").upper(), index + 1
-        elif token in API_FIELDS:
-            if index + 1 >= len(args) or not _api_field(
-                fields,
-                args[index + 1],
-                cwd if token in API_TYPED_FIELDS else None,
-                read_file,
-            ):
-                return None
-            index += 2
-        elif any(token.startswith(option + "=") for option in API_FIELDS):
-            typed = any(token.startswith(option + "=") for option in API_TYPED_FIELDS)
-            if not _api_field(
-                fields, token.split("=", 1)[1], cwd if typed else None, read_file
-            ):
-                return None
+            method = (token.split("=", 1)[1] if "=" in token else token[2:]).upper()
             index += 1
+        elif token in API_FIELDS or any(
+            token.startswith(option + "=") for option in API_FIELDS
+        ):
+            typed = any(token == option for option in API_TYPED_FIELDS) or any(
+                token.startswith(option + "=") for option in API_TYPED_FIELDS
+            )
+            if token in API_FIELDS:
+                if index + 1 >= len(args):
+                    return None
+                value, index = args[index + 1], index + 2
+            else:
+                value, index = token.split("=", 1)[1], index + 1
+            if not _api_field(fields, value, cwd if typed else None, read_file):
+                return None
         elif token == "--input":
             if input_file is not None or index + 1 >= len(args):
                 return None
@@ -207,17 +203,13 @@ def parse_api_args(
             if input_file is not None:
                 return None
             input_file, index = token.split("=", 1)[1], index + 1
-        elif token in API_VALUES:
+        elif token in API_VALUES | API_HEADERS:
             if index + 1 >= len(args):
                 return None
             index += 2
-        elif any(token.startswith(option + "=") for option in API_VALUES):
-            index += 1
-        elif token in API_HEADERS:
-            if index + 1 >= len(args):
-                return None
-            index += 2
-        elif token.startswith(("-H", "--header=")) and len(token) > 2:
+        elif any(
+            token.startswith(option + "=") for option in API_VALUES | API_HEADERS
+        ) or (token.startswith("-H") and len(token) > 2):
             index += 1
         elif token in API_FLAGS:
             index += 1
@@ -228,22 +220,31 @@ def parse_api_args(
             index += 1
     if len(positionals) != 1 or not positionals[0]:
         return None
-    return (
-        positionals[0],
-        method or ("POST" if fields or input_file else "GET"),
-        fields,
-        input_file,
-    )
+    method = method or ("POST" if fields or input_file else "GET")
+    return positionals[0], method, fields, input_file
 
 
 def _api_field(
     fields: dict[str, str], value: str, typed_cwd: str | None, read_file: Any
 ) -> bool:
     name, separator, content = value.partition("=")
-    if not separator or not name or name in fields:
+    array = name.endswith("[]")
+    name = name[:-2] if array else name
+    if not separator or not name or "[" in name or "]" in name:
         return False
     if typed_cwd is not None and name == "query" and content.startswith("@"):
         content = read_file(typed_cwd, content[1:])
         if content is None:
             raise UnsafeQueryFile
+    if array:
+        try:
+            previous = json.loads(fields.get(name, "[]"))
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(previous, list):
+            return False
+        fields[name] = json.dumps(previous + [content])
+        return True
+    if name in fields:
+        return False
     return fields.setdefault(name, content) == content

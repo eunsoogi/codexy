@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 
@@ -10,9 +11,11 @@ from .github_target import (
     graph_bound,
     graph_common,
     graph_id,
+    graph_keys,
     graph_literal,
     graph_nullable,
     graph_object,
+    graph_string,
 )
 from .graphql_parser import document, parse_document
 from .repository import github_identity, read_text
@@ -28,25 +31,15 @@ _TOKEN = re.compile(
 BINDING_FIELDS = {"owner", "name", "query"} | {
     field for fields in GRAPH_BINDINGS.values() for field in fields
 }
-GRAPH_CREATE = {
-    "repositoryId",
-    "title",
-    "headRefName",
-    "baseRefName",
-    "body",
-    "draft",
-    "maintainerCanModify",
-    "headRepositoryId",
-    "clientMutationId",
-}
-GRAPH_UPDATE = {
-    "pullRequestId",
-    "title",
-    "body",
-    "baseRefName",
-    "maintainerCanModify",
-    "clientMutationId",
-}
+GRAPH_CREATE = set(
+    "repositoryId title headRefName baseRefName body draft maintainerCanModify headRepositoryId clientMutationId".split()
+)
+GRAPH_UPDATE = set(
+    "pullRequestId title body baseRefName maintainerCanModify clientMutationId".split()
+)
+_TARGET_FIELDS = set(
+    "issueId pullRequestId subjectId labelableId assignableId duplicateIssueId".split()
+)
 
 
 def mutation(query: str) -> bool | None:
@@ -80,6 +73,7 @@ def admitted(
     return (
         payload is not None
         and _client_mutation_bound(payload, transport)
+        and _repository_targets_bound(payload, transport)
         and (
             graphql_issue(field.name, payload, transport)
             or graphql_pr(field.name, payload, transport)
@@ -97,6 +91,47 @@ def input_query(cwd: str, target: str) -> str | None:
         return None
     query = body.get("query") if isinstance(body, dict) else None
     return query if isinstance(query, str) else None
+
+
+def _repository_targets_bound(
+    payload: dict[str, object], transport: dict[str, str]
+) -> bool:
+    targets = payload.keys() & _TARGET_FIELDS
+    return all(_repository_bound(payload, key, transport) for key in targets)
+
+
+def _repository_bound(
+    payload: dict[str, object], key: str, transport: dict[str, str]
+) -> bool:
+    value = payload.get(key)
+    actual = graph_string(value)
+    if actual is None and isinstance(value, tuple) and len(value) == 2:
+        variable = value[1] if value[0] == "variable" else None
+        actual = transport.get(variable) if isinstance(variable, str) else None
+    repository = next(
+        (
+            transport[name]
+            for name in ("repository_id", "repositoryId")
+            if name in transport
+        ),
+        None,
+    )
+    target_scope = _graph_scope(actual, r"^[A-Za-z]+_[A-Za-z0-9]+DO([A-Za-z0-9_-]{6})")
+    return (
+        graph_bound(value, transport, *graph_keys(key))
+        and target_scope is not None
+        and target_scope == _graph_scope(repository, r"^R_kgDO([A-Za-z0-9_-]{6})")
+    )
+
+
+def _graph_scope(value: str | None, pattern: str) -> bytes | None:
+    match = re.match(pattern, value or "")
+    if match is None:
+        return None
+    try:
+        return base64.b64decode(match.group(1) + "==", altchars=b"-_", validate=True)
+    except ValueError:
+        return None
 
 
 def _transport_owned(
