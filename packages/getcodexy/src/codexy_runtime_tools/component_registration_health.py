@@ -200,13 +200,10 @@ def valid_registration(plugin: Path, component: str) -> bool:
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
             and all(
-                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
+                _regular(plugin / f"agents/{name}", 'model = "')
+                for name in AGENT_FILES[component]
             )
             and all(_launcher(plugin / path) for path in LAUNCHERS[component])
-            and (
-                component != "core"
-                or all(_regular(plugin / path) for path in CORE_HOOK_DEPENDENCIES)
-            )
             and _skill(plugin, component)
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
@@ -214,17 +211,18 @@ def valid_registration(plugin: Path, component: str) -> bool:
 
 
 def _json(path: Path) -> object:
-    with path.open("r", encoding="utf-8") as source:
-        return json.load(source)
+    return json.loads(_text(path))
 
 
 def _text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _regular(path: Path) -> bool:
+def _regular(path: Path, needle: str = "") -> bool:
     try:
-        return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
+        if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
+            return False
+        return not needle or needle in _text(path)
     except OSError:
         return False
 
@@ -239,6 +237,8 @@ def _launcher(path: Path) -> bool:
 
 def _skill(plugin: Path, component: str) -> bool:
     required = load_component_manifest().component(component).asset.required_paths
+    if component == "core":
+        required += CORE_HOOK_DEPENDENCIES
     name = "wiki" if component == "core" else "git-workflow"
     contents = _text(plugin / f"skills/{name}/SKILL.md")
     return all(_regular(plugin / path) for path in required) and (
