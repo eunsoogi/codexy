@@ -48,33 +48,48 @@ class RuntimeContractRuntimeCases:
 
     def test_selected_release_enforces_complete_package_identity(self) -> None:
         root, _ = self.load(release(), plugin_version="1.3.0")
+        manifest = {
+            "name": "codexy-devtools",
+            "repository": "https://github.com/eunsoogi/codexy",
+            "version": "1.3.0",
+        }
         (root / ".codex-plugin/plugin.json").write_text(
-            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            json.dumps(manifest),
             encoding="utf-8",
         )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
+
+        def without(field: str) -> dict[str, object]:
+            return {key: value for key, value in manifest.items() if key != field}
+
         cases = (
-            ("wrong-name", '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
-            ("missing-name", '{"repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
-            ("empty-name", '{"name":"","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
-            ("whitespace-name", '{"name":"   ","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
-            ("non-string-name", '{"name":392,"repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
-            ("missing-repository", '{"name":"codexy-devtools","version":"1.3.0"}', 127),
-            ("missing-version", '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy"}', 127),
-            ("complete-match", '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 0),
+            ("wrong-name", {**manifest, "name": "codexy-other"}, 127),
+            ("missing-name", without("name"), 127),
+            ("empty-name", {**manifest, "name": ""}, 127),
+            ("whitespace-name", {**manifest, "name": "   "}, 127),
+            ("non-string-name", {**manifest, "name": 392}, 127),
+            ("missing-repository", without("repository"), 127),
+            ("missing-version", without("version"), 127),
+            ("complete-match", manifest, 0),
         )
 
         for label, package_manifest, expected_code in cases:
             with self.subTest(case=label):
-                def install_wrong(_config, install_root: Path, installed: Path) -> None:
+                def install_wrong(
+                    _config, install_root: Path, installed: Path
+                ) -> None:
                     installed.parent.mkdir(parents=True)
                     installed.write_bytes(b"identity test runtime")
                     installed.chmod(0o755)
-                    (install_root / "plugin.json").write_text(package_manifest, encoding="utf-8")
+                    (install_root / "plugin.json").write_text(
+                        json.dumps(package_manifest), encoding="utf-8"
+                    )
 
                 with (
                     mock.patch.dict(
-                        os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(root / f"cache-{label}")}, clear=True
+                        os.environ,
+                        {"CODEXY_RUNTIME_CACHE_DIR": str(root / f"cache-{label}")},
+                        clear=True,
                     ),
                     mock.patch.object(runtime, "install_package", side_effect=install_wrong),
                     mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)) as execute,
