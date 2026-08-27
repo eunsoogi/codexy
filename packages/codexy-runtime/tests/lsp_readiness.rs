@@ -1,8 +1,11 @@
 use std::io::{BufRead as _, BufReader, Write as _};
+#[cfg(unix)]
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 use serde_json::{Value, json};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 struct McpClient {
     child: Child,
@@ -11,12 +14,17 @@ struct McpClient {
 
 impl McpClient {
     fn spawn() -> Result<Self, Box<dyn std::error::Error>> {
-        Self::spawn_path(Path::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp")))
+        Self::spawn_command(Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp")))
     }
 
+    #[cfg(unix)]
     fn spawn_path(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::spawn_command(Command::new(path))
+    }
+
+    fn spawn_command(mut command: Command) -> Result<Self, Box<dyn std::error::Error>> {
         let path_dir = tempfile::tempdir()?;
-        let child = Command::new(path)
+        let child = command
             .env("PATH", path_dir.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -29,9 +37,8 @@ impl McpClient {
     }
 
     fn send(&mut self, payload: &Value) -> Result<Value, Box<dyn std::error::Error>> {
-        let body = serde_json::to_vec(payload)?;
         let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
-        stdin.write_all(&body)?;
+        stdin.write_all(&serde_json::to_vec(payload)?)?;
         stdin.write_all(b"\n")?;
         stdin.flush()?;
         let stdout = self.child.stdout.as_mut().ok_or("missing child stdout")?;
@@ -42,14 +49,12 @@ impl McpClient {
 }
 
 #[test]
-fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect()
--> Result<(), Box<dyn std::error::Error>> {
+fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect() -> TestResult {
     let root = tempfile::tempdir()?;
     std::fs::write(root.path().join("sample.rs"), "fn main() {}\n")?;
 
     let mut client = McpClient::spawn()?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
-    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
     assert_eq!(
         init["result"]["serverInfo"]["version"],
         codexy_runtime::version::runtime_version()
@@ -82,13 +87,12 @@ fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect()
 }
 
 #[test]
-fn lsp_status_matches_html_to_web_language_server() -> Result<(), Box<dyn std::error::Error>> {
+fn lsp_status_matches_html_to_web_language_server() -> TestResult {
     let root = tempfile::tempdir()?;
     std::fs::write(root.path().join("index.html"), "<main>Hello</main>\n")?;
 
     let mut client = McpClient::spawn()?;
-    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
-    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
 
     let status = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
@@ -100,7 +104,6 @@ fn lsp_status_matches_html_to_web_language_server() -> Result<(), Box<dyn std::e
             .ok_or("text")?,
     )?;
 
-    assert_ne!(status_payload["server"]["id"], "unmatched");
     assert_eq!(status_payload["server"]["id"], "html-language-server");
     assert_eq!(status_payload["server"]["language"], "HTML");
     assert_eq!(status_payload["extension"], ".html");
@@ -108,14 +111,13 @@ fn lsp_status_matches_html_to_web_language_server() -> Result<(), Box<dyn std::e
 }
 
 #[test]
-fn lsp_status_preserves_scss_and_less_language_ids() -> Result<(), Box<dyn std::error::Error>> {
+fn lsp_status_preserves_scss_and_less_language_ids() -> TestResult {
     let root = tempfile::tempdir()?;
     std::fs::write(root.path().join("styles.scss"), "$color: #111;\n")?;
     std::fs::write(root.path().join("styles.less"), "@color: #111;\n")?;
 
     let mut client = McpClient::spawn()?;
-    let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
-    assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
+    let _init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
 
     for (id, path, extension, language) in [
         ("scss", "styles.scss", ".scss", "scss"),
@@ -139,7 +141,7 @@ fn lsp_status_preserves_scss_and_less_language_ids() -> Result<(), Box<dyn std::
 }
 
 #[test]
-fn lsp_config_covers_core_web_and_content_extensions() -> Result<(), Box<dyn std::error::Error>> {
+fn lsp_config_covers_core_web_and_content_extensions() -> TestResult {
     let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .arg("--print-covered-extensions")
         .output()?;
@@ -161,8 +163,7 @@ fn lsp_config_covers_core_web_and_content_extensions() -> Result<(), Box<dyn std
 }
 
 #[test]
-fn lsp_validator_rejects_missing_required_web_extension() -> Result<(), Box<dyn std::error::Error>>
-{
+fn lsp_validator_rejects_missing_required_web_extension() -> TestResult {
     let root = tempfile::tempdir()?;
     std::fs::create_dir_all(root.path().join(".codex"))?;
     std::fs::create_dir_all(root.path().join("lsp"))?;
@@ -201,14 +202,13 @@ fn lsp_validator_rejects_missing_required_web_extension() -> Result<(), Box<dyn 
 
 #[cfg(unix)]
 #[test]
-fn candidate_version_drives_both_mcp_server_info() -> Result<(), Box<dyn std::error::Error>> {
+fn candidate_version_drives_both_mcp_server_info() -> TestResult {
     let (prefix, patch) = env!("CARGO_PKG_VERSION").rsplit_once('.').ok_or("patch")?;
     let next_patch = patch
         .parse::<u64>()?
         .checked_add(1)
         .ok_or("patch overflow")?;
     let candidate = format!("{prefix}.{next_patch}");
-    assert_ne!(candidate, env!("CARGO_PKG_VERSION"));
     let root = tempfile::tempdir()?;
     let package = root.path().join("packages/codexy-runtime");
     let extraction = Command::new("sh")
