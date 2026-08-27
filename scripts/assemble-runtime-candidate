@@ -3,11 +3,31 @@ set -eu
 
 case "${STAGING_RUN_ID:?}" in *[!0-9]*|'') exit 1;; esac
 case "${STAGING_RUN_ATTEMPT:?}" in *[!0-9]*|'') exit 1;; esac
-test "$(git rev-parse HEAD)" = "${SOURCE_COMMIT:?}"
+source_commit=${SOURCE_COMMIT:?}
+pull_request=${EXACT_PR_NUMBER:-}
+workflow_sha=${WORKFLOW_SHA:-$(git rev-parse HEAD)}
+artifact_name=${ARTIFACT_NAME:-runtime-staging-${STAGING_RUN_ID}-${STAGING_RUN_ATTEMPT}}
+mode=protected-main
 
 root=dist/candidate/plugins/codexy-devtools
 mkdir -p dist/candidate/plugins
-rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
+if test -n "$pull_request"; then
+  test "$(git rev-parse HEAD)" = "$workflow_sha"
+  rm -rf dist/candidate
+  mkdir -p dist/candidate
+  root_mode="$(git ls-tree "$source_commit" -- plugins/codexy-devtools | awk '{print $1}')"
+  test "$root_mode" = 040000
+  tree_entries="$(git ls-tree -r "$source_commit" -- plugins/codexy-devtools)"
+  test -z "$(printf '%s\n' "$tree_entries" | awk '$1 == "120000" || $1 == "160000" {print; exit}')"
+  git archive "$source_commit" plugins/codexy-devtools | tar -x -C dist/candidate
+  test -d "$root"
+  test -z "$(find "$root" -type l -print -quit)" || exit 1
+  rm -rf "$root/runtime" "$root/runtime-release.json" "$root/runtime-candidate.json" "$root/handoff-runtime.json" "$root/mcp/codexy-mcp-devtools.exe"
+  mode=exact-pr-head
+else
+  test "$(git rev-parse HEAD)" = "$source_commit"
+  rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
+fi
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
 cp -R staged-runtime "$root/runtime"
 mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
@@ -24,11 +44,13 @@ for platform in darwin-arm64 linux-x86_64; do
   if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
 done
 
-SOURCE_TREE="$(git rev-parse HEAD^{tree})"
-SOURCE_COMMIT="$SOURCE_COMMIT" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" ROOT="$root" python3 - <<'PY'
+SOURCE_TREE="$(git rev-parse "${source_commit}^{tree}")"
+SOURCE_COMMIT="$source_commit" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" ROOT="$root" python3 - <<'PY'
 import hashlib, json, os
 
 root = os.environ["ROOT"]
+mode = os.environ["MODE"]
+pull_request = os.environ["EXACT_PR_NUMBER"]
 platforms = {}
 handoff = {}
 core_aware = os.environ["CORE_AWARE"] == "1"
@@ -84,22 +106,34 @@ fi
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
-SOURCE_COMMIT="$SOURCE_COMMIT" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" python3 - <<'PY'
+SOURCE_COMMIT="$source_commit" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" python3 - <<'PY'
 import json, os
 
 candidate = json.load(open("dist/candidate/plugins/codexy-devtools/runtime-candidate.json"))
-receipt = {
-    "schema": "codexy-runtime-candidate-receipt/v1",
-    "candidate": candidate,
-    "artifact": {"sha256": os.environ["ARCHIVE_SHA"], "payloadManifestSha256": os.environ["MANIFEST_SHA"]},
-    "provenance": {
-        "repositoryId": 1269350143,
-        "workflowPath": ".github/workflows/runtime-candidate.yml",
-        "runId": int(os.environ["STAGING_RUN_ID"]),
-        "runAttempt": int(os.environ["STAGING_RUN_ATTEMPT"]),
-        "workflowRunUrl": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['STAGING_RUN_ID']}",
-    },
-}
+artifact = {"sha256": os.environ["ARCHIVE_SHA"], "payloadManifestSha256": os.environ["MANIFEST_SHA"]}
+run_id = int(os.environ["STAGING_RUN_ID"])
+run_attempt = int(os.environ["STAGING_RUN_ATTEMPT"])
+workflow_run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run_id}"
+provenance = {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": run_id, "runAttempt": run_attempt, "workflowRunUrl": workflow_run_url}
+if os.environ["MODE"] == "exact-pr-head":
+    receipt = {
+        "schema": "codexy-runtime-pr-head-candidate-receipt/v1",
+        "candidate": candidate,
+        "admission": {
+            "pullRequestNumber": int(os.environ["EXACT_PR_NUMBER"]),
+            "sourceSha": os.environ["SOURCE_COMMIT"],
+            "workflowSha": os.environ["WORKFLOW_SHA"],
+            "baseRepository": os.environ["GITHUB_REPOSITORY"],
+            "headRepository": os.environ["GITHUB_REPOSITORY"],
+            "baseRef": "main",
+            "state": "open",
+            "mergedAt": None,
+        },
+        "artifact": artifact,
+        "provenance": {**provenance, "workflowSha": os.environ["WORKFLOW_SHA"], "sourceCommit": os.environ["SOURCE_COMMIT"], "artifactName": os.environ["ARTIFACT_NAME"], "mode": "exact-pr-head"},
+    }
+else:
+    receipt = {"schema": "codexy-runtime-candidate-receipt/v1", "candidate": candidate, "artifact": artifact, "provenance": provenance}
 open("dist/runtime-staging-receipt.json", "wb").write(json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode())
 open("dist/runtime-staging-provenance.json", "w", encoding="utf-8").write(json.dumps(receipt["provenance"], sort_keys=True, separators=(",", ":")))
 PY
