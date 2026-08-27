@@ -161,7 +161,7 @@ class RuntimeContractRuntimeCases:
                 runtime.run(configuration)
 
         self.assertEqual(failure.exception.code, 127)
-        self.assertIn("manifest identity mismatch", error.getvalue())
+        self.assertIn("offline mode has no cached or bundled runtime", error.getvalue())
         execute.assert_not_called()
 
     def test_explicit_override_cannot_poison_selected_release_cache(self) -> None:
