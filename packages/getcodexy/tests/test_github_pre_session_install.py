@@ -147,9 +147,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
             market = root / "marketplace"
             core = plugin(market / "plugins/codexy", "codexy")
             github = plugin(market / "plugins/codexy-github", "codexy-github")
-            (github / "agents/catalog.toml").write_text(
-                "tampered", encoding="utf-8"
-            )
+            (github / "agents/catalog.toml").write_text("tampered", encoding="utf-8")
             invoked: list[tuple[str, ...]] = []
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
