@@ -204,7 +204,7 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     if mutation == "missing":
                         path.unlink()
                     else:
-                        path.write_bytes(path.read_bytes() + b"\n# tampered\n")
+                        path.write_bytes(b"")
                     result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
 

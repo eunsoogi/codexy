@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_integrity import frozen_component
+from .component_registration_health import valid_registration
 from .activation_transaction import ActivationSnapshot
 from .plugin_resolution import (
     official_named_install,
@@ -79,6 +80,12 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
+        for root, component in (
+            (core_root, "core"),
+            (github_root, "github"),
+        ):
+            if not valid_registration(root, component):
+                raise ValueError(f"{component} component registration is invalid")
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,
             frozen_component(

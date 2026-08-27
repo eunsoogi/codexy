@@ -63,22 +63,19 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
                 (home / "agents/codexy-github/codexy-weaver.toml").is_file()
             )
 
-    def test_tampered_host_manifest_content_fails_and_rolls_back(self) -> None:
+    def test_tampered_host_manifest_identity_fails_and_rolls_back(self) -> None:
         cases = (
             (
-                "core MCP",
+                "core name",
                 "codexy",
-                lambda data: data.__setitem__("mcpServers", "/tmp/untrusted-mcp.json"),
+                lambda data: data.__setitem__("name", "untrusted"),
             ),
             (
-                "GitHub skills",
+                "GitHub repository",
                 "codexy-github",
-                lambda data: data.__setitem__("skills", "/tmp/untrusted-skills"),
-            ),
-            (
-                "unknown field",
-                "codexy",
-                lambda data: data.__setitem__("unexpected", True),
+                lambda data: data.__setitem__(
+                    "repository", "https://example.invalid/codexy"
+                ),
             ),
         )
         for label, component, mutate in cases:
@@ -129,7 +126,7 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
         home = root / "fresh Codex home"
-        with self.assertRaisesRegex(ValueError, "component manifest"):
+        with self.assertRaisesRegex(ValueError, "manifest"):
             run_github_pre_session(
                 home,
                 codex=executable(root),

@@ -6,9 +6,6 @@ import json
 import os
 from pathlib import Path
 
-from .component_integrity import verify_component
-
-
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
 # registration script load agent_files from this catalog; native Codex agent
@@ -196,18 +193,19 @@ def valid_registration(plugin: Path, component: str) -> bool:
             return _json(plugin / ".mcp.json") == MCP and _executable(
                 plugin / LAUNCHERS[component][0]
             )
-        verify_component(plugin, "codexy" if component == "core" else "codexy-github")
         return (
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
             and all(
-                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
+                _contains(plugin / f"agents/{name}", 'model = "')
+                for name in AGENT_FILES[component]
             )
-            and all(_regular(plugin / path) for path in LAUNCHERS[component])
+            and all(_launcher(plugin / path) for path in LAUNCHERS[component])
             and (
                 component != "core"
                 or all(_regular(plugin / path) for path in CORE_HOOK_DEPENDENCIES)
             )
+            and _skill(plugin, component)
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False
@@ -227,6 +225,24 @@ def _regular(path: Path) -> bool:
         return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
     except OSError:
         return False
+
+
+def _contains(path: Path, needle: str) -> bool:
+    return _regular(path) and needle in _text(path)
+
+
+def _launcher(path: Path) -> bool:
+    if not _regular(path):
+        return False
+    contents = _text(path)
+    return contents.startswith("#!") or (
+        path.suffix == ".cmd" and contents.lower().startswith("@echo off")
+    )
+
+
+def _skill(plugin: Path, component: str) -> bool:
+    name = "wiki" if component == "core" else "git-workflow"
+    return _contains(plugin / f"skills/{name}/SKILL.md", "---\nname: ")
 
 
 def _executable(path: Path) -> bool:
