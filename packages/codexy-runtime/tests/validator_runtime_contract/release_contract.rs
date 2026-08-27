@@ -3,53 +3,25 @@ use std::io::Write as _;
 
 #[test]
 fn validator_accepts_contract_free_public_bootstrap_source() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_to(temp.path())?;
-    declare_bundled_platforms(&plugin_root)?;
+    let (_temp, plugin_root) = prepared_plugin()?;
     std::fs::remove_file(plugin_root.join("runtime-release.json"))?;
-
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?;
-
-    assert!(output.status.success(), "unexpected stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(validate(&plugin_root)?.status.success());
     Ok(())
 }
 
 #[test]
 fn validator_accepts_source_selected_pointer_without_tracked_candidate() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_to(temp.path())?;
-    declare_bundled_platforms(&plugin_root)?;
-    std::fs::write(
-        plugin_root.join("runtime-release.json"),
-        serde_json::to_string_pretty(&source_selected_release())?,
-    )?;
+    let (_temp, plugin_root) = prepared_plugin()?;
+    write_release(&plugin_root, &source_selected_release())?;
     assert!(!plugin_root.join("runtime-candidate.json").exists());
-
-    let output = validate(&plugin_root)?;
-    assert!(
-        output.status.success(),
-        "source-selected pointer rejected: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(validate(&plugin_root)?.status.success());
     Ok(())
 }
 
 #[test]
 fn validator_accepts_structurally_valid_legacy_public_without_historical_pins() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_to(temp.path())?;
-    declare_bundled_platforms(&plugin_root)?;
-    std::fs::write(
-        plugin_root.join("runtime-release.json"),
-        serde_json::to_string_pretty(&legacy_public_release())?,
-    )?;
-
+    let (_temp, plugin_root) = prepared_plugin()?;
+    write_release(&plugin_root, &legacy_public_release())?;
     let output = validate(&plugin_root)?;
     assert!(
         output.status.success(),
@@ -60,23 +32,34 @@ fn validator_accepts_structurally_valid_legacy_public_without_historical_pins() 
 }
 
 #[test]
+fn validator_rejects_legacy_public_malformed_uppercase_and_identity_drift() -> Result<(), Box<dyn std::error::Error>> {
+    let cases: [(&str, fn() -> serde_json::Value, fn(&mut serde_json::Value)); 6] = [
+        ("malformed digest", legacy_public_release, |release| release["artifact"]["sha256"] = serde_json::json!("not-a-digest")),
+        ("uppercase digest", legacy_public_release, |release| release["artifact"]["sha256"] = serde_json::json!("A".repeat(64))),
+        ("wrong repository", legacy_public_release, |release| release["source"]["repository"] = serde_json::json!("https://example.com/repo")),
+        ("wrong tag", legacy_public_release, |release| release["artifact"]["tag"] = serde_json::json!("v1.2.3")),
+        ("wrong URL", legacy_public_release, |release| release["artifact"]["url"] = serde_json::json!("https://github.com/eunsoogi/codexy/releases/download/v1.2.2/wrong.tar.gz")),
+        ("wrong provenance", source_selected_release, |release| release["provenance"]["repositoryId"] = serde_json::json!(1)),
+    ];
+    for (label, make_release, mutate) in cases {
+        let (_temp, plugin_root) = prepared_plugin()?;
+        let mut release = make_release();
+        mutate(&mut release);
+        write_release(&plugin_root, &release)?;
+        assert!(!validate(&plugin_root)?.status.success(), "{label} accepted");
+    }
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let plugin_root = copy_plugin_to(temp.path())?;
-    declare_bundled_platforms(&plugin_root)?;
+    let (_temp, plugin_root) = prepared_plugin()?;
     let path = plugin_root.join("runtime-release.json");
     let mut contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     contract["untrusted"] = serde_json::json!(true);
-    std::fs::write(&path, serde_json::to_string_pretty(&contract)?)?;
+    write_release(&plugin_root, &contract)?;
 
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check",
-        ])
-        .output()?;
-
+    let output = validate(&plugin_root)?;
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("untrusted"),
@@ -87,7 +70,7 @@ fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn validator_accepts_only_version_release_tags() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_accepts_valid_candidate_proven_and_rejects_unsafe_tags() -> Result<(), Box<dyn std::error::Error>> {
     let valid = tempfile::tempdir()?;
     let valid_root = copy_plugin_to(valid.path())?;
     declare_bundled_platforms(&valid_root)?;
@@ -100,9 +83,7 @@ fn validator_accepts_only_version_release_tags() -> Result<(), Box<dyn std::erro
     );
 
     for tag in ["runtime-candidate-1.3.0", "v1.3", "v1.3.0-rc1"] {
-        let temp = tempfile::tempdir()?;
-        let plugin_root = copy_plugin_to(temp.path())?;
-        declare_bundled_platforms(&plugin_root)?;
+        let (_temp, plugin_root) = prepared_plugin()?;
         write_candidate_release(&plugin_root, tag)?;
         assert!(!validate(&plugin_root)?.status.success(), "unsafe tag accepted: {tag}");
     }
@@ -228,6 +209,20 @@ fn legacy_public_release() -> serde_json::Value {
             }
         }
     })
+}
+
+fn prepared_plugin() -> Result<(tempfile::TempDir, std::path::PathBuf), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = copy_plugin_to(temp.path())?;
+    declare_bundled_platforms(&plugin_root)?;
+    Ok((temp, plugin_root))
+}
+
+fn write_release(plugin_root: &std::path::Path, release: &serde_json::Value) -> std::io::Result<()> {
+    std::fs::write(
+        plugin_root.join("runtime-release.json"),
+        serde_json::to_string_pretty(release).expect("release serializes"),
+    )
 }
 
 fn validate(plugin_root: &std::path::Path) -> std::io::Result<std::process::Output> {
