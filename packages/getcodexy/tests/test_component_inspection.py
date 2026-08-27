@@ -163,6 +163,9 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     }
                 ),
             ),
+            ("core", "skills/wiki/SKILL.md", "---\nname: wiki\n"),
+            ("core", "hooks/codexy-thread-delivery.sh", "#!/definitely-missing\n"),
+            ("core", "skills/dreaming/scripts/resumable_context_capsule.py", ""),
         )
         plugins = {"core": "codexy", "devtools": "codexy-devtools"}
         for component, relative, contents in cases:

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
+
+from .component_manifest import load_component_manifest
 
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
@@ -197,8 +200,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
             and _json(plugin / "hooks/hooks.json") == HOOKS[component]
             and all(
-                _contains(plugin / f"agents/{name}", 'model = "')
-                for name in AGENT_FILES[component]
+                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
             )
             and all(_launcher(plugin / path) for path in LAUNCHERS[component])
             and (
@@ -227,22 +229,21 @@ def _regular(path: Path) -> bool:
         return False
 
 
-def _contains(path: Path, needle: str) -> bool:
-    return _regular(path) and needle in _text(path)
-
-
 def _launcher(path: Path) -> bool:
-    if not _regular(path):
-        return False
-    contents = _text(path)
-    return contents.startswith("#!") or (
-        path.suffix == ".cmd" and contents.lower().startswith("@echo off")
-    )
+    contents = _text(path) if _regular(path) else ""
+    if path.suffix == ".cmd":
+        return contents.lower().startswith("@echo off")
+    command = contents.splitlines()[0][2:].split() if contents.startswith("#!") else []
+    return bool(command) and shutil.which(command[-1]) is not None
 
 
 def _skill(plugin: Path, component: str) -> bool:
+    required = load_component_manifest().component(component).asset.required_paths
     name = "wiki" if component == "core" else "git-workflow"
-    return _contains(plugin / f"skills/{name}/SKILL.md", "---\nname: ")
+    contents = _text(plugin / f"skills/{name}/SKILL.md")
+    return all(_regular(plugin / path) for path in required) and (
+        contents.startswith(f"---\nname: {name}\n") and "\n---\n" in contents
+    )
 
 
 def _executable(path: Path) -> bool:

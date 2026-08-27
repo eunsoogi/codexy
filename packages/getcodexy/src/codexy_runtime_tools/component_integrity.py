@@ -12,6 +12,8 @@ from typing import Iterator
 
 from .updater import _absolute, _validate_real_path
 
+MAX_COMPONENT_BYTES = 512 * 1024 * 1024
+
 
 def verify_component(
     root: Path, name: str, version: str | None = None
@@ -21,7 +23,7 @@ def verify_component(
     root = _absolute(root)
     _validate_real_path(root, require_exists=True)
     manifest = Path(".codex-plugin/plugin.json")
-    manifest_contents = _read_regular(root, manifest)
+    manifest_contents = _read_regular(root, manifest, MAX_COMPONENT_BYTES)
     _verify_manifest(manifest_contents, name, version)
     verified = {manifest: manifest_contents}
     _read_component(root, verified)
@@ -29,6 +31,7 @@ def verify_component(
 
 
 def _read_component(root: Path, verified: dict[Path, bytes]) -> None:
+    size = sum(map(len, verified.values()))
     pending = [Path()]
     while pending:
         relative_directory = pending.pop()
@@ -56,7 +59,10 @@ def _read_component(root: Path, verified: dict[Path, bytes]) -> None:
                     pending.append(relative)
                 elif stat.S_ISREG(metadata.st_mode):
                     if relative not in verified:
-                        verified[relative] = _read_regular(root, relative)
+                        verified[relative] = _read_regular(
+                            root, relative, MAX_COMPONENT_BYTES - size
+                        )
+                        size += len(verified[relative])
                 else:
                     raise ValueError(
                         f"component integrity requires regular files: {root / relative}"
@@ -104,17 +110,17 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def _read_regular(root: Path, relative: Path) -> bytes:
+def _read_regular(root: Path, relative: Path, limit: int | None = None) -> bytes:
     if _uses_windows_directory_fallback():
-        return _read_regular_windows(root, relative)
-    return _read_regular_posix(root, relative)
+        return _read_regular_windows(root, relative, limit)
+    return _read_regular_posix(root, relative, limit)
 
 
 def _uses_windows_directory_fallback() -> bool:
     return os.name == "nt"
 
 
-def _read_regular_posix(root: Path, relative: Path) -> bytes:
+def _read_regular_posix(root: Path, relative: Path, limit: int | None) -> bytes:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     directory_flags = flags | getattr(os, "O_DIRECTORY", 0)
     descriptor = os.open(root, directory_flags)
@@ -131,12 +137,12 @@ def _read_regular_posix(root: Path, relative: Path) -> bytes:
                 raise ValueError(
                     f"component integrity requires regular files: {root / relative}"
                 )
-            return source.read()
+            return _read_limited(source, limit)
     finally:
         os.close(descriptor)
 
 
-def _read_regular_windows(root: Path, relative: Path) -> bytes:
+def _read_regular_windows(root: Path, relative: Path, limit: int | None) -> bytes:
     target, _ = _windows_safe_path(root, relative)
     descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_BINARY", 0))
     try:
@@ -149,9 +155,16 @@ def _read_regular_windows(root: Path, relative: Path) -> bytes:
                 f"component integrity path changed while reading: {target}"
             )
         with os.fdopen(descriptor, "rb", closefd=False) as source:
-            return source.read()
+            return _read_limited(source, limit)
     finally:
         os.close(descriptor)
+
+
+def _read_limited(source, limit: int | None) -> bytes:
+    contents = source.read() if limit is None else source.read(limit + 1)
+    if limit is not None and len(contents) > limit:
+        raise ValueError("component integrity size limit exceeded")
+    return contents
 
 
 def _windows_safe_path(root: Path, relative: Path) -> tuple[Path, os.stat_result]:
