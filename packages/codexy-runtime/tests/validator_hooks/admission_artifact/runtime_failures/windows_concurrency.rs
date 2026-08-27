@@ -48,7 +48,10 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         } else {
             assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
         }
-        let diagnostic = if launcher == "codexy-repository-issue" {
+        let diagnostic = if matches!(
+            launcher,
+            "codexy-repository-issue" | "codexy-repository-pull-request"
+        ) {
             "_ENVELOPE"
         } else {
             "_RUNTIME"
