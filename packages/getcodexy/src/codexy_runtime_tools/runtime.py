@@ -38,7 +38,7 @@ def _manifest_identity(expected_manifest: Path, observed_manifest: Path) -> tupl
         return False, "runtime package manifest identity mismatch: invalid JSON object"
     expected_identity = tuple(expected.get(field) for field in fields)
     observed_identity = tuple(observed.get(field) for field in fields)
-    if expected_identity != observed_identity:
+    if expected_identity != observed_identity or not all(isinstance(value, str) and value.strip() for identity in (expected_identity, observed_identity) for value in identity):
         return False, f"runtime package manifest identity mismatch: expected {expected_identity}, observed {observed_identity}"
     return True, ""
 

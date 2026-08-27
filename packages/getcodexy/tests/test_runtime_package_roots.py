@@ -20,6 +20,10 @@ from codexy_runtime_tools.source import RuntimeSourceIdentity
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 COMMIT = "a" * 40
 BINARIES = {"lsp": b"lsp runtime", "codegraph": b"codegraph runtime"}
+PLUGIN_MANIFEST = (
+    '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy",'
+    '"version":"1.3.0"}'
+)
 
 
 class Executed(BaseException):
@@ -75,7 +79,7 @@ def release(archive_digest: str = "b" * 64) -> dict[str, object]:
 def write_candidate_archive(path: Path, *, mixed: bool = False) -> None:
     files = {
         "plugins/codexy-devtools/runtime-candidate.json": encoded(candidate()),
-        "plugins/codexy-devtools/.codex-plugin/plugin.json": b'{"version":"1.3.0"}',
+        "plugins/codexy-devtools/.codex-plugin/plugin.json": PLUGIN_MANIFEST.encode(),
         **{
             f"plugins/codexy-devtools/runtime/codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}": binary
             for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64")
@@ -102,7 +106,7 @@ class RuntimePackageRootTests(unittest.TestCase):
             install_package(self.config(archive, selected), root / "cache", installed)
             self.assertEqual(installed.read_bytes(), BINARIES["lsp"])
             self.assertEqual(
-                (root / "cache/plugin.json").read_text(), '{"version":"1.3.0"}'
+                (root / "cache/plugin.json").read_text(), PLUGIN_MANIFEST
             )
 
     def test_selected_candidate_bootstraps_into_a_fresh_runtime_cache(self) -> None:
@@ -112,7 +116,7 @@ class RuntimePackageRootTests(unittest.TestCase):
             write_candidate_archive(archive)
             manifest = root / ".codex-plugin/plugin.json"
             manifest.parent.mkdir()
-            manifest.write_text('{"version":"1.3.0"}', encoding="utf-8")
+            manifest.write_text(PLUGIN_MANIFEST, encoding="utf-8")
             (root / "runtime-release.json").write_text(
                 json.dumps(release(hashlib.sha256(archive.read_bytes()).hexdigest())),
                 encoding="utf-8",

@@ -46,35 +46,47 @@ class RuntimeContractRuntimeCases:
         execute.assert_not_called()
         self.assertEqual(list(cache.rglob("runtime-marker.json")), [])
 
-    def test_selected_release_rejects_same_version_wrong_package_identity(self) -> None:
+    def test_selected_release_enforces_complete_package_identity(self) -> None:
         root, _ = self.load(release(), plugin_version="1.3.0")
         (root / ".codex-plugin/plugin.json").write_text(
             '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
             encoding="utf-8",
         )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
+        cases = (
+            ("wrong-name", '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
+            ("missing-name", '{"repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
+            ("empty-name", '{"name":"","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
+            ("whitespace-name", '{"name":"   ","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
+            ("non-string-name", '{"name":392,"repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 127),
+            ("missing-repository", '{"name":"codexy-devtools","version":"1.3.0"}', 127),
+            ("missing-version", '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy"}', 127),
+            ("complete-match", '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}', 0),
+        )
 
-        def install_wrong(_config, install_root: Path, installed: Path) -> None:
-            installed.parent.mkdir(parents=True)
-            installed.write_bytes(b"wrong identity runtime")
-            installed.chmod(0o755)
-            (install_root / "plugin.json").write_text(
-                '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
-                encoding="utf-8",
-            )
+        for label, package_manifest, expected_code in cases:
+            with self.subTest(case=label):
+                def install_wrong(_config, install_root: Path, installed: Path) -> None:
+                    installed.parent.mkdir(parents=True)
+                    installed.write_bytes(b"identity test runtime")
+                    installed.chmod(0o755)
+                    (install_root / "plugin.json").write_text(package_manifest, encoding="utf-8")
 
-        with (
-            mock.patch.dict(
-                os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(root / "cache")}, clear=True
-            ),
-            mock.patch.object(runtime, "install_package", side_effect=install_wrong),
-            mock.patch.object(runtime, "_execute") as execute,
-            self.assertRaises(SystemExit) as failure,
-        ):
-            runtime.run(runtime.Configuration.load("lsp", root, []))
+                with (
+                    mock.patch.dict(
+                        os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(root / f"cache-{label}")}, clear=True
+                    ),
+                    mock.patch.object(runtime, "install_package", side_effect=install_wrong),
+                    mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)) as execute,
+                    self.assertRaises(SystemExit) as failure,
+                ):
+                    runtime.run(runtime.Configuration.load("lsp", root, []))
 
-        self.assertEqual(failure.exception.code, 127)
-        execute.assert_not_called()
+                self.assertEqual(failure.exception.code, expected_code)
+                if expected_code:
+                    execute.assert_not_called()
+                else:
+                    execute.assert_called_once()
 
     def test_offline_cached_manifest_mismatch_reports_identity(self) -> None:
         root, _ = self.load(release(), plugin_version="1.3.0")
