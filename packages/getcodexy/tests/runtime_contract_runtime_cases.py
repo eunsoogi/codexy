@@ -36,8 +36,12 @@ class RuntimeContractRuntimeCases:
             mock.patch.dict(
                 os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(cache)}, clear=True
             ),
-            mock.patch.object(runtime, "install_package", side_effect=install_mismatched),
-            mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)) as execute,
+            mock.patch.object(
+                runtime, "install_package", side_effect=install_mismatched
+            ),
+            mock.patch.object(
+                runtime, "_execute", side_effect=SystemExit(0)
+            ) as execute,
             self.assertRaises(SystemExit) as failure,
         ):
             runtime.run(runtime.Configuration.load("lsp", root, []))
@@ -75,9 +79,8 @@ class RuntimeContractRuntimeCases:
 
         for label, package_manifest, expected_code in cases:
             with self.subTest(case=label):
-                def install_wrong(
-                    _config, install_root: Path, installed: Path
-                ) -> None:
+
+                def install_wrong(_config, install_root: Path, installed: Path) -> None:
                     installed.parent.mkdir(parents=True)
                     installed.write_bytes(b"identity test runtime")
                     installed.chmod(0o755)
@@ -91,8 +94,12 @@ class RuntimeContractRuntimeCases:
                         {"CODEXY_RUNTIME_CACHE_DIR": str(root / f"cache-{label}")},
                         clear=True,
                     ),
-                    mock.patch.object(runtime, "install_package", side_effect=install_wrong),
-                    mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)) as execute,
+                    mock.patch.object(
+                        runtime, "install_package", side_effect=install_wrong
+                    ),
+                    mock.patch.object(
+                        runtime, "_execute", side_effect=SystemExit(0)
+                    ) as execute,
                     self.assertRaises(SystemExit) as failure,
                 ):
                     runtime.run(runtime.Configuration.load("lsp", root, []))

@@ -105,9 +105,7 @@ class RuntimePackageRootTests(unittest.TestCase):
             installed = root / "cache/bin/codexy-mcp-lsp"
             install_package(self.config(archive, selected), root / "cache", installed)
             self.assertEqual(installed.read_bytes(), BINARIES["lsp"])
-            self.assertEqual(
-                (root / "cache/plugin.json").read_text(), PLUGIN_MANIFEST
-            )
+            self.assertEqual((root / "cache/plugin.json").read_text(), PLUGIN_MANIFEST)
 
     def test_selected_candidate_bootstraps_into_a_fresh_runtime_cache(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -57,21 +57,21 @@ def _manifest_identity(
 
 
 def _manifest_check(config: Configuration, install_root: Path) -> tuple[bool, str]:
-    return (True, "") if config.package_override else _manifest_identity(
-        config.manifest, install_root / "plugin.json"
-    )
+    if config.package_override:
+        return True, ""
+    return _manifest_identity(config.manifest, install_root / "plugin.json")
 
 
 def _marker_valid(
-    identity: RuntimeSourceIdentity, marker: Path,
-    config: Configuration, binary: Path
+    identity: RuntimeSourceIdentity, marker: Path, config: Configuration, binary: Path
 ) -> bool:
     if not executable(binary):
         return False
     try:
         return identity.valid_marker(
             json.loads(marker.read_text()),
-            platform=config.platform, server=config.server,
+            platform=config.platform,
+            server=config.server,
             binary=binary.read_bytes(),
         )
     except (OSError, ValueError, json.JSONDecodeError):
@@ -79,11 +79,11 @@ def _marker_valid(
 
 
 def _write_marker(
-    identity: RuntimeSourceIdentity, marker: Path,
-    config: Configuration, binary: Path
+    identity: RuntimeSourceIdentity, marker: Path, config: Configuration, binary: Path
 ) -> None:
     marker_data = identity.marker(
-        platform=config.platform, server=config.server,
+        platform=config.platform,
+        server=config.server,
         binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
     )
     if marker_data is not None:
