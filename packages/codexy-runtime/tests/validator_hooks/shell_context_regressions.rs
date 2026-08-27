@@ -61,7 +61,9 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         ("P-ISS-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f title='Updated issue' -f body=note"),
         ("P-ISS-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f state=closed -f state_reason=completed"),
         ("P-ISS-04-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/comments -f body=note"),
+        ("P-ISS-05-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/issues/17/labels/old"),
         ("P-ISS-05-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/labels -F 'labels=[\"bug\"]'"),
+        ("P-ISS-06-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"old\"]'"),
         ("P-ISS-06-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"eunsoogi\"]'"),
         ("P-ISS-05-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'labels=[]'"),
         ("P-ISS-06-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'assignees=[]'"),
@@ -70,6 +72,7 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         ("P-PR-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'"),
         ("P-PR-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed"),
         ("P-PR-06-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]'"),
+        ("P-PR-06-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"old\"]'"),
         ("P-PR-05-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM"),
     ];
     for (case_id, command) in eligible {

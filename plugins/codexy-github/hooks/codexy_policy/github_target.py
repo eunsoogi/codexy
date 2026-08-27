@@ -77,14 +77,15 @@ def graph_keys(key: str) -> tuple[str, ...]:
 
 def graph_bound(value: object, transport: dict[str, str], *keys: str) -> bool:
     actual = graph_string(value)
-    if actual is None and isinstance(value, tuple) and value[:1] == ("variable",):
-        actual = transport.get(str(value[1]))
+    if actual is None and isinstance(value, tuple) and len(value) == 2:
+        variable = value[1] if value[0] == "variable" else None
+        actual = transport.get(variable) if isinstance(variable, str) else None
     return actual is not None and any(transport.get(key) == actual for key in keys)
 
 
 def graph_id(payload: dict[str, object], key: str, transport: dict[str, str]) -> bool:
     value = payload.get(key)
-    return graph_literal(value) and graph_bound(value, transport, *graph_keys(key))
+    return graph_bound(value, transport, *graph_keys(key))
 
 
 def graph_common(

@@ -1,4 +1,4 @@
-use super::{TestResult, assert_input, assert_tool_case, plugin_root};
+use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
 
 #[test]
@@ -98,6 +98,27 @@ fn issue_735_connector_reads_do_not_require_repository_governance() -> TestResul
         false,
         &[],
     )
+}
+
+#[test]
+fn issue_735_unknown_connector_tools_fail_closed_at_the_universal_launcher() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let cwd = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        assert_input(
+            &root,
+            json!({
+                "hook_event_name": event,
+                "tool_name": "mcp__codex_apps__github_future_remote_mutation",
+                "tool_input": {"repository_full_name": "eunsoogi/codexy", "issue_number": 17},
+                "cwd": cwd,
+            }),
+            true,
+            &[],
+        )?;
+    }
+    Ok(())
 }
 
 fn cases() -> [(&'static str, Value, bool); 3] {

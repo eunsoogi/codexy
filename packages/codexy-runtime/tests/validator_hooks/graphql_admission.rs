@@ -5,7 +5,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
-    let bindings = "-f owner=eunsoogi -f name=codexy -f repository_id=REPO_owned -f issue_id=ISS_owned -f pull_request_id=PR_owned -f subject_id=ISS_owned -f labelable_id=ISS_owned -f assignable_id=ISS_owned -f duplicate_issue_id=ISS_duplicate -f label_ids='[\"LABEL\"]' -f assignee_ids='[\"USER\"]' -f user_ids='[\"USER\"]' -f user_logins='[\"eunsoogi\"]' -f client_mutation_id=CLIENT";
+    let bindings = "-f owner=eunsoogi -f name=codexy -f repository_id=REPO_owned -f issue_id=ISS_owned -f pull_request_id=PR_owned -f subject_id=ISS_owned -f labelable_id=ISS_owned -f assignable_id=ISS_owned -f duplicate_issue_id=ISS_duplicate -f milestone_id=MILESTONE -f label_ids='[\"LABEL\"]' -f assignee_ids='[\"USER\"]' -f user_ids='[\"USER\"]' -f user_logins='[\"eunsoogi\"]' -f client_mutation_id=CLIENT";
     for query in [
         "query { viewer { login } }",
         "query { search(query:\"mutation { mergePullRequest }\",type:ISSUE,first:1) { issueCount } }",
@@ -28,9 +28,14 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("P-ISS-03-reopen", "mutation { reopenIssue(input:{issueId:\"ISS_owned\"}) { issue { number } } }"),
         ("P-ISS-04", "mutation { addComment(input:{subjectId:\"ISS_owned\",body:\"note\"}) { comment { id } } }"),
         ("P-ISS-05", "mutation { addLabelsToLabelable(input:{labelableId:\"ISS_owned\",labelIds:[\"LABEL\"]}) { labelable { id } } }"),
+        ("P-ISS-05-remove", "mutation { removeLabelsFromLabelable(input:{labelableId:\"ISS_owned\",labelIds:[\"LABEL\"]}) { labelable { id } } }"),
         ("P-ISS-06", "mutation { addAssigneesToAssignable(input:{assignableId:\"ISS_owned\",assigneeIds:[\"USER\"]}) { assignable { id } } }"),
+        ("P-ISS-06-remove", "mutation { removeAssigneesFromAssignable(input:{assignableId:\"ISS_owned\",assigneeIds:[\"USER\"]}) { assignable { id } } }"),
         ("P-ISS-07", "mutation { updateIssue(input:{issueId:\"ISS_owned\",milestoneId:null}) { issue { number } } }"),
+        ("P-ISS-07-set", "mutation { updateIssue(input:{issueId:\"ISS_owned\",milestoneId:\"MILESTONE\"}) { issue { number } } }"),
         ("P-PR-03", "mutation { closePullRequest(input:{pullRequestId:\"PR_owned\"}) { pullRequest { number } } }"),
+        ("P-PR-03-reopen", "mutation { reopenPullRequest(input:{pullRequestId:\"PR_owned\"}) { pullRequest { number } } }"),
+        ("P-PR-05-submit", "mutation { submitPullRequestReview(input:{pullRequestId:\"PR_owned\",event:APPROVE}) { pullRequestReview { id } } }"),
         ("P-PR-05", "mutation { addPullRequestReview(input:{pullRequestId:\"PR_owned\",event:APPROVE,fileComments:null}) { pullRequestReview { id } } }"),
         ("P-PR-06", "mutation { requestReviews(input:{pullRequestId:\"PR_owned\",userIds:[\"USER\"],union:true}) { pullRequest { number } } }"),
         ("P-PR-06-login", "mutation { requestReviewsByLogin(input:{pullRequestId:\"PR_owned\",userLogins:[\"eunsoogi\"],union:false}) { pullRequest { number } } }"),
@@ -39,6 +44,23 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         assert_case(&root, &owned, &format!("gh api graphql {bindings} -f query='{query}'"), false, &[])
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
+    let pr_bindings = bindings.replace("subject_id=ISS_owned", "subject_id=PR_owned");
+    for (case_id, query) in [
+        ("P-PR-02", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",body:\"note\",maintainerCanModify:false}) { pullRequest { number } } }"),
+        ("P-PR-04", "mutation { addComment(input:{subjectId:\"PR_owned\",body:\"note\"}) { comment { id } } }"),
+    ] {
+        assert_case(&root, &owned, &format!("gh api graphql {pr_bindings} -f query='{query}'"), false, &[])
+            .map_err(|error| format!("{case_id}: {error}"))?;
+    }
+    let variable_query = r#"mutation Update($issue_id: ID!) { updateIssue(input:{issueId:$issue_id,title:"Variable-bound issue"}) { issue { number } } }"#;
+    assert_case(
+        &root,
+        &owned,
+        &format!("gh api graphql {bindings} -f query='{variable_query}'"),
+        false,
+        &[],
+    )
+    .map_err(|error| format!("P-ISS-02-variable-bound: {error}"))?;
     let clear_bindings = bindings
         .replace("label_ids='[\"LABEL\"]'", "label_ids='[]'")
         .replace("assignee_ids='[\"USER\"]'", "assignee_ids='[]'");
