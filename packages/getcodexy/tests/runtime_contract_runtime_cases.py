@@ -35,14 +35,11 @@ class RuntimeContractRuntimeCases:
             installed.parent.mkdir(parents=True)
             installed.write_bytes(b"stale runtime")
             installed.chmod(0o755)
+            stale_manifest = dict(
+                json.loads(FIXTURE_MANIFEST), version=STALE_MISMATCH_VERSION
+            )
             (install_root / "plugin.json").write_text(
-                json.dumps(
-                    {
-                        "name": "codexy-devtools",
-                        "version": STALE_MISMATCH_VERSION,
-                    }
-                ),
-                encoding="utf-8",
+                json.dumps(stale_manifest), encoding="utf-8"
             )
 
         with (
@@ -67,8 +64,7 @@ class RuntimeContractRuntimeCases:
         root, _ = self.load(release(), plugin_version=FIXTURE_VERSION)
         manifest = json.loads(FIXTURE_MANIFEST)
         (root / ".codex-plugin/plugin.json").write_text(
-            json.dumps(manifest),
-            encoding="utf-8",
+            FIXTURE_MANIFEST, encoding="utf-8"
         )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
 
@@ -76,6 +72,8 @@ class RuntimeContractRuntimeCases:
             return {key: value for key, value in manifest.items() if key != field}
 
         cases = (
+            ("stale-version", {**manifest, "version": STALE_MISMATCH_VERSION}, 127),
+            ("wrong-repository", {**manifest, "repository": "other"}, 127),
             ("wrong-name", {**manifest, "name": "codexy-other"}, 127),
             ("missing-name", without("name"), 127),
             ("empty-name", {**manifest, "name": ""}, 127),

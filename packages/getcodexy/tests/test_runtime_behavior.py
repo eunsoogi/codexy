@@ -11,13 +11,6 @@ from codexy_runtime_tools.cache import runtime_cache_key
 from runtime_package_behavior_cases import RuntimePackageBehaviorCases
 
 
-PACKAGE_MANIFEST = {
-    "name": "codexy-devtools",
-    "repository": "https://github.com/eunsoogi/codexy",
-    "version": "1.2.1",
-}
-
-
 class Executed(BaseException):
     pass
 
@@ -26,7 +19,7 @@ def configuration(root: Path, **overrides: object) -> runtime.Configuration:
     plugin_root = root / "plugin root 유니코드"
     manifest = plugin_root / ".codex-plugin" / "plugin.json"
     manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+    manifest.write_text(json.dumps({"version": "1.2.1"}), encoding="utf-8")
     values: dict[str, object] = {
         "server": "lsp",
         "plugin_root": plugin_root,
@@ -89,7 +82,7 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
             installed.parent.mkdir(parents=True)
             installed.write_text("#!/bin/sh\n", encoding="utf-8")
             installed.chmod(0o755)
-            marker.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+            marker.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
                 mock.patch.object(runtime, "_cache_root", return_value=cache),
                 mock.patch.object(runtime, "install_package") as acquire,
@@ -115,7 +108,7 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
             installed.parent.mkdir(parents=True)
             installed.write_text("#!/bin/sh\n", encoding="utf-8")
             installed.chmod(0o755)
-            marker.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+            marker.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
                 mock.patch.object(runtime, "_cache_root", return_value=cache),
                 self.assertRaisesRegex(SystemExit, "127"),
@@ -123,7 +116,7 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
                 runtime.run(pinned)
             manifest = root / ".codex-plugin" / "plugin.json"
             manifest.parent.mkdir(exist_ok=True)
-            manifest.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with mock.patch.dict(
                 "os.environ", {"CODEXY_RUNTIME_PACKAGE_SHA256": "A" * 64}, clear=True
             ):
@@ -153,7 +146,7 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
             root = Path(temporary)
             manifest = root / ".codex-plugin" / "plugin.json"
             manifest.parent.mkdir()
-            manifest.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
                 mock.patch.dict(
                     "os.environ",
@@ -169,7 +162,7 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
             root = Path(temporary)
             manifest = root / ".codex-plugin" / "plugin.json"
             manifest.parent.mkdir()
-            manifest.write_text(json.dumps(PACKAGE_MANIFEST), encoding="utf-8")
+            manifest.write_text('{"version":"1.2.1"}', encoding="utf-8")
             with (
                 mock.patch.dict(
                     "os.environ", {"CODEXY_RUNTIME_PACKAGE_PATH": ""}, clear=True
