@@ -1,6 +1,5 @@
 mod checks;
 pub(crate) mod core;
-mod legacy;
 
 use std::path::Path;
 
