@@ -1,5 +1,4 @@
 name: Stage verified runtime artifacts
-
 on:
   workflow_dispatch:
     inputs:
@@ -7,12 +6,18 @@ on:
         description: "Exact immutable source commit to build"
         required: true
         type: string
-
+      exact_pr_number:
+        description: "Optional exact same-repository PR number"
+        required: false
+        default: ""
+        type: string
 permissions:
   contents: read
-
 jobs:
   verify-source-commit:
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -20,13 +25,20 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify source commit is reachable from protected main
+      - name: Verify candidate source admission
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
-        run: git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
-
+          EXACT_PR_NUMBER: ${{ inputs.exact_pr_number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/verify-runtime-candidate-source.sh
   build-runtime:
     needs: verify-source-commit
+    permissions:
+      contents: read
+    env:
+      GITHUB_TOKEN: ""
+      GH_TOKEN: ""
     name: Build ${{ matrix.platform }} candidate
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -55,10 +67,7 @@ jobs:
         shell: pwsh
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
-        run: |
-          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_COMMIT) {
-            throw "checked out source commit does not match workflow input"
-          }
+        run: if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_COMMIT) { throw "checked out source commit does not match workflow input" }
       - name: Build candidate MCP runtimes
         working-directory: packages/codexy-runtime
         run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools --bin codexy-handoff-validate
@@ -67,73 +76,51 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, subprocess
-
-          def smoke(binary, tool, arguments):
-              requests = [
-                  {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
-                  {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": tool, "arguments": arguments}},
-              ]
-              completed = subprocess.run(
-                  [binary],
-                  input="\n".join(json.dumps(request) for request in requests) + "\n",
-                  capture_output=True,
-                  check=False,
-                  text=True,
-                  timeout=30,
-              )
-              if completed.returncode:
-                  raise SystemExit(f"{binary} failed: {completed.stderr}")
-              responses = {response["id"]: response for response in map(json.loads, completed.stdout.splitlines()) if "id" in response}
-              expected = {"protocolVersion": "2024-11-05"}
-              if responses[1]["result"]["protocolVersion"] != expected["protocolVersion"]:
-                  raise SystemExit(f"{binary} protocol mismatch")
-              if "error" in responses[2] or not responses[2]["result"]["content"]:
-                  raise SystemExit(f"{binary} tool smoke failed: {responses[2]}")
-
           cases = [
               {"binary": "packages/codexy-runtime/target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "packages/codexy-runtime/Cargo.toml"}},
               {"binary": "packages/codexy-runtime/target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}},
           ]
+          expected = {"protocolVersion": "2024-11-05"}
           for case in cases:
-              smoke(case["binary"], case["name"], case["arguments"])
+              requests = [
+                  {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+                  {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": case["name"], "arguments": case["arguments"]}},
+              ]
+              result = subprocess.run([case["binary"]], input="\n".join(json.dumps(request) for request in requests) + "\n", capture_output=True, text=True, timeout=30, check=False)
+              if result.returncode: raise SystemExit(f"{case['binary']} failed: {result.stderr}")
+              responses = {response["id"]: response for response in map(json.loads, result.stdout.splitlines()) if "id" in response}
+              if responses[1]["result"]["protocolVersion"] != expected["protocolVersion"]: raise SystemExit(f"{case['binary']} protocol mismatch")
+              if "error" in responses[2] or not responses[2]["result"]["content"]: raise SystemExit(f"{case['binary']} tool smoke failed: {responses[2]}")
           PY
       - name: Smoke native Windows MCP protocols
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
         run: |
-          $cases = @(
-            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" } },
-            @{ Binary = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
-          )
-          foreach ($case in $cases) {
-            $binary = (Resolve-Path -LiteralPath $case.Binary).Path
+          foreach ($case in @(
+            @{ File = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" } },
+            @{ File = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
+          )) {
             $start = [System.Diagnostics.ProcessStartInfo]::new()
-            $start.FileName = $binary
+            $start.FileName = (Resolve-Path -LiteralPath $case.File).Path
             $start.UseShellExecute = $false
-            $start.RedirectStandardInput = $true
-            $start.RedirectStandardOutput = $true
-            $start.RedirectStandardError = $true
-            $start.CreateNoWindow = $true
-            $process = [System.Diagnostics.Process]::new()
-            $process.StartInfo = $start
+            $start.RedirectStandardInput = $true; $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+            $process = [System.Diagnostics.Process]::new(); $process.StartInfo = $start
             try {
-              if (-not $process.Start()) { throw "failed to start $binary" }
-              $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-              $stderrTask = $process.StandardError.ReadToEndAsync()
+              if (-not $process.Start()) { throw "failed to start $($case.File)" }
+              $stdoutTask = $process.StandardOutput.ReadToEndAsync(); $stderrTask = $process.StandardError.ReadToEndAsync()
               $requests = @(
                 (@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} } | ConvertTo-Json -Compress),
                 (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } } | ConvertTo-Json -Compress)
               )
               foreach ($request in $requests) { $process.StandardInput.WriteLine($request) }
               $process.StandardInput.Close()
-              if (-not $process.WaitForExit(30000)) { $process.Kill($true); throw "$binary timed out" }
-              $stdout = $stdoutTask.GetAwaiter().GetResult()
-              $stderr = $stderrTask.GetAwaiter().GetResult()
-              if ($process.ExitCode -ne 0) { throw "$binary failed: $stderr" }
+              if (-not $process.WaitForExit(30000)) { $process.Kill($true); throw "$($case.File) timed out" }
+              $stdout = $stdoutTask.GetAwaiter().GetResult(); $stderr = $stderrTask.GetAwaiter().GetResult()
+              if ($process.ExitCode -ne 0) { throw "$($case.File) failed: $stderr" }
               $responses = @($stdout -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-              if (($responses | Where-Object id -eq 1).result.protocolVersion -ne "2024-11-05") { throw "$binary protocol mismatch" }
+              if (($responses | Where-Object id -eq 1).result.protocolVersion -ne "2024-11-05") { throw "$($case.File) protocol mismatch" }
               $tool = $responses | Where-Object id -eq 2
-              if ($tool.error -or -not $tool.result.content) { throw "$binary tool smoke failed" }
+              if ($tool.error -or -not $tool.result.content) { throw "$($case.File) tool smoke failed" }
             } finally {
               if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
               $process.Dispose()
@@ -159,22 +146,13 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: |
           New-Item -ItemType Directory -Force -Path runtime | Out-Null
-          foreach ($server in @("lsp", "codegraph")) {
-            $source = "packages/codexy-runtime/target/release/codexy-mcp-$server.exe"
-            $destination = "runtime/codexy-mcp-$server-$env:PLATFORM.exe"
+          foreach ($name in @("codexy-mcp-lsp", "codexy-mcp-codegraph", "codexy-mcp-devtools", "codexy-handoff-validate")) {
+            $source = "packages/codexy-runtime/target/release/$name.exe"
+            $destination = "runtime/$name-$env:PLATFORM.exe"
             Copy-Item -LiteralPath $source -Destination $destination
             $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
             if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
           }
-          $dispatcher = "packages/codexy-runtime/target/release/codexy-mcp-devtools.exe"
-          $destination = "runtime/codexy-mcp-devtools-$env:PLATFORM.exe"
-          Copy-Item -LiteralPath $dispatcher -Destination $destination
-          $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
-          if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }
-          $handoff = "runtime/codexy-handoff-validate-$env:PLATFORM.exe"
-          Copy-Item -LiteralPath "packages/codexy-runtime/target/release/codexy-handoff-validate.exe" -Destination $handoff
-          $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $handoff))[0..1]
-          if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$handoff is not a PE executable" }
       - uses: astral-sh/setup-uv@v7
         if: matrix.platform == 'windows-x86_64'
       - name: Prove native handoff bridge and installed CMD adversarial contract
@@ -188,20 +166,42 @@ jobs:
           name: runtime-staging-${{ matrix.platform }}
           path: runtime
           if-no-files-found: error
-
   stage-runtime:
     needs: build-runtime
     runs-on: ubuntu-latest
+    environment: runtime-candidate-staging
     permissions:
       attestations: write
       contents: read
       id-token: write
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out trusted workflow commit for exact PR head
+        if: inputs.exact_pr_number != ''
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Check out protected source for existing staging path
+        if: inputs.exact_pr_number == ''
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Recheck exact PR admission before staging
+        if: inputs.exact_pr_number != ''
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          EXACT_PR_NUMBER: ${{ inputs.exact_pr_number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/verify-runtime-candidate-source.sh
+      - name: Fetch validated PR source without executing it
+        if: inputs.exact_pr_number != ''
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: git fetch --no-tags origin "$SOURCE_COMMIT"
       - uses: actions/download-artifact@v8
         with:
           pattern: runtime-staging-*
@@ -212,19 +212,36 @@ jobs:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           STAGING_RUN_ID: ${{ github.run_id }}
           STAGING_RUN_ATTEMPT: ${{ github.run_attempt }}
+          EXACT_PR_NUMBER: ${{ inputs.exact_pr_number }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          ARTIFACT_NAME: ${{ inputs.exact_pr_number != '' && format('runtime-pr-head-{0}-{1}', github.run_id, github.run_attempt) || format('runtime-staging-{0}-{1}', github.run_id, github.run_attempt) }}
         run: scripts/assemble-runtime-candidate
       - uses: actions/attest-build-provenance@v4
         with:
-          subject-path: dist/codexy-marketplace-plugin.tar.gz
+          subject-path: |
+            dist/codexy-marketplace-plugin.tar.gz
+            dist/runtime-staging-receipt.json
       - name: Verify staged archive and receipt digests
         run: |
           sha256sum dist/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 dist/runtime-staging-receipt.json)"
           tar -xOf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/runtime-candidate.json > staged-candidate.json
           sha256sum staged-candidate.json | grep "$(jq -r .artifact.payloadManifestSha256 dist/runtime-staging-receipt.json)"
       - name: Upload authenticated staging bundle
+        if: inputs.exact_pr_number == ''
         uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/codexy-marketplace-plugin.tar.gz
+            dist/runtime-staging-receipt.json
+            dist/runtime-staging-provenance.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload isolated PR-head candidate bundle
+        if: inputs.exact_pr_number != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-pr-head-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             dist/codexy-marketplace-plugin.tar.gz
             dist/runtime-staging-receipt.json

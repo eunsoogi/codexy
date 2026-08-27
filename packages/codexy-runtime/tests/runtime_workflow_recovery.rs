@@ -18,6 +18,8 @@ mod durable_selection_behavior;
 mod legacy_selected_source;
 #[path = "runtime_workflow_recovery/legacy_public_assembly.rs"]
 mod legacy_public_assembly;
+#[path = "runtime_workflow_recovery/exact_pr_head_admission.rs"]
+mod exact_pr_head_admission;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
