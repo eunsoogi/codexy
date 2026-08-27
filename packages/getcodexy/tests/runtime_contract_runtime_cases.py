@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib
+import json
 import os
 from pathlib import Path
 from unittest import mock
@@ -10,6 +11,36 @@ from runtime_contract_support import COMMIT, legacy, release
 
 
 class RuntimeContractRuntimeCases:
+    def test_selected_release_rejects_a_mismatched_package_manifest_before_execution(
+        self,
+    ) -> None:
+        root, _ = self.load(release(), plugin_version="1.3.0")
+        runtime = importlib.import_module("codexy_runtime_tools.runtime")
+        cache = root / "cache"
+
+        def install_mismatched(_config, install_root: Path, installed: Path) -> None:
+            installed.parent.mkdir(parents=True)
+            installed.write_bytes(b"stale runtime")
+            installed.chmod(0o755)
+            (install_root / "plugin.json").write_text(
+                json.dumps({"name": "codexy-devtools", "version": "1.2.2"}),
+                encoding="utf-8",
+            )
+
+        with (
+            mock.patch.dict(
+                os.environ, {"CODEXY_RUNTIME_CACHE_DIR": str(cache)}, clear=True
+            ),
+            mock.patch.object(runtime, "install_package", side_effect=install_mismatched),
+            mock.patch.object(runtime, "_execute", side_effect=SystemExit(0)) as execute,
+            self.assertRaises(SystemExit) as failure,
+        ):
+            runtime.run(runtime.Configuration.load("lsp", root, []))
+
+        self.assertEqual(failure.exception.code, 127)
+        execute.assert_not_called()
+        self.assertEqual(list(cache.rglob("runtime-marker.json")), [])
+
     def test_explicit_override_cannot_poison_selected_release_cache(self) -> None:
         root, _ = self.load(legacy())
         runtime = importlib.import_module("codexy_runtime_tools.runtime")

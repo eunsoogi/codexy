@@ -127,7 +127,10 @@ def run(config: Configuration) -> NoReturn:
                 )
             except (OSError, ValueError, json.JSONDecodeError):
                 valid = False
-            if valid:
+            if valid and (
+                config.package_override
+                or releases_match(config.manifest, install_root / "plugin.json")[0]
+            ):
                 _execute(config, installed)
         elif (
             source_identity.cache_key(platform=config.platform, server=config.server)
@@ -146,6 +149,12 @@ def run(config: Configuration) -> NoReturn:
                 server=config.server,
                 binary_sha256=hashlib.sha256(installed.read_bytes()).hexdigest(),
             )
+            if not config.package_override:
+                matches, message = releases_match(
+                    config.manifest, install_root / "plugin.json"
+                )
+                if not matches:
+                    raise RuntimeError(message)
             if source_marker:
                 marker.write_text(
                     json.dumps(source_marker, sort_keys=True), encoding="utf-8"
