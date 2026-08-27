@@ -69,6 +69,43 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
 }
 
 #[test]
+fn installed_content_proof_rejects_a_one_byte_tamper_through_public_verifier() -> TestResult {
+    let receipt = session_fixture("controlled-receipt.json")?;
+    let valid = validate(&receipt)?;
+    assert!(valid.status.success(), "stderr:\n{}", stderr(&valid));
+
+    let original = serde_json::to_vec(&receipt)?;
+    let mut tampered = original.clone();
+    let marker = b"\"installedChangedFiles\":[{\"path\":\"skills/orchestration/references/execution-budget.md\",\"sha256\":\"";
+    let start = tampered
+        .windows(marker.len())
+        .position(|window| window == marker)
+        .ok_or("installed content proof marker must exist")?
+        + marker.len();
+    tampered[start] = b'c';
+    assert_eq!(tampered.len(), original.len());
+    assert_eq!(
+        original
+            .iter()
+            .zip(tampered.iter())
+            .filter(|(left, right)| left != right)
+            .count(),
+        1
+    );
+
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("tampered-receipt.json");
+    fs::write(&path, &tampered)?;
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-session-audit"))
+        .arg("--receipt")
+        .arg(path)
+        .output()?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("content equivalence"));
+    Ok(())
+}
+
+#[test]
 fn installed_content_proof_keeps_package_fixtures_and_repository_sources_distinct() -> TestResult {
     let repository = codexy_runtime::paths::repository_root();
     let runtime = codexy_runtime::paths::runtime_package_root();
