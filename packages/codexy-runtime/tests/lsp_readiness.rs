@@ -1,4 +1,5 @@
 use std::io::{BufRead as _, BufReader, Write as _};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 use serde_json::{Value, json};
@@ -10,8 +11,12 @@ struct McpClient {
 
 impl McpClient {
     fn spawn() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::spawn_path(Path::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp")))
+    }
+
+    fn spawn_path(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let path_dir = tempfile::tempdir()?;
-        let child = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-lsp"))
+        let child = Command::new(path)
             .env("PATH", path_dir.path())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -45,7 +50,10 @@ fn lsp_status_classifies_missing_rust_analyzer_as_readiness_defect()
     let mut client = McpClient::spawn()?;
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-lsp");
-    assert_eq!(init["result"]["serverInfo"]["version"], codexy_runtime::version::runtime_version());
+    assert_eq!(
+        init["result"]["serverInfo"]["version"],
+        codexy_runtime::version::runtime_version()
+    );
 
     let status = client.send(&json!({
         "jsonrpc":"2.0","id":2,"method":"tools/call",
@@ -188,5 +196,55 @@ fn lsp_validator_rejects_missing_required_web_extension() -> Result<(), Box<dyn 
         stderr.contains("LSP coverage missing required extensions: .graphql"),
         "validator failure should name missing .graphql coverage, got {stderr}"
     );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn candidate_version_drives_both_mcp_server_info() -> Result<(), Box<dyn std::error::Error>> {
+    let (prefix, patch) = env!("CARGO_PKG_VERSION").rsplit_once('.').ok_or("patch")?;
+    let next_patch = patch
+        .parse::<u64>()?
+        .checked_add(1)
+        .ok_or("patch overflow")?;
+    let candidate = format!("{prefix}.{next_patch}");
+    assert_ne!(candidate, env!("CARGO_PKG_VERSION"));
+    let root = tempfile::tempdir()?;
+    let package = root.path().join("packages/codexy-runtime");
+    let extraction = Command::new("sh")
+        .arg("-c")
+        .arg("set -eu; git -C \"$S\" archive HEAD packages/codexy-runtime | tar -x -C \"$D\"; test -f \"$D/packages/codexy-runtime/Cargo.toml\"")
+        .env("S", codexy_runtime::paths::repository_root())
+        .env("D", root.path())
+        .status()?;
+    assert!(extraction.success(), "runtime source extraction failed");
+
+    let bootstrap = package.join("src/version/bootstrap.rs");
+    let mut source = std::fs::read_to_string(&bootstrap)?;
+    let prefix = "pub(super) const CANDIDATE_VERSION: &str = \"";
+    let start = source.find(prefix).ok_or("candidate declaration")? + prefix.len();
+    let end = start + source[start..].find('"').ok_or("candidate terminator")?;
+    source.replace_range(start..end, &candidate);
+    std::fs::write(&bootstrap, source)?;
+
+    let target = root.path().join("target");
+    let manifest = package.join("Cargo.toml");
+    let build = Command::new("cargo")
+        .args(["build", "--release", "--locked", "--manifest-path"])
+        .arg(&manifest)
+        .args(["--target-dir"])
+        .arg(&target)
+        .args(["--bin", "codexy-mcp-lsp", "--bin", "codexy-mcp-codegraph"])
+        .status()?;
+    assert!(build.success(), "candidate build failed");
+    for server in ["lsp", "codegraph"] {
+        let binary = target.join(format!("release/codexy-mcp-{server}"));
+        let mut client = McpClient::spawn_path(&binary)?;
+        let init =
+            client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
+        assert_eq!(init["result"]["serverInfo"]["version"], candidate);
+        let _ = client.child.kill();
+        let _ = client.child.wait();
+    }
     Ok(())
 }
