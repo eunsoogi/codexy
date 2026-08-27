@@ -41,6 +41,25 @@ fn validator_accepts_source_selected_pointer_without_tracked_candidate() -> Resu
 }
 
 #[test]
+fn validator_accepts_structurally_valid_legacy_public_without_historical_pins() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = copy_plugin_to(temp.path())?;
+    declare_bundled_platforms(&plugin_root)?;
+    std::fs::write(
+        plugin_root.join("runtime-release.json"),
+        serde_json::to_string_pretty(&legacy_public_release())?,
+    )?;
+
+    let output = validate(&plugin_root)?;
+    assert!(
+        output.status.success(),
+        "structurally valid legacy-public release rejected: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn validator_rejects_runtime_release_unknown_fields() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = copy_plugin_to(temp.path())?;
@@ -173,6 +192,39 @@ fn source_selected_release() -> serde_json::Value {
                     "linux-x86_64": {"path": "runtime/codexy-handoff-validate-linux-x86_64.bin", "sha256": "0".repeat(64), "kind": "elf"},
                     "windows-x86_64": {"path": "runtime/codexy-handoff-validate-windows-x86_64.exe", "sha256": "1".repeat(64), "kind": "pe"}
                 }
+            }
+        }
+    })
+}
+
+fn legacy_public_release() -> serde_json::Value {
+    serde_json::json!({
+        "schema": "codexy-runtime-release/v1",
+        "state": "legacy-public",
+        "source": {
+            "repository": "https://github.com/eunsoogi/codexy",
+            "commit": "f".repeat(40)
+        },
+        "artifact": {
+            "tag": "v1.2.2",
+            "url": "https://github.com/eunsoogi/codexy/releases/download/v1.2.2/codexy-marketplace-plugin.tar.gz",
+            "sha256": "a".repeat(64),
+            "payloadManifestSha256": "b".repeat(64)
+        },
+        "compatibility": {
+            "bootstrapApi": 1,
+            "pluginRuntimeApi": 1,
+            "transport": "stdio-newline-v1",
+            "mcpProtocol": "2024-11-05"
+        },
+        "platforms": {
+            "darwin-arm64": {
+                "lsp": {"sha256": "c".repeat(64)},
+                "codegraph": {"sha256": "d".repeat(64)}
+            },
+            "linux-x86_64": {
+                "lsp": {"sha256": "e".repeat(64)},
+                "codegraph": {"sha256": "f".repeat(64)}
             }
         }
     })

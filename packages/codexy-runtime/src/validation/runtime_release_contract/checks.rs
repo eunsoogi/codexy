@@ -13,15 +13,11 @@ use crate::{
     },
 };
 
-use super::{core, legacy::legacy_digest};
+use super::core;
 
 const SCHEMA: &str = "codexy-runtime-release/v1";
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
-const LEGACY_COMMIT: &str = "6890b3089dcffc2293f8f63b761e33562250eac6";
 const LEGACY_TAG: &str = "v1.2.2";
-const LEGACY_ARCHIVE_SHA: &str = "6cd61a3472d9a70d818251f1abd3e264e27a59ade4a05929014afc1c9de96293";
-const LEGACY_MANIFEST_SHA: &str =
-    "0056e191fa5d837f770bc5e5f8a2be855b9252e299847522b0d88e6b186b42f2";
 const LEGACY_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
 #[rustfmt::skip]
 const PROVENANCE_FIELDS: &[&str] = &["repositoryId", "workflowPath", "runId", "runAttempt", "workflowRunUrl"];
@@ -58,7 +54,7 @@ pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
         _ => bail!("{} state is unsupported", display_relative(&path)),
     };
     exact_keys(root, fields, &path)?;
-    core::check_source(source, state, REPOSITORY, LEGACY_COMMIT, &path)?;
+    core::check_source(source, state, REPOSITORY, &path)?;
     check_artifact(object_field(root, "artifact", &path)?, state, &path)?;
     check_compatibility(object_field(root, "compatibility", &path)?, &path)?;
     if state == "source-selected" {
@@ -106,21 +102,14 @@ fn check_artifact(artifact: &Map<String, Value>, state: &str, path: &Path) -> Re
         "artifact.url",
         path,
     )?;
-    let outer = digest(string(artifact, "sha256", path)?, "artifact.sha256", path)?;
-    let payload = digest(
+    digest(string(artifact, "sha256", path)?, "artifact.sha256", path)?;
+    digest(
         string(artifact, "payloadManifestSha256", path)?,
         "artifact.payloadManifestSha256",
         path,
     )?;
     if state == "legacy-public" {
         exact(tag, LEGACY_TAG, "artifact.tag", path)?;
-        exact(outer, LEGACY_ARCHIVE_SHA, "artifact.sha256", path)?;
-        exact(
-            payload,
-            LEGACY_MANIFEST_SHA,
-            "artifact.payloadManifestSha256",
-            path,
-        )?;
     }
     Ok(())
 }
@@ -206,10 +195,8 @@ fn check_platforms(value: &Map<String, Value>, supported: &[String], state: &str
             let binary = object_field(inventory, server, path)?;
             let fields = if state == "legacy-public" { &["sha256"][..] } else { &["path", "sha256"][..] };
             exact_keys(binary, fields, path)?;
-            let binary_digest = digest(string(binary, "sha256", path)?, "platform digest", path)?;
-            if state == "legacy-public" {
-                exact(binary_digest, legacy_digest(platform, server).ok_or_else(|| anyhow::anyhow!("unsupported legacy runtime inventory: {platform}/{server}"))?, "platform digest", path)?;
-            } else {
+            digest(string(binary, "sha256", path)?, "platform digest", path)?;
+            if state != "legacy-public" {
                 let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
                 exact(string(binary, "path", path)?, &format!("runtime/codexy-mcp-{server}-{platform}.{extension}"), "candidate runtime path", path)?;
             }

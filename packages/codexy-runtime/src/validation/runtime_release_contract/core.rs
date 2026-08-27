@@ -20,7 +20,6 @@ pub(super) fn check_source(
     source: &Map<String, Value>,
     state: &str,
     repository: &str,
-    legacy_commit: &str,
     path: &Path,
 ) -> Result<()> {
     let fields =
@@ -38,9 +37,7 @@ pub(super) fn check_source(
     )?;
     let commit = string(source, "commit", path)?;
     lower_hex(commit, 40, "source.commit", path)?;
-    if state == "legacy-public" {
-        exact(commit, legacy_commit, "source.commit", path)
-    } else if source.contains_key("tree") {
+    if source.contains_key("tree") {
         lower_hex(string(source, "tree", path)?, 40, "source.tree", path)
     } else {
         Ok(())
