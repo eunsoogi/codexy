@@ -15,14 +15,16 @@ from unittest import mock
 from codexy_runtime_tools import contract, package, runtime
 from codexy_runtime_tools.installer import install_package
 from codexy_runtime_tools.source import RuntimeSourceIdentity
+from runtime_contract_support import TAG
 
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 COMMIT = "a" * 40
 BINARIES = {"lsp": b"lsp runtime", "codegraph": b"codegraph runtime"}
+FIXTURE_VERSION = TAG.removeprefix("v")
 PLUGIN_MANIFEST = (
     '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy",'
-    '"version":"1.3.0"}'
+    f'"version":"{FIXTURE_VERSION}"}}'
 )
 
 
@@ -66,8 +68,8 @@ def release(archive_digest: str = "b" * 64) -> dict[str, object]:
         "state": "candidate-proven",
         "source": embedded["source"],
         "artifact": {
-            "tag": "v1.3.0",
-            "url": f"{REPOSITORY}/releases/download/v1.3.0/codexy-runtime-package.tar.gz",
+            "tag": TAG,
+            "url": f"{REPOSITORY}/releases/download/{TAG}/codexy-runtime-package.tar.gz",
             "sha256": archive_digest,
             "payloadManifestSha256": hashlib.sha256(encoded(embedded)).hexdigest(),
         },

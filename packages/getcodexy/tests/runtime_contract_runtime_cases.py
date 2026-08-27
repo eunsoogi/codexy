@@ -8,16 +8,24 @@ import os
 from pathlib import Path
 from unittest import mock
 
-from runtime_contract_support import COMMIT, legacy, release
+from runtime_contract_support import COMMIT, TAG, legacy, release
+
+
+FIXTURE_VERSION = TAG.removeprefix("v")
+STALE_MISMATCH_VERSION = "1.2.2"
+FIXTURE_MANIFEST = (
+    f'{{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy",'
+    f'"version":"{FIXTURE_VERSION}"}}'
+)
 
 
 class RuntimeContractRuntimeCases:
     def test_selected_release_rejects_a_mismatched_package_manifest_before_execution(
         self,
     ) -> None:
-        root, _ = self.load(release(), plugin_version="1.3.0")
+        root, _ = self.load(release(), plugin_version=FIXTURE_VERSION)
         (root / ".codex-plugin/plugin.json").write_text(
-            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            FIXTURE_MANIFEST,
             encoding="utf-8",
         )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
@@ -28,7 +36,12 @@ class RuntimeContractRuntimeCases:
             installed.write_bytes(b"stale runtime")
             installed.chmod(0o755)
             (install_root / "plugin.json").write_text(
-                json.dumps({"name": "codexy-devtools", "version": "1.2.2"}),
+                json.dumps(
+                    {
+                        "name": "codexy-devtools",
+                        "version": STALE_MISMATCH_VERSION,
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -51,12 +64,8 @@ class RuntimeContractRuntimeCases:
         self.assertEqual(list(cache.rglob("runtime-marker.json")), [])
 
     def test_selected_release_enforces_complete_package_identity(self) -> None:
-        root, _ = self.load(release(), plugin_version="1.3.0")
-        manifest = {
-            "name": "codexy-devtools",
-            "repository": "https://github.com/eunsoogi/codexy",
-            "version": "1.3.0",
-        }
+        root, _ = self.load(release(), plugin_version=FIXTURE_VERSION)
+        manifest = json.loads(FIXTURE_MANIFEST)
         (root / ".codex-plugin/plugin.json").write_text(
             json.dumps(manifest),
             encoding="utf-8",
@@ -111,9 +120,9 @@ class RuntimeContractRuntimeCases:
                     execute.assert_called_once()
 
     def test_offline_cached_manifest_mismatch_reports_identity(self) -> None:
-        root, _ = self.load(release(), plugin_version="1.3.0")
+        root, _ = self.load(release(), plugin_version=FIXTURE_VERSION)
         (root / ".codex-plugin/plugin.json").write_text(
-            '{"name":"codexy-devtools","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+            FIXTURE_MANIFEST,
             encoding="utf-8",
         )
         runtime = importlib.import_module("codexy_runtime_tools.runtime")
@@ -135,7 +144,7 @@ class RuntimeContractRuntimeCases:
             installed.write_bytes(binary)
             installed.chmod(0o755)
             (install_root / "plugin.json").write_text(
-                '{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"1.3.0"}',
+                f'{{"name":"codexy-other","repository":"https://github.com/eunsoogi/codexy","version":"{FIXTURE_VERSION}"}}',
                 encoding="utf-8",
             )
             marker = identity.marker(
