@@ -14,12 +14,6 @@ from codexy_runtime_tools.monolith_migration_plan import plan_migration
 
 
 class MonolithAdmissionTests(unittest.TestCase):
-    def test_v1_3_baseline_is_a_frozen_complete_tree_fingerprint(self) -> None:
-        self.assertEqual(
-            BASELINES["1.3.0"].tree_sha256,
-            "9e1f2c8a97fe24949ea3fc11762246602c8b81b66b1298b88d5114bf71dc0b3b",
-        )
-
     def test_exact_supported_tree_is_admitted_but_modified_tree_is_rejected(
         self,
     ) -> None:

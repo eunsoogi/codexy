@@ -138,13 +138,13 @@ fn bind_ledger(state: &mut Value) {
         .expect("review ledger events")
     {
         event["issue_contract"] = json!({
-            "problem":"owned problem",
-            "scope":"owned scope",
-            "acceptance_criteria":[{"id":"ac-1"}],
+            "problem":"synthetic problem",
+            "scope":"synthetic scope",
+            "acceptance_criteria":[{"id":"synthetic-ac-1"}],
             "owned_invariant_ids":[],
             "exclusions":[],
             "adjacent_dependencies":[]
         });
-        event["issue_contract_sha256"] = json!("30e2a0c55aa2db0a84e6924f5a4731f335ea652f79123af992903d8ec1c617e2");
+        event["issue_contract_sha256"] = json!("9ed099f9e4430ae71459275cb6c48e48fb9bce80b802c0557b438cb50d95cbca");
     }
 }

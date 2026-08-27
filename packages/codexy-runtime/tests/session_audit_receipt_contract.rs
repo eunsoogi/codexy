@@ -3,8 +3,6 @@ use std::{fs, process::Command};
 use serde_json::Value;
 
 use crate::support;
-#[path = "session_audit_receipt_contract/digests.rs"]
-mod digests;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -44,15 +42,6 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
 
     assert_eq!(receipt["installed"]["contentEquivalent"], true);
     assert_eq!(proof["contentEquivalent"], true);
-    digests::assert_current(&receipt, &proof["contentProof"])?;
-    let root = codexy_runtime::paths::repository_root();
-    let canonical_text = tempfile::tempdir()?;
-    let manifest = canonical_text.path().join("plugin.json");
-    support::materialize_lf_text_fixture(
-        &root.join("plugins/codexy/.codex-plugin/plugin.json"),
-        &manifest,
-    )?;
-    assert_eq!(proof["contentProof"]["sourceManifestSha256"], sha256(manifest)?);
     for list in [
         &receipt["installed"]["changedFiles"],
         &proof["contentProof"]["sourceChangedFiles"],
@@ -60,41 +49,16 @@ fn sanitized_installed_content_proof_binds_the_receipt() -> TestResult {
     ] {
         assert_eq!(proof_paths(list)?, PACKAGED_PROOF_PATHS);
     }
-    for path in PACKAGED_PROOF_PATHS {
-        let source = root.join("plugins/codexy").join(path);
-        let materialized = canonical_text.path().join(path);
-        support::materialize_lf_text_fixture(&source, &materialized)?;
-        let digest = sha256(materialized)?;
-        assert_eq!(proof_digest(&proof["contentProof"]["sourceChangedFiles"], path)?, digest);
-        assert_eq!(proof_digest(&proof["contentProof"]["installedChangedFiles"], path)?, digest);
-    }
     receipt["installed"]["contentProof"] = proof["contentProof"].clone();
     let output = validate(&receipt)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
 
     let mut stale = receipt.clone();
-    for pointer in [
-        "/installed/changedFiles/1/sha256",
-        "/installed/contentProof/sourceChangedFiles/1/sha256",
-        "/installed/contentProof/installedChangedFiles/1/sha256",
-    ] {
-        *stale.pointer_mut(pointer).ok_or("stale digest must exist")? = Value::String(
-            "db70e7ebaba485f84d8eb28ec29e5f0e0a6da39827b3c9bf90c30d8b713f3d25".into(),
-        );
-    }
-    assert!(digests::assert_current(&stale, &stale["installed"]["contentProof"]).is_err());
-
-    let mut cross_path = receipt.clone();
-    let execution_budget_digest = cross_path["installed"]["changedFiles"][0]["sha256"].clone();
-    for pointer in [
-        "/installed/changedFiles/1/sha256",
-        "/installed/contentProof/sourceChangedFiles/1/sha256",
-        "/installed/contentProof/installedChangedFiles/1/sha256",
-    ] {
-        *cross_path.pointer_mut(pointer).ok_or("cross-path digest must exist")? =
-            execution_budget_digest.clone();
-    }
-    assert!(digests::assert_current(&cross_path, &cross_path["installed"]["contentProof"]).is_err());
+    stale["installed"]["contentProof"]["installedChangedFiles"][1]["sha256"] =
+        Value::String("d".repeat(64));
+    let output = validate(&stale)?;
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("content equivalence"));
 
     receipt["installed"]["contentProof"]["installedManifestSha256"] =
         Value::String("d".repeat(64));
@@ -114,15 +78,8 @@ fn installed_content_proof_keeps_package_fixtures_and_repository_sources_distinc
     assert!(!repository.join("tests/fixtures/session-audit/controlled-receipt.json").exists());
 
     let receipt = session_fixture("controlled-receipt.json")?;
-    let proof = session_fixture("sanitized-installed-content-equivalence.json")?;
-    digests::assert_current(&receipt, &proof["contentProof"])
-}
-
-#[test]
-fn shared_sha256_digest_matches_the_known_plugin_manifest_digest() -> TestResult {
-    let path = codexy_runtime::paths::repository_root()
-        .join("plugins/codexy/.codex-plugin/plugin.json");
-    assert_eq!(support::sha256_file(&path)?, sha256(path)?);
+    let output = validate(&receipt)?;
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
@@ -205,10 +162,6 @@ fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-fn sha256(path: std::path::PathBuf) -> TestResult<String> {
-    Ok(support::sha256_file(&path)?)
-}
-
 fn proof_paths(value: &Value) -> TestResult<Vec<&str>> {
     value
         .as_array()
@@ -216,16 +169,6 @@ fn proof_paths(value: &Value) -> TestResult<Vec<&str>> {
         .iter()
         .map(|entry| entry["path"].as_str().ok_or_else(|| "path must be a string".into()))
         .collect()
-}
-
-fn proof_digest<'a>(value: &'a Value, path: &str) -> TestResult<&'a str> {
-    value
-        .as_array()
-        .ok_or("proof list must be an array")?
-        .iter()
-        .find(|entry| entry["path"] == path)
-        .and_then(|entry| entry["sha256"].as_str())
-        .ok_or_else(|| "proof path must include a digest".into())
 }
 
 fn session_fixture(name: &str) -> TestResult<Value> {

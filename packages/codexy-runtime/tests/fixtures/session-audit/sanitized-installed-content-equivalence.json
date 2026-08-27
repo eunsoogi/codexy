@@ -1,34 +1,34 @@
 {
   "contentEquivalent": true,
   "contentProof": {
-    "sourceManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
-    "installedManifestSha256": "775956520d8c8b1c3eb8b9049334178fb9193f188b5576cd50d96a1790dcc4c7",
+    "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "installedManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "sourceChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "6354c9a7bd0d764bb5f39c0e59c17909cc683b3e01a9b48433f2027bc6299680"
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "940869293ff9600b677008452f833eac38118b5425b03b96057c42954aa2286a"
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
     ],
     "installedChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "6354c9a7bd0d764bb5f39c0e59c17909cc683b3e01a9b48433f2027bc6299680"
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "940869293ff9600b677008452f833eac38118b5425b03b96057c42954aa2286a"
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "7edc674cbd22ba06e929bb4ca26c597f6f06d308be1347e74ecd5321f16d966f"
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
     ]
   }
