@@ -50,6 +50,7 @@ fn exact_pr_mode_has_typed_admission_two_checks_and_isolated_artifacts()
         &["id-token: write", "attestations: write", "contents: write", "pull-requests: write", "secrets:"],
     );
     let stage = &candidate["jobs"]["stage-runtime"];
+    assert_eq!(stage["environment"], "runtime-candidate-staging");
     assert_eq!(stage["permissions"]["contents"], "read");
     assert_eq!(stage["permissions"]["pull-requests"], "read");
     assert_eq!(stage["permissions"]["id-token"], "write");
@@ -182,8 +183,7 @@ fn exact_pr_receipt_and_all_allowed_paths_stay_within_the_hard_limit()
         "packages/codexy-runtime/tests/runtime_workflow_recovery.rs",
         "packages/codexy-runtime/tests/runtime_workflow_recovery/exact_pr_head_admission.rs",
     ] {
-        let lines = fs::read_to_string(root.join(path))?.lines().count();
-        assert!(lines <= 250, "{path} has {lines} lines");
+        assert!(fs::read_to_string(root.join(path))?.lines().count() <= 250, "{path} exceeds hard limit");
     }
     Ok(())
 }

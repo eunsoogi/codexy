@@ -169,6 +169,7 @@ jobs:
   stage-runtime:
     needs: build-runtime
     runs-on: ubuntu-latest
+    environment: runtime-candidate-staging
     permissions:
       attestations: write
       contents: read
