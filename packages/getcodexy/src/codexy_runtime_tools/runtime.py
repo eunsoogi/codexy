@@ -10,7 +10,7 @@ from typing import NoReturn
 
 from .cache import runtime_cache_key
 from .installer import executable, execute, install_git, install_package
-from .runtime_configuration import Configuration
+from .runtime_configuration import REPOSITORY, Configuration
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
