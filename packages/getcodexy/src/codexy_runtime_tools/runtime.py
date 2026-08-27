@@ -178,9 +178,7 @@ def run(config: Configuration) -> NoReturn:
     installed = install_root / "bin" / f"codexy-mcp-{config.server}"
     marker = install_root / "runtime-marker.json"
     if executable(installed):
-        matches, message = _manifest_check(config, install_root)
-        if not matches and config.offline:
-            _fail(message)
+        matches, _ = _manifest_check(config, install_root)
         if _marker_valid(source_identity, marker, config, installed) and matches:
             _execute(config, installed)
         elif (

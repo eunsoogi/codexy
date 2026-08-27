@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import io
 import json
 import tempfile
@@ -101,6 +102,65 @@ class RuntimeBehaviorTests(RuntimePackageBehaviorCases, unittest.TestCase):
             execute.assert_called_once_with(
                 installed, ["--stdio"], {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)}
             )
+
+    def test_invalid_selected_cache_yields_to_offline_git_fallback(self) -> None:
+        cases = (
+            ("missing", None),
+            ("mismatched", dict(PACKAGE_MANIFEST, name="other")),
+        )
+        for label, manifest in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                config = configuration(
+                    root,
+                    offline=True,
+                    git_fallback=True,
+                    git_repository=runtime.REPOSITORY,
+                )
+                cache = root / "cache"
+                selected, selected_manifest = install_paths(config, cache)
+                selected.parent.mkdir(parents=True)
+                selected.write_bytes(b"invalid selected runtime")
+                selected.chmod(0o755)
+                if manifest is not None:
+                    selected_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+                identity = runtime.RuntimeSourceIdentity.git_fallback(
+                    repository=config.git_repository, commit=config.git_ref
+                )
+                git_root = cache / identity.cache_key(
+                    platform=config.platform, server=config.server
+                )
+                git_installed = git_root / "bin/codexy-mcp-lsp"
+                git_installed.parent.mkdir(parents=True)
+                binary = b"valid git fallback runtime"
+                git_installed.write_bytes(binary)
+                git_installed.chmod(0o755)
+                marker = identity.marker(
+                    platform=config.platform,
+                    server=config.server,
+                    binary_sha256=hashlib.sha256(binary).hexdigest(),
+                )
+                assert marker is not None
+                (git_root / "runtime-marker.json").write_text(
+                    json.dumps(marker), encoding="utf-8"
+                )
+
+                with (
+                    mock.patch.object(runtime, "_cache_root", return_value=cache),
+                    mock.patch.object(runtime, "install_package") as acquire,
+                    mock.patch.object(
+                        runtime, "execute", side_effect=Executed
+                    ) as execute,
+                    self.assertRaises(Executed),
+                ):
+                    runtime.run(config)
+                acquire.assert_not_called()
+                execute.assert_called_once_with(
+                    git_installed,
+                    ["--stdio"],
+                    {"CODEXY_PLUGIN_ROOT": str(config.plugin_root)},
+                )
 
     def test_default_digest_partitions_offline_caches(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
