@@ -61,7 +61,7 @@ fn repository_governance_requires_project_policy_configuration() -> TestResult {
         unconfigured.join(".git/config"),
         "[remote \"origin\"]\n\turl = git@github.com:eunsoogi/codexy.git\n",
     )?;
-    assert_case(&root, &unconfigured, "gh issue create --title invalid", false, &[])
+    assert_case(&root, &unconfigured, "gh issue create --title invalid", true, &[])
 }
 
 #[test]

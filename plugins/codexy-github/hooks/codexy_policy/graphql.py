@@ -2,134 +2,248 @@
 
 from __future__ import annotations
 
-from .graphql_parser import document
+import base64
+import json
+import re
 
-STRING, NUMBER = "<string>", "<number>"
+from .github_target import (
+    GRAPH_BINDINGS,
+    graph_bound,
+    graph_common,
+    graph_id,
+    graph_keys,
+    graph_literal,
+    graph_nullable,
+    graph_object,
+    graph_string,
+)
+from .graphql_parser import document, parse_document
+from .repository import github_identity, read_text
+from .repository_issue import graphql_issue
+from .repository_pull_request import graphql_review, graphql_reviewers
+
+_STRING_VALUE = "<string>:"
+_NUMBER = "<number>"
+_TOKEN = re.compile(
+    r'''\s+|,+|#[^\r\n]*|"""(?:\\.|(?!""").)*"""|"(?:\\["\\/bfnrt]|\\u[0-9A-Fa-f]{4}|[^"\\\r\n])*"|\.\.\.|[_A-Za-z][_0-9A-Za-z]*|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?(?![_A-Za-z0-9])|[!$&():=@\[\]{|}]''',
+    re.DOTALL,
+)
+BINDING_FIELDS = {"owner", "name", "query"} | {
+    field for fields in GRAPH_BINDINGS.values() for field in fields
+}
+GRAPH_CREATE = set(
+    "repositoryId title headRefName baseRefName body draft maintainerCanModify headRepositoryId clientMutationId".split()
+)
+GRAPH_UPDATE = set(
+    "pullRequestId title body baseRefName maintainerCanModify clientMutationId".split()
+)
+_TARGET_FIELDS = set(
+    "issueId pullRequestId subjectId labelableId assignableId duplicateIssueId".split()
+)
 
 
 def mutation(query: str) -> bool | None:
     """Return whether a syntactically complete document defines a mutation."""
     tokens = _tokens(query)
-    if not tokens:
+    return None if not tokens else document(tokens)
+
+
+def admitted(
+    query: str, transport: dict[str, str], owned: tuple[str, str, str] | None
+) -> bool:
+    """Allow queries and exactly one bound, closed-matrix mutation."""
+    tokens = _tokens(query)
+    parsed = None if tokens is None else parse_document(tokens)
+    if parsed is None:
+        return False
+    mutations = [item for item in parsed if item.kind == "mutation"]
+    if not mutations:
+        return True
+    if (
+        len(parsed) != 1
+        or len(mutations) != 1
+        or not _transport_owned(transport, owned)
+    ):
+        return False
+    roots = mutations[0].selection
+    if len(roots) != 1 or roots[0].alias:
+        return False
+    field = roots[0]
+    payload = graph_object(dict(field.arguments).get("input"))
+    return (
+        payload is not None
+        and _client_mutation_bound(payload, transport)
+        and _repository_targets_bound(payload, transport)
+        and (
+            graphql_issue(field.name, payload, transport)
+            or graphql_pr(field.name, payload, transport)
+        )
+    )
+
+
+def input_query(cwd: str, target: str) -> str | None:
+    content = read_text(cwd, target)
+    if content is None:
         return None
-    return document(tokens)
+    try:
+        body = json.loads(content)
+    except json.JSONDecodeError:
+        return None
+    query = body.get("query") if isinstance(body, dict) else None
+    return query if isinstance(query, str) else None
+
+
+def _repository_targets_bound(
+    payload: dict[str, object], transport: dict[str, str]
+) -> bool:
+    targets = payload.keys() & _TARGET_FIELDS
+    return all(_repository_bound(payload, key, transport) for key in targets)
+
+
+def _repository_bound(
+    payload: dict[str, object], key: str, transport: dict[str, str]
+) -> bool:
+    value = payload.get(key)
+    actual = graph_string(value)
+    if actual is None and isinstance(value, tuple) and len(value) == 2:
+        variable = value[1] if value[0] == "variable" else None
+        actual = transport.get(variable) if isinstance(variable, str) else None
+    repository = next(
+        (
+            transport[name]
+            for name in ("repository_id", "repositoryId")
+            if name in transport
+        ),
+        None,
+    )
+    target_scope = _graph_scope(actual, r"^[A-Za-z]+_[A-Za-z0-9]+DO([A-Za-z0-9_-]{6})")
+    return (
+        graph_bound(value, transport, *graph_keys(key))
+        and target_scope is not None
+        and target_scope == _graph_scope(repository, r"^R_kgDO([A-Za-z0-9_-]{6})")
+    )
+
+
+def _graph_scope(value: str | None, pattern: str) -> bytes | None:
+    match = re.match(pattern, value or "")
+    if match is None:
+        return None
+    try:
+        return base64.b64decode(match.group(1) + "==", altchars=b"-_", validate=True)
+    except ValueError:
+        return None
+
+
+def _transport_owned(
+    fields: dict[str, str], owned: tuple[str, str, str] | None
+) -> bool:
+    owner, name = fields.get("owner"), fields.get("name")
+    selected = (
+        github_identity(f"{owner}/{name}")
+        if isinstance(owner, str) and isinstance(name, str)
+        else None
+    )
+    return (
+        selected is not None
+        and owned is not None
+        and selected == owned
+        and not set(fields) - BINDING_FIELDS
+    )
+
+
+def _client_mutation_bound(
+    payload: dict[str, object], transport: dict[str, str]
+) -> bool:
+    value = payload.get("clientMutationId")
+    return (
+        value is None
+        or value == "null"
+        or graph_bound(value, transport, "client_mutation_id", "clientMutationId")
+    )
 
 
 def _tokens(query: str) -> list[str] | None:
-    tokens, index = [], 0
-    while index < len(query):
-        char = query[index]
-        if char.isspace() or char == ",":
-            index += 1
-        elif char == "#":
-            newline = query.find("\n", index)
-            index = len(query) if newline < 0 else newline + 1
-        elif query.startswith('"""', index):
-            end = _block_string(query, index + 3)
-            if end is None:
+    tokens: list[str] = []
+    index = 0
+    for match in _TOKEN.finditer(query):
+        if match.start() != index:
+            return None
+        token = match.group()
+        index = match.end()
+        if token.isspace() or token == "," or token.startswith("#"):
+            continue
+        if token.startswith('"'):
+            try:
+                value = token[3:-3] if token.startswith('"""') else json.loads(token)
+            except (TypeError, ValueError):
                 return None
-            tokens.append(STRING)
-            index = end
-        elif char == '"':
-            end = _string(query, index + 1)
-            if end is None:
-                return None
-            tokens.append(STRING)
-            index = end
-        elif char == "_" or char.isascii() and char.isalpha():
-            end = index + 1
-            while end < len(query) and (
-                query[end] == "_" or query[end].isascii() and query[end].isalnum()
-            ):
-                end += 1
-            tokens.append(query[index:end])
-            index = end
-        elif query.startswith("...", index):
-            tokens.append("...")
-            index += 3
-        elif char in "!$&():=@[]{|}":
-            tokens.append(char)
-            index += 1
-        elif char.isdigit() or char == "-":
-            end = _number(query, index)
-            if end is None:
-                return None
-            tokens.append(NUMBER)
-            index = end
+            tokens.append(_STRING_VALUE + value)
         else:
-            return None
-    return tokens
+            tokens.append(_NUMBER if token[0].isdigit() or token[0] == "-" else token)
+    return tokens if index == len(query) else None
 
 
-def _string(query: str, index: int) -> int | None:
-    while index < len(query):
-        char = query[index]
-        if char == '"':
-            return index + 1
-        if char in "\r\n":
-            return None
-        if char == "\\":
-            if index + 1 >= len(query):
-                return None
-            escape = query[index + 1]
-            if escape in '"\\/bfnrt':
-                index += 2
-            elif (
-                escape == "u"
-                and index + 5 < len(query)
-                and all(
-                    digit in "0123456789abcdefABCDEF"
-                    for digit in query[index + 2 : index + 6]
-                )
-            ):
-                index += 6
-            else:
-                return None
-        else:
-            index += 1
-    return None
+def graphql_pr(
+    name: str, payload: dict[str, object], transport: dict[str, str]
+) -> bool:
+    if name == "createPullRequest":
+        required = {"repositoryId", "title", "headRefName", "baseRefName"}
+        return (
+            graph_common(payload, GRAPH_CREATE, required)
+            and graph_id(payload, "repositoryId", transport)
+            and all(graph_literal(payload[key]) for key in required - {"repositoryId"})
+            and _pr_optional(payload, GRAPH_CREATE, transport)
+        )
+    if name == "updatePullRequest":
+        return (
+            graph_common(payload, GRAPH_UPDATE, {"pullRequestId"})
+            and graph_id(payload, "pullRequestId", transport)
+            and bool(set(payload) - {"pullRequestId", "clientMutationId"})
+            and _pr_optional(payload, GRAPH_UPDATE, transport)
+        )
+    if name in {"closePullRequest", "reopenPullRequest"}:
+        return _identity(payload, "pullRequestId", transport)
+    if name in {"addPullRequestReview", "submitPullRequestReview"}:
+        return graphql_review(payload, transport)
+    if name == "requestReviews":
+        return graphql_reviewers(payload, {"userIds", "teamIds", "botIds"}, transport)
+    if name == "requestReviewsByLogin":
+        return graphql_reviewers(
+            payload, {"userLogins", "teamSlugs", "botLogins"}, transport
+        )
+    if name in {"convertPullRequestToDraft", "markPullRequestReadyForReview"}:
+        return _identity(payload, "pullRequestId", transport)
+    return False
 
 
-def _block_string(query: str, index: int) -> int | None:
-    while index < len(query):
-        if query.startswith(r'\"""', index):
-            index += 4
-        elif query.startswith('"""', index):
-            return index + 3
-        else:
-            index += 1
-    return None
+def _pr_optional(
+    payload: dict[str, object], allowed: set[str], transport: dict[str, str]
+) -> bool:
+    if set(payload) - allowed:
+        return False
+    for key, value in payload.items():
+        if key in {"title", "body", "baseRefName"} and not graph_nullable(value):
+            return False
+        if key in {"draft", "maintainerCanModify"} and value not in {"true", "false"}:
+            return False
+        if (
+            key == "headRepositoryId"
+            and value != "null"
+            and not graph_id(payload, key, transport)
+        ):
+            return False
+        if (
+            key == "clientMutationId"
+            and value != "null"
+            and not graph_bound(
+                value, transport, "client_mutation_id", "clientMutationId"
+            )
+        ):
+            return False
+    return True
 
 
-def _number(query: str, index: int) -> int | None:
-    if query[index] == "-":
-        index += 1
-    start = index
-    if index < len(query) and query[index] == "0":
-        index += 1
-    else:
-        while index < len(query) and query[index].isdigit():
-            index += 1
-    if index == start:
-        return None
-    if index < len(query) and query[index] == ".":
-        index += 1
-        fraction = index
-        while index < len(query) and query[index].isdigit():
-            index += 1
-        if index == fraction:
-            return None
-    if index < len(query) and query[index] in "eE":
-        index += 1
-        if index < len(query) and query[index] in "+-":
-            index += 1
-        exponent = index
-        while index < len(query) and query[index].isdigit():
-            index += 1
-        if index == exponent:
-            return None
-    return (
-        index
-        if index == len(query) or not (query[index].isalnum() or query[index] == "_")
-        else None
+def _identity(payload: dict[str, object], key: str, transport: dict[str, str]) -> bool:
+    return graph_common(payload, {key, "clientMutationId"}, {key}) and graph_id(
+        payload, key, transport
     )

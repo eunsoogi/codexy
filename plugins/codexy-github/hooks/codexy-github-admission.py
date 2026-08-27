@@ -32,6 +32,13 @@ def title_from_stdin():
     tool_input = value.get("tool_input")
     if not isinstance(tool_input, dict):
         return ""
+    tool = value.get("tool_name")
+    if (
+        isinstance(tool, str)
+        and tool.startswith("mcp__codex_apps__github_")
+        and any(key in tool_input for key in ("repository_full_name", "repo_full_name"))
+    ):
+        return None
     title = tool_input.get("title")
     return title if isinstance(title, str) else ""
 
@@ -41,6 +48,8 @@ def main():
     parser.add_argument("--rule", choices=("issue", "pr"), required=True)
     selected = parser.parse_args().rule
     title = title_from_stdin()
+    if title is None:
+        return 0
     invalid = (
         not title
         or (

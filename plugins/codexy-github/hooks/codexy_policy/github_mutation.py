@@ -1,73 +1,44 @@
 """Typed GitHub form mutation parsing and evidence models."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from .github_target import PullRequestSelector, pull_request
+from .merge import cli as cli_merge
 from .repository import read_text
 
 
-FORM_VALUES = {
-    "issue-create": (
-        "--assignee",
-        "-a",
-        "--label",
-        "-l",
-        "--milestone",
-        "-m",
-        "--project",
-        "-p",
-        "--recover",
-    ),
-    "issue-update": (
-        "--add-assignee",
-        "--remove-assignee",
-        "--add-label",
-        "--remove-label",
-        "--milestone",
-        "-m",
-        "--add-project",
-        "--remove-project",
-    ),
-    "pr-create": (
-        "--base",
-        "-B",
-        "--head",
-        "-H",
-        "--assignee",
-        "-a",
-        "--label",
-        "-l",
-        "--milestone",
-        "-m",
-        "--project",
-        "-p",
-        "--reviewer",
-        "-r",
-        "--recover",
-    ),
-    "pr-update": (
-        "--base",
-        "-B",
-        "--add-assignee",
-        "--remove-assignee",
-        "--add-label",
-        "--remove-label",
-        "--milestone",
-        "-m",
-        "--add-project",
-        "--remove-project",
-        "--add-reviewer",
-        "--remove-reviewer",
-    ),
-}
 FORM_FLAGS = {
     "issue-create": {"--web"},
-    "issue-update": set(),
+    "issue-update": {"--remove-milestone"},
     "pr-create": {"--draft", "--maintainer-edit", "--no-maintainer-edit", "--web"},
-    "pr-update": set(),
+    "pr-update": {"--maintainer-edit", "--no-maintainer-edit"},
+}
+FORM_FIELDS = {
+    "issue-create": {
+        "--assignee": "assignees",
+        "-a": "assignees",
+        "--label": "labels",
+        "-l": "labels",
+        "--milestone": "milestone",
+        "-m": "milestone",
+    },
+    "issue-update": {
+        "--add-assignee": "assignees",
+        "--remove-assignee": "assignees",
+        "--add-label": "labels",
+        "--remove-label": "labels",
+        "--milestone": "milestone",
+        "-m": "milestone",
+    },
+    "pr-create": {"--base": "base", "-B": "base", "--head": "head", "-H": "head"},
+    "pr-update": {
+        "--base": "base",
+        "-B": "base",
+        "--add-reviewer": "reviewers",
+        "--remove-reviewer": "reviewers",
+    },
 }
 
 
@@ -100,6 +71,8 @@ class Mutation:
     issue: int | None = None
     merge_method: str | None = None
     selector: PullRequestSelector | None = None
+    operation: str | None = None
+    payload: dict[str, Any] | None = None
 
 
 def target(
@@ -123,25 +96,27 @@ def target(
         else:
             filtered.append(arg)
             index += 1
-    return filtered, default is not False, repository
+    return filtered, default is True, repository
 
 
 def form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
-    title, body, body_source, positionals, index = None, None, None, [], 0
+    title, body, body_source, positionals, payload, index = None, None, None, [], {}, 0
     while index < len(args):
-        matched, value, next_index = option(args, index, ("--title", "-t"))
+        matched, value, next_index, _ = option(args, index, ("--title", "-t"))
         if matched:
             if title is not None or value is None:
                 return None
             title, index = value, next_index
+            payload["title"] = value
             continue
-        matched, value, next_index = option(args, index, ("--body", "-b"))
+        matched, value, next_index, _ = option(args, index, ("--body", "-b"))
         if matched:
             if body_source is not None or value is None:
                 return None
             body, body_source, index = value, BodySource.INLINE, next_index
+            payload["body"] = value
             continue
-        matched, value, next_index = option(args, index, ("--body-file", "-F"))
+        matched, value, next_index, _ = option(args, index, ("--body-file", "-F"))
         if matched:
             if (
                 body_source is not None
@@ -150,14 +125,28 @@ def form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
             ):
                 return None
             body_source, index = BodySource.FILE, next_index
+            payload["body"] = body
             continue
-        matched, value, next_index = option(args, index, FORM_VALUES[kind.value])
+        matched, value, next_index, option_name = option(
+            args, index, tuple(FORM_FIELDS[kind.value])
+        )
         if matched:
             if value is None or not value:
+                return None
+            if not _put(payload, FORM_FIELDS[kind.value][option_name], value):
                 return None
             index = next_index
             continue
         if args[index] in FORM_FLAGS[kind.value]:
+            if args[index] == "--remove-milestone":
+                if not _put(payload, "milestone", None):
+                    return None
+            elif args[index] == "--draft":
+                payload["draft"] = True
+            elif args[index] == "--maintainer-edit":
+                payload["maintainer_can_modify"] = True
+            elif args[index] == "--no-maintainer-edit":
+                payload["maintainer_can_modify"] = False
             index += 1
             continue
         if args[index].startswith("-"):
@@ -180,6 +169,7 @@ def form(kind: MutationKind, args: list[str], cwd: str) -> Mutation | None:
         title,
         BodyEvidence(body, body_source) if body_source is not None else None,
         selector=selector,
+        payload=payload,
     )
 
 
@@ -191,13 +181,69 @@ def cli_number(value: str) -> int | None:
 
 def option(
     args: list[str], index: int, options: tuple[str, ...]
-) -> tuple[bool, str | None, int]:
+) -> tuple[bool, str | None, int, str | None]:
     arg = args[index]
     for option_name in options:
         if arg == option_name:
-            return True, args[index + 1] if index + 1 < len(args) else None, index + 2
+            return (
+                True,
+                args[index + 1] if index + 1 < len(args) else None,
+                index + 2,
+                option_name,
+            )
         if arg.startswith(option_name + "="):
-            return True, arg.split("=", 1)[1], index + 1
+            return True, arg.split("=", 1)[1], index + 1, option_name
         if len(option_name) == 2 and arg.startswith(option_name) and len(arg) > 2:
-            return True, arg[2:].removeprefix("="), index + 1
-    return False, None, index
+            return True, arg[2:].removeprefix("="), index + 1, option_name
+    return False, None, index, None
+
+
+def _put(payload: dict[str, Any], field: str, value: str) -> bool:
+    if field in {"assignees", "labels", "reviewers"}:
+        payload.setdefault(field, []).append(value)
+        return True
+    if field in payload:
+        return False
+    payload[field] = value
+    return True
+
+
+def merge(args: list[str], cwd: str) -> Mutation | None:
+    parsed = cli_merge(args, cwd)
+    if parsed is None:
+        return None
+    selector, method, subject, body = parsed
+    return Mutation(
+        MutationKind.PR_MERGE,
+        True,
+        selector.number,
+        subject,
+        BodyEvidence(body, BodySource.INLINE) if body is not None else None,
+        merge_method=method,
+        selector=selector,
+    )
+
+
+_READS = {
+    "issue": {"list", "view"},
+    "label": {"list"},
+    "pr": {"list", "view", "diff", "checks", "status"},
+    "release": {"list", "view"},
+    "repo": {"list", "view"},
+    "run": {"list", "view", "watch"},
+    "workflow": {"list", "view"},
+    "auth": {"status"},
+    "search": {"code", "commits", "issues", "prs", "repos"},
+    "project": {"list", "view"},
+}
+
+
+def read_command(args: list[str]) -> bool:
+    if not args or args[0] in {"--help", "--version", "version", "status", "help"}:
+        return True
+    if len(args) < 2 or args[0] not in _READS or args[1] not in _READS[args[0]]:
+        return False
+    return not (
+        args[:2] == ["auth", "status"]
+        and any(option in {"-t", "--show-token", "--with-token"} for option in args[2:])
+    )

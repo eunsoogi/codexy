@@ -10,7 +10,7 @@ fn initial_repository_policy_survives_shell_directory_changes() -> TestResult {
     assert_case(&root, &owned, &format!("cd {} && gh issue create --repo eunsoogi/codexy --title invalid", foreign.display()), true, &[])?;
     std::fs::write(foreign.join("valid-issue.md"), "## Problem\nP\n## Scope\nS\n## Acceptance Criteria\nA\n## Verification\nV")?;
     assert_case(&root, &owned, &format!("cd {} && gh issue create --repo eunsoogi/codexy --title 'Valid issue' --body-file valid-issue.md", foreign.display()), false, &[])?;
-    assert_case(&root, &owned, &format!("cd {} && gh issue create --repo openai/codex --title invalid", foreign.display()), false, &[])?;
+    assert_case(&root, &owned, &format!("cd {} && gh issue create --repo openai/codex --title invalid", foreign.display()), true, &[])?;
     for command in [
         format!("sudo -D {} gh issue create --repo eunsoogi/codexy --title invalid", foreign.display()),
         format!("sudo --chdir={} gh issue create --repo eunsoogi/codexy --title invalid", foreign.display()),
@@ -21,10 +21,10 @@ fn initial_repository_policy_survives_shell_directory_changes() -> TestResult {
     }
     for command in [
         format!("cd {} && git push --force https://github.com/openai/codex.git topic", foreign.display()),
-        format!("cd {} && gh issue create --repo eunsoogi/codexy --title invalid", owned.display()),
     ] {
         assert_case(&root, &foreign, &command, false, &[])?;
     }
+    assert_case(&root, &foreign, &format!("cd {} && gh issue create --repo eunsoogi/codexy --title invalid", owned.display()), true, &[])?;
     Ok(())
 }
 
@@ -36,7 +36,7 @@ fn valid_policy_with_a_foreign_remote_remains_target_discriminating() -> TestRes
     let policy = foreign.join(".codex/repository-github-policy.json");
     std::fs::create_dir_all(policy.parent().ok_or("policy parent")?)?;
     std::fs::write(policy, "{\"schema\":\"codexy.repository-github-policy/v1\",\"repository\":\"eunsoogi/codexy\"}")?;
-    assert_case(&root, &foreign, "gh issue create --repo openai/codex --title invalid", false, &[])?;
+    assert_case(&root, &foreign, "gh issue create --repo openai/codex --title invalid", true, &[])?;
     assert_case(&root, &foreign, "gh issue create --repo eunsoogi/codexy --title invalid", true, &[])
 }
 
@@ -131,6 +131,11 @@ fn credential_operations_use_resolved_identity_for_both_events() -> TestResult {
         assert_event_case(&root, event, &owned, "printf safe # gh auth token", false, &[])?;
         assert_event_case(&root, event, &owned, "printf '%s\n' 'eval $COMMAND'", false, &[])?;
         assert_event_case(&root, event, &owned, "gh auth token", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh auth status --show-token", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh auth status --with-token", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh auth status -t", true, &[])?;
+        assert_event_case(&root, event, &owned, "GH_TOKEN=fixture gh issue list", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh api -H 'Authorization: Bearer fixture'", true, &[])?;
         assert_event_case(&root, event, &owned, "eval 'gh auth token'", true, &[])?;
         assert_event_case(&root, event, &owned, &format!("'{}' auth token", gh.display()), true, &[])?;
         assert_event_case(&root, event, &owned, "sh -c 'gh auth token'", true, &[])?;

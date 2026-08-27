@@ -74,9 +74,6 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
         ]),
         "codex_app__send_message_to_thread" => Ok(vec!["codexy-thread-delivery"]),
         "codex_app__create_thread" => Ok(vec!["codexy-child-thread-creation"]),
-        "mcp__codex_apps__github_create_issue" | "mcp__codex_apps__github_update_issue" => {
-            Ok(vec!["codexy-repository-issue"])
-        }
         "mcp__codex_apps__github_create_pull_request"
         | "mcp__codex_apps__github_update_pull_request" => {
             Ok(vec!["codexy-repository-pull-request"])
@@ -84,6 +81,9 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
         "mcp__codex_apps__github_merge_pull_request"
         | "mcp__codex_apps__github_enable_auto_merge" => {
             Ok(vec!["codexy-repository-merge"])
+        }
+        tool if tool.starts_with("mcp__codex_apps__github_") => {
+            Ok(vec!["codexy-repository-issue"])
         }
         _ => Err(format!("no concern launcher for {tool}").into()),
     }
