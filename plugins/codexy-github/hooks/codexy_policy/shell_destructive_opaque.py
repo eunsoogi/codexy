@@ -20,4 +20,7 @@ def owns(command: str, context: ExecutionContext) -> bool:
 
 def owns_invocation(invocation: Invocation) -> bool:
     """Classify an already parsed opaque invocation without reparsing its data."""
-    return invocation.executable == "git" or unresolved_invocation(invocation)
+    if invocation.executable != "git":
+        return unresolved_invocation(invocation)
+    operation = next((arg for arg in invocation.arguments if not arg.startswith("-")), None)
+    return operation not in {"show", "status", "log", "diff", "rev-parse", "worktree", "branch", "ls-remote", "check-ref-format", "fetch"}

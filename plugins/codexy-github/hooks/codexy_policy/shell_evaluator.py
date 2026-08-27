@@ -10,12 +10,13 @@ from .execution_context import (
     CommandEffect,
     ExecutionContext,
     after_external_command,
+    assignment,
     at as context_at,
 )
 from .invocation import Invocation, resolve
 from .shell_context import changed_directory
 from .shell_groups import GroupSyntaxError, parse
-from .shell_opaque import dynamic_control_executable, separate_lines
+from .shell_opaque import dynamic_control_executable, resolved_segments, separate_lines
 from .shell_segments import opaque_syntax, segments
 from .shell_sequence import evaluate as evaluate_sequence
 
@@ -79,15 +80,57 @@ class _CredentialPolicy:
     def command(
         invocation: Invocation, outer: ExecutionContext, depth: int
     ) -> tuple[bool, CommandEffect] | None:
+        if _credential_environment(invocation.context):
+            return True, CommandEffect(None)
         if invocation.executable != "gh":
             return None
-        return invocation.arguments[:2] == ["auth", "token"], CommandEffect(outer)
+        return (
+            invocation.arguments[:2] == ["auth", "token"]
+            or _credential_header(invocation.arguments),
+            CommandEffect(outer),
+        )
 
 
 def credential_exposure(
     command: str, context: ExecutionContext, depth: int = 0
 ) -> bool:
+    walked = resolved_segments(command, context)
+    if walked is not None and any(
+        _credential_assignment(segment.tokens[: len(segment.tokens) - len(segment.command)])
+        for segment in walked
+    ):
+        return True
     return evaluate(command, context, depth, _CredentialPolicy())
+
+
+def _credential_assignment(tokens: tuple[str, ...]) -> bool:
+    return any(
+        assignment(token)
+        and token.split("=", 1)[0] in {"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"}
+        and bool(token.split("=", 1)[1])
+        for token in tokens
+    )
+
+
+def _credential_environment(context: ExecutionContext) -> bool:
+    return _credential_assignment(tuple(f"{key}={value}" for key, value in context.environment))
+
+
+def _credential_header(arguments: list[str]) -> bool:
+    for index, argument in enumerate(arguments):
+        header = (
+            arguments[index + 1]
+            if argument in {"-H", "--header"} and index + 1 < len(arguments)
+            else argument.split("=", 1)[1]
+            if argument.startswith(("-H=", "--header="))
+            else None
+        )
+        if header is None:
+            continue
+        name, separator, value = header.partition(":")
+        if separator and name.casefold() in {"authorization", "x-github-token"} and value.strip():
+            return True
+    return False
 
 
 def _segment(

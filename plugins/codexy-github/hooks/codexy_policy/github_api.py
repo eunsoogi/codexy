@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 
-from .graphql import mutation
+from .graphql import admitted as graphql_admitted
 from .repository import (
     github_identity,
     read_text,
@@ -15,7 +15,7 @@ from .repository import (
 
 TYPED_FIELD_OPTIONS = {"-F", "--field"}
 FIELD_OPTIONS = {"-f", "--raw-field"} | TYPED_FIELD_OPTIONS
-VALUE_OPTIONS = {"--cache", "--hostname", "--preview"}
+VALUE_OPTIONS = {"--cache", "--hostname", "--jq", "--preview", "--template"}
 HEADER_OPTIONS = {"-H", "--header"}
 FLAG_OPTIONS = {"--include", "-i", "--paginate", "--slurp", "--silent", "--verbose"}
 REPOSITORY = re.compile(r"^/?repos/([^/]+)/([^/]+)(?:/|$)", re.IGNORECASE)
@@ -44,22 +44,95 @@ def forbidden(
     except _UnsafeQueryFile:
         return True
     if parsed is None:
-        return default_owned
+        return True
     endpoint, method, fields, input_file = parsed
     if endpoint.casefold().strip("/") == "graphql":
         if input_file is not None:
             query = _input_query(cwd, input_file)
-            return query is None or mutation(query) is not False
+            return query is None or not graphql_admitted(query, {}, owned_identity)
         query = fields.get("query")
-        return query is None or mutation(query) is not False
+        return query is None or not graphql_admitted(query, fields, owned_identity)
     if method in {"GET", "HEAD"}:
         return False
+    return not _rest_allowed(endpoint, method, fields, owned_identity)
+
+
+def _rest_allowed(
+    endpoint: str,
+    method: str,
+    fields: dict[str, str],
+    owned_identity: tuple[str, str, str] | None,
+) -> bool:
     match = REPOSITORY.match(endpoint)
-    if match is None:
+    if match is None or github_identity(f"{match.group(1)}/{match.group(2)}") != owned_identity:
         return False
-    if tuple(part.casefold() for part in match.groups()) == ("{owner}", "{repo}"):
-        return default_owned
-    return github_identity(f"{match.group(1)}/{match.group(2)}") == owned_identity
+    path = [part for part in endpoint.strip("/").split("/") if part]
+    if len(path) < 4 or path[:3] != ["repos", match.group(1), match.group(2)]:
+        return False
+    tail = path[3:]
+    if tail == ["issues"] and method == "POST":
+        return _fields(fields, {"title", "body", "assignees", "milestone", "labels"}, {"title"})
+    if tail[:1] == ["issues"] and len(tail) == 2 and _number(tail[1]):
+        return _issue_patch(method, fields)
+    if len(tail) == 3 and tail[0] == "issues" and _number(tail[1]):
+        if tail[2] == "comments" and method == "POST":
+            return set(fields) == {"body"}
+        if tail[2] == "labels":
+            return method == "POST" and set(fields) == {"labels"}
+        if tail[2] == "assignees":
+            return method in {"POST", "DELETE"} and set(fields) == {"assignees"}
+    if len(tail) == 4 and tail[0] == "issues" and _number(tail[1]) and tail[2] == "labels":
+        return method == "DELETE" and not fields and bool(tail[3])
+    if tail == ["pulls"] and method == "POST":
+        return _fields(fields, {"title", "head", "base", "body", "draft", "maintainer_can_modify", "head_repo"}, {"title", "head", "base"})
+    if tail[:1] == ["pulls"] and len(tail) == 2 and _number(tail[1]):
+        return _pr_patch(method, fields)
+    if len(tail) == 3 and tail[0] == "pulls" and _number(tail[1]):
+        if tail[2] == "reviews" and method == "POST":
+            actions = {key for key in ("event", "action") if key in fields}
+            return (
+                len(actions) == 1
+                and next(iter(actions)) in fields
+                and fields[next(iter(actions))] in {"COMMENT", "APPROVE", "REQUEST_CHANGES"}
+                and _fields(fields, {"event", "action", "body", "commit_id", "comments"}, actions)
+            )
+        if tail[2] == "requested_reviewers" and method in {"POST", "DELETE"}:
+            return set(fields) <= {"reviewers", "team_reviewers"} and bool(fields)
+    return False
+
+
+def _issue_patch(method: str, fields: dict[str, str]) -> bool:
+    if method != "PATCH" or not fields:
+        return False
+    keys = set(fields)
+    if keys <= {"title", "body"}:
+        return "title" in keys and bool(fields["title"]) or "body" in keys
+    if keys <= {"state", "state_reason", "duplicate_issue_id"} and fields.get("state") in {"open", "closed"}:
+        reason = fields.get("state_reason")
+        if fields["state"] == "open":
+            return reason in {None, "reopened"} and "duplicate_issue_id" not in fields
+        if reason == "duplicate":
+            return keys == {"state", "state_reason", "duplicate_issue_id"} and _number(fields["duplicate_issue_id"])
+        return reason in {None, "completed", "not_planned"} and "duplicate_issue_id" not in fields
+    if keys in ({"labels"}, {"assignees"}):
+        return True
+    return keys == {"milestone"} and bool(fields["milestone"] or fields["milestone"] == "null")
+
+
+def _pr_patch(method: str, fields: dict[str, str]) -> bool:
+    if method != "PATCH" or not fields:
+        return False
+    if set(fields) == {"state"}:
+        return fields["state"] in {"open", "closed"}
+    return set(fields) <= {"title", "body", "base", "maintainer_can_modify"} and bool(fields)
+
+
+def _fields(fields: dict[str, str], allowed: set[str], required: set[str]) -> bool:
+    return set(fields) <= allowed and required <= set(fields)
+
+
+def _number(value: object) -> bool:
+    return isinstance(value, str) and value.isascii() and value.isdigit() and int(value) > 0
 
 
 def _parse(

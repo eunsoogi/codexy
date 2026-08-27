@@ -77,7 +77,11 @@ fn cmd_launchers_fail_closed_without_a_path_selected_interpreter()
     for launcher in LAUNCHERS {
         let source = std::fs::read_to_string(hooks.join(format!("{launcher}.cmd")))?;
         assert!(source.contains("DisableDelayedExpansion"), "{launcher}");
-        assert!(!source.contains("py "), "{launcher}");
+        if *launcher == "codexy-repository-issue" {
+            assert!(source.contains("py -3 -I -B"), "{launcher}");
+        } else {
+            assert!(!source.contains("py "), "{launcher}");
+        }
         assert!(!source.contains("powershell"), "{launcher}");
         assert!(!source.contains("%*"), "{launcher}");
     }
