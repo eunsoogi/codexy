@@ -232,7 +232,7 @@ def _launcher(path: Path) -> bool:
     if path.suffix == ".cmd":
         return contents.lower().startswith("@echo off")
     command = contents.splitlines()[0][2:].split() if contents.startswith("#!") else []
-    return bool(command) and (os.name == "nt" or bool(shutil.which(command[-1])))
+    return bool(command) and (os.name == "nt" or shutil.which(command[-1]) is not None)
 
 
 def _skill(plugin: Path, component: str) -> bool:
