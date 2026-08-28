@@ -18,19 +18,29 @@ MAX_COMPONENT_BYTES = 512 * 1024 * 1024
 def verify_component(
     root: Path, name: str, version: str | None = None
 ) -> dict[Path, bytes]:
+    contents, _ = _verify_component(root, name, version)
+    return contents
+
+
+def _verify_component(
+    root: Path, name: str, version: str | None = None
+) -> tuple[dict[Path, bytes], dict[Path, int]]:
     if name not in ("codexy", "codexy-github"):
         raise ValueError(f"unknown component integrity identity: {name}")
     root = _absolute(root)
     _validate_real_path(root, require_exists=True)
     manifest = Path(".codex-plugin/plugin.json")
+    modes: dict[Path, int] = {}
     manifest_contents = _read_regular(root, manifest, MAX_COMPONENT_BYTES)
     _verify_manifest(manifest_contents, name, version)
     verified = {manifest: manifest_contents}
-    _read_component(root, verified)
-    return verified
+    _read_component(root, verified, modes)
+    return verified, modes
 
 
-def _read_component(root: Path, verified: dict[Path, bytes]) -> None:
+def _read_component(
+    root: Path, verified: dict[Path, bytes], modes: dict[Path, int]
+) -> None:
     size = sum(map(len, verified.values()))
     pending = [Path()]
     while pending:
@@ -60,7 +70,7 @@ def _read_component(root: Path, verified: dict[Path, bytes]) -> None:
                 elif stat.S_ISREG(metadata.st_mode):
                     if relative not in verified:
                         verified[relative] = _read_regular(
-                            root, relative, MAX_COMPONENT_BYTES - size
+                            root, relative, MAX_COMPONENT_BYTES - size, modes
                         )
                         size += len(verified[relative])
                 else:
@@ -73,7 +83,7 @@ def _read_component(root: Path, verified: dict[Path, bytes]) -> None:
 def frozen_component(
     root: Path, name: str, version: str | None = None
 ) -> Iterator[Path]:
-    contents = verify_component(root, name, version)
+    contents, modes = _verify_component(root, name, version)
     with tempfile.TemporaryDirectory(prefix=f"{name}-verified-") as temporary:
         target = Path(temporary)
         for relative, data in contents.items():
@@ -84,6 +94,7 @@ def frozen_component(
             )
             with os.fdopen(descriptor, "wb") as output:
                 output.write(data)
+            os.chmod(destination, 0o600 | (modes.get(relative, 0) & 0o111))
         yield target
 
 
@@ -110,17 +121,27 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def _read_regular(root: Path, relative: Path, limit: int | None = None) -> bytes:
+def _read_regular(
+    root: Path,
+    relative: Path,
+    limit: int | None = None,
+    modes: dict[Path, int] | None = None,
+) -> bytes:
     if _uses_windows_directory_fallback():
-        return _read_regular_windows(root, relative, limit)
-    return _read_regular_posix(root, relative, limit)
+        return _read_regular_windows(root, relative, limit, modes)
+    return _read_regular_posix(root, relative, limit, modes)
 
 
 def _uses_windows_directory_fallback() -> bool:
     return os.name == "nt"
 
 
-def _read_regular_posix(root: Path, relative: Path, limit: int | None) -> bytes:
+def _read_regular_posix(
+    root: Path,
+    relative: Path,
+    limit: int | None,
+    modes: dict[Path, int] | None,
+) -> bytes:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     directory_flags = flags | getattr(os, "O_DIRECTORY", 0)
     descriptor = os.open(root, directory_flags)
@@ -137,12 +158,19 @@ def _read_regular_posix(root: Path, relative: Path, limit: int | None) -> bytes:
                 raise ValueError(
                     f"component integrity requires regular files: {root / relative}"
                 )
+            if modes is not None:
+                modes[relative] = stat.S_IMODE(metadata.st_mode)
             return _read_limited(source, limit)
     finally:
         os.close(descriptor)
 
 
-def _read_regular_windows(root: Path, relative: Path, limit: int | None) -> bytes:
+def _read_regular_windows(
+    root: Path,
+    relative: Path,
+    limit: int | None,
+    modes: dict[Path, int] | None,
+) -> bytes:
     target, _ = _windows_safe_path(root, relative)
     descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_BINARY", 0))
     try:
@@ -154,6 +182,8 @@ def _read_regular_windows(root: Path, relative: Path, limit: int | None) -> byte
             raise ValueError(
                 f"component integrity path changed while reading: {target}"
             )
+        if modes is not None:
+            modes[relative] = stat.S_IMODE(opened.st_mode)
         with os.fdopen(descriptor, "rb", closefd=False) as source:
             return _read_limited(source, limit)
     finally:

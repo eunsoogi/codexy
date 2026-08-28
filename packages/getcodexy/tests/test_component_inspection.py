@@ -184,6 +184,19 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
             }
             self.assertEqual(health[component], "incompatible")
 
+    @unittest.skipUnless(sys.platform != "win32", "POSIX launcher mode only")
+    def test_doctor_rejects_non_executable_posix_launcher(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            launcher = (
+                state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh"
+            )
+            healthy = doctor(state.home, codex=state.codex, runner=state.run)
+            self.assertEqual(healthy["component_health"][0]["state"], "healthy")
+            launcher.chmod(launcher.stat().st_mode & ~0o111)
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+        self.assertEqual(result["component_health"][0]["state"], "incompatible")
+
     def test_doctor_rejects_missing_or_tampered_canonical_hook_dependencies(
         self,
     ) -> None:

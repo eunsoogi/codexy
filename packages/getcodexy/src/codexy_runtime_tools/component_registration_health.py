@@ -193,12 +193,12 @@ def valid_registration(plugin: Path, component: str) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
         if component == "devtools":
-            return _json(plugin / ".mcp.json") == MCP and _executable(
+            return json.loads(_text(plugin / ".mcp.json")) == MCP and _executable(
                 plugin / LAUNCHERS[component][0]
             )
         return (
             _text(plugin / "agents/catalog.toml") == CATALOGS[component]
-            and _json(plugin / "hooks/hooks.json") == HOOKS[component]
+            and json.loads(_text(plugin / "hooks/hooks.json")) == HOOKS[component]
             and all(
                 _regular(plugin / f"agents/{name}", 'model = "')
                 for name in AGENT_FILES[component]
@@ -208,10 +208,6 @@ def valid_registration(plugin: Path, component: str) -> bool:
         )
     except (KeyError, OSError, UnicodeDecodeError, ValueError):
         return False
-
-
-def _json(path: Path) -> object:
-    return json.loads(_text(path))
 
 
 def _text(path: Path) -> str:
@@ -232,7 +228,11 @@ def _launcher(path: Path) -> bool:
     if path.suffix == ".cmd":
         return contents.lower().startswith("@echo off")
     command = contents.splitlines()[0][2:].split() if contents.startswith("#!") else []
-    return bool(command) and (os.name == "nt" or shutil.which(command[-1]) is not None)
+    return (
+        bool(command)
+        and _executable(path)
+        and (os.name == "nt" or shutil.which(command[-1]) is not None)
+    )
 
 
 def _skill(plugin: Path, component: str) -> bool:
@@ -247,4 +247,4 @@ def _skill(plugin: Path, component: str) -> bool:
 
 
 def _executable(path: Path) -> bool:
-    return _regular(path) and os.access(path, os.X_OK)
+    return _regular(path) and (os.name == "nt" or os.access(path, os.X_OK))
