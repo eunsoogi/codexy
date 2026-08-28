@@ -1,11 +1,11 @@
 """Live, read-only probes for the installed component capabilities."""
 
-from __future__ import annotations
-
 import json
 import os
 import shlex
 import subprocess
+
+from .version_lock import default_package_version
 
 
 _RERUN = "rerun getcodexy doctor"
@@ -37,7 +37,7 @@ MCP_SPECS = {
 _INITIALIZE_PARAMS = {
     "protocolVersion": "2024-11-05",
     "capabilities": {},
-    "clientInfo": {"name": "getcodexy", "version": "1.5.1"},
+    "clientInfo": {"name": "getcodexy", "version": default_package_version()},
 }
 
 

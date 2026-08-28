@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import importlib
-import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
@@ -234,6 +234,16 @@ class ComponentInspectionTests(
                     agents.symlink_to(target, target_is_directory=True)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
+
+    def test_mcp_client_version_follows_package_authority(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+
+        version_lock = importlib.import_module("codexy_runtime_tools.version_lock")
+        self.addCleanup(importlib.reload, probe)
+        with patch.object(version_lock, "default_package_version") as version:
+            version.return_value = "9.9.9"
+            importlib.reload(probe)
+            self.assertEqual(probe._INITIALIZE_PARAMS["clientInfo"]["version"], "9.9.9")
 
 
 if __name__ == "__main__":
