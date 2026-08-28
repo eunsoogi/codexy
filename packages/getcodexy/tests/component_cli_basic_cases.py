@@ -12,6 +12,27 @@ from codexy_runtime_tools.component_cli import main
 
 
 class ComponentCliBasicCases:
+    def test_help_exposes_exactly_four_primary_commands(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as exit_status:
+            main(["--help"])
+
+        self.assertEqual(exit_status.exception.code, 0)
+        help_text = output.getvalue()
+        self.assertIn("{install,remove,status,doctor}", help_text)
+        for alias in ("update", "bootstrap", "migrate"):
+            self.assertNotIn(alias, help_text)
+
+    def test_legacy_alias_help_preserves_public_arguments(self) -> None:
+        for alias in ("update", "bootstrap", "migrate"):
+            with self.subTest(alias=alias):
+                output = io.StringIO()
+                with redirect_stdout(output), self.assertRaises(SystemExit) as status:
+                    main([alias, "--help"])
+                self.assertEqual(status.exception.code, 0)
+                self.assertIn("components", output.getvalue())
+                self.assertIn("--json", output.getvalue())
+
     def test_json_status_prints_one_live_status_object(self) -> None:
         receipt = {
             "schema": "getcodexy.status.v1",
