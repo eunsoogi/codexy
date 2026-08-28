@@ -7,24 +7,12 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
 REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
+
 CONTROL_WORDS = frozenset(
-    {
-        "if",
-        "then",
-        "elif",
-        "else",
-        "fi",
-        "for",
-        "in",
-        "while",
-        "until",
-        "do",
-        "done",
-        "case",
-        "esac",
-    }
+    "if then elif else fi for in while until do done case esac".split()
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 
@@ -73,8 +61,10 @@ def separate_lines(command: str) -> str:
         elif quote is None and char in "<>":
             _mark_redirection_fd(result)
             result.append(char)
-        elif quote is None and char == "#" and (
-            not result or result[-1].isspace() or result[-1] in ";&|(){}"
+        elif (
+            quote is None
+            and char == "#"
+            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
         ):
             while index < len(command) and command[index] != "\n":
                 index += 1

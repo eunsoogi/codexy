@@ -22,6 +22,7 @@ from .shell_sequence import evaluate as evaluate_sequence
 
 class Policy(Protocol):
     redirection_executables: frozenset[str]
+
     def owns_opaque(self, command: str, context: ExecutionContext) -> bool: ...
     def opaque_invocation(self, invocation: Invocation) -> bool: ...
     def command(
