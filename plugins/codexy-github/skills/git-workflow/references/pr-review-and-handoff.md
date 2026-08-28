@@ -1,197 +1,52 @@
-# PR Review And Handoff
+# Pull Requests, Review, And Handoff
 
-## Completion-Handoff PR State
+## PR Admission
 
-Before a PR-readiness handoff or final answer claims completion, validate that
-the claim does not stop at an open PR when the requested outcome includes
-completion or the default Codexy merge flow. MUST capture current PR state
-first:
+MUST confirm the issue, exact branch/base relationship, local verification, and
+repository taxonomy before opening a PR. Use a Conventional Commit title and a
+body that explains the change, rationale, affected areas, verification,
+evidence, omissions, follow-ups, and issue linkage without prescribing a
+repository-independent heading order. Keep a PR draft while proof or known risk
+is incomplete.
 
-```sh
-pr=<pr>
-owner=<owner>
-repo=<repo>
-state_dir=$(mktemp -d)
-trap 'rm -rf "$state_dir"' EXIT
-review_control_state="${REVIEW_CONTROL_STATE_FILE:?set the closed typed review-control state file}"
-# The control file is `codexy.review-control-state.v1`. It becomes the namespaced
-# `reviewControl` object; GitHub's top-level `reviewDecision` remains untouched.
-gh pr view "$pr" --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,url,labels,closingIssuesReferences,comments,reviews,latestReviews > "$state_dir/pr-state.base.json"
-head_ref="$(jq -r '.headRefName' "$state_dir/pr-state.base.json")"
-git fetch origin "$head_ref"
-git status --short --branch > "$state_dir/worktreeStatus.txt"
-git rev-parse HEAD > "$state_dir/localHeadOid.txt"
-git rev-parse "origin/$head_ref" > "$state_dir/remoteHeadOid.txt"
-default_branch="$(gh repo view "$owner/$repo" --json defaultBranchRef --jq '.defaultBranchRef.name')"
-closing_issue="$(
-  jq -r '.body // ""
-    | split("\n")
-    | map(select((. | gsub("[[:space:]]"; "")) != ""))
-    | last // ""
-    | capture("^(Fixes|Closes|Resolves) #(?<number>[0-9]+)$").number? // empty' \
-    "$state_dir/pr-state.base.json"
-)"
-if [ -n "$closing_issue" ] &&
-  [ "$(jq -r '.baseRefName // ""' "$state_dir/pr-state.base.json")" != "$default_branch" ]; then
-  gh issue view "$closing_issue" --repo "$owner/$repo" --json number,url,labels \
-    > "$state_dir/linkedIssue.json"
-  jq '{nodes:[{number,url,labels:{nodes:(.labels | map({name}))}}]}' \
-    "$state_dir/linkedIssue.json" > "$state_dir/linkedIssueReferences.json"
-else
-  jq -n '{nodes:[]}' > "$state_dir/linkedIssueReferences.json"
-fi
-gh api graphql --paginate --slurp \
-  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
-query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
-  repository(owner:$owner, name:$name) {
-    defaultBranchRef { name }
-    labels(first:100) { nodes { name } }
-    pullRequest(number:$number) {
-      labels(first:50) { nodes { name } }
-      closingIssuesReferences(first:20) { nodes { number labels(first:50) { nodes { name } } } }
-      reviewThreads(first:100, after:$endCursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id isResolved isOutdated path comments(first:20) { nodes { author { login } body url createdAt commit { oid } } } }
-      }
-    }
-  }
-}' > "$state_dir/reviewThreads.pages.json"
-gh api graphql --paginate --slurp \
-  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
-query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
-  repository(owner:$owner, name:$name) {
-    pullRequest(number:$number) {
-      comments(first:100, after:$endCursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          author { login }
-          body
-          url
-          createdAt
-          reactionGroups { content users { totalCount } }
-        }
-      }
-    }
-  }
-}' > "$state_dir/comments.pages.json"
-gh api graphql --paginate --slurp \
-  -f owner="$owner" -f name="$repo" -F number="$pr" -f query='
-query($owner:String!, $name:String!, $number:Int!, $endCursor:String) {
-  repository(owner:$owner, name:$name) {
-    pullRequest(number:$number) {
-      reviews(first:100, after:$endCursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes { author { login } body state url submittedAt commit { oid } }
-      }
-    }
-  }
-}' > "$state_dir/reviews.pages.json"
-jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]] as $nodes
-  | {nodes: $nodes, pageInfo: {hasNextPage: false, endCursor: null}}' \
-  "$state_dir/reviewThreads.pages.json" > "$state_dir/reviewThreads.json"
-jq '[.[].data.repository.pullRequest.comments.nodes[]]' \
-  "$state_dir/comments.pages.json" > "$state_dir/comments.json"
-jq '[.[].data.repository.pullRequest.reviews.nodes[]]' \
-  "$state_dir/reviews.pages.json" > "$state_dir/reviews.json"
-jq '.[0].data.repository
-  | {repositoryLabels: .labels, defaultBranchRef}
-    + (.pullRequest | {
-        labels,
-        closingIssuesReferences,
-      })' \
-  "$state_dir/reviewThreads.pages.json" > "$state_dir/labels.json"
-jq --slurpfile reviewThreads "$state_dir/reviewThreads.json" \
-  --slurpfile labels "$state_dir/labels.json" \
-  --slurpfile linkedIssueReferences "$state_dir/linkedIssueReferences.json" \
-  --slurpfile comments "$state_dir/comments.json" \
-  --slurpfile reviews "$state_dir/reviews.json" \
-  --rawfile worktreeStatus "$state_dir/worktreeStatus.txt" \
-  --rawfile localHeadOid "$state_dir/localHeadOid.txt" \
-  --rawfile remoteHeadOid "$state_dir/remoteHeadOid.txt" \
-  '. + $labels[0] + {linkedIssueReferences: $linkedIssueReferences[0], worktreeStatus: $worktreeStatus, localHeadOid: ($localHeadOid | gsub("\n$"; "")), remoteHeadOid: ($remoteHeadOid | gsub("\n$"; "")), reviewThreads: $reviewThreads[0], comments: $comments[0], reviews: $reviews[0]}' \
-  "$state_dir/pr-state.base.json" > "$state_dir/pr-state.unreviewed.json"
-mv "$state_dir/pr-state.unreviewed.json" pr-state.json
-```
+Immediately read back the remote PR number, URL, title, body, state, draft
+state, base, head branch, exact head SHA, labels, and linked issue. Repository
+labels that apply MUST be present before readiness.
 
-Ask the installed `$orchestration` skill to apply its **completion-handoff**
-contract to the captured report and PR state.
+## Current Readiness State
 
-When a child owns a typed review-control capture, it MUST consume the actual
-selected Sentinel terminal record and write the three ephemeral artifacts before
-building PR state:
+Before every readiness or handoff claim, capture fresh authenticated GitHub
+state for:
 
-```sh
-codexy-review-control --produce-review-control \
-  --plugin-root plugins/codexy --repository-root . \
-  --input "$state_dir/review-producer-request.json" \
-  --output "$state_dir/review-control-state.json" \
-  --packet-output "$state_dir/review-packet.json" \
-  --ledger-output "$state_dir/review-ledger.json"
-CODEXY_REVIEW_CONTROL_BIN=codexy-review-control scripts/build-pr-state \
-  --base-pr-state-file "$state_dir/pr-state.base.json" \
-  --review-control-state-file "$state_dir/review-control-state.json" \
-  --output "$state_dir/pr-state.json"
-```
+- repository and protected default branch;
+- PR number, state, draft state, merge state, base, head branch, and head SHA;
+- checks, reviews, latest reviews, comments, labels, and issue linkage; and
+- all review threads with resolution, outdated state, path, comment URL,
+  author, body, creation time, and comment commit SHA.
 
-The request MUST bind issue/PR, base/head/diff, selected profile/reviewer, event
-ancestry, issue contract, and the current issue-wide budget. The producer MUST
-preserve the supplied ledger tip and MUST reject stale, forged, duplicate, or
-out-of-order records; it MUST NOT create a third selected-review event.
-Generated packet, ledger, control, and PR-state files belong in the temporary
-evidence directory and MUST NOT be committed.
+Also capture local branch status, local HEAD, and the remote-tracking head.
+Those SHAs MUST equal the current PR head for a pushed/synced readiness claim.
+For a stacked PR, add authenticated linked-issue evidence when GitHub does not
+populate closing references.
 
-For stacked PRs whose `baseRefName` is not the captured `defaultBranchRef.name`,
-GitHub does not populate PR `closingIssuesReferences` from closing keywords. The
-PR state file MUST still include comparable authoritative issue evidence before
-readiness. It MUST keep the PR `body` final closing-keyword line and MUST add
-`linkedIssueReferences.nodes[]` for that issue, including `number`, `url`, and
-`labels.nodes[].name`, captured from the same GitHub repository's issue or
-GraphQL API output.
+Requested changes, actionable comments, and every unresolved actionable thread
+remain blocking. Outdated-but-fixed threads still require current-head evidence
+and GitHub resolution or an accepted no-change rationale. A green check or open
+PR alone is not readiness evidence.
 
-For review-response handoffs, the PR state file MUST include GraphQL
-`reviewThreads.nodes` with `id`, `isResolved`, `isOutdated`, `path`, and comment
-URLs. For PR-readiness or merge-readiness handoffs, the PR state file MUST
-include PR `headRefName`, PR `labels`, and `closingIssuesReferences` with issue
-labels for default-branch PRs. For non-default-base stacked PRs where GitHub
-ignores closing keywords, the PR state file MUST include `linkedIssueReferences`
-with issue labels instead. When repository labels exist, the PR state file MUST
-also include the repository label taxonomy as `repositoryLabels`; an unlabeled
-PR is not ready merely because handoff prose says no labels apply. For child
-handoffs that claim pushed or synced branch state, the PR state file MUST
-include the local `git status --short --branch` output as `worktreeStatus`;
-missing branch-status evidence blocks the handoff because stale local branches
-MUST NOT be ruled out without local branch-status evidence. For child handoffs
-that claim parent acceptance, merge evaluation, or PR readiness, the PR state
-file MUST include captured local `HEAD` as `localHeadOid` and the PR branch
-remote-tracking ref as `remoteHeadOid`.
+## Child-Owned Feedback
 
-The installed GitHub plugin's host-resolved generic admission hooks handle their
-matching lifecycle checks. Preserve the exact GitHub PR title and captured state
-with `repositoryLabels`; skill-authored commands MUST NOT resolve repository,
-source-checkout, cache, or ambient executable paths.
+Implementation and review-response edits stay with the branch-owning child.
+The parent MUST send that owner the PR number, exact head, comment or thread
+URLs, allowed paths, expected proof, and stop condition. After a repair, refresh
+the PR head and checks, rerun affected verification, and confirm each thread's
+current state before the parent resolves it. The parent MUST NOT patch the
+child-owned branch or resolve a thread from prose alone.
 
-Completion-handoff validation MUST run in the same readiness path. Linked issue
-labels and repository label evidence MUST NOT be skipped after the label hook
-passes:
+## Handoff
 
-Ask `$orchestration` to apply its named `completion-handoff` public contract to
-the captured report and PR state.
-
-## Child-Owned Review Feedback
-
-The parent handoff MUST include PR number, latest head SHA, relevant comments or
-review thread URLs, allowed files, expected return evidence, and stop condition.
-For non-trivial lanes it MUST require goal tool usage, todo/plan tool usage,
-multi-agent usage or concrete not-useful rationale, unavailable-tool fallbacks,
-current-diff selected-profile review findings, codegraph evidence, and LSP
-status.
-
-After the owning child pushes a review-response commit, the parent MUST inspect
-unresolved review threads after child fixes and refreshed thread capture, then
-MUST verify that the current head addresses each completed review thread before
-resolving it in GitHub.
-
-Fixed or accepted review threads MUST be resolved in GitHub before the PR is
-claimed PR-ready, merge-ready, or merged. The parent MUST NOT resolve a thread
-merely because a child said it was fixed, a commit was pushed, or a fresh review
-was requested.
+The handoff MUST bind the issue, branch/worktree, base, local/remote/PR head,
+changed paths, verification, checks, reviews, comments, labels, issue linkage,
+and unresolved threads. Ask `$orchestration` to apply its public
+**completion-handoff** contract to this captured state. An intentionally open
+PR MUST state the explicit parent-owned next gate; it is not merged completion.
