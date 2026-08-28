@@ -7,13 +7,13 @@ description: Use when one exact non-code artifact must be refreshed against one 
 
 ## Trigger
 
-Use only when the request names one non-code artifact, one governing source, and
-asks to remove conflicting, superseded, or internally duplicated claims.
+MUST use only when the request names one non-code artifact, one governing source,
+and asks to remove conflicting, superseded, or internally duplicated claims.
 
 ## Boundary gate
 
-Before mutation, inspect only the two named operands and retain their exact
-identifiers and bytes. Return `HANDOFF_REQUIRED` without mutation for:
+Before mutation, MUST inspect only the two named operands and retain their exact
+identifiers and bytes. MUST return `HANDOFF_REQUIRED` without mutation for:
 
 - multiple artifacts: `MULTIPLE_ARTIFACTS`;
 - ambiguous, absent, or competing authority, including one identifier in both
@@ -24,33 +24,34 @@ identifiers and bytes. Return `HANDOFF_REQUIRED` without mutation for:
 
 ## Refresh procedure
 
-1. Hash both operands before analysis.
-2. Compare only artifact claims with the source and that artifact's claims.
-3. Classify each removal as `conflict`, `superseded`, or `duplicate`; hash its
+1. MUST hash both operands before analysis.
+2. MUST compare only artifact claims with the source and that artifact's claims.
+3. MUST classify each removal as `conflict`, `superseded`, or `duplicate`; hash its
    exact preimage bytes.
-4. Delete only those preimages, add no claim, and preserve the source and every
+4. MUST delete only those preimages, add no claim, and preserve the source and every
    other path byte-for-byte.
-5. If nothing is removable, leave both operands byte-identical.
-6. Rehash the artifact and verify source identity, non-target preservation, and
+5. If nothing is removable, MUST leave both operands byte-identical.
+6. MUST rehash the artifact and verify source identity, non-target preservation, and
    unique removed digests.
 
-Never choose authority, change ownership or policy, move a source, read a
-sibling artifact, or make another path writable. Hand off scope expansion.
+MUST NOT choose authority, change ownership or policy, move a source, read a
+sibling artifact, or make another path writable. MUST hand off scope expansion.
 
 ## Receipt
 
-Return only the seven `schema.json` keys. Echo both input identifiers exactly.
+MUST return only the seven `schema.json` keys and echo both input identifiers exactly.
 
-- `UPDATED`: nonempty unique removed digests, final artifact hash, and `NONE`.
-- `NO_CHANGE`: empty `removed`, unchanged artifact hash, and `NONE`.
-- `HANDOFF_REQUIRED`: empty `removed`, `unavailable`, a non-`NONE` reason, and
-  no mutation.
+- `UPDATED` MUST contain a nonempty digest-keyed `removed` map, final artifact
+  hash, and `NONE`.
+- `NO_CHANGE` MUST contain empty `removed`, the unchanged artifact hash, and `NONE`.
+- `HANDOFF_REQUIRED` MUST contain empty `removed`, `unavailable`, a non-`NONE`
+  reason, and no mutation.
 
-Each removal has only `kind` and `claim_sha256`. The schema is
-`codexy.artifact-refresh.v1`.
+Each removal MUST use its `claim_sha256` as the `removed` map key and its
+`kind` as the value. The schema MUST be `codexy.artifact-refresh.v1`.
 
 ## Proof
 
-Report operand hashes before and after, exact changed paths, the closed receipt,
-and source/non-target identity. Clean input is byte-identical `NO_CHANGE`; a
-handoff mutates nothing.
+MUST report operand hashes before and after, exact changed paths, the closed
+receipt, and source/non-target identity. Clean input MUST be byte-identical
+`NO_CHANGE`; a handoff MUST mutate nothing.

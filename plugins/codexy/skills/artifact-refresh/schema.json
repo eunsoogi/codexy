@@ -27,22 +27,13 @@
       "enum": ["UPDATED", "NO_CHANGE", "HANDOFF_REQUIRED"]
     },
     "removed": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["kind", "claim_sha256"],
-        "additionalProperties": false,
-        "properties": {
-          "kind": {
-            "enum": ["conflict", "superseded", "duplicate"]
-          },
-          "claim_sha256": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          }
-        }
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{64}$"
       },
-      "uniqueItems": true
+      "additionalProperties": {
+        "enum": ["conflict", "superseded", "duplicate"]
+      }
     },
     "proof_handle": {
       "type": "string",
@@ -71,7 +62,7 @@
       "then": {
         "properties": {
           "removed": {
-            "minItems": 1
+            "minProperties": 1
           },
           "proof_handle": {
             "pattern": "^sha256:[0-9a-f]{64}$"
@@ -94,7 +85,7 @@
       "then": {
         "properties": {
           "removed": {
-            "maxItems": 0
+            "maxProperties": 0
           },
           "proof_handle": {
             "pattern": "^sha256:[0-9a-f]{64}$"
@@ -117,7 +108,7 @@
       "then": {
         "properties": {
           "removed": {
-            "maxItems": 0
+            "maxProperties": 0
           },
           "proof_handle": {
             "const": "unavailable"

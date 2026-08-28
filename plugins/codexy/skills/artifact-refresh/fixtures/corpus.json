@@ -135,30 +135,50 @@
     "AR-N09": "HANDOFF_REQUIRED",
     "AR-N10": "HANDOFF_REQUIRED"
   },
-  "removed_kinds": {
-    "AR-P01": "conflict",
-    "AR-P02": "superseded",
-    "AR-P03": "duplicate",
-    "AR-P04": "duplicate",
-    "AR-P05": "conflict",
-    "AR-P06": "superseded",
-    "AR-P07": "conflict",
-    "AR-P08": "conflict",
-    "AR-P09": ["duplicate", "duplicate"]
+  "removed": {
+    "AR-P01": {
+      "4698100c44e18ce002fb52e544c4f2f7116c7c4bde4f8583770a3d539551adaf": "conflict"
+    },
+    "AR-P02": {
+      "ace4053882093d9aed83154b6213b3b092f0c43f93bb8525151794d643d9ef4f": "superseded"
+    },
+    "AR-P03": {
+      "07fb572ae4e871377b77bbb71fc1196d9acd2e37919cc3232141d4a1fd478486": "duplicate"
+    },
+    "AR-P04": {
+      "b25a237cda0ead7ea34226c04f030eabdc9e4837f3de29a6fff77859221076a0": "duplicate"
+    },
+    "AR-P05": {
+      "d2939e8b3fb720381b3f8db82e967f837aed91a827035c1259f9b409df2d2847": "conflict"
+    },
+    "AR-P06": {
+      "679232fc31a552f355ae28833f45361c94582a2bde20199902398c333c5e17a8": "superseded"
+    },
+    "AR-P07": {
+      "0bdfd49beddc592c0cfb3a8a495af6cfd21e75454ded357572689b6a0779ac56": "conflict"
+    },
+    "AR-P08": {
+      "bf6a1c1f703f98b2a7d489b8f3069686dd6a9734baf9f9457f6de2dcf0238233": "conflict"
+    },
+    "AR-P09": {
+      "57fd9de1296d67ed2f33ce1c1de1d0652b53865a7418d943e3b3eda12c28eed2": "duplicate",
+      "c6a6edba7d5a5310f0a3a3ca5f7474750040d4f1004cd29a8b073984c698320a": "duplicate"
+    }
   },
-  "removed_sha256": {
-    "AR-P01": "4698100c44e18ce002fb52e544c4f2f7116c7c4bde4f8583770a3d539551adaf",
-    "AR-P02": "ace4053882093d9aed83154b6213b3b092f0c43f93bb8525151794d643d9ef4f",
-    "AR-P03": "07fb572ae4e871377b77bbb71fc1196d9acd2e37919cc3232141d4a1fd478486",
-    "AR-P04": "b25a237cda0ead7ea34226c04f030eabdc9e4837f3de29a6fff77859221076a0",
-    "AR-P05": "d2939e8b3fb720381b3f8db82e967f837aed91a827035c1259f9b409df2d2847",
-    "AR-P06": "679232fc31a552f355ae28833f45361c94582a2bde20199902398c333c5e17a8",
-    "AR-P07": "0bdfd49beddc592c0cfb3a8a495af6cfd21e75454ded357572689b6a0779ac56",
-    "AR-P08": "bf6a1c1f703f98b2a7d489b8f3069686dd6a9734baf9f9457f6de2dcf0238233",
-    "AR-P09": [
-      "57fd9de1296d67ed2f33ce1c1de1d0652b53865a7418d943e3b3eda12c28eed2",
-      "c6a6edba7d5a5310f0a3a3ca5f7474750040d4f1004cd29a8b073984c698320a"
-    ]
+  "schema_negative_cases": {
+    "cross_kind_duplicate_claim_sha256": {
+      "removed_entries": [
+        {
+          "kind": "conflict",
+          "claim_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "kind": "duplicate",
+          "claim_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "expected": "REJECTED"
+    }
   },
   "handoff_reasons": {
     "AR-N01": "CODE_BEHAVIOR",
