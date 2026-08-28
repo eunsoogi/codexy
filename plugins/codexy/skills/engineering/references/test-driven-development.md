@@ -21,6 +21,7 @@ MUST use faithful RED/GREEN only for a boundary classified
   or prose TDD.
 - Replace mock-only assertions when they do not observe the requested behavior.
 - Performance RED MUST measure the required workload once and record compile,
-  execution, integration-target, and nested-process cost; skips, retries, sleeps,
-  relaxed budgets, cache upgrades, or sharding alone MUST NOT satisfy it.
+  execution, integration-target, and nested-process cost; skips, retries,
+  sleeps, relaxed budgets, cache upgrades, or sharding alone MUST NOT satisfy
+  it.
 - Workflow and GitHub tests remain supporting evidence for their real surface.

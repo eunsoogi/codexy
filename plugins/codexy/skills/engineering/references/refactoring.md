@@ -18,8 +18,9 @@ MUST improve structure while preserving behavior and public contracts.
 
 ## Governed LOC contract
 
-- The canonical policy is [governed-code-policy.json](governed-code-policy.json):
-  every governed file MUST stay at or below 250 physical lines with no exception.
+- The canonical policy is
+  [governed-code-policy.json](governed-code-policy.json): every governed file
+  MUST stay at or below 250 physical lines with no exception.
 - Before handoff, run the package checker with one explicit `--path` per
   applicable touched file; it MUST resolve package policy without assuming a
   checkout root or traversing directories.

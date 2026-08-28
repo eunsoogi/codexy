@@ -14,5 +14,6 @@ MUST turn intent into one observable contract before editing.
 
 - MUST NOT edit before the outcome and proof are concrete or widen broad prose
   into adjacent cleanup.
-- Evidence proves only its observable and becomes stale when bound state changes.
+- Evidence proves only its observable and becomes stale when bound state
+  changes.
 - PR readiness requires current spec proof and clean review feedback.
