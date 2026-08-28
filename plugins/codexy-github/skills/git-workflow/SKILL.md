@@ -18,7 +18,8 @@ GitHub-specific authenticated admission and lifecycle boundaries.
   [pr-review-and-handoff.md](references/pr-review-and-handoff.md)
 - Repository-required Codex review:
   [codex-connector-review.md](references/codex-connector-review.md)
-- Merge authorization: [merge-authorization.md](references/merge-authorization.md)
+- Merge authorization:
+  [merge-authorization.md](references/merge-authorization.md)
 - Squash merge and main sync:
   [merge-and-main-sync.md](references/merge-and-main-sync.md)
 
@@ -42,8 +43,8 @@ events. Commands MUST NOT derive source-checkout, cache, ambient executable, or
 
 ## Merge Boundary
 
-Direct or nested connector merge and auto-merge mutations are `UNAVAILABLE`.
-The only Codexy-owned merge entrypoint is the installed host-resolved resource
+Direct or nested connector merge and auto-merge mutations are `UNAVAILABLE`. The
+only Codexy-owned merge entrypoint is the installed host-resolved resource
 `skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`. It fresh-reads
 and validates the exact GitHub authorization and delegates to the canonical
 hooked wrapper. Gate success, generic completion, local state, or parent prose

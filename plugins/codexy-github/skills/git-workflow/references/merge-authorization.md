@@ -26,6 +26,6 @@ threads, labels, title, issue linkage, connector policy, merge-message
 validation, cleanup, and post-merge proof.
 
 Direct or nested `mcp__codex_apps__github_merge_pull_request` and auto-merge
-connector calls remain `UNAVAILABLE`.
-The public installed wrapper accepts no local authorization-state substitute;
-its fresh authenticated capture is the only Codexy-owned authorization path.
+connector calls remain `UNAVAILABLE`. The public installed wrapper accepts no
+local authorization-state substitute; its fresh authenticated capture is the
+only Codexy-owned authorization path.

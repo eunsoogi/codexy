@@ -21,8 +21,8 @@ state for:
 - repository and protected default branch;
 - PR number, state, draft state, merge state, base, head branch, and head SHA;
 - checks, reviews, latest reviews, comments, labels, and issue linkage; and
-- all review threads with resolution, outdated state, path, comment URL,
-  author, body, creation time, and comment commit SHA.
+- all review threads with resolution, outdated state, path, comment URL, author,
+  body, creation time, and comment commit SHA.
 
 Also capture local branch status, local HEAD, and the remote-tracking head.
 Those SHAs MUST equal the current PR head for a pushed/synced readiness claim.
@@ -36,10 +36,10 @@ PR alone is not readiness evidence.
 
 ## Child-Owned Feedback
 
-Implementation and review-response edits stay with the branch-owning child.
-The parent MUST send that owner the PR number, exact head, comment or thread
-URLs, allowed paths, expected proof, and stop condition. After a repair, refresh
-the PR head and checks, rerun affected verification, and confirm each thread's
+Implementation and review-response edits stay with the branch-owning child. The
+parent MUST send that owner the PR number, exact head, comment or thread URLs,
+allowed paths, expected proof, and stop condition. After a repair, refresh the
+PR head and checks, rerun affected verification, and confirm each thread's
 current state before the parent resolves it. The parent MUST NOT patch the
 child-owned branch or resolve a thread from prose alone.
 
@@ -48,5 +48,5 @@ child-owned branch or resolve a thread from prose alone.
 The handoff MUST bind the issue, branch/worktree, base, local/remote/PR head,
 changed paths, verification, checks, reviews, comments, labels, issue linkage,
 and unresolved threads. Ask `$orchestration` to apply its public
-**completion-handoff** contract to this captured state. An intentionally open
-PR MUST state the explicit parent-owned next gate; it is not merged completion.
+**completion-handoff** contract to this captured state. An intentionally open PR
+MUST state the explicit parent-owned next gate; it is not merged completion.

@@ -1,8 +1,8 @@
 # Optional Manual Codex Connector Review
 
 This procedure applies only when the parent has the connector and repository
-policy requires one explicit manual `@codex review`. Otherwise it is not a
-merge gate. Automatic connector review MUST remain disabled.
+policy requires one explicit manual `@codex review`. Otherwise it is not a merge
+gate. Automatic connector review MUST remain disabled.
 
 On one frozen exact head, the parent MUST:
 
@@ -16,8 +16,7 @@ On one frozen exact head, the parent MUST:
 The owning child MUST NOT request connector review. It owns the repair and any
 still-authorized selected-review delta check. If that review quota is exhausted,
 it MUST repair every in-scope connector finding and return current-head proof
-without fabricating approval or requesting another selected or connector
-review.
+without fabricating approval or requesting another selected or connector review.
 
 Automatic, per-push, duplicate, unchanged-head, and piecemeal requests are
 forbidden. Another connector review requires explicit maintainer authorization

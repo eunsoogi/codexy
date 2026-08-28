@@ -10,9 +10,8 @@ authorization block merge. MUST NOT use `--admin` to bypass a gate.
 ## Canonical Squash Mutation
 
 Direct or nested `mcp__codex_apps__github_merge_pull_request` and auto-merge
-connector mutations remain `UNAVAILABLE`.
-After every independent gate and exact authorization passes, invoke only the
-installed host-resolved resource:
+connector mutations remain `UNAVAILABLE`. After every independent gate and exact
+authorization passes, invoke only the installed host-resolved resource:
 
 ```text
 skills/git-workflow/scripts/codexy-authorized-squash-merge.sh
@@ -22,8 +21,8 @@ For the live PR, supply exact `--expected-pr`, `--expected-issue`, `--repo`,
 `--match-head-commit`, `--subject`, `--body-file`, and `--merge-message-file`
 values derived from one fresh authenticated PR/authorization capture. The
 wrapper validates the target and merge-message payload, delegates to the
-canonical hooked wrapper, performs a squash merge, requests branch deletion,
-and MUST return zero before post-merge proof begins.
+canonical hooked wrapper, performs a squash merge, requests branch deletion, and
+MUST return zero before post-merge proof begins.
 
 The squash subject MUST derive from the captured remote PR title. The squash
 body MUST preserve the captured remote PR body exactly. Arbitrary local body or

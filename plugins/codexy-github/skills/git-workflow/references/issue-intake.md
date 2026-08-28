@@ -1,8 +1,8 @@
 # Issue Intake
 
-Before any Codexy-created issue mutation, the child MUST ask `$orchestration`
-to apply its public **issue-intake receipt** contract and receive explicit
-parent approval for the validated candidate.
+Before any Codexy-created issue mutation, the child MUST ask `$orchestration` to
+apply its public **issue-intake receipt** contract and receive explicit parent
+approval for the validated candidate.
 
 The candidate evidence MUST come from a supported real producer or user-facing
 surface and include:
@@ -17,8 +17,8 @@ surface and include:
 
 An exact duplicate, rejected or missing approval, unsupported synthetic or
 same-class observation, ownable existing work, no-change outcome, invalid
-metadata, or incomplete evidence MUST NOT create or mutate an issue. Preserve
-it as a handoff-only result with the canonical existing issue when applicable.
+metadata, or incomplete evidence MUST NOT create or mutate an issue. Preserve it
+as a handoff-only result with the canonical existing issue when applicable.
 
 Immediately before an approved mutation, MUST refresh duplicate and taxonomy
 evidence. After mutation, MUST read back the issue number, URL, title, state,
