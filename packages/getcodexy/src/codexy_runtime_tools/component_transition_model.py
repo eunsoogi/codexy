@@ -84,9 +84,7 @@ def plan_transition(
         if command in {"update", "bootstrap"}
         else canonical_components(manifest, set(target) - set(before))
     )
-    return TransitionPlan(
-        command, requested, before, resolved, target, adds, ()
-    )
+    return TransitionPlan(command, requested, before, resolved, target, adds, ())
 
 
 __all__ = [
