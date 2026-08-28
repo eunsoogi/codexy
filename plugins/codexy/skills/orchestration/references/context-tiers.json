@@ -173,6 +173,7 @@
     ],
     "task_reference_routes": {
       "orchestration/lane setup": [
+        "workflow_profiles",
         "task_classification",
         "tdd_classification_policy",
         "child_routing",
@@ -187,7 +188,9 @@
         "proof_completion"
       ],
       "review response": [
+        "workflow_profiles",
         "task_classification",
+        "tdd_classification_policy",
         "review_profiles",
         "review_lifecycle",
         "proof_completion",
@@ -238,7 +241,7 @@
         "child_routing",
         "public_extension_contracts"
       ],
-      "other": ["child_routing"]
+      "other": ["workflow_profiles", "tdd_classification_policy", "child_routing"]
     },
     "surface_names": [
       "repository engineering",

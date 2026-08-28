@@ -1,13 +1,4 @@
-# Public extension contracts
-
-- `issue-intake receipt`: validate the canonical receipt and require parent
-  approval before issue mutation; unsupported observations remain handoff-only.
-- `child-lane-ownership`: verify the named child owns its issue-sized
-  branch/worktree lane before accepting implementation evidence.
-- `completion-handoff`: require current PR, review-thread, head, local/remote,
-  label, and active-project handoff evidence before a terminal claim.
-
-GitHub or Devtools work MUST invoke its installed public extension; an
-unavailable required extension MUST fail closed. Extensions MUST invoke only
-the applicable named contract and MUST NOT derive private core paths or
-substitute missing proof.
+- issue-intake receipt: valid receipt+parent approval MUST precede issue mutation; unsupported stays handoff-only.
+- child-lane-ownership: child ownership of issue branch/worktree MUST precede implementation evidence.
+- completion-handoff: terminal claims MUST have current PR/threads/head/local+remote/labels/project evidence.
+GitHub/Devtools MUST use installed applicable contracts only; absent extensions MUST fail closed. MUST NOT substitute private paths/missing proof.

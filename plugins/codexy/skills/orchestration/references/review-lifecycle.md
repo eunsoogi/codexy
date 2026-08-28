@@ -1,11 +1,2 @@
-# Selected review lifecycle
-
-MUST use exactly the reviewer in `review-profiles.json` on the current diff and
-head. Its terminal verdict is `PASS`, `BLOCK`, or `UNOBSERVABLE`; only `PASS`
-satisfies readiness before the issue-wide three-verdict cap is exhausted.
-
-Retain and observe a live reviewer read-only. MUST NOT message, interrupt,
-replace, duplicate, or poll it. `PENDING` and `RUNNING` are non-terminal. Repair
-every in-scope finding and refresh exact-head proof. A fourth selected review is
-forbidden; cap exhaustion waives no test, CI, thread, safety, ownership, LOC,
-connector, or merge gate.
+MUST use exactly the configured reviewer on current diff/head. Only PASS/BLOCK/UNOBSERVABLE are terminal; only PASS authorizes readiness within cap.
+Live reviewer MUST stay read-only; MUST NOT message/interrupt/replace/duplicate/poll. PENDING/RUNNING do not count. Repair each in-scope finding; refresh exact-head proof. Fourth review is forbidden; cap MUST NOT waive test/CI/thread/safety/ownership/LOC/connector/merge gates.
