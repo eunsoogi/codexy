@@ -29,6 +29,17 @@ fn connector_merge_without_authoritative_state_is_denied() -> TestResult {
 
 #[cfg(unix)]
 #[test]
+fn packaged_launcher_runs_from_arbitrary_cwd() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let installed = temp.path().join("installed/codexy-github");
+    crate::support::copy_dir(github_plugin_root(), &installed)?;
+    let (output, merged, body) = wrapper_with_payload(&installed, state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n", "fix(workflow): require intent (#128)", "Fixes #503\n", false, true)?;
+    assert!(output.status.success() && merged && body == "Fixes #503\n", "packaged launcher did not record the expected mutation: {}", String::from_utf8_lossy(&output.stderr));
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
@@ -118,19 +129,19 @@ fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestR
 fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
     let message = "fix(workflow): require intent (#128)\n\nFixes #503\n";
     let subject = "fix(workflow): require intent (#128)";
-    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, subject, "Fixes #503\n", false)?;
+    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, subject, "Fixes #503\n", false, false)?;
     assert!(output.status.success(), "exact payload rejected: {}", String::from_utf8_lossy(&output.stderr));
     assert!(merged, "exact payload did not reach merge");
     for (actual_subject, actual_body) in [
         ("fix: malformed subject", "Fixes #503\n"),
         (subject, "This body does not close #503\n"),
     ] {
-        let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, actual_subject, actual_body, false)?;
+        let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, message, actual_subject, actual_body, false, false)?;
         assert!(!output.status.success(), "decoy message admitted: {}", String::from_utf8_lossy(&output.stderr));
         assert!(!merged, "decoy message reached merge");
     }
     let invalid = "fix: malformed subject\n\nFixes #503\n";
-    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, invalid, "fix: malformed subject", "Fixes #503\n", false)?;
+    let (output, merged, _) = wrapper_with_payload(&github_plugin_root(), state(), false, invalid, "fix: malformed subject", "Fixes #503\n", false, false)?;
     assert!(!output.status.success(), "malformed exact payload admitted");
     assert!(!merged, "malformed exact payload reached merge");
     Ok(())
@@ -141,7 +152,7 @@ fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
 fn canonical_wrapper_gh_uses_immutable_body_snapshot() -> TestResult {
     let (output, merged, body) = wrapper_with_payload(
         &github_plugin_root(), state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n",
-        "fix(workflow): require intent (#128)", "Fixes #503\n", true,
+        "fix(workflow): require intent (#128)", "Fixes #503\n", true, false,
     )?;
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert!(merged, "immutable body did not reach merge");
@@ -187,12 +198,12 @@ fn admission(root: &std::path::Path, message: &std::path::Path, authorization: &
 
 #[cfg(unix)]
 fn wrapper_output(root: &std::path::Path, capture: &str, fail_api: bool) -> TestResult<(std::process::Output, bool)> {
-    let (output, merged, _) = wrapper_with_payload(root, capture, fail_api, "fix(workflow): require intent (#128)\n\nFixes #503\n", "fix(workflow): require intent (#128)", "Fixes #503\n", false)?;
+    let (output, merged, _) = wrapper_with_payload(root, capture, fail_api, "fix(workflow): require intent (#128)\n\nFixes #503\n", "fix(workflow): require intent (#128)", "Fixes #503\n", false, false)?;
     Ok((output, merged))
 }
 
 #[cfg(unix)]
-fn wrapper_with_payload(root: &std::path::Path, capture: &str, fail_api: bool, message_text: &str, subject: &str, body_text: &str, mutate_body: bool) -> TestResult<(std::process::Output, bool, String)> {
+fn wrapper_with_payload(root: &std::path::Path, capture: &str, fail_api: bool, message_text: &str, subject: &str, body_text: &str, mutate_body: bool, launcher: bool) -> TestResult<(std::process::Output, bool, String)> {
     let workspace = tempfile::tempdir()?;
     let owned = super::admission_runtime::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let message = owned.join("message.txt");
@@ -215,9 +226,9 @@ done
 exit 1
 "#)?;
     make_executable(&fake_gh)?;
-    let mut command = Command::new(root.join("hooks/codexy-authorized-squash-merge.sh"));
+    let mut command = Command::new(root.join(if launcher { "skills/git-workflow/scripts/codexy-authorized-squash-merge.sh" } else { "hooks/codexy-authorized-squash-merge.sh" }));
     command
-        .current_dir(&owned)
+        .current_dir(workspace.path())
         .env("PATH", format!("{}:{}", fake_bin.display(), std::env::var("PATH")?))
         .env("CODEXY_GH_STATE", &capture_file).env("CODEXY_GH_RECORD", &record)
         .env("CODEXY_GH_FAIL", if fail_api { "1" } else { "0" })

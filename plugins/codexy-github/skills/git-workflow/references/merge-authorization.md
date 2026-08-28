@@ -11,10 +11,11 @@ before validation. It derives its ephemeral JSON record whose `kind` is
 
 The native connector merge and auto-merge tools are not an authorization path.
 When nested connector calls do not carry authenticated hook-event coverage, they
-are unavailable and MUST be routed through the existing
-`hooks/codexy-authorized-squash-merge.sh` wrapper. The wrapper's fresh capture
-is the only supported fallback; do not infer coverage from a nested producer or
-parse its `functions.exec` source.
+are unavailable and MUST be routed through the host-resolved bundled skill
+resource `skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`. That
+launcher delegates to the existing `hooks/codexy-authorized-squash-merge.sh`
+wrapper, whose fresh capture is the only supported fallback; do not infer
+coverage from a nested producer or parse its `functions.exec` source.
 
 An explicit user or maintainer intent is authoritative only when its record
 references one fresh GitHub PR comment with the immutable `commentId` and

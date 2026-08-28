@@ -83,9 +83,12 @@ Codexy merge execution has one supported path. Direct
 `mcp__codex_apps__github_enable_auto_merge` calls MUST remain unavailable when
 the host cannot prove that the repository hook covered the exact mutation,
 including nested connector calls from `functions.exec`. In that case, the
-existing `hooks/codexy-authorized-squash-merge.sh` wrapper MUST be used as the
-canonical fallback. MUST NOT parse `functions.exec` source or add a second
-authorization store, ledger, cache, schema, framework, or workflow.
+host-resolved bundled skill resource
+`skills/git-workflow/scripts/codexy-authorized-squash-merge.sh` MUST be used as
+the entrypoint; it delegates to the existing
+`hooks/codexy-authorized-squash-merge.sh` wrapper, which remains the canonical
+fallback implementation. MUST NOT parse `functions.exec` source or add a
+second authorization store, ledger, cache, schema, framework, or workflow.
 
 Before any Codexy-created issue mutation, child lanes MUST ask the installed
 `$orchestration` skill to apply its **issue-intake receipt** contract, submit
