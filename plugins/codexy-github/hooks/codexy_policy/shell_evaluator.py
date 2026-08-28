@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shlex
 from pathlib import Path
 from typing import Protocol
 
@@ -17,7 +16,7 @@ from .invocation import Invocation, resolve
 from .shell_context import changed_directory
 from .shell_groups import GroupSyntaxError, parse
 from .shell_opaque import dynamic_control_executable, resolved_segments, separate_lines
-from .shell_segments import opaque_syntax, segments
+from .shell_segments import opaque_syntax, segments, tokenize
 from .shell_sequence import evaluate as evaluate_sequence
 
 
@@ -39,13 +38,8 @@ def evaluate(
             if evaluate(nested, context, depth + 1, policy):
                 return True
         lexical_command = syntax.command
-    try:
-        lexer = shlex.shlex(
-            separate_lines(lexical_command), posix=True, punctuation_chars=";&|(){}"
-        )
-        lexer.whitespace_split, lexer.commenters = True, ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = tokenize(lexical_command)
+    if tokens is None:
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
     try:
         sequence = parse(tokens)

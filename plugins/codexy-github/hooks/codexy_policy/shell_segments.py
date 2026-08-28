@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
 
+QUOTED_REDIRECTIONS, REDIRECTION_FD = {"<": "\ue001", ">": "\ue002"}, "\ue003"
+
 CONTROL_WORDS = frozenset(
     {
         "if",
@@ -28,6 +30,17 @@ CONTROL_WORDS = frozenset(
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 
 
+def tokenize(command: str) -> list[str] | None:
+    try:
+        lexer = shlex.shlex(
+            separate_lines(command), posix=True, punctuation_chars=";&|(){}<>"
+        )
+        lexer.whitespace_split, lexer.commenters = True, ""
+        return _strip_redirections(list(lexer))
+    except ValueError:
+        return None
+
+
 @dataclass(frozen=True)
 class OpaqueSyntax:
     """Executable shell syntax after literal and comment payloads are removed."""
@@ -46,7 +59,7 @@ def separate_lines(command: str) -> str:
             index += 2
             continue
         if escaped:
-            result.append(char)
+            result.append(QUOTED_REDIRECTIONS[char] if quote and char in "<>" else char)
             escaped = False
         elif char == "\\" and quote != "'":
             result.append(char)
@@ -54,8 +67,13 @@ def separate_lines(command: str) -> str:
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
             result.append(char)
+        elif quote is not None and char in "<>":
+            result.append(QUOTED_REDIRECTIONS[char])
         elif quote == "'" and char == "$":
             result.append(SINGLE_QUOTED_DOLLAR)
+        elif quote is None and char in "<>":
+            _mark_redirection_fd(result)
+            result.append(char)
         elif (
             quote is None
             and char == "#"
@@ -77,13 +95,8 @@ def separate_lines(command: str) -> str:
 
 def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
     """Return command-position segments; quoted text remains argument data."""
-    try:
-        lexer = shlex.shlex(
-            separate_lines(command), posix=True, punctuation_chars=";&|(){}"
-        )
-        lexer.whitespace_split, lexer.commenters = True, ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = tokenize(command)
+    if tokens is None:
         return None
     result: list[tuple[str, ...]] = []
     current: list[str] = []
@@ -100,6 +113,35 @@ def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
             if command_start and token != "!" and not assignment(token):
                 command_start = False
     return tuple(result)
+
+
+def _mark_redirection_fd(result: list[str]) -> None:
+    start = len(result)
+    while start and result[start - 1].isdigit():
+        start -= 1
+    if start < len(result) and (start == 0 or result[start - 1].isspace()):
+        result.insert(start, REDIRECTION_FD)
+
+
+def _is_redirection(token: str) -> bool:
+    return any(char in "<>" for char in token) and set(token) <= set("<>&|-")
+
+
+def _strip_redirections(tokens: list[str]) -> list[str] | None:
+    result: list[str] = []
+    iterator = iter(tokens)
+    for token in iterator:
+        if token.startswith(REDIRECTION_FD) and token[1:].isdigit():
+            token = next(iterator, None)
+            if token is None:
+                return None
+        if _is_redirection(token):
+            target = next(iterator, None)
+            if target is None or target in OPERATORS:
+                return None
+        else:
+            result.append(token.replace("\ue001", "<").replace("\ue002", ">"))
+    return result
 
 
 def command_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:

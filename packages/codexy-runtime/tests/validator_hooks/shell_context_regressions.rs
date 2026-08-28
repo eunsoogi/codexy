@@ -11,6 +11,9 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let commands = [
         "gh api repos/eunsoogi/codexy/labels --paginate --jq '.[].name'",
+        "gh api repos/eunsoogi/codexy/labels --paginate --jq '.[].name | test(\"git push|gh pr merge\")' > /dev/null",
+        "gh api repos/eunsoogi/codexy/labels --paginate --jq '.[].name' 2>/dev/null",
+        "gh api repos/eunsoogi/codexy/labels --paginate --jq '.[].name' | jq -r 'select(test(\"delete|merge\") | not)'",
         "gh api repos/eunsoogi/codexy/assignees/eunsoogi --jq '.login'",
         "gh api repos/eunsoogi/codexy/branches/main/protection --jq '.required_pull_request_reviews'",
         "gh api repos/eunsoogi/codexy/milestones/23 --jq '.title'",
@@ -58,6 +61,7 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         ("P-PR-07", "gh pr ready 17 --repo eunsoogi/codexy --undo"),
         ("P-PR-08", "gh pr ready 17 --repo eunsoogi/codexy"),
         ("P-ISS-01-rest", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -f body=note"),
+        ("P-ISS-01-rest-redirection", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' > /dev/null"),
         ("P-ISS-01-rest-sibling-lists", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels=[\"bug\"]' -F 'assignees=[\"eunsoogi\"]'"),
         ("P-ISS-01-rest-bracket-arrays", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels[]=bug' -F 'labels[]=workflow'"),
         ("P-ISS-01-rest-placeholders", "gh api --method POST 'repos/{owner}/{repo}/issues' -f title='Valid issue'"),
@@ -105,6 +109,7 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         ("N-16", "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
         ("N-17", "gh api --method POST repos/eunsoogi/codexy/issues"),
         ("N-17-review-without-body", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT"),
+        ("N-17-redirection", "gh api --method POST repos/eunsoogi/codexy/issues > /dev/null"),
     ];
     for (case_id, command) in denied {
         for event in ["PermissionRequest", "PreToolUse"] {
