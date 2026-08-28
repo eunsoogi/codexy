@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import re
+import shutil
 import tomllib
 import unittest
 from pathlib import Path
-from subprocess import run
 from tempfile import TemporaryDirectory
 
-from codexy_runtime_tools.component_integrity import COMPONENT_FILES, verify_component
+from codexy_runtime_tools.component_integrity import verify_component
 from codexy_runtime_tools import updater
 from codexy_runtime_tools.github_pre_session import run_github_pre_session
 from codexy_runtime_tools.pre_session import run_pre_session
@@ -211,7 +211,6 @@ class PublicActivationContractTests(unittest.TestCase):
             r"\buvx\s+--from\s+getcodexy(?:==[^\s]+)?\s+codexy-update\s+--pre-session\b"
         )
 
-        self.assertFalse((repository / "install").exists())
         self.assertNotIn("codexy-update", scripts)
         for path in (
             repository / "README.md",
@@ -231,19 +230,20 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertTrue(callable(updater.main))
         self.assertTrue(callable(run_pre_session))
 
-    # fmt: off
-    def test_manifest_hashed_integrity_inputs_require_lf(self) -> None:
-        repo, paths = Path(__file__).resolve().parents[3], tuple(Path("plugins") / component / relative for component, files in COMPONENT_FILES.items() for relative in (*files, ".codex-plugin/plugin.json"))
-        self.assertTrue({path.suffix for path in paths} >= {".py", ".json", ".cmd"})
-        with TemporaryDirectory() as temporary:
-            run(["git", "clone", "--no-local", "--config", "core.autocrlf=true", repo, (checkout := Path(temporary) / "checkout")], check=True, capture_output=True, text=True)
-            self.assertTrue((fields := run(["git", "-C", checkout, "check-attr", "-z", "eol", "--", *paths], check=True, capture_output=True).stdout.split(b"\0"))[-1] == b"" and len(fields) == len(paths) * 3 + 1 and all(fields[:-1:3]) and fields[1:-1:3] == [b"eol"] * len(paths) and fields[2:-1:3] == [b"lf"] * len(paths))
-            self.assertTrue(all(b"\r\n" not in (checkout / path).read_bytes() for path in paths) and all(verify_component(checkout / "plugins" / component, component) for component in COMPONENT_FILES))
-            (mutated := checkout / (py_path := next(path for path in paths if path.suffix == ".py"))).write_bytes(mutated.read_bytes().replace(b"\n", b"\r\n"))
-            self.assertRaisesRegex(ValueError, "component integrity mismatch", verify_component, checkout / "plugins" / py_path.parts[1], py_path.parts[1])
-
-
-# fmt: on
+    def test_ordinary_source_edits_do_not_require_repinning(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        edits = {
+            "codexy": "skills/wiki/SKILL.md",
+            "codexy-github": "skills/git-workflow/SKILL.md",
+        }
+        for component, relative in edits.items():
+            with self.subTest(component=component), TemporaryDirectory() as temporary:
+                plugin = Path(temporary) / component
+                shutil.copytree(repository / "plugins" / component, plugin)
+                source = plugin / relative
+                source.write_bytes(source.read_bytes() + b"\n# ordinary source edit\n")
+                verified = verify_component(plugin, component, "1.5.1")
+                self.assertEqual(verified[Path(relative)], source.read_bytes())
 
 
 if __name__ == "__main__":

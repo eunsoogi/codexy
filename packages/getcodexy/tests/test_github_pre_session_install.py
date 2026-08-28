@@ -147,9 +147,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
             market = root / "marketplace"
             core = plugin(market / "plugins/codexy", "codexy")
             github = plugin(market / "plugins/codexy-github", "codexy-github")
-            (github / "agents/codexy-weaver.toml").write_text(
-                "tampered", encoding="utf-8"
-            )
+            (github / "agents/catalog.toml").write_text("tampered", encoding="utf-8")
             invoked: list[tuple[str, ...]] = []
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -169,7 +167,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     payload = {"ok": True}
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
-            with self.assertRaisesRegex(ValueError, "component integrity mismatch"):
+            with self.assertRaisesRegex(ValueError, "component registration"):
                 run_github_pre_session(
                     root / "home/.codex",
                     codex=executable(root),

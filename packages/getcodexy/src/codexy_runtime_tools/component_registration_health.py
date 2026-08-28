@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
 
-from .component_integrity import verify_component
-
+from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
+from .component_manifest import load_component_manifest
 
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
@@ -193,41 +194,55 @@ def valid_registration(plugin: Path, component: str) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
         if component == "devtools":
-            return _json(plugin / ".mcp.json") == MCP and _executable(
-                plugin / LAUNCHERS[component][0]
-            )
-        verify_component(plugin, "codexy" if component == "core" else "codexy-github")
+            return json.loads(
+                _text(plugin / ".mcp.json", plugin)
+            ) == MCP and _executable(plugin / LAUNCHERS[component][0], plugin)
         return (
-            _text(plugin / "agents/catalog.toml") == CATALOGS[component]
-            and _json(plugin / "hooks/hooks.json") == HOOKS[component]
+            _text(plugin / "agents/catalog.toml", plugin) == CATALOGS[component]
+            and json.loads(_text(plugin / "hooks/hooks.json", plugin))
+            == HOOKS[component]
             and all(
-                _regular(plugin / f"agents/{name}") for name in AGENT_FILES[component]
+                _regular(plugin / f"agents/{name}", plugin, 'model = "')
+                for name in AGENT_FILES[component]
             )
-            and all(_regular(plugin / path) for path in LAUNCHERS[component])
-            and (
-                component != "core"
-                or all(_regular(plugin / path) for path in CORE_HOOK_DEPENDENCIES)
-            )
+            and all(_launcher(plugin / path, plugin) for path in LAUNCHERS[component])
+            and _skill(plugin, component)
         )
-    except (KeyError, OSError, UnicodeDecodeError, ValueError):
+    except (KeyError, OSError, UnicodeDecodeError, SyntaxError, ValueError):
         return False
 
 
-def _json(path: Path) -> object:
-    with path.open("r", encoding="utf-8") as source:
-        return json.load(source)
+def _text(path: Path, root: Path) -> str:
+    return _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES).decode()
 
 
-def _text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+def _regular(path: Path, root: Path, needle: str = "") -> bool:
+    contents = _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES)
+    return bool(contents) and (not needle or valid_agent_toml(contents.decode(), path))
 
 
-def _regular(path: Path) -> bool:
-    try:
-        return path.is_file() and not path.is_symlink() and path.stat().st_size > 0
-    except OSError:
-        return False
+def _launcher(path: Path, root: Path) -> bool:
+    contents = _text(path, root) if _regular(path, root) else ""
+    if path.suffix == ".cmd":
+        return contents.lower().startswith("@echo off")
+    command = contents.splitlines()[0][2:].split() if contents.startswith("#!") else []
+    return (
+        bool(command)
+        and _executable(path, root)
+        and (os.name == "nt" or shutil.which(command[-1]) is not None)
+    )
 
 
-def _executable(path: Path) -> bool:
-    return _regular(path) and os.access(path, os.X_OK)
+def _skill(plugin: Path, component: str) -> bool:
+    required = load_component_manifest().component(component).asset.required_paths
+    if component == "core":
+        required += CORE_HOOK_DEPENDENCIES
+    name = "wiki" if component == "core" else "git-workflow"
+    contents = _text(plugin / f"skills/{name}/SKILL.md", plugin)
+    return all(_regular(plugin / path, plugin) for path in required) and (
+        contents.startswith(f"---\nname: {name}\n") and "\n---\n" in contents
+    )
+
+
+def _executable(path: Path, root: Path) -> bool:
+    return _regular(path, root) and (os.name == "nt" or os.access(path, os.X_OK))

@@ -9,9 +9,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codexy_runtime_tools.component_integrity import COMPONENT_FILES
-
-
 ROOT = Path(__file__).parents[3]
 PLUGIN_FILES = tuple(
     "skills/dreaming/references/handoff-runtime.schema.json skills/dreaming/scripts/resumable-context-capsule.sh skills/dreaming/scripts/resumable-context-capsule.cmd skills/dreaming/scripts/resumable_context_capsule.py".split()
@@ -67,7 +64,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             self.runtime = self.plugins / "codexy-devtools"
             self.runtime.mkdir()
 
-    def test_component_sources_are_installed_and_integrity_pinned(self) -> None:
+    def test_component_sources_are_installed_and_manifest_declares_them(self) -> None:
         missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
         self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
         manifest_path = ROOT / (
@@ -75,11 +72,10 @@ class ResumableContextCapsuleTests(unittest.TestCase):
         )
         manifest = json.loads(manifest_path.read_text())
         core = next(item for item in manifest["components"] if item["id"] == "core")
-        pinned = COMPONENT_FILES["codexy"]
-        for inventory in (core["asset"]["requiredPaths"], pinned):
-            self.assertEqual(set(PLUGIN_FILES) - set(inventory), set())
+        required = core["asset"]["requiredPaths"]
+        self.assertEqual(set(PLUGIN_FILES) - set(required), set())
         generated = lambda item: item.startswith(("handoff-runtime.json", "runtime/"))
-        self.assertFalse(any(map(generated, pinned)))
+        self.assertFalse(any(map(generated, required)))
 
     def test_installed_layouts_preserve_three_consumers(self) -> None:
         python_path = str(Path(sys.executable).parent)

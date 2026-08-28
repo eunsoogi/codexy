@@ -163,6 +163,9 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     }
                 ),
             ),
+            ("core", "skills/wiki/SKILL.md", "---\nname: wiki\n"),
+            ("core", "hooks/codexy-thread-delivery.sh", "#!/definitely-missing\n"),
+            ("core", "skills/dreaming/scripts/resumable_context_capsule.py", ""),
         )
         plugins = {"core": "codexy", "devtools": "codexy-devtools"}
         for component, relative, contents in cases:
@@ -180,6 +183,19 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                 for entry in result["component_health"]
             }
             self.assertEqual(health[component], "incompatible")
+
+    @unittest.skipUnless(sys.platform != "win32", "POSIX launcher mode only")
+    def test_doctor_rejects_non_executable_posix_launcher(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            launcher = (
+                state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh"
+            )
+            healthy = doctor(state.home, codex=state.codex, runner=state.run)
+            self.assertEqual(healthy["component_health"][0]["state"], "healthy")
+            launcher.chmod(launcher.stat().st_mode & ~0o111)
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+        self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
     def test_doctor_rejects_missing_or_tampered_canonical_hook_dependencies(
         self,
@@ -204,8 +220,27 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     if mutation == "missing":
                         path.unlink()
                     else:
-                        path.write_bytes(path.read_bytes() + b"\n# tampered\n")
+                        path.write_bytes(b"")
                     result = doctor(state.home, codex=state.codex, runner=state.run)
+                self.assertEqual(result["component_health"][0]["state"], "incompatible")
+
+    def test_doctor_rejects_parser_and_ancestor_registration_traps(self) -> None:
+        cases = ("malformed",) + (("symlink",) if sys.platform != "win32" else ())
+        for case in cases:
+            with self.subTest(case=case), fixture({"core"}) as state:
+                materialize(state, "core")
+                plugin = state.marketplace / "plugins/codexy"
+                if case == "malformed":
+                    (plugin / "agents/codexy-architect.toml").write_text(
+                        'name = "codexy-architect"\nmodel = "gpt-5.6-sol"\n[\n',
+                        encoding="utf-8",
+                    )
+                else:
+                    agents = plugin / "agents"
+                    target = state.marketplace / "agents-target"
+                    agents.rename(target)
+                    agents.symlink_to(target, target_is_directory=True)
+                result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
 

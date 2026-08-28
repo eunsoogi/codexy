@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_integrity import frozen_component
+from .component_registration_health import valid_registration
 from .activation_transaction import ActivationSnapshot
 from .plugin_resolution import (
     official_named_install,
@@ -85,6 +86,12 @@ def run_github_pre_session(
                 github_root, "codexy-github", github_version
             ) as trusted_github,
         ):
+            for root, component in (
+                (trusted_core, "core"),
+                (trusted_github, "github"),
+            ):
+                if not valid_registration(root, component):
+                    raise ValueError(f"{component} component registration is invalid")
             core_changed = activate_core(trusted_core, home, synchronize)
             activate = activate_github or sync_github_agent
             github_changed = activate(trusted_github, home)
