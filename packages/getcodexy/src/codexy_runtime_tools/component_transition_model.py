@@ -48,44 +48,47 @@ def plan_transition(
     before: tuple[str, ...],
     recorded: tuple[str, ...] | None,
 ) -> TransitionPlan:
+    if command == "remove":
+        if not requested:
+            raise ComponentResolutionError("missing-removal-target")
+        resolve_components(manifest, requested)
+        resolved = canonical_components(manifest, set(requested))
+        target = canonical_components(manifest, set(before) - set(resolved))
+        if target not in manifest.compatible_combinations:
+            raise ComponentResolutionError("dependency-protected-removal")
+        return TransitionPlan(
+            command, requested, before, resolved, target, (), tuple(reversed(resolved))
+        )
+
     if command == "bootstrap":
         if requested:
             raise ComponentResolutionError("components-not-accepted")
-        resolved = resolve_components(manifest, ())
-        return TransitionPlan(
-            command, requested, before, resolved, resolved, resolved, ()
-        )
-    if command == "install":
-        resolved = resolve_components(manifest, requested)
-        target = canonical_components(manifest, set(before) | set(resolved))
-        return TransitionPlan(
-            command,
-            requested,
-            before,
-            resolved,
-            target,
-            canonical_components(manifest, set(target) - set(before)),
-            (),
-        )
-    if command == "update":
+        reconciliation_request = ()
+    elif command == "update":
         if recorded is None:
             raise ComponentResolutionError("no-recorded-selection")
-        resolved = before if not requested else resolve_components(manifest, requested)
-        if not set(resolved).issubset(before):
-            raise ComponentResolutionError("incompatible-component-selection")
-        return TransitionPlan(
-            command, requested, before, resolved, before, resolved, ()
-        )
-    if not requested:
-        raise ComponentResolutionError("missing-removal-target")
-    resolve_components(manifest, requested)
-    resolved = canonical_components(manifest, set(requested))
-    target = canonical_components(manifest, set(before) - set(resolved))
-    if target not in manifest.compatible_combinations:
-        raise ComponentResolutionError("dependency-protected-removal")
-    return TransitionPlan(
-        command, requested, before, resolved, target, (), tuple(reversed(resolved))
+        reconciliation_request = requested
+    else:
+        reconciliation_request = requested
+
+    resolved = (
+        before
+        if command == "update" and not reconciliation_request
+        else resolve_components(manifest, reconciliation_request)
     )
+    if command == "update" and not set(resolved).issubset(before):
+        raise ComponentResolutionError("incompatible-component-selection")
+    target = (
+        before
+        if command == "update"
+        else canonical_components(manifest, set(before) | set(resolved))
+    )
+    adds = (
+        resolved
+        if command in {"update", "bootstrap"}
+        else canonical_components(manifest, set(target) - set(before))
+    )
+    return TransitionPlan(command, requested, before, resolved, target, adds, ())
 
 
 __all__ = [

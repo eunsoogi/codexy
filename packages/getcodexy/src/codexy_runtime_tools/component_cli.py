@@ -31,7 +31,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")),
     )
-    commands = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(
+        dest="command",
+        required=True,
+        metavar="{install,remove,status,doctor}",
+    )
     for command in ("install", "update", "remove", "migrate"):
         child = commands.add_parser(command, allow_abbrev=False)
         child.add_argument("components", nargs="*")
