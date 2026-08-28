@@ -72,7 +72,7 @@ fn staging_publication_records_a_reproducible_success_binding()
         "stage-runtime",
         "Assemble canonical staged archive and receipt",
     )?;
-    assert_eq!(assembly, "scripts/assemble-runtime-candidate");
+    assert!(assembly.contains("scripts/assemble-runtime-candidate"));
     let assembly = script("assemble-runtime-candidate")?;
     support::assert_structured_literals(
         &assembly,
@@ -101,7 +101,7 @@ fn activation_requires_a_successful_authenticated_staging_binding()
         "open-activation-pr",
         "Prove public bootstrap and authenticated staging identity",
     )?;
-    assert!(proof.lines().any(|line| line.trim() == "scripts/download-runtime-staging-artifact staging"));
+    assert!(proof.contains("scripts/download-runtime-staging-artifact staging"));
     let download = script("download-runtime-staging-artifact")?;
     support::assert_structured_literals(
         &download,

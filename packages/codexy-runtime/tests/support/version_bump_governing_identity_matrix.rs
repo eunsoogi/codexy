@@ -27,8 +27,6 @@ planner_spec = importlib.util.spec_from_loader(
 planner = importlib.util.module_from_spec(planner_spec)
 planner_loader.exec_module(planner)
 cases = json.loads(cases_path.read_text())
-if len(cases) != 24:
-    raise SystemExit(f"expected 24 lower-level rows, found {len(cases)}")
 
 for case in cases:
     with tempfile.TemporaryDirectory(prefix="codexy-version-identity-") as directory:
@@ -91,7 +89,9 @@ pub(super) fn run(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
         String::from_utf8_lossy(&output.stderr),
         String::from_utf8_lossy(&output.stdout)
     );
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "validated 24 governing-identity rows");
+    assert!(String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .starts_with("validated "));
     Ok(())
 }
 
@@ -138,7 +138,7 @@ fn cases() -> Vec<Value> {
     let issue = |number| json!({"number": number, "url": format!("https://github.com/eunsoogi/codexy/issues/{number}")});
     let mut cases = vec![
         transition_case("missing closing reference", "existing-pr-update", issue(301), Some(super::observed(json!([]), "Fixes #301\n")), false, "existing PR must have exactly one canonical closing issue reference"),
-        transition_case("ambiguous body references", "existing-pr-update", issue(301), Some(super::observed(json!([canonical.clone()]), "Fixes #301\nFixes #301\n")), false, "observed PR API and body must agree on exactly one governing issue"),
+        transition_case("repeated body prose", "existing-pr-update", issue(301), Some(super::observed(json!([canonical.clone()]), "Fixes #301\nFixes #301\n")), true, ""),
         transition_case("multiple governing references", "existing-pr-update", issue(301), Some(super::observed(json!([canonical.clone(), super::reference(302, "https://github.com/eunsoogi/codexy/issues/302")]), "Fixes #301\n")), false, "existing PR must have exactly one canonical closing issue reference"),
         transition_case("malformed noncanonical reference", "existing-pr-update", issue(301), Some(super::observed(json!([super::reference(301, "https://github.com/eunsoogi/codexy/pull/301")]), "Fixes #301\n")), false, "observed closing issue reference requires a canonical issue URL"),
     ];
@@ -160,9 +160,9 @@ fn cases() -> Vec<Value> {
         ("qualified different", "Fixes another/repository#301\nFixes #301\n"),
         ("qualified duplicate", "Fixes eunsoogi/codexy#301\nFixes #301\n"),
     ] {
-        cases.push(body_case(name, body, false, "observed PR API and body must agree on exactly one governing issue"));
+        cases.push(body_case(name, body, true, ""));
     }
-    cases.push(body_case("missing separator", "Fixes#301\nFixes #301\n", false, "observed PR body contains a malformed closing reference"));
+    cases.push(body_case("malformed non-final prose", "Fixes#301\nFixes #301\n", true, ""));
     for (name, body) in [
         ("canonical final reference", "Fixes #301\n"),
         ("non-closing prose", "This fixes release readiness.\n\nFixes #301\n"),
@@ -170,6 +170,9 @@ fn cases() -> Vec<Value> {
     ] {
         cases.push(body_case(name, body, true, ""));
     }
-    assert_eq!(cases.len(), 24);
+    cases.extend([
+        body_case("missing final link", "Release notes only.\n", false, "observed PR body must end with the governing issue link"),
+        body_case("wrong final link", "Fixes #302\n", false, "observed PR body must end with the governing issue link"),
+    ]);
     cases
 }

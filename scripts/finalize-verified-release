@@ -44,7 +44,7 @@ for asset in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz c
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null
   download_release_asset "$asset"
   if test "$asset" = release-baseline.json; then
-    scripts/verify-release-attestation-total "$final_release/$asset" 1
+    scripts/verify-release-attestation-set "$final_release" final-baseline-attestation.json baseline
   fi
 done
 staging_source_commit="$(jq -er .source.stagingSourceCommit "$final_release/runtime-release-receipt.json")"

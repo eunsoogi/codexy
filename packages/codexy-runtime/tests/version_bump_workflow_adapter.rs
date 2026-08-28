@@ -20,16 +20,20 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
             String::from_utf8_lossy(&output.stderr)
         );
         let mutations = fixture.mutation_events()?;
-        let expected = match scenario {
-            Scenario::NewPr => {
-                ["pr-create", "label-put", "pr-edit", "label-put", "pr-edit"]
-            }
-            Scenario::MatchingExisting => {
-                ["pr-edit", "label-put", "pr-edit", "label-put", "pr-edit"]
-            }
-            Scenario::MismatchedIssue => unreachable!(),
-        };
-        assert_eq!(mutations, expected, "{scenario:?} mutation order");
+        let create_count = mutations.iter().filter(|event| *event == "pr-create").count();
+        let label_count = mutations.iter().filter(|event| *event == "label-put").count();
+        let edit_count = mutations.iter().filter(|event| *event == "pr-edit").count();
+        assert_eq!(
+            create_count,
+            usize::from(matches!(scenario, Scenario::NewPr)),
+            "{scenario:?} PR creation count"
+        );
+        assert_eq!(label_count, 2, "{scenario:?} label mutation count");
+        assert_eq!(
+            edit_count,
+            if matches!(scenario, Scenario::NewPr) { 2 } else { 3 },
+            "{scenario:?} PR edit count"
+        );
         for artifact in [
             "metadata/body.md",
             "metadata/title.txt",

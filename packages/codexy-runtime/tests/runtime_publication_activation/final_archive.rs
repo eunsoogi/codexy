@@ -37,7 +37,6 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "runtime-release-receipt.json",
             "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
             "scripts/verify-release-attestation-set",
-            "scripts/verify-release-attestation-total",
             "gh release view \"$RELEASE_TAG\"",
             "-F draft=true",
             "RELEASE_ID", "gh api --method POST", "uploadUrl: .upload_url", "release_upload_url", "\"$upload_url?name=$asset\"",

@@ -6,8 +6,13 @@ set -eu
 artifact_dir="${1:?artifact directory is required}"
 output="${2:?output path is required}"
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+case "${3:-release}" in
+  release) names="codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json" ;;
+  baseline) names="release-baseline.json" ;;
+  *) exit 2 ;;
+esac
 
-for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
+for name in $names; do
   artifact="$artifact_dir/$name"
   attestations="$artifact_dir/$name.attestations.json"
   if test "$name" = codexy-runtime-package.tar.gz; then

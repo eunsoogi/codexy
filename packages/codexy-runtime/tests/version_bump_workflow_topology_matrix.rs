@@ -10,6 +10,14 @@ fn publication_topology_equivalence_matrix() {
         "refresh_version_pr_snapshot\npublish_version_pr_metadata \"$publication_phase\"",
         "publish_version_pr_metadata \"$publication_phase\"\nrefresh_version_pr_snapshot",
     );
+    let echoed_publish = connected.replacen(
+        "publish_version_pr_metadata \"$publication_phase\"",
+        "echo publish_version_pr_metadata \"$publication_phase\"",
+        1,
+    );
+    let extra_publish = format!(
+        "{connected}publish_version_pr_metadata \"$publication_phase\"\n"
+    );
     let extra_disconnected = format!(
         "{connected}gh api --method PUT \\\n  \"repos/$GITHUB_REPOSITORY/issues/$pr_number/labels\"\n"
     );
@@ -28,6 +36,8 @@ fn publication_topology_equivalence_matrix() {
         ("wrong job", workflow("publish-version-pr", "Open version bump pull request", false), connected.clone(), false),
         ("wrong step", workflow("open-version-pr", "Publish something else", false), connected, false),
         ("wrong transaction order", workflow("open-version-pr", "Open version bump pull request", false), wrong_order, false),
+        ("echo is not publication", workflow("open-version-pr", "Open version bump pull request", false), echoed_publish, false),
+        ("third publication is rejected", workflow("open-version-pr", "Open version bump pull request", false), extra_publish, false),
     ];
     let mismatches = cases
         .into_iter()

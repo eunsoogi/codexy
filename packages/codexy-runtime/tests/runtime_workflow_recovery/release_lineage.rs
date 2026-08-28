@@ -69,7 +69,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "if test -n \"$actual_paths\"; then",
             "while IFS= read -r path; do",
             "scripts/project-release-verifiers.sh)",
-            "scripts/reconcile-release-attestations | scripts/verify-release-attestation-set | scripts/verify-release-attestation-total)",
+            "scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)",
             "git checkout \"$GITHUB_SHA\" -- \"$path\"",
             "git hash-object \"$verifier\"",
         ],
@@ -142,7 +142,6 @@ fn run_projection_case(
     write_executable(&scripts.join("project-release-verifiers.sh"), projection)?;
     write_executable(&scripts.join("reconcile-release-attestations"), "activation-reconcile\n")?;
     write_executable(&scripts.join("verify-release-attestation-set"), "activation-set\n")?;
-    write_executable(&scripts.join("verify-release-attestation-total"), "activation-total\n")?;
     run_git(root, &["add", "scripts"])?;
     run_git(root, &["commit", "--quiet", "-m", "activation"])?;
     let activation = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
@@ -192,14 +191,12 @@ fn run_projection_case(
     if expected_success {
         assert_eq!(run_git(root, &["rev-parse", "HEAD"])?.trim(), activation);
         let verifier_set = fs::read_to_string(scripts.join("verify-release-attestation-set"))?;
-        let verifier_total = fs::read_to_string(scripts.join("verify-release-attestation-total"))?;
         let reconciliation = fs::read_to_string(scripts.join("reconcile-release-attestations"))?;
         if kind == "verifier-delta" {
             assert_eq!(verifier_set, "activation-set\nchanged-set\n");
         } else {
             assert_eq!(verifier_set, "activation-set\n");
         }
-        assert_eq!(verifier_total, "activation-total\n");
         if kind == "reconciliation-delta" {
             assert_eq!(reconciliation, "main-reconcile\n");
         } else {

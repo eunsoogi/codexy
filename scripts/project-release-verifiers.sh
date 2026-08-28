@@ -17,7 +17,7 @@ if test -n "$actual_paths"; then
 	while IFS= read -r path; do
 		case "$path" in
 		scripts/project-release-verifiers.sh) ;;
-		scripts/reconcile-release-attestations | scripts/verify-release-attestation-set | scripts/verify-release-attestation-total)
+		scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)
 			git checkout "$GITHUB_SHA" -- "$path"
 			;;
 		*)
@@ -30,8 +30,7 @@ EOF
 fi
 for verifier in \
 	scripts/reconcile-release-attestations \
-	scripts/verify-release-attestation-set \
-	scripts/verify-release-attestation-total; do
+	scripts/verify-release-attestation-set; do
 	test -x "$verifier"
 	test "$(git hash-object "$verifier")" = "$(git rev-parse "$GITHUB_SHA:$verifier")"
 done
