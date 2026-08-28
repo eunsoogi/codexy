@@ -7,8 +7,8 @@ description: Use when one exact non-code artifact must be refreshed against one 
 
 ## Trigger
 
-Use only when the request names one non-code artifact, one governing source,
-and asks to remove conflicting, superseded, or internally duplicated claims.
+Use only when the request names one non-code artifact, one governing source, and
+asks to remove conflicting, superseded, or internally duplicated claims.
 
 ## Boundary gate
 
