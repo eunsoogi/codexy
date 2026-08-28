@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 const PUBLISH: &str = "publish_version_pr_metadata";
+const PUBLISH_CALL: &str = "publish_version_pr_metadata \"$publication_phase\"";
 
 pub(super) fn validate_version_pr_adapter(adapter: &str) -> Result<(), String> {
     let shell = ShellStep::parse(adapter)?;
@@ -91,10 +92,8 @@ fn validate_publisher(shell: &ShellStep<'_>) -> Result<(), String> {
 fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
     let commands = logical_commands(&shell.top_level);
     let refreshes = command_positions(&commands, |command| command.contains("refresh_version_pr_snapshot"));
-    let publishes = command_positions(&commands, |command| {
-        command.contains("publish_version_pr_metadata")
-    });
-    if refreshes.len() < 2 || publishes.len() < 2 {
+    let publishes = command_positions(&commands, |command| command == PUBLISH_CALL);
+    if refreshes.len() < 2 || publishes.len() != 2 {
         return Err(format!(
             "expected provisional and final snapshot publications, found {}/{}",
             refreshes.len(),

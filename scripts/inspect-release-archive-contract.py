@@ -30,9 +30,11 @@ def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int
             if (source.lstrip("\t") if strip_tabs else source) == delimiter:
                 heredocs.pop(0)
         else:
+            consumed_continuation = False
             try:
                 continued, found = shell_scan(source)
                 while continued:
+                    consumed_continuation = True
                     index += 1
                     if index == len(lines):
                         return []
@@ -41,7 +43,9 @@ def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int
             except ValueError:
                 return []
             heredocs.extend(found)
-            if source in allowed and not continued:
+            if source in allowed and consumed_continuation:
+                return []
+            if source in allowed:
                 declarations.append(index)
             elif has_platform_mutation(source):
                 return []
