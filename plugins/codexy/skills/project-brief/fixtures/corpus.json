@@ -1,25 +1,180 @@
 {
   "schema": "codexy.project-brief-corpus.v1",
+  "fields": [
+    "objective",
+    "owner",
+    "verified_phase",
+    "changes_since_touch",
+    "decision_required",
+    "evidence_handle",
+    "next_action",
+    "done_when"
+  ],
+  "base_recorded_state": {
+    "objective": "resume the ongoing task",
+    "owner": "task-current",
+    "verified_phase": "local proof passed",
+    "changes_since_touch": ["proof completed"],
+    "decision_required": "unavailable",
+    "evidence_handle": ["current task receipt"],
+    "next_action": "request review",
+    "done_when": "public verification passes"
+  },
   "cases": [
-    {"id":"PB-P01","scenario":"return after inactivity with all eight recorded fields","recorded_state":{"objective":"ship the task","owner":"task-17","verified_phase":"local proof passed","changes_since_touch":["head advanced to abc123"],"decision_required":"approve rollout","evidence_handle":["PR #17"],"next_action":"request review","done_when":"public verification passes"},"expected_output":{"objective":"ship the task","owner":"task-17","verified_phase":"local proof passed","changes_since_touch":["head advanced to abc123"],"decision_required":"approve rollout","evidence_handle":["PR #17"],"next_action":"request review","done_when":"public verification passes"}},
-    {"id":"PB-P02","scenario":"branch head changed since last touch","recorded_state":{"objective":"prepare change","owner":"task-17","verified_phase":"tests passed","changes_since_touch":["current head is def456"],"decision_required":"unavailable","evidence_handle":["branch def456"],"next_action":"open PR","done_when":"PR is ready"},"expected_output":{"objective":"prepare change","owner":"task-17","verified_phase":"tests passed","changes_since_touch":["current head is def456"],"decision_required":"unavailable","evidence_handle":["branch def456"],"next_action":"open PR","done_when":"PR is ready"}},
-    {"id":"PB-P03","scenario":"recorded owner changed","recorded_state":{"objective":"repair parser","owner":"task-22","verified_phase":"RED captured","changes_since_touch":["owner changed to task-22"],"decision_required":"unavailable","evidence_handle":["task-22"],"next_action":"implement GREEN","done_when":"proof passes"},"expected_output":{"objective":"repair parser","owner":"task-22","verified_phase":"RED captured","changes_since_touch":["owner changed to task-22"],"decision_required":"unavailable","evidence_handle":["task-22"],"next_action":"implement GREEN","done_when":"proof passes"}},
-    {"id":"PB-P04","scenario":"proof completed after last touch","recorded_state":{"objective":"validate package","owner":"task-31","verified_phase":"package proof completed","changes_since_touch":["package proof passed"],"decision_required":"unavailable","evidence_handle":["proof run 31"],"next_action":"await review","done_when":"review passes"},"expected_output":{"objective":"validate package","owner":"task-31","verified_phase":"package proof completed","changes_since_touch":["package proof passed"],"decision_required":"unavailable","evidence_handle":["proof run 31"],"next_action":"await review","done_when":"review passes"}},
-    {"id":"PB-P05","scenario":"explicit decision is pending","recorded_state":{"objective":"choose rollout","owner":"task-41","verified_phase":"options verified","changes_since_touch":["two options recorded"],"decision_required":"choose blue or green","evidence_handle":["decision note 41"],"next_action":"wait for choice","done_when":"choice is recorded"},"expected_output":{"objective":"choose rollout","owner":"task-41","verified_phase":"options verified","changes_since_touch":["two options recorded"],"decision_required":"choose blue or green","evidence_handle":["decision note 41"],"next_action":"wait for choice","done_when":"choice is recorded"}},
-    {"id":"PB-P06","scenario":"next_action absent","recorded_state":{"objective":"inspect failure","owner":"task-51","verified_phase":"failure reproduced","changes_since_touch":["trace captured"],"decision_required":"unavailable","evidence_handle":["trace 51"],"done_when":"root cause recorded"},"expected_output":{"objective":"inspect failure","owner":"task-51","verified_phase":"failure reproduced","changes_since_touch":["trace captured"],"decision_required":"unavailable","evidence_handle":["trace 51"],"next_action":"unavailable","done_when":"root cause recorded"}},
-    {"id":"PB-P07","scenario":"done_when absent","recorded_state":{"objective":"draft migration","owner":"task-61","verified_phase":"draft checked","changes_since_touch":["draft updated"],"decision_required":"unavailable","evidence_handle":["draft 61"],"next_action":"request feedback"},"expected_output":{"objective":"draft migration","owner":"task-61","verified_phase":"draft checked","changes_since_touch":["draft updated"],"decision_required":"unavailable","evidence_handle":["draft 61"],"next_action":"request feedback","done_when":"unavailable"}},
-    {"id":"PB-P08","scenario":"merge complete, publication pending","recorded_state":{"objective":"publish plugin","owner":"task-71","verified_phase":"merge complete; publication pending","changes_since_touch":["PR merged"],"decision_required":"unavailable","evidence_handle":["merge 71"],"next_action":"publish artifact","done_when":"public verification passes"},"expected_output":{"objective":"publish plugin","owner":"task-71","verified_phase":"merge complete; publication pending","changes_since_touch":["PR merged"],"decision_required":"unavailable","evidence_handle":["merge 71"],"next_action":"publish artifact","done_when":"public verification passes"}},
-    {"id":"PB-P09","scenario":"publication complete, public verification pending","recorded_state":{"objective":"verify release","owner":"task-81","verified_phase":"publication complete; public verification pending","changes_since_touch":["artifact published"],"decision_required":"unavailable","evidence_handle":["release 81"],"next_action":"run public verification","done_when":"public verification passes"},"expected_output":{"objective":"verify release","owner":"task-81","verified_phase":"publication complete; public verification pending","changes_since_touch":["artifact published"],"decision_required":"unavailable","evidence_handle":["release 81"],"next_action":"run public verification","done_when":"public verification passes"}},
-    {"id":"PB-P10","scenario":"stale memory conflicts with current PR","recorded_state":{"objective":"land current patch","owner":"task-91","verified_phase":"current PR checks passed","changes_since_touch":["current PR head is fed987"],"decision_required":"unavailable","evidence_handle":["PR #91 at fed987"],"next_action":"await review","done_when":"review passes"},"stale_memory":{"owner":"task-old","verified_phase":"checks failing","next_action":"repair tests"},"expected_output":{"objective":"land current patch","owner":"task-91","verified_phase":"current PR checks passed","changes_since_touch":["current PR head is fed987"],"decision_required":"unavailable","evidence_handle":["PR #91 at fed987"],"next_action":"await review","done_when":"review passes"}},
-    {"id":"PB-N01","scenario":"request is agent compaction recovery","request":"recover compacted agent context","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N02","scenario":"request assigns an owner","request":"assign task-12 as owner","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N03","scenario":"request routes a child","request":"send the repair to a child task","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N04","scenario":"request creates a plan","request":"create the implementation plan","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N05","scenario":"request authorizes completion","request":"mark the task complete","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N06","scenario":"request authorizes merge","request":"authorize and merge the PR","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N07","scenario":"request publishes a release","request":"publish the release artifact","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N08","scenario":"request closes a milestone","request":"close the milestone","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N09","scenario":"request edits memory","request":"replace the saved memory","expected_outcome":"HANDOFF_REQUIRED"},
-    {"id":"PB-N10","scenario":"request mutates repository or GitHub state","request":"edit the repository and update the issue","expected_outcome":"HANDOFF_REQUIRED"}
+    {
+      "id": "PB-P01",
+      "scenario": "return after inactivity with all eight recorded fields",
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P02",
+      "scenario": "branch head changed since last touch",
+      "recorded_patch": {
+        "changes_since_touch": ["current head is def456"],
+        "evidence_handle": ["branch def456"]
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P03",
+      "scenario": "recorded owner changed",
+      "recorded_patch": {
+        "owner": "task-new",
+        "changes_since_touch": ["owner changed to task-new"]
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P04",
+      "scenario": "proof completed after last touch",
+      "recorded_patch": {
+        "verified_phase": "package proof completed",
+        "changes_since_touch": ["package proof passed"]
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P05",
+      "scenario": "explicit decision is pending",
+      "recorded_patch": {
+        "decision_required": "choose blue or green"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P06",
+      "scenario": "next_action absent",
+      "missing_fields": ["next_action"],
+      "expected_patch": {
+        "next_action": "unavailable"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P07",
+      "scenario": "done_when absent",
+      "missing_fields": ["done_when"],
+      "expected_patch": {
+        "done_when": "unavailable"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P08",
+      "scenario": "merge complete, publication pending",
+      "recorded_patch": {
+        "verified_phase": "merge complete; publication pending",
+        "changes_since_touch": ["PR merged"],
+        "next_action": "publish artifact"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P09",
+      "scenario": "publication complete, public verification pending",
+      "recorded_patch": {
+        "verified_phase": "publication complete; public verification pending",
+        "changes_since_touch": ["artifact published"],
+        "next_action": "run public verification"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-P10",
+      "scenario": "stale memory conflicts with current PR",
+      "recorded_patch": {
+        "owner": "task-91",
+        "verified_phase": "current PR checks passed",
+        "changes_since_touch": ["current PR head is fed987"],
+        "evidence_handle": ["PR #91 at fed987"],
+        "next_action": "await review"
+      },
+      "stale_memory": {
+        "owner": "task-old",
+        "verified_phase": "checks failing",
+        "next_action": "repair tests"
+      },
+      "expected_outcome": "EXACT_EIGHT_FIELD_PROJECTION"
+    },
+    {
+      "id": "PB-N01",
+      "scenario": "request is agent compaction recovery",
+      "request": "recover compacted agent context",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N02",
+      "scenario": "request assigns an owner",
+      "request": "assign task-12 as owner",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N03",
+      "scenario": "request routes a child",
+      "request": "send the repair to a child task",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N04",
+      "scenario": "request creates a plan",
+      "request": "create the implementation plan",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N05",
+      "scenario": "request authorizes completion",
+      "request": "mark the task complete",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N06",
+      "scenario": "request authorizes merge",
+      "request": "authorize and merge the PR",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N07",
+      "scenario": "request publishes a release",
+      "request": "publish the release artifact",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N08",
+      "scenario": "request closes a milestone",
+      "request": "close the milestone",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N09",
+      "scenario": "request edits memory",
+      "request": "replace the saved memory",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N10",
+      "scenario": "request mutates repository or GitHub state",
+      "request": "edit the repository and update the issue",
+      "expected_outcome": "HANDOFF_REQUIRED"
+    }
   ]
 }
