@@ -1,6 +1,5 @@
 use crate::support::{FixtureCommand as Command, make_executable};
 use serde_json::json;
-
 use super::admission_runtime::{TestResult, assert_tool_case, plugin_root};
 
 #[test]
@@ -26,18 +25,25 @@ fn connector_merge_without_authoritative_state_is_denied() -> TestResult {
         "commit_title":"fix(workflow): require intent (#128)", "commit_message":"Fixes #503"
     }), true)
 }
-
 #[cfg(unix)]
 #[test]
 fn packaged_launcher_runs_from_arbitrary_cwd() -> TestResult {
     let temp = tempfile::tempdir()?;
     let installed = temp.path().join("installed/codexy-github");
     crate::support::copy_dir(github_plugin_root(), &installed)?;
-    let (output, merged, body) = wrapper_with_payload(&installed, state(), false, "fix(workflow): require intent (#128)\n\nFixes #503\n", "fix(workflow): require intent (#128)", "Fixes #503\n", false, true)?;
-    assert!(output.status.success() && merged && body == "Fixes #503\n", "packaged launcher did not record the expected mutation: {}", String::from_utf8_lossy(&output.stderr));
+    let message = "fix(workflow): require intent (#128)\n\nFixes #503\n";
+    let subject = "fix(workflow): require intent (#128)";
+    let body_text = "Fixes #503\n";
+    let (output, merged, body) = wrapper_with_payload(
+        &installed, state(), false, message, subject, body_text, false, true,
+    )?;
+    assert!(
+        output.status.success() && merged && body == "Fixes #503\n",
+        "packaged launcher did not record the expected mutation: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
@@ -89,7 +95,6 @@ fn canonical_wrapper_rejects_caller_authorization_state_paths() -> TestResult {
     assert!(!record.exists(), "caller-owned authorization state reached gh");
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestResult {
@@ -123,7 +128,6 @@ fn canonical_wrapper_fetches_authorization_from_github_before_merging() -> TestR
     );
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
@@ -146,7 +150,6 @@ fn canonical_wrapper_binds_validated_message_to_merge_payload() -> TestResult {
     assert!(!merged, "malformed exact payload reached merge");
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_gh_uses_immutable_body_snapshot() -> TestResult {
@@ -159,7 +162,6 @@ fn canonical_wrapper_gh_uses_immutable_body_snapshot() -> TestResult {
     assert_eq!(body, "Fixes #503\n", "post-admission mutation changed gh body");
     Ok(())
 }
-
 #[cfg(unix)]
 #[test]
 fn canonical_wrapper_rejects_bad_github_authorization_captures() -> TestResult {
@@ -184,7 +186,6 @@ fn canonical_wrapper_rejects_bad_github_authorization_captures() -> TestResult {
     assert!(!merged, "GitHub API failure reached merge");
     Ok(())
 }
-
 fn admission(root: &std::path::Path, message: &std::path::Path, authorization: &std::path::Path, state: &std::path::Path) -> std::io::Result<std::process::Output> {
     let mut command = Command::new(root.join("hooks/codexy-merge-admission-check.sh"));
     command.args(["--expected-pr", "128", "--expected-issue", "503", "--merge-message-file"]);
@@ -244,7 +245,6 @@ exit 1
 
 fn contract() -> &'static str { r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractCommentId":"IC_contract","contractCommentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","target":"current-pull-request","negated":false,"revoked":false}"# }
 fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","title":"fix(workflow): require intent","body":"Fixes #503\n","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer"},"authorAssociation":"MEMBER"}]}"# }
-
 fn github_plugin_root() -> std::path::PathBuf {
     codexy_runtime::paths::repository_root().join("plugins/codexy-github")
 }
