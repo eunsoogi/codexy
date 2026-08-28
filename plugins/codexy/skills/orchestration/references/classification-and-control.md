@@ -131,18 +131,20 @@ an accepted no-change rationale.
 A checked contract is the sole merge authorization; generic finish, completion,
 silence, clean gates, and a ready PR are non-authoritative signals.
 
-## Typed Review-Producer Handoff
+## Direct Review-State Handoff
 
-The selected strict Sentinel terminal record is the only producer input for a
-review-control capture. The packaged producer MUST reject missing or unknown
-fields, stale Git identity, a non-selected reviewer, a mismatched issue
-contract, and duplicate or out-of-order ledger ancestry. Its binding MUST carry
-the issue number, PR number, base/head and diff identity, profile, reviewer,
-event predecessor, issue-contract value, and the issue-wide terminal budget.
+The selected profile and its reviewer remain the authority for review state. The
+current-head control state MUST preserve the existing
+`codexy.review-control-state.v1` schema and carry `profile`, `reviewer`,
+`reviewed_head`, `terminal_result`, `unresolved_findings`, `full_review_count`,
+and `delta_review_count` directly.
 
-For the current bounded lane, the producer consumes the existing `2/3` budget
-and MUST emit ephemeral `codexy.review-packet.v4`, `codexy.review-ledger.v1`,
-and `codexy.review-control-state.v1` artifacts without synthesizing a third
-selected-review event. The control-state artifact is then the sole namespaced
-input to `build-pr-state` and the completion-handoff validator; generated
-evidence MUST remain outside tracked source.
+For standard and strict profiles, the reviewer and `reviewed_head` MUST match
+the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
+`UNOBSERVABLE`, and a readiness handoff MUST have `PASS`, no unresolved
+findings, one full review, and at most one delta review. Light retains its
+existing no-reviewer route.
+
+Headings, field order, explanatory prose, and omitted legacy ceremony fields
+MUST NOT override those direct facts. No auxiliary review state, digest, counter
+ledger, or replacement schema is needed to establish the result.

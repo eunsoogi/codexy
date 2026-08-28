@@ -75,10 +75,6 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
     Ok(route)
 }
 
-pub(super) fn is_strictly_higher(previous: &str, next: &str) -> bool {
-    rank(previous) < rank(next)
-}
-
 fn rank(profile: &str) -> u8 {
     match profile {
         "light" => 0,

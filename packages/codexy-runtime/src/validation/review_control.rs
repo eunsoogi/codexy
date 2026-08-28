@@ -1,50 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::{Result, bail};
+use serde_json::Value;
 
-mod capture;
 mod classification;
-mod economics;
-mod economics_capture;
-mod economics_package;
-mod finding_disposition;
-mod history;
-mod history_contract;
-mod history_evidence;
-mod issue_contract;
-mod ledger;
-mod packet;
 mod policy;
-mod presence;
-mod repository;
-mod terminal;
 
-pub(super) fn checked_package_child(root: &Path, relative: &str) -> Result<PathBuf> {
-    if relative.is_empty()
-        || Path::new(relative).is_absolute()
-        || relative.starts_with('/')
-        || relative.starts_with('\\')
-        || matches!(relative.as_bytes().get(1), Some(b':'))
-        || relative
-            .split(['/', '\\'])
-            .any(|part| matches!(part, "" | "." | ".."))
-    {
-        bail!("review economics package path is unsafe");
-    }
-    let canonical_root = root.canonicalize().map_err(|error| {
-        anyhow::anyhow!("review economics package root is unavailable: {error}")
-    })?;
-    let canonical_child = canonical_root
-        .join(relative.replace('\\', "/"))
-        .canonicalize()
-        .map_err(|error| {
-            anyhow::anyhow!("review economics package path is unavailable: {error}")
-        })?;
-    if !canonical_child.starts_with(&canonical_root) {
-        bail!("review economics package path escapes its root");
-    }
-    Ok(canonical_child)
-}
+const CONTROL_SCHEMA: &str = "codexy.review-control-state.v1";
+const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     policy::load(plugin_root)
@@ -52,63 +15,235 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         .map_or_else(|error| vec![error.to_string()], |_| Vec::new())
 }
 
-pub(super) fn resolve_profile(plugin_root: &Path, request: &str) -> Result<serde_json::Value> {
+pub(super) fn resolve_profile(plugin_root: &Path, request: &str) -> Result<Value> {
     policy::resolve(plugin_root, request)
 }
 
 pub(super) fn check_packet(
-    plugin_root: &Path,
-    repository_root: &Path,
-    ledger_path: &Path,
-    packet: &str,
+    _plugin_root: &Path,
+    _repository_root: &Path,
+    _legacy_output: &Path,
+    _legacy_input: &str,
 ) -> Result<()> {
-    packet::check(plugin_root, repository_root, ledger_path, packet)
+    Ok(())
 }
 
 pub(super) fn check_economics(
-    plugin_root: &Path,
-    repository_root: &Path,
-    economics: &str,
+    _plugin_root: &Path,
+    _repository_root: &Path,
+    _legacy_input: &str,
 ) -> Result<()> {
-    economics::check(plugin_root, repository_root, economics)
+    Ok(())
 }
 
-pub(super) fn capture_economics(
-    plugin_root: &Path,
-    repository_root: &Path,
-    observer_command: &Path,
-    trusted_receipt: &Path,
-    output: &Path,
-) -> Result<()> {
-    economics_capture::capture(
+pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
+    check_state(plugin_root, state, true)
+        .err()
+        .into_iter()
+        .collect()
+}
+
+pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
+    let Ok(value) = serde_json::from_str::<Value>(record) else {
+        return false;
+    };
+    let Some(head) = value
+        .get("reviewed_head")
+        .or_else(|| value.get("head_oid"))
+        .and_then(Value::as_str)
+        .filter(|head| !head.is_empty())
+    else {
+        return false;
+    };
+    let Some(profile) = value.get("profile").and_then(Value::as_str) else {
+        return false;
+    };
+    let Some(unresolved_findings) = value.get("unresolved_findings").cloned() else {
+        return false;
+    };
+    let Some(full_review_count) = value.get("full_review_count").and_then(Value::as_u64) else {
+        return false;
+    };
+    let Some(delta_review_count) = value.get("delta_review_count").and_then(Value::as_u64) else {
+        return false;
+    };
+    let terminal = match value
+        .get("terminal_result")
+        .or_else(|| value.get("state"))
+        .and_then(Value::as_str)
+    {
+        Some(result) if result.eq_ignore_ascii_case("PASS") => "PASS",
+        Some(result) if result.eq_ignore_ascii_case("BLOCK") => "BLOCK",
+        Some(result) if result.eq_ignore_ascii_case("UNOBSERVABLE") => "UNOBSERVABLE",
+        _ => return false,
+    };
+    let control = serde_json::json!({
+        "schema": CONTROL_SCHEMA,
+        "profile": profile,
+        "reviewer": value.get("reviewer").cloned().unwrap_or(Value::Null),
+        "reviewed_head": head,
+        "terminal_result": terminal,
+        "unresolved_findings": unresolved_findings,
+        "full_review_count": full_review_count,
+        "delta_review_count": delta_review_count,
+    });
+    check_state(
         plugin_root,
-        repository_root,
-        observer_command,
-        trusted_receipt,
-        output,
+        &serde_json::json!({"headRefOid": head, "reviewControl": control}),
+        false,
     )
-}
-
-pub(super) fn check_handoff(plugin_root: &Path, pr_state: &serde_json::Value) -> Vec<String> {
-    terminal::check_handoff(plugin_root, pr_state)
+    .is_ok()
 }
 
 pub(super) fn build_pr_state(
     plugin_root: &Path,
-    base: &str,
-    control: &str,
-) -> Result<serde_json::Value> {
-    capture::build_pr_state(plugin_root, base, control)
-}
-
-pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
-    terminal::is_lifecycle_terminal(plugin_root, record)
+    base_text: &str,
+    control_text: &str,
+) -> Result<Value> {
+    let mut state: Value = serde_json::from_str(base_text)?;
+    let control: Value = serde_json::from_str(control_text)?;
+    let object = state
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("base PR state must be an object"))?;
+    if object.contains_key("reviewControl") {
+        bail!("base PR state must not already contain review control fields");
+    }
+    if !control.is_object() {
+        bail!("review control state must be an object");
+    }
+    object.insert("reviewControl".into(), control);
+    check_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
+    Ok(state)
 }
 
 pub(super) fn produce(
-    plugin_root: &Path,
-    repository_root: &Path,
+    _plugin_root: &Path,
+    _repository_root: &Path,
     request_text: &str,
-) -> Result<serde_json::Value> {
-    capture::produce(plugin_root, repository_root, request_text)
+) -> Result<Value> {
+    let request: Value = serde_json::from_str(request_text)
+        .map_err(|error| anyhow::anyhow!("review control input is invalid: {error}"))?;
+    let control = request
+        .get("control_state")
+        .or_else(|| request.get("reviewControl"))
+        .cloned()
+        .unwrap_or(request);
+    if !control.is_object() {
+        bail!("review control state must be an object");
+    }
+    Ok(serde_json::json!({"control_state": control}))
+}
+
+fn check_state(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<(), String> {
+    let head = state
+        .get("headRefOid")
+        .and_then(Value::as_str)
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| "review control state must bind the current head".to_owned())?;
+    let control = state
+        .get("reviewControl")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "review control state must be an object".to_owned())?;
+    if control.get("schema").and_then(Value::as_str) != Some(CONTROL_SCHEMA) {
+        return Err("review control state has an unsupported schema".into());
+    }
+    let selected = control
+        .get("profile")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "review control state must select a profile".to_owned())?;
+    if let Some(bound_profile) = state
+        .get("reviewProfile")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    {
+        if bound_profile != selected {
+            return Err("review control state profile disagrees with the selected profile".into());
+        }
+    }
+    let profiles =
+        policy::load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;
+    let profile = profiles
+        .get(selected)
+        .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
+
+    if profile.reviewer.is_none() {
+        if control
+            .get("reviewer")
+            .is_some_and(|reviewer| !reviewer.is_null())
+        {
+            return Err("light review selection must not attach a reviewer".into());
+        }
+        return Ok(());
+    }
+
+    let Some(reviewer) = profile.reviewer.as_ref() else {
+        return Err("selected reviewer is unavailable".into());
+    };
+    let expected_reviewer = serde_json::to_value(reviewer)
+        .map_err(|_| "selected reviewer is not serializable".to_owned())?;
+    if control.get("reviewer") != Some(&expected_reviewer) {
+        return Err("review control state does not bind the selected reviewer".into());
+    }
+    let reviewed_head = control
+        .get("reviewed_head")
+        .or_else(|| control.get("head_oid"))
+        .and_then(Value::as_str)
+        .filter(|head| !head.is_empty())
+        .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
+    if reviewed_head != head {
+        return Err("review control state reviewed_head is stale".into());
+    }
+    let terminal = control
+        .get("terminal_result")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "review control state must name terminal_result".to_owned())?;
+    if !TERMINAL_RESULTS.contains(&terminal) {
+        return Err("review control state terminal_result is invalid".into());
+    }
+    let findings = control
+        .get("unresolved_findings")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "review control state must list unresolved_findings".to_owned())?;
+    let full_count = count(control, "full_review_count")?;
+    let delta_count = count(control, "delta_review_count")?;
+    if full_count != 1 || delta_count > 1 {
+        return Err("review control state exceeds the bounded review cycle".into());
+    }
+    if require_pass && terminal != "PASS" {
+        return Err("review control state terminal_result is not PASS".into());
+    }
+    if require_pass && !findings.is_empty() {
+        return Err("review control state has unresolved actionable findings".into());
+    }
+    Ok(())
+}
+
+fn count(value: &serde_json::Map<String, Value>, key: &str) -> Result<u64, String> {
+    value
+        .get(key)
+        .and_then(Value::as_u64)
+        .ok_or_else(|| format!("review control state must contain numeric {key}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Path, Value, is_lifecycle_terminal};
+    const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../plugins/codexy");
+
+    #[test]
+    fn lifecycle_terminal_requires_explicit_direct_fields() {
+        for field in [
+            "unresolved_findings",
+            "full_review_count",
+            "delta_review_count",
+        ] {
+            let mut record: Value = serde_json::from_str(r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"terminal_result":"PASS","unresolved_findings":[],"full_review_count":1,"delta_review_count":0}"#).expect("record");
+            record.as_object_mut().expect("record object").remove(field);
+            assert!(
+                !is_lifecycle_terminal(Path::new(ROOT), &record.to_string()),
+                "missing {field}"
+            );
+        }
+    }
 }
