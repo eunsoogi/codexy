@@ -12,6 +12,27 @@ from codexy_runtime_tools.component_cli import main
 
 
 class ComponentCliBasicCases:
+    def test_help_exposes_exactly_four_primary_commands(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as exit_status:
+            main(["--help"])
+
+        self.assertEqual(exit_status.exception.code, 0)
+        help_text = output.getvalue()
+        self.assertIn("{install,remove,status,doctor}", help_text)
+        for alias in ("update", "bootstrap", "migrate"):
+            self.assertNotIn(alias, help_text)
+
+    def test_legacy_alias_help_preserves_public_arguments(self) -> None:
+        for alias in ("update", "bootstrap", "migrate"):
+            with self.subTest(alias=alias):
+                output = io.StringIO()
+                with redirect_stdout(output), self.assertRaises(SystemExit) as status:
+                    main([alias, "--help"])
+                self.assertEqual(status.exception.code, 0)
+                self.assertIn("components", output.getvalue())
+                self.assertIn("--json", output.getvalue())
+
     def test_json_status_prints_one_live_status_object(self) -> None:
         receipt = {
             "schema": "getcodexy.status.v1",
@@ -41,6 +62,17 @@ class ComponentCliBasicCases:
         ):
             self.assertEqual(main(["bootstrap", "--json"]), 0)
         self.assertEqual(operation.call_args.args[0:2], ("bootstrap", ()))
+
+    def test_empty_update_alias_preserves_completed_exit_status(self) -> None:
+        receipt = {"outcome": "completed", "command": "update"}
+        with (
+            patch(
+                "codexy_runtime_tools.component_cli.run_operation", return_value=receipt
+            ) as operation,
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(main(["update", "--json"]), 0)
+        self.assertEqual(operation.call_args.args[0:2], ("update", ()))
 
     def test_human_status_names_the_live_state_and_errors(self) -> None:
         receipt = {
