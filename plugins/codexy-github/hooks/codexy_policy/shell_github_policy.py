@@ -9,6 +9,7 @@ from .shell_github_opaque import owns as github_opaque, owns_invocation
 
 
 class GithubPolicy:
+    redirection_executables = frozenset({"gh"})
     owns_opaque = staticmethod(github_opaque)
 
     @staticmethod
