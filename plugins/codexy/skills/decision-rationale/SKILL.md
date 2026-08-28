@@ -30,8 +30,8 @@ Preserve the supplied reason and evidence verbatim. Recording evidence MUST NOT
 judge it correct or sufficient. An unsupported assumption is the narrowest
 unproven dependency required by the stated reason, not invented justification.
 The reopen condition is the first observable change that defeats the reason or
-assumption; record it without reopening the decision. Use `unavailable` when
-the supplied context cannot ground the field and `none` only when no unsupported
+assumption; record it without reopening the decision. Use `unavailable` when the
+supplied context cannot ground the field and `none` only when no unsupported
 dependency is needed.
 
 ## Closed Corpus Resolutions
