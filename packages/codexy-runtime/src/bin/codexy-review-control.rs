@@ -35,10 +35,6 @@ struct Cli {
     #[arg(long)]
     output: Option<PathBuf>,
     #[arg(long)]
-    packet_output: Option<PathBuf>,
-    #[arg(long)]
-    ledger_output: Option<PathBuf>,
-    #[arg(long)]
     observer_command: Option<PathBuf>,
     #[arg(long)]
     trusted_receipt: Option<PathBuf>,
@@ -55,25 +51,16 @@ fn main() -> Result<()> {
         let output = cli
             .output
             .ok_or_else(|| anyhow::anyhow!("review-control producer requires --output"))?;
-        let packet_output = cli
-            .packet_output
-            .ok_or_else(|| anyhow::anyhow!("review-control producer requires --packet-output"))?;
-        let ledger_output = cli
-            .ledger_output
-            .ok_or_else(|| anyhow::anyhow!("review-control producer requires --ledger-output"))?;
         let produced = validation::produce_review_control(
             &root,
             &cli.repository_root
                 .unwrap_or_else(|| paths::repository_root().to_path_buf()),
             &input,
         )?;
-        for (path, key) in [
-            (output, "control_state"),
-            (packet_output, "packet"),
-            (ledger_output, "ledger"),
-        ] {
-            fs::write(path, serde_json::to_vec_pretty(&produced[key])?)?;
-        }
+        fs::write(
+            output,
+            serde_json::to_vec_pretty(&produced["control_state"])?,
+        )?;
     } else if cli.capture_economics {
         let request = serde_json::json!({
             "schema":"codexy.review-economics-capture-request.v1",
