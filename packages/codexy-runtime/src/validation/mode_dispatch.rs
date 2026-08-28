@@ -3,10 +3,11 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 
 use super::{
-    Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership, completion_handoff,
-    context_tiers, conventional_commit, getcodexy_component_contract, github_labels, hooks,
-    issue_intake, lsp, manifest, mcp, merge_authorization, merge_message, review_control, roles,
-    roles_yaml, routing_measurement, routing_policy, runtime, tdd_classification, touched_loc,
+    Mode, child_goal_blocked_audit, child_lane_ownership, child_lifecycle_events,
+    child_terminal_handoff, completion_handoff, context_tiers, conventional_commit,
+    getcodexy_component_contract, github_labels, hooks, issue_intake, lsp, manifest, mcp,
+    merge_authorization, merge_message, review_control, roles, roles_yaml, routing_measurement,
+    routing_policy, runtime, tdd_classification, touched_loc, workflow_profile_evidence,
     workflow_profiles,
 };
 
@@ -75,12 +76,49 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::ChildLaneOwnership { evidence } => {
             let mut errors = child_lane_ownership::check(&evidence);
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
-            errors.extend(child_goal_reporting::check(&evidence));
+            errors.extend(review_lifecycle_errors(plugin_root, &evidence));
+            errors.extend(child_terminal_errors(&evidence));
             errors.extend(child_goal_blocked_audit::check(plugin_root, &evidence));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),
     }
+}
+
+fn review_lifecycle_errors(plugin_root: &Path, evidence: &str) -> Vec<String> {
+    workflow_profile_evidence::current_active_lines(evidence)
+        .into_iter()
+        .filter(|line| {
+            serde_json::from_str::<serde_json::Value>(line).is_ok_and(|record| {
+                record.get("reviewed_head").is_some()
+                    && record.get("profile").is_some()
+                    && record.get("reviewer").is_some()
+            })
+        })
+        .filter(|line| !review_control::is_lifecycle_terminal(plugin_root, line))
+        .map(|_| "review lifecycle evidence must contain direct terminal fields".to_owned())
+        .collect()
+}
+
+fn child_terminal_errors(evidence: &str) -> Vec<String> {
+    let active = child_lifecycle_events::active_lines(evidence);
+    let lines = active
+        .iter()
+        .map(|line| line.text.as_str())
+        .collect::<Vec<_>>();
+    let source = lines
+        .iter()
+        .find_map(|line| line.strip_prefix("source thread id: "))
+        .filter(|value| !value.is_empty());
+    let mut errors = child_terminal_handoff::check(&lines, source);
+    if lines.iter().any(|line| {
+        line.strip_prefix("parent route: ")
+            .and_then(|route| route.split([';', ',', ' ']).next())
+            .is_some_and(child_terminal_handoff::is_local_task_target)
+    }) {
+        errors.push("child goal reporting must not use local agents /root routing".into());
+    }
+    errors
 }
 
 /// Returns the LSP file extensions covered by Codexy validation metadata.
