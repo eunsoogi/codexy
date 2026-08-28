@@ -14,12 +14,13 @@ closes a milestone, edits memory, or mutates repository or GitHub state.
 
 ## Read boundary
 
-- MUST read only explicitly named current task, Git/PR, proof, and release state.
+- MUST read only explicitly named current task, Git/PR, proof, and release
+  state.
 - MUST treat current live state as authoritative over stale memory.
 - MUST treat supplied memory only as non-authoritative conflict context; it MUST
   NOT expand the read boundary.
-- MUST copy recorded values without inferring status, phase, ownership, approval,
-  actions, completion, or missing facts.
+- MUST copy recorded values without inferring status, phase, ownership,
+  approval, actions, completion, or missing facts.
 - MUST use the literal string `unavailable` for a missing scalar and the single
   item `unavailable` for a missing list.
 - MUST NOT write state, direct a child, or change owner, status, next action, or
