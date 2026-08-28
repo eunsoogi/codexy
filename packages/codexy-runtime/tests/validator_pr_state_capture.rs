@@ -108,8 +108,8 @@ fn direct_review_control_keeps_completion_safety_gates() -> TestResult {
         json!({}),
     )?;
     assert!(
-        !cosmetic.status.success(),
-        "formatting-only LOC evidence must remain blocked"
+        cosmetic.status.success(),
+        "completion handoff must leave LOC prose to the canonical gate"
     );
     Ok(())
 }
@@ -119,6 +119,7 @@ fn direct_review_control_blocks_terminal_failures_and_findings() -> TestResult {
     for (result, findings) in [
         ("BLOCK", json!([])),
         ("UNOBSERVABLE", json!([])),
+        ("SUCCESS", json!([])),
         ("PASS", json!(["f-1"])),
     ] {
         let mut control = direct_control();
