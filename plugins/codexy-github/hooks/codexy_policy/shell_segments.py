@@ -127,7 +127,8 @@ def _strip_redirections(tokens: list[str]) -> list[str] | None:
             if target is None or target in OPERATORS:
                 return None
             if not (
-                token.startswith("<") and ">" not in token
+                token.startswith("<")
+                and ">" not in token
                 or token in {">", ">>", ">|", "&>", "&>>"}
                 and target == "/dev/null"
                 or token in {">&", ">&-"}
