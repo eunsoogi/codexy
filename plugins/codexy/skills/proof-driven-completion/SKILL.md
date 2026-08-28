@@ -24,7 +24,8 @@ stale, too weak, or contradictory.
 4. `proved` means current evidence matches every stated requirement; MUST NOT
    invent extra gates. `contradicted` conflicts; `incomplete` is partial or
    stale; `too weak` uses the wrong scope or surface; `missing` is absent or
-   unrun proof. A missing required proof makes completion `missing`, not `incomplete`.
+   unrun proof. A missing required proof makes completion `missing`, not
+   `incomplete`.
 5. Continue until every required item is proved. Otherwise MUST stop the
    completion claim, name the unmet item, and identify one concrete next action.
 
@@ -36,25 +37,22 @@ stale, too weak, or contradictory.
   states and MUST NOT substitute for one another.
 - Evidence from an older head MUST NOT prove the current head. An unresolved
   external gate keeps the corresponding requirement incomplete.
-- Before push, PR, handoff, or success claims, MUST inspect the current diff and
-  worktree, run `git diff --check`, and rerun affected verification after any
-  change.
 - For governed files, MUST use the canonical touched-LOC producer. Every file
   must be at or below 250 physical lines, and blank-line deletion or collapsed
   readable content MUST NOT count as structural remediation.
 - Missing goal, plan, tool, or multi-agent receipts alone MUST NOT invalidate
-  otherwise current and complete outcome evidence. Those producers own their
-  own process contracts.
+  otherwise current and complete outcome evidence. Those producers own their own
+  process contracts.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
-  state machines. Consume their current evidence without restating or
-  replacing their authority here.
+  state machines. Consume their current evidence without restating or replacing
+  their authority here.
 
 ## Completion Report
 
 Report the outcome, changed surfaces, verification and authentic-surface
-observations, skipped checks with reasons, unresolved gates, residual risks,
-and the next action. MUST NOT describe incomplete work as done.
+observations, skipped checks with reasons, unresolved gates, residual risks, and
+the next action. MUST NOT describe incomplete work as done.
 
 Completing a finite execution goal proves only that named phase; it MUST NOT
-claim the issue, PR, merge, release, or external gate is complete unless each
-is separately proved.
+claim the issue, PR, merge, release, or external gate is complete unless each is
+separately proved.
