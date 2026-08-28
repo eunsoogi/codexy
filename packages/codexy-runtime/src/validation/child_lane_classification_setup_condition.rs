@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_phrase::is_condition_phrase_boundary;
 
 pub(super) fn has_negative_condition_adjunct(words: &[&str]) -> bool {

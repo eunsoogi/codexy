@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_classification_setup::line_claims_setup_before_classification;
 use super::child_lane_classification_setup_actor::SetupActor;

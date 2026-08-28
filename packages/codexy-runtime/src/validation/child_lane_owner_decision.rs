@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_ownership_phrases::{has_absent_field_value, metadata_key, trimmed_value};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
