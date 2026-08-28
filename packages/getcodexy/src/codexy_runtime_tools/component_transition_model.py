@@ -67,11 +67,15 @@ def plan_transition(
     elif command == "update":
         if recorded is None:
             raise ComponentResolutionError("no-recorded-selection")
-        reconciliation_request = requested or before
+        reconciliation_request = requested
     else:
         reconciliation_request = requested
 
-    resolved = resolve_components(manifest, reconciliation_request)
+    resolved = (
+        before
+        if command == "update" and not reconciliation_request
+        else resolve_components(manifest, reconciliation_request)
+    )
     if command == "update" and not set(resolved).issubset(before):
         raise ComponentResolutionError("incompatible-component-selection")
     target = (

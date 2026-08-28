@@ -63,6 +63,17 @@ class ComponentCliBasicCases:
             self.assertEqual(main(["bootstrap", "--json"]), 0)
         self.assertEqual(operation.call_args.args[0:2], ("bootstrap", ()))
 
+    def test_empty_update_alias_preserves_completed_exit_status(self) -> None:
+        receipt = {"outcome": "completed", "command": "update"}
+        with (
+            patch(
+                "codexy_runtime_tools.component_cli.run_operation", return_value=receipt
+            ) as operation,
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(main(["update", "--json"]), 0)
+        self.assertEqual(operation.call_args.args[0:2], ("update", ()))
+
     def test_human_status_names_the_live_state_and_errors(self) -> None:
         receipt = {
             "outcome": "completed",
