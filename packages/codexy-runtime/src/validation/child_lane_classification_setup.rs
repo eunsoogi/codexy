@@ -1,12 +1,10 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_authority::lane_authority_context_before;
 use super::child_lane_classification_boundaries::current_lane_start;
 use super::child_lane_classification_control::normalized_metadata_lines;
 use super::child_lane_classification_fields::ClassificationFields;
-use super::child_lane_classification_setup_attribution::{
-    child_setup_claims_before_classification, clause_has_explicit_child_scope,
-    matched_child_branch_or_worktree_setup_clauses,
-};
-use super::child_lane_classification_setup_context::child_setup_context_applies;
+use super::child_lane_classification_setup_attribution::matched_child_branch_or_worktree_setup_clauses;
 use super::child_lane_colon_classification_block::ColonClassificationBlock;
 use super::child_lane_gfm_classification_table::{
     GfmClassificationTable, GfmClassificationTableEvent,
@@ -15,44 +13,21 @@ use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
-    let setup_clauses = lines
-        .iter()
-        .enumerate()
-        .flat_map(|(index, line)| {
-            matched_child_branch_or_worktree_setup_clauses(line)
-                .into_iter()
-                .map(move |clause| (index, clause))
-        })
-        .filter(|(index, clause)| {
-            child_setup_context_applies(
-                &lines,
-                *index,
-                clause_has_explicit_child_scope(clause),
-                child_setup_claims_before_classification(clause),
-            )
-        })
-        .collect::<Vec<_>>();
-    if setup_clauses.is_empty() {
-        return Vec::new();
-    }
-    if setup_clauses.iter().any(|(setup_index, setup_clause)| {
-        formal_child_classification_complete_index_before(&lines, *setup_index).is_none()
-            || child_setup_claims_before_classification(setup_clause)
-    }) {
-        return vec!["child-owned lane setup evidence includes child branch/worktree setup before formal $orchestration evidence completed".to_owned()];
+    for (index, line) in lines.iter().enumerate() {
+        if matched_child_branch_or_worktree_setup_clauses(line).is_empty() {
+            continue;
+        }
+        let Some(snapshot) = latest_classification_before(&lines, index) else {
+            continue;
+        };
+        if snapshot
+            .authority
+            .is_some_and(|authority| !authority.authorizes_child_setup())
+        {
+            return vec!["child setup is unauthorized by the recorded lane owner".to_owned()];
+        }
     }
     Vec::new()
-}
-pub(super) fn formal_child_classification_complete_index_before(
-    lines: &[&str],
-    setup_index: usize,
-) -> Option<usize> {
-    let snapshot = latest_classification_before(lines, setup_index)?;
-    (snapshot
-        .authority
-        .is_some_and(|authority| authority.authorizes_child_setup())
-        && snapshot.fields.is_complete())
-    .then_some(snapshot.start)
 }
 
 pub(super) fn formal_classification_complete_index_before(

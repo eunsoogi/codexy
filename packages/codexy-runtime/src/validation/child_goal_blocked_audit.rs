@@ -10,38 +10,10 @@ use wait_taxonomy::{WaitDisposition, classify_producer};
 
 pub(super) fn check(plugin_root: &std::path::Path, evidence: &str) -> Vec<String> {
     let events = active_events(plugin_root, evidence);
-    let mut errors = Vec::new();
-    let mut child_owned = false;
-    let mut lane_start = 0;
-    for (index, event) in events.iter().enumerate() {
-        if is_lane_boundary(&event.line) {
-            if child_owned {
-                errors.extend(check_lane(&events[lane_start..index]));
-            }
-            child_owned = is_child_boundary(&event.line);
-            lane_start = index;
-        }
-    }
-    if child_owned {
-        errors.extend(check_lane(&events[lane_start..]));
-    }
-    errors
-}
-
-fn is_lane_boundary(line: &str) -> bool {
-    line.starts_with("lane ownership:") || line.starts_with("owner decision:")
-}
-
-fn is_child_boundary(line: &str) -> bool {
-    line.contains("lane ownership: child-owned")
-        || line.starts_with("owner decision: affirmative child-owned")
-}
-
-fn check_lane(events: &[ActiveEvent]) -> Vec<String> {
-    let mut errors = check_wait_handoffs(events);
+    let mut errors = check_wait_handoffs(&events);
     for (call_index, event) in events.iter().enumerate() {
         if event.kind == OrderedEvent::BlockedCall {
-            errors.extend(check_blocked_call(events, call_index));
+            errors.extend(check_blocked_call(&events, call_index));
         }
     }
     errors

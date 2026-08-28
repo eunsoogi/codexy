@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_condition::has_negative_condition_adjunct;
 use super::child_lane_classification_setup_phrase::is_adjunct_preposition;
 

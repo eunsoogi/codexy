@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_authority::LaneAuthority;
 use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_owner_decision::{

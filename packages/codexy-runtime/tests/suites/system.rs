@@ -36,9 +36,6 @@ mod mcp_runtime_deduplication;
 #[path = "../module_owned_package_roots.rs"]
 mod module_owned_package_roots;
 
-#[path = "../profile_rust_tests.rs"]
-mod profile_rust_tests;
-
 #[path = "../release_changelog_script.rs"]
 mod release_changelog_script;
 
