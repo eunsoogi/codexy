@@ -177,14 +177,22 @@ def opaque_syntax(command: str) -> OpaqueSyntax:
                 code.append(" ")
                 index += 1
             continue
-        elif quote != "'" and char == "$" and command[index + 1 : index + 2] == "(":
+        elif (
+            quote != "'"
+            and (char == "$" or quote is None and char in "<>")
+            and command[index + 1 : index + 2] == "("
+        ):
             end = _substitution_end(command, index + 2)
             if end is None:
                 result.append(char)
                 code.append(" ")
             else:
                 substitutions.append(command[index + 2 : end])
-                result.append("__codexy_command_substitution__")
+                result.append(
+                    "__codexy_process_substitution__"
+                    if char in "<>"
+                    else "__codexy_command_substitution__"
+                )
                 code.append(" ")
                 index = end
         elif quote != "'" and char == "`":
@@ -220,7 +228,7 @@ def _substitution_end(command: str, index: int) -> int | None:
             escaped = True
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
-        elif quote is None and char == "$" and command[index + 1 : index + 2] == "(":
+        elif quote is None and char in "$<>" and command[index + 1 : index + 2] == "(":
             depth += 1
             index += 1
         elif quote is None and char == ")":

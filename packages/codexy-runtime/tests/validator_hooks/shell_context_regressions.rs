@@ -110,6 +110,8 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         ("N-17", "gh api --method POST repos/eunsoogi/codexy/issues"),
         ("N-17-review-without-body", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT"),
         ("N-17-redirection", "gh api --method POST repos/eunsoogi/codexy/issues > /dev/null"),
+        ("N-18-process-substitution-gh", "cat <(gh issue create --repo eunsoogi/codexy --title invalid)"),
+        ("N-19-process-substitution-git", "cat >(git push --force origin main)"),
     ];
     for (case_id, command) in denied {
         for event in ["PermissionRequest", "PreToolUse"] {
