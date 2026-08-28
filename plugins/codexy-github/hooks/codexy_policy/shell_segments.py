@@ -7,9 +7,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
-
-QUOTED_REDIRECTIONS, REDIRECTION_FD = {"<": "\ue001", ">": "\ue002"}, "\ue003"
-
+QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
+REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
 CONTROL_WORDS = frozenset(
     {
         "if",
@@ -59,7 +58,7 @@ def separate_lines(command: str) -> str:
             index += 2
             continue
         if escaped:
-            result.append(QUOTED_REDIRECTIONS[char] if quote and char in "<>" else char)
+            result.append(QUOTED_REDIRECTIONS[char] if char in "<>" else char)
             escaped = False
         elif char == "\\" and quote != "'":
             result.append(char)
@@ -74,10 +73,8 @@ def separate_lines(command: str) -> str:
         elif quote is None and char in "<>":
             _mark_redirection_fd(result)
             result.append(char)
-        elif (
-            quote is None
-            and char == "#"
-            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
+        elif quote is None and char == "#" and (
+            not result or result[-1].isspace() or result[-1] in ";&|(){}"
         ):
             while index < len(command) and command[index] != "\n":
                 index += 1
@@ -139,6 +136,14 @@ def _strip_redirections(tokens: list[str]) -> list[str] | None:
             target = next(iterator, None)
             if target is None or target in OPERATORS:
                 return None
+            if not (
+                token.startswith("<") and ">" not in token
+                or token in {">", ">>", ">|", "&>", "&>>"}
+                and target == "/dev/null"
+                or token in {">&", ">&-"}
+                and (target.isdigit() or target in {"-", "/dev/null"})
+            ):
+                result.append(UNSAFE_REDIRECTION)
         else:
             result.append(token.replace("\ue001", "<").replace("\ue002", ">"))
     return result
@@ -238,11 +243,8 @@ def _substitution_end(command: str, index: int) -> int | None:
 def _backtick_end(command: str, index: int) -> int | None:
     escaped = False
     while index < len(command):
-        if escaped:
-            escaped = False
-        elif command[index] == "\\":
-            escaped = True
-        elif command[index] == "`":
+        if command[index] == "`" and not escaped:
             return index
+        escaped = command[index] == "\\" and not escaped
         index += 1
     return None
