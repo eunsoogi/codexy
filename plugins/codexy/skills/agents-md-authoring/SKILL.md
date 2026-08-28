@@ -9,8 +9,9 @@ description:
 
 ## Workflow
 
-1. MUST locate the target and read every governing `AGENTS.md` from the relevant
-   root through the target directory before reviewing or writing instructions.
+1. MUST start discovery at the filesystem root and read every governing
+   `AGENTS.md` through each ancestor directory down to the target before
+   reviewing or writing instructions.
 2. MUST choose the narrowest correct scope:
    - use root guidance for repository-wide structure and durable policy,
    - use nested guidance only for stable subtree rules that MUST NOT apply
