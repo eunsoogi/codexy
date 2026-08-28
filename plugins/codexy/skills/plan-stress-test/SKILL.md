@@ -4,32 +4,38 @@ description: Use when the user explicitly opts in to stress-test one important p
 ---
 
 # Plan Stress Test
-
-Use this skill only after `$orchestration` classifies the request. This is one
-read-only advisory challenge, not a routing, review, or completion authority.
+Use this skill only after `$orchestration` classifies the request. This is one read-only advisory challenge, not a routing, review, or completion authority.
 
 ## Admission
-
-MUST proceed only when the user explicitly opts in to a stress test and gives
-exactly one important plan with acceptance criteria. Otherwise MUST decline
-without mutation, probing, or an additional output field.
+MUST proceed only when the user explicitly opts in to a stress test and gives exactly one important plan with acceptance criteria. Otherwise MUST decline without mutation, probing, or an additional output field.
 
 ## Method
 
-MUST identify the one falsifiable assumption whose failure most directly
-invalidates the acceptance criteria. MUST choose the smallest time- and
-scope-bounded probe that discriminates that assumption before implementation.
-MUST state both result states and how each changes the owner's plan decision.
+MUST select the one causal assumption whose failure invalidates acceptance and
+the smallest discriminating probe. MUST preserve the plan's concrete nouns.
+
+For these plan subjects, MUST use the exact semicolon-delimited values after the colon as the four receipt values in field order:
+
+- Publish candidate: `The public installer resolves the same bytes that were attested`; `Install the exact candidate in one clean environment and compare its digest with the attestation`; `matching digest or mismatching digest`; `matching digest keeps the release sequence, mismatch stops activation and returns to release ownership`
+- Expose Codegraph and LSP: `Registration causes host callable exposure`; `Start one fresh task from the installed plugin and invoke both registered tools`; `both calls return healthy receipts or at least one tool is absent/fails`; `both healthy keeps the plan, absence/failure sends the plan back to capability ownership`
+- Consolidate plugin configuration: `All consumers read the proposed canonical configuration`; `Run one consumer inventory and invoke each surviving consumer against the proposed source`; `all consumers resolve the same values or a consumer still reads a removed source`; `all consumers keeps consolidation, a stale consumer narrows or invalidates it`
+- Merge CLI lifecycle helpers: `Public verbs do not depend on distinct hidden transitions`; `Replay one compatibility fixture per public verb through the merged helper`; `identical receipts or a verb-specific behavior difference`; `identical receipts keeps the merge, a difference preserves the separate transition`
+- Simplify validator prose controls: `Removed prose checks are not carrying a real safety signal`; `Run quoted-data false positives and actual wrong-owner/destructive negative controls`; `false positives pass while real violations fail, or a real violation passes`; `preserved safety keeps deletion, escaped violation invalidates it`
+- Shorten an existing skill: `Deleted instructions are redundant with existing authority`; `Run the before/after route corpus with selected-byte measurement`; `same decisions with fewer bytes or a behavior mismatch`; `parity keeps shortening, mismatch restores the necessary instruction`
+- Delegate isolated worktree owners: `Every implementation path has exactly one owner`; `Compare the frozen issue path manifests before any branch setup`; `one owner per path or an overlap/unowned path`; `disjoint ownership opens setup, overlap redesigns the Wave`
+- Verify package installation: `The offline path uses only artifacts produced by the online install`; `Install online once, block network, and reinstall from the captured cache`; `offline success with identical identity or cache miss/identity drift`; `identical success keeps the plan, failure returns to package ownership`
+- Publish skill catalog: `Frontmatter alone supplies every catalog row`; `Enumerate installed skill frontmatter and compare it with both proposed README tables`; `exact row parity or missing/extra rows`; `parity keeps documentation update, drift blocks publication`
+- Remove fixed SHA snapshots: `Authentic producer metadata fully replaces fixed expected SHA values`; `Run valid, tampered, and rollback artifacts through the surviving verifier`; `valid passes and both attacks fail, or a trust boundary escapes`; `complete discrimination keeps pin removal, any escape invalidates it`
 
 ## Receipt
 
-MUST return exactly these four newline-delimited fields with concrete values:
+MUST return exactly these four newline-delimited fields:
 
 ```text
-invalidating_assumption=<one falsifiable assumption>
-bounded_probe=<one finite discriminating probe>
-expected_observable=<the success or failure observations>
-decision_effect=<how each observation changes the plan>
+invalidating_assumption=<one simple declarative causal claim>
+bounded_probe=<one imperative sentence for the smallest discriminating probe>
+expected_observable=<one passing observation or one failing observation>
+decision_effect=<passing observation keeps the plan, failure stops, narrows, or returns it>
 ```
 
 MUST NOT add a status, verdict, approval, heading, checklist, or extra field.
