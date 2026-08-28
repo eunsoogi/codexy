@@ -1,58 +1,27 @@
 # Local Git And Branches
 
-## Worktrees And Branches
+## Worktree Setup
 
-MUST discover the repository default branch and create task worktrees from its
-up-to-date remote-tracking branch:
+MUST discover the configured default branch and its protection, fetch its
+required starting ref, and verify the requested task branch is not already owned
+locally, remotely, or by another PR. Create the task branch only after an issue
+or explicit issue-sized scope exists, and keep it in an isolated worktree. MUST
+NOT implement directly on the default branch.
 
-```sh
-default_branch=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)
-git fetch origin "$default_branch"
-git switch "$default_branch"
-git pull --ff-only origin "$default_branch"
-git worktree add -b <policy-prefix><issue-or-scope> ../<repo>-worktrees/<issue-or-scope> "$default_branch"
-```
-
-MUST NOT force-push task branches. If push is rejected because the remote branch
-changed, MUST inspect the remote changes and bring required adjustments in with
-a new commit.
+Use the repository naming policy or the maintainer-requested branch name. Keep
+the branch aligned to one issue and preserve unrelated user or agent work.
 
 ## Local Change Discipline
 
-MUST inspect before editing or committing:
+Before editing, staging, committing, pushing, or resolving conflicts, MUST
+inspect `git status --short --branch` and the relevant diff. Stage only intended
+paths. MUST NOT discard unrelated changes, commit local evidence or secrets, or
+use `git push --force` or `git push --force-with-lease`.
 
-```sh
-git status --short
-git diff
-```
+Commit messages MUST use a descriptive Conventional Commit subject. If an
+ordinary push is rejected, refresh the remote branch, inspect its changes, and
+integrate safely with a new commit; do not rewrite the remote history.
 
-MUST stage only intended files. MUST preserve unrelated dirty work. MUST NOT
-revert or discard user changes unless explicitly asked. MUST NOT commit
-`.omo/**`, local logs, secrets, or scratch files by default.
-
-## Commit Messages
-
-MUST use Conventional Commit style:
-
-```text
-<type>(<scope>): <summary>
-```
-
-Common types are `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, and
-`revert`. Installed plugin skill changes change agent behavior, so prefer
-non-`docs` types. MUST NOT use vague messages such as `update`, `fix`, `WIP`, or
-`misc`.
-
-## Conflict Resolution
-
-Before resolving conflicts, MUST inspect:
-
-```sh
-git status
-git diff
-```
-
-MUST resolve conflict markers carefully. MUST preserve both sides' intended
-behavior when possible. If resolution depends on domain intent, MUST stop and
-ask. After resolving, MUST stage only resolved files and run relevant
-verification.
+For conflicts, inspect both sides and preserve their intended behavior. If the
+domain choice is ambiguous, stop for maintainer direction. After resolution,
+stage only resolved paths and rerun affected verification.
