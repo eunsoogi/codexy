@@ -7,6 +7,7 @@ import os
 import shutil
 from pathlib import Path
 
+from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
 from .component_manifest import load_component_manifest
 
 CATALOGS = {
@@ -193,44 +194,41 @@ def valid_registration(plugin: Path, component: str) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
         if component == "devtools":
-            return json.loads(_text(plugin / ".mcp.json")) == MCP and _executable(
-                plugin / LAUNCHERS[component][0]
-            )
+            return json.loads(
+                _text(plugin / ".mcp.json", plugin)
+            ) == MCP and _executable(plugin / LAUNCHERS[component][0], plugin)
         return (
-            _text(plugin / "agents/catalog.toml") == CATALOGS[component]
-            and json.loads(_text(plugin / "hooks/hooks.json")) == HOOKS[component]
+            _text(plugin / "agents/catalog.toml", plugin) == CATALOGS[component]
+            and json.loads(_text(plugin / "hooks/hooks.json", plugin))
+            == HOOKS[component]
             and all(
-                _regular(plugin / f"agents/{name}", 'model = "')
+                _regular(plugin / f"agents/{name}", plugin, 'model = "')
                 for name in AGENT_FILES[component]
             )
-            and all(_launcher(plugin / path) for path in LAUNCHERS[component])
+            and all(_launcher(plugin / path, plugin) for path in LAUNCHERS[component])
             and _skill(plugin, component)
         )
-    except (KeyError, OSError, UnicodeDecodeError, ValueError):
+    except (KeyError, OSError, UnicodeDecodeError, SyntaxError, ValueError):
         return False
 
 
-def _text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+def _text(path: Path, root: Path) -> str:
+    return _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES).decode()
 
 
-def _regular(path: Path, needle: str = "") -> bool:
-    try:
-        if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
-            return False
-        return not needle or needle in _text(path)
-    except OSError:
-        return False
+def _regular(path: Path, root: Path, needle: str = "") -> bool:
+    contents = _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES)
+    return bool(contents) and (not needle or valid_agent_toml(contents.decode(), path))
 
 
-def _launcher(path: Path) -> bool:
-    contents = _text(path) if _regular(path) else ""
+def _launcher(path: Path, root: Path) -> bool:
+    contents = _text(path, root) if _regular(path, root) else ""
     if path.suffix == ".cmd":
         return contents.lower().startswith("@echo off")
     command = contents.splitlines()[0][2:].split() if contents.startswith("#!") else []
     return (
         bool(command)
-        and _executable(path)
+        and _executable(path, root)
         and (os.name == "nt" or shutil.which(command[-1]) is not None)
     )
 
@@ -240,11 +238,11 @@ def _skill(plugin: Path, component: str) -> bool:
     if component == "core":
         required += CORE_HOOK_DEPENDENCIES
     name = "wiki" if component == "core" else "git-workflow"
-    contents = _text(plugin / f"skills/{name}/SKILL.md")
-    return all(_regular(plugin / path) for path in required) and (
+    contents = _text(plugin / f"skills/{name}/SKILL.md", plugin)
+    return all(_regular(plugin / path, plugin) for path in required) and (
         contents.startswith(f"---\nname: {name}\n") and "\n---\n" in contents
     )
 
 
-def _executable(path: Path) -> bool:
-    return _regular(path) and (os.name == "nt" or os.access(path, os.X_OK))
+def _executable(path: Path, root: Path) -> bool:
+    return _regular(path, root) and (os.name == "nt" or os.access(path, os.X_OK))

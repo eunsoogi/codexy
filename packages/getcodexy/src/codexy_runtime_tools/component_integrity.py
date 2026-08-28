@@ -226,3 +226,25 @@ def _windows_regular_path(path: Path, directory: bool) -> os.stat_result:
 def _has_windows_reparse_point(metadata: os.stat_result) -> bool:
     attribute = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
     return bool(getattr(metadata, "st_file_attributes", 0) & attribute)
+
+
+def valid_agent_toml(text: str, path: Path) -> bool:
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import ast
+
+        tree = ast.parse(text, filename=str(path))
+        values = {
+            getattr(node.targets[0], "id", ""): getattr(node.value, "value", None)
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(getattr(node.value, "value", None), str)
+        }
+    else:
+        values = tomllib.loads(text)
+    return values.get("name") == path.stem and all(
+        isinstance(values.get(field), str) and values[field].strip()
+        for field in "name description developer_instructions model".split()
+    )

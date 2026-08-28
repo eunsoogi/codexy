@@ -224,6 +224,25 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
+    def test_doctor_rejects_parser_and_ancestor_registration_traps(self) -> None:
+        cases = ("malformed",) + (("symlink",) if sys.platform != "win32" else ())
+        for case in cases:
+            with self.subTest(case=case), fixture({"core"}) as state:
+                materialize(state, "core")
+                plugin = state.marketplace / "plugins/codexy"
+                if case == "malformed":
+                    (plugin / "agents/codexy-architect.toml").write_text(
+                        'name = "codexy-architect"\nmodel = "gpt-5.6-sol"\n[\n',
+                        encoding="utf-8",
+                    )
+                else:
+                    agents = plugin / "agents"
+                    target = state.marketplace / "agents-target"
+                    agents.rename(target)
+                    agents.symlink_to(target, target_is_directory=True)
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+                self.assertEqual(result["component_health"][0]["state"], "incompatible")
+
 
 if __name__ == "__main__":
     unittest.main()
