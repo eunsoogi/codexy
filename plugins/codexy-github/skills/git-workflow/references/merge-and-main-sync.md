@@ -15,9 +15,10 @@ event covers the exact payload. The repository merge hook fails closed with an
 unavailable decision when that coverage cannot be established. Use the
 host-resolved bundled skill resource
 `skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`; it delegates to
-the existing `hooks/codexy-authorized-squash-merge.sh` wrapper, which is the only
-supported Codexy-owned merge fallback. Do not parse `functions.exec` source or
-create a parallel authorization, ledger, cache, schema, framework, or workflow.
+the existing `hooks/codexy-authorized-squash-merge.sh` wrapper, which is the
+only supported Codexy-owned merge fallback. Do not parse `functions.exec` source
+or create a parallel authorization, ledger, cache, schema, framework, or
+workflow.
 
 Known process deviations are recorded here and MUST NOT be repaired by rewriting
 protected `main` history:

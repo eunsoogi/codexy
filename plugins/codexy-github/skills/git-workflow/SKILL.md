@@ -87,8 +87,8 @@ host-resolved bundled skill resource
 `skills/git-workflow/scripts/codexy-authorized-squash-merge.sh` MUST be used as
 the entrypoint; it delegates to the existing
 `hooks/codexy-authorized-squash-merge.sh` wrapper, which remains the canonical
-fallback implementation. MUST NOT parse `functions.exec` source or add a
-second authorization store, ledger, cache, schema, framework, or workflow.
+fallback implementation. MUST NOT parse `functions.exec` source or add a second
+authorization store, ledger, cache, schema, framework, or workflow.
 
 Before any Codexy-created issue mutation, child lanes MUST ask the installed
 `$orchestration` skill to apply its **issue-intake receipt** contract, submit
