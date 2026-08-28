@@ -1,4 +1,4 @@
-use crate::support::FixtureCommand as Command;
+use crate::support::{FixtureCommand as Command, write_posix_fixture_command};
 use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
 use std::io::Write as _;
@@ -129,6 +129,15 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let cwd = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let fake_bin = workspace.path().join("fake-bin");
+    std::fs::create_dir(&fake_bin)?;
+    let recorder = workspace.path().join("merge-recorder");
+    write_posix_fixture_command(
+        &fake_bin.join("gh"),
+        "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$CODEXY_GH_RECORD\"\n",
+    )?;
+    let mut path = vec![fake_bin];
+    path.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
     let input = json!({
         "hook_event_name":"PreToolUse",
         "tool_name":"mcp__codex_apps__github_merge_pull_request",
@@ -145,6 +154,7 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
     });
     let mut command = Command::new(root.join("hooks/codexy-repository-merge.sh"));
     command.arg("PreToolUse").env_path("PLUGIN_ROOT", &root)
+        .env_path_list("PATH", path).env("CODEXY_GH_RECORD", &recorder)
         .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn()?;
     child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
@@ -155,6 +165,7 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
     assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
     let reason = denial["hookSpecificOutput"]["permissionDecisionReason"].as_str().unwrap_or_default();
     assert!(reason.contains("UNAVAILABLE"), "{reason}");
+    assert!(!recorder.exists(), "nested connector reached fake GitHub merge");
     Ok(())
 }
 
