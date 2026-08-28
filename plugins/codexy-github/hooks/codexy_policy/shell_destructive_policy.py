@@ -7,6 +7,7 @@ from .shell_git import evaluate as evaluate_git
 
 
 class DestructivePolicy:
+    redirection_executables = frozenset({"gh", "git"})
     owns_opaque = staticmethod(destructive_opaque)
 
     @staticmethod

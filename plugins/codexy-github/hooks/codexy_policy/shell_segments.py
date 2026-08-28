@@ -8,24 +8,24 @@ from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
 
+QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
+REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
+
 CONTROL_WORDS = frozenset(
-    {
-        "if",
-        "then",
-        "elif",
-        "else",
-        "fi",
-        "for",
-        "in",
-        "while",
-        "until",
-        "do",
-        "done",
-        "case",
-        "esac",
-    }
+    "if then elif else fi for in while until do done case esac".split()
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
+
+
+def tokenize(command: str) -> list[str] | None:
+    try:
+        lexer = shlex.shlex(
+            separate_lines(command), posix=True, punctuation_chars=";&|(){}<>"
+        )
+        lexer.whitespace_split, lexer.commenters = True, ""
+        return _strip_redirections(list(lexer))
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -46,7 +46,7 @@ def separate_lines(command: str) -> str:
             index += 2
             continue
         if escaped:
-            result.append(char)
+            result.append(QUOTED_REDIRECTIONS[char] if char in "<>" else char)
             escaped = False
         elif char == "\\" and quote != "'":
             result.append(char)
@@ -54,8 +54,13 @@ def separate_lines(command: str) -> str:
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
             result.append(char)
+        elif quote is not None and char in "<>":
+            result.append(QUOTED_REDIRECTIONS[char])
         elif quote == "'" and char == "$":
             result.append(SINGLE_QUOTED_DOLLAR)
+        elif quote is None and char in "<>":
+            _mark_redirection_fd(result)
+            result.append(char)
         elif (
             quote is None
             and char == "#"
@@ -77,13 +82,8 @@ def separate_lines(command: str) -> str:
 
 def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
     """Return command-position segments; quoted text remains argument data."""
-    try:
-        lexer = shlex.shlex(
-            separate_lines(command), posix=True, punctuation_chars=";&|(){}"
-        )
-        lexer.whitespace_split, lexer.commenters = True, ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = tokenize(command)
+    if tokens is None:
         return None
     result: list[tuple[str, ...]] = []
     current: list[str] = []
@@ -100,6 +100,44 @@ def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
             if command_start and token != "!" and not assignment(token):
                 command_start = False
     return tuple(result)
+
+
+def _mark_redirection_fd(result: list[str]) -> None:
+    start = len(result)
+    while start and result[start - 1].isdigit():
+        start -= 1
+    if start < len(result) and (start == 0 or result[start - 1].isspace()):
+        result.insert(start, REDIRECTION_FD)
+
+
+def _is_redirection(token: str) -> bool:
+    return any(char in "<>" for char in token) and set(token) <= set("<>&|-")
+
+
+def _strip_redirections(tokens: list[str]) -> list[str] | None:
+    result: list[str] = []
+    iterator = iter(tokens)
+    for token in iterator:
+        if token.startswith(REDIRECTION_FD) and token[1:].isdigit():
+            token = next(iterator, None)
+            if token is None:
+                return None
+        if _is_redirection(token):
+            target = next(iterator, None)
+            if target is None or target in OPERATORS:
+                return None
+            if not (
+                token.startswith("<")
+                and ">" not in token
+                or token in {">", ">>", ">|", "&>", "&>>"}
+                and target == "/dev/null"
+                or token in {">&", ">&-"}
+                and (target.isdigit() or target in {"-", "/dev/null"})
+            ):
+                result.append(UNSAFE_REDIRECTION)
+        else:
+            result.append(token.replace("\ue001", "<").replace("\ue002", ">"))
+    return result
 
 
 def command_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:
@@ -139,14 +177,22 @@ def opaque_syntax(command: str) -> OpaqueSyntax:
                 code.append(" ")
                 index += 1
             continue
-        elif quote != "'" and char == "$" and command[index + 1 : index + 2] == "(":
+        elif (
+            quote != "'"
+            and (char == "$" or quote is None and char in "<>")
+            and command[index + 1 : index + 2] == "("
+        ):
             end = _substitution_end(command, index + 2)
             if end is None:
                 result.append(char)
                 code.append(" ")
             else:
                 substitutions.append(command[index + 2 : end])
-                result.append("__codexy_command_substitution__")
+                result.append(
+                    "__codexy_process_substitution__"
+                    if char in "<>"
+                    else "__codexy_command_substitution__"
+                )
                 code.append(" ")
                 index = end
         elif quote != "'" and char == "`":
@@ -182,7 +228,7 @@ def _substitution_end(command: str, index: int) -> int | None:
             escaped = True
         elif char in {"'", '"'}:
             quote = None if quote == char else char if quote is None else quote
-        elif quote is None and char == "$" and command[index + 1 : index + 2] == "(":
+        elif quote is None and char in "$<>" and command[index + 1 : index + 2] == "(":
             depth += 1
             index += 1
         elif quote is None and char == ")":
@@ -196,11 +242,8 @@ def _substitution_end(command: str, index: int) -> int | None:
 def _backtick_end(command: str, index: int) -> int | None:
     escaped = False
     while index < len(command):
-        if escaped:
-            escaped = False
-        elif command[index] == "\\":
-            escaped = True
-        elif command[index] == "`":
+        if command[index] == "`" and not escaped:
             return index
+        escaped = command[index] == "\\" and not escaped
         index += 1
     return None
