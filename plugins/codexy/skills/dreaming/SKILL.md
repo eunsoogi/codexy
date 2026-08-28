@@ -27,15 +27,15 @@ demoted, while a current exact-head failure remains active.
 
 MUST place each carried claim in exactly one bucket:
 
-| Bucket | Keep only |
-| --- | --- |
-| Remember | Current policy, scope, refs, owner, and stop condition. |
-| Fix | A current unresolved obligation with evidence. |
+| Bucket           | Keep only                                                     |
+| ---------------- | ------------------------------------------------------------- |
+| Remember         | Current policy, scope, refs, owner, and stop condition.       |
+| Fix              | A current unresolved obligation with evidence.                |
 | Forget or demote | Resolved, stale, superseded, duplicated, or unproved history. |
 
 MUST continue only from Remember constraints and Fix obligations. Emit one next
-action allowed by the current owner and stop condition; MUST NOT invent one.
-If a carried claim needs reclassification, show it in its bucket. Return
+action allowed by the current owner and stop condition; MUST NOT invent one. If
+a carried claim needs reclassification, show it in its bucket. Return
 byte-identical `NO_CHANGE` only when current surfaces are clean and there is
 nothing to reclassify; create no report or other artifact.
 
