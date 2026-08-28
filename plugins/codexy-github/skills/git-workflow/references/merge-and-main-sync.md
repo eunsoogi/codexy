@@ -7,6 +7,16 @@ MUST treat requested changes, actionable suggestions, unresolved review threads,
 stale concerns after new commits, and PR comments that identify defects as
 blockers until addressed or covered by an accepted no-change rationale.
 
+## Connector Merge Boundary
+
+Direct or nested `github_merge_pull_request` and `enable_auto_merge` connector
+mutations MUST be treated as unavailable unless an authenticated repository hook
+event covers the exact payload. The repository merge hook fails closed with an
+unavailable decision when that coverage cannot be established. Use the existing
+`hooks/codexy-authorized-squash-merge.sh` wrapper; it is the only supported
+Codexy-owned merge fallback. Do not parse `functions.exec` source or create a
+parallel authorization, ledger, cache, schema, framework, or workflow.
+
 Known process deviations are recorded here and MUST NOT be repaired by rewriting
 protected `main` history:
 

@@ -1,5 +1,8 @@
+use crate::support::FixtureCommand as Command;
 use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
+use std::io::Write as _;
+use std::process::Stdio;
 
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {
@@ -121,7 +124,41 @@ fn issue_735_unknown_connector_tools_fail_closed_at_the_universal_launcher() -> 
     Ok(())
 }
 
-fn cases() -> [(&'static str, Value, bool); 3] {
+#[test]
+fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let cwd = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let input = json!({
+        "hook_event_name":"PreToolUse",
+        "tool_name":"mcp__codex_apps__github_merge_pull_request",
+        "tool_input":{
+            "repository_full_name":"eunsoogi/codexy",
+            "pr_number":754,
+            "merge_method":"squash",
+            "expected_head_sha":"b3fb207819c8246c0dbea33f6a3dea7ecfab93e9",
+            "commit_title":"fix(hooks): narrow shell policy false positives",
+            "commit_message":"rewritten body\n\nFixes #736",
+            "authorization_comment":"AUTHORIZE SQUASH MERGE: PR #754\nBASE: main@6ac81bc5b34ec5af0094a4ad9ff361bbbb1c3dba\nHEAD: b3fb207819c8246c0dbea33f6a3dea7ecfab93e9"
+        },
+        "cwd":cwd,
+    });
+    let mut command = Command::new(root.join("hooks/codexy-repository-merge.sh"));
+    command.arg("PreToolUse").env_path("PLUGIN_ROOT", &root)
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = command.spawn()?;
+    child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let denial: Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
+    let reason = denial["hookSpecificOutput"]["permissionDecisionReason"].as_str().unwrap_or_default();
+    assert!(reason.contains("UNAVAILABLE"), "{reason}");
+    Ok(())
+}
+
+fn cases() -> [(&'static str, Value, bool); 4] {
     [
         (
             "mcp__codex_apps__github_create_issue",
@@ -153,6 +190,11 @@ fn cases() -> [(&'static str, Value, bool); 3] {
                 "commit_title": "fix(hooks): require connector ownership (#551)",
                 "commit_message": "Fixes #551"
             }),
+            true,
+        ),
+        (
+            "mcp__codex_apps__github_enable_auto_merge",
+            json!({"repository_full_name":"eunsoogi/codexy","pr_number":551}),
             true,
         ),
     ]
