@@ -4,7 +4,7 @@
 
 MUST align names, rules, and ownership before code shape.
 
-1. Build a glossary; identify contexts, owners, states, and adapters.
+1. Define glossary, contexts, owners, states, and adapters.
 2. State invariants for transitions, ordering, idempotency, retry, permission,
    ownership, and domain errors.
 3. Keep decisions with their owner, translate external shapes at boundaries, and
