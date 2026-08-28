@@ -43,6 +43,8 @@ def materialize(
 class CapabilityProbeCases:
     def setUp(self) -> None:
         super().setUp()
+        self.manifest = load_component_manifest()
+        self.records = self._records(self.manifest)
         self._probe_patch = patch(
             "codexy_runtime_tools.component_health._probe_component",
             side_effect=self._successful_probe,
@@ -52,9 +54,7 @@ class CapabilityProbeCases:
         self.addCleanup(self._probe_patch.stop)
 
     def test_health_reports_each_live_capability_state(self) -> None:
-        manifest = load_component_manifest()
-        records = self._records(manifest)
-        result = health(manifest, tuple(PLUGIN_NAMES), None, records, None, False)
+        result = self._health(tuple(PLUGIN_NAMES))
         self.assertEqual(len(result), 3)
         for entry in result:
             with self.subTest(component=entry["component"]):
@@ -71,7 +71,6 @@ class CapabilityProbeCases:
     def test_health_reports_first_failure_for_start_call_identity_and_authority(
         self,
     ) -> None:
-        manifest = load_component_manifest()
         cases = (
             (
                 "start",
@@ -100,20 +99,12 @@ class CapabilityProbeCases:
         )
         for name, component, override, stage, reason, restart in cases:
             with self.subTest(case=name):
-                records = self._records(manifest)
                 with patch(
                     "codexy_runtime_tools.component_health._probe_component",
                     side_effect=self._probe_with(component, override),
                     create=True,
                 ):
-                    entry = health(
-                        manifest,
-                        (component,),
-                        None,
-                        records,
-                        None,
-                        False,
-                    )[0]
+                    entry = self._health((component,))[0]
                 self.assertEqual(entry["state"], "incompatible")
                 self.assertFalse(entry["healthy"])
                 self.assertEqual(entry["first_failure_stage"], stage)
@@ -121,17 +112,15 @@ class CapabilityProbeCases:
                 self.assertEqual(entry["restart_required"], restart)
 
     def test_health_rejects_missing_inventory_and_untrusted_authority(self) -> None:
-        manifest = load_component_manifest()
-        records = self._records(manifest)
-        missing = health(manifest, (), ("core",), records, None, False)[0]
-        records["core"]["authority"] = {"state": "stale"}
-        invalid = health(manifest, ("core",), None, records, None, False)[0]
+        missing = self._health((), ("core",))[0]
+        self.records["core"]["authority"] = {"state": "stale"}
+        invalid = self._health(("core",))[0]
         self.assertEqual(missing["reason_code"], "component-not-installed")
         self.assertFalse(missing["healthy"])
         self.assertEqual(invalid["reason_code"], "artifact-authority-invalid")
         self.assertFalse(invalid["healthy"])
-        records["core"].pop("authority")
-        missing_authority = health(manifest, ("core",), None, records, None, False)[0]
+        self.records["core"].pop("authority")
+        missing_authority = self._health(("core",))[0]
         self.assertEqual(missing_authority["reason_code"], "artifact-authority-invalid")
 
     def test_live_probe_calls_registered_hooks_and_mcp_tools(self) -> None:
@@ -139,13 +128,11 @@ class CapabilityProbeCases:
         from codexy_runtime_tools.component_cli import _probe_component, _probe_server
         from component_lifecycle_support import fixture
 
-        manifest = load_component_manifest()
-        records = self._records(manifest)
         with fixture({"core", "github"}) as state:
             materialize(state, "core", "github")
             for component in ("core", "github"):
                 plugin = state.marketplace / "plugins" / PLUGIN_NAMES[component]
-                result = _probe_component(component, plugin, records[component])
+                result = _probe_component(component, plugin, self.records[component])
                 with self.subTest(component=component):
                     self.assertTrue(result["started"])
                     self.assertTrue(result["callable"])
@@ -183,6 +170,9 @@ class CapabilityProbeCases:
             for component, plugin in PLUGIN_NAMES.items()
         }
 
+    def _health(self, installed, selected=None):
+        return health(self.manifest, installed, selected, self.records, None, False)
+
     def _successful_probe(self, component, plugin, record):
         return {
             "started": True,
@@ -210,7 +200,16 @@ class CapabilityCliCases:
             "command": "doctor",
             "outcome": "completed",
             "errors": [],
-            "component_health": [{"component": "core", "healthy": False}],
+            "component_health": [
+                dict(
+                    component="core",
+                    healthy=False,
+                    started=True,
+                    callable=False,
+                    first_failure_stage="callable",
+                    reason_code="capability-call-failed",
+                )
+            ],
         }
         with patch("codexy_runtime_tools.component_cli.doctor", return_value=receipt):
             self.assertEqual(main(["doctor", "--json"]), 2)

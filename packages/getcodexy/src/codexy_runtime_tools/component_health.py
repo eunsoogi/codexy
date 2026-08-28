@@ -198,18 +198,6 @@ def _authority_valid(record):
     }
 
 
-def _identity_matches(manifest, component, record, probe):
-    names = probe.get("runtime_names")
-    versions = probe.get("runtime_versions")
-    return (
-        record is not None
-        and record.get("name") == manifest.component(component).plugin
-        and probe.get("runtime_version") == manifest.version
-        and (not names or set(names) == {"codexy-codegraph", "codexy-lsp"})
-        and (not versions or set(versions) == {manifest.version})
-    )
-
-
 def version_relation(manifest, record):
     try:
         return compare_versions(record_version(record), manifest.version)

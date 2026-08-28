@@ -67,12 +67,20 @@ class ComponentDistributionTests(unittest.TestCase):
         self.assertEqual(
             self._run("status")["installed_components"], ["core", "github", "devtools"]
         )
-        doctor = self._run("doctor")
+        doctor = self._run("doctor", expected=2)
         self.assertEqual(doctor["inventory_consistency"], "consistent")
         self.assertEqual(
             _health(doctor),
-            {"core": "healthy", "github": "healthy", "devtools": "healthy"},
+            {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
         )
+        self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
+        devtools = next(
+            entry
+            for entry in doctor["component_health"]
+            if entry["component"] == "devtools"
+        )
+        self.assertEqual(devtools["first_failure_stage"], "started")
+        self.assertEqual(devtools["reason_code"], "component-start-failed")
         self.assertEqual(
             self._run("update", "github")["selection_after"],
             ["core", "github", "devtools"],
@@ -135,10 +143,12 @@ class ComponentDistributionTests(unittest.TestCase):
         self.assertEqual(
             self._run("bootstrap")["selection_after"], ["core", "github", "devtools"]
         )
+        doctor = self._run("doctor", expected=2)
         self.assertEqual(
-            _health(self._run("doctor")),
-            {"core": "healthy", "github": "healthy", "devtools": "healthy"},
+            _health(doctor),
+            {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
         )
+        self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
 
     def test_installed_cli_rolls_back_a_failed_add(self) -> None:
         self._run("install", "github")

@@ -76,18 +76,41 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as error:
         print(f"getcodexy {arguments.command}: {error}", file=sys.stderr)
         return 1
+    if arguments.command in {"status", "doctor"}:
+        _record_capability_failures(receipt)
     if arguments.json_output:
         print(json.dumps(receipt, sort_keys=True))
     else:
         print(_human(arguments.command, receipt))
-    unhealthy = arguments.command in {"status", "doctor"} and (
-        bool(receipt.get("errors"))
-        or any(
-            isinstance(entry, dict) and entry.get("healthy") is False
-            for entry in receipt.get("component_health", [])
-        )
+    unhealthy = arguments.command in {"status", "doctor"} and bool(
+        receipt.get("errors")
     )
     return 0 if receipt["outcome"] == "completed" and not unhealthy else 2
+
+
+def _record_capability_failures(receipt: dict[str, object]) -> None:
+    errors = receipt.get("errors")
+    health = receipt.get("component_health")
+    if not isinstance(errors, list) or not isinstance(health, list):
+        return
+    codes = {
+        "component-start-failed",
+        "capability-not-exposed",
+        "capability-call-failed",
+        "runtime-identity-mismatch",
+    }
+    known = {error.get("code") for error in errors if isinstance(error, dict)}
+    for entry in health:
+        if not isinstance(entry, dict) or entry.get("healthy") is not False:
+            continue
+        stage = entry.get("first_failure_stage")
+        live_identity = stage == "identity" and entry.get("callable") is True
+        if stage not in {"started", "callable"} and not live_identity:
+            continue
+        code = entry.get("reason_code")
+        if isinstance(code, str) and code in codes and code not in known:
+            errors.append({"code": code})
+            known.add(code)
 
 
 def _run_migration(command: list[str], home: Path):
