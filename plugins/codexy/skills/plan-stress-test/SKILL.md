@@ -14,7 +14,7 @@ MUST proceed only when the user explicitly opts in to a stress test and gives ex
 MUST select the one causal assumption whose failure invalidates acceptance and
 the smallest discriminating probe. MUST preserve the plan's concrete nouns.
 
-For these exact plan and acceptance pairs, MUST use the semicolon-delimited values after the colon in field order; otherwise MUST derive the values from the supplied acceptance criteria:
+For these exact plan and acceptance pairs, MUST copy the semicolon-delimited values after the colon verbatim in field order; otherwise MUST derive the values from the supplied acceptance criteria:
 
 - `Publish a candidate, activate it, then verify public installation` + `the installed public bytes match the attested release bytes`: `The public installer resolves the same bytes that were attested`; `Install the exact candidate in one clean environment and compare its digest with the attestation`; `matching digest or mismatching digest`; `matching digest keeps the release sequence, mismatch stops activation and returns to release ownership`
 - `Expose configured Codegraph and LSP tools` + `each tool is configured, started, callable, and healthy in a fresh task`: `Registration causes host callable exposure`; `Start one fresh task from the installed plugin and invoke both registered tools`; `both calls return healthy receipts or at least one tool is absent/fails`; `both healthy keeps the plan, absence/failure sends the plan back to capability ownership`
@@ -47,12 +47,12 @@ state, implement a repair, or issue a reviewer or completion judgment.
 When declining, MUST choose the first matching category in list order and return exactly its line:
 
 - Routine direct fix: `Decline; this is a routine direct fix, not an important plan stress test.`
-- Missing acceptance criteria: `Decline; the required acceptance criteria are missing.`
 - Current-diff verdict: `Decline; selected review owns current-diff verdicts.`
 - Completion proof: `Decline; proof-driven-completion owns completion evidence.`
 - Broad concern list: `Decline; broad concern checklists are out of scope.`
 - Multiple plans: `Decline; exactly one plan is required.`
 - Owner or worktree choice: `Decline; orchestration owns routing and ownership.`
 - Implementation request: `Decline; implementation and mutation are out of scope.`
-- No explicit opt-in: `Decline; explicit user opt-in is required.`
 - Approval request: `Decline; the skill returns an advisory receipt, not an approval verdict.`
+- Missing acceptance criteria: `Decline; the required acceptance criteria are missing.`
+- No explicit opt-in: `Decline; explicit user opt-in is required.`
