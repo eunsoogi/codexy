@@ -123,6 +123,7 @@
 // LOC candidate line 123
 // LOC candidate line 124
 // LOC candidate line 125
+
 // LOC candidate line 126
 // LOC candidate line 127
 // LOC candidate line 128
