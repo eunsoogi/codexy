@@ -16,6 +16,7 @@ MUST return `HANDOFF_REQUIRED` without mutation when any boundary below applies:
 
 - more than one artifact: `MULTIPLE_ARTIFACTS`;
 - ambiguous, absent, or competing governing authority, or an owner, policy, status, review, or completion decision: `AMBIGUOUS_AUTHORITY`;
+- the same identifier assigned to both operand roles: `AMBIGUOUS_AUTHORITY`;
 - movement of the canonical source: `CANONICAL_MOVEMENT`;
 - executable or production-code behavior: `CODE_BEHAVIOR`.
 
