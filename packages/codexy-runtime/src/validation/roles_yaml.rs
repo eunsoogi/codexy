@@ -196,10 +196,12 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
     }
     let implicit_invocation =
         prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]);
-    if !matches!(implicit_invocation, Some(prompt_yaml::Scalar::Bool(true)))
-        && !(is_explicit_only_core_skill(plugin_root, path)
-            && matches!(implicit_invocation, Some(prompt_yaml::Scalar::Bool(false))))
-    {
+    let valid_implicit_invocation = match implicit_invocation {
+        Some(prompt_yaml::Scalar::Bool(true)) => true,
+        Some(prompt_yaml::Scalar::Bool(false)) => is_explicit_only_core_skill(plugin_root, path),
+        _ => false,
+    };
+    if !valid_implicit_invocation {
         errors.push(format!(
             "{} policy.allow_implicit_invocation must be true",
             display_relative(path)
