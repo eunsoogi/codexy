@@ -1,13 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["schema", "artifact", "governing_source", "outcome", "removed", "proof_handle", "handoff_reason"],
+  "required": [
+    "schema",
+    "artifact",
+    "governing_source",
+    "outcome",
+    "removed",
+    "proof_handle",
+    "handoff_reason"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema": { "const": "codexy.artifact-refresh.v1" },
-    "artifact": { "type": "string", "minLength": 1 },
-    "governing_source": { "type": "string", "minLength": 1 },
-    "outcome": { "enum": ["UPDATED", "NO_CHANGE", "HANDOFF_REQUIRED"] },
+    "schema": {
+      "const": "codexy.artifact-refresh.v1"
+    },
+    "artifact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "governing_source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
+      "enum": ["UPDATED", "NO_CHANGE", "HANDOFF_REQUIRED"]
+    },
     "removed": {
       "type": "array",
       "items": {
@@ -15,43 +33,103 @@
         "required": ["kind", "claim_sha256"],
         "additionalProperties": false,
         "properties": {
-          "kind": { "enum": ["conflict", "superseded", "duplicate"] },
-          "claim_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          "kind": {
+            "enum": ["conflict", "superseded", "duplicate"]
+          },
+          "claim_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
         }
       },
       "uniqueItems": true
     },
-    "proof_handle": { "type": "string", "pattern": "^(unavailable|sha256:[0-9a-f]{64})$" },
-    "handoff_reason": { "enum": ["NONE", "MULTIPLE_ARTIFACTS", "AMBIGUOUS_AUTHORITY", "CANONICAL_MOVEMENT", "CODE_BEHAVIOR"] }
+    "proof_handle": {
+      "type": "string",
+      "pattern": "^(unavailable|sha256:[0-9a-f]{64})$"
+    },
+    "handoff_reason": {
+      "enum": [
+        "NONE",
+        "MULTIPLE_ARTIFACTS",
+        "AMBIGUOUS_AUTHORITY",
+        "CANONICAL_MOVEMENT",
+        "CODE_BEHAVIOR"
+      ]
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "outcome": { "const": "UPDATED" } }, "required": ["outcome"] },
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "UPDATED"
+          }
+        },
+        "required": ["outcome"]
+      },
       "then": {
         "properties": {
-          "removed": { "minItems": 1 },
-          "proof_handle": { "pattern": "^sha256:[0-9a-f]{64}$" },
-          "handoff_reason": { "const": "NONE" }
+          "removed": {
+            "minItems": 1
+          },
+          "proof_handle": {
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "handoff_reason": {
+            "const": "NONE"
+          }
         }
       }
     },
     {
-      "if": { "properties": { "outcome": { "const": "NO_CHANGE" } }, "required": ["outcome"] },
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "NO_CHANGE"
+          }
+        },
+        "required": ["outcome"]
+      },
       "then": {
         "properties": {
-          "removed": { "maxItems": 0 },
-          "proof_handle": { "pattern": "^sha256:[0-9a-f]{64}$" },
-          "handoff_reason": { "const": "NONE" }
+          "removed": {
+            "maxItems": 0
+          },
+          "proof_handle": {
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "handoff_reason": {
+            "const": "NONE"
+          }
         }
       }
     },
     {
-      "if": { "properties": { "outcome": { "const": "HANDOFF_REQUIRED" } }, "required": ["outcome"] },
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "HANDOFF_REQUIRED"
+          }
+        },
+        "required": ["outcome"]
+      },
       "then": {
         "properties": {
-          "removed": { "maxItems": 0 },
-          "proof_handle": { "const": "unavailable" },
-          "handoff_reason": { "enum": ["MULTIPLE_ARTIFACTS", "AMBIGUOUS_AUTHORITY", "CANONICAL_MOVEMENT", "CODE_BEHAVIOR"] }
+          "removed": {
+            "maxItems": 0
+          },
+          "proof_handle": {
+            "const": "unavailable"
+          },
+          "handoff_reason": {
+            "enum": [
+              "MULTIPLE_ARTIFACTS",
+              "AMBIGUOUS_AUTHORITY",
+              "CANONICAL_MOVEMENT",
+              "CODE_BEHAVIOR"
+            ]
+          }
         }
       }
     }
