@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_clause::is_adverbial_modifier;
 
 pub(super) fn relative_clause_owns_report_predicate(
