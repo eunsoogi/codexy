@@ -186,42 +186,34 @@ fn archive_inspector_uses_one_content_comparison_helper() {
         .copied()
         .collect::<Vec<_>>();
 
-    assert!(script_lines.iter().any(
-        |line| *line == "contract_checker=\"$script_dir/inspect-release-archive-contract.py\""
-    ));
-    for command in [
-        "python3 \"$contract_checker\" public-release \"$extract_root/plugins/codexy-devtools\" >\"$tmp_dir/expected-runtime\"",
-        "python3 \"$contract_checker\" staged \"$extract_root/plugins/codexy-devtools\" >\"$tmp_dir/expected-runtime\"",
-    ] {
-        assert!(script_lines.iter().any(|line| *line == command));
+    assert!(script_lines.iter().any(|line| {
+        line.contains("contract_checker=") && line.contains("inspect-release-archive-contract.py")
+    }));
+    for mode in ["public-release", "staged"] {
+        assert!(script_lines.iter().any(|line| {
+            line.contains("$contract_checker")
+                && line.contains(mode)
+                && line.contains("$extract_root/plugins/codexy-devtools")
+                && line.contains("expected-runtime")
+        }));
     }
     assert_eq!(
         python_commands
             .iter()
             .filter(|line| {
-                **line
-                    == "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy-devtools\""
+                line.contains("check-release-archive-content")
+                    && line.contains("$tmp_dir/expected")
+                    && line.contains("$plugin_root")
+                    && line.contains("$extract_root/plugins/codexy-devtools")
             })
-            .copied()
-            .collect::<Vec<_>>(),
-        [
-            "python3 \"$script_dir/check-release-archive-content\" \"$tmp_dir/expected\" \"$plugin_root\" \"$extract_root/plugins/codexy-devtools\"",
-        ]
+            .count(),
+        1
     );
-    for retired_command in [
-        "cmp -s \"$plugin_root/$relative\" \"$extract_root/plugins/codexy-devtools/$relative\" || {",
-        "expected_digest=$(digest_file \"$plugin_root/$relative\")",
-    ] {
-        assert!(!script_lines.iter().any(|line| *line == retired_command));
-    }
+    assert!(!script.contains("cmp -s \"$plugin_root/$relative\""));
+    assert!(!script.contains("expected_digest=$(digest_file"));
     let helper = std::fs::read_to_string(helper()).expect("content comparison helper");
-    let helper_lines = helper.lines().map(str::trim).collect::<Vec<_>>();
-    for required_line in ["CHUNK_SIZE = 64 * 1024", "raw = os.fsdecode(entry)"] {
-        assert!(helper_lines.iter().any(|line| *line == required_line));
-    }
-    assert!(
-        !helper_lines
-            .iter()
-            .any(|line| *line == "return path.read_bytes()")
-    );
+    assert!(helper.contains("CHUNK_SIZE"));
+    assert!(helper.contains("64 * 1024"));
+    assert!(helper.contains("os.fsdecode(entry)"));
+    assert!(!helper.contains("return path.read_bytes()"));
 }

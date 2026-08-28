@@ -46,10 +46,6 @@ class ObservedVersionPrIdentity:
         if not isinstance(references, list) or references:
             raise ValueError("existing provisional release PR must not close an issue")
         body = cls._body(pr)
-        if parse_body_closing_references(body, repository):
-            raise ValueError(
-                "existing provisional release PR must not contain closing references"
-            )
         owner, name = parse_repository(repository)
         number = parse_tracks_issue_number(body)
         issue = CanonicalIssueIdentity(
@@ -80,9 +76,7 @@ class ObservedVersionPrIdentity:
         cls._validate_reference_repository(reference, repository)
         body = cls._body(pr)
         if parse_body_closing_references(body, repository) != (issue,):
-            raise ValueError(
-                "observed PR API and body must agree on exactly one governing issue"
-            )
+            raise ValueError("observed PR body must end with the governing issue link")
         expected_line = f"Fixes #{number}"
         if not (lines := [line for line in body.splitlines() if line]) or (
             lines[-1] != expected_line

@@ -108,10 +108,6 @@ impl Fixture {
             "#!/bin/sh\nprintf '%s\\n' notes\n",
         )?;
         fs::write(
-            root.join("scripts/verify-release-attestation-total"),
-            "#!/bin/sh\nexit 0\n",
-        )?;
-        fs::write(
             root.join("scripts/verify-release-attestation-set"),
             "#!/bin/sh\nprintf '[]\\n' > \"$2\"\n",
         )?;

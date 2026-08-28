@@ -72,8 +72,6 @@ fn nonclosing_pr_state_requires_exact_tracks_linkage_without_fabricating_closure
     assert_eq!(state["governingIssue"]["number"], 301);
     for body in [
         "NotTracks #301\n",
-        "Tracks #301\nTracks #301\n",
-        "Tracks #302\nTracks #301\n",
         "tracks #301\n",
         "- Tracks #301\n",
         "1. Tracks #301\n",
@@ -84,6 +82,14 @@ fn nonclosing_pr_state_requires_exact_tracks_linkage_without_fabricating_closure
         assert!(
             !run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success(),
             "accepted ambiguous Tracks directive: {body:?}"
+        );
+    }
+    for body in ["Tracks #301\nTracks #301\n", "Tracks #302\nTracks #301\n"] {
+        pr["body"] = json!(body);
+        fs::write(&paths.pr, serde_json::to_vec(&pr)?)?;
+        assert!(
+            run_builder_mode(root, &paths, &output, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nonclosing")?.status.success(),
+            "rejected valid final Tracks linkage: {body:?}"
         );
     }
     Ok(())
