@@ -62,10 +62,13 @@ Output format: MUST list findings first, ordered by severity with file reference
 
 MUST stop and escalate when required evidence is absent, review feedback is unresolved or stale, scope ownership is unclear, the branch changed after verification, or a maintainer decision is required. MUST handoff by naming the exact blocker, the owner who MUST address it, and the verification needed after the fix.
 
-Selected terminal handoff: when a strict review reaches `PASS` or a typed
-`PARENT_DECISION`, MUST emit exactly one `codexy.review-terminal-record.v1`
-record containing the current `head_oid`, selected profile and reviewer,
-terminal `event_id`, blocker dispositions, and the complete ordered
-`codexy.review-ledger.v1` ancestry. The record MUST be paired with the
-current-head `codexy.review-packet.v4`; it MUST NOT append or invent an event.
+Selected terminal handoff: when a strict review reaches a terminal result, MUST
+report the selected profile, selected reviewer, exact current head, one exact
+terminal result from `PASS`, `BLOCK`, or `UNOBSERVABLE`, unresolved finding
+dispositions, and the full and delta review counts in the handoff. After the
+issue-wide review cap is exhausted, a repaired connector finding MUST be
+identified as the typed post-cap `connector_repair` disposition against the
+current exact head. These direct facts are authoritative; a typed terminal
+record, ledger ancestry, packet, or additional receipt schema MUST NOT be
+required, generated, or treated as a completion prerequisite.
 """
