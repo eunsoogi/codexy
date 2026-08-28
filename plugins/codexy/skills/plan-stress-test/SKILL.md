@@ -2,8 +2,8 @@
 name: plan-stress-test
 description: Use when the user explicitly opts in to stress-test one important plan with acceptance criteria before implementation.
 ---
-<!-- dprint-ignore-start -->
 
+<!-- dprint-ignore-start -->
 # Plan Stress Test
 Use this skill only after `$orchestration` classifies the request. This is one read-only advisory challenge, not a routing, review, or completion authority.
 
