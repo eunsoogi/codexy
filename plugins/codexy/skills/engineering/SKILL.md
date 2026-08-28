@@ -33,9 +33,9 @@ applicable methods only. Proof-driven completion owns final audit.
 ## Shared evidence and handoff
 
 Evidence MUST bind input, expected/actual, invocation, cleanup, and state or
-head. Narrow checks prove only their boundary; external claims
-need authentic proof. MUST NOT hide failures or accept formatting-only LOC
-reduction. MUST stop on scope, authority, behavior, or proof conflict.
+head. Narrow checks prove only their boundary; external claims need authentic
+proof. MUST NOT hide failures or accept formatting-only LOC reduction. MUST stop
+on scope, authority, behavior, or proof conflict.
 
 Handoff MUST name methods, outcome, files, contracts, proof, external results,
 cleanup, skips, risks, and next action.

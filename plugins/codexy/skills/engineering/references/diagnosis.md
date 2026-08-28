@@ -6,8 +6,8 @@ MUST find the cause before applying a fix.
 
 1. Reproduce the smallest faithful failure; record inputs, expected/actual,
    environment, version, and relevant revision.
-2. Form hypotheses from evidence; test one variable at a time with
-   logs, assertions, LSP, history, or process observation.
+2. Form hypotheses from evidence; test one variable at a time with logs,
+   assertions, LSP, history, or process observation.
 3. Isolate root cause, apply the smallest explanatory repair, and rerun the
    reproduction plus regression proof.
 

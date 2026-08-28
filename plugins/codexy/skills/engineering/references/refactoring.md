@@ -4,8 +4,8 @@
 
 MUST improve structure while preserving behavior and public contracts.
 
-1. Inspect callers, exports, tests, fixtures, runtime entries, and diff
-   before moving code or prose.
+1. Inspect callers, exports, tests, fixtures, runtime entries, and diff before
+   moving code or prose.
 2. Establish focused behavior-preserving proof and an authentic surface check
    when the changed contract is externally observable.
 3. Choose one coherent seam: helper or module extraction, stable responsibility
