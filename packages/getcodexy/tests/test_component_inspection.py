@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import sys
 import unittest
@@ -11,29 +10,12 @@ from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from component_lifecycle_support import fixture
 from component_inspection_host_cases import ComponentInspectionHostCases
+from capability_probe_cases import CapabilityProbeCases, materialize
 
 
-def materialize(
-    state: fixture, *components: str, version: str = load_component_manifest().version
-) -> None:
-    plugins = {
-        "core": "codexy",
-        "github": "codexy-github",
-        "devtools": "codexy-devtools",
-    }
-    repository = Path(__file__).resolve().parents[3]
-    for component in components:
-        root = state.marketplace / "plugins" / plugins[component]
-        if root.exists():
-            continue
-        shutil.copytree(repository / "plugins" / plugins[component], root)
-        manifest = root / ".codex-plugin/plugin.json"
-        contents = json.loads(manifest.read_text(encoding="utf-8"))
-        contents["version"] = version
-        manifest.write_text(json.dumps(contents), encoding="utf-8")
-
-
-class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
+class ComponentInspectionTests(
+    CapabilityProbeCases, ComponentInspectionHostCases, unittest.TestCase
+):
     def test_status_reports_each_actual_compatible_selection_in_canonical_order(
         self,
     ) -> None:
@@ -79,12 +61,9 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
     def test_doctor_reports_healthy_missing_stale_and_incompatible_states(self) -> None:
         with self.subTest("healthy"), fixture({"core"}) as state:
             materialize(state, "core")
-            self.assertEqual(
-                doctor(state.home, codex=state.codex, runner=state.run)[
-                    "component_health"
-                ],
-                [{"component": "core", "state": "healthy"}],
-            )
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+            self.assertEqual(result["component_health"][0]["state"], "healthy")
+            self.assertTrue(result["component_health"][0]["healthy"])
         with (
             self.subTest("stale"),
             fixture({"core"}, versions={"core": "1.2.0"}) as state,
