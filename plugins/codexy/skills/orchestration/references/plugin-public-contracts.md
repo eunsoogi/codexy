@@ -7,5 +7,7 @@
 - `completion-handoff`: require current PR, review-thread, head, local/remote,
   label, and active-project handoff evidence before a terminal claim.
 
-Extensions MUST invoke these named contracts and MUST NOT derive private core
-paths or substitute missing proof.
+GitHub or Devtools work MUST invoke its installed public extension; an
+unavailable required extension MUST fail closed. Extensions MUST invoke only
+the applicable named contract and MUST NOT derive private core paths or
+substitute missing proof.

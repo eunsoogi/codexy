@@ -20,3 +20,5 @@ authority wins after compaction. Missing proof MUST NOT grant permission, and a
 child MUST NOT gain parent authority. Clear work needs no table, N/A fields,
 question, or tool receipt. Omit unrelated references, conversations, tool
 bodies, and agent trees. Selected authorities own details.
+Controlled proof MUST keep zero P0/P1 misses and MUST reject incomplete,
+unavailable, or synthesized evidence.

@@ -1,17 +1,16 @@
 # Task classification
 
-MUST use the closed task, surface, and risk sets. Choose `light` for clear small
-work, `standard` for non-trivial single-owner work, and `strict` for high-risk,
-release, merge-sensitive, delegated, multi-lane, or audited work. Executable
-boundaries need faithful RED/GREEN; non-engineering work needs readback, never a
-manufactured RED.
+MUST use the contract's closed sets. Use `light` for small/read-only,
+`standard` for non-trivial single-owner, and `strict` for risk, release, merge,
+delegation, multi-lane, or audit. Executable work needs faithful RED/GREEN;
+other work needs readback, never a manufactured RED.
 
 Owner is `parent-owned`, `child-owned`, `current-thread-owned`, or
-`external/human-owned`. A delegated branch, worktree, or PR stays child-owned;
-parent retains orchestration and merge. Subagents are not worktree owners.
-Compaction uses current-state authority.
+`external/human-owned`. Delegated branch/worktree/PR stays child-owned; parent
+keeps orchestration/merge; subagents are not owners. Compaction uses current
+authority.
 
-Resolve shape-changing ambiguity before setup. Otherwise retain profile, owner,
-scope, proof, blocker, and first action. MUST stop on missing scope, ownership
-conflict, or unavailable authority. Clear work needs no table, N/A inventory,
-clarification, skip list, or tool receipt.
+Before setup, resolve ambiguity changing scope, owner, risk, or external state.
+Otherwise keep profile, owner, scope, proof, blocker, and next action. MUST stop
+for missing scope, owner conflict, or unavailable authority. Clear work needs no
+table, N/A, clarification, skip list, or tool receipt.
