@@ -26,6 +26,21 @@ fn governing_body_reference_equivalence_matrix() -> TestResult {
     lower_level_matrix::run(codexy_runtime::paths::repository_root())
 }
 
+#[test]
+fn governing_identity_ignores_non_authoritative_body_prose() -> TestResult {
+    assert_cli_case(
+        "prose before final closing link",
+        "existing-pr-update",
+        301,
+        Some(observed(
+            json!([reference(301, "https://github.com/eunsoogi/codexy/issues/301")]),
+            "Release notes mention Closes #302 for context.\nFixes #301\n",
+        )),
+        true,
+        "",
+    )
+}
+
 fn assert_cli_case(
     name: &str,
     action: &str,

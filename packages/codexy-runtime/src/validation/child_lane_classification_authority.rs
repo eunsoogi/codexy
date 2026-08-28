@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_boundaries::{current_lane_record_start, lane_boundary};
 use super::child_lane_owner_decision::{
     LaneOwnershipMetadata, OwnerSelection, parse_lane_ownership_metadata,

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_clause::SENTENCE_BOUNDARY;
 use super::child_lane_classification_setup_relative::{
     relative_clause_owns_report_predicate, report_clause_predicate,

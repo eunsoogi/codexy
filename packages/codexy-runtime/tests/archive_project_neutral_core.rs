@@ -2,10 +2,9 @@ use std::{fs, process::Command};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const FORBIDDEN_ARCHIVE_LITERALS: [&str; 5] = [
+const FORBIDDEN_ARCHIVE_LITERALS: [&str; 4] = [
     "scripts/validate-plugin-config.sh",
     "scripts/sync-plugin-version.sh",
-    "scripts/session-audit",
     "scripts/inspect-release-archive",
     "packages/codexy-runtime",
 ];

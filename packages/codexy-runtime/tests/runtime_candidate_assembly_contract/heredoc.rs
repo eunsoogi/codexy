@@ -40,3 +40,35 @@ fn candidate_assembly_ignores_escaped_word_heredoc_declaration_text()
     }
     Ok(())
 }
+
+#[test]
+fn candidate_assembly_accepts_hyphenated_heredoc_delimiters() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(&format!(
+        "{FIRST_DECLARATION}cat <<'EOF-1'\nbody\nEOF-1\n"
+    ))?;
+    let output = fixture.assemble();
+    assert!(
+        output.status.success(),
+        "candidate assembly rejected a valid hyphenated heredoc delimiter: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn candidate_assembly_rejects_continued_platform_declarations()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(
+        "bundled_platforms=\"darwin-arm64 \\\nlinux-x86_64\"\n",
+    )?;
+    let output = fixture.assemble();
+    assert!(
+        !output.status.success(),
+        "candidate assembly accepted a continued platform declaration"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("candidate wrapper platform declaration mismatch")
+    );
+    Ok(())
+}

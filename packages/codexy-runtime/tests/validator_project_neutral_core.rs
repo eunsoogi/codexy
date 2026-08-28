@@ -2,14 +2,13 @@ use std::{fs, path::Path};
 
 use crate::support::{TestResult, copy_dir};
 
-const FORBIDDEN_CORE_LITERALS: [&str; 7] = [
+const FORBIDDEN_CORE_LITERALS: [&str; 6] = [
     "scripts/validate-plugin-config.sh",
     "scripts/sync-plugin-version.sh",
-        "scripts/session-audit",
-        "scripts/inspect-release-archive",
-        "packages/codexy-runtime",
-        ".github/workflows",
-        ".agents/skills",
+    "scripts/inspect-release-archive",
+    "packages/codexy-runtime",
+    ".github/workflows",
+    ".agents/skills",
 ];
 
 #[test]

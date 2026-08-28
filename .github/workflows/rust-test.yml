@@ -10,22 +10,8 @@ permissions:
 
 jobs:
   rust-test:
-    name: Rust shard (Ubuntu, ${{ matrix.shard }})
+    name: Rust tests (Ubuntu)
     runs-on: ubuntu-latest
-    timeout-minutes: 6
-    strategy:
-      fail-fast: false
-      max-parallel: 7
-      matrix:
-        shard: [
-          support,
-          agent,
-          child,
-          orchestration,
-          governance,
-          system,
-          archive,
-        ]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -33,32 +19,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
-      - run: scripts/profile_rust_tests.py --shard ${{ matrix.shard }} --receipt receipts/posix-${{ matrix.shard }}.json
-      - if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: rust-receipt-posix-${{ matrix.shard }}
-          path: receipts/posix-${{ matrix.shard }}.json
-          if-no-files-found: error
-          overwrite: true
+      - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets
+      - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets --no-default-features --features runtime-activation
 
   windows-rust-test:
-    name: Rust shard (Windows, ${{ matrix.shard }})
+    name: Rust tests (Windows)
     runs-on: windows-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      max-parallel: 7
-      matrix:
-        shard: [
-          support,
-          agent,
-          child,
-          orchestration,
-          governance,
-          system,
-          archive,
-        ]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,29 +35,5 @@ jobs:
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - run: python scripts/profile_rust_tests.py --windows --shard ${{ matrix.shard }} --receipt receipts/windows-${{ matrix.shard }}.json
-      - if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: rust-receipt-windows-${{ matrix.shard }}
-          path: receipts/windows-${{ matrix.shard }}.json
-          if-no-files-found: error
-          overwrite: true
-
-  rust-test-aggregate:
-    needs: [rust-test, windows-rust-test]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 6
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: rust-receipt-*
-          merge-multiple: true
-          path: receipts
-      - run: scripts/profile_rust_tests.py --aggregate-receipts receipts
+      - shell: pwsh
+        run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets --features runtime-activation; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

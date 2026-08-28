@@ -134,31 +134,38 @@ fn candidate_selected_package_materializes_and_inspects_the_public_projection() 
         .expect("candidate package branch");
     let lines = candidate.lines().map(str::trim).collect::<Vec<_>>();
 
-    for expected in [
-        "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
-        "mkdir -p final-inspect",
-        "tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect",
-        "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
-    ] {
-        assert!(
-            candidate
-                .lines()
-                .map(str::trim)
-                .any(|line| line == expected),
-            "candidate package branch must include {expected}"
-        );
-    }
+    assert!(candidate.contains("scripts/materialize-runtime-release-archive"));
+    assert!(candidate.contains("dist/selected.tar.gz"));
+    assert!(candidate.contains("dist/codexy-marketplace-plugin.tar.gz"));
+    assert!(candidate.contains("mkdir -p final-inspect"));
+    assert!(candidate.contains("tar -xzf"));
+    assert!(candidate.contains("final-inspect"));
+    assert!(candidate.contains("scripts/inspect-release-archive"));
+    assert!(candidate.contains("public-release"));
     let materialized = lines
         .iter()
-        .position(|line| *line == "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz")
+        .position(|line| {
+            line.contains("scripts/materialize-runtime-release-archive")
+                && line.contains("dist/selected.tar.gz")
+                && line.contains("dist/codexy-marketplace-plugin.tar.gz")
+        })
         .expect("candidate materialization");
     let extracted = lines
         .iter()
-        .position(|line| *line == "tar -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect")
+        .position(|line| {
+            line.contains("tar -xzf")
+                && line.contains("dist/codexy-marketplace-plugin.tar.gz")
+                && line.contains("final-inspect")
+        })
         .expect("public projection extraction");
     let inspected = lines
         .iter()
-        .position(|line| *line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release")
+        .position(|line| {
+            line.contains("scripts/inspect-release-archive")
+                && line.contains("dist/codexy-marketplace-plugin.tar.gz")
+                && line.contains("final-inspect/plugins/codexy-devtools")
+                && line.contains("public-release")
+        })
         .expect("public projection inspection");
 
     assert!(

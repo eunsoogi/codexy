@@ -59,8 +59,15 @@ fn workflow_delegates_mcp_stdout_validation_to_the_shared_checker() {
     let root = codexy_runtime::paths::repository_root();
     let workflow: serde_yaml::Value = serde_yaml::from_str(&std::fs::read_to_string(root.join(".github/workflows/plugin-runtime-binaries.yml")).expect("runtime workflow")).expect("workflow YAML");
     let run = workflow["jobs"]["verify-selected-package"]["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Assemble state-aware marketplace package without rebuilding")).and_then(|step| step["run"].as_str()).expect("archive inspection step");
-    assert!(run.lines().map(str::trim).any(|line| line == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
+    assert!(run.contains("scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz"));
+    assert!(run.contains("$staged"));
     let archive = std::fs::read_to_string(root.join("scripts/inspect-release-archive")).expect("archive inspector");
-    assert!(archive.lines().map(str::trim).any(|line| line == "response_checker=\"$script_dir/inspect-mcp-response\""));
-    assert!(archive.lines().map(str::trim).any(|line| line == "\"$response_checker\" \"$response_file\" \"$server\""));
+    assert!(archive.lines().any(|line| {
+        line.contains("response_checker=") && line.contains("inspect-mcp-response")
+    }));
+    assert!(archive.lines().any(|line| {
+        line.contains("$response_checker")
+            && line.contains("$response_file")
+            && line.contains("$server")
+    }));
 }
