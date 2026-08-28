@@ -40,3 +40,17 @@ fn candidate_assembly_ignores_escaped_word_heredoc_declaration_text()
     }
     Ok(())
 }
+
+#[test]
+fn candidate_assembly_accepts_hyphenated_heredoc_delimiters() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(&format!(
+        "{FIRST_DECLARATION}cat <<'EOF-1'\nbody\nEOF-1\n"
+    ))?;
+    let output = fixture.assemble();
+    assert!(
+        output.status.success(),
+        "candidate assembly rejected a valid hyphenated heredoc delimiter: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
