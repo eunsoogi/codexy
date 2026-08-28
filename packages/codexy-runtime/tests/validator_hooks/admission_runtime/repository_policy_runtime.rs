@@ -53,6 +53,28 @@ fn invalid_project_policy_fails_closed_for_repository_mutations() -> TestResult 
 }
 
 #[test]
+fn redirections_preserve_read_only_effect_boundaries() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let read = "gh api --method GET repos/eunsoogi/codexy/labels";
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for (suffix, denied) in [
+            ("", false), ("> /dev/null", false), ("2>/dev/null", false),
+            (">> /dev/null", false), ("2>&1", false), (">& /dev/null", false),
+            ("> /tmp/codexy-review-probe", true),
+            (">> /tmp/codexy-review-probe", true), ("<> /tmp/codexy-review-probe", true),
+            (">& /tmp/codexy-review-probe", true), (">", true),
+        ] {
+            assert_event_case(&root, event, &owned, &format!("{read} {suffix}"), denied, &[])?;
+        }
+        assert_event_case(&root, event, &owned, "gh api --method GET repos/eunsoogi/codexy/labels --jq \\>", false, &[])?;
+        assert_event_case(&root, event, &owned, "gh api --method HEAD repos/eunsoogi/codexy/labels > /dev/null", false, &[])?;
+    }
+    Ok(())
+}
+
+#[test]
 fn ordinary_local_execution_is_admitted_without_a_protected_effect() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
