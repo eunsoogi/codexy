@@ -8,6 +8,8 @@ import os
 import sys
 from pathlib import Path
 
+from .component_capability_probe import probe_component as _probe_component
+from .component_capability_probe import probe_server as _probe_server
 from .component_inspection import doctor, status
 from .component_lifecycle import PreAdmissionError, run_operation
 from .component_transaction_identity import operation_id
@@ -74,6 +76,8 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as error:
         print(f"getcodexy {arguments.command}: {error}", file=sys.stderr)
         return 1
+    if arguments.command in {"status", "doctor"}:
+        _record_capability_failures(receipt)
     if arguments.json_output:
         print(json.dumps(receipt, sort_keys=True))
     else:
@@ -82,6 +86,31 @@ def main(argv: list[str] | None = None) -> int:
         receipt.get("errors")
     )
     return 0 if receipt["outcome"] == "completed" and not unhealthy else 2
+
+
+def _record_capability_failures(receipt: dict[str, object]) -> None:
+    errors = receipt.get("errors")
+    health = receipt.get("component_health")
+    if not isinstance(errors, list) or not isinstance(health, list):
+        return
+    codes = {
+        "component-start-failed",
+        "capability-not-exposed",
+        "capability-call-failed",
+        "runtime-identity-mismatch",
+    }
+    known = {error.get("code") for error in errors if isinstance(error, dict)}
+    for entry in health:
+        if not isinstance(entry, dict) or entry.get("healthy") is not False:
+            continue
+        stage = entry.get("first_failure_stage")
+        live_identity = stage == "identity" and entry.get("callable") is True
+        if stage not in {"started", "callable"} and not live_identity:
+            continue
+        code = entry.get("reason_code")
+        if isinstance(code, str) and code in codes and code not in known:
+            errors.append({"code": code})
+            known.add(code)
 
 
 def _run_migration(command: list[str], home: Path):

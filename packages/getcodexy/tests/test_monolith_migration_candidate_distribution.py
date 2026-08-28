@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.monolith_baseline import BASELINES, tree_digest
-from codexy_runtime_tools.monolith_migration import migrate
 from codexy_runtime_tools.monolith_migration_state import journal_path
 
 
@@ -19,7 +19,7 @@ LEGACY_ROOT = os.environ.get("GETCODEXY_MIGRATION_LEGACY_ROOT")
 
 
 class CandidateMigrationDistributionTests(unittest.TestCase):
-    def test_distinct_target_success_and_failed_activation_rollback(self) -> None:
+    def test_runtime_free_rejection_and_failed_activation_rollback(self) -> None:
         if not TARGET_ROOT or not LEGACY_ROOT:
             if os.environ.get("GETCODEXY_REQUIRE_MIGRATION_CANDIDATE") == "1":
                 self.fail("required isolated migration candidate inputs are absent")
@@ -45,7 +45,7 @@ class CandidateMigrationDistributionTests(unittest.TestCase):
                         "active_home": str(home),
                         "candidate": str(candidate),
                         "legacy": str(legacy.parent.parent),
-                        "fail_active_devtools": True,
+                        "fail_active_component": "github",
                         "homes": {str(home): {"ref": "v1.3.0", "selection": ["core"]}},
                     }
                 ),
@@ -55,9 +55,13 @@ class CandidateMigrationDistributionTests(unittest.TestCase):
             environment = os.environ.copy()
             environment["GETCODEXY_CANDIDATE_HOST_STATE"] = str(state)
             failure = _migrate(home, codex, environment)
-            self.assertEqual(failure["outcome"], "rolled-back")
+            self.assertEqual(failure["outcome"], "rejected")
             self.assertEqual(failure["source_version"], "1.3.0")
             self.assertEqual(failure["target_version"], "1.4.0")
+            self.assertEqual(failure["selection_after"], [])
+            self.assertEqual(
+                failure["errors"], [{"code": "target-release-unavailable"}]
+            )
             self.assertEqual((home / "config.toml").read_bytes(), config)
             self.assertEqual(
                 (agents / "custom.toml").read_text(encoding="utf-8"), "keep = true\n"
@@ -69,38 +73,80 @@ class CandidateMigrationDistributionTests(unittest.TestCase):
                 recovered["homes"][str(home)], {"ref": "v1.3.0", "selection": ["core"]}
             )
 
-            success = _migrate(home, codex, environment)
+            complete_selection = ("core", "github")
+            rollback = _migrate(home, codex, environment, requested=complete_selection)
+            self.assertEqual(rollback["outcome"], "rolled-back")
+            self.assertEqual(rollback["source_version"], "1.3.0")
+            self.assertEqual(rollback["target_version"], failure["target_version"])
+            self.assertEqual(rollback["selection_after"], [])
+            self.assertEqual(rollback["errors"], [{"code": "operation-failed"}])
+            self.assertEqual((home / "config.toml").read_bytes(), config)
+            self.assertEqual(
+                (agents / "custom.toml").read_text(encoding="utf-8"), "keep = true\n"
+            )
+            self.assertEqual((agents / "custom.toml").stat().st_mode & 0o777, 0o600)
+            self.assertFalse(journal_path(home).exists())
+            recovered = json.loads(state.read_text(encoding="utf-8"))
+            self.assertEqual(
+                recovered["homes"][str(home)], {"ref": "v1.3.0", "selection": ["core"]}
+            )
+
+            success = _migrate(home, codex, environment, requested=complete_selection)
             self.assertEqual(success["outcome"], "completed")
             self.assertEqual(success["source_version"], "1.3.0")
             self.assertEqual(success["target_version"], "1.4.0")
-            self.assertEqual(success["selection_after"], ["core", "github", "devtools"])
+            self.assertEqual(success["selection_after"], ["core", "github"])
             completed = json.loads(state.read_text(encoding="utf-8"))
             self.assertEqual(
                 completed["homes"][str(home)],
-                {"ref": "v1.4.0", "selection": ["core", "github", "devtools"]},
+                {"ref": "v1.4.0", "selection": ["core", "github"]},
             )
             self.assertFalse(journal_path(home).exists())
 
 
-def _migrate(home: Path, codex: Path, environment: dict[str, str]) -> dict[str, object]:
+def _migrate(
+    home: Path,
+    codex: Path,
+    environment: dict[str, str],
+    requested: tuple[str, ...] = (),
+) -> dict[str, object]:
     previous = os.environ.get("GETCODEXY_CANDIDATE_HOST_STATE")
     try:
         os.environ.update(environment)
-        receipt = migrate(home, codex, lambda command: _run(command, home))
+        executable = Path(
+            os.environ.get(
+                "GETCODEXY_DISTRIBUTION_EXECUTABLE",
+                str(Path(sys.executable).with_name("getcodexy")),
+            )
+        )
+        result = subprocess.run(
+            [
+                str(executable),
+                "--codex",
+                str(codex),
+                "--codex-home",
+                str(home),
+                "migrate",
+                *requested,
+                "--json",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+            env=os.environ.copy(),
+        )
+        receipt = json.loads(result.stdout)
+        expected_exit = 0 if receipt.get("outcome") == "completed" else 2
+        if result.returncode != expected_exit:
+            raise AssertionError(
+                f"migration receipt exit mismatch: {result.returncode} != {expected_exit}"
+            )
     finally:
         if previous is None:
             os.environ.pop("GETCODEXY_CANDIDATE_HOST_STATE", None)
         else:
             os.environ["GETCODEXY_CANDIDATE_HOST_STATE"] = previous
     return receipt
-
-
-def _run(command: list[str], home: Path) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
-    environment["CODEX_HOME"] = str(home)
-    return subprocess.run(
-        command, text=True, capture_output=True, check=False, env=environment
-    )
 
 
 def _write_host(root: Path, state: Path) -> Path:
@@ -163,8 +209,8 @@ elif command == ["plugin", "list", "--json"]:
     payload = inventory()
 elif command[:2] == ["plugin", "add"]:
     component = plugins[command[2].split("@", 1)[0]]
-    if home == state["active_home"] and component == "devtools" and state["fail_active_devtools"]:
-        state["fail_active_devtools"] = False
+    if home == state["active_home"] and component == state.get("fail_active_component"):
+        state["fail_active_component"] = None
         save()
         print(json.dumps({"error": "injected"}))
         raise SystemExit(1)
