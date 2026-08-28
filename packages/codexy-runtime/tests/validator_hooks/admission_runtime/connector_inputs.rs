@@ -1,8 +1,6 @@
 use crate::support::{FixtureCommand as Command, write_posix_fixture_command};
 use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
-use std::io::Write as _;
-use std::process::Stdio;
 
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {
@@ -136,8 +134,28 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
         &fake_bin.join("gh"),
         "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$CODEXY_GH_RECORD\"\n",
     )?;
-    let mut path = vec![fake_bin];
-    path.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
+    macro_rules! post_hook_mutation {
+        ($launcher:expr, $payload:expr, $args:expr) => {{
+            // This fixture models hook-then-tool sequencing, never host `functions.exec`.
+            let output = super::concern_launchers::run_launcher(&root, $launcher, "PreToolUse", $payload, &[])?;
+            if output.is_empty() {
+                let output = Command::new(fake_bin.join("gh"))
+                    .env("CODEXY_GH_RECORD", &recorder)
+                    .args($args)
+                    .output()?;
+                assert!(output.status.success());
+                Ok::<Option<Vec<u8>>, Box<dyn std::error::Error>>(None)
+            } else {
+                Ok(Some(output))
+            }
+        }};
+    }
+    let mut admitted = json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codex_apps__github_create_pull_request","cwd":cwd.clone()});
+    admitted["tool_input"] = cases()[1].1.clone();
+    let admitted_output = post_hook_mutation!("codexy-repository-pull-request", &admitted, ["pr", "create", "--repo", "eunsoogi/codexy", "--title", "admitted control"])?;
+    assert!(admitted_output.is_none(), "{admitted_output:?}");
+    assert_eq!(std::fs::read_to_string(&recorder)?, "pr\ncreate\n--repo\neunsoogi/codexy\n--title\nadmitted control\n");
+    std::fs::remove_file(&recorder)?;
     let input = json!({
         "hook_event_name":"PreToolUse",
         "tool_name":"mcp__codex_apps__github_merge_pull_request",
@@ -152,16 +170,8 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
         },
         "cwd":cwd,
     });
-    let mut command = Command::new(root.join("hooks/codexy-repository-merge.sh"));
-    command.arg("PreToolUse").env_path("PLUGIN_ROOT", &root)
-        .env_path_list("PATH", path).env("CODEXY_GH_RECORD", &recorder)
-        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = command.spawn()?;
-    child.stdin.take().ok_or("stdin")?.write_all(&serde_json::to_vec(&input)?)?;
-    let output = child.wait_with_output()?;
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let denial: Value = serde_json::from_slice(&output.stdout)?;
+    let output = post_hook_mutation!("codexy-repository-merge", &input, ["pr", "merge", "754", "--repo", "eunsoogi/codexy"])?.ok_or("merge hook admitted")?;
+    let denial: Value = serde_json::from_slice(&output)?;
     assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
     let reason = denial["hookSpecificOutput"]["permissionDecisionReason"].as_str().unwrap_or_default();
     assert!(reason.contains("UNAVAILABLE"), "{reason}");
