@@ -207,8 +207,6 @@
         "packages/codexy-runtime/src/bin/codexy-fake-lsp.rs",
         "packages/codexy-runtime/src/bin/codexy-fixture-probe.rs",
         "packages/codexy-runtime/src/bin/codexy-review-control.rs",
-        "packages/codexy-runtime/src/bin/codexy-session-audit.rs",
-        "packages/codexy-runtime/src/bin/codexy-session-audit",
         "packages/codexy-runtime/src/bin/codexy-sync-version.rs",
         "packages/codexy-runtime/src/bin/codexy-validate.rs",
         "packages/codexy-runtime/src/bin/codexy-validate/tdd.rs"
