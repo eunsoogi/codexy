@@ -2,6 +2,7 @@
 name: plan-stress-test
 description: Use when the user explicitly opts in to stress-test one important plan with acceptance criteria before implementation.
 ---
+<!-- dprint-ignore-start -->
 
 # Plan Stress Test
 Use this skill only after `$orchestration` classifies the request. This is one read-only advisory challenge, not a routing, review, or completion authority.
@@ -56,3 +57,4 @@ When declining, MUST choose the first matching category in list order and return
 - Approval request: `Decline; the skill returns an advisory receipt, not an approval verdict.`
 - Missing acceptance criteria: `Decline; the required acceptance criteria are missing.`
 - No explicit opt-in: `Decline; explicit user opt-in is required.`
+<!-- dprint-ignore-end -->
