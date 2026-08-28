@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use super::review_control;
 
-/// Resolves one typed review profile from the packaged review-control policy.
+/// Resolves one typed review profile from the packaged profile policy.
 ///
 /// # Errors
 ///
@@ -13,7 +13,7 @@ pub fn resolve_review_profile(plugin_root: &Path, request: &str) -> Result<serde
     review_control::resolve_profile(plugin_root, request)
 }
 
-/// Validates one typed review packet against the packaged bounded-review policy.
+/// Keeps the legacy packet entry point non-blocking.
 ///
 /// # Errors
 ///
@@ -27,7 +27,7 @@ pub fn check_review_packet(
     review_control::check_packet(plugin_root, repository_root, ledger_path, packet)
 }
 
-/// Applies the fail-closed review-economics contract to one typed report.
+/// Keeps the legacy measurement entry point non-blocking.
 ///
 /// # Errors
 ///
@@ -38,37 +38,14 @@ pub fn check_review_economics(
     repository_root: &Path,
     economics: &str,
 ) -> Result<()> {
-    if let Ok(request) = serde_json::from_str::<serde_json::Value>(economics) {
-        if request["schema"] == "codexy.review-economics-capture-request.v1" {
-            return review_control::capture_economics(
-                plugin_root,
-                repository_root,
-                Path::new(
-                    request["observer_command"]
-                        .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("capture observer command is missing"))?,
-                ),
-                Path::new(
-                    request["trusted_receipt"]
-                        .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("capture trusted receipt is missing"))?,
-                ),
-                Path::new(
-                    request["output"]
-                        .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("capture output is missing"))?,
-                ),
-            );
-        }
-    }
     review_control::check_economics(plugin_root, repository_root, economics)
 }
 
-/// Builds canonical PR state after validating the complete typed review-control history.
+/// Builds PR state after validating direct current-head review state.
 ///
 /// # Errors
 ///
-/// Returns an error for malformed state, stale evidence, or an invalid bounded review ledger.
+/// Returns an error for malformed state or stale direct review evidence.
 pub fn build_review_pr_state(
     plugin_root: &Path,
     base: &str,
@@ -77,12 +54,11 @@ pub fn build_review_pr_state(
     review_control::build_pr_state(plugin_root, base, control)
 }
 
-/// Captures an authentic selected terminal record into ephemeral typed review artifacts.
+/// Returns direct review state from the compatibility producer entry point.
 ///
 /// # Errors
 ///
-/// Returns an error when the terminal record, packet, ledger, or current Git
-/// binding is missing, forged, stale, or otherwise outside the selected lane.
+/// Returns an error when the input is malformed or not an object.
 pub fn produce_review_control(
     plugin_root: &Path,
     repository_root: &Path,

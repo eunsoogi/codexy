@@ -1,223 +1,161 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
 
-use serde_json::{Value, json};
-use sha2::{Digest as _, Sha256};
+use serde_json::{json, Value};
 
 use crate::support::{FixtureCommand, TestResult};
 
 #[test]
-fn review_control_producer_captures_a_bound_terminal_without_appending_an_event() -> TestResult {
-    let fixture = crate::support::plugin_fixture()?;
-    let repository = tempfile::tempdir()?; let base = init_producer_repository(repository.path())?;
-    let temp = tempfile::tempdir()?; let input = temp.path().join("producer-request.json"); fs::write(&input, serde_json::to_vec(&producer_request(repository.path(), &base)?)?)?;
-    let output = run_producer(fixture.root(), repository.path(), &input, temp.path())?;
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    let control: Value = serde_json::from_slice(&fs::read(temp.path().join("control.json"))?)?;
-    let packet: Value = serde_json::from_slice(&fs::read(temp.path().join("packet.json"))?)?;
-    let ledger: Value = serde_json::from_slice(&fs::read(temp.path().join("ledger.json"))?)?;
-    assert_eq!(control["schema"], "codexy.review-control-state.v1");
-    assert_eq!(packet["schema"], "codexy.review-packet.v4");
-    assert_eq!(ledger["events"].as_array().map(Vec::len), Some(2));
+fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
+    let state = capture(direct_control())?;
+    let control = &state["reviewControl"];
+    assert_eq!(control["profile"], "strict");
+    assert_eq!(control["reviewer"]["name"], "codexy-sentinel");
+    assert_eq!(control["reviewed_head"], "head");
+    assert_eq!(control["terminal_result"], "PASS");
+    assert_eq!(control["unresolved_findings"], json!([]));
+    assert_eq!(control["full_review_count"], 1);
+    assert!(control.get("ledger").is_none());
+    assert!(control.get("packet").is_none());
     Ok(())
 }
 
 #[test]
-fn canonical_capture_preserves_github_and_typed_terminal_decisions() -> TestResult {
-    let standard = capture(standard_control())?;
-    assert_eq!(standard["reviewDecision"], "CHANGES_REQUESTED");
-    assert_eq!(standard["reviewControl"]["profile"], "standard");
-    assert_eq!(standard["reviewControl"]["decision"], "APPROVED");
-    assert_eq!(standard["reviewControl"]["evidence"]["event_id"], "e-passed");
-
-    let strict = capture(strict_control())?;
-    assert_eq!(strict["reviewControl"]["profile"], "strict");
-    assert_eq!(strict["reviewControl"]["evidence"]["reviewer"]["name"], "codexy-sentinel");
-
-    let light = capture(json!({
-        "schema":"codexy.review-control-state.v1",
-        "profile":"light",
-        "decision":"NOT_REQUIRED"
-    }))?;
-    assert_eq!(light["reviewDecision"], "CHANGES_REQUESTED");
-    assert_eq!(light["reviewControl"]["profile"], "light");
-    assert!(light["reviewControl"].get("evidence").is_none());
-    assert!(light["reviewControl"].get("ledger").is_none());
-    Ok(())
-}
-
-#[test]
-fn canonical_capture_rejects_invalid_typed_terminal_contracts() -> TestResult {
-    for review in [
-        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED"}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"light","decision":"NOT_REQUIRED","evidence":{}}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"INVALID","evidence":{},"ledger":{}}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":{"profile":"strict","head_oid":"head"},"ledger":{}}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":{"profile":"standard","head_oid":"stale"},"ledger":{}}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"standard","decision":"APPROVED","evidence":null,"ledger":null}),
-        json!({"schema":"codexy.review-control-state.v1","profile":"unknown","decision":"APPROVED"}),
-    ] {
-        assert!(!capture_output(review)?.status.success());
-    }
-    Ok(())
-}
-
-#[test]
-fn canonical_capture_rejects_invalid_nonterminal_ledger_history() -> TestResult {
+fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
     for mutate in [
-        |control: &mut Value| control["ledger"]["events"][0]["head_oid"] = json!("stale"),
-        |control: &mut Value| control["ledger"]["events"][0]["base_oid"] = json!("stale"),
-        |control: &mut Value| control["ledger"]["events"][1]["predecessor_event_id"] = json!("other"),
-        |control: &mut Value| control["ledger"]["events"].as_array_mut().expect("events").reverse(),
-        |control: &mut Value| control["ledger"]["events"][0]["full_used"] = json!(0),
-        |control: &mut Value| control["ledger"]["events"][1]["delta_used"] = json!(1),
-        |control: &mut Value| control["ledger"]["events"][0]["full_used"] = json!("one"),
-        |control: &mut Value| control["ledger"]["events"][0]["boundaries"] = json!([]),
-        |control: &mut Value| control["ledger"]["events"][0]["blockers"] = json!({}),
-        |control: &mut Value| control["ledger"]["events"][0]["id"] = json!("e-passed"),
-        |control: &mut Value| control["ledger"]["events"][0]["extra"] = json!(true),
+        |control: &mut Value| {
+            control["profile"] = json!("standard");
+        },
+        |control: &mut Value| {
+            control["reviewer"]["name"] = json!("codexy-inspector");
+        },
+        |control: &mut Value| {
+            control["reviewed_head"] = json!("stale");
+        },
+        |control: &mut Value| {
+            control["terminal_result"] = json!("SUCCESS");
+        },
+        |control: &mut Value| {
+            control["full_review_count"] = json!(2);
+        },
     ] {
-        let mut control = standard_control();
+        let mut control = direct_control();
         mutate(&mut control);
         assert!(
             !capture_output(control)?.status.success(),
-            "capture must reject malformed nonterminal review history"
+            "direct-state negative case must remain blocked"
         );
     }
     Ok(())
 }
 
 #[test]
-fn canonical_capture_requires_nullable_field_presence() -> TestResult {
-    for mutate in [
-        |control: &mut Value| {
-            control["ledger"]["events"][0]
-                .as_object_mut()
-                .expect("full event")
-                .remove("predecessor_event_id");
-        },
-        |control: &mut Value| {
-            control["ledger"]["events"][1]
-                .as_object_mut()
-                .expect("terminal event")
-                .remove("predecessor_event_id");
-        },
-        |control: &mut Value| {
-            control["ledger"]["events"][0]
-                .as_object_mut()
-                .expect("full event")
-                .remove("escalation");
-        },
-        |control: &mut Value| {
-            control["ledger"]["events"][1]
-                .as_object_mut()
-                .expect("terminal event")
-                .remove("escalation");
-        },
+fn direct_review_control_blocks_terminal_failures_and_findings() -> TestResult {
+    for (result, findings) in [
+        ("BLOCK", json!([])),
+        ("UNOBSERVABLE", json!([])),
+        ("PASS", json!(["f-1"])),
     ] {
-        let mut control = standard_control();
-        mutate(&mut control);
+        let mut control = direct_control();
+        control["terminal_result"] = json!(result);
+        control["unresolved_findings"] = findings;
+        let output = validate_readiness(control)?;
         assert!(
-            !capture_output(control)?.status.success(),
-            "every required nullable ledger field must be present"
-        );
-    }
-    for field in ["evidence", "ledger"] {
-        let mut light = json!({
-            "schema":"codexy.review-control-state.v1",
-            "profile":"light",
-            "decision":"NOT_REQUIRED"
-        });
-        light[field] = Value::Null;
-        assert!(
-            !capture_output(light)?.status.success(),
-            "light review control must omit {field}, not attach null"
+            !output.status.success(),
+            "invalid readiness state must block"
         );
     }
     Ok(())
 }
 
 #[test]
-fn canonical_capture_accepts_explicit_nullable_ledger_values() -> TestResult {
-    for control in [standard_control(), strict_control()] {
-        let state = capture(control)?;
-        let events = state["reviewControl"]["ledger"]["events"]
-            .as_array()
-            .expect("events");
-        assert!(events.iter().all(|event| event["escalation"].is_null()));
-        assert!(events[0]["predecessor_event_id"].is_null());
-    }
+fn direct_review_control_ignores_legacy_fields_and_prose_shape() -> TestResult {
+    let mut control = direct_control();
+    control["legacy_state"] = json!({"schema":"ignored","events":[{"state":"invalid"}]});
+    let output = validate_readiness(control)?;
+    assert!(
+        output.status.success(),
+        "direct facts must decide readiness: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
-fn capture(review: Value) -> TestResult<Value> {
+fn direct_control() -> Value {
+    json!({
+        "schema": "codexy.review-control-state.v1",
+        "profile": "strict",
+        "reviewer": {
+            "name": "codexy-sentinel",
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "xhigh"
+        },
+        "reviewed_head": "head",
+        "terminal_result": "PASS",
+        "unresolved_findings": [],
+        "full_review_count": 1,
+        "delta_review_count": 0
+    })
+}
+
+fn capture(control: Value) -> TestResult<Value> {
     let temp = tempfile::tempdir()?;
-    let (base, control, state) = state_files(temp.path(), &review)?;
-    let output = run_capture(&base, &control, &state)?;
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    Ok(serde_json::from_slice(&fs::read(state)?)?)
+    let (base, control_path, output) = state_files(temp.path(), &control)?;
+    let result = run_capture(&base, &control_path, &output)?;
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
 
-fn capture_output(review: Value) -> TestResult<std::process::Output> {
+fn capture_output(control: Value) -> TestResult<std::process::Output> {
     let temp = tempfile::tempdir()?;
-    let (base, control, output) = state_files(temp.path(), &review)?;
-    run_capture(&base, &control, &output)
+    let (base, control_path, output) = state_files(temp.path(), &control)?;
+    Ok(run_capture(&base, &control_path, &output)?)
 }
 
-fn producer_request(root: &Path, base: &str) -> TestResult<Value> {
-    // Bind the range to the fixture base, not the incidental tip commit.
-    let head = git(root, &["rev-parse", "HEAD"]);
-    let range = format!("{base}..{head}");
-    let diff = git_bytes(root, &["diff", "--no-ext-diff", "--binary", &range]);
-    let files = git(root, &["diff", "--name-only", "--diff-filter=ACMRD", &range])
-        .lines()
-        .map(str::to_owned)
-        .collect::<Vec<_>>();
-    let evidence_path = "stable.json";
-    assert!(files.iter().any(|file| file == evidence_path));
-    let evidence = git_bytes(root, &["show", &format!("{head}:{evidence_path}")]);
-    let diff_sha = format!("{:x}", Sha256::digest(diff));
-    let evidence_sha = format!("{:x}", Sha256::digest(evidence));
-    let mut ledger = strict_control()["ledger"].clone();
-    for event in ledger["events"].as_array_mut().ok_or("ledger events")? {
-        event["base_oid"] = json!(base);
-        event["head_oid"] = json!(head);
-    }
-    let contract = ledger["events"][0]["issue_contract"].clone();
-    Ok(json!({"schema":"codexy.review-control-producer-request.v1","binding":{"issue_number":693,"pull_request_number":694,"base_oid":base,"head_oid":head,"diff_sha256":diff_sha,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"event_id":"e-passed","predecessor_event_id":"e-full","issue_contract":contract,"budget":{"full_used":1,"delta_used":0,"terminal_used":2,"terminal_limit":3}},"terminal_record":{"schema":"codexy.review-terminal-record.v1","head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed","event_id":"e-passed","blockers":[],"ledger":ledger},"packet":{"schema":"codexy.review-packet.v4","event_id":"e-passed","predecessor_event_id":"e-full","profile":"strict","state":"passed","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"identity":{"base_oid":base,"head_oid":head,"diff_sha256":diff_sha},"issue_contract":contract,"changed_files":files,"direct_boundaries":["validator"],"verification_results":[{"id":"evidence","head_oid":head,"evidence_path":evidence_path,"evidence_sha256":evidence_sha}],"findings":[],"resolution":{"repaired_finding_ids":[],"changed_boundaries":[]},"budget":{"full_used":1,"delta_used":0},"readiness_export":{"head_oid":head,"profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"unresolved_blocker_ids":[],"budget_exhausted":false,"parent_decision_required":false}}}))
+fn validate_readiness(control: Value) -> TestResult<std::process::Output> {
+    let temp = tempfile::tempdir()?;
+    let handoff = temp.path().join("handoff.md");
+    let state = temp.path().join("state.json");
+    fs::write(&handoff, "임의의 prose와 순서입니다.\n")?;
+    fs::write(
+        &state,
+        serde_json::to_vec(&json!({
+            "number": 725,
+            "state": "OPEN",
+            "isDraft": true,
+            "mergeStateStatus": "CLEAN",
+            "headRefOid": "head",
+            "reviewControl": control
+        }))?,
+    )?;
+    Ok(crate::support::validator_completion_handoff_files(
+        &handoff, &state,
+    )?)
 }
 
-fn run_producer(root: &Path, repository: &Path, input: &Path, output_dir: &Path) -> TestResult<std::process::Output> {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"));
-    command.args(["--plugin-root", root.to_str().ok_or("plugin root")?, "--repository-root"]).arg(repository)
-        .args(["--produce-review-control", "--input"]).arg(input)
-        .args(["--output"]).arg(output_dir.join("control.json"))
-        .args(["--packet-output"]).arg(output_dir.join("packet.json"))
-        .args(["--ledger-output"]).arg(output_dir.join("ledger.json"));
-    Ok(command.output()?)
-}
-
-fn init_producer_repository(root: &Path) -> TestResult<String> {
-    git(root, &["init"]); git(root, &["config", "user.email", "test@example.invalid"]); git(root, &["config", "user.name", "Test"]);
-    fs::write(root.join("stable.json"), "{\"state\":\"base\"}\n")?; fs::write(root.join("removed.json"), "{\"state\":\"base\"}\n")?;
-    git(root, &["add", "."]); git(root, &["commit", "-m", "base"]); let base = git(root, &["rev-parse", "HEAD"]);
-    fs::write(root.join("stable.json"), "{\"state\":\"changed\"}\n")?; git(root, &["add", "stable.json"]); git(root, &["commit", "-m", "change"]);
-    fs::remove_file(root.join("removed.json"))?; git(root, &["add", "-u"]); git(root, &["commit", "-m", "delete-only tip"]); git(root, &["commit", "--allow-empty", "-m", "empty tip"]); Ok(base)
-}
-
-fn git(root: &Path, args: &[&str]) -> String { String::from_utf8(Command::new("git").current_dir(root).args(args).output().unwrap().stdout).unwrap().trim().to_owned() }
-
-fn git_bytes(root: &Path, args: &[&str]) -> Vec<u8> { Command::new("git").current_dir(root).args(args).output().unwrap().stdout }
-
-fn state_files(root: &std::path::Path, review: &Value) -> TestResult<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
+fn state_files(
+    root: &Path,
+    control: &Value,
+) -> TestResult<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
     let base = root.join("base.json");
-    let control = root.join("review-control.json");
+    let control_path = root.join("review-control.json");
     let output = root.join("pr-state.json");
-    fs::write(&base, serde_json::to_vec(&json!({"number":562,"headRefOid":"head","reviewDecision":"CHANGES_REQUESTED"}))?)?;
-    fs::write(&control, serde_json::to_vec(review)?)?;
-    Ok((base, control, output))
+    fs::write(
+        &base,
+        serde_json::to_vec(&json!({
+            "number": 725,
+            "headRefOid": "head",
+            "reviewDecision": "APPROVED"
+        }))?,
+    )?;
+    fs::write(&control_path, serde_json::to_vec(control)?)?;
+    Ok((base, control_path, output))
 }
 
-fn run_capture(base: &std::path::Path, control: &std::path::Path, output: &std::path::Path) -> TestResult<std::process::Output> {
+fn run_capture(base: &Path, control: &Path, output: &Path) -> TestResult<std::process::Output> {
     let mut command = FixtureCommand::new(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
     );
@@ -233,18 +171,4 @@ fn run_capture(base: &std::path::Path, control: &std::path::Path, output: &std::
             env!("CARGO_BIN_EXE_codexy-review-control"),
         );
     Ok(command.output()?)
-}
-
-fn standard_control() -> Value { control("standard", "APPROVED", "passed", "codexy-inspector", "gpt-5.6-terra", "max") }
-fn strict_control() -> Value { control("strict", "APPROVED", "passed", "codexy-sentinel", "gpt-5.6-sol", "xhigh") }
-
-fn control(profile: &str, decision: &str, state: &str, name: &str, model: &str, reasoning_effort: &str) -> Value {
-    json!({
-        "schema":"codexy.review-control-state.v1", "profile":profile, "decision":decision,
-        "evidence":{"schema":"codexy.review-readiness.v1","head_oid":"head","profile":profile,"reviewer":{"name":name,"model":model,"reasoning_effort":reasoning_effort},"state":state,"event_id":"e-passed","blockers":[]},
-        "ledger":{"schema":"codexy.review-ledger.v1","events":[
-            {"id":"e-full","predecessor_event_id":null,"profile":profile,"base_oid":"base","head_oid":"head","state":"full","full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"issue_contract":{"problem":"synthetic problem","scope":"synthetic scope","acceptance_criteria":[{"id":"synthetic-ac-1"}],"owned_invariant_ids":[],"exclusions":[],"adjacent_dependencies":[]},"issue_contract_sha256":"9ed099f9e4430ae71459275cb6c48e48fb9bce80b802c0557b438cb50d95cbca","escalation":null},
-            {"id":"e-passed","predecessor_event_id":"e-full","profile":profile,"base_oid":"base","head_oid":"head","state":state,"full_used":1,"delta_used":0,"blockers":[],"boundaries":["validator"],"issue_contract":{"problem":"synthetic problem","scope":"synthetic scope","acceptance_criteria":[{"id":"synthetic-ac-1"}],"owned_invariant_ids":[],"exclusions":[],"adjacent_dependencies":[]},"issue_contract_sha256":"9ed099f9e4430ae71459275cb6c48e48fb9bce80b802c0557b438cb50d95cbca","escalation":null}
-        ]}
-    })
 }
