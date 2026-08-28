@@ -147,6 +147,7 @@ class ComponentDistributionTests(unittest.TestCase):
         self.assertEqual(
             _health(doctor),
             {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
+            json.dumps(doctor, indent=2, sort_keys=True),
         )
         self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
 
