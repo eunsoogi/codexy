@@ -48,9 +48,20 @@ fn has_direct_control(state: &Value) -> bool {
     let Some(control) = state.get("reviewControl").and_then(Value::as_object) else {
         return false;
     };
-    !["decision", "evidence", "ledger"]
-        .iter()
-        .any(|field| control.contains_key(*field))
+    let has_direct_fields = [
+        "reviewer",
+        "reviewed_head",
+        "terminal_result",
+        "unresolved_findings",
+        "full_review_count",
+        "delta_review_count",
+    ]
+    .iter()
+    .any(|field| control.contains_key(*field));
+    has_direct_fields
+        || !["decision", "evidence", "ledger"]
+            .iter()
+            .any(|field| control.contains_key(*field))
 }
 
 fn pr_state_input_error(state: &Value) -> Option<String> {

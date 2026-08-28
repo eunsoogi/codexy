@@ -21,7 +21,8 @@ fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
 
 #[test]
 fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
-    for mutate in [
+    for legacy in ["", "decision", "evidence", "ledger"] {
+        for mutate in [
         |control: &mut Value| {
             control["profile"] = json!("standard");
         },
@@ -32,10 +33,14 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
             control["reviewed_head"] = json!("stale");
         },
         |control: &mut Value| {
-            control["terminal_result"] = json!("SUCCESS");
+            control["terminal_result"] = json!("BLOCK");
+        },
+        |control: &mut Value| {
+            control["unresolved_findings"] = json!(["f-1"]);
         },
         |control: &mut Value| {
             control["full_review_count"] = json!(2);
+            control["delta_review_count"] = json!(2);
         },
         |control: &mut Value| {
             control["profile"] = json!("standard");
@@ -45,13 +50,15 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
                 "reasoning_effort": "max"
             });
         },
-    ] {
+        ] {
         let mut control = direct_control();
         mutate(&mut control);
+        control[legacy] = json!({});
         assert!(
-            !capture_output(control)?.status.success(),
+            !validate_readiness(control)?.status.success(),
             "direct-state negative case must remain blocked"
         );
+    }
     }
     Ok(())
 }
@@ -166,12 +173,6 @@ fn capture(control: Value) -> TestResult<Value> {
         String::from_utf8_lossy(&result.stderr)
     );
     Ok(serde_json::from_slice(&fs::read(output)?)?)
-}
-
-fn capture_output(control: Value) -> TestResult<std::process::Output> {
-    let temp = tempfile::tempdir()?;
-    let (base, control_path, output) = state_files(temp.path(), &control)?;
-    Ok(run_capture(&base, &control_path, &output)?)
 }
 
 fn validate_readiness(control: Value) -> TestResult<std::process::Output> {
