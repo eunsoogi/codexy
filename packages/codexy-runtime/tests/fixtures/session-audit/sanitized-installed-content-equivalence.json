@@ -1,34 +1,34 @@
 {
   "contentEquivalent": true,
   "contentProof": {
-    "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "installedManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sourceManifestSha256": null,
+    "installedManifestSha256": null,
     "sourceChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        "sha256": null
       }
     ],
     "installedChangedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        "sha256": null
       }
     ]
   }

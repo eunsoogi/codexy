@@ -14,57 +14,57 @@
     "pluginId": "codexy@codexy",
     "version": "1.2.2",
     "cacheRootRelative": "codexy/1.2.2",
-    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "manifestSha256": null,
     "changedFiles": [
       {
         "path": "skills/orchestration/references/execution-budget.md",
-        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/SKILL.md",
-        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        "sha256": null
       },
       {
         "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        "sha256": null
       }
     ],
     "contentEquivalent": true,
     "contentProof": {
-      "sourceManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "installedManifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sourceManifestSha256": null,
+      "installedManifestSha256": null,
       "sourceChangedFiles": [
         {
           "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          "sha256": null
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          "sha256": null
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          "sha256": null
         }
       ],
       "installedChangedFiles": [
         {
           "path": "skills/orchestration/references/execution-budget.md",
-          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          "sha256": null
         },
         {
           "path": "skills/orchestration/SKILL.md",
-          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          "sha256": null
         },
         {
           "path": "skills/orchestration/templates/session-audit-proof-receipt.json",
-          "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          "sha256": null
         }
       ]
     }
   },
   "audit": {
-    "inputSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "inputSha256": null,
     "observationalOnly": true,
     "comparison": {
       "ownerBoundary": {
@@ -79,7 +79,7 @@
       },
       "before": {
         "sessionId": "controlled-before",
-        "inputSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "inputSha256": null,
         "window": {
           "recordsObserved": 2,
           "turnEvents": 2
@@ -88,7 +88,7 @@
       },
       "after": {
         "sessionId": "controlled-after",
-        "inputSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "inputSha256": null,
         "window": {
           "recordsObserved": 2,
           "turnEvents": 2
@@ -100,7 +100,7 @@
       {
         "sessionId": "controlled-before",
         "ownerRootThreadId": "owner-486",
-        "inputSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "inputSha256": null,
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 200,
@@ -120,7 +120,7 @@
       {
         "sessionId": "controlled-after",
         "ownerRootThreadId": "owner-486",
-        "inputSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "inputSha256": null,
         "recordsObserved": 2,
         "turnEvents": 2,
         "cumulativeTokens": 150,

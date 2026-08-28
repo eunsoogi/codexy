@@ -1,14 +1,14 @@
-use std::{fs, process::Command};
+use std::{fs, path::Path, process::Command};
 
 use serde_json::{Value, json};
+
+use crate::support;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn controlled_comparison_fixture_passes_semantic_validation() -> TestResult {
-    let receipt: Value = serde_json::from_str(include_str!(
-        "fixtures/session-audit/controlled-receipt.json"
-    ))?;
+    let receipt = valid_receipt();
     let output = validate(&receipt)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     let response: Value = serde_json::from_slice(&output.stdout)?;
@@ -154,8 +154,62 @@ fn receipt_rejects_unmodeled_private_content_fields() -> TestResult {
 }
 
 fn valid_receipt() -> Value {
-    serde_json::from_str(include_str!("fixtures/session-audit/controlled-receipt.json"))
-        .expect("controlled receipt fixture must be valid JSON")
+    synthetic_fixture("controlled-receipt.json")
+        .expect("controlled receipt fixture must be valid")
+}
+
+pub(super) fn synthetic_fixture(name: &str) -> TestResult<Value> {
+    let mut fixture = session_fixture(name)?;
+    let temp = tempfile::tempdir()?;
+    let manifest = synthetic_digest(temp.path(), "manifest")?;
+    let files = ["execution-budget", "orchestration-skill", "session-audit-template"]
+        .into_iter()
+        .map(|label| synthetic_digest(temp.path(), label))
+        .collect::<TestResult<Vec<_>>>()?;
+    let proof = fixture
+        .pointer_mut(if name == "controlled-receipt.json" {
+            "/installed/contentProof"
+        } else {
+            "/contentProof"
+        })
+        .ok_or("content proof must exist")?;
+    proof["sourceManifestSha256"] = Value::String(manifest.clone());
+    proof["installedManifestSha256"] = Value::String(manifest.clone());
+    for (index, digest) in files.iter().enumerate() {
+        for list in ["sourceChangedFiles", "installedChangedFiles"] {
+            proof[list][index]["sha256"] = Value::String(digest.clone());
+        }
+    }
+    if name == "controlled-receipt.json" {
+        fixture["installed"]["manifestSha256"] = Value::String(manifest);
+        for (index, digest) in files.iter().enumerate() {
+            fixture["installed"]["changedFiles"][index]["sha256"] = Value::String(digest.clone());
+        }
+        for (pointer, label) in [
+            ("/audit/inputSha256", "comparison-input"),
+            ("/audit/comparison/before/inputSha256", "before-input"),
+            ("/audit/ownerTreeSessions/0/inputSha256", "before-input"),
+            ("/audit/comparison/after/inputSha256", "after-input"),
+            ("/audit/ownerTreeSessions/1/inputSha256", "after-input"),
+        ] {
+            let digest = synthetic_digest(temp.path(), label)?;
+            *fixture.pointer_mut(pointer).ok_or("receipt digest must exist")? = Value::String(digest);
+        }
+    }
+    Ok(fixture)
+}
+
+fn synthetic_digest(root: &Path, label: &str) -> TestResult<String> {
+    let path = root.join(label);
+    fs::write(&path, format!("codexy synthetic {label}\n"))?;
+    Ok(support::sha256_file(&path)?)
+}
+
+fn session_fixture(name: &str) -> TestResult<Value> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    Ok(serde_json::from_slice(&fs::read(
+        root.join("tests/fixtures/session-audit").join(name),
+    )?)?)
 }
 
 fn validate(receipt: &Value) -> TestResult<std::process::Output> {
