@@ -1,8 +1,5 @@
 use tempfile::tempdir;
 
-#[path = "candidate_projection_batch.rs"]
-mod candidate_projection_batch;
-
 use super::{
     candidate::{make_candidate_proven_windows_package, run_source_projection},
     complete_plugin_fixture,
@@ -20,7 +17,24 @@ fn projection(appended: &str) -> std::process::Output {
 
 #[test]
 fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_text() {
-    candidate_projection_batch::assert_projection_matrix();
+    for (appended, succeeds) in [
+        (
+            "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            false,
+        ),
+        (
+            "export bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+            false,
+        ),
+        ("eval 'bundled_platforms=darwin-arm64'", false),
+        ("printf '%s\\n' 'bundled_platforms=darwin-arm64'", true),
+    ] {
+        assert_eq!(
+            projection(appended).status.success(),
+            succeeds,
+            "{appended}"
+        );
+    }
 }
 
 #[test]

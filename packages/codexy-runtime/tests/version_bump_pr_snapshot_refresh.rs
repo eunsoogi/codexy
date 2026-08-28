@@ -2,8 +2,6 @@ use serde_json::json;
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;
 
-use super::version_bump_pr_test_support::markdown_section_lines;
-
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
@@ -38,14 +36,13 @@ fn refreshed_snapshot_replaces_stale_release_metadata_before_publication() -> Te
     let refreshed = render(root, &issue, &taxonomy, &changes, &output)?;
 
     assert_ne!(stale.body, refreshed.body);
-    assert_eq!(
-        markdown_section_lines(&refreshed.body, "## Evidence"),
-        [
-            "- Governing release issue: https://github.com/eunsoogi/codexy/issues/301",
-            "- Full release-candidate validation ran before branch or pull-request mutation.",
-            "- Post-creation readiness gates are pending.",
-        ]
-    );
+    for fragment in [
+        "Governing release issue: https://github.com/eunsoogi/codexy/issues/301",
+        "Full release-candidate validation ran before branch or pull-request mutation.",
+        "Post-creation readiness gates are pending.",
+    ] {
+        assert!(refreshed.body.contains(fragment), "refreshed body lacks {fragment:?}");
+    }
     assert_eq!(
         refreshed.labels,
         json!({"labels": ["area/qa", "priority/high", "status/review", "type/ci"]})

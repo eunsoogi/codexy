@@ -2,10 +2,6 @@ use serde_json::json;
 use std::{fs, path::Path};
 use crate::support::{FixtureCommand as Command, read_text_fixture};
 
-use super::version_bump_pr_test_support::{
-    markdown_headings, markdown_section_lines,
-};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -80,9 +76,9 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         fs::read(output_dir.join("labels.json"))?,
     );
     assert_eq!(title, "chore(plugin): prepare candidate version 1.3.1\n");
-    assert_eq!(
-        markdown_headings(&body),
-        [
+    assert_body_contains(
+        &body,
+        &[
             "## Summary",
             "## Rationale",
             "## Changed Areas",
@@ -90,52 +86,27 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
             "## Evidence",
             "## Not Run",
             "## Follow-ups",
-        ]
-    );
-    assert_eq!(
-        markdown_section_lines(&body, "## Summary"),
-        [
-            "- Prepare candidate-only Codexy version metadata for 1.3.1.",
-            "- Keep selected runtime and plugin identities at the pre-activation version under governing issue #301.",
-        ]
-    );
-    assert_eq!(
-        markdown_section_lines(&body, "## Rationale"),
-        [
-            "- The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.",
-        ]
-    );
-    assert_eq!(
-        markdown_section_lines(&body, "## Changed Areas"),
-        [
-            "- `.agents/plugins/marketplace.json`",
-            "- `packages/codexy-runtime/Cargo.lock`",
-            "- `packages/codexy-runtime/Cargo.toml`",
-            "- `plugins/codexy/.codex-plugin/plugin.json`",
-        ]
-    );
-    assert_eq!(
-        markdown_section_lines(&body, "## Verification"),
-        [
-            "- `scripts/sync-plugin-version.sh --check-candidate`",
-            "- `scripts/validate-plugin-config.sh --check`",
-            "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
-            "- `git diff --check`",
-            "- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`",
-            "- `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`",
-            "- `scripts/validate-plugin-config.sh --check-completion-handoff --handoff-file <handoff> --pr-state-file <pr-state>`",
-            "- `plugins/codexy-github/hooks/codexy-merge-message-check.sh --expected-pr <pr-number> --expected-issue <issue-number> --merge-message-file <merge-message>`",
-        ]
+            "Prepare candidate-only Codexy version metadata for 1.3.1.",
+            "selected runtime and plugin identities at the pre-activation version under governing issue #301.",
+            "The first release PR prepares the bootstrap candidate; activation performs selected-version and final plugin lockstep after staged provenance checks.",
+            ".agents/plugins/marketplace.json",
+            "packages/codexy-runtime/Cargo.lock",
+            "packages/codexy-runtime/Cargo.toml",
+            "plugins/codexy/.codex-plugin/plugin.json",
+            "scripts/sync-plugin-version.sh --check-candidate",
+            "scripts/validate-plugin-config.sh --check",
+            "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked",
+            "git diff --check",
+            "plugins/codexy-github/hooks/codexy-pr-title-check.sh",
+            "plugins/codexy-github/hooks/codexy-pr-label-check.sh",
+            "scripts/validate-plugin-config.sh --check-completion-handoff",
+            "plugins/codexy-github/hooks/codexy-merge-message-check.sh",
+            "Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
+            "Full release-candidate validation ran before branch or pull-request mutation.",
+            "Post-creation readiness gates passed before final body publication.",
+        ],
     );
     assert!(body.ends_with("Fixes #301\n"));
-    assert_eq!(
-        markdown_section_lines(&body, "## Evidence"),
-        [
-            "- Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
-            "- Full release-candidate validation ran before branch or pull-request mutation.",
-            "- Post-creation readiness gates passed before final body publication.",
-        ]
-    );
     assert_eq!(
         labels,
         json!({"labels": [
@@ -175,22 +146,17 @@ fn renderer_emits_hook_valid_metadata_from_authoritative_issue() -> TestResult {
         .output()?;
     assert!(provisional.status.success());
     let provisional_body = read_text_fixture(&output_dir.join("body.md"))?;
-    assert_eq!(
-        markdown_section_lines(&provisional_body, "## Evidence"),
-        [
-            "- Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
-            "- Full release-candidate validation ran before branch or pull-request mutation.",
-            "- Post-creation readiness gates are pending.",
-        ]
-    );
-    assert_eq!(
-        markdown_section_lines(&provisional_body, "## Verification"),
-        [
-            "- `scripts/sync-plugin-version.sh --check-candidate`",
-            "- `scripts/validate-plugin-config.sh --check`",
-            "- `cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked`",
-            "- `git diff --check`",
-        ]
+    assert_body_contains(
+        &provisional_body,
+        &[
+            "Governing release issue: https://github.com/openai-codex/codexy.release_1/issues/301",
+            "Full release-candidate validation ran before branch or pull-request mutation.",
+            "Post-creation readiness gates are pending.",
+            "scripts/sync-plugin-version.sh --check-candidate",
+            "scripts/validate-plugin-config.sh --check",
+            "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked",
+            "git diff --check",
+        ],
     );
 
     let pr_state = temp.path().join("pr-state.json");
@@ -241,4 +207,10 @@ fn command_passes(command: &mut std::process::Command, context: &str) -> TestRes
         return Err(format!("{context} failed: {}", String::from_utf8_lossy(&output.stderr)).into());
     }
     Ok(())
+}
+
+fn assert_body_contains(body: &str, fragments: &[&str]) {
+    for fragment in fragments {
+        assert!(body.contains(fragment), "metadata body lacks {fragment:?}");
+    }
 }

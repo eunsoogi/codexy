@@ -12,8 +12,14 @@ checkout_root=$(dirname "$script_dir")
 evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
 canonical_admission_suite="$checkout_root/packages/codexy-runtime/tests/suites/all.rs"
 admission_suite="$evidence_root/packages/codexy-runtime/tests/suites/all.rs"
-
-if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -r "$script_dir/archive-inspection-receipt.sh" ]; then . "$script_dir/archive-inspection-receipt.sh"; fi
+receipt_marker_file=
+if [ "${CODEXY_TEST_MODE:-}" = 1 ] &&
+  [ -n "${CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR:-}" ] &&
+  [ -n "${CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_ID:-}" ] &&
+  [ -d "$CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR" ]; then
+  receipt_marker_file="$CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR/$CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_ID.marker"
+  printf 'fixture=%s\n' "${archive##*/}" >>"$receipt_marker_file" 2>/dev/null || :
+fi
 
 command -v tar >/dev/null 2>&1 || { echo "tar is required" >&2; exit 127; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 127; }
@@ -124,6 +130,9 @@ while IFS= read -r relative; do
   esac
 done <"$tmp_dir/directories"
 
+if [ -n "$receipt_marker_file" ]; then
+  printf '%s\n' 'content-comparator-ran=1' >>"$receipt_marker_file" 2>/dev/null || :
+fi
 python3 "$script_dir/check-release-archive-content" "$tmp_dir/expected" "$plugin_root" "$extract_root/plugins/codexy-devtools"
 
 if find "$extract_root/plugins/codexy-devtools" -type f -size "+${max_bytes}c" -print -quit | grep -q .; then
@@ -141,7 +150,9 @@ scan_grep_content() {
     -exec grep -a -Hn -E "$pattern" {} +
 }
 if command -v rg >/dev/null 2>&1; then
-  archive_inspection_receipt_marker "backend=rg" 2>/dev/null || :
+  if [ -n "$receipt_marker_file" ]; then
+    printf '%s\n' 'backend=rg' >>"$receipt_marker_file" 2>/dev/null || :
+  fi
   set +e
   scan_archive_content rg -a -n --hidden --no-ignore --glob '!**/runtime/*.bin' "$hygiene_pattern" "$extract_root/plugins/codexy-devtools"
   hygiene_status=$?
@@ -149,7 +160,9 @@ if command -v rg >/dev/null 2>&1; then
   local_path_status=$?
   set -e
 else
-  archive_inspection_receipt_marker "backend=grep" 2>/dev/null || :
+  if [ -n "$receipt_marker_file" ]; then
+    printf '%s\n' 'backend=grep' >>"$receipt_marker_file" 2>/dev/null || :
+  fi
   command -v grep >/dev/null 2>&1 || { echo "rg or grep is required" >&2; exit 127; }
   set +e
   scan_archive_content scan_grep_content "$hygiene_pattern"

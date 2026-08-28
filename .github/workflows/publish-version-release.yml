@@ -231,7 +231,7 @@ jobs:
           cp public-runtime.tar.gz public-attested/codexy-runtime-package.tar.gz
           cp public-receipt.json public-attested/runtime-release-receipt.json
           cp public-release-baseline.json public-attested/release-baseline.json
-          scripts/verify-release-attestation-total public-attested/release-baseline.json 1
+          scripts/verify-release-attestation-set public-attested public-baseline-attestation.json baseline
           scripts/verify-release-attestation-set public-attested public-attestations.json
           jq -e --slurpfile baseline public-attested/release-baseline.json --slurpfile attestations public-attestations.json --arg receipt "$(sha256sum public-receipt.json | awk '{print $1}')" --arg signer "$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml" --arg runtimeSigner "$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml" --arg activation "$ACTIVATION_COMMIT" --arg staging "$STAGING_SOURCE_COMMIT" '
             $baseline[0] as $expected | ($expected.releaseReceiptSha256 == $receipt) and

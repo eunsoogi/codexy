@@ -94,38 +94,35 @@ def canonicalize_requested_issue(
 def parse_body_closing_references(
     body: str, repository: str
 ) -> tuple[CanonicalIssueIdentity, ...]:
+    """Parse only the final closing directive; prose is not governing state."""
     default_owner, default_repository = parse_repository(repository)
-    references: list[CanonicalIssueIdentity] = []
-    for match in CLOSING_CANDIDATE_PATTERN.finditer(body):
-        separator = match["separator"]
-        if re.fullmatch(r"(?:\s+|:\s+)", separator) is None:
-            raise ValueError("observed PR body contains a malformed closing reference")
-        token = match["reference"].rstrip(".,")
-        if token.startswith("#"):
-            owner, name, number_text = default_owner, default_repository, token[1:]
-        else:
-            owner_repository, marker, number_text = token.rpartition("#")
-            if not marker:
-                raise ValueError(
-                    "observed PR body contains a malformed closing reference"
-                )
-            try:
-                owner, name = parse_repository(owner_repository)
-            except ValueError as error:
-                raise ValueError(
-                    "observed PR body contains a malformed closing reference"
-                ) from error
-        if (
-            not number_text
-            or not number_text.isascii()
-            or not number_text.isdigit()
-            or number_text.startswith("0")
-        ):
-            raise ValueError("observed PR body contains a malformed closing reference")
-        number = int(number_text)
-        url = f"https://github.com/{owner}/{name}/issues/{number}"
-        references.append(CanonicalIssueIdentity(owner, name, number, url))
-    return tuple(references)
+    lines = [line for line in body.splitlines() if line.strip()]
+    if not lines:
+        return ()
+    match = CLOSING_CANDIDATE_PATTERN.fullmatch(lines[-1])
+    if match is None or re.fullmatch(r"(?:\s+|:\s+)", match["separator"]) is None:
+        return ()
+    token = match["reference"].rstrip(".,")
+    if token.startswith("#"):
+        owner, name, number_text = default_owner, default_repository, token[1:]
+    else:
+        owner_repository, marker, number_text = token.rpartition("#")
+        if not marker:
+            return ()
+        try:
+            owner, name = parse_repository(owner_repository)
+        except ValueError:
+            return ()
+    if (
+        not number_text
+        or not number_text.isascii()
+        or not number_text.isdigit()
+        or number_text.startswith("0")
+    ):
+        return ()
+    number = int(number_text)
+    url = f"https://github.com/{owner}/{name}/issues/{number}"
+    return (CanonicalIssueIdentity(owner, name, number, url),)
 
 
 from version_pr_observed import ObservedVersionPrIdentity
