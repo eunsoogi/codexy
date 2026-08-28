@@ -22,7 +22,8 @@ Before artifact analysis, requests outside this trigger MUST return exactly one
 `HANDOFF_REQUIRED:<reason>` string. Select the first matching reason below:
 
 1. `FACT_CHECK` for checking a claim or fact.
-2. `CORRECTNESS_VERDICT` for correctness, completion, quality, review, or approval.
+2. `CORRECTNESS_VERDICT` for correctness, completion, quality, review, or
+   approval.
 3. `MUTATION` for editing, rewriting, or otherwise changing the artifact.
 4. `REFRESH` for updating the artifact against another source.
 5. `AUTHOR_INTERVIEW` for recovering what the author meant.
@@ -43,8 +44,8 @@ Before artifact analysis, requests outside this trigger MUST return exactly one
    operation, job, error, file, or flow.
 4. Record a reference only when the named audience needs its missing value,
    source, definition, schema, command, guide, or diagram to perform the action.
-   A complete identifier, filename, command, endpoint, setting, or job number
-   is not unresolved merely because it is named.
+   A complete identifier, filename, command, endpoint, setting, or job number is
+   not unresolved merely because it is named.
 5. Record the corresponding action blocker as the smallest literal description
    of what is missing, unresolved, or unavailable. Preserve first appearance
    order and remove duplicates.
