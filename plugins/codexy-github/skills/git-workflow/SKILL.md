@@ -5,9 +5,10 @@ description: Use for GitHub issue, branch, worktree, pull request, review, merge
 
 # Git Workflow
 
-Use this skill with `$orchestration`. Repository instructions, user direction,
-and the live GitHub issue or PR define local scope; this skill owns only
-GitHub-specific authenticated admission and lifecycle boundaries.
+MUST use this skill with `$orchestration` before any GitHub workflow action.
+Repository instructions, user direction, and the live GitHub issue or PR define
+local scope; this skill owns only GitHub-specific authenticated admission and
+lifecycle boundaries.
 
 ## Read The Matching Reference
 
@@ -52,10 +53,13 @@ does not authorize merge.
 
 ## GitHub And Local Tools
 
-Use authenticated GitHub connector reads for issue, PR, review, thread, branch,
-commit, and status evidence. Use local `git` for worktree state, diffs, staging,
-commits, and ordinary pushes. A required unavailable surface MUST fail closed;
-local prose, fixtures, or mocks are not substitutes for live GitHub evidence.
+Prefer authenticated GitHub connector reads for issue, PR, review, thread,
+branch, commit, and status evidence. When the optional connector is unavailable,
+MUST use authenticated `gh` reads for the same read-only evidence. Use local
+`git` for worktree state, diffs, staging, commits, and ordinary pushes. A
+required read surface unavailable through both connector and `gh` MUST fail
+closed; local prose, fixtures, or mocks are not substitutes for live GitHub
+evidence.
 
 Before push or PR readiness, MUST run verification for every touched surface,
 `git diff --check`, clean-scope status/diff inspection, the repository's public
