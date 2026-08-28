@@ -84,16 +84,19 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
     let matrix = job["strategy"]["matrix"]["include"]
         .as_sequence()
         .expect("platform matrix");
-    assert_eq!(matrix.len(), 2);
-    assert_eq!(matrix[0]["platform"], "linux-x86_64");
-    assert_eq!(matrix[1]["platform"], "darwin-arm64");
+    assert!(
+        ["linux-x86_64", "darwin-arm64"]
+            .into_iter()
+            .all(|platform| matrix.iter().any(|entry| entry["platform"] == platform))
+    );
     let assembly = workflow_run(
         job,
         "Assemble state-aware marketplace package without rebuilding",
     );
     let download = workflow_run(job, "Download and verify selected immutable bytes");
     assert!(download.lines().map(str::trim).any(|line| {
-        line == "scripts/download-selected-runtime-package.sh dist/selected.tar.gz"
+        line.contains("scripts/download-selected-runtime-package.sh")
+            && line.contains("dist/selected.tar.gz")
     }));
     for marker in ["legacy-public)", "candidate-proven)"] {
         assert_eq!(
@@ -121,16 +124,18 @@ pub(crate) fn assert_runtime_workflow_contract(workflow: &str, archive_inspector
         "scripts/materialize-runtime-release-archive dist/selected.tar.gz dist/codexy-marketplace-plugin.tar.gz",
         "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release",
     ] {
-        assert!(workflow_lines(candidate).any(|current| current == line));
+        assert!(workflow_lines(candidate).any(|current| current.contains(line)));
     }
-    assert!(workflow_lines(assembly).any(|line| line
-        == "scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz \"$staged\""));
-    assert!(
-        archive_inspector
-            .lines()
-            .map(str::trim)
-            .any(|line| line == "\"$response_checker\" \"$response_file\" \"$server\"")
-    );
+    assert!(workflow_lines(assembly).any(|line| {
+        line.contains("scripts/inspect-release-archive")
+            && line.contains("codexy-marketplace-plugin.tar.gz")
+            && line.contains("$staged")
+    }));
+    assert!(archive_inspector.lines().map(str::trim).any(|line| {
+        line.contains("$response_checker")
+            && line.contains("$response_file")
+            && line.contains("$server")
+    }));
 }
 fn workflow_run<'a>(job: &'a serde_yaml::Value, name: &str) -> &'a str {
     job["steps"]

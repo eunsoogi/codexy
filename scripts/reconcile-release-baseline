@@ -40,7 +40,7 @@ if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.js
   existing_baseline="$(mktemp -d)"
   existing_baseline_release="$(mktemp -d)"
   download_release_asset "$existing_baseline" release-baseline.json
-  scripts/verify-release-attestation-total "$existing_baseline/release-baseline.json" 1
+  scripts/verify-release-attestation-set "$existing_baseline" existing-baseline-attestation.json baseline
   for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
     download_release_asset "$existing_baseline_release" "$name"
   done

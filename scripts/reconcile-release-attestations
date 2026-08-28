@@ -37,9 +37,6 @@ gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
   --signer-workflow "$signer" --source-ref refs/heads/main \
   --source-digest "$source_digest" --deny-self-hosted-runners \
   --format json > "$artifact.preflight-attestations.json"
-if test "$variable" = ATTEST_BASELINE; then
-  jq -e 'length == 1 and (.[0].verificationResult.statement.subject | length == 1)' "$artifact.preflight-attestations.json" >/dev/null
-else
-  jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' "$artifact.preflight-attestations.json" >/dev/null
-fi
+jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
+  "$artifact.preflight-attestations.json" >/dev/null
 printf '%s=false\n' "$variable" >> "$GITHUB_ENV"

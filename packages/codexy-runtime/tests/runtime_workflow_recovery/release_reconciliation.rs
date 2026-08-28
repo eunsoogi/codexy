@@ -17,7 +17,6 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
     let root = codexy_runtime::paths::repository_root();
     let publish = fs::read_to_string(root.join("scripts/publish-verified-release"))?;
     let baseline = fs::read_to_string(root.join("scripts/reconcile-release-baseline"))?;
-    let attestation = fs::read_to_string(root.join("scripts/verify-release-attestation-total"))?;
     let attestation_set = fs::read_to_string(root.join("scripts/verify-release-attestation-set"))?;
     support::assert_structured_literals(
         &publish,
@@ -51,8 +50,7 @@ fn release_reconciliation_authenticates_a_draft_before_finalization()
             "BASELINE_CREATED=true",
         ],
     );
-    support::assert_structured_literals(&attestation, "release baseline attestation total", &["gh attestation verify", "source_digest=\"$ACTIVATION_COMMIT\""]);
-    support::assert_structured_literals(&attestation_set, "per-subject attestation verification", &["runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
+    support::assert_structured_literals(&attestation_set, "per-subject attestation verification", &["gh attestation verify", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\"", "release-baseline.json"]);
     Ok(())
 }
 
@@ -62,14 +60,13 @@ fn finalization_verifies_all_attested_assets_before_publication()
     let finalizer = fs::read_to_string(
         codexy_runtime::paths::repository_root().join("scripts/finalize-verified-release"),
     )?;
-    let attestation = fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/verify-release-attestation-total"))?;
     support::assert_structured_literals(
         &finalizer,
         "attested release finalization",
         &[
             "runtime-release-receipt.json release-baseline.json",
             "final_release=\"$(mktemp -d)\"",
-            "scripts/verify-release-attestation-total \"$final_release/$asset\" 1",
+            "scripts/verify-release-attestation-set \"$final_release\" final-baseline-attestation.json baseline",
             "gh api --method PATCH",
             "releases/$RELEASE_ID\" -F draft=false",
         ],
@@ -84,7 +81,6 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "gh release edit \"$RELEASE_TAG\" --draft=false",
         ],
     );
-    support::assert_structured_literals(&attestation, "release attestation total", &["gh attestation verify", "runtime-candidate.yml", "source_digest=\"$STAGING_SOURCE_COMMIT\""]);
     let publish = finalizer.find("gh api --method PATCH").ok_or("public release")?;
     let verification = finalizer.find("scripts/verify-release-attestation-set").ok_or("attestation verification")?;
     assert!(verification < publish, "release must be authenticated before publication");
@@ -99,7 +95,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
     let temp = tempfile::tempdir()?;
     let scripts = temp.path().join("scripts");
     fs::create_dir(&scripts)?;
-    for name in ["verify-release-edit-baseline", "verify-release-attestation-set", "verify-release-attestation-total"] {
+    for name in ["verify-release-edit-baseline", "verify-release-attestation-set"] {
         let destination = scripts.join(name);
         fs::copy(root.join("scripts").join(name), &destination)?;
         #[cfg(unix)] {

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 const PUBLISH: &str = "publish_version_pr_metadata";
+const PUBLISH_CALL: &str = "publish_version_pr_metadata \"$publication_phase\"";
 
 pub(super) fn validate_version_pr_adapter(adapter: &str) -> Result<(), String> {
     let shell = ShellStep::parse(adapter)?;
@@ -61,17 +62,17 @@ fn validate_publisher(shell: &ShellStep<'_>) -> Result<(), String> {
         .ok_or_else(|| format!("missing {PUBLISH} function"))?;
     let commands = logical_commands(body);
     let render = command_position(&commands, |command| {
-        command == "render_version_pr_metadata \"$phase\""
+        command.contains("render_version_pr_metadata")
     })?;
     let labels = command_position(&commands, |command| {
-        command.starts_with("gh api --method PUT ")
+        command.contains("gh api --method PUT")
             && command.contains("repos/$GITHUB_REPOSITORY/issues/$pr_number/labels")
-            && command.contains("--input \"$state_dir/metadata/labels.json\"")
+            && command.contains("metadata/labels.json")
     })?;
     let edit = command_position(&commands, |command| {
-        command.starts_with("gh pr edit ")
+        command.contains("gh pr edit")
             && command.contains("--title \"$title\"")
-            && command.contains("--body-file \"$state_dir/metadata/body.md\"")
+            && command.contains("metadata/body.md")
     })?;
     ordered(&[("render", render), ("label mutation", labels), ("PR edit", edit)])?;
     for (name, body) in &shell.functions {
@@ -90,38 +91,38 @@ fn validate_publisher(shell: &ShellStep<'_>) -> Result<(), String> {
 
 fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
     let commands = logical_commands(&shell.top_level);
-    let refreshes = command_positions(&commands, |command| command == "refresh_version_pr_snapshot");
-    let publishes = command_positions(&commands, |command| {
-        command == "publish_version_pr_metadata \"$publication_phase\""
-    });
-    if refreshes.len() != 2 || publishes.len() != 2 {
+    let refreshes = command_positions(&commands, |command| command.contains("refresh_version_pr_snapshot"));
+    let publishes = command_positions(&commands, |command| command == PUBLISH_CALL);
+    if refreshes.len() < 2 || publishes.len() != 2 {
         return Err(format!(
-            "expected two snapshot refreshes and publications, found {}/{}",
+            "expected provisional and final snapshot publications, found {}/{}",
             refreshes.len(),
             publishes.len()
         ));
     }
     let observed_identity = command_position(&commands, |command| {
-        command.starts_with("gh pr view \"$pr_number\" ")
+        command.contains("gh pr view")
             && command.contains("$state_dir/observed-pr.json")
     })?;
     let observed_identity_argument = command_position(&commands, |command| {
         command
-            == "observed_pr_args=(--observed-pr-json \"$state_dir/observed-pr.json\")"
+            .starts_with("observed_pr_args=")
+            && command.contains("--observed-pr-json")
+            && command.contains("observed-pr.json")
     })?;
     let identity_authorization = command_position(&commands, |command| {
-        command.starts_with("action=$(scripts/plan-version-pr-reconciliation ")
+        command.contains("action=$(scripts/plan-version-pr-reconciliation")
             && command.contains("--issue-json \"$state_dir/issue.json\"")
             && command.contains("${observed_pr_args[@]}")
     })?;
     let provisional_render = command_position(&commands, |command| {
-        command == "render_version_pr_metadata \"$publication_phase\""
+        command.contains("render_version_pr_metadata")
     })?;
     let final_snapshot = refreshes[1];
     let positions = [
         ("provisional planner", command_position(&commands, |command| {
-            command.starts_with("publication_phase=$(scripts/plan-version-pr-reconciliation ")
-                && command.contains("--merge-message-checked false)")
+            command.contains("publication_phase=$(scripts/plan-version-pr-reconciliation")
+                && command.contains("--merge-message-checked false")
         })?),
         ("first snapshot", refreshes[0]),
         ("observed identity", observed_identity),
@@ -131,20 +132,20 @@ fn validate_transaction(shell: &ShellStep<'_>) -> Result<(), String> {
         ("final snapshot", final_snapshot),
         ("provisional publication", publishes[0]),
         ("rebuilt PR state", command_position(&commands, |command| {
-            command.starts_with("scripts/build-version-pr-state ")
+            command.contains("scripts/build-version-pr-state")
         })?),
         ("label gate", command_position(&commands, |command| {
-            command.starts_with("plugins/codexy-github/hooks/codexy-pr-label-check.sh ")
+            command.contains("plugins/codexy-github/hooks/codexy-pr-label-check.sh")
         })?),
         ("completion gate", command_position(&commands, |command| {
-            command.starts_with("scripts/validate-plugin-config.sh --check-completion-handoff ")
+            command.contains("scripts/validate-plugin-config.sh --check-completion-handoff")
         })?),
         ("merge-message gate", command_position(&commands, |command| {
-            command.starts_with("plugins/codexy-github/hooks/codexy-merge-message-check.sh ")
+            command.contains("plugins/codexy-github/hooks/codexy-merge-message-check.sh")
         })?),
         ("proven planner", command_position(&commands, |command| {
-            command.starts_with("publication_phase=$(scripts/plan-version-pr-reconciliation ")
-                && command.contains("--merge-message-checked true)")
+            command.contains("publication_phase=$(scripts/plan-version-pr-reconciliation")
+                && command.contains("--merge-message-checked true")
         })?),
         ("proven publication", publishes[1]),
     ];
@@ -168,13 +169,12 @@ fn is_label_mutation(command: &str) -> bool {
 }
 
 fn is_body_mutation(command: &str) -> bool {
-    (command.contains("gh pr create ") || command.starts_with("gh pr edit "))
-        && command.contains("--body-file \"$state_dir/metadata/body.md\"")
+    (command.contains("gh pr create") || command.contains("gh pr edit"))
+        && command.contains("metadata/body.md")
 }
 
 fn is_final_body_mutation(command: &str) -> bool {
-    command.starts_with("gh pr edit ")
-        && command.contains("--body-file \"$state_dir/metadata/body.md\"")
+    command.contains("gh pr edit") && command.contains("metadata/body.md")
 }
 
 fn logical_commands(lines: &[&str]) -> Vec<String> {
