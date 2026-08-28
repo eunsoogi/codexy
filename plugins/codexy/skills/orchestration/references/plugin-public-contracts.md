@@ -1,14 +1,11 @@
 # Public extension contracts
 
-Installed extensions invoke these contracts by asking the host-discovered
-`$orchestration` skill by name. They MUST NOT derive a core filesystem path or
-run a private core script.
+- `issue-intake receipt`: validate the canonical receipt and require parent
+  approval before issue mutation; unsupported observations remain handoff-only.
+- `child-lane-ownership`: verify the named child owns its issue-sized
+  branch/worktree lane before accepting implementation evidence.
+- `completion-handoff`: require current PR, review-thread, head, local/remote,
+  label, and active-project handoff evidence before a terminal claim.
 
-| Contract               | Required effect                                                                                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issue-intake receipt` | Validate the canonical receipt, require parent approval before an issue mutation, and retain unsupported observations as handoff-only.                  |
-| `child-lane-ownership` | Validate that the named child owns its issue-sized branch/worktree lane before accepting implementation evidence.                                       |
-| `completion-handoff`   | Require captured PR state, review-thread evidence when applicable, and the active project's public completion-handoff contract before a terminal claim. |
-
-The extension supplies its domain-specific captured data; `$orchestration`
-applies these public coordination rules in the active host task.
+Extensions MUST invoke these named contracts and MUST NOT derive private core
+paths or substitute missing proof.

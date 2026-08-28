@@ -173,7 +173,6 @@
     ],
     "task_reference_routes": {
       "orchestration/lane setup": [
-        "workflow_profiles",
         "task_classification",
         "tdd_classification_policy",
         "child_routing",
@@ -188,9 +187,7 @@
         "proof_completion"
       ],
       "review response": [
-        "workflow_profiles",
         "task_classification",
-        "tdd_classification_policy",
         "review_profiles",
         "review_lifecycle",
         "proof_completion",
@@ -209,6 +206,7 @@
         "workflow_profiles",
         "task_classification",
         "tdd_classification_policy",
+        "execution_budget",
         "review_profiles",
         "proof_completion"
       ],
@@ -240,7 +238,7 @@
         "child_routing",
         "public_extension_contracts"
       ],
-      "other": ["workflow_profiles", "task_classification", "tdd_classification_policy", "child_routing"]
+      "other": ["child_routing"]
     },
     "surface_names": [
       "repository engineering",
@@ -253,15 +251,9 @@
     ],
     "surface_reference_routes": {
       "repository engineering": [
-        "workflow_profiles",
-        "task_classification",
-        "tdd_classification_policy",
-        "execution_budget",
         "proof_completion"
       ],
       "GitHub": [
-        "workflow_profiles",
-        "task_classification",
         "review_profiles",
         "review_lifecycle",
         "proof_completion",
@@ -270,8 +262,8 @@
       "browser/desktop": ["workflow_profiles", "task_classification", "proof_completion"],
       "documents/artifacts": ["workflow_profiles", "task_classification", "proof_completion"],
       "spreadsheets/data": ["workflow_profiles", "task_classification", "proof_completion"],
-      "research/wiki": ["workflow_profiles", "task_classification", "dreaming", "proof_completion"],
-      "read-only/local": ["workflow_profiles", "task_classification"]
+      "research/wiki": ["dreaming"],
+      "read-only/local": ["task_classification"]
     },
     "surface_non_applicable_fields": {
       "repository engineering": [],
@@ -324,8 +316,6 @@
       "permission": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
       "destructive": ["workflow_profiles", "task_classification", "child_routing", "proof_completion"],
       "external_mutation": [
-        "workflow_profiles",
-        "task_classification",
         "child_routing",
         "proof_completion",
         "public_extension_contracts"
