@@ -15,9 +15,10 @@ from unittest.mock import patch
 from codexy_runtime_tools.component_cli import main
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from packages.getcodexy.tests.component_cli_basic_cases import ComponentCliBasicCases
+from packages.getcodexy.tests.capability_probe_cases import CapabilityCliCases
 
 
-class ComponentCliTests(ComponentCliBasicCases, unittest.TestCase):
+class ComponentCliTests(CapabilityCliCases, ComponentCliBasicCases, unittest.TestCase):
     def test_bootstrap_json_host_failure_emits_one_closed_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output, errors = io.StringIO(), io.StringIO()

@@ -6,6 +6,12 @@ import json
 import os
 from pathlib import Path
 
+from .component_capability_probe import (
+    FAILURES,
+    identity_matches as _identity_matches,
+    probe_component as _probe_component,
+    probe_reason as _probe_reason,
+)
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
 from .component_resolver import ComponentResolutionError, compare_versions
@@ -16,6 +22,7 @@ SURFACE_PATHS = {
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
     "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
 }
+AUTHORITY_KEYS = ("authority", "artifact_authority", "artifactAuthority")
 
 
 def health(
@@ -25,118 +32,102 @@ def health(
     records: dict[str, dict[str, object]],
     admission_error: str | None,
     host_error: bool,
-) -> list[dict[str, str]]:
-    expected, result = set(recorded or ()) | set(actual), []
-    for component in manifest.component_ids:
-        if component not in expected:
-            continue
-        record = records.get(component)
-        if admission_error or host_error:
-            result.append(entry(component, "incompatible"))
-        elif component not in actual:
-            result.append(entry(component, "missing"))
-        elif version_relation(manifest, record) < 0:
-            result.append(entry(component, "stale"))
-        elif version_relation(manifest, record) > 0 or corrupt(
-            manifest, component, record
-        ):
-            result.append(entry(component, "incompatible"))
-        elif stale(manifest, component, record):
-            result.append(entry(component, "stale"))
-        elif not set(manifest.component(component).dependencies).issubset(actual):
-            result.append(entry(component, "incompatible"))
-        else:
-            result.append({"component": component, "state": "healthy"})
+) -> list[dict[str, object]]:
+    expected = set(recorded or ()) | set(actual)
+    return [
+        _component_health(
+            manifest, component, actual, records, admission_error, host_error
+        )
+        for component in manifest.component_ids
+        if component in expected
+    ]
+
+
+def _component_health(
+    manifest, component, actual, records, admission_error, host_error
+):
+    record = records.get(component)
+    installed = component in actual
+    plugin = _plugin_root(record)
+    configured = bool(
+        installed
+        and plugin
+        and manifest_is_valid(
+            plugin, manifest.component(component).plugin, record_version(record)
+        )
+        and valid_registration(plugin, component)
+    )
+    result = dict(
+        component=component,
+        state=_legacy_state(
+            manifest, component, actual, records, admission_error, host_error
+        ),
+        installed=installed,
+        configured=configured,
+        started=False,
+        callable=False,
+        healthy=False,
+        first_failure_stage=None,
+        reason_code=None,
+        safe_fallback=None,
+        restart_required=False,
+        observed=_observed(record),
+    )
+    checks = (
+        (admission_error or host_error, "installed", "trusted-inventory-unavailable"),
+        (not installed, "installed", "component-not-installed"),
+        (not configured, "configured", "component-not-configured"),
+    )
+    for failed, stage, reason in checks:
+        if failed:
+            return _mark(result, stage, reason)
+    probe = _probe_component(component, plugin, record)
+    result["started"], result["callable"] = (
+        bool(probe.get("started")),
+        bool(probe.get("callable")),
+    )
+    result["observed"]["runtime"] = {
+        "name": probe.get("runtime_name"),
+        "version": probe.get("runtime_version"),
+    }
+    for ready, stage, default in (
+        (result["started"], "started", "component-start-failed"),
+        (result["callable"], "callable", "capability-call-failed"),
+    ):
+        if not ready:
+            return _mark(result, stage, _probe_reason(probe, default))
+    if (
+        not _identity_matches(manifest, component, record, probe)
+        or version_relation(manifest, record) != 0
+    ):
+        return _mark(result, "identity", "runtime-identity-mismatch")
+    if not _authority_valid(record):
+        return _mark(result, "authority", "artifact-authority-invalid")
+    result["healthy"] = True
     return result
 
 
-def entry(component: str, state: str) -> dict[str, str]:
-    repair = (
-        "getcodexy bootstrap"
-        if state in {"missing", "stale"}
-        else "repair the Codexy registration, then rerun getcodexy doctor"
-    )
-    return {"component": component, "state": state, "repair": repair}
-
-
-def version_relation(
-    manifest: ComponentManifest, record: dict[str, object] | None
-) -> int:
-    version = record.get("version") if record else None
-    try:
-        return (
-            compare_versions(version, manifest.version)
-            if isinstance(version, str)
-            else 1
-        )
-    except ComponentResolutionError:
-        return 1
-
-
-def stale(
-    manifest: ComponentManifest, component: str, record: dict[str, object] | None
-) -> bool:
-    source = record.get("source") if record else None
-    root = source.get("path") if isinstance(source, dict) else None
-    if not isinstance(root, str) or not Path(root).is_absolute():
-        return True
-    plugin = Path(root)
-    required = (
-        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
-    )
-    if any(not regular(plugin / path) for path in required):
-        return True
+def _legacy_state(manifest, component, actual, records, admission_error, host_error):
+    record = records.get(component)
+    if admission_error or host_error:
+        return "incompatible"
+    if component not in actual:
+        return "missing"
+    relation = version_relation(manifest, record)
+    if relation != 0:
+        return "stale" if relation < 0 else "incompatible"
+    plugin = _plugin_root(record)
+    if plugin is None or not _required_files(manifest, component, plugin):
+        return "stale"
+    if not manifest_is_valid(
+        plugin, manifest.component(component).plugin, record_version(record)
+    ) or not valid_registration(plugin, component):
+        return "incompatible"
     if component == "devtools" and not os.access(
         plugin / "mcp/codexy-mcp-devtools", os.X_OK
     ):
-        return True
-    return has_legacy_core_monolith(plugin, component)
-
-
-def corrupt(
-    manifest: ComponentManifest, component: str, record: dict[str, object] | None
-) -> bool:
-    source = record.get("source") if record else None
-    root = source.get("path") if isinstance(source, dict) else None
-    if not isinstance(root, str) or not Path(root).is_absolute():
-        return False
-    plugin = Path(root)
-    required = (
-        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
-    )
-    return all(regular(plugin / path) for path in required) and (
-        not manifest_is_valid(
-            plugin, manifest.component(component).plugin, record_version(record)
-        )
-        or not valid_registration(plugin, component)
-    )
-
-
-def record_version(record: dict[str, object] | None) -> str | None:
-    version = record.get("version") if record else None
-    return version if isinstance(version, str) else None
-
-
-def regular(path: Path) -> bool:
-    try:
-        return path.is_file() and not path.is_symlink()
-    except OSError:
-        return False
-
-
-def manifest_is_valid(plugin: Path, name: str, version: str | None) -> bool:
-    value = json_value(plugin / ".codex-plugin/plugin.json")
-    return (
-        isinstance(value, dict)
-        and value.get("name") == name
-        and value.get("repository") == "https://github.com/eunsoogi/codexy"
-        and version is not None
-        and value.get("version") == version
-    )
-
-
-def has_legacy_core_monolith(plugin: Path, component: str) -> bool:
-    return component == "core" and any(
+        return "stale"
+    if component == "core" and any(
         os.path.lexists(plugin / path)
         for path in (
             ".mcp.json",
@@ -145,12 +136,91 @@ def has_legacy_core_monolith(plugin: Path, component: str) -> bool:
             "mcp",
             "runtime-release.json",
         )
+    ):
+        return "stale"
+    if not set(manifest.component(component).dependencies).issubset(actual):
+        return "incompatible"
+    return "healthy"
+
+
+def _mark(result: dict[str, object], stage: str, reason: str) -> dict[str, object]:
+    fallback, restart = FAILURES[reason]
+    result.update(
+        first_failure_stage=stage,
+        reason_code=reason,
+        safe_fallback=fallback,
+        restart_required=restart,
+        repair=fallback,
+    )
+    if stage in {"started", "callable", "authority"} or (
+        stage == "identity" and result["state"] == "healthy"
+    ):
+        result["state"] = "incompatible"
+    return result
+
+
+def _required_files(manifest, component, plugin):
+    paths = (
+        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
+    )
+    return all(
+        (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths
     )
 
 
-def json_value(path: Path) -> object | None:
+def _plugin_root(record):
+    source = (record or {}).get("source")
+    value = source.get("path") if isinstance(source, dict) else None
+    return Path(value) if isinstance(value, str) and Path(value).is_absolute() else None
+
+
+def _observed(record):
+    return dict(
+        plugin=dict(name=(record or {}).get("name"), version=record_version(record)),
+        runtime=dict(name=None, version=None),
+    )
+
+
+def _authority_valid(record):
+    if not record:
+        return False
+    key = next((key for key in AUTHORITY_KEYS if key in record), None)
+    if key is None:
+        return record.get("marketplaceSource") == {
+            "sourceType": "git",
+            "source": "https://github.com/eunsoogi/codexy.git",
+        }
+    authority = record[key]
+    return isinstance(authority, dict) and authority.get("state") in {
+        "valid",
+        "attested",
+    }
+
+
+def version_relation(manifest, record):
     try:
-        with path.open("r", encoding="utf-8") as source:
-            return json.load(source)
+        return compare_versions(record_version(record), manifest.version)
+    except ComponentResolutionError:
+        return 1
+
+
+def record_version(record):
+    value = record.get("version") if record else None
+    return value if isinstance(value, str) else None
+
+
+def manifest_is_valid(plugin, name, version):
+    value = json_value(plugin / ".codex-plugin/plugin.json")
+    return (
+        version is not None
+        and isinstance(value, dict)
+        and (value.get("name"), value.get("repository"), value.get("version"))
+        == (name, "https://github.com/eunsoogi/codexy", version)
+    )
+
+
+def json_value(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
         return None

@@ -1,39 +1,34 @@
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
+import importlib
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from component_lifecycle_support import fixture
-from component_inspection_host_cases import ComponentInspectionHostCases
+
+_lifecycle_support = importlib.import_module(
+    "packages.getcodexy.tests.component_lifecycle_support"
+)
+sys.modules.setdefault("component_lifecycle_support", _lifecycle_support)
+fixture = _lifecycle_support.fixture
+_host_cases = importlib.import_module(
+    "packages.getcodexy.tests.component_inspection_host_cases"
+)
+ComponentInspectionHostCases = _host_cases.ComponentInspectionHostCases
+_probe_cases = importlib.import_module(
+    "packages.getcodexy.tests.capability_probe_cases"
+)
+CapabilityProbeCases = _probe_cases.CapabilityProbeCases
+materialize = _probe_cases.materialize
 
 
-def materialize(
-    state: fixture, *components: str, version: str = load_component_manifest().version
-) -> None:
-    plugins = {
-        "core": "codexy",
-        "github": "codexy-github",
-        "devtools": "codexy-devtools",
-    }
-    repository = Path(__file__).resolve().parents[3]
-    for component in components:
-        root = state.marketplace / "plugins" / plugins[component]
-        if root.exists():
-            continue
-        shutil.copytree(repository / "plugins" / plugins[component], root)
-        manifest = root / ".codex-plugin/plugin.json"
-        contents = json.loads(manifest.read_text(encoding="utf-8"))
-        contents["version"] = version
-        manifest.write_text(json.dumps(contents), encoding="utf-8")
-
-
-class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
+class ComponentInspectionTests(
+    CapabilityProbeCases, ComponentInspectionHostCases, unittest.TestCase
+):
     def test_status_reports_each_actual_compatible_selection_in_canonical_order(
         self,
     ) -> None:
@@ -79,12 +74,9 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
     def test_doctor_reports_healthy_missing_stale_and_incompatible_states(self) -> None:
         with self.subTest("healthy"), fixture({"core"}) as state:
             materialize(state, "core")
-            self.assertEqual(
-                doctor(state.home, codex=state.codex, runner=state.run)[
-                    "component_health"
-                ],
-                [{"component": "core", "state": "healthy"}],
-            )
+            result = doctor(state.home, codex=state.codex, runner=state.run)
+            self.assertEqual(result["component_health"][0]["state"], "healthy")
+            self.assertTrue(result["component_health"][0]["healthy"])
         with (
             self.subTest("stale"),
             fixture({"core"}, versions={"core": "1.2.0"}) as state,
@@ -242,6 +234,16 @@ class ComponentInspectionTests(ComponentInspectionHostCases, unittest.TestCase):
                     agents.symlink_to(target, target_is_directory=True)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
+
+    def test_mcp_client_version_follows_package_authority(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+
+        version_lock = importlib.import_module("codexy_runtime_tools.version_lock")
+        self.addCleanup(importlib.reload, probe)
+        with patch.object(version_lock, "default_package_version") as version:
+            version.return_value = "9.9.9"
+            importlib.reload(probe)
+            self.assertEqual(probe._INITIALIZE_PARAMS["clientInfo"]["version"], "9.9.9")
 
 
 if __name__ == "__main__":
