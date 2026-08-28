@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_actions::{action_is_passive, setup_action_at};
 use super::child_lane_classification_setup_actor::{
     SetupActor, agents_fail_closed, explicit_subject,

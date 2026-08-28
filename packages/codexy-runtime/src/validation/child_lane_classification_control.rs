@@ -1,4 +1,6 @@
-use super::child_lane_classification_setup::formal_child_classification_complete_index_before;
+#![allow(dead_code)]
+
+use super::child_lane_classification_setup::formal_classification_complete_index_before;
 use super::child_lane_classification_setup_context::prior_child_lane_context_applies;
 use super::child_terminal_handoff::without_metadata_prefix;
 
@@ -7,9 +9,9 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
     if lines.iter().enumerate().any(|(index, line)| {
         is_control_call(line)
             && prior_child_lane_context_applies(&lines, index)
-            && formal_child_classification_complete_index_before(&lines, index).is_none()
+            && formal_classification_complete_index_before(&lines, index).is_none()
     }) {
-        return vec!["child-owned lane control evidence includes create_goal or update_plan before formal $orchestration evidence completed".to_owned()];
+        return vec!["child control requires direct lane classification metadata".to_owned()];
     }
     Vec::new()
 }
