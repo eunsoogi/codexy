@@ -161,57 +161,6 @@ and fill only the current slots. MUST keep the template output in the thread or
 handoff; MUST NOT attach old logs or unchanged review bodies unless a current
 gate points to them.
 
-## Metadata-Only Session Audit
-
-When the installed package exposes a metadata-only audit entrypoint, MUST use
-that package-owned entrypoint with `<metadata-jsonl>` for bounded aggregate
-evidence. An installed skill MUST NOT resolve audit commands from the active
-project or current working directory; when no packaged runtime is exposed, it
-MUST record the audit as unavailable and use the explicit metadata receipt. The
-audit MUST report session size, latest cumulative tokens, recent per-turn
-average, call counts by tool, and output bytes by tool. It MUST read only exact
-top-level metadata keys, reject invalid ids or tool keys, deduplicate the stable
-event identity, and MUST NOT emit prompts, tool arguments, tool bodies, or
-nested metadata. For string output, `output_bytes` is decoded UTF-8 byte length;
-for arrays, objects, and scalars it is compact JSON UTF-8 serialization length,
-not the source JSONL/wire length or Unicode character count. The audit MUST
-accept one session only, bind a tool name to its first valid
-`(session, call-kind, call-id)`, count the first matching output once, reject
-conflicting bindings, and ignore orphan outputs.
-
-MUST capture before/after aggregate output for one real lane using a comparable
-window and owner boundary. MUST use
-[the session-audit proof receipt](../templates/session-audit-proof-receipt.json)
-as the metadata-only receipt: it MUST include review feedback, child age,
-retries per PR, stable event ids, goal/plan receipts, helper ownership,
-sanitized audit input digest, and command exits. The comparison MUST report
-observations only; it MUST NOT claim a causal driver without a controlled
-comparison. Historical text, negated feedback, and stale-head events MUST NOT
-count as current review activity.
-
-Before attributing runtime behavior, MUST establish installed content
-equivalence, not just a matching version. MUST read the candidate manifest
-version, MUST run `codex plugin add codexy@codexy` to update the configured
-marketplace install, then compare the manifest and every changed packaged
-skill/template by SHA-256 or `cmp`. MUST record `codex plugin list` output, the
-installed cache root, changed-file digests, and the metadata-only before/after
-audit. If an explicitly packaged runtime command is absent or differs, MUST
-record it as an install failure and MUST NOT attribute the candidate behavior to
-the installed plugin.
-
-### Efficiency Scorecard
-
-MUST run the package-owned metadata audit with `<scorecard-json>`; the closed
-artifacts are the three `efficiency-scorecard*.json` references.
-
-Comparisons MUST bind a safe optimization set, model, effort, task class, typed
-owner, phase, and equal window. Wait and tool-output phases MUST stay distinct.
-Unavailable measures MUST stay `null`; available capabilities MAY be null per
-row. Observable evidence MUST bind installed runs, cover every optimization, and
-satisfy every threshold. Scorecards MUST NOT contain prompts, tool arguments,
-secrets, or private metadata. The packaged schema keeps every acceptance floor
-closed; #606 owns each final adoption decision.
-
 ## Compaction Budget
 
 After compaction, rebuild only the working set:

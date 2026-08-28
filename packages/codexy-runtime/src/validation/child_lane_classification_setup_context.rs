@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_authority::{
     AuthorityRecordAction, lane_authority_record_state_before,
 };

@@ -81,6 +81,61 @@ fn validator_cli_accepts_files_at_exact_loc_target() -> Result<(), Box<dyn std::
     Ok(())
 }
 
+#[test]
+fn completion_handoff_consumes_canonical_loc_result_without_parsing_prose()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = crate::support::validator_completion_handoff(
+        "Touched LOC gate passed with the revised diagnostic wording.",
+        r#"{"number":360,"state":"CLOSED","mergeStateStatus":"CLEAN","isDraft":false,"headRefOid":"0123456789012345678901234567890123456789"}"#,
+    )?;
+    assert!(
+        output.status.success(),
+        "completion handoff rejected canonical result:\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
+fn removed_audit_products_are_absent_from_package_and_cli_surfaces()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let metadata = Command::new("cargo")
+        .args([
+            "metadata",
+            "--locked",
+            "--no-deps",
+            "--format-version",
+            "1",
+            "--manifest-path",
+            "packages/codexy-runtime/Cargo.toml",
+        ])
+        .current_dir(&root)
+        .output()?;
+    assert!(metadata.status.success(), "cargo metadata failed");
+    assert!(!String::from_utf8_lossy(&metadata.stdout).contains("codexy-session-audit"));
+
+    for path in [
+        "packages/codexy-runtime/src/bin/codexy-session-audit.rs",
+        "packages/codexy-runtime/tests/fixtures/session-audit",
+        "plugins/codexy/skills/orchestration/references/read-batch.schema.json",
+        "plugins/codexy/skills/orchestration/templates/read-batch-plan.json",
+        "plugins/codexy/skills/orchestration/templates/session-audit-proof-receipt.json",
+        "scripts/session-audit",
+    ] {
+        assert!(!root.join(path).exists(), "removed surface remains: {path}");
+    }
+
+    let help = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+        .arg("--help")
+        .output()?;
+    assert!(help.status.success());
+    let help = String::from_utf8_lossy(&help.stdout).to_ascii_lowercase();
+    assert!(!help.contains("session-audit"));
+    assert!(!help.contains("read-batch"));
+    Ok(())
+}
+
 fn touched_loc_fixture(
     with_exception: bool,
 ) -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {

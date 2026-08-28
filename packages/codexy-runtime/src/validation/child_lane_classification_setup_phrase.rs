@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub(super) fn is_adjunct_preposition(word: &str) -> bool {
     matches!(
         word,

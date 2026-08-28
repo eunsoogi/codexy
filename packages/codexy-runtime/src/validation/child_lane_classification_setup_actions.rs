@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::child_lane_classification_setup_clause::{SENTENCE_BOUNDARY, analyze_setup_clause};
 
 pub(super) fn action_is_passive(words: &[&str], start: usize, action: usize) -> bool {
