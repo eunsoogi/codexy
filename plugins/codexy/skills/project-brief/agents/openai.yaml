@@ -1,0 +1,6 @@
+interface:
+  display_name: "Project Brief"
+  short_description: "Show a read-only human re-entry brief from recorded live state."
+  default_prompt: "Use $project-brief to present a read-only human re-entry brief for this task. Read only current task, Git/PR, and proof state; do not mutate or invent fields."
+policy:
+  allow_implicit_invocation: true

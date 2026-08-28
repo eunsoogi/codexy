@@ -1,0 +1,144 @@
+{
+  "schema": "codexy.project-brief.corpus.v1",
+  "cases": [
+    {
+      "id": "PB-P01",
+      "scenario": "return after inactivity with all eight recorded fields",
+      "recorded": {
+        "objective": "ship task",
+        "owner": "lane owner",
+        "verified_phase": "local proof passed",
+        "changes_since_touch": ["head is abc123"],
+        "decision_required": "approve review",
+        "evidence_handle": ["PR #12"],
+        "next_action": "request review",
+        "done_when": "public proof passes"
+      },
+      "expected_json": "{\"objective\":\"ship task\",\"owner\":\"lane owner\",\"verified_phase\":\"local proof passed\",\"changes_since_touch\":[\"head is abc123\"],\"decision_required\":\"approve review\",\"evidence_handle\":[\"PR #12\"],\"next_action\":\"request review\",\"done_when\":\"public proof passes\"}"
+    },
+    {
+      "id": "PB-P02",
+      "scenario": "branch head changed since last touch",
+      "recorded": {
+        "changes_since_touch": ["branch head is def456"]
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"branch head is def456\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P03",
+      "scenario": "recorded owner changed",
+      "recorded": {
+        "owner": "current owner"
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"current owner\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P04",
+      "scenario": "proof completed after last touch",
+      "recorded": {
+        "verified_phase": "integration proof passed",
+        "changes_since_touch": ["integration proof completed"]
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"integration proof passed\",\"changes_since_touch\":[\"integration proof completed\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P05",
+      "scenario": "explicit decision is pending",
+      "recorded": {
+        "decision_required": "choose rollback window"
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"choose rollback window\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P06",
+      "scenario": "next_action absent",
+      "recorded": {},
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P07",
+      "scenario": "done_when absent",
+      "recorded": {},
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P08",
+      "scenario": "merge complete, publication pending",
+      "recorded": {
+        "verified_phase": "merge complete; publication pending"
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"merge complete; publication pending\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P09",
+      "scenario": "publication complete, public verification pending",
+      "recorded": {
+        "verified_phase": "publication complete; public verification pending"
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"unavailable\",\"verified_phase\":\"publication complete; public verification pending\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"unavailable\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-P10",
+      "scenario": "stale memory conflicts with current PR",
+      "recorded": {
+        "owner": "current PR owner",
+        "evidence_handle": ["current PR #12"]
+      },
+      "stale_memory": {
+        "owner": "old owner",
+        "evidence_handle": ["closed PR #8"]
+      },
+      "expected_json": "{\"objective\":\"unavailable\",\"owner\":\"current PR owner\",\"verified_phase\":\"unavailable\",\"changes_since_touch\":[\"unavailable\"],\"decision_required\":\"unavailable\",\"evidence_handle\":[\"current PR #12\"],\"next_action\":\"unavailable\",\"done_when\":\"unavailable\"}"
+    },
+    {
+      "id": "PB-N01",
+      "scenario": "request is agent compaction recovery",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N02",
+      "scenario": "request assigns an owner",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N03",
+      "scenario": "request routes a child",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N04",
+      "scenario": "request creates a plan",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N05",
+      "scenario": "request authorizes completion",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N06",
+      "scenario": "request authorizes merge",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N07",
+      "scenario": "request publishes a release",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N08",
+      "scenario": "request closes a milestone",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N09",
+      "scenario": "request edits memory",
+      "expected": "HANDOFF_REQUIRED"
+    },
+    {
+      "id": "PB-N10",
+      "scenario": "request mutates repository or GitHub state",
+      "expected": "HANDOFF_REQUIRED"
+    }
+  ]
+}
