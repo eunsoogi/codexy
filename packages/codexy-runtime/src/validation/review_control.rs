@@ -165,7 +165,10 @@ fn check_state(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<
         return Ok(());
     }
 
-    let expected_reviewer = serde_json::to_value(profile.reviewer.as_ref().expect("reviewer"))
+    let Some(reviewer) = profile.reviewer.as_ref() else {
+        return Err("selected reviewer is unavailable".into());
+    };
+    let expected_reviewer = serde_json::to_value(reviewer)
         .map_err(|_| "selected reviewer is not serializable".to_owned())?;
     if control.get("reviewer") != Some(&expected_reviewer) {
         return Err("review control state does not bind the selected reviewer".into());

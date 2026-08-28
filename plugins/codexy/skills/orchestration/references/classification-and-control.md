@@ -133,11 +133,11 @@ silence, clean gates, and a ready PR are non-authoritative signals.
 
 ## Direct Review-State Handoff
 
-The selected profile and its reviewer remain the authority for review state.
-The current-head control state MUST preserve the existing
+The selected profile and its reviewer remain the authority for review state. The
+current-head control state MUST preserve the existing
 `codexy.review-control-state.v1` schema and carry `profile`, `reviewer`,
-`reviewed_head`, `terminal_result`, `unresolved_findings`,
-`full_review_count`, and `delta_review_count` directly.
+`reviewed_head`, `terminal_result`, `unresolved_findings`, `full_review_count`,
+and `delta_review_count` directly.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
@@ -146,5 +146,5 @@ findings, one full review, and at most one delta review. Light retains its
 existing no-reviewer route.
 
 Headings, field order, explanatory prose, and omitted legacy ceremony fields
-MUST NOT override those direct facts. No auxiliary review state, digest,
-counter ledger, or replacement schema is needed to establish the result.
+MUST NOT override those direct facts. No auxiliary review state, digest, counter
+ledger, or replacement schema is needed to establish the result.
