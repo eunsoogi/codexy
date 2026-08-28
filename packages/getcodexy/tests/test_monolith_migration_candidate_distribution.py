@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.monolith_baseline import BASELINES, tree_digest
-from codexy_runtime_tools.monolith_migration import migrate
 from codexy_runtime_tools.monolith_migration_state import journal_path
 
 
@@ -113,23 +113,40 @@ def _migrate(
     previous = os.environ.get("GETCODEXY_CANDIDATE_HOST_STATE")
     try:
         os.environ.update(environment)
-        receipt = migrate(
-            home, codex, lambda command: _run(command, home), requested=requested
+        executable = Path(
+            os.environ.get(
+                "GETCODEXY_DISTRIBUTION_EXECUTABLE",
+                str(Path(sys.executable).with_name("getcodexy")),
+            )
         )
+        result = subprocess.run(
+            [
+                str(executable),
+                "--codex",
+                str(codex),
+                "--codex-home",
+                str(home),
+                "migrate",
+                *requested,
+                "--json",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+            env=os.environ.copy(),
+        )
+        receipt = json.loads(result.stdout)
+        expected_exit = 0 if receipt.get("outcome") == "completed" else 2
+        if result.returncode != expected_exit:
+            raise AssertionError(
+                f"migration receipt exit mismatch: {result.returncode} != {expected_exit}"
+            )
     finally:
         if previous is None:
             os.environ.pop("GETCODEXY_CANDIDATE_HOST_STATE", None)
         else:
             os.environ["GETCODEXY_CANDIDATE_HOST_STATE"] = previous
     return receipt
-
-
-def _run(command: list[str], home: Path) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
-    environment["CODEX_HOME"] = str(home)
-    return subprocess.run(
-        command, text=True, capture_output=True, check=False, env=environment
-    )
 
 
 def _write_host(root: Path, state: Path) -> Path:

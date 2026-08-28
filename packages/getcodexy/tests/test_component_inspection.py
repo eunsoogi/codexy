@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import subprocess
 import sys
 import unittest
@@ -8,9 +9,21 @@ from pathlib import Path
 
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from component_lifecycle_support import fixture
-from component_inspection_host_cases import ComponentInspectionHostCases
-from capability_probe_cases import CapabilityProbeCases, materialize
+
+_lifecycle_support = importlib.import_module(
+    "packages.getcodexy.tests.component_lifecycle_support"
+)
+sys.modules.setdefault("component_lifecycle_support", _lifecycle_support)
+fixture = _lifecycle_support.fixture
+_host_cases = importlib.import_module(
+    "packages.getcodexy.tests.component_inspection_host_cases"
+)
+ComponentInspectionHostCases = _host_cases.ComponentInspectionHostCases
+_probe_cases = importlib.import_module(
+    "packages.getcodexy.tests.capability_probe_cases"
+)
+CapabilityProbeCases = _probe_cases.CapabilityProbeCases
+materialize = _probe_cases.materialize
 
 
 class ComponentInspectionTests(

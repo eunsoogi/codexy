@@ -15,7 +15,7 @@ from unittest.mock import patch
 from codexy_runtime_tools.component_cli import main
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from packages.getcodexy.tests.component_cli_basic_cases import ComponentCliBasicCases
-from capability_probe_cases import CapabilityCliCases
+from packages.getcodexy.tests.capability_probe_cases import CapabilityCliCases
 
 
 class ComponentCliTests(CapabilityCliCases, ComponentCliBasicCases, unittest.TestCase):

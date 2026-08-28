@@ -77,12 +77,6 @@ def _component_health(
         (admission_error or host_error, "installed", "trusted-inventory-unavailable"),
         (not installed, "installed", "component-not-installed"),
         (not configured, "configured", "component-not-configured"),
-        (
-            version_relation(manifest, record) != 0,
-            "identity",
-            "runtime-identity-mismatch",
-        ),
-        (not _authority_valid(record), "authority", "artifact-authority-invalid"),
     )
     for failed, stage, reason in checks:
         if failed:
@@ -102,8 +96,13 @@ def _component_health(
     ):
         if not ready:
             return _mark(result, stage, _probe_reason(probe, default))
-    if not _identity_matches(manifest, component, record, probe):
+    if (
+        not _identity_matches(manifest, component, record, probe)
+        or version_relation(manifest, record) != 0
+    ):
         return _mark(result, "identity", "runtime-identity-mismatch")
+    if not _authority_valid(record):
+        return _mark(result, "authority", "artifact-authority-invalid")
     result["healthy"] = True
     return result
 

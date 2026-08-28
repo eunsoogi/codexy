@@ -48,7 +48,6 @@ class CapabilityProbeCases:
         self._probe_patch = patch(
             "codexy_runtime_tools.component_health._probe_component",
             side_effect=self._successful_probe,
-            create=True,
         )
         self._probe_patch.start()
         self.addCleanup(self._probe_patch.stop)
@@ -71,6 +70,7 @@ class CapabilityProbeCases:
     def test_health_reports_first_failure_for_start_call_identity_and_authority(
         self,
     ) -> None:
+        self.records["core"]["authority"] = {"state": "stale"}
         cases = (
             (
                 "start",
@@ -102,7 +102,6 @@ class CapabilityProbeCases:
                 with patch(
                     "codexy_runtime_tools.component_health._probe_component",
                     side_effect=self._probe_with(component, override),
-                    create=True,
                 ):
                     entry = self._health((component,))[0]
                 self.assertEqual(entry["state"], "incompatible")
@@ -231,6 +230,13 @@ for line in sys.stdin:
         continue
     method = request["method"]
     if method == "initialize":
+        params = request.get("params", {})
+        if (
+            not isinstance(params, dict)
+            or params.get("protocolVersion") != "2024-11-05"
+            or not {"capabilities", "clientInfo"} <= params.keys()
+        ):
+            raise SystemExit(1)
         value = {"serverInfo": {"name": "codexy-" + server, "version": "1.5.1"}}
     elif method == "tools/list":
         value = {"tools": [{"name": "codegraph_search" if server == "codegraph" else "lsp_status"}]}

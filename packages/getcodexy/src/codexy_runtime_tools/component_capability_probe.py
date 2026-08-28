@@ -34,6 +34,18 @@ MCP_SPECS = {
     "codegraph": ("codegraph_search", {"query": "capability-doctor", "limit": 1}),
     "lsp": ("lsp_status", {"path": "capability-doctor.unknown"}),
 }
+_INITIALIZE_PARAMS = {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {"name": "getcodexy", "version": "1.5.1"},
+}
+
+
+def _request(method, identifier=None, params=None):
+    request = {"jsonrpc": "2.0", "method": method, "params": params or {}}
+    if identifier is not None:
+        request["id"] = identifier
+    return request
 
 
 def probe_component(component, plugin, record):
@@ -126,15 +138,10 @@ def probe_server(server, plugin, config):
     target, extra = MCP_SPECS[server]
     arguments = {"root": str(plugin), **extra}
     requests = (
-        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
-        {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
-        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
-        {
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "tools/call",
-            "params": {"name": target, "arguments": arguments},
-        },
+        _request("initialize", 1, _INITIALIZE_PARAMS),
+        _request("notifications/initialized"),
+        _request("tools/list", 2),
+        _request("tools/call", 3, {"name": target, "arguments": arguments}),
     )
     returncode, responses, timed = _rpc(
         _argv(config["command"], plugin, config.get("args", ())), plugin, requests
@@ -191,8 +198,7 @@ def _outcome(base, **fields):
 
 
 def _response_result(response):
-    value = response.get("result") if isinstance(response, dict) else None
-    return value if isinstance(value, dict) else {}
+    return response.get("result") if isinstance(response.get("result"), dict) else {}
 
 
 def _run(argv, cwd, input_text, env=None):
@@ -211,10 +217,6 @@ def _rpc(argv, cwd, requests):
     returncode, stdout, timed = _run(
         argv, cwd, "\n".join(json.dumps(request) for request in requests) + "\n"
     )
-    return returncode, _responses(stdout), timed
-
-
-def _responses(stdout):
     values = {}
     for line in (stdout or "").splitlines():
         try:
@@ -223,7 +225,7 @@ def _responses(stdout):
             continue
         if isinstance(value, dict) and isinstance(value.get("id"), int):
             values[value["id"]] = value
-    return values
+    return returncode, values, timed
 
 
 def _argv(command, plugin, args=()):
