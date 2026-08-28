@@ -3,7 +3,7 @@
   "corpusId": "orchestration-1.5-baseline-v1",
   "candidate": {
     "head": "1111111111111111111111111111111111111111",
-    "installedContentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "installedContentSha256": null
   },
   "thresholds": {
     "medianInputTokenReductionMinPct": 25.0,

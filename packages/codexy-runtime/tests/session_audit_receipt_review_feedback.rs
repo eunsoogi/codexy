@@ -111,8 +111,8 @@ fn receipt_rejects_unbound_owner_session_digests_duplicate_observations_and_driv
 }
 
 fn valid_receipt() -> Value {
-    serde_json::from_str(include_str!("fixtures/session-audit/controlled-receipt.json"))
-        .expect("controlled receipt fixture must be valid JSON")
+    super::session_audit_receipt::synthetic_fixture("controlled-receipt.json")
+        .expect("controlled receipt fixture must be valid")
 }
 
 fn validate(receipt: &Value) -> TestResult<std::process::Output> {

@@ -6,7 +6,7 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn controlled_scorecard_reports_typed_aggregate_coverage() -> TestResult {
-    let scorecard = fixture()?;
+    let scorecard = observable_fixture()?;
     let output = validate(&scorecard)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     let result: Value = serde_json::from_slice(&output.stdout)?;
@@ -78,16 +78,14 @@ fn scorecard_rejects_weakened_gates_and_private_nested_content() -> TestResult {
         assert!(!error.contains("private-top-marker"));
         assert!(!error.contains("private-nested-marker"));
     }
+
     Ok(())
 }
 
 #[test]
 fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestResult {
-    let mut scorecard = fixture()?;
-    for comparison in scorecard["comparisons"]
-        .as_array_mut()
-        .ok_or("comparisons must be an array")?
-    {
+    let mut scorecard = observable_fixture()?;
+    for comparison in array(&mut scorecard, "comparisons")? {
         comparison["after"]["inputTokens"] = comparison["before"]["inputTokens"].clone();
     }
     let output = validate(&scorecard)?;
@@ -95,11 +93,8 @@ fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestRes
     assert!(stderr(&output).contains("every scorecard threshold"));
 
     for metric in ["inputTokens", "toolOutputBytes"] {
-        let mut scorecard = fixture()?;
-        for comparison in scorecard["comparisons"]
-            .as_array_mut()
-            .ok_or("comparisons must be an array")?
-        {
+        let mut scorecard = observable_fixture()?;
+        for comparison in array(&mut scorecard, "comparisons")? {
             comparison["after"][metric] = Value::Null;
         }
         let output = validate(&scorecard)?;
@@ -107,35 +102,28 @@ fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestRes
         assert!(stderr(&output).contains("complete metric pairs"));
     }
 
-    let mut scorecard = fixture()?;
+    let mut scorecard = observable_fixture()?;
     scorecard["comparisons"][0]["after"]["p0P1Misses"] = json!(1);
     assert!(!validate(&scorecard)?.status.success());
 
-    let mut scorecard = fixture()?;
-    for comparison in scorecard["comparisons"]
-        .as_array_mut()
-        .ok_or("comparisons must be an array")?
-    {
+    let mut scorecard = observable_fixture()?;
+    for comparison in array(&mut scorecard, "comparisons")? {
         comparison["after"]["toolOutputBytes"] =
             comparison["before"]["toolOutputBytes"].clone();
     }
     assert!(!validate(&scorecard)?.status.success());
-
-    let mut scorecard = fixture()?;
+    let mut scorecard = observable_fixture()?;
     scorecard["comparisons"][0]["after"]["acceptedRuns"] = json!(0);
     scorecard["comparisons"][0]["after"]["proofCompleteRuns"] = json!(0);
     assert!(!validate(&scorecard)?.status.success());
 
-    let mut scorecard = fixture()?;
+    let mut scorecard = observable_fixture()?;
     scorecard["comparisons"][0]["after"]["repairs"] = json!(1);
     assert!(!validate(&scorecard)?.status.success());
 
-    let mut scorecard = fixture()?;
+    let mut scorecard = observable_fixture()?;
     let orphan = scorecard["comparisons"][0].clone();
-    scorecard["comparisons"]
-        .as_array_mut()
-        .ok_or("comparisons must be an array")?
-        .push(orphan);
+    array(&mut scorecard, "comparisons")?.push(orphan);
     scorecard["comparisons"][7]["id"] = json!("orphan");
     assert!(!validate(&scorecard)?.status.success());
 
@@ -147,7 +135,7 @@ fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestRes
         "toolOutputBytes",
         "cacheInputTokens",
     ] {
-        let mut scorecard = fixture()?;
+        let mut scorecard = observable_fixture()?;
         scorecard["comparisons"][0]["before"]
             .as_object_mut()
             .ok_or("measurements must be an object")?
@@ -159,19 +147,13 @@ fn scorecard_enforces_outcomes_complete_coverage_and_required_nulls() -> TestRes
 
 #[test]
 fn integrated_optimization_sets_support_independent_decisions() -> TestResult {
-    let mut scorecard = fixture()?;
-    for comparison in scorecard["comparisons"]
-        .as_array_mut()
-        .ok_or("comparisons must be an array")?
-    {
+    let mut scorecard = observable_fixture()?;
+    for comparison in array(&mut scorecard, "comparisons")? {
         comparison["optimizationSet"] = json!(["baseline", "integrated"]);
     }
     let mut decision = scorecard["decisionInputs"][0].clone();
     decision["optimizationId"] = json!("integrated");
-    scorecard["decisionInputs"]
-        .as_array_mut()
-        .ok_or("decision inputs must be an array")?
-        .push(decision);
+    array(&mut scorecard, "decisionInputs")?.push(decision);
     let output = validate(&scorecard)?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
@@ -180,7 +162,7 @@ fn integrated_optimization_sets_support_independent_decisions() -> TestResult {
 #[test]
 fn scorecard_rejects_odd_and_even_padding_and_accepts_mixed_availability() -> TestResult {
     for extra in [1, 4] {
-        let mut scorecard = fixture()?;
+        let mut scorecard = observable_fixture()?;
         let zeroed = if extra == 1 { 4 } else { 5 };
         for index in 0..zeroed {
             scorecard["comparisons"][index]["after"]["inputTokens"] =
@@ -189,19 +171,14 @@ fn scorecard_rejects_odd_and_even_padding_and_accepts_mixed_availability() -> Te
         for index in 0..extra {
             let mut padding = scorecard["comparisons"][5].clone();
             padding["id"] = json!(format!("padding-{index}"));
-            scorecard["comparisons"]
-                .as_array_mut()
-                .ok_or("comparisons must be an array")?
-                .push(padding);
-            scorecard["decisionInputs"][0]["comparisonIds"]
-                .as_array_mut()
-                .ok_or("comparison ids must be an array")?
+            array(&mut scorecard, "comparisons")?.push(padding);
+            array(&mut scorecard["decisionInputs"][0], "comparisonIds")?
                 .push(json!(format!("padding-{index}")));
         }
         assert!(!validate(&scorecard)?.status.success(), "padding {extra}");
     }
 
-    let mut scorecard = fixture()?;
+    let mut scorecard = observable_fixture()?;
     scorecard["measureAvailability"]["wallTimeMs"] = json!("available");
     scorecard["comparisons"][0]["before"]["wallTimeMs"] = json!(100);
     scorecard["comparisons"][0]["after"]["wallTimeMs"] = json!(90);
@@ -215,10 +192,7 @@ fn scorecard_rejects_odd_and_even_padding_and_accepts_mixed_availability() -> Te
 #[test]
 fn scorecard_requires_the_representative_task_corpus() -> TestResult {
     let mut scorecard = fixture()?;
-    scorecard["comparisons"]
-        .as_array_mut()
-        .ok_or("comparisons must be an array")?
-        .remove(0);
+    array(&mut scorecard, "comparisons")?.remove(0);
     let output = validate(&scorecard)?;
     assert!(!output.status.success());
     assert!(stderr(&output).contains("representative corpus"));
@@ -229,6 +203,22 @@ fn fixture() -> TestResult<Value> {
     Ok(serde_json::from_str(include_str!(
         "fixtures/session-audit/controlled-scorecard.json"
     ))?)
+}
+
+fn observable_fixture() -> TestResult<Value> {
+    let mut scorecard = fixture()?;
+    let temp = tempfile::tempdir()?;
+    let path = temp.path().join("installed-content");
+    fs::write(&path, b"codexy synthetic scorecard content\n")?;
+    scorecard["candidate"]["installedContentSha256"] =
+        Value::String(crate::support::sha256_file(&path)?);
+    Ok(scorecard)
+}
+
+fn array<'a>(value: &'a mut Value, key: &str) -> TestResult<&'a mut Vec<Value>> {
+    value[key]
+        .as_array_mut()
+        .ok_or_else(|| format!("{key} must be an array").into())
 }
 
 fn validate(scorecard: &Value) -> TestResult<std::process::Output> {
