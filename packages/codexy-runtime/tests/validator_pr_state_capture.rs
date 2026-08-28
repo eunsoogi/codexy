@@ -37,6 +37,14 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
         |control: &mut Value| {
             control["full_review_count"] = json!(2);
         },
+        |control: &mut Value| {
+            control["profile"] = json!("standard");
+            control["reviewer"] = json!({
+                "name": "codexy-inspector",
+                "model": "gpt-5.6-terra",
+                "reasoning_effort": "max"
+            });
+        },
     ] {
         let mut control = direct_control();
         mutate(&mut control);
@@ -45,6 +53,57 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
             "direct-state negative case must remain blocked"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn direct_review_control_requires_explicit_delta_count() -> TestResult {
+    let mut control = direct_control();
+    control
+        .as_object_mut()
+        .expect("direct review control object")
+        .remove("delta_review_count");
+    let output = validate_readiness(control)?;
+    assert!(
+        !output.status.success(),
+        "missing delta review count must remain blocked"
+    );
+    Ok(())
+}
+
+#[test]
+fn direct_review_control_keeps_completion_safety_gates() -> TestResult {
+    let unresolved_thread = json!({
+        "id": "thread-1",
+        "isResolved": false,
+        "isOutdated": false,
+        "path": "src/review.rs",
+        "comments": {"nodes": [{"url": "https://example.test/thread-1"}]}
+    });
+    let unresolved = validate_readiness_with(
+        direct_control(),
+        "Review response: addressed.",
+        json!({
+            "reviewThreads": {
+                "pageInfo": {"hasNextPage": false},
+                "nodes": [unresolved_thread]
+            }
+        }),
+    )?;
+    assert!(
+        !unresolved.status.success(),
+        "unresolved review thread must remain blocked"
+    );
+
+    let cosmetic = validate_readiness_with(
+        direct_control(),
+        "LOC remediation: blank-line deletion only. --check-touched-loc passed.",
+        json!({}),
+    )?;
+    assert!(
+        !cosmetic.status.success(),
+        "formatting-only LOC evidence must remain blocked"
+    );
     Ok(())
 }
 
@@ -116,21 +175,33 @@ fn capture_output(control: Value) -> TestResult<std::process::Output> {
 }
 
 fn validate_readiness(control: Value) -> TestResult<std::process::Output> {
+    validate_readiness_with(control, "임의의 prose와 순서입니다.\n", json!({}))
+}
+
+fn validate_readiness_with(
+    control: Value,
+    handoff_text: &str,
+    extra_state: Value,
+) -> TestResult<std::process::Output> {
     let temp = tempfile::tempdir()?;
     let handoff = temp.path().join("handoff.md");
     let state = temp.path().join("state.json");
-    fs::write(&handoff, "임의의 prose와 순서입니다.\n")?;
-    fs::write(
-        &state,
-        serde_json::to_vec(&json!({
-            "number": 725,
-            "state": "OPEN",
-            "isDraft": true,
-            "mergeStateStatus": "CLEAN",
-            "headRefOid": "head",
-            "reviewControl": control
-        }))?,
-    )?;
+    fs::write(&handoff, handoff_text)?;
+    let mut state_value = json!({
+        "number": 725,
+        "state": "OPEN",
+        "isDraft": true,
+        "mergeStateStatus": "CLEAN",
+        "headRefOid": "head",
+        "reviewProfile": "strict",
+        "reviewControl": control
+    });
+    if let Some(fields) = extra_state.as_object() {
+        for (key, value) in fields {
+            state_value[key] = value.clone();
+        }
+    }
+    fs::write(&state, serde_json::to_vec(&state_value)?)?;
     Ok(crate::support::validator_completion_handoff_files(
         &handoff, &state,
     )?)
@@ -148,6 +219,7 @@ fn state_files(
         serde_json::to_vec(&json!({
             "number": 725,
             "headRefOid": "head",
+            "reviewProfile": "strict",
             "reviewDecision": "APPROVED"
         }))?,
     )?;

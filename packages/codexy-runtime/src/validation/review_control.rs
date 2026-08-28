@@ -140,6 +140,15 @@ fn check_state(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
         .ok_or_else(|| "review control state must select a profile".to_owned())?;
+    if let Some(bound_profile) = state
+        .get("reviewProfile")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    {
+        if bound_profile != selected {
+            return Err("review control state profile disagrees with the selected profile".into());
+        }
+    }
     let profiles =
         policy::load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;
     let profile = profiles
@@ -178,7 +187,7 @@ fn check_state(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<
         .and_then(Value::as_array)
         .ok_or_else(|| "review control state must list unresolved_findings".to_owned())?;
     let full_count = count(control, "full_review_count")?;
-    let delta_count = optional_count(control, "delta_review_count")?;
+    let delta_count = count(control, "delta_review_count")?;
     if full_count != 1 || delta_count > 1 {
         return Err("review control state exceeds the bounded review cycle".into());
     }
@@ -215,12 +224,4 @@ fn count(value: &serde_json::Map<String, Value>, key: &str) -> Result<u64, Strin
         .get(key)
         .and_then(Value::as_u64)
         .ok_or_else(|| format!("review control state must contain numeric {key}"))
-}
-
-fn optional_count(value: &serde_json::Map<String, Value>, key: &str) -> Result<u64, String> {
-    value.get(key).map_or(Ok(0), |value| {
-        value
-            .as_u64()
-            .ok_or_else(|| format!("review control state must contain numeric {key}"))
-    })
 }

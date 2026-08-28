@@ -10,7 +10,10 @@ pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<St
         return vec![error];
     }
     if has_direct_control(&state) {
-        return super::review_control::check_handoff(plugin_root, &state);
+        let direct_errors = super::review_control::check_handoff(plugin_root, &state);
+        if !direct_errors.is_empty() {
+            return direct_errors;
+        }
     }
     let loc_errors = super::completion_handoff_loc_remediation::check(handoff);
     if !loc_errors.is_empty() {
