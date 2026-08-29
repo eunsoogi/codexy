@@ -135,9 +135,9 @@ real goal surface for:
 - The task MUST verify fresh-goal creation failure preserving the exact error
   and doing no work.
 
-The task MUST treat the #712 refusal shape as corrected only when the host either
-accepts the administrative control-plane transition and the task MUST NOT treat
-it as an issue or product-completion claim, or completes the refusal-only fork
-fallback with the same-directory and ownership readbacks above. Real goal-tool
-readback MUST be the evidence; the task MUST NOT use local fixtures, parser
-logic, or mock-only assertions as substitutes.
+The task MUST treat the #712 refusal shape as corrected only when the host
+either accepts the administrative control-plane transition and the task MUST NOT
+treat it as an issue or product-completion claim, or completes the refusal-only
+fork fallback with the same-directory and ownership readbacks above. Real
+goal-tool readback MUST be the evidence; the task MUST NOT use local fixtures,
+parser logic, or mock-only assertions as substitutes.
