@@ -1,6 +1,6 @@
 interface:
   display_name: "Realtime Voice Orchestration"
   short_description: "Use only for explicitly requested experimental voice routing."
-  default_prompt: "Use $realtime-voice-orchestration only when the user explicitly requests voice interaction and $orchestration selects this experimental adapter; preserve normal orchestration authority, confirmed state reporting, interruption-first speech, and parent ownership."
+  default_prompt: "MUST use $realtime-voice-orchestration only when the user explicitly requests voice interaction and $orchestration selects this experimental adapter; MUST preserve normal orchestration authority, confirmed state reporting, interruption-first speech, and parent ownership; MUST NOT imply implicit invocation or replace normal orchestration."
 policy:
   allow_implicit_invocation: false
