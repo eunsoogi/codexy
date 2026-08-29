@@ -1,248 +1,60 @@
 ---
 name: proof-driven-completion
-description:
-  MUST use before claiming work is done, opening or merging a PR, handing off, closing an issue, reporting success, or completing a goal for code, docs, workflow, UI, plugin, marketplace, or release
-  tasks.
+description: MUST use before claiming work is done, handing off, opening or merging a PR, closing an issue, reporting success, or completing a goal for code, docs, workflow, UI, plugin, marketplace, or release tasks.
 ---
 
 # Proof-Driven Completion
 
 ## Purpose
 
-Completion is a claim about the current state, not a feeling about effort. This
-skill requires evidence that directly matches every explicit requirement before
-the agent says work is done, closes an issue, merges a PR, or marks a goal
-complete.
+Completion is a current-state claim. MUST map every requirement to evidence that
+proves it on the authoritative surface, and MUST stop when proof is absent,
+stale, too weak, or contradictory.
 
-For every user-facing summary, MUST follow
-[Plain-Language User Replies](../orchestration/references/plain-language-user-replies.md)
-while preserving exact completion evidence separately. When replying in Korean,
-MUST also follow
-[Natural Korean User Replies](../orchestration/references/natural-korean-responses.md).
+## Audit
 
-## Completion Audit
+1. MUST restate the requested outcome and make a finite list only from its
+   explicit requirements, named files, commands, external states, and
+   deliverables.
+2. For each item, MUST name the evidence that would prove it. MUST use file
+   content or diff for files, parsers for structured data, tests for executable
+   behavior, and the authentic CLI, GitHub, browser, desktop, plugin,
+   marketplace, or release surface for externally observable claims.
+3. MUST inspect the current authoritative state. Current head and current
+   external state MUST win over memory, intent, plans, and output from older
+   revisions.
+4. `proved` means current evidence matches every stated requirement; MUST NOT
+   invent extra gates. `contradicted` conflicts; `incomplete` is partial or
+   stale; `too weak` uses the wrong scope or surface; `missing` is absent or
+   unrun proof. A missing required proof makes completion `missing`, not
+   `incomplete`.
+5. MUST continue until every required item is proved. Otherwise MUST stop the
+   completion claim, name the unmet item, and identify one concrete next action.
 
-1. Restate the requested outcome.
-2. MUST list every explicit requirement, named file, command, review gate,
-   external state, and deliverable.
-3. For each item, name the evidence that would prove it:
-   - file content or diff for documentation and configuration,
-   - parser/schema output for structured data,
-   - the installed package's structured validator for plugin architecture
-     surfaces when one is supplied,
-   - lint/typecheck/unit/integration output for code,
-   - browser, desktop, CLI, GitHub, plugin, or marketplace observation for
-     user-visible or external behavior,
-   - PR review/comment/thread state for review gates.
-   - child-thread handoff or readback evidence when feedback belongs to a
-     child-owned lane.
-   - TDD classification evidence before requiring RED/GREEN: engineering
-     boundaries require the same faithful proof to turn RED then GREEN;
-     non-engineering boundaries require proportional direct/readback evidence.
-4. MUST inspect the current authoritative source. MUST NOT rely on memory,
-   intent, or earlier output unless it is explicitly marked as stale supporting
-   context.
-5. MUST classify each item as proved, contradicted, incomplete, too weak, or
-   missing.
-6. MUST continue work until every required item is proved, or report the exact
-   blocker without calling the task complete.
+## Invariants
 
-## Required Checks
+- A unit test MUST NOT prove GitHub, CLI, browser, desktop, plugin, marketplace,
+  publication, or release behavior; MUST drive the matching surface.
+- An open PR, green CI, merge, publication, and milestone closure are distinct
+  states and MUST NOT substitute for one another.
+- Evidence from an older head MUST NOT prove the current head. An unresolved
+  external gate keeps the corresponding requirement incomplete.
+- For governed files, MUST use the canonical touched-LOC producer. Every file
+  MUST be at or below 250 physical lines, and blank-line deletion or collapsed
+  readable content MUST NOT count as structural remediation.
+- Missing goal, plan, tool, or multi-agent receipts alone MUST NOT invalidate
+  otherwise current and complete outcome evidence. Those producers own their own
+  process contracts.
+- GitHub, owner, reviewer, CI, release, and external-state producers own their
+  state machines. Consume their current evidence without restating or replacing
+  their authority here.
 
-- MUST run `git diff --check` before pushing or opening a PR.
-- MUST inspect `git status --short` and MUST NOT stage unrelated files.
-- MUST parse structured files with an appropriate parser when possible.
-- MUST keep strict safety, current-head, external-surface, and LOC gates
-  independent from `engineering_tdd_required`; absent RED is not a proof gap for
-  a non-engineering boundary.
-- For installed plugin architecture changes, validate LSP config, MCP config,
-  role metadata or custom-agent TOMLs, and task/thread/worktree behavior. MUST
-  run the active project's package or schema validator when one is supplied;
-  repository-only policy checks stay outside installed Core instructions.
-- For code-touching or code-adjacent runtime changes, include Codexy `codegraph`
-  MCP exploration evidence when the MCP is available, plus direct file-read
-  confirmation before claiming the touched surface is understood.
-- For non-trivial code, validator, harness, or workflow-rule changes, MUST run
-  the package-owned governed-code checker against explicit applicable paths
-  before PR readiness or handoff. MUST treat files over the 250 LOC target as
-  failing evidence. Every governed file MUST stay at or below 250 LOC. MUST NOT
-  use or authorize LOC exceptions. The checker MUST be proportional for non-code
-  tasks and MUST NOT assume an active checkout root.
-- MUST record why a LOC reduction is structural rather than formatting-only.
-  MUST NOT treat blank-line deletion or collapsed readable multiline content as
-  structural remediation evidence; MUST name the helper, module, test target,
-  responsibility, or duplicate removal that made the reduction coherent.
-- For plugin skills, MUST confirm every `SKILL.md` has valid YAML frontmatter
-  with `name` and `description`.
-- For GitHub PR work, MUST inspect PR state, latest head SHA, comments, reviews,
-  and review threads.
-- When a handoff or final answer reports addressed review feedback, MUST include
-  current review-thread state in the PR evidence and MUST run the active
-  project's completion-handoff check; addressed unresolved threads, including
-  outdated-but-fixed threads, MUST be resolved or covered by an accepted
-  no-change rationale before readiness evidence is accepted.
-- For child-owned PRs, MUST route actionable review feedback back to the owning
-  child thread. The parent thread may coordinate, but it MUST NOT merge until
-  the child thread returns current verification or a documented non-change
-  rationale.
-- Before accepting child handoffs that claim clean, synced, pushed, PR-ready, or
-  parent-handoff-ready state, the parent MUST verify current `git status`, local
-  head, remote ref, PR head, merge state, and unresolved review threads. The
-  parent MUST NOT accept handoff prose when those current surfaces contradict
-  it.
-- If a child-owned PR handoff or final-answer evidence mentions parent-authored
-  implementation or review-response commits, MUST run the owning project's
-  child-lane ownership policy check against the evidence. A failing result
-  blocks completion unless the evidence records explicit maintainer reassignment
-  of implementation ownership to the parent.
-- For delegated lanes that need their own branch, worktree, PR, or durable child
-  context, MUST require evidence that the child was created, forked, or assigned
-  before implementation patches began. If parent-authored draft edits exist,
-  MUST require recovery evidence showing the parent stopped editing, disclosed
-  the mistake, protected user and other-agent work, and handed the draft diff to
-  the owning child thread.
-- For completion, merge, or default Codexy merge-flow requests, MUST NOT treat a
-  PR that remains open as completion unless the maintainer explicitly requested
-  stop, wait, draft-only, no-merge, or leave-open behavior. When a final answer
-  or handoff artifact may claim completion while the matching PR is open, MUST
-  run the active project's completion-handoff check against current PR state
-  before accepting the claim.
-- For every non-trivial atomic unit, MUST require evidence that the owning
-  thread followed machine-owned `orchestration/references/review-profiles.json`:
-  light has no LLM reviewer, standard has `codexy-inspector`, and strict has
-  `codexy-sentinel`. The selected reviewer gate MUST cover the current diff,
-  exact head or file state, lane scope, touched implementation-file LOC
-  evidence, verification outputs, and evidence. Arbitrary reviewer agents,
-  generic role names, parent-only readthroughs, stale reviewer output, or
-  external review passes are not substitutes for this gate.
-- When the selected reviewer is Sentinel, its terminal evidence MUST state
-  `PASS`, `BLOCK`, or `UNOBSERVABLE` with the reviewer name and exact head.
-  Non-terminal `PENDING` or `RUNNING` observations MUST NOT be treated as
-  reviewer verdicts or fallback-eligible. `BLOCK` and `UNOBSERVABLE` MUST NOT
-  satisfy PR readiness, push readiness, parent acceptance, or completion unless
-  a maintainer explicitly approves a fallback.
-- When the selected reviewer is Sentinel, live observation MUST be read-only and
-  event-driven. Generic child and ledger polling remains permitted. Both the
-  child owner and the root orchestrator MUST NOT message, interrupt, replace,
-  duplicate, follow up with, or poll a live Sentinel. A bounded wait with no
-  event is a non-terminal `PENDING` observation, and an independently observed
-  live reviewer is `RUNNING`; neither observation is a reviewer verdict or
-  fallback-eligible. The owning lane MUST retain the same reviewer and wait for
-  its natural terminal result. A live Sentinel MUST report its own terminal
-  `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
-- The lane MUST retain one issue-wide count of terminal profile-selected `PASS`,
-  `BLOCK`, and `UNOBSERVABLE` verdicts across goals, repair stages, compaction,
-  reauthorization, and route resets. `PENDING` and `RUNNING` do not count. The
-  count MUST NOT exceed three. After a third `BLOCK`, readiness may accept the
-  typed final-repair disposition only after every in-scope issue-contract/root
-  finding is repaired and exact-head proof is current; a fourth profile review
-  is prohibited. After a third `UNOBSERVABLE`, use the equivalent
-  maintainer-owned final-disposition path with current proof. This exception
-  waives only the fourth profile review: local tests, validators, current-head
-  CI, actionable human and connector review threads, ownership, safety, LOC, and
-  merge gates MUST still pass. Review quota exhaustion or an external wait MUST
-  NOT cause `update_goal(status="blocked")`.
-- MUST re-run verification after addressing review feedback.
-- For delegated non-trivial or multi-step child implementation lanes, MUST
-  verify the child reported actual goal-tool usage or an unavailable-goal-tool
-  fallback, current todo/plan tool usage or an unavailable-todo-tool fallback,
-  required multi-agent use for independent research questions, disjoint
-  implementation slices, QA or verification in parallel, review gates,
-  review-feedback validation, or separable non-trivial subtasks, changed files,
-  verification evidence, packaged Codexy reviewer findings or approval, and
-  clean worktree status before treating the handoff as complete. A "multi-agent
-  not useful" rationale is acceptable only when it is concrete and tied to
-  atomicity, tiny scope, or the absence of separable work; generic manual
-  fallback is not enough when multi-agent tooling is available. Goal-tool
-  evidence MUST name real Codex goal surfaces such as `create_goal`, `get_goal`,
-  or `update_goal` when they are available. Prose-only `Goal:` or `Todo:` text
-  is not evidence of real goal or todo/plan tool use. For an atomic trivial
-  child lane, MUST require an explicit not-applicable rationale instead of
-  silently skipping the execution discipline.
+## Completion Report
 
-## Evidence Rules
+MUST report the outcome, changed surfaces, verification and authentic-surface
+observations, skipped checks with reasons, unresolved gates, residual risks, and
+the next action. MUST NOT describe incomplete work as done.
 
-- Evidence MUST be current for the file state, commit, PR head, runtime, or
-  external setting being claimed.
-- Narrow evidence proves only narrow claims. A parser check does not prove UX; a
-  unit test does not prove GitHub settings.
-- If review feedback is addressed by a child thread, evidence MUST include the
-  child thread result, the exact new head, and the rerun verification.
-- If a command was skipped, say so with the reason.
-- If evidence is local and untracked, MUST summarize it or give the ignored
-  evidence path; MUST NOT commit scratch artifacts unless requested.
-- If a dependency PR has not yet landed, label validator, LSP, MCP, role
-  metadata, custom agent TOML, thread, or worktree evidence as deferred instead
-  of claiming completion.
-
-## Final Report Shape
-
-MUST include:
-
-- outcome,
-- changed files or surfaces,
-- verification commands and results,
-- external observations such as PR review state or UI behavior,
-- not run,
-- blockers or residual risks.
-
-## Stop Conditions
-
-- MUST stop and fix if proof contradicts the claim.
-- MUST stop and ask only when the missing proof requires a secret, account
-  action, destructive operation, or human-only decision.
-- MUST NOT call `update_goal(status="complete")` until every requirement in the
-  finite execution phase has current matching proof and no immediately
-  executable in-scope owner work remains. Goal completion MUST NOT claim that
-  the issue, implementation, or an external gate is complete.
-- MUST NOT call `update_goal(status="blocked")` merely because child-thread
-  work, queued worktree/thread setup, or asynchronous tool completion is
-  pending. While an immediately executable in-scope obligation remains, the
-  child MUST use one nonterminal wait handoff and retain its active goal, plan,
-  and ownership. Once local code, proof, push, review-response, and handoff work
-  is finished and only an external gate or explicit parent wake remains, it MUST
-  send one idle-wait handoff, complete the finite goal, and leave the task idle
-  without claiming the issue complete. It MUST NOT poll, interrupt, duplicate,
-  replace, or approve the live producer or reviewer. A qualifying event creates
-  a fresh short-lived goal and current plan before any further execution.
-- MUST allow `update_goal(status="blocked")` only for an exact unanswered user
-  decision or missing user information that materially changes the result and
-  has no safe default or in-scope action.
-- MUST NOT accept a non-trivial child implementation handoff as complete when it
-  omits actual goal-tool usage, actual todo/plan tool usage, required
-  situational multi-agent usage, a concrete not-useful rationale tied to
-  atomicity or tiny scope, or unavailable-tool fallback evidence required by the
-  orchestrator assignment. Using only one of goal or todo/plan is insufficient
-  unless the missing tool was unavailable and the child reported that
-  unavailability with its fallback.
-- MUST NOT accept a non-trivial atomic unit as complete when it omits the
-  packaged Codexy reviewer agent result for the current diff, exact head or file
-  state, lane scope, verification outputs, and evidence.
-
-## Failure Modes
-
-- Reporting a merge before verifying branch deletion and main sync.
-- Reporting completion after opening a clean PR while merge gates are not
-  intentionally deferred.
-- Ignoring actionable top-level PR comments because they are not GitHub review
-  objects.
-- Treating ordinary review or child-thread wait time as a blocker instead of a
-  non-blocking external state, with an active goal only when executable work
-  remains.
-- Treating generated files as valid without parsing or inspecting them.
-- Forgetting cleanup of worktrees, sessions, ports, temp logs, or stale
-  evidence.
-- Treating prose about architecture gates as proof that LSP, MCP, role metadata,
-  custom agent TOML, thread, or worktree behavior has been validated.
-- Treating code-touching work as complete without Codexy `codegraph` MCP
-  exploration evidence when the MCP was available.
-- Fixing child-owned review feedback in the parent thread and merging without
-  handing it back to the owning child thread for verification.
-- Accepting child-owned lane completion when the parent patched implementation
-  first and delegated afterward without explicit recovery evidence.
-- Treating an arbitrary reviewer agent, generic review role, parent-only
-  readthrough, stale reviewer output, or external review pass as equivalent to
-  the packaged Codexy reviewer agent gate for the current diff and evidence.
-
-A checked contract is the sole merge authorization; generic finish, completion,
-silence, clean gates, and a ready PR are non-authoritative signals.
+Completing a finite execution goal proves only that named phase; it MUST NOT
+claim the issue, PR, merge, release, or external gate is complete unless each is
+separately proved.
