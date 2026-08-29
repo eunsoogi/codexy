@@ -1,3 +1,4 @@
-Profiles MUST map light=small/read-only, standard=non-trivial single-owner, strict=risk/release/merge/delegation/multi-lane/audit. Executable MUST use faithful RED/GREEN; non-executable MUST use readback and MUST NOT manufacture RED.
-Owner MUST be parent-owned/child-owned/current-thread-owned/external/human-owned. Delegated branch/worktree/PR remains child-owned; parent owns orchestration/merge; subagents are not owners.
-Before setup MUST resolve scope/owner/risk/external-state ambiguity; MUST stop on missing scope/owner conflict/unavailable authority. Clear work MUST NOT fabricate table/N/A/clarification/skip-list/tool receipts.
+Executable MUST use faithful RED/GREEN; else MUST use readback and MUST NOT
+manufacture RED. Owner MUST be parent-owned/child-owned/current-thread-owned/
+external/human-owned. Missing/conflicting scope/owner/risk/external-state MUST
+stop pre-setup; clear work MUST NOT fabricate receipts.
