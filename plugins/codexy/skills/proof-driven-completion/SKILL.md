@@ -45,6 +45,19 @@ stale, too weak, or contradictory.
 - Missing goal, plan, tool, or multi-agent receipts alone MUST NOT invalidate
   otherwise current and complete outcome evidence. Those producers own their own
   process contracts.
+- Narrow stale-blocked-goal exception: `$goal-state-recovery` MAY use
+  `update_goal(status="complete")` only to terminate a stale `blocked` execution
+  record after its exact recovery sequence observes that state. This is an
+  administrative control-plane unblock, not evidence that an issue, PR,
+  implementation, proof, merge, release, publication, or external gate is
+  complete. It MUST NOT waive or replace any ordinary proof, review, ownership,
+  CI, handoff, or current-state requirement; outside that exact sequence, the
+  ordinary completion prohibitions remain unchanged. If the host explicitly
+  refuses that transition solely because the unfinished blocked objective cannot
+  be marked complete, `$goal-state-recovery` MAY use its bounded same-directory
+  fork, original-task archive, and forked `get_goal=null` fallback to recover
+  control. That fallback is also administrative only and MUST NOT apply to
+  timeout, permission, transport, or ambiguous errors.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
   state machines. Consume their current evidence without restating or replacing
   their authority here.
