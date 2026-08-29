@@ -1,99 +1,54 @@
 # Merge And Main Sync
 
-## Merge Rules
+## Pre-Merge Readback
 
-MUST NOT merge a PR until every review surface has been inspected and resolved.
-MUST treat requested changes, actionable suggestions, unresolved review threads,
-stale concerns after new commits, and PR comments that identify defects as
-blockers until addressed or covered by an accepted no-change rationale.
+MUST fresh-read the live PR, exact base/head, checks, reviews, comments, labels,
+issue linkage, and review threads. Requested changes, actionable feedback,
+unresolved actionable threads, stale proof, wrong targets, or missing
+authorization block merge. MUST NOT use `--admin` to bypass a gate.
 
-## Connector Merge Boundary
+## Canonical Squash Mutation
 
-Direct or nested `github_merge_pull_request` and `enable_auto_merge` connector
-mutations MUST be treated as unavailable unless an authenticated repository hook
-event covers the exact payload. The repository merge hook fails closed with an
-unavailable decision when that coverage cannot be established. Use the
-host-resolved bundled skill resource
-`skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`; it delegates to
-the existing `hooks/codexy-authorized-squash-merge.sh` wrapper, which is the
-only supported Codexy-owned merge fallback. Do not parse `functions.exec` source
-or create a parallel authorization, ledger, cache, schema, framework, or
-workflow.
+Direct or nested `mcp__codex_apps__github_merge_pull_request` and auto-merge
+connector mutations remain `UNAVAILABLE`. After every independent gate and exact
+authorization passes, invoke only the installed host-resolved resource:
 
-Known process deviations are recorded here and MUST NOT be repaired by rewriting
-protected `main` history:
-
-- PR #18 was squash merged as `docs(license): correct copyright owner (#)`
-  because the merge command did not carry the numeric PR identifier into the
-  subject.
-- PR #200 used PR title and squash subject
-  `Require separate issues for dogfooding defects`.
-- PR #201 used a non-Conventional PR title and squash subject.
-- PR #202 used PR title and squash subject
-  `Require descriptive child thread titles`.
-- PR #203 used PR title `Refactor oversized Codexy skill instructions` and
-  squash subject `Refactor oversized Codexy skill instructions (#203)`.
-
-To prevent repeats, every merge MUST derive the PR number and title from an
-explicit `gh pr view <number>` call and MUST validate the PR title, explicit
-squash subject, and full merge message before merge.
-
-Before merging, MUST inspect latest PR state, checks, reviews, comments, and
-review threads:
-
-```sh
-gh pr view <pr> --json number,title,state,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,reviewDecision,latestReviews,reviews,comments,labels,closingIssuesReferences
-gh pr view <pr> --comments
-gh api graphql -f owner=<owner> -f name=<repo> -F number=<pr-number> -f query='
-query($owner:String!, $name:String!, $number:Int!) {
-  repository(owner:$owner, name:$name) {
-    pullRequest(number:$number) {
-      reviewThreads(first:100) {
-        nodes { id isResolved isOutdated path comments(first:20) { nodes { author { login } body url createdAt } } }
-      }
-    }
-  }
-}'
+```text
+skills/git-workflow/scripts/codexy-authorized-squash-merge.sh
 ```
 
-The review gate is satisfied only when `reviewDecision` is not
-`CHANGES_REQUESTED`, no latest maintainer or GitHub app review requests changes,
-required checks have passed or been accepted as non-required, actionable PR
-comments are addressed, and fixed or accepted review threads are resolved. Every
-unresolved actionable review thread remains merge-blocking until the current
-head proves the fix and the thread is resolved. Every non-outdated thread MUST
-be resolved before merge or have a documented accepted no-change rationale.
+For the live PR, supply exact `--expected-pr`, `--expected-issue`, `--repo`,
+`--match-head-commit`, `--subject`, `--body-file`, and `--merge-message-file`
+values derived from one fresh authenticated PR/authorization capture. The
+wrapper validates the target and merge-message payload, delegates to the
+canonical hooked wrapper, performs a squash merge, requests branch deletion, and
+MUST return zero before post-merge proof begins.
 
-Default merge continuation is not permission to use `--admin`, merge stale or
-unreviewed heads, ignore child-owned feedback, or leave actionable threads open.
-MUST NOT skip PR-body preservation or merge before rerunning verification after
-review responses.
+The squash subject MUST derive from the captured remote PR title. The squash
+body MUST preserve the captured remote PR body exactly. Arbitrary local body or
+authorization files are not authority.
 
-## Squash Merge Body Preservation
+## Post-Merge Proof
 
-When merge gates pass, merge through GitHub with squash merge and branch
-deletion. The squash merge commit body/description MUST be the PR body exactly
-as merged. Prefer a current `headRefOid` match. Capture the PR title, body,
-head, authorization record, and merge message in one fresh remote read. The
-installed generic admission hooks handle their matching merge-message lifecycle
-gate; skill-authored commands MUST NOT derive an executable from repository
-paths, cache paths, or `PLUGIN_ROOT`. The merge subject MUST be derived from the
-captured PR title, and the merge body MUST be the captured remote body;
-arbitrary local body files are not merge input.
+Using the live pre-merge PR number, head branch, base branch, and returned merge
+SHA, perform this read-only connector sequence:
 
-`--auto` only waits for configured GitHub requirements, and `--admin` bypasses
-requirements. MUST NOT use `--admin` to skip required checks or review-thread
-cleanup.
+1. `mcp__codex_apps__github_fetch_pr`: confirm merged state, unchanged base/head
+   names, and merge SHA;
+2. `mcp__codex_apps__github_search_branches`: search the exact head branch and
+   confirm it is absent;
+3. `mcp__codex_apps__github_search_branches`: search the exact protected base
+   branch and capture its current head;
+4. `mcp__codex_apps__github_compare_commits`: compare the merge SHA to that base
+   and require `identical` or `ahead` with `behind_by` zero;
+5. `mcp__codex_apps__github_fetch_commit`: confirm the merge commit's canonical
+   URL and captured subject/body; and
+6. `mcp__codex_apps__github_get_commit_combined_status`: require every necessary
+   post-merge status on the current base head to succeed.
 
-## Post-Merge Main Sync
+If the branch remains and no authenticated branch-delete connector mutation is
+available, return `BLOCKED_MISSING_BRANCH_DELETE_SURFACE`; MUST NOT substitute
+`gh` or another mutation. Any failed readback blocks post-merge completion.
 
-After merge, MUST update the configured default-branch worktree from the remote
-and verify the current merge commit subject/body against the remote values
-captured before merge. Transient merge evidence MUST be kept outside the
-repository and removed whether the merge succeeds or fails. If GitHub did not
-delete the remote topic branch, MUST delete it only after confirming the PR was
-merged and no dependent work needs the branch:
-
-```sh
-git push origin --delete <branch>
-```
+Finally synchronize the configured default-branch worktree by fast-forward and
+verify the merge commit again. Keep transient evidence outside the repository.

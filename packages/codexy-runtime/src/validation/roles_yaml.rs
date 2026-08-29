@@ -194,10 +194,14 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
             display_relative(path)
         ));
     }
-    if !matches!(
-        prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]),
-        Some(prompt_yaml::Scalar::Bool(true))
-    ) {
+    let implicit_invocation =
+        prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]);
+    let valid_implicit_invocation = match implicit_invocation {
+        Some(prompt_yaml::Scalar::Bool(true)) => true,
+        Some(prompt_yaml::Scalar::Bool(false)) => is_explicit_only_core_skill(plugin_root, path),
+        _ => false,
+    };
+    if !valid_implicit_invocation {
         errors.push(format!(
             "{} policy.allow_implicit_invocation must be true",
             display_relative(path)
@@ -208,15 +212,24 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
 
 fn requires_orchestration_route(plugin_root: &Path, path: &Path) -> bool {
     path == plugin_root.join("agents/openai.yaml")
-        && std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
-            .ok()
-            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-            .and_then(|manifest| {
-                manifest
-                    .get("name")
-                    .and_then(serde_json::Value::as_str)
-                    .map(str::to_owned)
+        && plugin_name(plugin_root).as_deref() != Some("codexy-devtools")
+}
+
+fn is_explicit_only_core_skill(plugin_root: &Path, path: &Path) -> bool {
+    plugin_name(plugin_root).as_deref() == Some("codexy")
+        && ["wiki", "realtime-voice-orchestration"]
+            .iter()
+            .any(|skill| {
+                path == plugin_root
+                    .join("skills")
+                    .join(skill)
+                    .join("agents/openai.yaml")
             })
-            .as_deref()
-            != Some("codexy-devtools")
+}
+
+fn plugin_name(plugin_root: &Path) -> Option<String> {
+    std::fs::read_to_string(plugin_root.join(".codex-plugin/plugin.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|manifest| manifest.get("name")?.as_str().map(str::to_owned))
 }
