@@ -10,8 +10,8 @@ summary, planning, session memory, or unrelated research.
 
 ## Route the request
 
-Require exactly one topic root from the explicit request; otherwise ask for it
-and stop before repository reads or writes.
+MUST require exactly one topic root from the explicit request; otherwise MUST
+ask for it and MUST stop before repository reads or writes.
 
 - For `init`, `ingest`, `compile`, `query`, `refresh`, or provenance/freshness
   verification, MUST read [Minimal Contract](references/minimal-contract.md),
