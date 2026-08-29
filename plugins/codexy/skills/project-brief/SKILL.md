@@ -7,10 +7,11 @@ description: Use when a person returns to an ongoing task and needs a read-only 
 
 ## Trigger
 
-Use only for human re-entry to an ongoing task. Return `HANDOFF_REQUIRED` when
-the request concerns agent compaction recovery, assigns or routes an owner or
-child, creates a plan, authorizes completion or merge, publishes a release,
-closes a milestone, edits memory, or mutates repository or GitHub state.
+MUST use only for human re-entry to an ongoing task. MUST return
+`HANDOFF_REQUIRED` when the request concerns agent compaction recovery, assigns
+or routes an owner or child, creates a plan, authorizes completion or merge,
+publishes a release, closes a milestone, edits memory, or mutates repository or
+GitHub state.
 
 ## Read boundary
 
@@ -28,7 +29,8 @@ closes a milestone, edits memory, or mutates repository or GitHub state.
 
 ## Projection
 
-Emit one JSON object with exactly these keys in this order and no other prose:
+MUST emit one JSON object with exactly these keys in this order and no other
+prose:
 
 ```json
 {
@@ -43,13 +45,14 @@ Emit one JSON object with exactly these keys in this order and no other prose:
 }
 ```
 
-Copy `verified_phase`, `decision_required`, `next_action`, and `done_when` only
-when each is recorded as that field. Keep merge, publication, public
+MUST copy `verified_phase`, `decision_required`, `next_action`, and `done_when`
+only when each is recorded as that field. MUST keep merge, publication, public
 verification, and milestone closure as distinct phases. A completed proof MUST
-NOT become task completion. Report a current recorded head change in
-`changes_since_touch`; do not derive a change from stale memory alone.
+NOT become task completion. MUST report a current recorded head change in
+`changes_since_touch`; MUST NOT derive a change from stale memory alone.
 
 ## Preservation
 
-The projection is read-only. Repository, GitHub, task, release, and proof state
-MUST remain byte-for-byte or state-for-state identical before and after use.
+The projection MUST remain read-only. Repository, GitHub, task, release, and
+proof state MUST remain byte-for-byte or state-for-state identical before and
+after use.
