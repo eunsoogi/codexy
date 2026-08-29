@@ -5,8 +5,8 @@ description: Use when a user explicitly requests a realtime voice interaction th
 
 # Realtime Voice Orchestration
 
-MUST use this skill only when the user explicitly asks for voice interaction
-and `$orchestration` selects this experimental adapter. `$orchestration` remains
+MUST use this skill only when the user explicitly asks for voice interaction and
+`$orchestration` selects this experimental adapter. `$orchestration` remains
 authoritative for ownership, dispatch, child coordination, evidence, handoffs,
 thread state, and completion. Disposition: `KEEP + SIMPLIFY`; default routing:
 `DEFER`.
@@ -19,8 +19,8 @@ thread state, and completion. Disposition: `KEEP + SIMPLIFY`; default routing:
 - MUST route to the known parent only, or directly to exactly one relevant
   standalone owner when no parent exists. With no active owner, respond
   conversationally or offer to start a task.
-- If multiple owners remain plausible, MUST ask exactly one concise clarification
-  and wait; dispatch count is zero until the user selects one.
+- If multiple owners remain plausible, MUST ask exactly one concise
+  clarification and wait; dispatch count is zero until the user selects one.
 - MUST send exactly one request to the selected owner. If routing is ambiguous
   or fails, report that it was unconfirmed and give the next safe action; MUST
   NOT retry or duplicate dispatch.
@@ -34,8 +34,8 @@ thread state, and completion. Disposition: `KEEP + SIMPLIFY`; default routing:
 ## Confirmed state and interruption
 
 - MUST speak only after the selected owner returns a confirmed authoritative
-  result. Summarize verified aggregate state; omit identifiers, transcripts,
-  and internal events.
+  result. Summarize verified aggregate state; omit identifiers, transcripts, and
+  internal events.
 - MUST distinguish `in progress`, terminal `success`, `failure`, `cancellation`,
   and `blocked`. Include a confirmed reason where available; MUST NOT call
   progress complete.
