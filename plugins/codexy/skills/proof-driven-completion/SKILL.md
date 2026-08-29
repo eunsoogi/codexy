@@ -34,7 +34,7 @@ stale, too weak, or contradictory.
 ## Invariants
 
 - A unit test alone MUST NOT prove GitHub, CLI, browser, desktop, plugin,
-  marketplace, publication, or release behavior; drive the matching surface.
+  marketplace, publication, or release behavior; MUST drive the matching surface.
 - An open PR, green CI, merge, publication, and milestone closure are distinct
   states and MUST NOT substitute for one another.
 - Evidence from an older head MUST NOT prove the current head. An unresolved
