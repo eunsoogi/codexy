@@ -26,9 +26,12 @@ unsupported_assumption: <one unsupported dependency or none>
 reopen_condition: <one observable reconsideration condition or unavailable>
 ```
 
-Preserve the supplied reason and evidence verbatim. Recording evidence MUST NOT
-judge it correct or sufficient. An unsupported assumption is the narrowest
-unproven dependency required by the stated reason, not invented justification.
+Serialize each field value reversibly on one line: replace each backslash with
+`\\`, then each carriage return with `\r` and line feed with `\n`. Decode those
+escapes to recover the supplied reason and evidence verbatim. Recording evidence
+MUST NOT judge it correct or sufficient. An unsupported assumption is the
+narrowest unproven dependency required by the stated reason, not invented
+justification.
 The reopen condition is the first observable change that defeats the reason or
 assumption; record it without reopening the decision. Use `unavailable` when the
 supplied context cannot ground the field and `none` only when no unsupported
