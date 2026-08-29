@@ -130,4 +130,42 @@ def make_plugin(root: Path) -> Path:
         '"version":"1.2.2"}',
         encoding="utf-8",
     )
+    if root.parent.name == "plugins" and root.name == "codexy":
+        marketplace_root = root.parent.parent
+        _git(marketplace_root, "init", "-q")
+        _git(marketplace_root, "branch", "-M", "main")
+        _git(marketplace_root, "config", "user.name", "fixture")
+        _git(marketplace_root, "config", "user.email", "fixture@example.invalid")
+        _git(marketplace_root, "add", ".")
+        _git(marketplace_root, "commit", "-qm", "fixture main")
+        (marketplace_root / "release-marker").write_text("tag", encoding="utf-8")
+        _git(marketplace_root, "add", "release-marker")
+        _git(marketplace_root, "commit", "-qm", "fixture release")
+        _git(marketplace_root, "tag", "v1.2.2")
+        tag_revision = _git(marketplace_root, "rev-parse", "v1.2.2^{commit}")
+        _git(marketplace_root, "checkout", "-q", "--detach", "v1.2.2")
+        (marketplace_root / ".codex-marketplace-install.json").write_text(
+            json.dumps(
+                {
+                    "ref_name": "v1.2.2",
+                    "revision": tag_revision,
+                    "source": OFFICIAL,
+                    "source_type": "git",
+                    "sparse_paths": [],
+                }
+            ),
+            encoding="utf-8",
+        )
     return root
+
+
+def _git(root: Path, *arguments: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+    return result.stdout.strip()

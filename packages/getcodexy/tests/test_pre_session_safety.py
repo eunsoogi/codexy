@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -165,9 +166,10 @@ class PreSessionSafetyTests(unittest.TestCase):
             calls: list[tuple[str, ...]] = []
             plugin = make_plugin(root / "actual plugin")
             marketplace_root = root / "marketplace"
+            make_plugin(marketplace_root / "plugins/codexy")
             link = marketplace_root / "plugins/codexy"
+            shutil.rmtree(link)
             _registered_home(root)
-            link.parent.mkdir(parents=True)
             try:
                 os.symlink(plugin, link, target_is_directory=True)
             except (NotImplementedError, OSError) as error:
@@ -195,7 +197,7 @@ class PreSessionSafetyTests(unittest.TestCase):
             root = Path(temporary)
             calls: list[tuple[str, ...]] = []
             marketplace_root = root / "marketplace"
-            marketplace_root.mkdir()
+            make_plugin(marketplace_root / "plugins/codexy")
             _registered_home(root)
 
             def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
