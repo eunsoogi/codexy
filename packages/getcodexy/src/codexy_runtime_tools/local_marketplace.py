@@ -40,8 +40,7 @@ def validate_local_archive(
         or len(names) != len(set(names))
         or tuple(sorted(names)) != tuple(sorted(expected_names))
         or any(
-            not name or name in {".", ".."} or Path(name).name != name
-            for name in names
+            not name or name in {".", ".."} or Path(name).name != name for name in names
         )
     ):
         raise ValueError("local Codexy marketplace provenance is incomplete")

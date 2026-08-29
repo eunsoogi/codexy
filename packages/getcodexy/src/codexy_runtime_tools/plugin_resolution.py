@@ -78,11 +78,7 @@ def official_marketplace(payload: object) -> Path:
 
 
 def marketplace_path(binding: MarketplaceBinding) -> Path:
-    return (
-        binding.root
-        if isinstance(binding, MarketplaceIdentity)
-        else Path(binding)
-    )
+    return binding.root if isinstance(binding, MarketplaceIdentity) else Path(binding)
 
 
 def marketplace_source(binding: MarketplaceBinding) -> dict[str, str]:

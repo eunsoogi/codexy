@@ -201,9 +201,7 @@ def _authority_valid(record):
             and isinstance(marketplace_source.get("source"), str)
         ):
             return False
-        path, root = Path(installed_source["path"]), Path(
-            marketplace_source["source"]
-        )
+        path, root = Path(installed_source["path"]), Path(marketplace_source["source"])
         return (
             path.is_absolute()
             and root.is_absolute()

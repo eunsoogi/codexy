@@ -59,17 +59,13 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
             diagnosed = doctor(host.home, codex=host.codex, runner=host.run)
 
         self.assertEqual(receipt["outcome"], "completed")
-        self.assertEqual(
-            receipt["selection_after"], ["core", "github", "devtools"]
-        )
+        self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
         self.assertEqual(
             observed["installed_components"], ["core", "github", "devtools"]
         )
         self.assertEqual(observed["errors"], [])
         self.assertEqual(diagnosed["inventory_consistency"], "consistent")
-        self.assertNotIn(
-            {"code": "invalid-installed-inventory"}, diagnosed["errors"]
-        )
+        self.assertNotIn({"code": "invalid-installed-inventory"}, diagnosed["errors"])
 
     def test_foreign_unbound_or_ambiguous_local_sources_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -137,8 +133,7 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
                     metadata["plugins"][0]["version"] = "0.0.0"
                 else:
                     manifest = (
-                        host.marketplace
-                        / "plugins/codexy/.codex-plugin/plugin.json"
+                        host.marketplace / "plugins/codexy/.codex-plugin/plugin.json"
                     )
                     data = json.loads(manifest.read_text(encoding="utf-8"))
                     data["repository"] = "https://example.invalid/foreign"
