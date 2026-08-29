@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Blind Read Result",
+  "type": "object",
+  "properties": {
+    "interpreted_purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unresolved_reference": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "action_blocker": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "interpreted_purpose",
+    "unresolved_reference",
+    "action_blocker"
+  ],
+  "additionalProperties": false
+}

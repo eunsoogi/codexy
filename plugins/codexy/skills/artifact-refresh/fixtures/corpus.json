@@ -1,0 +1,195 @@
+{
+  "schema": "codexy.artifact-refresh.corpus.v1",
+  "default_request": "Remove only conflicting, superseded, or duplicated claims.",
+  "identifier_templates": {
+    "artifact": "{id}-artifact.md",
+    "governing_source": "{id}-governing.md"
+  },
+  "scenarios": {
+    "AR-P01": "artifact says version 1.4, source says 1.5",
+    "AR-P02": "artifact gives superseded install command, source gives current command",
+    "AR-P03": "exact duplicate claim appears twice",
+    "AR-P04": "semantic duplicate appears in prose and table",
+    "AR-P05": "obsolete endpoint is contradicted by source",
+    "AR-P06": "artifact names stale owner, source names current owner",
+    "AR-P07": "artifact says merged, source says review",
+    "AR-P08": "artifact threshold is 80, source is 90",
+    "AR-P09": "invariant appears three times",
+    "AR-P10": "artifact exactly agrees with source",
+    "AR-N01": "target is executable Python",
+    "AR-N02": "request names two artifacts",
+    "AR-N03": "request relocates canonical source",
+    "AR-N04": "request assigns an owner",
+    "AR-N05": "request changes policy",
+    "AR-N06": "governing source is missing",
+    "AR-N07": "two governing sources compete",
+    "AR-N08": "artifact identity is ambiguous",
+    "AR-N09": "request asks for completion verdict",
+    "AR-N10": "request asks for review approval"
+  },
+  "artifacts": {
+    "AR-P01": "Release version is 1.4.",
+    "AR-P02": "Install with: old-install.",
+    "AR-P03": "Backups are required.\nBackups are required.",
+    "AR-P04": "Backups are required.\n| Rule | Value |\n| --- | --- |\n| Backup | Required |",
+    "AR-P05": "API endpoint: /v1/legacy.",
+    "AR-P06": "Owner: Team Alpha.",
+    "AR-P07": "Status: merged.",
+    "AR-P08": "Retry threshold: 80.",
+    "AR-P09": "Backups are mandatory.\nA backup is required.\nThe system must retain a backup.",
+    "AR-P10": "Release version is 1.5.",
+    "AR-N01": "print('legacy')",
+    "AR-N02": "Two artifact operands.",
+    "AR-N03": "Current claim.",
+    "AR-N04": "Owner is undecided.",
+    "AR-N05": "Existing policy.",
+    "AR-N06": "Unverified claim.",
+    "AR-N07": "Version is uncertain.",
+    "AR-N08": "Artifact identity is unresolved.",
+    "AR-N09": "Completion is unverified.",
+    "AR-N10": "Review is pending."
+  },
+  "governing_sources": {
+    "AR-P01": "Release version is 1.5.",
+    "AR-P02": "Install with: current-install.",
+    "AR-P03": "Backups are required.",
+    "AR-P04": "Backups are required.",
+    "AR-P05": "API endpoint: /v2/current.",
+    "AR-P06": "Owner: Team Beta.",
+    "AR-P07": "Status: review.",
+    "AR-P08": "Retry threshold: 90.",
+    "AR-P09": "Backups are mandatory.",
+    "AR-P10": "Release version is 1.5.",
+    "AR-N01": "Executable behavior is current.",
+    "AR-N02": "One source.",
+    "AR-N03": "Current claim.",
+    "AR-N04": "Ownership authority is external.",
+    "AR-N05": "Policy changes require their owner.",
+    "AR-N06": null,
+    "AR-N07": ["Version 1.", "Version 2."],
+    "AR-N08": "Artifact identity is unresolved.",
+    "AR-N09": "Completion has a separate authority.",
+    "AR-N10": "Review approval has a separate authority."
+  },
+  "requests": {
+    "AR-N01": "Refresh executable behavior.",
+    "AR-N02": "Refresh both artifacts.",
+    "AR-N03": "Move the governing source into the artifact directory.",
+    "AR-N04": "Assign Team Beta as owner.",
+    "AR-N05": "Replace the policy with a new rule.",
+    "AR-N06": "Refresh against the missing source.",
+    "AR-N07": "Choose a source and refresh.",
+    "AR-N08": "Refresh a path assigned to both operand roles.",
+    "AR-N09": "Declare the work complete.",
+    "AR-N10": "Approve the artifact review."
+  },
+  "identifier_overrides": {
+    "AR-N01": {
+      "artifact": "AR-N01-target.py"
+    },
+    "AR-N02": {
+      "artifact": "AR-N02-a.md,AR-N02-b.md"
+    },
+    "AR-N06": {
+      "governing_source": "AR-N06-missing.md"
+    },
+    "AR-N07": {
+      "governing_source": "AR-N07-source-a.md,AR-N07-source-b.md"
+    },
+    "AR-N08": {
+      "artifact": "AR-N08-shared.md",
+      "governing_source": "AR-N08-shared.md"
+    }
+  },
+  "expected_artifacts": {
+    "AR-P01": "",
+    "AR-P02": "",
+    "AR-P03": "Backups are required.",
+    "AR-P04": "Backups are required.",
+    "AR-P05": "",
+    "AR-P06": "",
+    "AR-P07": "",
+    "AR-P08": "",
+    "AR-P09": "Backups are mandatory.",
+    "AR-P10": "Release version is 1.5."
+  },
+  "outcomes": {
+    "AR-P01": "UPDATED",
+    "AR-P02": "UPDATED",
+    "AR-P03": "UPDATED",
+    "AR-P04": "UPDATED",
+    "AR-P05": "UPDATED",
+    "AR-P06": "UPDATED",
+    "AR-P07": "UPDATED",
+    "AR-P08": "UPDATED",
+    "AR-P09": "UPDATED",
+    "AR-P10": "NO_CHANGE",
+    "AR-N01": "HANDOFF_REQUIRED",
+    "AR-N02": "HANDOFF_REQUIRED",
+    "AR-N03": "HANDOFF_REQUIRED",
+    "AR-N04": "HANDOFF_REQUIRED",
+    "AR-N05": "HANDOFF_REQUIRED",
+    "AR-N06": "HANDOFF_REQUIRED",
+    "AR-N07": "HANDOFF_REQUIRED",
+    "AR-N08": "HANDOFF_REQUIRED",
+    "AR-N09": "HANDOFF_REQUIRED",
+    "AR-N10": "HANDOFF_REQUIRED"
+  },
+  "removed": {
+    "AR-P01": {
+      "4698100c44e18ce002fb52e544c4f2f7116c7c4bde4f8583770a3d539551adaf": "conflict"
+    },
+    "AR-P02": {
+      "ace4053882093d9aed83154b6213b3b092f0c43f93bb8525151794d643d9ef4f": "superseded"
+    },
+    "AR-P03": {
+      "07fb572ae4e871377b77bbb71fc1196d9acd2e37919cc3232141d4a1fd478486": "duplicate"
+    },
+    "AR-P04": {
+      "b25a237cda0ead7ea34226c04f030eabdc9e4837f3de29a6fff77859221076a0": "duplicate"
+    },
+    "AR-P05": {
+      "d2939e8b3fb720381b3f8db82e967f837aed91a827035c1259f9b409df2d2847": "conflict"
+    },
+    "AR-P06": {
+      "679232fc31a552f355ae28833f45361c94582a2bde20199902398c333c5e17a8": "superseded"
+    },
+    "AR-P07": {
+      "0bdfd49beddc592c0cfb3a8a495af6cfd21e75454ded357572689b6a0779ac56": "conflict"
+    },
+    "AR-P08": {
+      "bf6a1c1f703f98b2a7d489b8f3069686dd6a9734baf9f9457f6de2dcf0238233": "conflict"
+    },
+    "AR-P09": {
+      "57fd9de1296d67ed2f33ce1c1de1d0652b53865a7418d943e3b3eda12c28eed2": "duplicate",
+      "c6a6edba7d5a5310f0a3a3ca5f7474750040d4f1004cd29a8b073984c698320a": "duplicate"
+    }
+  },
+  "schema_negative_cases": {
+    "cross_kind_duplicate_claim_sha256": {
+      "removed_entries": [
+        {
+          "kind": "conflict",
+          "claim_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "kind": "duplicate",
+          "claim_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "expected": "REJECTED"
+    }
+  },
+  "handoff_reasons": {
+    "AR-N01": "CODE_BEHAVIOR",
+    "AR-N02": "MULTIPLE_ARTIFACTS",
+    "AR-N03": "CANONICAL_MOVEMENT",
+    "AR-N04": "AMBIGUOUS_AUTHORITY",
+    "AR-N05": "AMBIGUOUS_AUTHORITY",
+    "AR-N06": "AMBIGUOUS_AUTHORITY",
+    "AR-N07": "AMBIGUOUS_AUTHORITY",
+    "AR-N08": "AMBIGUOUS_AUTHORITY",
+    "AR-N09": "AMBIGUOUS_AUTHORITY",
+    "AR-N10": "AMBIGUOUS_AUTHORITY"
+  }
+}
