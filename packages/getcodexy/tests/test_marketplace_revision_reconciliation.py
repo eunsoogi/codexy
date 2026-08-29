@@ -46,9 +46,7 @@ class MarketplaceRevisionReconciliationTests(unittest.TestCase):
         }
         for name, drift in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
-                root, home, state = _fixture(
-                    Path(temporary), drift
-                )
+                root, home, state = _fixture(Path(temporary), drift)
                 self.assertNotEqual(state["main"], state["tag"])
 
                 with self.assertRaisesRegex(RuntimeError, "marketplace.*quarantined"):
