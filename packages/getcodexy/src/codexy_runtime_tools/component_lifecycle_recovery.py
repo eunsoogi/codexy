@@ -25,6 +25,7 @@ from .component_transaction_state import (
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import validate_or_quarantine_marketplace
 from .pre_session import _json, official_marketplace_root
+from .plugin_resolution import MarketplaceBinding
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -35,7 +36,7 @@ def recover_if_needed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
 ) -> None:
     journal = read_journal(home)
     if journal is None:
@@ -86,7 +87,7 @@ def rollback_or_raise(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     cause: BaseException,
 ) -> None:
@@ -116,7 +117,7 @@ def write_completed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     installed: tuple[str, ...],
 ) -> dict[str, object]:
@@ -130,7 +131,7 @@ def finish_committed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
 ) -> dict[str, object]:
     installed = verify_post_operation_inventory(
@@ -159,7 +160,7 @@ def restore_selection(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     before: tuple[str, ...],
 ) -> None:
     current = selection(manifest, list_installed(executable, invoke), root)
@@ -175,7 +176,7 @@ def apply_forward(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     adds: tuple[str, ...],
     removes: tuple[str, ...],
@@ -234,6 +235,6 @@ def list_installed(executable: Path, invoke: Runner) -> object:
 
 
 def selection(
-    manifest: ComponentManifest, payload: object, root: Path
+    manifest: ComponentManifest, payload: object, root: MarketplaceBinding
 ) -> tuple[str, ...]:
     return reconcile_installed_inventory(manifest, payload, root)

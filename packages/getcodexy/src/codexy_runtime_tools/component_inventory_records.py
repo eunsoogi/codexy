@@ -10,14 +10,16 @@ from .component_inventory_classification import (
     InstalledIdentity,
 )
 from .component_manifest import Component, ComponentManifest, valid_semver
+from .plugin_resolution import MarketplaceBinding, marketplace_path, marketplace_source
 
 
 def component_records(
     manifest: ComponentManifest,
     inventory: ClassifiedInstalledInventory,
-    marketplace_root: Path,
+    marketplace_root: MarketplaceBinding,
 ) -> dict[str, dict[str, object]]:
-    if not marketplace_root.is_absolute():
+    root = marketplace_path(marketplace_root)
+    if not root.is_absolute():
         raise ComponentResolutionError("invalid-installed-inventory")
     records = {}
     for record in inventory.records:
@@ -31,7 +33,13 @@ def component_records(
         if (
             component is None
             or not record.canonical
-            or not valid_record(record.entry, component, manifest, marketplace_root)
+            or not valid_record(
+                record.entry,
+                component,
+                manifest,
+                root,
+                marketplace_source(marketplace_root),
+            )
             or component.id in records
         ):
             raise ComponentResolutionError("conflicting-installed-state")
@@ -44,8 +52,9 @@ def valid_record(
     component: Component,
     manifest: ComponentManifest,
     marketplace_root: Path,
+    expected_source: dict[str, str] | None = None,
 ) -> bool:
-    if not valid_observed_record(entry, component, manifest):
+    if not valid_observed_record(entry, component, manifest, expected_source):
         return False
     source = entry.get("source")
     expected = marketplace_root / component.asset.package_root
@@ -58,7 +67,10 @@ def valid_record(
 
 
 def valid_observed_record(
-    entry: dict[str, object], component: Component, manifest: ComponentManifest
+    entry: dict[str, object],
+    component: Component,
+    manifest: ComponentManifest,
+    expected_source: dict[str, str] | None = None,
 ) -> bool:
     """Validate the identity a failed marketplace probe can still establish."""
     source = entry.get("source")
@@ -75,7 +87,10 @@ def valid_observed_record(
         and entry.get("pluginId") == component.asset.plugin_id
         and entry.get("marketplaceName") == manifest.marketplace.name
         and entry.get("marketplaceSource")
-        == {"sourceType": "git", "source": manifest.marketplace.source}
+        == (
+            expected_source
+            or {"sourceType": "git", "source": manifest.marketplace.source}
+        )
         and entry.get("installed") is True
         and entry.get("enabled") is True
         and valid_semver(entry.get("version"))

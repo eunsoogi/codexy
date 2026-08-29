@@ -13,12 +13,13 @@ from .component_resolver import (
 from .component_transaction_receipts import read_receipt
 from .component_transaction_state import Journal
 from .component_transition_model import OperationReceipt
+from .plugin_resolution import MarketplaceBinding
 
 
 def admitted_selection(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     command: str,
 ) -> tuple[str, ...]:
     return admit_operation_inventory(manifest, inventory, marketplace_root, command)
@@ -27,7 +28,7 @@ def admitted_selection(
 def admitted_recovery_selection(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     expected: tuple[str, ...],
 ) -> tuple[str, ...]:
     return admit_recovery_inventory(manifest, inventory, marketplace_root, expected)
@@ -36,7 +37,7 @@ def admitted_recovery_selection(
 def admitted_bootstrap_recovery_selection(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     before: tuple[str, ...],
     target: tuple[str, ...],
 ) -> tuple[str, ...]:
