@@ -1,5 +1,10 @@
 use std::io;
 use std::path::{Path, PathBuf};
+
+#[path = "validator_rustfmt_suppression/strings.rs"]
+mod strings;
+use strings::{quoted_string_end, raw_string_end, raw_string_start};
+
 const FORMAT_NAMESPACE: &str = "rustfmt";
 const SKIP_DIRECTIVE: &str = "::skip";
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -12,6 +17,31 @@ fn maintained_rust_rejects_formatter_suppressions() -> TestResult {
     let error =
         check_source(Path::new("fixture.rs"), &fixture).expect_err("the fixture must be rejected");
     assert!(error.contains("formatter suppression"), "{error}");
+
+    let spaced_introducer_fixture = format!(
+        "# [{}{}]\nfn fixture() {{}}\n",
+        FORMAT_NAMESPACE, SKIP_DIRECTIVE
+    );
+    assert!(
+        check_source(
+            Path::new("spaced-introducer-fixture.rs"),
+            &spaced_introducer_fixture
+        )
+        .is_err(),
+        "whitespace between # and [ must not evade the suppression check"
+    );
+    let commented_introducer_fixture = format!(
+        "# /* sentinel */ [{}{}]\nfn fixture() {{}}\n",
+        FORMAT_NAMESPACE, SKIP_DIRECTIVE
+    );
+    assert!(
+        check_source(
+            Path::new("commented-introducer-fixture.rs"),
+            &commented_introducer_fixture
+        )
+        .is_err(),
+        "comments between # and [ must not evade the suppression check"
+    );
 
     let spaced_fixture = format!(
         "#[{} /* sentinel */ :: skip]\nfn fixture() {{}}\n",
@@ -59,14 +89,13 @@ fn collect_rust_files(root: &Path, files: &mut Vec<PathBuf>) -> io::Result<()> {
 }
 
 fn check_source(path: &Path, source: &str) -> Result<(), String> {
-    if contains_formatter_suppression(source) {
-        Err(format!(
-            "{} contains a formatter suppression",
-            path.display()
-        ))
-    } else {
-        Ok(())
+    if !contains_formatter_suppression(source) {
+        return Ok(());
     }
+    Err(format!(
+        "{} contains a formatter suppression",
+        path.display()
+    ))
 }
 
 fn contains_formatter_suppression(source: &str) -> bool {
@@ -77,18 +106,36 @@ fn contains_formatter_suppression(source: &str) -> bool {
             index = next;
             continue;
         }
-        if bytes[index] == b'#' && bytes.get(index + 1) == Some(&b'[') {
-            if let Some(end) = attribute_end(bytes, index + 1) {
-                if attribute_contains_suppression(&source[index + 2..end]) {
-                    return true;
+        if bytes[index] == b'#' {
+            if let Some(opening_bracket) = outer_attribute_open(bytes, index) {
+                if let Some(end) = attribute_end(bytes, opening_bracket) {
+                    if attribute_contains_suppression(&source[opening_bracket + 1..end]) {
+                        return true;
+                    }
+                    index = end + 1;
+                    continue;
                 }
-                index = end + 1;
-                continue;
             }
         }
         index += 1;
     }
     false
+}
+
+fn outer_attribute_open(bytes: &[u8], hash: usize) -> Option<usize> {
+    let mut index = hash + 1;
+    while index < bytes.len() {
+        if bytes[index].is_ascii_whitespace() {
+            index += 1;
+        } else if bytes[index] == b'/'
+            && (bytes.get(index + 1) == Some(&b'/') || bytes.get(index + 1) == Some(&b'*'))
+        {
+            index = skip_ignored(bytes, index)?;
+        } else {
+            return (bytes[index] == b'[').then_some(index);
+        }
+    }
+    None
 }
 
 fn attribute_end(bytes: &[u8], opening_bracket: usize) -> Option<usize> {
@@ -123,7 +170,7 @@ fn attribute_contains_suppression(body: &str) -> bool {
             index += 1;
             continue;
         }
-        if is_identifier_start(bytes[index]) {
+        if bytes[index] == b'_' || bytes[index].is_ascii_alphabetic() {
             let start = index;
             index += 1;
             while index < bytes.len() && is_identifier_continue(bytes[index]) {
@@ -186,65 +233,6 @@ fn skip_ignored(bytes: &[u8], index: usize) -> Option<usize> {
     None
 }
 
-fn raw_string_start(bytes: &[u8], index: usize) -> Option<(usize, usize)> {
-    let mut cursor = index;
-    if bytes.get(cursor) == Some(&b'b') {
-        cursor += 1;
-    }
-    if bytes.get(cursor) != Some(&b'r') {
-        return None;
-    }
-    cursor += 1;
-    let hash_start = cursor;
-    while bytes.get(cursor) == Some(&b'#') {
-        cursor += 1;
-    }
-    let hashes = cursor - hash_start;
-    if bytes.get(cursor) == Some(&b'"') {
-        Some((cursor + 1, hashes))
-    } else {
-        None
-    }
-}
-
-fn raw_string_end(bytes: &[u8], content_start: usize, hashes: usize) -> usize {
-    let mut cursor = content_start;
-    while cursor < bytes.len() {
-        if bytes[cursor] == b'"' {
-            let mut end = cursor + 1;
-            let mut matches = true;
-            for _ in 0..hashes {
-                if bytes.get(end) != Some(&b'#') {
-                    matches = false;
-                    break;
-                }
-                end += 1;
-            }
-            if matches {
-                return end;
-            }
-        }
-        cursor += 1;
-    }
-    bytes.len()
-}
-
-fn quoted_string_end(bytes: &[u8], opening_quote: usize) -> usize {
-    let mut cursor = opening_quote + 1;
-    while cursor < bytes.len() {
-        match bytes[cursor] {
-            b'\\' => cursor = cursor.saturating_add(2),
-            b'"' => return cursor + 1,
-            _ => cursor += 1,
-        }
-    }
-    bytes.len()
-}
-
-fn is_identifier_start(byte: u8) -> bool {
-    byte == b'_' || byte.is_ascii_alphabetic()
-}
-
 fn is_identifier_continue(byte: u8) -> bool {
-    is_identifier_start(byte) || byte.is_ascii_digit()
+    byte == b'_' || byte.is_ascii_alphanumeric()
 }
