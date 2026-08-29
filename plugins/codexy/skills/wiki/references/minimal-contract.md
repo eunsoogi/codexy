@@ -14,15 +14,14 @@ indexes are caches. The path is `init → ingest → compile → query → refre
   create a new revision; MUST NOT overwrite history.
 - **Compile:** MUST synthesize raw evidence. Source-backed articles MUST use
   root-relative `sources:`; conversation-only articles MUST use
-  `compiled-from: conversation`. MUST record `updated`, `verified`, `volatility`,
-  and confidence. MUST compile after `Last compiled` by default; full passes
-  MUST be explicit. MUST rebuild stale indexes from frontmatter.
-- **Query:** MUST read `_index.md`, one category index, then only matches;
-  MUST stale-check first. MUST cite local articles and resolved sources or MUST
-  report a gap.
-  Limits are three indexes, eight articles, 4,000 UTF-8 bytes per loaded file,
-  and 48,000 total including frontmatter. MUST state the reason and MUST obtain
-  explicit broader intent before exceeding any limit.
+  `compiled-from: conversation`. MUST record `updated`, `verified`,
+  `volatility`, and confidence. MUST compile after `Last compiled` by default;
+  full passes MUST be explicit. MUST rebuild stale indexes from frontmatter.
+- **Query:** MUST read `_index.md`, one category index, then only matches; MUST
+  stale-check first. MUST cite local articles and resolved sources or MUST
+  report a gap. Limits are three indexes, eight articles, 4,000 UTF-8 bytes per
+  loaded file, and 48,000 total including frontmatter. MUST state the reason and
+  MUST obtain explicit broader intent before exceeding any limit.
 - **Refresh:** MUST compare fetchable sources with recorded provenance.
   Unchanged sources stay untouched; changed content creates a new raw revision
   and a recompile requirement.
@@ -34,10 +33,10 @@ indexes are caches. The path is `init → ingest → compile → query → refre
   contradictory chains. A source-backed article without a resolved source is
   never clean.
 - Source-backed freshness is 0–100: source, verification, compilation, and chain
-  integrity contribute 0–25 each. MUST use UTC days. Missing, malformed, or future
-  `ingested`, `verified`, `updated`, or `created` contributes zero and MUST be
-  reported; future age is never zero. Compilation uses valid `updated`, then
-  `created`. Source age averages valid resolved sources; unresolved sources
+  integrity contribute 0–25 each. MUST use UTC days. Missing, malformed, or
+  future `ingested`, `verified`, `updated`, or `created` contributes zero and
+  MUST be reported; future age is never zero. Compilation uses valid `updated`,
+  then `created`. Source age averages valid resolved sources; unresolved sources
   remain in the chain denominator. Unknown volatility is `warm`.
 - Half-lives are hot 30, warm 90, cold 365 days. Each recency component is
   `25 * 0.5^(age_days / half_life_days)`; chain integrity is
