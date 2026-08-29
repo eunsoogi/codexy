@@ -132,8 +132,8 @@ real goal surface for:
   doing no work;
 - The task MUST verify administrative completion failure preserving the exact
   error and doing no work;
-- The task MUST verify fresh-goal creation failure preserving the exact error and
-  doing no work.
+- The task MUST verify fresh-goal creation failure preserving the exact error
+  and doing no work.
 
 The task MUST treat the #712 refusal shape as corrected only when the host either
 accepts the administrative control-plane transition and the task MUST NOT treat
