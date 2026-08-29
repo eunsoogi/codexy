@@ -6,7 +6,7 @@ if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -n "${CODEXY_TEST_VALIDATE_PLUGIN_CONFIG
 	exec "$CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY" "$@"
 fi
 case " $* " in
-*" --check "*|*" --check-lsp "*)
+*" --check "* | *" --check-lsp "*)
 	python3 - "$REPO_ROOT" "$@" <<'PY'
 import json
 import sys
