@@ -33,11 +33,11 @@ MUST place each carried claim in exactly one bucket:
 | Fix              | A current unresolved obligation with evidence.                |
 | Forget or demote | Resolved, stale, superseded, duplicated, or unproved history. |
 
-MUST continue only from Remember constraints and Fix obligations. Emit one next
-action allowed by the current owner and stop condition; MUST NOT invent one. If
-a carried claim needs reclassification, show it in its bucket. Return
-byte-identical `NO_CHANGE` only when current surfaces are clean and there is
-nothing to reclassify; create no report or other artifact.
+MUST continue only from Remember constraints and Fix obligations. MUST emit one
+next action allowed by current owner and stop condition; MUST NOT invent one.
+If a carried claim needs reclassification, MUST show it in its bucket. MUST
+return byte-identical `NO_CHANGE` only when current surfaces are clean and there
+is nothing to reclassify; MUST NOT create a report or other artifact.
 
 ## Capsule Compatibility
 
@@ -52,8 +52,8 @@ classified, stop with `BLOCKED_CONSUMER_UNKNOWN` and preserve the invocation.
 
 ## Output
 
-Return only the refreshed current anchors, Remember, Fix, Forget or demote, and
-one next action. Every Fix MUST cite current evidence. Dreaming MUST NOT close
+MUST return only the refreshed current anchors, Remember, Fix, Forget or demote,
+and one next action. Fixes MUST cite current evidence. Dreaming MUST NOT close
 threads, edit branches, change owners, direct children, reset review counts,
 write memory, or replace orchestration, GitHub, reviewer, or completion
 authority.
