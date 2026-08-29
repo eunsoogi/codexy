@@ -7,7 +7,6 @@ use crate::support;
 
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
-#[rustfmt::skip]
 const ROLES: [&str; 7] = ["codexy-architect", "codexy-auditor", "codexy-cartographer", "codexy-inspector", "codexy-sentinel", "codexy-shipwright", "codexy-warden"];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

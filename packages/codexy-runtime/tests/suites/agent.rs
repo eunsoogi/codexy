@@ -21,7 +21,6 @@ pub(crate) const CONTEXT_TASK_CLASSES: [&str; 10] = [
 #[test]
 fn context_contract_covers_tiers_profiles_and_safety_invariants() -> TestResult {
     const TIERS: [&str; 4] = ["always_on", "task_selected", "event_delta", "refresh_only"];
-    #[rustfmt::skip]
     const SAFETY_FIELDS: [&str; 10] = ["issue_pr_identity", "owner_worktree", "base_head_sha", "dirty_index_state", "checks", "unresolved_review_threads", "selected_reviewer_state", "verification", "external_gate", "next_action"];
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let contract: Value = serde_json::from_str(&std::fs::read_to_string(
