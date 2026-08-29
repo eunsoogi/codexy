@@ -52,12 +52,12 @@ thread state, and completion. Disposition: `KEEP + SIMPLIFY`; default routing:
 
 ## Static contract projection
 
-- V1 known parent + confirmed success: parent only, one dispatch, report success;
-  MUST NOT contact a child.
+- V1 known parent + confirmed success: parent only, one dispatch, report
+  success; MUST NOT contact a child.
 - V2 one standalone owner + confirmed failure: route once, report failure and
   its confirmed reason; MUST NOT invent a parent or relabel failure as blocked.
-- V3 two plausible owners: one clarification, zero dispatch; report `blocked`
-  on no selection rather than guessing.
+- V3 two plausible owners: one clarification, zero dispatch; report `blocked` on
+  no selection rather than guessing.
 - V4 interruption + confirmed cancellation: yield, MUST NOT cancel or duplicate;
   keep the owner and report cancellation after the result.
 - V5 selected owner still running: report `in progress` and the next milestone;
