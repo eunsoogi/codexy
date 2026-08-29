@@ -42,17 +42,17 @@ For a `blocked` result, the task MUST perform this exact sequence:
 
 1. The task MUST call `update_goal(status="complete")` only to terminate the
    stale blocked execution record.
-2. The task MUST state that this is an administrative control-plane unblock.
-   The task MUST NOT treat it as evidence that the issue, PR, implementation,
-   proof, merge, release, or external gate is complete.
+2. The task MUST state that this is an administrative control-plane unblock. The
+   task MUST NOT treat it as evidence that the issue, PR, implementation, proof,
+   merge, release, or external gate is complete.
 3. The task MUST read back the cleared goal state. The task MUST continue only
    when the authoritative readback is exactly `goal=null` or exactly
    `status=complete`. If it is `active`, `blocked`, an error, `unknown`,
    `missing`, malformed, or any other unexpected state, the task MUST preserve
    the exact receipt and MUST stop.
-4. The task MUST create a new finite goal for the same authorized work, MUST read
-   back that the new goal is `active`, and MUST create or refresh the current
-   plan.
+4. The task MUST create a new finite goal for the same authorized work, MUST
+   read back that the new goal is `active`, and MUST create or refresh the
+   current plan.
 5. The task MUST resume work only after the new goal is confirmed `active`.
 
 If administrative completion or fresh-goal creation fails, the task MUST NOT
@@ -64,9 +64,9 @@ owner task.
 
 ## Refusal-only fallback
 
-The task MUST treat the administrative `update_goal(status="complete")` route
-as the default. The task MUST use this bounded control-plane fallback if and
-only if the host explicitly refuses that route because the unfinished blocked
+The task MUST treat the administrative `update_goal(status="complete")` route as
+the default. The task MUST use this bounded control-plane fallback if and only
+if the host explicitly refuses that route because the unfinished blocked
 objective cannot be marked `complete`:
 
 1. The task MUST preserve the exact refusal and MUST send the required parent
@@ -77,10 +77,10 @@ objective cannot be marked `complete`:
    The task MUST NOT create a competing worktree or branch. If the fork does not
    return one new task owner, the task MUST preserve the exact result and MUST
    stop.
-3. After the fork succeeds, the task MUST archive the original blocked task
-   with `set_thread_archived(archived=true)`. If archiving fails, the task MUST
-   NOT allow either task to perform work; the task MUST preserve the original
-   owner reservation and MUST stop for an explicit lifecycle disposition.
+3. After the fork succeeds, the task MUST archive the original blocked task with
+   `set_thread_archived(archived=true)`. If archiving fails, the task MUST NOT
+   allow either task to perform work; the task MUST preserve the original owner
+   reservation and MUST stop for an explicit lifecycle disposition.
 4. In the forked task, the task MUST call `get_goal` before any work and MUST
    confirm the exact result is `null`. If it is `blocked`, `active`, `complete`,
    or an error, the task MUST preserve the exact result and MUST stop; the task
@@ -115,9 +115,9 @@ schema, runtime service, or compatibility wrapper for this behavior.
 
 ## Verification
 
-This is an instruction-only skill. The task MUST NOT manufacture prose RED/GREEN.
-Where isolated host tasks are available, the task MUST exercise the real goal
-surface for:
+This is an instruction-only skill. The task MUST NOT manufacture prose
+RED/GREEN. Where isolated host tasks are available, the task MUST exercise the
+real goal surface for:
 
 - The task MUST verify `null`, a `goal=null` response envelope, and exact
   `status=complete` results creating a fresh active goal;
