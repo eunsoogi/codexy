@@ -34,10 +34,10 @@ MUST place each carried claim in exactly one bucket:
 | Forget or demote | Resolved, stale, superseded, duplicated, or unproved history. |
 
 MUST continue only from Remember constraints and Fix obligations. MUST emit one
-next action allowed by current owner and stop condition; MUST NOT invent one.
-If a carried claim needs reclassification, MUST show it in its bucket. MUST
-return byte-identical `NO_CHANGE` only when current surfaces are clean and there
-is nothing to reclassify; MUST NOT create a report or other artifact.
+next action allowed by current owner and stop condition; MUST NOT invent one. If
+a carried claim needs reclassification, MUST show it in its bucket. MUST return
+byte-identical `NO_CHANGE` only when current surfaces are clean and there is
+nothing to reclassify; MUST NOT create a report or other artifact.
 
 ## Capsule Compatibility
 
