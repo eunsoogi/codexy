@@ -1,106 +1,78 @@
 ---
 name: realtime-voice-orchestration
-description: Use when a realtime voice conversation must route a task or status request to an authoritative Codex project owner and summarize verified progress without taking over orchestration.
+description: Use when a user explicitly requests a realtime voice interaction that must route a task or status request to an authoritative Codex project owner and summarize verified progress without taking over orchestration.
 ---
 
 # Realtime Voice Orchestration
 
-Use this skill only after `$orchestration` has classified the request as a
-realtime voice interaction. It is a voice-specific routing and presentation
-adapter around the normal orchestration contract. Normal orchestration remains
-the canonical authority for ownership, dispatch, child coordination, evidence,
-handoffs, and thread state.
+MUST use this skill only when the user explicitly asks for voice interaction
+and `$orchestration` selects this experimental adapter. `$orchestration` remains
+authoritative for ownership, dispatch, child coordination, evidence, handoffs,
+thread state, and completion. Disposition: `KEEP + SIMPLIFY`; default routing:
+`DEFER`.
 
-## Canonical flow
+## Resolve and route
 
-The supported ownership flow is parent-or-standalone-owner:
+- MUST resolve conversational references against available context and
+  authoritative active-thread state; MUST NOT assume the visible voice thread
+  owns the project.
+- MUST route to the known parent only, or directly to exactly one relevant
+  standalone owner when no parent exists. With no active owner, respond
+  conversationally or offer to start a task.
+- If multiple owners remain plausible, MUST ask exactly one concise clarification
+  and wait; dispatch count is zero until the user selects one.
+- MUST send exactly one request to the selected owner. If routing is ambiguous
+  or fails, report that it was unconfirmed and give the next safe action; MUST
+  NOT retry or duplicate dispatch.
+- The parent MUST remain the sole coordinator. The voice layer MUST NOT invent a
+  parent, route to an unrelated thread, or steer, poll, or decide for a parent's
+  children.
+- MUST capture current-screen context only when ambiguity is material and the
+  surface is available. Otherwise report unavailable rather than inferring or
+  replacing the context; MUST NOT patch the native host.
 
-- Parent-owned:
-  `voice input -> owning orchestrator/parent -> parent-managed child coordination -> parent result -> voice summary`
-- Standalone-owned:
-  `voice input -> exactly one relevant standalone active project owner -> owner result -> voice summary`
+## Confirmed state and interruption
 
-- MUST route a project request to its owning parent/orchestrator when one is
-  known, or directly to exactly one relevant standalone active project owner
-  when no parent exists. The voice layer MUST NOT steer, poll, or decide for a
-  parent's children directly, invent an orchestrator for a standalone owner, or
-  route to an unrelated thread.
-- MUST NOT assume that the visible voice thread owns the project. A voice thread
-  may be separate from the project parent or a standalone work owner.
-- MAY inspect enough authoritative parent state to resolve context and report
-  status, but MUST NOT become a parallel project manager.
-- MUST treat native thread-tool or current-screen capability gaps, including the
-  host dependency represented by #611, as unavailable context. State the limit;
-  MUST NOT patch the native host or invent missing state.
-
-## Resolve the project context
-
-MUST use the user's conversational references, the current visible context when
-it is available, and authoritative active-thread state. Resolve the route with
-this closed decision table:
-
-| Observed context                                             | Route                                             | Voice-layer boundary                                            |
-| ------------------------------------------------------------ | ------------------------------------------------- | --------------------------------------------------------------- |
-| A clear owning orchestrator/parent exists                    | Route to that parent only                         | MUST NOT steer, poll, or decide for its children                |
-| Exactly one relevant standalone active project thread exists | Route directly to that thread                     | MUST NOT invent an orchestrator or add child coordination       |
-| More than one project workflow remains plausible             | Ask one concise clarification                     | MUST NOT choose by guess or inspect unrelated projects          |
-| No active work owner exists                                  | Respond conversationally or offer to start a task | MUST NOT route to unrelated threads or manage orphaned children |
-
-- MUST capture current-screen context only when a visible reference is
-  materially ambiguous and that surface is available. If it is unavailable, say
-  so instead of inferring what the user meant.
-- MUST distinguish parent ownership from child execution when that distinction
-  helps the user understand status. The parent remains the sole coordinator.
-- MUST use at most one concise clarification for a materially ambiguous project
-  reference, then wait for the user's answer before routing.
-
-## Dispatch and state reporting
-
-- MUST send one route request to the selected owner. MUST emit a voice-facing
-  state update only after the relevant dispatch returns a confirmed
-  authoritative result.
-- If dispatch is ambiguous or fails, report that it was not confirmed and the
-  next safe action. MUST NOT blindly retry, duplicate dispatch, or claim that
-  work started.
-- Summarize verified aggregate state, not raw logs or tool payloads. Omit opaque
-  thread identifiers, transcripts, and internal event ids from spoken output.
+- MUST speak only after the selected owner returns a confirmed authoritative
+  result. Summarize verified aggregate state; omit identifiers, transcripts,
+  and internal events.
 - MUST distinguish `in progress`, terminal `success`, `failure`, `cancellation`,
-  and `blocked` states. MUST NOT describe in-progress work as complete.
-- Keep local verification, PR/merge, and externally state-changing release
-  phases separate. MUST NOT imply that a public release, tag, or asset
-  publication happened locally.
+  and `blocked`. Include a confirmed reason where available; MUST NOT call
+  progress complete.
+- When the user interrupts, MUST yield promptly while preserving the selected
+  owner, durable work, and latest confirmed route. Interruption alone MUST NOT
+  cancel or redispatch. Cancellation or retry requires explicit owner support
+  and current authoritative state. MUST resume with the newest verified state.
+- MUST monitor only the selected parent or standalone owner through bounded,
+  event-driven observations. MUST NOT poll unboundedly, guess from silence, or
+  monitor a child directly. Without a terminal event, report `in progress` and
+  the next observable milestone.
+- On host transition or unavailable thread capability, MUST preserve the owner
+  and report the limitation; MUST NOT substitute another thread or guess status.
 
-MUST use short, plain-language updates that answer what is happening, what has
-been verified, and what remains. MUST keep machine-readable evidence in its own
-channel. When speaking Korean, use natural Korean rather than translating
-workflow nouns literally.
+## Static contract projection
 
-## Interruption-first behavior
+- V1 known parent + confirmed success: parent only, one dispatch, report success;
+  MUST NOT contact a child.
+- V2 one standalone owner + confirmed failure: route once, report failure and
+  its confirmed reason; MUST NOT invent a parent or relabel failure as blocked.
+- V3 two plausible owners: one clarification, zero dispatch; report `blocked`
+  on no selection rather than guessing.
+- V4 interruption + confirmed cancellation: yield, MUST NOT cancel or duplicate;
+  keep the owner and report cancellation after the result.
+- V5 selected owner still running: report `in progress` and the next milestone;
+  MUST NOT make a terminal claim.
+- V6 unavailable authenticated context: report `blocked` and the next safe
+  action; MUST NOT guess or substitute another task.
+- VN1 typed non-voice input: remain on normal orchestration and select zero
+  voice-adapter bytes.
+- VN2 child steering while a parent exists: route to the parent or refuse direct
+  steering; child dispatch count remains zero.
 
-- When the user interrupts, yield or stop the current spoken summary promptly.
-- Preserve the selected owner, durable project work, and the latest confirmed
-  route. An interruption of speech is not permission to cancel project work.
-- MUST NOT dispatch the same request again because speech was interrupted.
-  Cancellation or retry requires an explicit, owner-supported operation and
-  current authoritative state.
-- MUST resume with the newest verified state only; MUST NOT continue a stale
-  summary or replay raw context.
+## Boundaries
 
-## Bounded monitoring
-
-- Monitor the selected parent, or the single selected standalone owner, through
-  authoritative thread state and bounded/event-driven observations.
-- MUST NOT leave the user waiting on an unbounded poll, guess from silence, or
-  monitor a child directly when a parent owns that child.
-- If no terminal event is available, MUST say that the work is still in progress
-  and identify the next observable milestone without claiming completion.
-- On a host transition or unavailable thread tool, preserve the owner and report
-  the unavailable capability. MUST NOT substitute an unrelated thread, local
-  host patch, or guessed status.
-
-## Scope boundary
-
-This skill MUST NOT replace `$orchestration`, create a second parent, change
-child ownership, export transcripts, or execute public release actions. For
-non-voice work, MUST continue using the normal task-selected orchestration
-route.
+This skill MUST NOT replace `$orchestration`, become an owner, create a second
+parent, change child ownership, steer a child, guess state, blindly retry,
+export transcripts, or execute release actions. Local verification, PR/merge,
+and external release phases MUST remain separate; never imply publication. For
+non-voice work, MUST continue on the normal task-selected orchestration route.
