@@ -14,25 +14,63 @@ use crate::{
 };
 
 use super::core;
+mod platforms;
 
 const SCHEMA: &str = "codexy-runtime-release/v1";
 const REPOSITORY: &str = "https://github.com/eunsoogi/codexy";
 const LEGACY_TAG: &str = "v1.2.2";
 const LEGACY_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];
-#[rustfmt::skip]
-const PROVENANCE_FIELDS: &[&str] = &["repositoryId", "workflowPath", "runId", "runAttempt", "workflowRunUrl"];
+const PROVENANCE_FIELDS: &[&str] = &[
+    "repositoryId",
+    "workflowPath",
+    "runId",
+    "runAttempt",
+    "workflowRunUrl",
+];
 const PROVENANCE_WORKFLOW: &str = ".github/workflows/runtime-candidate.yml";
 const REPOSITORY_ID: i64 = 1_269_350_143;
-#[rustfmt::skip]
-const BASE_FIELDS: &[&str] = &["schema", "state", "source", "artifact", "compatibility", "platforms"];
-#[rustfmt::skip]
-const CANDIDATE_CORE_FIELDS: &[&str] = &["schema", "state", "source", "artifact", "compatibility", "platforms", "classes"];
-#[rustfmt::skip]
-const SOURCE_FIELDS: &[&str] = &["schema", "state", "source", "artifact", "provenance", "compatibility", "platforms"];
-#[rustfmt::skip]
-const SOURCE_CORE_FIELDS: &[&str] = &["schema", "state", "source", "artifact", "provenance", "compatibility", "platforms", "classes"];
-#[rustfmt::skip]
-const COMPATIBILITY_FIELDS: &[&str] = &["bootstrapApi", "pluginRuntimeApi", "transport", "mcpProtocol"];
+const BASE_FIELDS: &[&str] = &[
+    "schema",
+    "state",
+    "source",
+    "artifact",
+    "compatibility",
+    "platforms",
+];
+const CANDIDATE_CORE_FIELDS: &[&str] = &[
+    "schema",
+    "state",
+    "source",
+    "artifact",
+    "compatibility",
+    "platforms",
+    "classes",
+];
+const SOURCE_FIELDS: &[&str] = &[
+    "schema",
+    "state",
+    "source",
+    "artifact",
+    "provenance",
+    "compatibility",
+    "platforms",
+];
+const SOURCE_CORE_FIELDS: &[&str] = &[
+    "schema",
+    "state",
+    "source",
+    "artifact",
+    "provenance",
+    "compatibility",
+    "platforms",
+    "classes",
+];
+const COMPATIBILITY_FIELDS: &[&str] = &[
+    "bootstrapApi",
+    "pluginRuntimeApi",
+    "transport",
+    "mcpProtocol",
+];
 const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 
 pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
@@ -60,7 +98,7 @@ pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
     if state == "source-selected" {
         check_provenance(object_field(root, "provenance", &path)?, &path)?;
     }
-    check_platforms(
+    platforms::check_platforms(
         object_field(root, "platforms", &path)?,
         supported,
         state,
@@ -180,27 +218,4 @@ fn check_compatibility(value: &Map<String, Value>, path: &Path) -> Result<()> {
         "compatibility.mcpProtocol",
         path,
     )
-}
-
-#[rustfmt::skip]
-fn check_platforms(value: &Map<String, Value>, supported: &[String], state: &str, path: &Path) -> Result<()> {
-    let legacy = LEGACY_PLATFORMS.iter().map(|item| (*item).to_owned()).collect::<Vec<_>>();
-    let expected = if matches!(state, "legacy-public" | "source-selected") { legacy.clone() } else { supported.to_vec() };
-    if state == "legacy-public" && supported != legacy.as_slice() { bail!("{} legacy-public state must retain the selected two-platform baseline", display_relative(path)); }
-    if value.keys().cloned().collect::<Vec<_>>() != expected { bail!("{} platforms must exactly be {:?}", display_relative(path), expected); }
-    for platform in &expected {
-        let inventory = object_field(value, platform, path)?;
-        exact_keys(inventory, &SERVERS, path)?;
-        for server in SERVERS {
-            let binary = object_field(inventory, server, path)?;
-            let fields = if state == "legacy-public" { &["sha256"][..] } else { &["path", "sha256"][..] };
-            exact_keys(binary, fields, path)?;
-            digest(string(binary, "sha256", path)?, "platform digest", path)?;
-            if state != "legacy-public" {
-                let extension = if platform == "windows-x86_64" { "exe" } else { "bin" };
-                exact(string(binary, "path", path)?, &format!("runtime/codexy-mcp-{server}-{platform}.{extension}"), "candidate runtime path", path)?;
-            }
-        }
-    }
-    Ok(())
 }

@@ -1,30 +1,14 @@
 use super::duplicate_state_targets;
-use serde_json::Value;
+mod phrases;
 
-#[rustfmt::skip]
-const DUPLICATE_STATE_PHRASES: &[&str] = &["duplicate/no-active-work", "no-active-work", "no active work", "duplicate pr", "duplicate issue", "duplicate lane"];
-#[rustfmt::skip]
-const DUPLICATE_STATE_TARGETS: &[&str] = &["pr #", "pull request #", "issue #", "github state", "current issue", "current pr", "current pull request"];
-#[rustfmt::skip]
-const DUPLICATE_STATE_CHECKS: &[&str] = &["re-check", "rechecked", "re-checked", "checked", "confirmed", "current github state", "after current"];
-#[rustfmt::skip]
-const CODEXY_CONTRACT_PHRASES: &[&str] = &["@codexy", "$orchestration", "active codexy workflow", "active codexy plugin workflow", "preserve codexy workflow", "preserved codexy workflow", "routes through $orchestration", "route through $orchestration"];
-#[rustfmt::skip]
-const OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["child-owned", "child owned", "parent orchestrator", "parent monitors", "parent monitor", "who may edit", "who may only orchestrate", "only orchestrate", "receive edits"];
-#[rustfmt::skip]
-const NEGATED_CONTRACT_PHRASES: &[&str] = &["not captured", "not active", "not available", "not preserved", "was not preserved", "no active @codexy", "no active codexy workflow", "missing", "omitted", "without @codexy", "without codexy"];
-#[rustfmt::skip]
-const PLANNED_CODEXY_CONTRACT_PHRASES: &[&str] = &["should be restored", "should be preserved", "to be restored", "to be preserved", "will be restored", "will be preserved", "needs to be restored", "needs to be preserved"];
-#[rustfmt::skip]
-const NEGATED_DUPLICATE_STATE_PHRASES: &[&str] = &["not captured", "not checked", "not re-checked", "not preserved", "was not preserved", "did not check", "missing", "omitted", "without checking", "no duplicate/no-active-work state was captured", "no duplicate state was captured", "no no-active-work state was captured"];
-#[rustfmt::skip]
-const PLANNED_DUPLICATE_STATE_PHRASES: &[&str] = &["should be checked", "should be re-checked", "to be checked", "to be re-checked", "will be checked", "will be re-checked", "needs to be checked", "needs to be re-checked"];
-#[rustfmt::skip]
-const NEGATED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["not captured", "not available", "not preserved", "was not preserved", "missing", "omitted", "without boundary", "without ownership", "no parent/child ownership boundary was captured", "no parent-child ownership boundary was captured", "no ownership boundary was captured"];
-#[rustfmt::skip]
-const PLANNED_OWNERSHIP_BOUNDARY_PHRASES: &[&str] = &["should be captured", "should be preserved", "to be captured", "to be preserved", "will be captured", "will be preserved", "needs to be captured", "needs to be preserved"];
-#[rustfmt::skip]
-const PLANNED_STOP_CONDITION_PHRASES: &[&str] = &["should stop", "should be checked", "should be captured", "should be preserved", "to be checked", "to be captured", "to be preserved", "will be checked", "will be captured", "will be preserved"];
+use phrases::{
+    CODEXY_CONTRACT_PHRASES, DUPLICATE_STATE_CHECKS, DUPLICATE_STATE_PHRASES,
+    DUPLICATE_STATE_TARGETS, NEGATED_CONTRACT_PHRASES, NEGATED_DUPLICATE_STATE_PHRASES,
+    NEGATED_OWNERSHIP_BOUNDARY_PHRASES, OWNERSHIP_BOUNDARY_PHRASES,
+    PLANNED_CODEXY_CONTRACT_PHRASES, PLANNED_DUPLICATE_STATE_PHRASES,
+    PLANNED_OWNERSHIP_BOUNDARY_PHRASES, PLANNED_STOP_CONDITION_PHRASES,
+};
+use serde_json::Value;
 
 pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     text.lines().any(|line| {
@@ -117,8 +101,15 @@ fn field_value<'a>(line: &'a str, label: &str) -> Option<&'a str> {
         .map(str::trim)
 }
 
-#[rustfmt::skip]
-fn metadata_line(line: &str) -> &str { let line = line.trim().trim_start_matches(['-', '*']).trim_start(); let line = line.strip_prefix("[x]").or_else(|| line.strip_prefix("[X]")).unwrap_or(line).trim_start(); line.trim_start_matches('#').trim_start() }
+fn metadata_line(line: &str) -> &str {
+    let line = line.trim().trim_start_matches(['-', '*']).trim_start();
+    let line = line
+        .strip_prefix("[x]")
+        .or_else(|| line.strip_prefix("[X]"))
+        .unwrap_or(line)
+        .trim_start();
+    line.trim_start_matches('#').trim_start()
+}
 
 fn has_codexy_contract_phrase(text: &str) -> bool {
     has_any(text, CODEXY_CONTRACT_PHRASES)
@@ -219,8 +210,11 @@ fn is_bare_no_value(value: &str) -> bool {
     }) == "no"
 }
 
-#[rustfmt::skip]
-fn starts_with_boundary(rest: &str) -> bool { rest.chars().next().is_none_or(|character| !character.is_ascii_alphanumeric()) }
+fn starts_with_boundary(rest: &str) -> bool {
+    rest.chars()
+        .next()
+        .is_none_or(|character| !character.is_ascii_alphanumeric())
+}
 
 fn has_any(text: &str, phrases: &[&str]) -> bool {
     phrases.iter().any(|phrase| text.contains(phrase))
