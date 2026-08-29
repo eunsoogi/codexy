@@ -6,7 +6,7 @@ if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -n "${CODEXY_TEST_VALIDATE_PLUGIN_CONFIG
 	exec "$CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY" "$@"
 fi
 case " $* " in
-*" --check-lsp "*)
+*" --check "*|*" --check-lsp "*)
 	python3 - "$REPO_ROOT" "$@" <<'PY'
 import json
 import sys
@@ -21,9 +21,20 @@ def fail(code, message):
 repo_root = Path(sys.argv[1])
 args = sys.argv[2:]
 plugin_root = repo_root / "plugins/codexy-devtools"
+
+
+def resolve_plugin_root(raw):
+    root = Path(raw)
+    if not root.is_absolute():
+        root = repo_root / root
+    if root == repo_root / "plugins/codexy":
+        return repo_root / "plugins/codexy-devtools"
+    return root
+
+
 for index, argument in enumerate(args[:-1]):
     if argument == "--plugin-root":
-        plugin_root = Path(args[index + 1])
+        plugin_root = resolve_plugin_root(args[index + 1])
 
 catalog = tomllib.loads((plugin_root / "lsp/server-catalog.toml").read_text())
 rows = catalog.get("servers")
