@@ -194,18 +194,6 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
     if entries.len() != catalog.len() || catalog.keys().any(|id| !entries.contains_key(id)) {
         bail!("ID_SET_MISMATCH: TOML and JSON server IDs differ");
     }
-    for (id, expected) in &catalog {
-        let Some(actual) = entries.get(id) else {
-            bail!("ID_SET_MISMATCH: TOML and JSON server IDs differ");
-        };
-        drift!(id, actual, expected, extensions, "EXTENSION_DRIFT");
-        drift!(id, actual, expected, priority, "PRIORITY_DRIFT");
-        drift!(id, actual, expected, command, "COMMAND_DRIFT");
-    }
-    if json!({"lsp": entries}) != projection(&catalog) {
-        bail!("PROJECTION_DRIFT: JSON is not the deterministic sorted projection");
-    }
-
     let covered = covered(entries.values());
     let missing = REQUIRED_LSP_EXTENSIONS
         .iter()
@@ -218,6 +206,18 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             missing.join(", ")
         )
     }
+    for (id, expected) in &catalog {
+        let Some(actual) = entries.get(id) else {
+            bail!("ID_SET_MISMATCH: TOML and JSON server IDs differ");
+        };
+        drift!(id, actual, expected, extensions, "EXTENSION_DRIFT");
+        drift!(id, actual, expected, priority, "PRIORITY_DRIFT");
+        drift!(id, actual, expected, command, "COMMAND_DRIFT");
+    }
+    if json!({"lsp": entries}) != projection(&catalog) {
+        bail!("PROJECTION_DRIFT: JSON is not the deterministic sorted projection");
+    }
+
     Ok(())
 }
 

@@ -219,7 +219,6 @@ fn candidate_version_drives_both_mcp_server_info() -> TestResult {
         .env("D", root.path())
         .status()?;
     assert!(extraction.success(), "runtime source extraction failed");
-
     let bootstrap = package.join("src/version/bootstrap.rs");
     let mut source = std::fs::read_to_string(&bootstrap)?;
     let prefix = "pub(super) const CANDIDATE_VERSION: &str = \"";
@@ -241,7 +240,8 @@ fn candidate_version_drives_both_mcp_server_info() -> TestResult {
     for server in ["lsp", "codegraph"] {
         let binary = target.join(format!("release/codexy-mcp-{server}"));
         let mut client = McpClient::spawn_path(&binary)?;
-        let init = initialize(&mut client)?;
+        let init =
+            client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
         assert_eq!(init["result"]["serverInfo"]["version"], candidate);
         let _ = client.child.kill();
         let _ = client.child.wait();
