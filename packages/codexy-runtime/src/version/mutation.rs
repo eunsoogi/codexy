@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use super::{
     MARKETPLACE, PLUGIN_MANIFEST, PUBLISH_CONTRACT, admit, cargo, component_manifest,
-    devtools_plugin, github_plugin, load_json, marketplace_plugin_mut, package_manifests,
+    devtools_plugin, github_plugin, load_json, marketplace_plugin_mut, package_manifests, readme,
     repo_path, runtime_selection, uv_lock, wrappers,
 };
 
@@ -55,13 +55,14 @@ pub fn prepare_candidate(version: &str) -> Result<String> {
     let mut publish = load_json(&publish_path)?;
     publish["bootstrap"]["candidateVersion"] = Value::String(version.to_owned());
     publish["runtime"]["selectedTag"] = Value::String(selected_runtime_tag);
-    let updates = vec![
+    let mut updates = vec![
         uv_lock::prepare_version(version)?,
         uv_lock::prepare_pyproject_version(version)?,
         super::bootstrap::prepare_candidate_version(version)?,
         component_manifest::prepare_version(version)?,
         Update::json(publish_path, &publish)?,
     ];
+    updates.extend(readme::prepare_version(version)?);
     for update in updates {
         fs::write(&update.path, update.bytes)?;
     }
@@ -85,6 +86,7 @@ pub fn check_candidate() -> Result<String> {
         "candidate",
     )?;
     uv_lock::check_pyproject_projection(&candidate)?;
+    readme::check(&candidate)?;
 
     let manifest = load_json(&repo_path(PLUGIN_MANIFEST)?)?;
     let mut marketplace = load_json(&repo_path(MARKETPLACE)?)?;
@@ -197,6 +199,7 @@ fn prepare(version: &str) -> Result<Vec<Update>> {
         updates.push(Update::json(path, &package)?);
     }
     updates.push(Update::json(market_path, &marketplace)?);
+    updates.extend(readme::prepare_version(version)?);
     Ok(updates)
 }
 

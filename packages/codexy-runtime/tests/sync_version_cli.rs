@@ -48,6 +48,57 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
 }
 
 #[test]
+fn sync_version_cli_rejects_stale_readme_pins_without_mutation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let (root, version) = selected_fixture(&temp, "stale-readme")?;
+    for relative in ["README.md", "README.ko.md"] {
+        let path = root.join(relative);
+        let stale = fs::read_to_string(&path)?.replace(
+            &format!("--ref v{version}"),
+            "--ref v0.0.1",
+        );
+        fs::write(path, stale)?;
+    }
+    let normalized = run_sync(&root, &["--version", &version])?;
+    assert!(
+        normalized.status.success(),
+        "README normalization failed: {}",
+        String::from_utf8_lossy(&normalized.stderr)
+    );
+    for relative in ["README.md", "README.ko.md"] {
+        let readme = fs::read_to_string(root.join(relative))?;
+        assert!(readme.contains(&format!("--ref v{version}")));
+    }
+    for relative in ["README.md", "README.ko.md"] {
+        let path = root.join(relative);
+        let original = fs::read(&path)?;
+        let stale = String::from_utf8(original.clone())?
+            .replace(&format!("--ref v{version}"), "--ref v0.0.1");
+        assert_ne!(
+            stale.as_bytes(),
+            original.as_slice(),
+            "fixture pin was not found"
+        );
+        fs::write(&path, stale.as_bytes())?;
+
+        let output = run_sync(&root, &["--check"])?;
+        assert!(
+            !output.status.success(),
+            "stale {relative} pin unexpectedly passed"
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains(relative),
+            "stale {relative} diagnostic omitted the path: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(fs::read(&path)?, stale.as_bytes());
+        fs::write(&path, original)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn sync_version_cli_checks_release_tag_parity() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let (root, version) = selected_fixture(&temp, "tag-parity")?;

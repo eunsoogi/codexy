@@ -8,10 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .marketplace_identity import require_pinned_registration
 from .marketplace_repin import (
-    quarantine_marketplace_drift,
     reconcile_official_marketplace_root,
+    validate_or_quarantine_marketplace,
 )
 from .plugin_resolution import (
     named_marketplace as _named_marketplace,
@@ -82,22 +81,9 @@ def run_pre_session(
             "marketplace list",
         )
     )
-    try:
-        require_pinned_registration(
-            marketplace_root=marketplace_root,
-            home=home,
-            expected=f"v{target_version}",
-        )
-    except Exception as error:
-        try:
-            quarantine_marketplace_drift(executable, invoke, home)
-        except Exception as quarantine_error:
-            raise RuntimeError(
-                "marketplace refresh drifted and quarantine failed; durable recovery is required"
-            ) from quarantine_error
-        raise RuntimeError(
-            "marketplace refresh was quarantined because its release tag pin drifted"
-        ) from error
+    validate_or_quarantine_marketplace(
+        executable, invoke, home, marketplace_root, f"v{target_version}"
+    )
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",

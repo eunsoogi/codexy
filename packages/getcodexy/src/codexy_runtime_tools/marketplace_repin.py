@@ -133,6 +133,31 @@ def quarantine_marketplace_drift(executable: Path, invoke: Runner, home: Path) -
     )
 
 
+def validate_or_quarantine_marketplace(
+    executable: Path,
+    invoke: Runner,
+    home: Path,
+    marketplace_root: Path,
+    expected: str,
+) -> None:
+    try:
+        require_pinned_registration(
+            marketplace_root=marketplace_root,
+            home=home,
+            expected=expected,
+        )
+    except Exception as error:
+        try:
+            quarantine_marketplace_drift(executable, invoke, home)
+        except Exception as quarantine_error:
+            raise RuntimeError(
+                "marketplace refresh drifted and quarantine failed; durable recovery is required"
+            ) from quarantine_error
+        raise RuntimeError(
+            "marketplace refresh was quarantined because its release tag pin drifted"
+        ) from error
+
+
 def _quarantine_unsafe_registration(
     executable: Path, invoke: Runner, home: Path, snapshot: bytes, reason: str
 ) -> None:

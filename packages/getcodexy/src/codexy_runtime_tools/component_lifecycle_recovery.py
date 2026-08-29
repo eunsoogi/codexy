@@ -23,6 +23,7 @@ from .component_transaction_state import (
     write_journal,
 )
 from .component_lifecycle_terminal import terminal
+from .marketplace_repin import validate_or_quarantine_marketplace
 from .pre_session import _json, official_marketplace_root
 
 
@@ -46,7 +47,7 @@ def recover_if_needed(
     if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
             installed = apply_forward(
-                executable, invoke, manifest, root, journal, journal.resolved, ()
+                executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
@@ -178,6 +179,7 @@ def apply_forward(
     journal: Journal,
     adds: tuple[str, ...],
     removes: tuple[str, ...],
+    home: Path,
 ) -> tuple[str, ...]:
     if journal.command in {"update", "bootstrap"}:
         _json(
@@ -194,6 +196,9 @@ def apply_forward(
             "plugin marketplace upgrade",
         )
         root = official_marketplace_root(executable, invoke)
+        validate_or_quarantine_marketplace(
+            executable, invoke, home, root, f"v{manifest.version}"
+        )
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:

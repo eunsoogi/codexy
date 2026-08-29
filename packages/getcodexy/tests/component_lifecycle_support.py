@@ -55,7 +55,13 @@ class fixture:
             [],
             [],
         )
+        self.tag_revision: str | None = None
+        self.main_revision: str | None = None
+        self.home.mkdir()
         self.marketplace.mkdir()
+        (self.home / "config.toml").write_text(
+            f'[marketplaces.codexy]\nref = "v{VERSION}"\n', encoding="utf-8"
+        )
         self.codex = self.root / "trusted/codex"
         self.codex.parent.mkdir(parents=True)
         self.codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -87,8 +93,13 @@ class fixture:
             self.marketplace_present = True
             self.mutations.append(tail)
             payload = {"ok": True}
+        elif tail[:3] == ("plugin", "marketplace", "remove"):
+            self.marketplace_present = False
+            self.mutations.append(tail)
+            payload = {"ok": True}
         elif tail[:3] == ("plugin", "marketplace", "upgrade"):
             self.mutations.append(tail)
+            self._ensure_marketplace_identity()
             if self.fail_upgrade:
                 self.fail_upgrade = False
                 return subprocess.CompletedProcess(command, 1, "", "failed")
@@ -138,6 +149,37 @@ class fixture:
             payload = {"ok": True}
         return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
+    def _ensure_marketplace_identity(self) -> None:
+        if self.tag_revision is not None:
+            return
+        _git(self.marketplace, "init", "-q")
+        _git(self.marketplace, "branch", "-M", "main")
+        _git(self.marketplace, "config", "user.name", "fixture")
+        _git(self.marketplace, "config", "user.email", "fixture@example.invalid")
+        (self.marketplace / "release-marker").write_text("release", encoding="utf-8")
+        _git(self.marketplace, "add", "release-marker")
+        _git(self.marketplace, "commit", "-qm", "fixture release")
+        tag = f"v{VERSION}"
+        _git(self.marketplace, "tag", tag)
+        self.tag_revision = _git(self.marketplace, "rev-parse", f"{tag}^{{commit}}")
+        (self.marketplace / "main-marker").write_text("main", encoding="utf-8")
+        _git(self.marketplace, "add", "main-marker")
+        _git(self.marketplace, "commit", "-qm", "fixture main drift")
+        self.main_revision = _git(self.marketplace, "rev-parse", "main")
+        _git(self.marketplace, "checkout", "-q", "--detach", tag)
+        (self.marketplace / ".codex-marketplace-install.json").write_text(
+            json.dumps(
+                {
+                    "ref_name": tag,
+                    "revision": self.tag_revision,
+                    "source": OFFICIAL,
+                    "source_type": "git",
+                    "sparse_paths": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+
 
 def component_id(plugin: str) -> str:
     return {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}[
@@ -161,3 +203,15 @@ def installed(root: Path, component: str, version: str = VERSION) -> dict[str, o
         "source": {"source": "local", "path": str(root / "plugins" / plugin)},
         "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
     }
+
+
+def _git(root: Path, *arguments: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr)
+    return result.stdout.strip()
