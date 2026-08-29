@@ -33,7 +33,7 @@ stale, too weak, or contradictory.
 
 ## Invariants
 
-- A unit test alone MUST NOT prove GitHub, CLI, browser, desktop, plugin,
+- A unit test MUST NOT prove GitHub, CLI, browser, desktop, plugin,
   marketplace, publication, or release behavior; MUST drive the matching surface.
 - An open PR, green CI, merge, publication, and milestone closure are distinct
   states and MUST NOT substitute for one another.
