@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .marketplace_repin import reconcile_official_marketplace_root
+from .marketplace_repin import (
+    reconcile_official_marketplace_root,
+    validate_or_quarantine_marketplace,
+)
 from .plugin_resolution import (
     named_marketplace as _named_marketplace,
     official_install as _official_install,
@@ -77,6 +80,9 @@ def run_pre_session(
             invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
             "marketplace list",
         )
+    )
+    validate_or_quarantine_marketplace(
+        executable, invoke, home, marketplace_root, f"v{target_version}"
     )
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),

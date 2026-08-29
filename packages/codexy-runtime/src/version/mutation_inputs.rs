@@ -2,8 +2,8 @@ use anyhow::Result;
 
 use super::{
     PLUGIN_MANIFEST, PUBLISH_CONTRACT, cargo, component_manifest, devtools_plugin, github_plugin,
-    load_json, marketplace_plugin_mut, package_manifests, repo_path, require_semver, string_field,
-    uv_lock,
+    load_json, marketplace_plugin_mut, package_manifests, readme, repo_path, require_semver,
+    string_field, uv_lock,
 };
 
 /// Validates every mutation-managed input without requiring versions to match.
@@ -32,6 +32,7 @@ pub(super) fn validate() -> Result<()> {
     uv_lock::validate_inputs()?;
     uv_lock::validate_pyproject_projection_input()?;
     cargo::validate_inputs(&crate::paths::repo_root()?)?;
+    readme::validate_inputs()?;
     for path in package_manifests()? {
         let package = load_json(&path)?;
         require_semver(string_field(

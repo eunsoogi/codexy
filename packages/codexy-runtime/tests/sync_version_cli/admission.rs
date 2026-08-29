@@ -147,6 +147,13 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     assert_ne!(fs::read(&pyproject)?, pyproject_before);
     assert_ne!(fs::read(&uv_lock)?, uv_lock_before);
     assert_ne!(fs::read(&contract_path)?, contract_before);
+    for relative in ["README.md", "README.ko.md"] {
+        let readme = fs::read_to_string(root.join(relative))?;
+        assert!(
+            readme.contains(&format!("--ref v{candidate_version}")),
+            "candidate pin is stale in {relative}"
+        );
+    }
     for (path, bytes) in before {
         if path.ends_with("release-publish-contract.json")
             || path.ends_with("packages/getcodexy/pyproject.toml")

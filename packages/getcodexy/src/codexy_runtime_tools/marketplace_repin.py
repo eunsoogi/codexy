@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_transaction_state import _atomic_write
+from .marketplace_identity import config_snapshot, require_pinned_registration
 from .plugin_resolution import named_marketplace, official_marketplace
 
 
@@ -30,7 +31,7 @@ def reconcile_official_marketplace_root(
         )
     if named_marketplace(market):
         official_marketplace(market)
-        previous_ref, config_snapshot = _marketplace_ref(home)
+        previous_ref, prior_snapshot = _marketplace_ref(home)
         expected_ref = f"v{target_version}"
         _json(
             invoke(
@@ -45,7 +46,7 @@ def reconcile_official_marketplace_root(
                 "marketplace list",
             )
             root = official_marketplace(market)
-            _require_pinned_registration(home, expected_ref)
+            require_pinned_registration(home, root, expected_ref)
             return root
         except Exception:
             if previous_ref is None or previous_ref == "main":
@@ -53,7 +54,7 @@ def reconcile_official_marketplace_root(
                     "unsafe-default-ref" if previous_ref is None else "unsafe-main-ref"
                 )
                 _quarantine_unsafe_registration(
-                    executable, invoke, home, config_snapshot, reason
+                    executable, invoke, home, prior_snapshot, reason
                 )
                 raise RuntimeError(
                     "unsafe marketplace registration was removed; "
@@ -62,16 +63,26 @@ def reconcile_official_marketplace_root(
             try:
                 _add_marketplace(executable, invoke, previous_ref)
             finally:
-                _restore_config(home, config_snapshot)
+                _restore_config(home, prior_snapshot)
             raise
-    _add_marketplace(executable, invoke, f"v{target_version}")
-    market = _json(
-        invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
-        "marketplace list",
-    )
-    root = official_marketplace(market)
-    _require_pinned_registration(home, f"v{target_version}")
-    return root
+    snapshot = config_snapshot(home)
+    expected_ref = f"v{target_version}"
+    try:
+        _add_marketplace(executable, invoke, expected_ref)
+        market = _json(
+            invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
+            "marketplace list",
+        )
+        root = official_marketplace(market)
+        require_pinned_registration(home, root, expected_ref)
+        return root
+    except Exception as error:
+        _quarantine_unsafe_registration(
+            executable, invoke, home, snapshot, "marketplace-snapshot-drift"
+        )
+        raise RuntimeError(
+            "marketplace snapshot was quarantined because its release tag pin could not be verified"
+        ) from error
 
 
 def _add_marketplace(executable: Path, invoke: Runner, ref: str) -> None:
@@ -112,12 +123,39 @@ def _restore_config(home: Path, snapshot: bytes) -> None:
     _atomic_write(home / "config.toml", snapshot)
 
 
-def _require_pinned_registration(home: Path, expected: str) -> None:
-    ref, _ = _marketplace_ref(home)
-    if ref != expected:
-        raise RuntimeError(
-            "official marketplace registration is not pinned to the target"
+def quarantine_marketplace_drift(executable: Path, invoke: Runner, home: Path) -> None:
+    _quarantine_unsafe_registration(
+        executable,
+        invoke,
+        home,
+        config_snapshot(home),
+        "post-upgrade-marketplace-drift",
+    )
+
+
+def validate_or_quarantine_marketplace(
+    executable: Path,
+    invoke: Runner,
+    home: Path,
+    marketplace_root: Path,
+    expected: str,
+) -> None:
+    try:
+        require_pinned_registration(
+            marketplace_root=marketplace_root,
+            home=home,
+            expected=expected,
         )
+    except Exception as error:
+        try:
+            quarantine_marketplace_drift(executable, invoke, home)
+        except Exception as quarantine_error:
+            raise RuntimeError(
+                "marketplace refresh drifted and quarantine failed; durable recovery is required"
+            ) from quarantine_error
+        raise RuntimeError(
+            "marketplace refresh was quarantined because its release tag pin drifted"
+        ) from error
 
 
 def _quarantine_unsafe_registration(
@@ -154,7 +192,7 @@ def _remove_official_registration(home: Path, snapshot: bytes) -> None:
     section = re.compile(r"(?ms)^\[(?:plugin_)?marketplaces\.codexy\]\s*$.*?(?=^\[|\Z)")
     contents = snapshot.decode("utf-8")
     if section.search(contents) is None:
-        raise RuntimeError("existing marketplace has no recoverable registration")
+        return
     _atomic_write(home / "config.toml", section.sub("", contents).encode())
 
 

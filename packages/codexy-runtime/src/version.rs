@@ -19,6 +19,7 @@ mod fields;
 mod github_plugin;
 mod mutation;
 mod mutation_inputs;
+mod readme;
 mod runtime_selection;
 mod semver;
 mod uv_lock;
@@ -143,6 +144,7 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
         "packages/getcodexy/uv.lock",
     )?;
     uv_lock::check_pyproject_projection(&lock_version)?;
+    readme::check(&lock_version)?;
     let marketplace_version = string_field(
         marketplace_plugin_mut(&mut marketplace)?,
         "version",

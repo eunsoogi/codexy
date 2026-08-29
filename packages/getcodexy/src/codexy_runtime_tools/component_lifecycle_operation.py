@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from contextlib import nullcontext
+from functools import partial
 from pathlib import Path
 
 from .component_lifecycle_admission import (
@@ -227,7 +228,8 @@ def run_operation(
         write_journal(home, journal)
         try:
             root = root or official_marketplace_root(executable, invoke)
-            installed = _apply_forward(
+            forward = partial(_apply_forward, home=home)
+            installed = forward(
                 executable, invoke, manifest, root, journal, plan.adds, plan.removes
             )
         except BaseException as error:

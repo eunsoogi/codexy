@@ -14,6 +14,7 @@ from pathlib import Path
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_distribution_support import (
+    DISTRIBUTION_HOST,
     copy_marketplace_plugins,
 )
 
@@ -43,8 +44,12 @@ class ComponentDistributionTests(unittest.TestCase):
         self.host = self.root / "codex-host.py"
         self.codex = self.root / ("codex.cmd" if os.name == "nt" else "codex")
         self.version = copy_marketplace_plugins(REPOSITORY, self.marketplace)
+        self.home.mkdir()
+        (self.home / "config.toml").write_text(
+            f'[marketplaces.codexy]\nref = "v{self.version}"\n', encoding="utf-8"
+        )
         self.state.write_text(json.dumps({"marketplace": False, "selection": []}))
-        self.host.write_text(_HOST, encoding="utf-8")
+        self.host.write_text(DISTRIBUTION_HOST, encoding="utf-8")
         if os.name == "nt":
             self.codex.write_text(
                 f'@echo off\r\n"{sys.executable}" "{self.host}" %*\r\n',
@@ -170,6 +175,7 @@ class ComponentDistributionTests(unittest.TestCase):
             "CODEXY_MATRIX_STATE": str(self.state),
             "CODEXY_MATRIX_MARKETPLACE": str(self.marketplace),
             "CODEXY_MATRIX_VERSION": self.version,
+            "CODEXY_RUNTIME_DIR": str(self.root / "missing-runtime"),
         }
         result = subprocess.run(
             [
@@ -201,49 +207,6 @@ def _health(receipt: dict[str, object]) -> dict[str, str]:
         and isinstance(entry.get("component"), str)
         and isinstance(entry.get("state"), str)
     }
-
-
-_HOST = """#!/usr/bin/env python3
-import json, os, sys
-from pathlib import Path
-
-state_path = Path(os.environ["CODEXY_MATRIX_STATE"])
-root = Path(os.environ["CODEXY_MATRIX_MARKETPLACE"]).resolve()
-version = os.environ["CODEXY_MATRIX_VERSION"]
-state = json.loads(state_path.read_text())
-plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
-reverse = {value: key for key, value in plugins.items()}
-args = sys.argv[1:]
-
-def save(): state_path.write_text(json.dumps(state))
-def installed(component):
-    plugin = plugins[component]
-    return {"pluginId": plugin + "@codexy", "name": plugin, "marketplaceName": "codexy", "version": version, "installed": True, "enabled": True, "source": {"source": "local", "path": str(root / "plugins" / plugin)}, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}
-
-if args[:4] == ["plugin", "marketplace", "list", "--json"]:
-    payload = {"marketplaces": [] if not state["marketplace"] else [{"name": "codexy", "root": str(root), "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}]}
-elif args[:3] == ["plugin", "marketplace", "add"]:
-    state["marketplace"] = True; save(); payload = {"ok": True}
-elif args[:3] == ["plugin", "marketplace", "upgrade"]:
-    payload = {"ok": True}
-elif args[:3] == ["plugin", "marketplace", "remove"]:
-    state["marketplace"] = False; save(); payload = {"ok": True}
-elif args[:3] == ["plugin", "list", "--json"]:
-    payload = {"installed": [installed(component) for component in ("core", "github", "devtools") if component in state["selection"]]}
-elif args[:2] == ["plugin", "add"]:
-    plugin = args[2].split("@", 1)[0]
-    if state.get("fail_add") == plugin:
-        state.pop("fail_add"); save(); print(json.dumps({"error": "injected"})); raise SystemExit(1)
-    if reverse[plugin] not in state["selection"]: state["selection"].append(reverse[plugin])
-    save(); payload = {"ok": True}
-elif args[:2] == ["plugin", "remove"]:
-    component = reverse[args[2].split("@", 1)[0]]
-    if component in state["selection"]: state["selection"].remove(component)
-    save(); payload = {"ok": True}
-else:
-    payload = {"ok": True}
-print(json.dumps(payload))
-"""
 
 
 if __name__ == "__main__":
