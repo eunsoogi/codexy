@@ -196,13 +196,14 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     let lock_text = fs::read_to_string(&lock_path)?;
     let selected_version = isolation::fixture_version(&repo)?;
     let stale_version = isolation::next_patch_version(&selected_version)?;
+    let line_ending = if lock_text.contains("\r\n") { "\r\n" } else { "\n" };
     let stale_lock = lock_text.replacen(
-        &format!("name = \"codexy-runtime\"\nversion = \"{selected_version}\""),
-        &format!("name = \"codexy-runtime\"\nversion = \"{stale_version}\""),
+        &format!("name = \"codexy-runtime\"{line_ending}version = \"{selected_version}\""),
+        &format!("name = \"codexy-runtime\"{line_ending}version = \"{stale_version}\""),
         1,
     );
-    assert_ne!(lock_text, stale_lock, "lock fixture did not change");
-    fs::write(&lock_path, &stale_lock)?;
+    assert_ne!(lock_text.as_bytes(), stale_lock.as_bytes(), "lock fixture did not change");
+    fs::write(&lock_path, stale_lock.as_bytes())?;
 
     let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
         .arg("--check")
@@ -214,8 +215,8 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let after = fs::read_to_string(&lock_path)?;
-    assert_eq!(after, stale_lock, "sync-version --check changed the stale Cargo.lock");
+    let after = fs::read(&lock_path)?;
+    assert_eq!(after, stale_lock.as_bytes(), "sync-version --check changed the stale Cargo.lock");
 
     Ok(())
 }
