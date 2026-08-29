@@ -95,6 +95,20 @@ fn sync_version_cli_rejects_stale_readme_pins_without_mutation()
         assert_eq!(fs::read(&path)?, stale.as_bytes());
         fs::write(&path, original)?;
     }
+    let mut unpinned = Vec::new();
+    for relative in ["README.md", "README.ko.md"] {
+        let path = root.join(relative);
+        let original = fs::read(&path)?;
+        let text = String::from_utf8(original.clone())?
+            .replace(&format!(" --ref v{version}"), "");
+        fs::write(&path, &text)?;
+        unpinned.push((path, text.into_bytes()));
+    }
+    let output = run_sync(&root, &["--check"])?;
+    assert!(!output.status.success(), "missing README pins unexpectedly passed");
+    for (path, expected) in unpinned {
+        assert_eq!(fs::read(&path)?, expected);
+    }
     Ok(())
 }
 
@@ -182,9 +196,13 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     let lock_text = fs::read_to_string(&lock_path)?;
     let selected_version = isolation::fixture_version(&repo)?;
     let stale_version = isolation::next_patch_version(&selected_version)?;
-    let stale_lock = stale_codexy_runtime_lock_version(&lock_text, &stale_version)?;
+    let stale_lock = lock_text.replacen(
+        &format!("name = \"codexy-runtime\"\nversion = \"{selected_version}\""),
+        &format!("name = \"codexy-runtime\"\nversion = \"{stale_version}\""),
+        1,
+    );
     assert_ne!(lock_text, stale_lock, "lock fixture did not change");
-    fs::write(&lock_path, stale_lock)?;
+    fs::write(&lock_path, &stale_lock)?;
 
     let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
         .arg("--check")
@@ -197,11 +215,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
         String::from_utf8_lossy(&output.stderr)
     );
     let after = fs::read_to_string(&lock_path)?;
-    assert_eq!(
-        stale_codexy_runtime_lock_version(&after, &stale_version)?,
-        after,
-        "sync-version --check changed the stale Cargo.lock"
-    );
+    assert_eq!(after, stale_lock, "sync-version --check changed the stale Cargo.lock");
 
     Ok(())
 }
@@ -222,33 +236,4 @@ fn version_advance_requires_selected_public_identities_before_mutation(
     assert!(!output.status.success(), "pre-activation version advance unexpectedly succeeded");
     assert_eq!(isolation::version_surface_contents(&repo)?, before);
     Ok(())
-}
-
-fn stale_codexy_runtime_lock_version(
-    lock_text: &str,
-    stale_version: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let mut in_codexy_runtime = false;
-    let mut replaced = false;
-    let mut lines = Vec::new();
-    for line in lock_text.lines() {
-        let trimmed = line.trim();
-        if trimmed == "[[package]]" {
-            in_codexy_runtime = false;
-        } else if trimmed == "name = \"codexy-runtime\"" {
-            in_codexy_runtime = true;
-        }
-
-        if in_codexy_runtime && trimmed.starts_with("version = ") {
-            lines.push(format!("version = \"{stale_version}\""));
-            replaced = true;
-            in_codexy_runtime = false;
-        } else {
-            lines.push(line.to_owned());
-        }
-    }
-    if !replaced {
-        return Err("codexy-runtime package version not found in Cargo.lock".into());
-    }
-    Ok(format!("{}\n", lines.join("\n")))
 }

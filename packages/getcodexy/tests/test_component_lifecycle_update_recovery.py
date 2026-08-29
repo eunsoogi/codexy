@@ -72,11 +72,19 @@ class UpdateRecoveryTests(unittest.TestCase):
     def test_cli_update_and_bootstrap_quarantine_independent_marketplace_drift(
         self,
     ) -> None:
-        drifts = ("config-ref", "metadata-ref-name", "metadata-revision", "checkout-head")
+        drifts = (
+            "config-ref",
+            "metadata-ref-name",
+            "metadata-revision",
+            "checkout-head",
+        )
         upgrade = ("plugin", "marketplace", "upgrade", "codexy", "--json")
         for command in ("update", "bootstrap"):
             for drift in drifts:
-                with self.subTest(command=command, drift=drift), fixture({"core"}) as state:
+                with (
+                    self.subTest(command=command, drift=drift),
+                    fixture({"core"}) as state,
+                ):
                     if command == "update":
                         write_inventory(state.home, ("core",))
 
@@ -118,18 +126,23 @@ class UpdateRecoveryTests(unittest.TestCase):
                         state.mutations,
                     )
                     self.assertFalse(
-                        any(mutation[:2] == ("plugin", "add") for mutation in state.mutations)
+                        any(
+                            mutation[:2] == ("plugin", "add")
+                            for mutation in state.mutations
+                        )
                     )
                     self.assertNotIn(
                         "[marketplaces.codexy]",
                         (state.home / "config.toml").read_text(encoding="utf-8"),
                     )
                     recovery = json.loads(
-                        (state.home / "getcodexy" / "marketplace-recovery.json").read_text(
-                            encoding="utf-8"
-                        )
+                        (
+                            state.home / "getcodexy" / "marketplace-recovery.json"
+                        ).read_text(encoding="utf-8")
                     )
-                    self.assertEqual(recovery["reason"], "post-upgrade-marketplace-drift")
+                    self.assertEqual(
+                        recovery["reason"], "post-upgrade-marketplace-drift"
+                    )
                     self.assertIsNone(read_journal(state.home))
 
     def test_interrupted_older_update_recovers_its_canonical_mixed_version_state(

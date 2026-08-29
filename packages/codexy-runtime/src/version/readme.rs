@@ -12,6 +12,7 @@ use super::{mutation::Update, repo_path, require_matching_version, require_semve
 
 const README_PATHS: [&str; 2] = ["README.md", "README.ko.md"];
 const PIN_PREFIX: &str = "codex plugin marketplace add eunsoogi/codexy --ref ";
+const LAST_UNPINNED_VERSION: &str = "1.5.0";
 
 pub(super) fn validate_inputs() -> Result<()> {
     for path in paths()? {
@@ -48,10 +49,26 @@ pub(super) fn prepare_version(version: &str) -> Result<Vec<Update>> {
 }
 
 fn paths() -> Result<Vec<PathBuf>> {
-    README_PATHS
+    let paths = README_PATHS
         .into_iter()
-        .map(|relative| repo_path(relative))
-        .collect()
+        .map(repo_path)
+        .collect::<Result<Vec<_>>>()?;
+    let has_pin = paths
+        .iter()
+        .try_fold(false, |found, path| -> Result<bool> {
+            let text = fs::read_to_string(path)
+                .with_context(|| format!("missing required file: {}", display_relative(path)))?;
+            Ok(found || text.contains(PIN_PREFIX))
+        })?;
+    if has_pin || !legacy_without_pin()? {
+        return Ok(paths);
+    }
+    Ok(Vec::new())
+}
+
+fn legacy_without_pin() -> Result<bool> {
+    let manifest = super::load_json(&repo_path(super::PLUGIN_MANIFEST)?)?;
+    Ok(super::string_field(&manifest, "version", "plugin manifest")? == LAST_UNPINNED_VERSION)
 }
 
 fn pin(path: &Path) -> Result<(String, Range<usize>)> {
