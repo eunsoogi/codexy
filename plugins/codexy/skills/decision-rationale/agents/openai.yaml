@@ -1,0 +1,7 @@
+interface:
+  display_name: "Decision Rationale"
+  short_description: "Inspect one chosen decision's rationale"
+  default_prompt: "Use $decision-rationale to inspect the rationale for an option I already chose."
+
+policy:
+  allow_implicit_invocation: true
