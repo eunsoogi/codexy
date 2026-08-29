@@ -42,6 +42,14 @@ fn maintained_rust_rejects_formatter_suppressions() -> TestResult {
         .is_err(),
         "comments between # and [ must not evade the suppression check"
     );
+    let inner_fixture = format!(
+        "#![{}{}]\nfn fixture() {{}}\n",
+        FORMAT_NAMESPACE, SKIP_DIRECTIVE
+    );
+    assert!(
+        check_source(Path::new("inner.rs"), &inner_fixture).is_err(),
+        "inner suppressions must be rejected"
+    );
 
     let spaced_fixture = format!(
         "#[{} /* sentinel */ :: skip]\nfn fixture() {{}}\n",
@@ -124,6 +132,7 @@ fn contains_formatter_suppression(source: &str) -> bool {
 
 fn outer_attribute_open(bytes: &[u8], hash: usize) -> Option<usize> {
     let mut index = hash + 1;
+    let mut inner_attribute_marker_seen = false;
     while index < bytes.len() {
         if bytes[index].is_ascii_whitespace() {
             index += 1;
@@ -131,6 +140,9 @@ fn outer_attribute_open(bytes: &[u8], hash: usize) -> Option<usize> {
             && (bytes.get(index + 1) == Some(&b'/') || bytes.get(index + 1) == Some(&b'*'))
         {
             index = skip_ignored(bytes, index)?;
+        } else if bytes[index] == b'!' && !inner_attribute_marker_seen {
+            inner_attribute_marker_seen = true;
+            index += 1;
         } else {
             return (bytes[index] == b'[').then_some(index);
         }
