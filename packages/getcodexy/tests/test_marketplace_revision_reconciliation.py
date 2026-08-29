@@ -38,15 +38,18 @@ class MarketplaceRevisionReconciliationTests(unittest.TestCase):
 
     def test_upgrade_reload_drift_is_quarantined_before_plugin_activation(self) -> None:
         cases = {
-            "null-ref": (None, None),
-            "main-ref": ("main", "main"),
-            "revision": (TAG, "main"),
+            "null-ref": (None, TAG, "tag", TAG),
+            "main-ref": ("main", TAG, "tag", TAG),
+            "ref-name": (TAG, "main", "tag", TAG),
+            "metadata-revision": (TAG, TAG, "main", TAG),
+            "checkout-head": (TAG, TAG, "tag", "main"),
         }
-        for name, (config_ref, metadata_ref) in cases.items():
+        for name, drift in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
                 root, home, state = _fixture(
-                    Path(temporary), (config_ref, metadata_ref)
+                    Path(temporary), drift
                 )
+                self.assertNotEqual(state["main"], state["tag"])
 
                 with self.assertRaisesRegex(RuntimeError, "marketplace.*quarantined"):
                     run_pre_session(
@@ -69,7 +72,7 @@ class MarketplaceRevisionReconciliationTests(unittest.TestCase):
 
 
 def _fixture(
-    root: Path, drift: tuple[str | None, str | None] | None
+    root: Path, drift: tuple[str | None, str | None, str, str] | None
 ) -> tuple[Path, Path, dict[str, object]]:
     marketplace = root / "marketplace"
     plugin = marketplace / "plugins/codexy/.codex-plugin/plugin.json"
@@ -90,12 +93,15 @@ def _fixture(
     _git(marketplace, "config", "user.email", "fixture@example.invalid")
     _git(marketplace, "add", ".")
     _git(marketplace, "commit", "-qm", "fixture main")
-    main_revision = _git(marketplace, "rev-parse", "HEAD")
     (marketplace / "release-marker").write_text("tag", encoding="utf-8")
     _git(marketplace, "add", "release-marker")
     _git(marketplace, "commit", "-qm", "fixture release")
     _git(marketplace, "tag", TAG)
     tag_revision = _git(marketplace, "rev-parse", f"{TAG}^{{commit}}")
+    (marketplace / "main-marker").write_text("main", encoding="utf-8")
+    _git(marketplace, "add", "main-marker")
+    _git(marketplace, "commit", "-qm", "fixture main drift")
+    main_revision = _git(marketplace, "rev-parse", "HEAD")
     _git(marketplace, "checkout", "-q", "--detach", TAG)
     _write_metadata(marketplace, TAG, tag_revision)
 
@@ -132,10 +138,10 @@ def _runner(home: Path, root: Path, state: dict[str, object]):
         elif command[1:4] == ["plugin", "marketplace", "upgrade"]:
             drift = state["drift"]
             if drift is not None:
-                config_ref, metadata_ref = drift
+                config_ref, metadata_ref, metadata_revision, checkout_ref = drift
                 _write_config(home, config_ref)
-                _git(root, "checkout", "-q", "--detach", "main")
-                _write_metadata(root, metadata_ref, state["main"])
+                _git(root, "checkout", "-q", "--detach", checkout_ref)
+                _write_metadata(root, metadata_ref, state[metadata_revision])
             payload = {"ok": True}
         elif command[1:3] == ["plugin", "list"]:
             payload = {"installed": [_installed(root)] if state["installed"] else []}
