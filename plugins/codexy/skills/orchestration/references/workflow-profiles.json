@@ -24,12 +24,12 @@
       "requiresFormalEvidence": true
     }
   },
-  "formalEvidenceTriggers": ["strict", "durable delegation", "multi-lane ownership", "explicit audit evidence"],
   "proofAndReview": {
     "light": "proportionate to the requested mutation and invariant floor",
     "standard": "proportionate planning and proof for non-trivial single-owner work",
     "strict": "formal current-head proof and the applicable Sentinel review"
   },
+  "formalEvidenceTriggers": ["strict", "durable delegation", "multi-lane ownership", "explicit audit evidence"],
   "invariantFloor": [
     "destructive-action safety",
     "user and unrelated change preservation",

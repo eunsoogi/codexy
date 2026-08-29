@@ -1,5 +1,18 @@
 {
   "schema": "codexy.tdd-classification-policy.v1",
+  "non_engineering_boundaries": [
+    "readme",
+    "documentation",
+    "instruction_only_skill",
+    "agent_prompt",
+    "declarative_metadata",
+    "issue_or_pr_metadata",
+    "roadmap_or_release_prose",
+    "inventory",
+    "diagram",
+    "example",
+    "copy_edit"
+  ],
   "engineering_boundaries": [
     "production_code",
     "runtime_behavior",
@@ -15,18 +28,5 @@
     "defect_repair",
     "behavior_preserving_refactor",
     "executable_contract"
-  ],
-  "non_engineering_boundaries": [
-    "readme",
-    "documentation",
-    "instruction_only_skill",
-    "agent_prompt",
-    "declarative_metadata",
-    "issue_or_pr_metadata",
-    "roadmap_or_release_prose",
-    "inventory",
-    "diagram",
-    "example",
-    "copy_edit"
   ]
 }
