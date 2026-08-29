@@ -1,0 +1,7 @@
+interface:
+  display_name: "Plan Stress Test"
+  short_description: "Challenge one critical plan assumption before implementation"
+  default_prompt: "Use $plan-stress-test to challenge one important plan with acceptance criteria."
+
+policy:
+  allow_implicit_invocation: true

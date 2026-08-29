@@ -1,45 +1,31 @@
 # Authoritative Merge Authorization
 
-Passing gates make a pull request eligible; they are not merge authorization.
-Before `gh pr merge`, auto-merge, or an equivalent mutation, the installed
-canonical wrapper captures the exact target PR directly from GitHub immediately
-before validation. It derives its ephemeral JSON record whose `kind` is
-`explicit-user-intent`, `explicit-maintainer-intent`, or
-`repository-workflow-contract`. The record uses `intent: "merge"`,
-`mergeClass: "squash"`, and the exact `prNumber`, `baseRefName`, and
-`headRefOid` returned by GitHub immediately before mutation.
+Passing gates make a PR eligible; they do not authorize merge. The installed
+canonical wrapper MUST fresh-read the exact repository, PR number, base, head,
+and squash intent immediately before mutation.
 
-The native connector merge and auto-merge tools are not an authorization path.
-When nested connector calls do not carry authenticated hook-event coverage, they
-are unavailable and MUST be routed through the host-resolved bundled skill
-resource `skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`. That
-launcher delegates to the existing `hooks/codexy-authorized-squash-merge.sh`
-wrapper, whose fresh capture is the only supported fallback; do not infer
-coverage from a nested producer or parse its `functions.exec` source.
+Explicit authorization requires one fresh GitHub PR comment with immutable
+comment identity and URL, authored by an `OWNER` or `MEMBER`, whose body exactly
+matches the live target:
 
-An explicit user or maintainer intent is authoritative only when its record
-references one fresh GitHub PR comment with the immutable `commentId` and
-`commentUrl`, authored by an `OWNER` or `MEMBER`. Its body is exactly
-`AUTHORIZE SQUASH MERGE: PR #<number> BASE <base> HEAD <head>` for the current
-PR state; arbitrary schemes, claimed actors, and parent prose MUST NOT count as
-authorization. The alternative checked record is `repository-workflow-contract`;
-it MUST cite one fresh OWNER or MEMBER GitHub PR comment with immutable
-`contractCommentId` and `contractCommentUrl`. Its body is exactly
-`AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #<number> BASE <base> HEAD <head>`.
-Repository-local files, claimed issuers, IDs, and versions are not
-authoritative. Generic finish, completion, silence, closing text, parent prose,
-gate success, ambiguity, negation, and stale/wrong targets are non-authoritative
-signals. This global invariant applies to every workflow profile. A
-gate-satisfied pull request without the checked record remains open and waiting.
+```text
+AUTHORIZE SQUASH MERGE: PR #<number> BASE <base> HEAD <head>
+```
 
-Authorization alone does not satisfy review, ownership, checks, labels, title,
-connector, selected-profile review, merge-message, cleanup, or post-merge
-synchronization gates. Authorization and gate requirements remain in force with
-`--auto` and `--admin`.
+The repository-contract alternative uses the same authenticated comment
+requirements and this exact body:
 
-The public wrapper has no `--merge-authorization-file` or
-`--merge-authorization-pr-state-file` inputs. Repository-local JSON serves
-validator test input only; installed merge mutations derive authority solely
-from the wrapper's fresh internal GitHub capture. The wrapper keeps the capture
-and derived record ephemeral, binding repository, PR, head, comment identity,
-and association before it can run `gh pr merge`.
+```text
+AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #<number> BASE <base> HEAD <head>
+```
+
+A stale head, wrong repository/PR/base, generic finish, local JSON, claimed
+actor, parent prose, silence, gate success, or unauthenticated intent MUST be
+rejected. Authorization MUST remain independent from checks, reviews, comments,
+threads, labels, title, issue linkage, connector policy, merge-message
+validation, cleanup, and post-merge proof.
+
+Direct or nested `mcp__codex_apps__github_merge_pull_request` and auto-merge
+connector calls remain `UNAVAILABLE`. The public installed wrapper accepts no
+local authorization-state substitute; its fresh authenticated capture is the
+only Codexy-owned authorization path.
