@@ -1,8 +1,5 @@
-Non-trivial lanes MUST cap implementation/repair/review; continuation MUST meet
-criterion/blocker; churn/waits MUST NOT renew caps. Fanout<=3 non-Sentinel.
-Terminal PASS/BLOCK/UNOBSERVABLE<=3 issue-wide; PENDING/RUNNING nonterminal.
-Third BLOCK requires all root repairs+exact-head proof; fourth review MUST NOT
-occur. Third UNOBSERVABLE requires maintainer disposition+equivalent proof.
-Test/CI/thread/safety/ownership/LOC/merge gates remain. External-only: one idle-
-wait handoff then finish; waiting/exhaustion MUST NOT block absent an unanswered
-decision without safe default.
+Non-trivial lanes MUST cap implementation/repair/review; churn/waits MUST NOT
+renew. Non-Sentinel fanout<=3. Terminal PASS/BLOCK/UNOBSERVABLE<=3 issue-wide;
+PENDING/RUNNING nonterminal. At cap use typed final disposition+current proof;
+review four MUST NOT occur; other gates remain. External-only: one post-idle
+handoff, then finish; wait/exhaustion MUST NOT block unless no safe default.
