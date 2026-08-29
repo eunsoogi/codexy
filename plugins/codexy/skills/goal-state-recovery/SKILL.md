@@ -18,13 +18,16 @@ thread, branch, or worktree.
 Before any edit, command, verification, GitHub mutation, delegation, or other
 task work, call `get_goal` and use its current result:
 
-1. If the result is `null` or `complete`, create the new finite goal normally.
+1. If the result is exactly `null` or has exactly `status=complete`, create the
+   new finite goal normally.
 2. If the result is `active`, compare its objective with the requested work.
    Continue only when it is the exact active objective. Otherwise stop and
    obtain an explicit lifecycle disposition; do not overwrite the active goal.
 3. If the result is `blocked`, do not work under that goal. Preserve the
    existing owner, branch, worktree, and task context while performing only the
    recovery transition below.
+4. For an error, `unknown`, `missing`, malformed result, or any other unexpected
+   state, preserve the exact readback and stop without task work.
 
 For delegated children, preserve the existing `$orchestration` pre-delivery,
 terminal-handoff, and post-result receipts around the goal calls. These receipts
@@ -39,8 +42,10 @@ For a `blocked` result, perform this exact sequence:
 2. State that this is an administrative control-plane unblock. It is not
    evidence that the issue, PR, implementation, proof, merge, release, or
    external gate is complete.
-3. Read back the cleared goal state. If it remains `blocked`, or the tool
-   returns an error, preserve the exact result and stop.
+3. Read back the cleared goal state. Continue only when the authoritative
+   readback is exactly `goal=null` or exactly `status=complete`. If it is
+   `active`, `blocked`, an error, `unknown`, `missing`, malformed, or any other
+   unexpected state, preserve the exact receipt and stop.
 4. Create a new finite goal for the same authorized work, read back that the new
    goal is `active`, and create or refresh the current plan.
 5. Resume task work only after the new goal is confirmed `active`.
@@ -100,7 +105,7 @@ service, or compatibility wrapper for this behavior.
 This is an instruction-only skill, so do not manufacture prose RED/GREEN. Where
 isolated host tasks are available, exercise the real goal surface for:
 
-- `null` and `complete` results creating a fresh active goal;
+- `null` and exact `status=complete` results creating a fresh active goal;
 - an exact `active` objective continuing without replacement, and a different
   objective stopping for lifecycle disposition;
 - `blocked` administrative completion followed by cleared-state readback and a
