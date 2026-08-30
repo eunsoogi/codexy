@@ -51,71 +51,64 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
 }
 
 #[test]
-fn sync_version_cli_rejects_stale_readme_pins_without_mutation()
+fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let (root, version) = selected_fixture(&temp, "stale-readme")?;
-    let (prefix, patch) = version.rsplit_once('.').ok_or("version")?;
-    let stale_version = format!(
-        "{prefix}.{}",
-        patch.parse::<u64>()?.checked_sub(1).ok_or("version underflow")?
-    );
-    for relative in ["README.md", "README.ko.md"] {
-        let path = root.join(relative);
-        let stale = fs::read_to_string(&path)?.replace(
-            &format!("--ref v{version}"),
-            &format!("--ref v{stale_version}"),
-        );
-        fs::write(path, stale)?;
-    }
-    let normalized = run_sync(&root, &["--version", &version])?;
-    assert!(
-        normalized.status.success(),
-        "README normalization failed: {}",
-        String::from_utf8_lossy(&normalized.stderr)
-    );
-    for relative in ["README.md", "README.ko.md"] {
-        let readme = fs::read_to_string(root.join(relative))?;
-        assert!(readme.contains(&format!("--ref v{version}")));
-    }
-    for relative in ["README.md", "README.ko.md"] {
-        let path = root.join(relative);
-        let original = fs::read(&path)?;
-        let stale = String::from_utf8(original.clone())?
-            .replace(&format!("--ref v{version}"), &format!("--ref v{stale_version}"));
-        assert_ne!(
-            stale.as_bytes(),
-            original.as_slice(),
-            "fixture pin was not found"
-        );
-        fs::write(&path, stale.as_bytes())?;
-
-        let output = run_sync(&root, &["--check"])?;
-        assert!(
-            !output.status.success(),
-            "stale {relative} pin unexpectedly passed"
-        );
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains(relative),
-            "stale {relative} diagnostic omitted the path: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert_eq!(fs::read(&path)?, stale.as_bytes());
-        fs::write(&path, original)?;
-    }
-    let mut unpinned = Vec::new();
-    for relative in ["README.md", "README.ko.md"] {
-        let path = root.join(relative);
-        let original = fs::read(&path)?;
-        let text = String::from_utf8(original.clone())?
-            .replace(&format!(" --ref v{version}"), "");
-        fs::write(&path, &text)?;
-        unpinned.push((path, text.into_bytes()));
-    }
-    let output = run_sync(&root, &["--check"])?;
-    assert!(!output.status.success(), "missing README pins unexpectedly passed");
-    for (path, expected) in unpinned {
-        assert_eq!(fs::read(&path)?, expected);
+    for (case, candidate_mode) in [
+        ("stale-prior", false),
+        ("stale-candidate", true),
+        ("missing", false),
+        ("missing-v", false),
+        ("invalid-semver", false),
+        ("empty", false),
+        ("duplicate", false),
+    ] {
+        for (index, relative) in ["README.md", "README.ko.md"].into_iter().enumerate() {
+            let (root, selected) = selected_fixture(&temp, &format!("readme-{case}-{index}"))?;
+            let prior = previous_patch_version(&selected)?;
+            let candidate = isolation::next_patch_version(&selected)?;
+            if candidate_mode {
+                let prepared = run_sync_script(&root, &["--prepare-candidate", &candidate])?;
+                assert!(
+                    prepared.status.success(),
+                    "candidate preparation failed: {}",
+                    String::from_utf8_lossy(&prepared.stderr)
+                );
+            }
+            let expected = if candidate_mode { &candidate } else { &selected };
+            let direct_pin = format!("{README_COMMAND} --ref v{expected}");
+            let (replacement, diagnostic) = match case {
+                "stale-prior" => (format!("{README_COMMAND} --ref v{prior}"), "version mismatch"),
+                "stale-candidate" => (
+                    format!("{README_COMMAND} --ref v{selected}"),
+                    "version mismatch",
+                ),
+                "missing" => (README_COMMAND.to_owned(), "exactly one direct marketplace pin"),
+                "missing-v" => (format!("{README_COMMAND} --ref {expected}"), "must start with v"),
+                "invalid-semver" => (
+                    format!("{README_COMMAND} --ref vnot-a-version"),
+                    "semver-like MAJOR.MINOR.PATCH",
+                ),
+                "empty" => (format!("{README_COMMAND} --ref "), "marketplace pin is empty"),
+                "duplicate" => (
+                    format!("{direct_pin}\n{direct_pin}"),
+                    "exactly one direct marketplace pin",
+                ),
+                other => return Err(format!("unknown README case: {other}").into()),
+            };
+            let path = root.join(relative);
+            let original = fs::read(&path)?;
+            let mutated = String::from_utf8(original.clone())?.replace(&direct_pin, &replacement);
+            assert_ne!(mutated.as_bytes(), original.as_slice(), "fixture pin was not found");
+            fs::write(&path, mutated.as_bytes())?;
+            let check = if candidate_mode { "--check-candidate" } else { "--check" };
+            let output = run_sync_script(&root, &[check])?;
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(!output.status.success(), "{case} {relative} unexpectedly passed");
+            assert!(stderr.contains(relative), "{case} diagnostic omitted {relative}: {stderr}");
+            assert!(stderr.contains(diagnostic), "{case} diagnostic changed: {stderr}");
+            assert_eq!(fs::read(&path)?, mutated.as_bytes(), "README was mutated");
+        }
     }
     Ok(())
 }
@@ -156,6 +149,27 @@ fn run_sync(root: &std::path::Path, args: &[&str]) -> Result<Output, Box<dyn std
         .output()?)
 }
 
+const README_COMMAND: &str = "codex plugin marketplace add eunsoogi/codexy";
+
+fn run_sync_script(root: &std::path::Path, args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
+    fs::copy(
+        codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version.sh"),
+        root.join("scripts/sync-plugin-version.sh"),
+    )?;
+    Ok(FixtureCommand::new(root.join("scripts/sync-plugin-version.sh"))
+        .args(args)
+        .current_dir(root)
+        .output()?)
+}
+
+fn previous_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let (prefix, patch) = version.rsplit_once('.').ok_or("version")?;
+    Ok(format!(
+        "{prefix}.{}",
+        patch.parse::<u64>()?.checked_sub(1).ok_or("version underflow")?
+    ))
+}
+
 fn fixture_repo(
     temp: &tempfile::TempDir,
     name: &str,
@@ -168,6 +182,10 @@ fn selected_fixture(
     name: &str,
 ) -> Result<(PathBuf, String), Box<dyn std::error::Error>> {
     let root = fixture_repo(temp, name)?;
+    fs::copy(
+        codexy_runtime::paths::repository_root().join("packages/codexy-runtime/src/version/readme.rs"),
+        root.join("packages/codexy-runtime/src/version/readme.rs"),
+    )?;
     let manifest: serde_json::Value = serde_json::from_str(&fs::read_to_string(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
@@ -175,11 +193,7 @@ fn selected_fixture(
         .as_str()
         .ok_or("manifest version")?
         .to_owned();
-    let normalized = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", &version])
-        .env("CODEXY_REPO_ROOT", &root)
-        .current_dir(&root)
-        .output()?;
+    let normalized = run_sync(&root, &["--version", &version])?;
     if !normalized.status.success() {
         return Err(format!(
             "selected fixture normalization failed: {}",
@@ -195,11 +209,6 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let repo = fixture_repo(&temp, "repo")?;
-    fs::copy(
-        codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version.sh"),
-        repo.join("scripts/sync-plugin-version.sh"),
-    )?;
-
     let lock_path = repo.join("packages/codexy-runtime/Cargo.lock");
     let lock_text = fs::read_to_string(&lock_path)?;
     let selected_version = isolation::fixture_version(&repo)?;
@@ -213,10 +222,7 @@ fn sync_version_script_check_rejects_stale_cargo_lock_without_mutating_it(
     assert_ne!(lock_text.as_bytes(), stale_lock.as_bytes(), "lock fixture did not change");
     fs::write(&lock_path, stale_lock.as_bytes())?;
 
-    let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
-        .arg("--check")
-        .current_dir(&repo)
-        .output()?;
+    let output = run_sync_script(&repo, &["--check"])?;
     assert!(
         !output.status.success(),
         "sync-version --check unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
@@ -237,11 +243,7 @@ fn version_advance_requires_selected_public_identities_before_mutation(
     let before = isolation::version_surface_contents(&repo)?;
     let selected_version = isolation::fixture_version(&repo)?;
     let target = isolation::next_patch_version(&selected_version)?;
-    let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", &target])
-        .env("CODEXY_REPO_ROOT", &repo)
-        .current_dir(&repo)
-        .output()?;
+    let output = run_sync(&repo, &["--version", &target])?;
     assert!(!output.status.success(), "pre-activation version advance unexpectedly succeeded");
     assert_eq!(isolation::version_surface_contents(&repo)?, before);
     Ok(())

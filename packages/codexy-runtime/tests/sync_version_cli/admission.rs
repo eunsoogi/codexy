@@ -1,42 +1,61 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
 
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use super::isolation::{
     bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
 
 #[test]
-fn check_rejects_unpinned_readme_at_derived_prior_release()
--> Result<(), Box<dyn std::error::Error>> {
+fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let root = super::archive_repository(super::shared_repository_archive()?, &temp, "prior")?;
-    let selected = fixture_version(&root)?;
-    let (prefix, patch) = selected.rsplit_once('.').ok_or("selected version")?;
-    let prior = format!("{prefix}.{}", patch.parse::<u64>()?.saturating_sub(1));
+    let (root, selected) = super::selected_fixture(&temp, "historical-readme")?;
+    let prior = super::previous_patch_version(&selected)?;
     for (path, bytes) in version_surface_contents(&root)? {
         fs::write(path, String::from_utf8(bytes)?.replace(&selected, &prior))?;
     }
+    let mut expected = Vec::new();
     for relative in ["README.md", "README.ko.md"] {
         let path = root.join(relative);
-        fs::write(&path, fs::read_to_string(&path)?.replace(&selected, &prior).replace(&format!(" --ref v{prior}"), ""))?;
+        let mutated = fs::read_to_string(&path)?.replace(
+            &format!("{} --ref v{selected}", super::README_COMMAND),
+            super::README_COMMAND,
+        );
+        fs::write(&path, mutated.as_bytes())?;
+        expected.push((path, mutated.into_bytes()));
     }
-    assert!(!sync_check(&root)?.status.success());
+    assert!(!super::run_sync_script(&root, &["--check"])?
+        .status
+        .success());
+    for (path, bytes) in expected {
+        assert_eq!(fs::read(path)?, bytes);
+    }
     Ok(())
 }
 
 #[test]
-fn version_admission_matrix_is_ordered_and_fail_closed()
--> Result<(), Box<dyn std::error::Error>> {
+fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let current = super::archive_repository(archive, &temp, "current")?;
     let current_version = fixture_version(&current)?;
     let non_selected_version = next_patch_version(&current_version)?;
-    assert!(admit(&current, &current_version)?.status.success());
-    assert!(!admit(&current, &non_selected_version)?.status.success());
+    for (version, accepted) in [(&current_version, true), (&non_selected_version, false)] {
+        assert_eq!(
+            super::run_sync(&current, &["--admit-version", version])?
+                .status
+                .success(),
+            accepted
+        );
+    }
 
-    for case in ["exact", "stale-bootstrap", "stale-runtime", "legacy-runtime", "wrapper-drift"] {
+    for case in [
+        "exact",
+        "stale-bootstrap",
+        "stale-runtime",
+        "legacy-runtime",
+        "wrapper-drift",
+    ] {
         let root = super::archive_repository(archive, &temp, case)?;
         let target = next_patch_version(&current_version)?;
         select_next_public_identities(&root, &target, &current_version)?;
@@ -60,7 +79,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }
-        let output = admit(&root, &target)?;
+        let output = super::run_sync(&root, &["--admit-version", &target])?;
         assert_eq!(
             output.status.success(),
             case == "exact",
@@ -68,13 +87,13 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
             String::from_utf8_lossy(&output.stderr),
         );
         if case == "exact" {
-            let advance = sync_version(&root, &target)?;
+            let advance = super::run_sync(&root, &["--version", &target])?;
             assert!(
                 advance.status.success(),
                 "activated source failed sync --version: {}",
                 String::from_utf8_lossy(&advance.stderr),
             );
-            let check = sync_check(&root)?;
+            let check = super::run_sync(&root, &["--check"])?;
             assert!(
                 check.status.success(),
                 "activated source with its preserved runtime selection failed sync --check: {}",
@@ -86,18 +105,14 @@ fn version_admission_matrix_is_ordered_and_fail_closed()
 }
 
 #[test]
-fn candidate_preparation_keeps_selected_identity_until_activation()
--> Result<(), Box<dyn std::error::Error>> {
+fn candidate_preparation_keeps_selected_identity_until_activation(
+) -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let root = super::archive_repository(archive, &temp, "candidate")?;
     let selected_version = fixture_version(&root)?;
     let candidate_version = next_patch_version(&selected_version)?;
-    let selected = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", &selected_version])
-        .env("CODEXY_REPO_ROOT", &root)
-        .current_dir(&root)
-        .output()?;
+    let selected = super::run_sync(&root, &["--version", &selected_version])?;
     assert!(
         selected.status.success(),
         "selected fixture normalization failed: {}",
@@ -116,7 +131,10 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     let contract_path = root.join(".agents/plugins/release-publish-contract.json");
     let mut contract: Value = serde_json::from_slice(&fs::read(&contract_path)?)?;
     contract["bootstrap"]["candidateVersion"] = json!(selected_version);
-    fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
+    fs::write(
+        &contract_path,
+        format!("{}\n", serde_json::to_string_pretty(&contract)?),
+    )?;
     let before = version_surface_contents(&root)?;
     let bootstrap_before = fs::read(&bootstrap)?;
     let pyproject = root.join("packages/getcodexy/pyproject.toml");
@@ -128,12 +146,12 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
         ["--admit-candidate", candidate_version.as_str()],
         ["--prepare-candidate", candidate_version.as_str()],
     ] {
-        let output = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-            .args(args)
-            .env("CODEXY_REPO_ROOT", &root)
-            .current_dir(&root)
-            .output()?;
-        assert!(output.status.success(), "candidate command failed: {}", String::from_utf8_lossy(&output.stderr));
+        let output = super::run_sync(&root, &args)?;
+        assert!(
+            output.status.success(),
+            "candidate command failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         if args[0] == "--admit-candidate" {
             assert_eq!(version_surface_contents(&root)?, before);
             assert_eq!(fs::read(&bootstrap)?, bootstrap_before);
@@ -147,12 +165,12 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
         .ok_or("selected runtime tag")?;
     let contract: Value = serde_json::from_str(&fs::read_to_string(&contract_path)?)?;
     assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
-    let check = Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .arg("--check-candidate")
-        .env("CODEXY_REPO_ROOT", &root)
-        .current_dir(&root)
-        .output()?;
-    assert!(check.status.success(), "candidate check failed: {}", String::from_utf8_lossy(&check.stderr));
+    let check = super::run_sync(&root, &["--check-candidate"])?;
+    assert!(
+        check.status.success(),
+        "candidate check failed: {}",
+        String::from_utf8_lossy(&check.stderr)
+    );
     let contract: Value = serde_json::from_str(&fs::read_to_string(
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
@@ -160,8 +178,11 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
     assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
     assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
-    assert!(fs::read_to_string(&bootstrap)?.contains(&format!("VERSION: &str = \"{selected_version}\"")));
-    assert!(fs::read_to_string(&bootstrap)?.contains(&format!("CANDIDATE_VERSION: &str = \"{candidate_version}\"")));
+    assert!(fs::read_to_string(&bootstrap)?
+        .contains(&format!("VERSION: &str = \"{selected_version}\"")));
+    assert!(fs::read_to_string(&bootstrap)?.contains(&format!(
+        "CANDIDATE_VERSION: &str = \"{candidate_version}\""
+    )));
     assert_ne!(fs::read(&bootstrap)?, bootstrap_before);
     assert_ne!(fs::read(&pyproject)?, pyproject_before);
     assert_ne!(fs::read(&uv_lock)?, uv_lock_before);
@@ -183,7 +204,10 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
         if path.ends_with("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json") {
             let manifest: Value = serde_json::from_slice(&fs::read(&path)?)?;
             for field in ["components", "compatibleCombinations"] {
-                for entry in manifest[field].as_array().ok_or("component manifest array")? {
+                for entry in manifest[field]
+                    .as_array()
+                    .ok_or("component manifest array")?
+                {
                     assert_eq!(entry["version"], candidate_version);
                 }
             }
@@ -213,30 +237,6 @@ fn select_next_public_identities(
         ),
     )?;
     Ok(())
-}
-
-fn admit(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
-    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--admit-version", version])
-        .env("CODEXY_REPO_ROOT", root)
-        .current_dir(root)
-        .output()
-}
-
-fn sync_check(root: &Path) -> Result<std::process::Output, std::io::Error> {
-    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .arg("--check")
-        .env("CODEXY_REPO_ROOT", root)
-        .current_dir(root)
-        .output()
-}
-
-fn sync_version(root: &Path, version: &str) -> Result<std::process::Output, std::io::Error> {
-    Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
-        .args(["--version", version])
-        .env("CODEXY_REPO_ROOT", root)
-        .current_dir(root)
-        .output()
 }
 
 fn mutate_json(

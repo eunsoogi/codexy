@@ -72,10 +72,17 @@ fn pin(path: &Path) -> Result<(String, Range<usize>)> {
 }
 
 fn pin_version<'a>(text: &'a str, range: &Range<usize>, path: &Path) -> Result<&'a str> {
-    text[range.clone()].strip_prefix('v').with_context(|| {
+    let version = text[range.clone()].strip_prefix('v').with_context(|| {
         format!(
             "{} marketplace pin must start with v",
             display_relative(path)
         )
-    })
+    })?;
+    require_semver(version).with_context(|| {
+        format!(
+            "{} marketplace pin has an invalid version",
+            display_relative(path)
+        )
+    })?;
+    Ok(version)
 }
