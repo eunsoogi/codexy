@@ -16,6 +16,8 @@ const REQUIRED_TARGETS: [&str; 8] = [
     "--test suite_system",
     "--test suite_archive",
 ];
+const CARGO_COMMAND: &str =
+    "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}";
 const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 14] = [
     "|| true",
     "exit 0",
@@ -35,9 +37,52 @@ const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 14] = [
 
 #[test]
 fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {
-    let workflow = std::fs::read_to_string(
+    let workflow = workflow_text()?;
+    let failures = workflow_failures(&workflow)?;
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    Ok(())
+}
+
+#[test]
+fn rust_workflow_rejects_matrix_include_that_adds_a_duplicate_target() -> TestResult {
+    assert_rejected(
+        matrix_modifier_fixture("include", "duplicate system", "--test suite_system")?,
+        "matrix.include duplicate target",
+    )
+}
+
+#[test]
+fn rust_workflow_rejects_matrix_exclude_that_removes_a_required_target() -> TestResult {
+    assert_rejected(
+        matrix_modifier_fixture("exclude", "system suite", "--test suite_system")?,
+        "matrix.exclude required target",
+    )
+}
+
+#[test]
+fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
+    let mut accepted = Vec::new();
+    for suffix in [" || :", " || echo masked", "; true"] {
+        let fixture = workflow_text()?.replacen(
+            &format!("      - run: {CARGO_COMMAND}"),
+            &format!("      - run: |\n          {CARGO_COMMAND}{suffix}"),
+            1,
+        );
+        if workflow_failures(&fixture)?.is_empty() {
+            accepted.push(suffix);
+        }
+    }
+    assert!(accepted.is_empty(), "validator accepted {}", accepted.join(", "));
+    Ok(())
+}
+
+fn workflow_text() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(std::fs::read_to_string(
         codexy_runtime::paths::repository_root().join(".github/workflows/rust-test.yml"),
-    )?;
+    )?)
+}
+
+fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let document: Value = serde_yaml::from_str(&workflow)?;
     let jobs = mapping_field(document.as_mapping(), "jobs", "workflow")?;
     let mut failures = Vec::new();
@@ -85,13 +130,39 @@ fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> Test
             if run.contains("--all-targets") {
                 failures.push(format!("{platform} cargo test still aggregates all targets"));
             }
+            let expected = if platform == "Windows" {
+                format!(
+                    "{CARGO_COMMAND}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}"
+                )
+            } else {
+                CARGO_COMMAND.to_owned()
+            };
+            if run.trim() != expected {
+                failures.push(format!("{platform} cargo test command is not exact"));
+            }
         }
         if weakens_failure_propagation(job) {
             failures.push(format!("{platform} job weakens command failure propagation"));
         }
     }
 
-    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    Ok(failures)
+}
+
+fn matrix_modifier_fixture(
+    modifier: &str,
+    name: &str,
+    args: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let insertion = format!(
+        "        {modifier}:\n          - target:\n              name: {name}\n              args: {args}\n    steps:"
+    );
+    Ok(workflow_text()?.replacen("    steps:", &insertion, 1))
+}
+
+fn assert_rejected(workflow: String, case: &str) -> TestResult {
+    let failures = workflow_failures(&workflow)?;
+    assert!(!failures.is_empty(), "validator accepted {case}");
     Ok(())
 }
 
@@ -114,6 +185,9 @@ fn validate_target_union(platform: &str, actual: &[&str], failures: &mut Vec<Str
 fn matrix_target_args(job: &Mapping) -> Result<Vec<&str>, Box<dyn std::error::Error>> {
     let strategy = mapping_field(Some(job), "strategy", "job")?;
     let matrix = mapping_field(Some(strategy), "matrix", "strategy")?;
+    if matrix.len() != 1 {
+        return Err("matrix must contain only the exact target axis".into());
+    }
     let targets = matrix
         .get("target")
         .and_then(Value::as_sequence)
