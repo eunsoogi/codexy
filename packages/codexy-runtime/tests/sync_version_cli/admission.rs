@@ -7,6 +7,25 @@ use super::isolation::{
 };
 
 #[test]
+fn check_rejects_unpinned_readme_at_derived_prior_release()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = super::archive_repository(super::shared_repository_archive()?, &temp, "prior")?;
+    let selected = fixture_version(&root)?;
+    let (prefix, patch) = selected.rsplit_once('.').ok_or("selected version")?;
+    let prior = format!("{prefix}.{}", patch.parse::<u64>()?.saturating_sub(1));
+    for (path, bytes) in version_surface_contents(&root)? {
+        fs::write(path, String::from_utf8(bytes)?.replace(&selected, &prior))?;
+    }
+    for relative in ["README.md", "README.ko.md"] {
+        let path = root.join(relative);
+        fs::write(&path, fs::read_to_string(&path)?.replace(&selected, &prior).replace(&format!(" --ref v{prior}"), ""))?;
+    }
+    assert!(!sync_check(&root)?.status.success());
+    Ok(())
+}
+
+#[test]
 fn version_admission_matrix_is_ordered_and_fail_closed()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

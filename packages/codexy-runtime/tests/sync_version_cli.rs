@@ -44,6 +44,9 @@ fn sync_version_cli_checks_manifest_marketplace_parity() -> Result<(), Box<dyn s
         "unexpected stdout: {}",
         String::from_utf8_lossy(&output.stdout)
     );
+    for relative in ["README.md", "README.ko.md"] {
+        assert!(fs::read_to_string(root.join(relative))?.contains(&format!("--ref v{version}")));
+    }
     Ok(())
 }
 
@@ -52,11 +55,16 @@ fn sync_version_cli_rejects_stale_readme_pins_without_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let (root, version) = selected_fixture(&temp, "stale-readme")?;
+    let (prefix, patch) = version.rsplit_once('.').ok_or("version")?;
+    let stale_version = format!(
+        "{prefix}.{}",
+        patch.parse::<u64>()?.checked_sub(1).ok_or("version underflow")?
+    );
     for relative in ["README.md", "README.ko.md"] {
         let path = root.join(relative);
         let stale = fs::read_to_string(&path)?.replace(
             &format!("--ref v{version}"),
-            "--ref v0.0.1",
+            &format!("--ref v{stale_version}"),
         );
         fs::write(path, stale)?;
     }
@@ -74,7 +82,7 @@ fn sync_version_cli_rejects_stale_readme_pins_without_mutation()
         let path = root.join(relative);
         let original = fs::read(&path)?;
         let stale = String::from_utf8(original.clone())?
-            .replace(&format!("--ref v{version}"), "--ref v0.0.1");
+            .replace(&format!("--ref v{version}"), &format!("--ref v{stale_version}"));
         assert_ne!(
             stale.as_bytes(),
             original.as_slice(),

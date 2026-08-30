@@ -97,7 +97,15 @@ impl Fixture {
                 fs::remove_file(path)?;
             }
         }
+        let candidate = metadata::current_candidate_version()?;
         metadata::synchronize_current_plugin_validation_inputs(&repo)?;
+        let marketplace_command = "codex plugin marketplace add eunsoogi/codexy";
+        let pin = format!("{marketplace_command} --ref v{candidate}");
+        for relative in ["README.md", "README.ko.md"] {
+            let path = repo.join(relative);
+            let text = fs::read_to_string(&path)?;
+            fs::write(path, text.replacen(marketplace_command, &pin, 1))?;
+        }
         real_source_pointer::restore_pre_activation_runtime_inputs(&repo, &pre_activation_revision)?;
         metadata::make_uv_lock_stale(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
@@ -124,7 +132,6 @@ impl Fixture {
         git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
         metadata::select_current_bootstrap(&repo)?;
-        let candidate = metadata::current_candidate_version()?;
         let receipt = temp.path().join("receipt.json");
         fs::write(&receipt, serde_json::to_vec(&receipt_value())?)?;
         let bin = temp.path().join("bin");
