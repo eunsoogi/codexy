@@ -13,6 +13,47 @@ const ASSETS: [&str; 4] = [
 const COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 #[test]
+fn attestation_set_fails_closed_and_sorts_complete_sets()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    let bin = root.join("bin");
+    let artifacts = root.join("artifacts");
+    fs::create_dir_all(&bin)?;
+    fs::create_dir_all(&artifacts)?;
+    for name in ASSETS.into_iter().chain(["release-baseline.json"]) {
+        fs::write(artifacts.join(name), name)?;
+    }
+    let gh = bin.join("gh");
+    fs::write(&gh, "#!/bin/sh\nif test \"${FAIL_ATTESTATION:-false}\" = true; then exit 1; fi\nprintf '%s\\n' '[{\"verificationResult\":{\"statement\":{\"subject\":[{\"name\":\"artifact\"}]}}}]'\n")?;
+    make_executable(&gh)?;
+    let run = |mode: &str, output: &std::path::Path, fail: bool| {
+        let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
+        let mut command = Command::new(codexy_runtime::paths::repository_root().join("scripts/verify-release-attestation-set"));
+        command.args([artifacts.as_path(), output, std::path::Path::new(mode)])
+            .env("PATH", path)
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("ACTIVATION_COMMIT", COMMIT)
+            .env("STAGING_SOURCE_COMMIT", COMMIT)
+            .env("FAIL_ATTESTATION", fail.to_string())
+            .output()
+    };
+    let failed_output = root.join("failed.json");
+    assert!(!run("release", &failed_output, true)?.status.success());
+    assert_ne!(fs::read_to_string(&failed_output).unwrap_or_default(), "[]\n");
+    for (mode, expected) in [("release", &[ASSETS[1], ASSETS[0], ASSETS[2], ASSETS[3]][..]), ("baseline", &["release-baseline.json"][..])] {
+        let output = root.join(format!("{mode}.json"));
+        let result = run(mode, &output, false)?;
+        assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+        let records: Vec<serde_json::Value> = serde_json::from_slice(&fs::read(output)?)?;
+        let names = records.iter().map(|record| record["name"].as_str().unwrap()).collect::<Vec<_>>();
+        assert_eq!(names, expected);
+        assert!(records.iter().all(|record| record["count"] == 1 && record["fingerprint"].as_str().is_some_and(|value| value.len() == 64)));
+    }
+    Ok(())
+}
+
+#[test]
 fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_states()
 -> Result<(), Box<dyn std::error::Error>> {
     for (name, existing, published) in [

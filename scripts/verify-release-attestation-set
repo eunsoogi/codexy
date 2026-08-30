@@ -7,31 +7,42 @@ artifact_dir="${1:?artifact directory is required}"
 output="${2:?output path is required}"
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 case "${3:-release}" in
-  release) names="codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json" ;;
-  baseline) names="release-baseline.json" ;;
-  *) exit 2 ;;
+release) names="codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json" ;;
+baseline) names="release-baseline.json" ;;
+*) exit 2 ;;
 esac
 
+records="$(mktemp "${output}.records.XXXXXX")"
+candidate="$(mktemp "${output}.tmp.XXXXXX")"
+trap 'rm -f "$records" "$candidate"' 0
+trap 'exit 1' HUP INT TERM
+
 for name in $names; do
-  artifact="$artifact_dir/$name"
-  attestations="$artifact_dir/$name.attestations.json"
-  if test "$name" = codexy-runtime-package.tar.gz; then
-    : "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
-    signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
-    source_digest="$STAGING_SOURCE_COMMIT"
-  else
-    signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
-    source_digest="$ACTIVATION_COMMIT"
-  fi
-  gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
-    --signer-workflow "$signer" --source-ref refs/heads/main \
-    --source-digest "$source_digest" --deny-self-hosted-runners \
-    --limit 1000 \
-    --format json > "$attestations"
-  jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
-    "$attestations" >/dev/null
-  count="$(jq 'length' "$attestations")"
-  fingerprint="$(jq -cS '[.[] | .verificationResult.statement] | sort_by(tojson)' "$attestations" | sha256sum | awk '{print $1}')"
-  jq -n --arg name "$name" --arg fingerprint "$fingerprint" --argjson count "$count" \
-    '{name: $name, count: $count, fingerprint: $fingerprint}'
-done | jq -s 'sort_by(.name)' > "$output"
+	artifact="$artifact_dir/$name"
+	attestations="$artifact_dir/$name.attestations.json"
+	if test "$name" = codexy-runtime-package.tar.gz; then
+		: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
+		signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
+		source_digest="$STAGING_SOURCE_COMMIT"
+	else
+		signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+		source_digest="$ACTIVATION_COMMIT"
+	fi
+	gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
+		--signer-workflow "$signer" --source-ref refs/heads/main \
+		--source-digest "$source_digest" --deny-self-hosted-runners \
+		--limit 1000 \
+		--format json >"$attestations"
+	jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
+		"$attestations" >/dev/null
+	count="$(jq 'length' "$attestations")"
+	statements="$(jq -cS '[.[] | .verificationResult.statement] | sort_by(tojson)' "$attestations")"
+	fingerprint="$(printf '%s\n' "$statements" | sha256sum)"
+	fingerprint="${fingerprint%% *}"
+	test "${#fingerprint}" -eq 64
+	case "$fingerprint" in *[!0-9a-f]*) exit 1 ;; esac
+	jq -n --arg name "$name" --arg fingerprint "$fingerprint" --argjson count "$count" \
+		'{name: $name, count: $count, fingerprint: $fingerprint}' >>"$records"
+done
+jq -s 'sort_by(.name)' "$records" >"$candidate"
+mv "$candidate" "$output"
