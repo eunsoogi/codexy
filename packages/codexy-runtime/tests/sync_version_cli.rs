@@ -114,6 +114,22 @@ fn selected_fixture(
     temp: &tempfile::TempDir,
     name: &str,
 ) -> Result<(PathBuf, String), Box<dyn std::error::Error>> {
+    let (root, version) = selected_fixture_snapshot(temp, name)?;
+    let normalized = run_sync(&root, &["--version", &version])?;
+    if !normalized.status.success() {
+        return Err(format!(
+            "selected fixture normalization failed: {}",
+            String::from_utf8_lossy(&normalized.stderr)
+        )
+        .into());
+    }
+    Ok((root, version))
+}
+
+fn selected_fixture_snapshot(
+    temp: &tempfile::TempDir,
+    name: &str,
+) -> Result<(PathBuf, String), Box<dyn std::error::Error>> {
     let root = fixture_repo(temp, name)?;
     fs::copy(
         codexy_runtime::paths::repository_root()
@@ -127,14 +143,6 @@ fn selected_fixture(
         .as_str()
         .ok_or("manifest version")?
         .to_owned();
-    let normalized = run_sync(&root, &["--version", &version])?;
-    if !normalized.status.success() {
-        return Err(format!(
-            "selected fixture normalization failed: {}",
-            String::from_utf8_lossy(&normalized.stderr)
-        )
-        .into());
-    }
     Ok((root, version))
 }
 
