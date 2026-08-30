@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
 die() {
 	echo "A02 FAIL: $*" >&2
 	exit 1
 }
-
 credential_value() {
 	local name="$1" value
 	if value="$(printenv "$name" 2>/dev/null)"; then
@@ -108,14 +106,18 @@ done
 SOURCE_FILES_BEFORE="$RUN_ROOT/source-files-before.sha256"
 find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort >"$SOURCE_FILES_BEFORE"
 
+PREFLIGHT_JSON="$RUN_ROOT/runtime-preflight.json"
+CODEXY_RUNTIME_DIR="$(bash "$PROOF_REPO/.github/scripts/a02-runtime-preflight.sh" "$MARKETPLACE_ROOT" "$PREFLIGHT_JSON" "$RUN_ROOT/verified-runtime")" || die "runtime preflight failed"
+export CODEXY_RUNTIME_DIR
+
 HOME_DIR="$RUN_ROOT/home"
 CODEX_HOME_DIR="$RUN_ROOT/codex-home"
 XDG_CONFIG_DIR="$RUN_ROOT/xdg-config"
 XDG_DATA_DIR="$RUN_ROOT/xdg-data"
 XDG_CACHE_DIR="$RUN_ROOT/xdg-cache"
 GH_CONFIG_DIR="$RUN_ROOT/gh-config"
-mkdir "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR" "$RUN_ROOT/uvx-bin"
-for dir in "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR" "$RUN_ROOT/uvx-bin"; do
+mkdir "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"
+for dir in "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"; do
 	[[ -z "$(find "$dir" -mindepth 1 -print -quit)" ]] || die "fresh proof directory is not empty"
 done
 unset CODEX_HOME
@@ -127,8 +129,6 @@ assert_missing() {
 }
 export HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME_DIR" XDG_CONFIG_HOME="$XDG_CONFIG_DIR" XDG_DATA_HOME="$XDG_DATA_DIR" XDG_CACHE_HOME="$XDG_CACHE_DIR" GH_CONFIG_DIR="$GH_CONFIG_DIR"
 export PATH="$HOME_DIR/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1 && assert_missing
-if UVX_PATH="$(printenv UVX_PATH 2>/dev/null || true)" && UVX_REAL="$(readlink -f "$UVX_PATH" 2>/dev/null || true)" && [[ "$UVX_PATH" == /* && -x "$UVX_PATH" && -n "$UVX_REAL" && -x "$UVX_REAL" && ! -L "$UVX_REAL" ]] && ln -s "$UVX_REAL" "$RUN_ROOT/uvx-bin/uvx"; then :; else die "uvx path is not a resolved executable"; fi
-export PATH="$HOME_DIR/.local/bin:$RUN_ROOT/uvx-bin:/usr/bin:/bin:/usr/sbin:/sbin" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1 && assert_missing
 if existing_codex="$(command -v codex 2>/dev/null)"; then
 	[[ -z "$existing_codex" ]] || die "Codex CLI was inherited before official acquisition"
 fi
@@ -189,11 +189,11 @@ cmp -s "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" || die "archive source chang
 AUTH_FILE="$(find "$CODEX_HOME" -type f \( -iname '*auth*' -o -iname '*token*' -o -iname '*credential*' -o -iname '*oauth*' \) -print -quit)"
 [[ -z "$AUTH_FILE" ]] || die "Codex home contains inherited or generated auth state"
 RECEIPT="$RUN_ROOT/receipt.json"
-python3 - "$RECEIPT" "$MARKETPLACE_ROOT" "$RUN_ROOT" "$PROOF_REPO" "$HEAD_SHA" "$WORKFLOW_PR_NUMBER" "$ARCHIVE_SHA256" "$CODEX" "$CODEX_REAL" "$VERSION" "$ADD_JSON" "$LIST_JSON" "$INSTALL_JSON" "$DOCTOR_JSON" "$PLUGINS_JSON" "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" "$CODEX_VERSION_FILE" <<'PY'
+python3 - "$RECEIPT" "$MARKETPLACE_ROOT" "$RUN_ROOT" "$PROOF_REPO" "$HEAD_SHA" "$WORKFLOW_PR_NUMBER" "$ARCHIVE_SHA256" "$CODEX" "$CODEX_REAL" "$VERSION" "$ADD_JSON" "$LIST_JSON" "$INSTALL_JSON" "$DOCTOR_JSON" "$PLUGINS_JSON" "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" "$CODEX_VERSION_FILE" "$PREFLIGHT_JSON" <<'PY'
 import hashlib,json,os,re,sys
 from pathlib import Path
 
-a=sys.argv[1:]; R,root,run,proof,head,pr_number,archive,codex,codex_real,version,addf,listf,installf,doctorf,pluginsf,before,after,codexv=a; R=Path(R); root=Path(root).resolve()
+a=sys.argv[1:]; R,root,run,proof,head,pr_number,archive,codex,codex_real,version,addf,listf,installf,doctorf,pluginsf,before,after,codexv,preflightf=a; R=Path(R); root=Path(root).resolve(); preflight=json.loads(Path(preflightf).read_text(encoding="utf-8"))
 SOURCE="222b6ce19fb190b8233e7d2d3ae691f66c082c35"; STACKED="c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63"; INTERMEDIATE="f16e002851681858d139054dd115c76c05c0e43a"; REPO="eunsoogi/codexy"; NAMES=["plan-stress-test","frame-check","decision-rationale","artifact-refresh","blind-read","project-brief"]
 def fail(message): raise SystemExit(message)
 def ok(value,message): value or fail(message)
@@ -231,12 +231,12 @@ market=load(root/".agents/plugins/marketplace.json"); plugin_names=["codexy","co
 for entry in entries:
  n=entry["name"]; ok(entry.get("source")=={"source":"local","path":f"./plugins/{n}"},"marketplace path mismatch"); p=load(root/"plugins"/n/".codex-plugin/plugin.json"); ok(p.get("name")==n and p.get("repository")== "https://github.com/eunsoogi/codexy" and p.get("version")==version==entry.get("version"),"plugin manifest identity mismatch")
 raw=[load(x) for x in (addf,listf,installf,doctorf,pluginsf)]; addj,listj,inst,doc,plug=raw; root_s=str(root); ms=[x for x in listj.get("marketplaces",[]) if isinstance(x,dict) and x.get("name")=="codexy"]; ok(len(ms)==1 and ms[0].get("root")==root_s and ms[0].get("marketplaceSource")=={"sourceType":"local","source":root_s},"marketplace output identity mismatch")
-ok(inst.get("outcome")=="completed" and sorted(inst.get("installed_components",[]))==["core","devtools","github"],"install receipt mismatch"); health=doc.get("component_health",[]); ok(doc.get("outcome")=="completed" and doc.get("errors")==[] and sorted(x.get("component") for x in health if x.get("state")=="healthy")==["core","devtools","github"] and all(x.get("healthy") is True for x in health),"doctor receipt mismatch")
+ok(preflight.get("decision")=="PASS" and preflight.get("runtime_dir")==os.environ["CODEXY_RUNTIME_DIR"],"runtime preflight receipt mismatch"); ok(inst.get("outcome")=="completed" and sorted(inst.get("installed_components",[]))==["core","devtools","github"],"install receipt mismatch"); health=doc.get("component_health",[]); ok(doc.get("outcome")=="completed" and doc.get("errors")==[] and sorted(x.get("component") for x in health)==["core","devtools","github"] and all(x.get("state")=="healthy" and all(x.get(key) is True for key in ("installed","configured","callable","healthy")) for x in health),"doctor receipt mismatch")
 records=plug.get("installed",[]); ok(sorted(x.get("name") for x in records)==sorted(plugin_names) and len(records)==3,"installed inventory is missing or ambiguous")
 for x in records:
  n=x["name"]; ok(x.get("pluginId")==f"{n}@codexy" and x.get("marketplaceName")=="codexy" and x.get("installed") is True and x.get("enabled") is True and x.get("version")==version and x.get("source")=={"source":"local","path":f"{root_s}/plugins/{n}"} and x.get("marketplaceSource")=={"sourceType":"local","source":root_s},"installed identity mismatch")
-env={k:os.environ.get(k) or fail(f"missing workflow identity: {k}") for k in ("GITHUB_WORKFLOW","GITHUB_JOB","GITHUB_WORKFLOW_SHA","GITHUB_RUN_ID","GITHUB_RUN_ATTEMPT")}; terminal=f"A02 TERMINAL PASS frozen_head={SOURCE} body_sha256=7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2 body_updated_at=2026-08-30T00:12:39Z portfolio_n=6 admitted={','.join(NAMES)} UNCLASSIFIED=0 reviewer=codexy-sentinel"; ok(re.fullmatch(r"A02 TERMINAL PASS frozen_head=[0-9a-f]{40} body_sha256=[0-9a-f]{64} body_updated_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z portfolio_n=[0-6] admitted=[a-z0-9-]+(,[a-z0-9-]+)* UNCLASSIFIED=0 reviewer=codexy-sentinel",terminal),"terminal grammar mismatch")
-receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2","body_updated_at":"2026-08-30T00:12:39Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED,"stacked_intermediate_sha":INTERMEDIATE},"proof":{"pr":int(pr_number),"issue":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact closed two-commit first-parent chain"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
+env={k:os.environ.get(k) or fail(f"missing workflow identity: {k}") for k in ("GITHUB_WORKFLOW","GITHUB_JOB","GITHUB_WORKFLOW_SHA","GITHUB_RUN_ID","GITHUB_RUN_ATTEMPT")}; terminal=f"A02 TERMINAL PASS frozen_head={SOURCE} body_sha256=44f84a796fe4d5e4304a892959ec16eeb2b763b1fa5f98fff631699a10ca6bae body_updated_at=2026-08-30T04:53:15Z portfolio_n=6 admitted={','.join(NAMES)} UNCLASSIFIED=0 reviewer=codexy-sentinel"; ok(re.fullmatch(r"A02 TERMINAL PASS frozen_head=[0-9a-f]{40} body_sha256=[0-9a-f]{64} body_updated_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z portfolio_n=[0-6] admitted=[a-z0-9-]+(,[a-z0-9-]+)* UNCLASSIFIED=0 reviewer=codexy-sentinel",terminal),"terminal grammar mismatch")
+receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"44f84a796fe4d5e4304a892959ec16eeb2b763b1fa5f98fff631699a10ca6bae","body_updated_at":"2026-08-30T04:53:15Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED,"stacked_intermediate_sha":INTERMEDIATE},"proof":{"pr":int(pr_number),"issue":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact closed two-commit first-parent chain"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"runtime_preflight":preflight,"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
 bad_key=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer)",re.I); bad_value=re.compile(r"(?:(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)")
 def safe(value):
  if isinstance(value,dict):
@@ -244,7 +244,7 @@ def safe(value):
  elif isinstance(value,list):
   for child in value: safe(child)
  elif isinstance(value,str): ok(not bad_value.search(value),"receipt contains credential-like value")
-safe(receipt); R.write_text(json.dumps(receipt,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+receipt["runtime_preflight"]=preflight; safe(receipt); R.write_text(json.dumps(receipt,sort_keys=True,indent=2)+"\n",encoding="utf-8")
 PY
 cat "$RECEIPT"
-printf '%s\n' "A02 TERMINAL PASS frozen_head=$EXPECTED_SOURCE_SHA body_sha256=7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2 body_updated_at=2026-08-30T00:12:39Z portfolio_n=6 admitted=plan-stress-test,frame-check,decision-rationale,artifact-refresh,blind-read,project-brief UNCLASSIFIED=0 reviewer=codexy-sentinel"
+printf '%s\n' "A02 TERMINAL PASS frozen_head=$EXPECTED_SOURCE_SHA body_sha256=44f84a796fe4d5e4304a892959ec16eeb2b763b1fa5f98fff631699a10ca6bae body_updated_at=2026-08-30T04:53:15Z portfolio_n=6 admitted=plan-stress-test,frame-check,decision-rationale,artifact-refresh,blind-read,project-brief UNCLASSIFIED=0 reviewer=codexy-sentinel"
