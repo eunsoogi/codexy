@@ -151,12 +151,6 @@ mod session_audit_receipt_contract;
 #[path = "../session_audit_receipt_review_feedback.rs"]
 mod session_audit_receipt_review_feedback;
 
-#[path = "../session_audit_scorecard.rs"]
-mod session_audit_scorecard;
-
-#[path = "../session_audit_scorecard_contract.rs"]
-mod session_audit_scorecard_contract;
-
 #[path = "../session_audit_stage_budget.rs"]
 mod session_audit_stage_budget;
 
@@ -183,6 +177,3 @@ mod validator_runtime_contract;
 
 #[path = "../worktree_reservation_harness.rs"]
 mod worktree_reservation_harness;
-
-#[path = "../validator_read_batch_scorecard.rs"]
-mod read_batch_scorecard;
