@@ -98,5 +98,9 @@ name = "suite_system"
 path = "tests/suites/system_suite.rs"
 
 [[test]]
+name = "suite_sync_version"
+path = "tests/suites/sync_version_suite.rs"
+
+[[test]]
 name = "suite_archive"
 path = "tests/suites/archive.rs"

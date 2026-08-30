@@ -215,9 +215,6 @@ mod session_audit_stage_budget_continuity;
 #[path = "../structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 
-#[path = "../sync_version_cli.rs"]
-mod sync_version_cli;
-
 #[path = "../validator_lsp_readiness.rs"]
 mod validator_lsp_readiness;
 

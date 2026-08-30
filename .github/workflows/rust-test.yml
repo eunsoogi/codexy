@@ -31,6 +31,8 @@ jobs:
             args: --test suite_governance
           - name: system suite
             args: --test suite_system
+          - name: sync version suite
+            args: --test suite_sync_version
           - name: archive suite
             args: --test suite_archive
     steps:
@@ -64,6 +66,8 @@ jobs:
             args: --test suite_governance
           - name: system suite
             args: --test suite_system
+          - name: sync version suite
+            args: --test suite_sync_version
           - name: archive suite
             args: --test suite_archive
     steps:
