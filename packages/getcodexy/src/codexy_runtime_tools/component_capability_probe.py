@@ -2,6 +2,7 @@
 
 import json
 import os
+from collections import namedtuple
 import shlex
 import subprocess
 
@@ -16,6 +17,7 @@ _CALL_REPAIR = f"use the reported safe component fallback and {_RERUN}"
 _EXPOSED_REPAIR = "repair the Codexy registration, then restart Codex"
 _IDENTITY_REPAIR = "reinstall the selected release, then restart Codex"
 _RUN_OPTIONS = {"capture_output": True, "text": True, "timeout": 5}
+_RunResult = namedtuple("_RunResult", "returncode stdout category")
 FAILURES = {
     "trusted-inventory-unavailable": (_INVENTORY_REPAIR, False),
     "component-not-installed": ("getcodexy bootstrap", True),
@@ -58,28 +60,26 @@ def probe_component(component, plugin, record):
 
 def _probe_hook(component, plugin, base):
     event, marker = HOOK_SPECS[component]
-    payload = (
-        {"prompt": "review GitHub issue 723"}
-        if component == "github"
-        else {"tool_name": "codex_app__send_message_to_thread", "tool_input": {}}
-    )
+    payload = {"prompt": "review GitHub issue 723"}
+    if component == "core":
+        payload = {"tool_name": "codex_app__send_message_to_thread", "tool_input": {}}
     command = _registered_hook(plugin, event, marker)
     if not command:
         return _failure(base, "capability-not-exposed")
-    returncode, stdout, timed = _run(
+    result = _run(
         _argv(command, plugin),
         plugin,
         json.dumps(payload),
         os.environ | {"PLUGIN_ROOT": str(plugin)},
     )
-    if timed:
-        return _failure(base, "capability-call-failed")
-    if returncode in {-1, 127}:
+    if result.category == "missing-launcher":
         return _failure(base, "component-start-failed", started=False)
-    if returncode:
+    if result.category in {"timeout", "nonzero-exit"}:
         return _failure(base, "capability-call-failed")
     try:
-        output = json.loads(stdout.strip().splitlines()[-1])["hookSpecificOutput"]
+        output = json.loads(result.stdout.strip().splitlines()[-1])[
+            "hookSpecificOutput"
+        ]
         valid = output["hookEventName"] == event and (
             component == "core" or "$git-workflow" in output["additionalContext"]
         )
@@ -116,9 +116,8 @@ def _probe_devtools(_component, plugin, base):
         return _failure(base, "capability-not-exposed")
     probes = []
     for server in MCP_SPECS:
-        result = probe_server(
-            server, plugin, config.get(server) if isinstance(config, dict) else None
-        )
+        server_config = config.get(server) if isinstance(config, dict) else None
+        result = probe_server(server, plugin, server_config)
         if not result.get("started") or not result.get("callable"):
             return result
         probes.append(result)
@@ -146,15 +145,14 @@ def probe_server(server, plugin, config):
     returncode, responses, timed = _rpc(
         _argv(config["command"], plugin, config.get("args", ())), plugin, requests
     )
-    if responses is None or 1 not in responses:
-        reason = (
-            "component-start-failed"
-            if returncode or timed
-            else "capability-not-exposed"
-        )
-        return _failure(base, reason, started=returncode == 0 and not timed)
-    info = _response_result(responses[1]).get("serverInfo", {})
-    tools = _response_result(responses.get(2, {})).get("tools", [])
+    if 1 not in responses:
+        failed = bool(returncode or timed)
+        reason = "component-start-failed" if failed else "capability-not-exposed"
+        return _failure(base, reason, started=not failed)
+    initialized = responses[1].get("result", {})
+    listed = responses.get(2, {}).get("result", {})
+    info = initialized.get("serverInfo", {}) if isinstance(initialized, dict) else {}
+    tools = listed.get("tools", []) if isinstance(listed, dict) else []
     if (
         not isinstance(info, dict)
         or not isinstance(tools, list)
@@ -174,9 +172,7 @@ def probe_server(server, plugin, config):
     ):
         return _failure(base, "capability-call-failed")
     return _outcome(
-        base,
-        runtime_name=info.get("name"),
-        runtime_version=info.get("version"),
+        base, runtime_name=info.get("name"), runtime_version=info.get("version")
     )
 
 
@@ -197,41 +193,45 @@ def _outcome(base, **fields):
     return {**base, "started": True, "callable": True, **fields}
 
 
-def _response_result(response):
-    return response.get("result") if isinstance(response.get("result"), dict) else {}
-
-
 def _run(argv, cwd, input_text, env=None):
     try:
         result = subprocess.run(
             argv, input=input_text, cwd=cwd, env=env, **_RUN_OPTIONS
         )
     except subprocess.TimeoutExpired as error:
-        return -1, error.stdout or "", True
+        return _RunResult(-1, error.stdout or "", "timeout")
     except OSError:
-        return -1, "", False
-    return result.returncode, result.stdout, False
+        return _RunResult(-1, "", "missing-launcher")
+    category = "success" if result.returncode == 0 else "nonzero-exit"
+    category = "missing-launcher" if result.returncode == 127 else category
+    return _RunResult(result.returncode, result.stdout, category)
 
 
 def _rpc(argv, cwd, requests):
-    returncode, stdout, timed = _run(
-        argv, cwd, "\n".join(json.dumps(request) for request in requests) + "\n"
-    )
+    run = _run(argv, cwd, "\n".join(json.dumps(request) for request in requests) + "\n")
     values = {}
-    for line in (stdout or "").splitlines():
+    for line in (run.stdout or "").splitlines():
         try:
             value = json.loads(line)
         except (ValueError, json.JSONDecodeError):
             continue
         if isinstance(value, dict) and isinstance(value.get("id"), int):
             values[value["id"]] = value
-    return returncode, values, timed
+    return run.returncode, values, run.category == "timeout"
 
 
 def _argv(command, plugin, args=()):
-    return shlex.split(command.replace("${PLUGIN_ROOT}", str(plugin))) + [
+    values = shlex.split(command.replace("${PLUGIN_ROOT}", str(plugin))) + [
         str(value) for value in (args if isinstance(args, list) else ())
     ]
+    if (
+        os.name == "nt"
+        and values[0].lower().endswith((".bat", ".cmd"))
+        and os.path.isfile(values[0])
+    ):
+        shell = os.environ.get("COMSPEC", "cmd.exe")
+        return [shell, "/d", "/s", "/c", subprocess.list2cmdline(values)]
+    return values
 
 
 def probe_reason(probe, default):

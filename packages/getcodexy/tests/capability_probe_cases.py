@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_health import health
 from codexy_runtime_tools.component_manifest import load_component_manifest
+from packages.getcodexy.tests.component_distribution_support import FAKE_MCP
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -138,7 +139,7 @@ class CapabilityProbeCases:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             server = root / "fake_mcp.py"
-            server.write_text(_FAKE_MCP, encoding="utf-8")
+            server.write_text(FAKE_MCP, encoding="utf-8")
             config = {"command": sys.executable, "args": [str(server), "codegraph"]}
             result = _probe_server("codegraph", root, config)
             self.assertEqual(result["runtime_name"], "codexy-codegraph")
@@ -157,6 +158,40 @@ class CapabilityProbeCases:
                 failed = _probe_server("codegraph", root, config)
             self.assertFalse(failed["started"])
             self.assertEqual(failed["reason_code"], "component-start-failed")
+
+    def test_hook_probe_preserves_distinct_internal_failure_categories(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+        from component_lifecycle_support import fixture
+
+        cases = (
+            (probe._RunResult(-1, "", "timeout"), True, "capability-call-failed"),
+            (
+                probe._RunResult(9, "", "nonzero-exit"),
+                True,
+                "capability-call-failed",
+            ),
+            (
+                probe._RunResult(0, "not-json", "success"),
+                True,
+                "capability-not-exposed",
+            ),
+            (
+                probe._RunResult(-1, "", "missing-launcher"),
+                False,
+                "component-start-failed",
+            ),
+        )
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            plugin = state.marketplace / "plugins/codexy"
+            for run, started, reason in cases:
+                with self.subTest(category=run.category):
+                    with patch.object(probe, "_run", return_value=run):
+                        observed = probe._probe_hook("core", plugin, {})
+                    self.assertEqual(
+                        (observed["started"], observed["reason_code"]),
+                        (started, reason),
+                    )
 
     def _records(self, manifest):
         return {
@@ -212,39 +247,3 @@ class CapabilityCliCases:
         }
         with patch("codexy_runtime_tools.component_cli.doctor", return_value=receipt):
             self.assertEqual(main(["doctor", "--json"]), 2)
-
-
-_FAKE_MCP = r"""#!/usr/bin/env python3
-import json
-import os
-import sys
-
-server = sys.argv[1]
-mode = os.environ.get("CODEXY_TEST_PROBE_MODE", "")
-if mode == "exit-127":
-    raise SystemExit(127)
-for line in sys.stdin:
-    request = json.loads(line)
-    identifier = request.get("id")
-    if identifier is None:
-        continue
-    method = request["method"]
-    if method == "initialize":
-        params = request.get("params", {})
-        if (
-            not isinstance(params, dict)
-            or params.get("protocolVersion") != "2024-11-05"
-            or not {"capabilities", "clientInfo"} <= params.keys()
-        ):
-            raise SystemExit(1)
-        value = {"serverInfo": {"name": "codexy-" + server, "version": "1.5.1"}}
-    elif method == "tools/list":
-        value = {"tools": [{"name": "codegraph_search" if server == "codegraph" else "lsp_status"}]}
-    elif method == "tools/call" and mode == "list-only":
-        continue
-    elif method == "tools/call":
-        value = {"content": [{"type": "text", "text": "ok"}]}
-    else:
-        continue
-    print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": value}), flush=True)
-"""
