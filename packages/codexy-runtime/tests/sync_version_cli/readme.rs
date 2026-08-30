@@ -34,6 +34,21 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
 fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
+    let (selected_root, selected) = super::selected_fixture(&temp, "readme-selected")?;
+    let (candidate_root, candidate_selected) =
+        super::selected_fixture(&temp, "readme-candidate")?;
+    assert_eq!(candidate_selected, selected);
+    let prior = previous_patch_version(&selected)?;
+    let candidate = next_patch_version(&selected)?;
+    let prepared = super::run_sync_script(
+        &candidate_root,
+        &["--prepare-candidate", &candidate],
+    )?;
+    assert!(
+        prepared.status.success(),
+        "candidate preparation failed: {}",
+        String::from_utf8_lossy(&prepared.stderr)
+    );
     for (case, candidate_mode) in [
         ("stale-prior", false),
         ("stale-candidate", true),
@@ -43,19 +58,12 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
         ("empty", false),
         ("duplicate", false),
     ] {
-        for (index, relative) in ["README.md", "README.ko.md"].into_iter().enumerate() {
-            let (root, selected) =
-                super::selected_fixture(&temp, &format!("readme-{case}-{index}"))?;
-            let prior = previous_patch_version(&selected)?;
-            let candidate = next_patch_version(&selected)?;
-            if candidate_mode {
-                let prepared = super::run_sync_script(&root, &["--prepare-candidate", &candidate])?;
-                assert!(
-                    prepared.status.success(),
-                    "candidate preparation failed: {}",
-                    String::from_utf8_lossy(&prepared.stderr)
-                );
-            }
+        for relative in ["README.md", "README.ko.md"] {
+            let root = if candidate_mode {
+                &candidate_root
+            } else {
+                &selected_root
+            };
             let expected = if candidate_mode {
                 &candidate
             } else {
@@ -122,6 +130,12 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
                 "{case} diagnostic changed: {stderr}"
             );
             assert_eq!(fs::read(&path)?, mutated.as_bytes(), "README was mutated");
+            fs::write(&path, &original)?;
+            assert_eq!(
+                fs::read(&path)?,
+                original,
+                "{case} {relative} fixture bytes were not restored"
+            );
         }
     }
     Ok(())

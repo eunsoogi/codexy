@@ -61,6 +61,9 @@ mod release_publication_recovery;
 #[path = "../repository_eol_contract.rs"]
 mod repository_eol_contract;
 
+#[path = "../rust_workflow_budget.rs"]
+mod rust_workflow_budget;
+
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 

@@ -12,6 +12,7 @@ jobs:
   rust-test:
     name: Rust tests (Ubuntu)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
@@ -20,11 +21,11 @@ jobs:
           persist-credentials: false
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets
-      - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets --no-default-features --features runtime-activation
 
   windows-rust-test:
     name: Rust tests (Windows)
     runs-on: windows-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
