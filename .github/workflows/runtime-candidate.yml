@@ -11,20 +11,19 @@ on:
         required: false
         default: ""
         type: string
-permissions:
-  contents: read
+  pull_request:
+    branches:
+      - eunsoogi/788-local-archive-identity
+    types: [opened, synchronize, reopened]
+permissions: {contents: read}
 jobs:
   verify-source-commit:
-    permissions:
-      contents: read
-      pull-requests: read
+    if: github.event_name == 'workflow_dispatch'
+    permissions: {contents: read, pull-requests: read}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: main
-          fetch-depth: 0
-          persist-credentials: false
+        with: {ref: main, fetch-depth: 0, persist-credentials: false}
       - name: Verify candidate source admission
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
@@ -33,30 +32,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: scripts/verify-runtime-candidate-source.sh
   build-runtime:
+    if: github.event_name == 'workflow_dispatch'
     needs: verify-source-commit
-    permissions:
-      contents: read
-    env:
-      GITHUB_TOKEN: ""
-      GH_TOKEN: ""
+    permissions: {contents: read}
+    env: {GITHUB_TOKEN: "", GH_TOKEN: ""}
     name: Build ${{ matrix.platform }} candidate
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: linux-x86_64
-            runner: ubuntu-latest
-          - platform: darwin-arm64
-            runner: macos-14
-          - platform: windows-x86_64
-            runner: windows-latest
+        include: [{platform: linux-x86_64, runner: ubuntu-latest}, {platform: darwin-arm64, runner: macos-14}, {platform: windows-x86_64, runner: windows-latest}]
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.source_commit }}
-          fetch-depth: 0
-          persist-credentials: false
+        with: {ref: "${{ inputs.source_commit }}", fetch-depth: 0, persist-credentials: false}
       - name: Verify exact source commit
         if: matrix.platform != 'windows-x86_64'
         env:
@@ -167,28 +155,20 @@ jobs:
           path: runtime
           if-no-files-found: error
   stage-runtime:
+    if: github.event_name == 'workflow_dispatch'
     needs: build-runtime
     runs-on: ubuntu-latest
     environment: runtime-candidate-staging
-    permissions:
-      attestations: write
-      contents: read
-      id-token: write
-      pull-requests: read
+    permissions: {attestations: write, contents: read, id-token: write, pull-requests: read}
     steps:
       - name: Check out trusted workflow commit for exact PR head
         if: inputs.exact_pr_number != ''
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.workflow_sha }}
-          persist-credentials: false
+        with: {ref: "${{ github.workflow_sha }}", persist-credentials: false}
       - name: Check out protected source for existing staging path
         if: inputs.exact_pr_number == ''
         uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.source_commit }}
-          fetch-depth: 0
-          persist-credentials: false
+        with: {ref: "${{ inputs.source_commit }}", fetch-depth: 0, persist-credentials: false}
       - name: Recheck exact PR admission before staging
         if: inputs.exact_pr_number != ''
         env:
@@ -203,10 +183,7 @@ jobs:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: git fetch --no-tags origin "$SOURCE_COMMIT"
       - uses: actions/download-artifact@v8
-        with:
-          pattern: runtime-staging-*
-          path: staged-runtime
-          merge-multiple: true
+        with: {pattern: "runtime-staging-*", path: staged-runtime, merge-multiple: true}
       - name: Assemble canonical staged archive and receipt
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
@@ -217,10 +194,7 @@ jobs:
           ARTIFACT_NAME: ${{ inputs.exact_pr_number != '' && format('runtime-pr-head-{0}-{1}', github.run_id, github.run_attempt) || format('runtime-staging-{0}-{1}', github.run_id, github.run_attempt) }}
         run: scripts/assemble-runtime-candidate
       - uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: |
-            dist/codexy-marketplace-plugin.tar.gz
-            dist/runtime-staging-receipt.json
+        with: {subject-path: "dist/codexy-marketplace-plugin.tar.gz\ndist/runtime-staging-receipt.json\n"}
       - name: Verify staged archive and receipt digests
         run: |
           sha256sum dist/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 dist/runtime-staging-receipt.json)"
@@ -231,10 +205,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            dist/codexy-marketplace-plugin.tar.gz
-            dist/runtime-staging-receipt.json
-            dist/runtime-staging-provenance.json
+          path: "dist/codexy-marketplace-plugin.tar.gz\ndist/runtime-staging-receipt.json\ndist/runtime-staging-provenance.json\n"
           if-no-files-found: error
           retention-days: 14
       - name: Upload isolated PR-head candidate bundle
@@ -242,9 +213,36 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: runtime-pr-head-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            dist/codexy-marketplace-plugin.tar.gz
-            dist/runtime-staging-receipt.json
-            dist/runtime-staging-provenance.json
+          path: "dist/codexy-marketplace-plugin.tar.gz\ndist/runtime-staging-receipt.json\ndist/runtime-staging-provenance.json\n"
+          if-no-files-found: error
+          retention-days: 14
+  a02-clean-runner:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    env:
+      PATH: /usr/bin:/bin:/usr/sbin:/sbin
+      GIT_CONFIG_GLOBAL: /dev/null
+      GIT_CONFIG_SYSTEM: /dev/null
+      GIT_CONFIG_NOSYSTEM: "1"
+      GIT_TERMINAL_PROMPT: "0"
+      GITHUB_TOKEN: ""
+      GH_TOKEN: ""
+    steps:
+      - name: Fetch exact pull request head without an action checkout
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -Eeuo pipefail
+          git clone --no-tags --filter=blob:none --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$RUNNER_TEMP/a02-source"
+          git -C "$RUNNER_TEMP/a02-source" fetch --no-tags --depth=1 origin "$HEAD_SHA"
+          git -C "$RUNNER_TEMP/a02-source" checkout --detach "$HEAD_SHA"
+          bash "$RUNNER_TEMP/a02-source/.github/scripts/a02-clean-runner.sh"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: a02-no-node-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/a02-no-node/receipt.json
           if-no-files-found: error
           retention-days: 14
