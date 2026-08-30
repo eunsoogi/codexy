@@ -1,30 +1,36 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-die() { echo "A02 FAIL: $*" >&2; exit 1; }
+die() {
+	echo "A02 FAIL: $*" >&2
+	exit 1
+}
 
 credential_value() {
-  local name="$1" value
-  if value="$(printenv "$name" 2>/dev/null)"; then
-    [[ -z "$value" ]] || die "credential-like environment variable is set"
-  fi
+	local name="$1" value
+	if value="$(printenv "$name" 2>/dev/null)"; then
+		[[ -z "$value" ]] || die "credential-like environment variable is set"
+	fi
 }
 
 for name in OPENAI_API_KEY OPENAI_ADMIN_KEY CODEX_API_KEY CODEX_AUTH_TOKEN CODEX_OAUTH_TOKEN GH_TOKEN GITHUB_TOKEN; do
-  credential_value "$name"
+	credential_value "$name"
 done
 while IFS= read -r name; do
-  case "$name" in
-    AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|GOOGLE_APPLICATION_CREDENTIALS|GIT_ASKPASS|SSH_ASKPASS|GIT_SSH_COMMAND|SSH_AUTH_SOCK|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*)
-      credential_value "$name" ;;
-  esac
-  case "$name" in
-    *_TOKEN|*_API_KEY|*_SECRET|*_PASSWORD|*_CREDENTIALS)
-      credential_value "$name" ;;
-    PIP_INDEX_URL|PIP_EXTRA_INDEX_URL|UV_INDEX_URL|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY)
-      value="$(printenv "$name" 2>/dev/null || true)"
-      [[ "$value" != *@* ]] || die "credential-like URL environment variable is set" ;;
-  esac
+	case "$name" in
+	AWS_ACCESS_KEY_ID | AWS_SECRET_ACCESS_KEY | AWS_SESSION_TOKEN | GOOGLE_APPLICATION_CREDENTIALS | GIT_ASKPASS | SSH_ASKPASS | GIT_SSH_COMMAND | SSH_AUTH_SOCK | GIT_CONFIG_COUNT | GIT_CONFIG_KEY_* | GIT_CONFIG_VALUE_*)
+		credential_value "$name"
+		;;
+	esac
+	case "$name" in
+	*_TOKEN | *_API_KEY | *_SECRET | *_PASSWORD | *_CREDENTIALS)
+		credential_value "$name"
+		;;
+	PIP_INDEX_URL | PIP_EXTRA_INDEX_URL | UV_INDEX_URL | HTTP_PROXY | HTTPS_PROXY | ALL_PROXY)
+		value="$(printenv "$name" 2>/dev/null || true)"
+		[[ "$value" != *@* ]] || die "credential-like URL environment variable is set"
+		;;
+	esac
 done < <(compgen -e | LC_ALL=C sort)
 unset BASH_ENV ENV
 
@@ -47,7 +53,8 @@ RUN_ROOT="$RUNNER_TEMP/a02-no-node"
 [[ ! -e "$RUN_ROOT" ]] || die "stale proof directory"
 mkdir "$RUN_ROOT"
 
-EVENT_RECORD="$(python3 - "$EVENT_PATH" <<'PY'
+EVENT_RECORD="$(
+	python3 - "$EVENT_PATH" <<'PY'
 import json,sys
 e=json.load(open(sys.argv[1],encoding="utf-8")); p=e.get("pull_request")
 b,h=(p.get("base"),p.get("head")) if isinstance(p,dict) else (None,None)
@@ -56,10 +63,11 @@ if any(not isinstance(x,str) or not x or "\t" in x or "\n" in x for x in v): rai
 print("\t".join(v))
 PY
 )" || die "pull request event is invalid"
-IFS=$'\t' read -r ACTION EVENT_PR_NUMBER BASE_REF BASE_SHA HEAD_REF HEAD_SHA HEAD_REPO BASE_REPO <<< "$EVENT_RECORD"
+IFS=$'\t' read -r ACTION EVENT_PR_NUMBER BASE_REF BASE_SHA HEAD_REF HEAD_SHA HEAD_REPO BASE_REPO <<<"$EVENT_RECORD"
 
 EXPECTED_SOURCE_SHA=222b6ce19fb190b8233e7d2d3ae691f66c082c35
 EXPECTED_STACKED_BASE_SHA=c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63
+EXPECTED_STACKED_INTERMEDIATE_SHA=f16e002851681858d139054dd115c76c05c0e43a
 EXPECTED_SOURCE_BRANCH=eunsoogi/788-local-archive-identity
 EXPECTED_HEAD_BRANCH=eunsoogi/787-official-no-node-runner
 [[ "$ACTION" =~ ^(opened|synchronize|reopened)$ ]] || die "unsupported pull request action"
@@ -71,32 +79,34 @@ export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_NOSYST
 unset GIT_ASKPASS SSH_ASKPASS GIT_SSH_COMMAND SSH_AUTH_SOCK GIT_CONFIG_COUNT
 REMOTE="https://github.com/$GITHUB_REPOSITORY.git"
 remote_ref() {
-  local ref="$1" lines count value
-  lines="$(git -C "$PROOF_REPO" ls-remote --heads "$REMOTE" "refs/heads/$ref" 2>/dev/null)" || die "unable to read remote ref"
-  count="$(printf '%s\n' "$lines" | awk 'NF {n++} END {print n+0}')"
-  [[ "$count" == 1 ]] || die "remote ref is missing or ambiguous"
-  value="$(printf '%s\n' "$lines" | awk 'NF == 2 {print $1}')"
-  [[ "$value" =~ ^[0-9a-f]{40}$ ]] || die "remote ref is not an immutable commit"
-  printf '%s\n' "$value"
+	local ref="$1" lines count value
+	lines="$(git -C "$PROOF_REPO" ls-remote --heads "$REMOTE" "refs/heads/$ref" 2>/dev/null)" || die "unable to read remote ref"
+	count="$(printf '%s\n' "$lines" | awk 'NF {n++} END {print n+0}')"
+	[[ "$count" == 1 ]] || die "remote ref is missing or ambiguous"
+	value="$(printf '%s\n' "$lines" | awk 'NF == 2 {print $1}')"
+	[[ "$value" =~ ^[0-9a-f]{40}$ ]] || die "remote ref is not an immutable commit"
+	printf '%s\n' "$value"
 }
 [[ "$(remote_ref "$EXPECTED_SOURCE_BRANCH")" == "$EXPECTED_SOURCE_SHA" ]] || die "stacked source branch is stale or foreign"
 [[ "$(remote_ref "$HEAD_REF")" == "$HEAD_SHA" ]] || die "proof head branch is stale"
 [[ "$(git -C "$PROOF_REPO" rev-parse HEAD)" == "$HEAD_SHA" ]] || die "checked out head is not the event head"
-git -C "$PROOF_REPO" fetch --no-tags --depth=2 "$REMOTE" "$EXPECTED_SOURCE_SHA" >/dev/null 2>&1 || die "exact stacked source fetch failed"
-[[ "$(git -C "$PROOF_REPO" rev-parse "$EXPECTED_SOURCE_SHA^1")" == "$EXPECTED_STACKED_BASE_SHA" ]] || die "stacked source parent mismatch"
+git -C "$PROOF_REPO" fetch --no-tags --depth=3 "$REMOTE" "$EXPECTED_SOURCE_SHA" >/dev/null 2>&1 || die "exact stacked source fetch failed"
+[[ "$(git -C "$PROOF_REPO" rev-parse "$EXPECTED_SOURCE_SHA^1")" == "$EXPECTED_STACKED_INTERMEDIATE_SHA" ]] || die "stacked source intermediate parent mismatch"
+[[ "$(git -C "$PROOF_REPO" rev-parse "$EXPECTED_SOURCE_SHA~2")" == "$EXPECTED_STACKED_BASE_SHA" ]] || die "stacked source base ancestor mismatch"
+[[ "$(git -C "$PROOF_REPO" rev-list --first-parent --count "$EXPECTED_STACKED_BASE_SHA..$EXPECTED_SOURCE_SHA")" == 2 ]] || die "stacked source topology is not closed"
 
 ARCHIVE="$RUN_ROOT/source-789.tar"
 MARKETPLACE_ROOT="$RUN_ROOT/marketplace"
-git -C "$PROOF_REPO" archive --format=tar "$EXPECTED_SOURCE_SHA" > "$ARCHIVE" || die "exact source archive failed"
+git -C "$PROOF_REPO" archive --format=tar "$EXPECTED_SOURCE_SHA" >"$ARCHIVE" || die "exact source archive failed"
 ARCHIVE_SHA256="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
 [[ "$ARCHIVE_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "source archive digest missing"
 mkdir "$MARKETPLACE_ROOT"
 tar -xf "$ARCHIVE" -C "$MARKETPLACE_ROOT" || die "source archive extraction failed"
 for required in .agents/plugins/marketplace.json plugins/codexy/.codex-plugin/plugin.json plugins/codexy-github/.codex-plugin/plugin.json plugins/codexy-devtools/.codex-plugin/plugin.json; do
-  [[ -f "$MARKETPLACE_ROOT/$required" && ! -L "$MARKETPLACE_ROOT/$required" ]] || die "archive provenance is incomplete"
+	[[ -f "$MARKETPLACE_ROOT/$required" && ! -L "$MARKETPLACE_ROOT/$required" ]] || die "archive provenance is incomplete"
 done
 SOURCE_FILES_BEFORE="$RUN_ROOT/source-files-before.sha256"
-find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort > "$SOURCE_FILES_BEFORE"
+find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort >"$SOURCE_FILES_BEFORE"
 
 HOME_DIR="$RUN_ROOT/home"
 CODEX_HOME_DIR="$RUN_ROOT/codex-home"
@@ -106,48 +116,42 @@ XDG_CACHE_DIR="$RUN_ROOT/xdg-cache"
 GH_CONFIG_DIR="$RUN_ROOT/gh-config"
 mkdir "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"
 for dir in "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"; do
-  [[ -z "$(find "$dir" -mindepth 1 -print -quit)" ]] || die "fresh proof directory is not empty"
+	[[ -z "$(find "$dir" -mindepth 1 -print -quit)" ]] || die "fresh proof directory is not empty"
 done
 unset CODEX_HOME
 export HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME_DIR" XDG_CONFIG_HOME="$XDG_CONFIG_DIR" XDG_DATA_HOME="$XDG_DATA_DIR" XDG_CACHE_HOME="$XDG_CACHE_DIR" GH_CONFIG_DIR="$GH_CONFIG_DIR"
 SYSTEM_PATH=/usr/bin:/bin:/usr/sbin:/sbin
-export PATH="$SYSTEM_PATH" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1
+export PATH="$HOME_DIR/.local/bin:$SYSTEM_PATH" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1
 assert_missing() {
-  local command_name="$1" resolved
-  if resolved="$(command -v "$command_name" 2>/dev/null)"; then
-    [[ -z "$resolved" ]] || die "$command_name is available on the clean runner"
-  fi
+	local command_name
+	for command_name in node npx; do
+		[[ -z "$(command -v "$command_name" 2>/dev/null || true)" ]] || die "$command_name is available on the clean runner"
+	done
 }
-assert_missing node
-assert_missing npx
+assert_missing
 if existing_codex="$(command -v codex 2>/dev/null)"; then
-  [[ -z "$existing_codex" ]] || die "Codex CLI was inherited before official acquisition"
+	[[ -z "$existing_codex" ]] || die "Codex CLI was inherited before official acquisition"
 fi
 
 curl --fail --silent --show-error --location https://chatgpt.com/codex/install.sh 2>/dev/null | sh >/dev/null 2>&1 || die "official Codex CLI acquisition failed"
-assert_missing node
-assert_missing npx
-PATH="$HOME_DIR/.local/bin:$SYSTEM_PATH"
-export PATH
+assert_missing
 CODEX="$(type -P codex 2>/dev/null || true)"
 [[ -n "$CODEX" && "$CODEX" == /* && -x "$CODEX" ]] || die "official Codex CLI is unavailable"
 CODEX_REAL="$(readlink -f "$CODEX" 2>/dev/null || true)"
 [[ -n "$CODEX_REAL" && -x "$CODEX_REAL" ]] || die "Codex CLI path is not executable"
-assert_missing node
-assert_missing npx
 CODEX_VERSION_FILE="$RUN_ROOT/codex-version.txt"
-"$CODEX" --version > "$CODEX_VERSION_FILE" 2>/dev/null || die "Codex CLI version check failed"
+"$CODEX" --version >"$CODEX_VERSION_FILE" 2>/dev/null || die "Codex CLI version check failed"
 [[ -s "$CODEX_VERSION_FILE" ]] || die "Codex CLI version output is missing"
 
 run_json() {
-  local output="$1" error_file="$1.stderr"
-  shift
-  [[ ! -e "$output" && ! -e "$error_file" ]] || die "stale JSON output"
-  if ! "$@" > "$output" 2> "$error_file"; then
-    die "JSON command failed"
-  fi
-  [[ -s "$output" ]] || die "JSON output is missing"
-  python3 -c 'import json,re,sys; s=open(sys.argv[1],encoding="utf-8").read(); json.loads(s); bad=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)",re.I); raise SystemExit(1) if bad.search(s) else None' "$output" || die "JSON output is invalid or secret-bearing"
+	local output="$1" error_file="$1.stderr"
+	shift
+	[[ ! -e "$output" && ! -e "$error_file" ]] || die "stale JSON output"
+	if ! "$@" >"$output" 2>"$error_file"; then
+		die "JSON command failed"
+	fi
+	[[ -s "$output" ]] || die "JSON output is missing"
+	python3 -c 'import json,re,sys; s=open(sys.argv[1],encoding="utf-8").read(); json.loads(s); bad=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)",re.I); raise SystemExit(1) if bad.search(s) else None' "$output" || die "JSON output is invalid or secret-bearing"
 }
 
 ADD_JSON="$RUN_ROOT/marketplace-add.json"
@@ -178,7 +182,7 @@ run_json "$INSTALL_JSON" "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-
 run_json "$DOCTOR_JSON" "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" doctor --json
 run_json "$PLUGINS_JSON" "$CODEX" plugin list --json
 SOURCE_FILES_AFTER="$RUN_ROOT/source-files-after.sha256"
-find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort > "$SOURCE_FILES_AFTER"
+find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort >"$SOURCE_FILES_AFTER"
 cmp -s "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" || die "archive source changed during proof"
 [[ -z "$(git -C "$PROOF_REPO" status --porcelain)" ]] || die "proof checkout changed during proof"
 AUTH_FILE="$(find "$CODEX_HOME" -type f \( -iname '*auth*' -o -iname '*token*' -o -iname '*credential*' -o -iname '*oauth*' \) -print -quit)"
@@ -189,7 +193,7 @@ import hashlib,json,os,re,sys
 from pathlib import Path
 
 a=sys.argv[1:]; R,root,run,proof,head,pr_number,archive,codex,codex_real,version,addf,listf,installf,doctorf,pluginsf,before,after,codexv=a; R=Path(R); root=Path(root).resolve()
-SOURCE="222b6ce19fb190b8233e7d2d3ae691f66c082c35"; STACKED="c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63"; REPO="eunsoogi/codexy"; NAMES=["plan-stress-test","frame-check","decision-rationale","artifact-refresh","blind-read","project-brief"]
+SOURCE="222b6ce19fb190b8233e7d2d3ae691f66c082c35"; STACKED="c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63"; INTERMEDIATE="f16e002851681858d139054dd115c76c05c0e43a"; REPO="eunsoogi/codexy"; NAMES=["plan-stress-test","frame-check","decision-rationale","artifact-refresh","blind-read","project-brief"]
 def fail(message): raise SystemExit(message)
 def ok(value,message): value or fail(message)
 def load(path): return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -231,7 +235,7 @@ records=plug.get("installed",[]); ok(sorted(x.get("name") for x in records)==sor
 for x in records:
  n=x["name"]; ok(x.get("pluginId")==f"{n}@codexy" and x.get("marketplaceName")=="codexy" and x.get("installed") is True and x.get("enabled") is True and x.get("version")==version and x.get("source")=={"source":"local","path":f"{root_s}/plugins/{n}"} and x.get("marketplaceSource")=={"sourceType":"local","source":root_s},"installed identity mismatch")
 env={k:os.environ.get(k) or fail(f"missing workflow identity: {k}") for k in ("GITHUB_WORKFLOW","GITHUB_JOB","GITHUB_WORKFLOW_SHA","GITHUB_RUN_ID","GITHUB_RUN_ATTEMPT")}; terminal=f"A02 TERMINAL PASS frozen_head={SOURCE} body_sha256=7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2 body_updated_at=2026-08-30T00:12:39Z portfolio_n=6 admitted={','.join(NAMES)} UNCLASSIFIED=0 reviewer=codexy-sentinel"; ok(re.fullmatch(r"A02 TERMINAL PASS frozen_head=[0-9a-f]{40} body_sha256=[0-9a-f]{64} body_updated_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z portfolio_n=[0-6] admitted=[a-z0-9-]+(,[a-z0-9-]+)* UNCLASSIFIED=0 reviewer=codexy-sentinel",terminal),"terminal grammar mismatch")
-receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2","body_updated_at":"2026-08-30T00:12:39Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED},"proof":{"pr":int(pr_number),"issue":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact stacked parent"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
+receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2","body_updated_at":"2026-08-30T00:12:39Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED,"stacked_intermediate_sha":INTERMEDIATE},"proof":{"pr":int(pr_number),"issue":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact closed two-commit first-parent chain"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
 bad_key=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer)",re.I); bad_value=re.compile(r"(?:(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)")
 def safe(value):
  if isinstance(value,dict):
