@@ -10,8 +10,7 @@ indexes are caches. The path is `init → ingest → compile → query → refre
   and `config.md` under the root.
 - **Ingest:** MUST add an immutable `raw/` revision with title, source identity,
   type, ingested date, tags, and summary. MUST preserve an available source
-  revision or hash, canonical URL, and item provenance. Changed content MUST
-  create a new revision; MUST NOT overwrite history.
+  revision or hash, canonical URL, and item provenance.
 - **Compile:** MUST synthesize raw evidence. Source-backed articles MUST use
   root-relative `sources:`; conversation-only articles MUST use
   `compiled-from: conversation`. MUST record `updated`, `verified`,
@@ -30,8 +29,7 @@ indexes are caches. The path is `init → ingest → compile → query → refre
 
 - MUST resolve every `sources:` value as one complete root-relative path; MUST
   NOT split whitespace. MUST report missing, broken, weak, drifted, or
-  contradictory chains. A source-backed article without a resolved source is
-  never clean.
+  contradictory chains.
 - Source-backed freshness is 0–100: source, verification, compilation, and chain
   integrity contribute 0–25 each. MUST use UTC days. Missing, malformed, or
   future `ingested`, `verified`, `updated`, or `created` contributes zero and
