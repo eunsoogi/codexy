@@ -45,8 +45,7 @@ _INITIALIZE_PARAMS = {
 
 def _request(method, identifier=None, params=None):
     request = {"jsonrpc": "2.0", "method": method, "params": params or {}}
-    if identifier is not None:
-        request["id"] = identifier
+    request.update({"id": identifier} if identifier is not None else {})
     return request
 
 
@@ -230,7 +229,8 @@ def _argv(command, plugin, args=()):
         and os.path.isfile(values[0])
     ):
         shell = os.environ.get("COMSPEC", "cmd.exe")
-        return [shell, "/d", "/s", "/c", subprocess.list2cmdline(values)]
+        command = f'"{values[0]}" {subprocess.list2cmdline(values[1:])}'.rstrip()
+        return [shell, "/d", "/s", "/c", command]
     return values
 
 

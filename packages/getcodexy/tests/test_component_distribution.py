@@ -18,6 +18,7 @@ from packages.getcodexy.tests.component_distribution_support import (
     DISTRIBUTION_HOST,
     copy_marketplace_plugins,
     measure_hook_probes,
+    windows_argv,
 )
 
 
@@ -30,12 +31,13 @@ class CapabilityProcessTests(unittest.TestCase):
         from codexy_runtime_tools import component_capability_probe as probe
 
         with tempfile.TemporaryDirectory() as directory:
-            launcher = Path(directory) / "probe.cmd"
-            launcher.write_text("@exit /b 0\r\n", encoding="utf-8")
-            with patch.object(probe.os, "name", "nt"):
-                argv = probe._argv(f'"{launcher}" PermissionRequest', launcher.parent)
-        self.assertEqual(argv[1:4], ["/d", "/s", "/c"])
-        self.assertIn(str(launcher), argv[4])
+            paths, batch, raw, py, ran = windows_argv(probe, Path(directory))
+        for launcher, argv in zip(paths, batch, strict=True):
+            self.assertEqual(argv[1:4], ["/d", "/s", "/c"])
+            self.assertEqual(argv[4], f'"{launcher}" PermissionRequest')
+        self.assertEqual(raw[0], "powershell.exe -NoProfile -File hook.ps1".split())
+        self.assertEqual(raw[1], [str(py), "hook.py"])
+        self.assertEqual(ran, (0, 0, 0) if os.name == "nt" else ())
 
     def test_process_failures_keep_timeout_exit_and_missing_distinct(self) -> None:
         from codexy_runtime_tools import component_capability_probe as probe
