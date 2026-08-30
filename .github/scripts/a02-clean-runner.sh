@@ -144,11 +144,12 @@ CODEX_VERSION_FILE="$RUN_ROOT/codex-version.txt"
 [[ -s "$CODEX_VERSION_FILE" ]] || die "Codex CLI version output is missing"
 
 run_json() {
-	local output="$1" error_file="$1.stderr"
-	shift
+	local output="$1" label="$2" error_file="$1.stderr" diagnostic
+	shift 2
 	[[ ! -e "$output" && ! -e "$error_file" ]] || die "stale JSON output"
 	if ! "$@" >"$output" 2>"$error_file"; then
-		die "JSON command failed"
+		diagnostic="$(python3 -c 'import hashlib,os,re,sys; p,temp,root=sys.argv[1:]; limit=240; f=open(p,"rb"); raw=f.readline(4097); f.close(); size=os.path.getsize(p); h=hashlib.sha256(); f=open(p,"rb"); [h.update(c) for c in iter(lambda:f.read(65536),b"")]; f.close(); s=raw.decode("utf-8","replace"); bad=re.compile(r"(?i)(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|github_pat_[A-Za-z0-9_]+|Bearer\s+\S+)|[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+(?:[:][^/\s@]*)?@|(?:api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|token)\s*[:=]\s*\S+"); secret=bool(bad.search(s)); s=re.sub(r"[\x00-\x1f\x7f]"," ",s); s=re.sub(re.escape(root),"<runner-temp>",s); s=re.sub(re.escape(temp),"<runner-temp>",s); s=re.sub(r"(?<![A-Za-z0-9>])/(?:[^/\s]+(?:/[^/\s]+)*)","<path>",s).strip(); s=s[:limit]+("..." if len(s)>limit else ""); print("suppressed sha256="+h.hexdigest()+" bytes="+str(size) if secret else "stderr="+(s or "<empty>"))' "$error_file" "$RUNNER_TEMP" "$RUN_ROOT" 2>/dev/null)" || diagnostic="suppressed"
+		die "JSON command failed label=$label diagnostic=$diagnostic"
 	fi
 	[[ -s "$output" ]] || die "JSON output is missing"
 	python3 -c 'import json,re,sys; s=open(sys.argv[1],encoding="utf-8").read(); json.loads(s); bad=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)",re.I); sys.exit(1 if bad.search(s) else 0)' "$output" || die "JSON output is invalid or secret-bearing"
@@ -159,8 +160,8 @@ LIST_JSON="$RUN_ROOT/marketplace-list.json"
 INSTALL_JSON="$RUN_ROOT/install.json"
 DOCTOR_JSON="$RUN_ROOT/doctor.json"
 PLUGINS_JSON="$RUN_ROOT/plugins.json"
-run_json "$ADD_JSON" "$CODEX" plugin marketplace add "$MARKETPLACE_ROOT" --json
-run_json "$LIST_JSON" "$CODEX" plugin marketplace list --json
+run_json "$ADD_JSON" marketplace-add "$CODEX" plugin marketplace add "$MARKETPLACE_ROOT" --json
+run_json "$LIST_JSON" marketplace-list "$CODEX" plugin marketplace list --json
 python3 -c 'import json,os,sys; from pathlib import Path; p=json.load(open(sys.argv[1])); r=Path(sys.argv[2]).resolve(); m=[x for x in p.get("marketplaces",[]) if isinstance(x,dict) and x.get("name")=="codexy"]; x=m[0] if len(m)==1 else {}; ok=x.get("root")==str(r) and x.get("marketplaceSource")=={"sourceType":"local","source":str(r)} and Path(x.get("root","")).is_dir() and os.path.realpath(x.get("root",""))==str(r); raise SystemExit(0 if ok else 1)' "$LIST_JSON" "$MARKETPLACE_ROOT" || die "marketplace registration is foreign, unbound, or ambiguous"
 
 unset PIP_EXTRA_INDEX_URL UV_INDEX_URL
@@ -178,9 +179,9 @@ VERSION="$(awk -F'"' '/^version = / {print $2; exit}' "$BUILD_SOURCE/pyproject.t
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "package version is invalid"
 python3 -m venv "$INSTALL_VENV" || die "install environment creation failed"
 "$INSTALL_VENV/bin/python" -m pip install --no-index --no-cache-dir --disable-pip-version-check --no-input --find-links "$DIST" "getcodexy==$VERSION" >/dev/null 2>"$RUN_ROOT/offline-install.stderr" || die "offline getcodexy installation failed"
-run_json "$INSTALL_JSON" "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" install --json
-run_json "$DOCTOR_JSON" "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" doctor --json
-run_json "$PLUGINS_JSON" "$CODEX" plugin list --json
+run_json "$INSTALL_JSON" getcodexy-install "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" install --json
+run_json "$DOCTOR_JSON" getcodexy-doctor "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" doctor --json
+run_json "$PLUGINS_JSON" plugin-list "$CODEX" plugin list --json
 SOURCE_FILES_AFTER="$RUN_ROOT/source-files-after.sha256"
 find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort >"$SOURCE_FILES_AFTER"
 cmp -s "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" || die "archive source changed during proof"
