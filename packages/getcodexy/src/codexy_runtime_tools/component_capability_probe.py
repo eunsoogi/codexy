@@ -230,7 +230,7 @@ def _argv(command, plugin, args=()):
     ):
         shell = os.environ.get("COMSPEC", "cmd.exe")
         command = f'"{values[0]}" {subprocess.list2cmdline(values[1:])}'.rstrip()
-        return [shell, "/d", "/s", "/c", command]
+        return f'{subprocess.list2cmdline([shell])} /d /s /c "{command}"'
     return values
 
 

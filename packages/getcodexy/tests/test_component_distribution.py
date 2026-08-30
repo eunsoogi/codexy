@@ -32,9 +32,9 @@ class CapabilityProcessTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             paths, batch, raw, py, ran = windows_argv(probe, Path(directory))
-        for launcher, argv in zip(paths, batch, strict=True):
-            self.assertEqual(argv[1:4], ["/d", "/s", "/c"])
-            self.assertEqual(argv[4], f'"{launcher}" PermissionRequest')
+        for launcher, command in zip(paths, batch, strict=True):
+            self.assertIn(" /d /s /c ", command)
+            self.assertTrue(command.endswith(f'""{launcher}" PermissionRequest"'))
         self.assertEqual(raw[0], "powershell.exe -NoProfile -File hook.ps1".split())
         self.assertEqual(raw[1], [str(py), "hook.py"])
         self.assertEqual(ran, (0, 0, 0) if os.name == "nt" else ())
