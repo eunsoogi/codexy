@@ -227,6 +227,47 @@ contracts, and MCP/LSP runtime boundaries are in the
 skills remain repository-only; installing Codexy does not silently add this
 project's maintainer policy to another repository.
 
+## Public skill catalog
+
+Each installed skill remains defined by its packaged `SKILL.md`; this catalog is
+a first-user guide to the current component inventory, not a separate registry.
+
+### Core
+
+| Invocation | Description |
+| ---------- | ----------- |
+| `agents-md-authoring` | MUST use when creating, updating, reviewing, or relocating AGENTS.md instruction files, including repository root guidance, nested directory rules, instruction precedence, scope boundaries, and verification/readback expectations. |
+| `artifact-refresh` | Use when one exact non-code artifact must be refreshed against one exact governing source by removing conflicting, superseded, or duplicated claims. |
+| `blind-read` | Use when a fresh reader must interpret one artifact for one named audience and action without judging, editing, or reconstructing outside context. |
+| `decision-rationale` | Use when a user has already chosen one option and asks to inspect its stated reason, evidence support, unsupported assumption, and reopen condition without changing the decision. |
+| `dreaming` | MUST use when an active Codex task resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active fixes, and stale details before continuing. |
+| `engineering` | MUST use for diagnosis, specification, domain modeling, test-driven development, refactoring, or quality assurance in one atomic engineering workflow. |
+| `frame-check` | Use when a user explicitly asks to check the framing of one proposed direction against supplied authoritative constraints. |
+| `goal-state-recovery` | Use when real goal tools (`create_goal`, `get_goal`, or `update_goal`) are used, or when resuming a task controlled by a goal state; MUST NOT load it for work that does not use goal tooling. |
+| `orchestration` | MUST classify; load authorities. |
+| `plan-stress-test` | Use when the user explicitly opts in to stress-test one important plan with acceptance criteria before implementation. |
+| `project-brief` | Use when a person returns to an ongoing task and needs a read-only brief of recorded current state without changing ownership, status, plans, or actions. |
+| `proof-driven-completion` | MUST use before claiming work is done, handing off, opening or merging a PR, closing an issue, reporting success, or completing a goal for code, docs, workflow, UI, plugin, marketplace, or release tasks. |
+| `realtime-voice-orchestration` | Use when a user explicitly requests a realtime voice interaction that must route a task or status request to an authoritative Codex project owner and summarize verified progress without taking over orchestration. |
+| `wiki` | Use only for explicit $wiki or topic-wiki requests. |
+
+### GitHub
+
+| Invocation | Description |
+| ---------- | ----------- |
+| `git-workflow` | Use for GitHub issue, branch, worktree, pull request, review, merge, CI, and release workflow with the public Codexy orchestration contract. |
+
+### Devtools
+
+| Invocation | Description |
+| ---------- | ----------- |
+| `developer-tools` | Use when Codexy Devtools is installed and the task needs local Codegraph exploration or LSP diagnostics. |
+
+The repository also carries `plugin-marketplace-prep` and
+`release-engineering` under `.agents/skills/` for Codexy maintainers. These are
+repository-only maintenance skills and are not installed with the packaged
+plugins.
+
 ## Supported platforms and proof boundary
 
 | Platform or host surface           | What is supported and verified                                                                                                                                                          |
