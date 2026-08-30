@@ -23,8 +23,7 @@ def unique(pairs):
 def load(path):
     try:
         return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique)
-    except (OSError, UnicodeError, ValueError) as error:
-        raise Failure("metadata is not valid JSON") from error
+    except (OSError, UnicodeError, ValueError) as error: raise Failure("metadata is not valid JSON") from error
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 def sha_bytes(data): return hashlib.sha256(data).hexdigest()
@@ -77,7 +76,7 @@ def derive(manifest, release, repository):
         need(isinstance(name, str) and name == safe_name(name) and PurePosixPath(name).parent == PurePosixPath("runtime") and PurePosixPath(name).name == f"codexy-mcp-{server}-{PLATFORM}.bin", "Linux runtime member metadata is invalid")
         need(isinstance(checksum, str) and HEX64.fullmatch(checksum), "Linux binary digest is invalid")
         members.append({"server": server, "path": name, "sha256": checksum})
-    return {"repository": mrepo, "plugin": manifest["name"], "version": version, "tag": tag, "url": url, "archive_sha256": archive_sha, "platform": PLATFORM, "members": members}
+    return {"repository": mrepo, "plugin": manifest["name"], "archive_prefix": f"plugins/{manifest['name']}/", "version": version, "tag": tag, "url": url, "archive_sha256": archive_sha, "platform": PLATFORM, "members": members}
 def metadata(root, repository):
     plugin = root / "plugins/codexy-devtools"
     return derive(load(plugin / ".codex-plugin/plugin.json"), load(plugin / "runtime-release.json"), repository)
@@ -103,16 +102,16 @@ def extract_verified(archive, output, expected):
                     selected[name] = item
             need(set(selected) == set(expected), "required Linux runtime members are incomplete")
             records = []
-            for name, checksum in expected.items():
+            for name, (relative, checksum) in expected.items():
                 source = stream.extractfile(selected[name])
                 need(source is not None, "required runtime member cannot be read")
                 data = source.read(MAX_MEMBER + 1)
                 need(len(data) == selected[name].size and len(data) <= MAX_MEMBER, "runtime member size is invalid")
                 need(sha_bytes(data) == checksum and data.startswith(b"\x7fELF"), "runtime binary verification failed")
-                target = output / PurePosixPath(name).name
+                target = output / PurePosixPath(relative).name
                 target.write_bytes(data)
                 target.chmod(0o755)
-                records.append({"path": name, "sha256": checksum, "bytes": len(data)})
+                records.append({"path": relative, "archive_member": name, "sha256": checksum, "bytes": len(data)})
     except (OSError, tarfile.TarError) as error:
         raise Failure("runtime archive cannot be inspected") from error
     names = sorted(PurePosixPath(name).name for name in expected)
@@ -139,8 +138,8 @@ def hosted(root, receipt, output, repository):
     except (OSError, subprocess.CalledProcessError) as error:
         raise Failure("runtime release download failed") from error
     verify_archive(archive, meta["archive_sha256"])
-    records = extract_verified(archive, output, {item["path"]: item["sha256"] for item in meta["members"]})
-    result = {"schema": "codexy.a02.runtime-preflight.v1", "plugin": {"name": meta["plugin"], "version": meta["version"], "repository": meta["repository"]}, "release": {"tag": meta["tag"], "url": meta["url"], "archive_sha256": meta["archive_sha256"]}, "platform": meta["platform"], "members": records, "runtime_dir": str(output.resolve()), "download": {"method": "unauthenticated-https", "authenticated": False}, "decision": "PASS"}
+    records = extract_verified(archive, output, {f"{meta['archive_prefix']}{item['path']}": (item["path"], item["sha256"]) for item in meta["members"]})
+    result = {"schema": "codexy.a02.runtime-preflight.v1", "plugin": {"name": meta["plugin"], "version": meta["version"], "repository": meta["repository"]}, "release": {"tag": meta["tag"], "url": meta["url"], "archive_sha256": meta["archive_sha256"], "archive_prefix": meta["archive_prefix"]}, "platform": meta["platform"], "members": records, "runtime_dir": str(output.resolve()), "download": {"method": "unauthenticated-https", "authenticated": False}, "decision": "PASS"}
     safe_receipt(result)
     receipt.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     print(output.resolve())
@@ -178,23 +177,24 @@ def self_test():
             row = {"path": name, "sha256": expected[name]}
             release["platforms"][PLATFORM][server] = row
             release["classes"]["devtoolsMcp"]["platforms"][PLATFORM][server] = row
-        good = [("dir", "runtime/", None)] + [("file", paths[server], blobs[server]) for server in paths] + [("file", "docs/readme.txt", b"safe")]
+        prefix = derive(manifest, release, repository)["archive_prefix"]; archive_expected = {f"{prefix}{name}": (name, checksum) for name, checksum in expected.items()}; good = [("dir", prefix, None)] + [("file", f"{prefix}{paths[server]}", blobs[server]) for server in paths] + [("file", "docs/readme.txt", b"safe")]
         archive = root / "runtime.tar.gz"
         make_archive(archive, good)
         release["artifact"]["sha256"] = sha(archive)
         need(derive(manifest, release, repository)["version"] == version, "self-test metadata binding failed")
-        extract_verified(archive, root / "verified", expected)
+        records = extract_verified(archive, root / "verified", archive_expected); need({(item["path"], item["archive_member"]) for item in records} == {(name, f"{prefix}{name}") for name in expected}, "prefix-aware matcher failed")
         cases = 0
 
-        def reject(label, operation):
+        def reject(label, operation, counted=True):
             nonlocal cases
             try:
                 operation()
             except Failure:
-                cases += 1
+                if counted: cases += 1
             else:
                 raise Failure(f"self-test accepted {label}")
 
+        reject("unprefixed matcher", lambda: extract_verified(archive, root / "root-mismatch", {name: (name, checksum) for name, checksum in expected.items()}), False)
         for label, change in [
             ("foreign repository", lambda value: value["source"].update(repository="https://github.com/foreign/codexy")),
             ("stale tag", lambda value: value["artifact"].update(tag=value["artifact"]["tag"] + "x")),
@@ -211,25 +211,25 @@ def self_test():
         negatives = [
             ("traversal", good + [("file", "../escape", b"x")]),
             ("absolute member", good + [("file", "/escape", b"x")]),
-            ("duplicate member", good + [("file", paths["codegraph"], blobs["codegraph"])]),
+            ("duplicate member", good + [("file", f"{prefix}{paths['codegraph']}", blobs["codegraph"])]),
             ("symlink", good + [("symlink", "runtime/link", None)]),
             ("hard link", good + [("hardlink", "runtime/link", None)]),
             ("special member", good + [("special", "runtime/device", None)]),
-            ("missing member", [("file", paths["codegraph"], blobs["codegraph"])]),
+            ("missing member", [("file", f"{prefix}{paths['codegraph']}", blobs["codegraph"])]),
         ]
         for label, entries in negatives:
             candidate = root / (label.replace(" ", "-") + ".tar.gz")
             make_archive(candidate, entries)
-            reject(label, lambda candidate=candidate: extract_verified(candidate, root / (candidate.stem + "-out"), expected))
-        wrong = dict(expected)
-        wrong[paths["lsp"]] = "0" * 64
+            reject(label, lambda candidate=candidate: extract_verified(candidate, root / (candidate.stem + "-out"), archive_expected))
+        wrong = dict(archive_expected)
+        wrong[f"{prefix}{paths['lsp']}"] = (paths["lsp"], "0" * 64)
         reject("binary digest", lambda: extract_verified(archive, root / "wrong-out", wrong))
         extra = root / "extra-out"
         extra.mkdir()
         (extra / "unexpected").write_bytes(b"x")
-        reject("extra output", lambda: extract_verified(archive, extra, expected))
+        reject("extra output", lambda: extract_verified(archive, extra, archive_expected))
         need(cases == 15, f"self-test case inventory mismatch: {cases}")
-    print("PREFLIGHT SELF-TEST PASS cases=15")
+    print("PREFLIGHT SELF-TEST PASS cases=15 red=root-mismatch")
 
 
 def main(arguments):
