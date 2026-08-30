@@ -114,21 +114,21 @@ XDG_CONFIG_DIR="$RUN_ROOT/xdg-config"
 XDG_DATA_DIR="$RUN_ROOT/xdg-data"
 XDG_CACHE_DIR="$RUN_ROOT/xdg-cache"
 GH_CONFIG_DIR="$RUN_ROOT/gh-config"
-mkdir "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"
-for dir in "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR"; do
+mkdir "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR" "$RUN_ROOT/uvx-bin"
+for dir in "$HOME_DIR" "$CODEX_HOME_DIR" "$XDG_CONFIG_DIR" "$XDG_DATA_DIR" "$XDG_CACHE_DIR" "$GH_CONFIG_DIR" "$RUN_ROOT/uvx-bin"; do
 	[[ -z "$(find "$dir" -mindepth 1 -print -quit)" ]] || die "fresh proof directory is not empty"
 done
 unset CODEX_HOME
-export HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME_DIR" XDG_CONFIG_HOME="$XDG_CONFIG_DIR" XDG_DATA_HOME="$XDG_DATA_DIR" XDG_CACHE_HOME="$XDG_CACHE_DIR" GH_CONFIG_DIR="$GH_CONFIG_DIR"
-SYSTEM_PATH=/usr/bin:/bin:/usr/sbin:/sbin
-export PATH="$HOME_DIR/.local/bin:$SYSTEM_PATH" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1
 assert_missing() {
 	local command_name
 	for command_name in node npx; do
 		[[ -z "$(command -v "$command_name" 2>/dev/null || true)" ]] || die "$command_name is available on the clean runner"
 	done
 }
-assert_missing
+export HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME_DIR" XDG_CONFIG_HOME="$XDG_CONFIG_DIR" XDG_DATA_HOME="$XDG_DATA_DIR" XDG_CACHE_HOME="$XDG_CACHE_DIR" GH_CONFIG_DIR="$GH_CONFIG_DIR"
+export PATH="$HOME_DIR/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1 && assert_missing
+if UVX_PATH="$(printenv UVX_PATH 2>/dev/null || true)" && UVX_REAL="$(readlink -f "$UVX_PATH" 2>/dev/null || true)" && [[ "$UVX_PATH" == /* && -x "$UVX_PATH" && -n "$UVX_REAL" && -x "$UVX_REAL" && ! -L "$UVX_REAL" ]] && ln -s "$UVX_REAL" "$RUN_ROOT/uvx-bin/uvx"; then :; else die "uvx path is not a resolved executable"; fi
+export PATH="$HOME_DIR/.local/bin:$RUN_ROOT/uvx-bin:/usr/bin:/bin:/usr/sbin:/sbin" PIP_CONFIG_FILE=/dev/null PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 PYTHONNOUSERSITE=1 && assert_missing
 if existing_codex="$(command -v codex 2>/dev/null)"; then
 	[[ -z "$existing_codex" ]] || die "Codex CLI was inherited before official acquisition"
 fi
@@ -148,7 +148,7 @@ run_json() {
 	shift 2
 	[[ ! -e "$output" && ! -e "$error_file" ]] || die "stale JSON output"
 	if ! "$@" >"$output" 2>"$error_file"; then
-		diagnostic="$(python3 -c 'import hashlib,os,re,sys; p,temp,root=sys.argv[1:]; limit=240; f=open(p,"rb"); raw=f.readline(4097); f.close(); size=os.path.getsize(p); h=hashlib.sha256(); f=open(p,"rb"); [h.update(c) for c in iter(lambda:f.read(65536),b"")]; f.close(); s=raw.decode("utf-8","replace"); bad=re.compile(r"(?i)(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|github_pat_[A-Za-z0-9_]+|Bearer\s+\S+)|[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+(?:[:][^/\s@]*)?@|(?:api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|token)\s*[:=]\s*\S+"); secret=bool(bad.search(s)); s=re.sub(r"[\x00-\x1f\x7f]"," ",s); s=re.sub(re.escape(root),"<runner-temp>",s); s=re.sub(re.escape(temp),"<runner-temp>",s); s=re.sub(r"(?<![A-Za-z0-9>])/(?:[^/\s]+(?:/[^/\s]+)*)","<path>",s).strip(); s=s[:limit]+("..." if len(s)>limit else ""); print("suppressed sha256="+h.hexdigest()+" bytes="+str(size) if secret else "stderr="+(s or "<empty>"))' "$error_file" "$RUNNER_TEMP" "$RUN_ROOT" 2>/dev/null)" || diagnostic="suppressed"
+		diagnostic="$(python3 -c 'import hashlib,os,re,sys; p,out,temp,root=sys.argv[1:]; limit=240; err=os.path.getsize(p)>0; source=p if err else out; f=open(source,"rb"); raw=f.readline(4097); f.close(); size=os.path.getsize(source); h=hashlib.sha256(); f=open(source,"rb"); [h.update(c) for c in iter(lambda:f.read(65536),b"")]; f.close(); s=raw.decode("utf-8","replace"); bad=re.compile(r"(?i)(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|github_pat_[A-Za-z0-9_]+|Bearer\s+\S+)|[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+(?:[:][^/\s@]*)?@|(?:\"?(?:api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|token)\"?\s*[:=]\s*\"?\S+)"); secret=bool(bad.search(s)); s=re.sub(r"[\x00-\x1f\x7f]"," ",s); s=re.sub(re.escape(root),"<runner-temp>",s); s=re.sub(re.escape(temp),"<runner-temp>",s); s=re.sub(r"(?<![A-Za-z0-9>])/(?:[^/\s]+(?:/[^/\s]+)*)","<path>",s).strip(); s=s[:limit]+("..." if len(s)>limit else ""); print("suppressed sha256="+h.hexdigest()+" bytes="+str(size) if secret else ("stdout=" if not err else "stderr=")+(s or "<empty>"))' "$error_file" "$output" "$RUNNER_TEMP" "$RUN_ROOT" 2>/dev/null)" || diagnostic="suppressed"
 		die "JSON command failed label=$label diagnostic=$diagnostic"
 	fi
 	[[ -s "$output" ]] || die "JSON output is missing"

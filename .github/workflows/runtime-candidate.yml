@@ -228,10 +228,16 @@ jobs:
       GITHUB_TOKEN: ""
       GH_TOKEN: ""
     steps:
+      - uses: astral-sh/setup-uv@v7
+        id: setup-uv
+        with:
+          github-token: ""
+          enable-cache: false
       - name: Fetch exact pull request head without an action checkout
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          UVX_PATH: ${{ steps.setup-uv.outputs.uvx-path }}
         run: |
           set -Eeuo pipefail
           git clone --no-tags --filter=blob:none --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$RUNNER_TEMP/a02-source"; git -C "$RUNNER_TEMP/a02-source" fetch --no-tags --depth=1 origin "$HEAD_SHA"; git -C "$RUNNER_TEMP/a02-source" checkout --detach "$HEAD_SHA"; bash "$RUNNER_TEMP/a02-source/.github/scripts/a02-clean-runner.sh"
