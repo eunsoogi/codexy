@@ -40,6 +40,8 @@
       "Keep issue, PR, review, and merge evidence current before requesting a merge."
     ],
     "brandColor": "#2F6F5E",
+    "composerIcon": "./assets/codexy-github-icon.png",
+    "logo": "./assets/codexy-github-icon.png",
     "screenshots": []
   }
 }
