@@ -215,7 +215,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   a02-clean-runner:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'eunsoogi/787-official-no-node-runner' && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
     runs-on: ubuntu-latest
