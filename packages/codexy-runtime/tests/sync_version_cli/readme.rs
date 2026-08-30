@@ -22,7 +22,7 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
         fs::write(&path, mutated.as_bytes())?;
         expected.push((path, mutated.into_bytes()));
     }
-    let output = super::run_sync_script(&root, &["--check"])?;
+    let output = super::run_sync(&root, &["--check"])?;
     assert!(!output.status.success());
     for (path, bytes) in expected {
         assert_eq!(fs::read(path)?, bytes);
@@ -40,7 +40,7 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
     assert_eq!(candidate_selected, selected);
     let prior = previous_patch_version(&selected)?;
     let candidate = next_patch_version(&selected)?;
-    let prepared = super::run_sync_script(
+    let prepared = super::run_sync(
         &candidate_root,
         &["--prepare-candidate", &candidate],
     )?;
@@ -115,7 +115,7 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
             } else {
                 "--check"
             };
-            let output = super::run_sync_script(&root, &[check])?;
+            let output = super::run_sync(&root, &[check])?;
             let stderr = String::from_utf8_lossy(&output.stderr);
             assert!(
                 !output.status.success(),

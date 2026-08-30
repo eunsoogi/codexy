@@ -10,9 +10,29 @@ permissions:
 
 jobs:
   rust-test:
-    name: Rust tests (Ubuntu)
+    name: Rust tests (Ubuntu / ${{ matrix.target.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: library and binaries
+            args: --lib --bins
+          - name: support suite
+            args: --test suite_support
+          - name: agent suite
+            args: --test suite_agent
+          - name: child suite
+            args: --test suite_child
+          - name: orchestration suite
+            args: --test suite_orchestration
+          - name: governance suite
+            args: --test suite_governance
+          - name: system suite
+            args: --test suite_system
+          - name: archive suite
+            args: --test suite_archive
     steps:
       - uses: actions/checkout@v7
         with:
@@ -20,12 +40,32 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
-      - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets
+      - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
 
   windows-rust-test:
-    name: Rust tests (Windows)
+    name: Rust tests (Windows / ${{ matrix.target.name }})
     runs-on: windows-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: library and binaries
+            args: --lib --bins
+          - name: support suite
+            args: --test suite_support
+          - name: agent suite
+            args: --test suite_agent
+          - name: child suite
+            args: --test suite_child
+          - name: orchestration suite
+            args: --test suite_orchestration
+          - name: governance suite
+            args: --test suite_governance
+          - name: system suite
+            args: --test suite_system
+          - name: archive suite
+            args: --test suite_archive
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,4 +77,4 @@ jobs:
       - shell: pwsh
         run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - shell: pwsh
-        run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked --all-targets --features runtime-activation; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
