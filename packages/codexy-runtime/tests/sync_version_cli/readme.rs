@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Command,
     sync::{Mutex, MutexGuard, OnceLock},
 };
 
@@ -13,7 +14,6 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let fixtures = shared_fixtures()?;
     let root = &fixtures.selected_root;
     let selected = &fixtures.selected;
-    let mut restoration = Restoration::capture(&[root])?;
     let prior = previous_patch_version(selected)?;
     for (path, bytes) in version_surface_contents(root)? {
         fs::write(path, String::from_utf8(bytes)?.replace(selected, &prior))?;
@@ -32,7 +32,6 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     for (path, bytes) in expected {
         assert_eq!(fs::read(path)?, bytes);
     }
-    restoration.restore()?;
     Ok(())
 }
 
@@ -45,7 +44,6 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
     let selected = &fixtures.selected;
     let candidate = &fixtures.candidate;
     let prior = previous_patch_version(selected)?;
-    let mut restoration = Restoration::capture(&[selected_root, candidate_root])?;
     for (case, candidate_mode) in [
         ("stale-prior", false),
         ("stale-candidate", true),
@@ -127,19 +125,16 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
             );
         }
     }
-    restoration.restore()?;
     Ok(())
 }
 
-struct SharedFixtures {
-    _temp: tempfile::TempDir,
-    selected_root: PathBuf,
-    candidate_root: PathBuf,
+struct FixtureSeed {
+    archive: Vec<u8>,
     selected: String,
     candidate: String,
 }
 
-impl SharedFixtures {
+impl FixtureSeed {
     fn create() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         let (selected_root, selected) = super::selected_fixture(&temp, "readme-selected")?;
@@ -154,62 +149,72 @@ impl SharedFixtures {
             )
             .into());
         }
+        let archive = temp.path().join("readme-fixtures.tar");
+        let archived = Command::new("tar")
+            .args(["-cf"])
+            .arg(&archive)
+            .arg("-C")
+            .arg(temp.path())
+            .args(["readme-selected", "readme-candidate"])
+            .status()?;
+        if !archived.success() {
+            return Err("README fixture archive failed".into());
+        }
         Ok(Self {
-            _temp: temp,
-            selected_root,
-            candidate_root,
+            archive: fs::read(archive)?,
             selected,
             candidate,
         })
     }
+
+    fn materialize(
+        &'static self,
+        serial: MutexGuard<'static, ()>,
+    ) -> Result<SharedFixtures, Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let archive = temp.path().join("readme-fixtures.tar");
+        fs::write(&archive, &self.archive)?;
+        let extracted = Command::new("tar")
+            .args(["-xf"])
+            .arg(&archive)
+            .arg("-C")
+            .arg(temp.path())
+            .status()?;
+        if !extracted.success() {
+            return Err("README fixture extraction failed".into());
+        }
+        fs::remove_file(archive)?;
+        Ok(SharedFixtures {
+            selected_root: temp.path().join("readme-selected"),
+            candidate_root: temp.path().join("readme-candidate"),
+            selected: self.selected.clone(),
+            candidate: self.candidate.clone(),
+            _temp: temp,
+            _serial: serial,
+        })
+    }
 }
 
-fn shared_fixtures() -> Result<MutexGuard<'static, SharedFixtures>, Box<dyn std::error::Error>> {
-    static FIXTURES: OnceLock<Result<Mutex<SharedFixtures>, String>> = OnceLock::new();
-    let fixtures = match FIXTURES.get_or_init(|| {
-        SharedFixtures::create()
-            .map(Mutex::new)
-            .map_err(|error| error.to_string())
-    }) {
-        Ok(fixtures) => fixtures,
+struct SharedFixtures {
+    selected_root: PathBuf,
+    candidate_root: PathBuf,
+    selected: String,
+    candidate: String,
+    _temp: tempfile::TempDir,
+    _serial: MutexGuard<'static, ()>,
+}
+
+fn shared_fixtures() -> Result<SharedFixtures, Box<dyn std::error::Error>> {
+    static SEED: OnceLock<Result<FixtureSeed, String>> = OnceLock::new();
+    static SERIAL: Mutex<()> = Mutex::new(());
+    let serial = SERIAL
+        .lock()
+        .map_err(|_| "shared README fixture mutex poisoned")?;
+    let seed = match SEED.get_or_init(|| FixtureSeed::create().map_err(|error| error.to_string())) {
+        Ok(seed) => seed,
         Err(error) => return Err(error.clone().into()),
     };
-    fixtures
-        .lock()
-        .map_err(|_| "shared README fixture mutex poisoned".into())
-}
-
-struct Restoration {
-    originals: Vec<(PathBuf, Vec<u8>)>,
-}
-
-impl Restoration {
-    fn capture(roots: &[&PathBuf]) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut originals = Vec::new();
-        for root in roots {
-            originals.extend(fixture_contents(root)?);
-        }
-        Ok(Self { originals })
-    }
-
-    fn restore(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        for (path, bytes) in &self.originals {
-            fs::write(path, bytes)?;
-        }
-        for (path, bytes) in &self.originals {
-            assert_eq!(fs::read(path)?, *bytes, "fixture bytes were not restored");
-        }
-        self.originals.clear();
-        Ok(())
-    }
-}
-
-impl Drop for Restoration {
-    fn drop(&mut self) {
-        for (path, bytes) in &self.originals {
-            let _ = fs::write(path, bytes);
-        }
-    }
+    seed.materialize(serial)
 }
 
 fn fixture_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
