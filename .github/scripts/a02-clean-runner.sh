@@ -179,8 +179,8 @@ VERSION="$(awk -F'"' '/^version = / {print $2; exit}' "$BUILD_SOURCE/pyproject.t
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "package version is invalid"
 python3 -m venv "$INSTALL_VENV" || die "install environment creation failed"
 "$INSTALL_VENV/bin/python" -m pip install --no-index --no-cache-dir --disable-pip-version-check --no-input --find-links "$DIST" "getcodexy==$VERSION" >/dev/null 2>"$RUN_ROOT/offline-install.stderr" || die "offline getcodexy installation failed"
-run_json "$INSTALL_JSON" getcodexy-install "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" install --json
-run_json "$DOCTOR_JSON" getcodexy-doctor "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX" --codex-home "$CODEX_HOME" doctor --json
+run_json "$INSTALL_JSON" getcodexy-install "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX_REAL" --codex-home "$CODEX_HOME" install --json
+run_json "$DOCTOR_JSON" getcodexy-doctor "$INSTALL_VENV/bin/getcodexy" --codex "$CODEX_REAL" --codex-home "$CODEX_HOME" doctor --json
 run_json "$PLUGINS_JSON" plugin-list "$CODEX" plugin list --json
 SOURCE_FILES_AFTER="$RUN_ROOT/source-files-after.sha256"
 find "$MARKETPLACE_ROOT" -type f -exec sha256sum {} + | LC_ALL=C sort >"$SOURCE_FILES_AFTER"
