@@ -15,7 +15,11 @@ for name in OPENAI_API_KEY OPENAI_ADMIN_KEY CODEX_API_KEY CODEX_AUTH_TOKEN CODEX
 done
 while IFS= read -r name; do
   case "$name" in
-    *_TOKEN|*_API_KEY|*_SECRET|*_PASSWORD|*_CREDENTIALS|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|GOOGLE_APPLICATION_CREDENTIALS|GIT_ASKPASS|SSH_ASKPASS|GIT_SSH_COMMAND|SSH_AUTH_SOCK|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*)
+    AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|GOOGLE_APPLICATION_CREDENTIALS|GIT_ASKPASS|SSH_ASKPASS|GIT_SSH_COMMAND|SSH_AUTH_SOCK|GIT_CONFIG_COUNT|GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*)
+      credential_value "$name" ;;
+  esac
+  case "$name" in
+    *_TOKEN|*_API_KEY|*_SECRET|*_PASSWORD|*_CREDENTIALS)
       credential_value "$name" ;;
     PIP_INDEX_URL|PIP_EXTRA_INDEX_URL|UV_INDEX_URL|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY)
       value="$(printenv "$name" 2>/dev/null || true)"
@@ -27,11 +31,13 @@ unset BASH_ENV ENV
 RUNNER_TEMP="$(printenv RUNNER_TEMP 2>/dev/null || true)"
 GITHUB_REPOSITORY="$(printenv GITHUB_REPOSITORY 2>/dev/null || true)"
 EVENT_PATH="$(printenv GITHUB_EVENT_PATH 2>/dev/null || true)"
+WORKFLOW_PR_NUMBER="$(printenv PR_NUMBER 2>/dev/null || true)"
 [[ -n "$RUNNER_TEMP" && -n "$GITHUB_REPOSITORY" && -n "$EVENT_PATH" ]] || die "required GitHub runner identity is missing"
 [[ "$GITHUB_REPOSITORY" == eunsoogi/codexy ]] || die "foreign repository"
 [[ "$RUNNER_TEMP" == /* && "$EVENT_PATH" == /* && -f "$EVENT_PATH" ]] || die "runner paths are not absolute regular files"
 [[ "$(printenv GITHUB_ACTIONS 2>/dev/null || true)" == true ]] || die "not GitHub Actions"
 [[ "$(printenv RUNNER_ENVIRONMENT 2>/dev/null || true)" == github-hosted ]] || die "runner is not GitHub-hosted"
+[[ "$WORKFLOW_PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || die "pull request number is invalid"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 PROOF_REPO="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
@@ -50,14 +56,14 @@ if any(not isinstance(x,str) or not x or "\t" in x or "\n" in x for x in v): rai
 print("\t".join(v))
 PY
 )" || die "pull request event is invalid"
-IFS=$'\t' read -r ACTION PR_NUMBER BASE_REF BASE_SHA HEAD_REF HEAD_SHA HEAD_REPO BASE_REPO <<< "$EVENT_RECORD"
+IFS=$'\t' read -r ACTION EVENT_PR_NUMBER BASE_REF BASE_SHA HEAD_REF HEAD_SHA HEAD_REPO BASE_REPO <<< "$EVENT_RECORD"
 
 EXPECTED_SOURCE_SHA=222b6ce19fb190b8233e7d2d3ae691f66c082c35
 EXPECTED_STACKED_BASE_SHA=c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63
 EXPECTED_SOURCE_BRANCH=eunsoogi/788-local-archive-identity
 EXPECTED_HEAD_BRANCH=eunsoogi/787-official-no-node-runner
 [[ "$ACTION" =~ ^(opened|synchronize|reopened)$ ]] || die "unsupported pull request action"
-[[ "$PR_NUMBER" == 787 && "$BASE_REF" == "$EXPECTED_SOURCE_BRANCH" && "$HEAD_REF" == "$EXPECTED_HEAD_BRANCH" ]] || die "pull request identity mismatch"
+[[ "$EVENT_PR_NUMBER" == "$WORKFLOW_PR_NUMBER" && "$BASE_REF" == "$EXPECTED_SOURCE_BRANCH" && "$HEAD_REF" == "$EXPECTED_HEAD_BRANCH" ]] || die "pull request identity mismatch"
 [[ "$BASE_REPO" == "$GITHUB_REPOSITORY" && "$HEAD_REPO" == "$GITHUB_REPOSITORY" ]] || die "foreign pull request repository"
 [[ "$BASE_SHA" == "$EXPECTED_SOURCE_SHA" && "$BASE_SHA" =~ ^[0-9a-f]{40}$ && "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || die "pull request SHA admission mismatch"
 
@@ -178,11 +184,11 @@ cmp -s "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" || die "archive source chang
 AUTH_FILE="$(find "$CODEX_HOME" -type f \( -iname '*auth*' -o -iname '*token*' -o -iname '*credential*' -o -iname '*oauth*' \) -print -quit)"
 [[ -z "$AUTH_FILE" ]] || die "Codex home contains inherited or generated auth state"
 RECEIPT="$RUN_ROOT/receipt.json"
-python3 - "$RECEIPT" "$MARKETPLACE_ROOT" "$RUN_ROOT" "$PROOF_REPO" "$HEAD_SHA" "$ARCHIVE_SHA256" "$CODEX" "$CODEX_REAL" "$VERSION" "$ADD_JSON" "$LIST_JSON" "$INSTALL_JSON" "$DOCTOR_JSON" "$PLUGINS_JSON" "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" "$CODEX_VERSION_FILE" <<'PY'
+python3 - "$RECEIPT" "$MARKETPLACE_ROOT" "$RUN_ROOT" "$PROOF_REPO" "$HEAD_SHA" "$WORKFLOW_PR_NUMBER" "$ARCHIVE_SHA256" "$CODEX" "$CODEX_REAL" "$VERSION" "$ADD_JSON" "$LIST_JSON" "$INSTALL_JSON" "$DOCTOR_JSON" "$PLUGINS_JSON" "$SOURCE_FILES_BEFORE" "$SOURCE_FILES_AFTER" "$CODEX_VERSION_FILE" <<'PY'
 import hashlib,json,os,re,sys
 from pathlib import Path
 
-a=sys.argv[1:]; R,root,run,proof,head,archive,codex,codex_real,version,addf,listf,installf,doctorf,pluginsf,before,after,codexv=a; R=Path(R); root=Path(root).resolve()
+a=sys.argv[1:]; R,root,run,proof,head,pr_number,archive,codex,codex_real,version,addf,listf,installf,doctorf,pluginsf,before,after,codexv=a; R=Path(R); root=Path(root).resolve()
 SOURCE="222b6ce19fb190b8233e7d2d3ae691f66c082c35"; STACKED="c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63"; REPO="eunsoogi/codexy"; NAMES=["plan-stress-test","frame-check","decision-rationale","artifact-refresh","blind-read","project-brief"]
 def fail(message): raise SystemExit(message)
 def ok(value,message): value or fail(message)
@@ -225,7 +231,7 @@ records=plug.get("installed",[]); ok(sorted(x.get("name") for x in records)==sor
 for x in records:
  n=x["name"]; ok(x.get("pluginId")==f"{n}@codexy" and x.get("marketplaceName")=="codexy" and x.get("installed") is True and x.get("enabled") is True and x.get("version")==version and x.get("source")=={"source":"local","path":f"{root_s}/plugins/{n}"} and x.get("marketplaceSource")=={"sourceType":"local","source":root_s},"installed identity mismatch")
 env={k:os.environ.get(k) or fail(f"missing workflow identity: {k}") for k in ("GITHUB_WORKFLOW","GITHUB_JOB","GITHUB_WORKFLOW_SHA","GITHUB_RUN_ID","GITHUB_RUN_ATTEMPT")}; terminal=f"A02 TERMINAL PASS frozen_head={SOURCE} body_sha256=7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2 body_updated_at=2026-08-30T00:12:39Z portfolio_n=6 admitted={','.join(NAMES)} UNCLASSIFIED=0 reviewer=codexy-sentinel"; ok(re.fullmatch(r"A02 TERMINAL PASS frozen_head=[0-9a-f]{40} body_sha256=[0-9a-f]{64} body_updated_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z portfolio_n=[0-6] admitted=[a-z0-9-]+(,[a-z0-9-]+)* UNCLASSIFIED=0 reviewer=codexy-sentinel",terminal),"terminal grammar mismatch")
-receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2","body_updated_at":"2026-08-30T00:12:39Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED},"proof":{"pr":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact stacked parent"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
+receipt={"schema":"codexy.a02.no-node-receipt.v1","admission":{"issue_787":{"body_sha256":"7271a15c859af936b8c911a4d4ff146852dc1897fba73ce2787bc746d2f170a2","body_updated_at":"2026-08-30T00:12:39Z"},"issue_788":{"body_sha256":"724fa2289f8fc62325d6eb4c586f4c5dbc0ff8980cc4cb1e870c3fbc366399e1","body_updated_at":"2026-08-30T00:12:40Z"},"issue_713":{"body_sha256":"d78e5f089042e290c2ae742c2c1adf2d82a329dfeb43af58fbe1691446de37e5","body_updated_at":"2026-08-30T00:23:19Z"}},"source":{"repository":REPO,"source_pr":789,"source_branch":"eunsoogi/788-local-archive-identity","source_sha":SOURCE,"stacked_base_sha":STACKED},"proof":{"pr":int(pr_number),"issue":787,"head_branch":"eunsoogi/787-official-no-node-runner","head_sha":head,"base_branch":"eunsoogi/788-local-archive-identity","base_sha":SOURCE},"workflow":{"name":env["GITHUB_WORKFLOW"],"job":env["GITHUB_JOB"],"path":".github/workflows/runtime-candidate.yml","workflow_sha":env["GITHUB_WORKFLOW_SHA"],"run_id":env["GITHUB_RUN_ID"],"run_attempt":env["GITHUB_RUN_ATTEMPT"]},"runner":{"os":os.environ.get("RUNNER_OS","unavailable"),"arch":os.environ.get("RUNNER_ARCH","unavailable"),"environment":"github-hosted","node_available":False,"npx_available":False},"codex":{"path":codex,"real_path":codex_real,"version":Path(codexv).read_text().strip(),"model_operations":0,"authenticated":False},"archive":{"method":"git archive","source_commit":SOURCE,"sha256":archive,"root":root_s,"marketplaceSource":{"sourceType":"local","source":root_s},"provenance":"exact #789 source archive with exact stacked parent"},"cli":{"marketplace_add":addj,"marketplace_list":listj,"plugin_list":plug},"getcodexy":{"version":version,"install":inst,"doctor":doc},"installed_inventory":records,"contract_corpus":{"skills":results,"terminal_grammar":terminal},"no_mutation":{"archive_files_before":digest(before),"archive_files_after":digest(after),"source_unchanged":True,"proof_checkout_clean":True,"fresh_codex_home":True,"auth_state_absent":True},"identity_decision":"PASS","decision":"PASS"}
 bad_key=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer)",re.I); bad_value=re.compile(r"(?:(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)")
 def safe(value):
  if isinstance(value,dict):
