@@ -151,7 +151,7 @@ run_json() {
 		die "JSON command failed"
 	fi
 	[[ -s "$output" ]] || die "JSON output is missing"
-	python3 -c 'import json,re,sys; s=open(sys.argv[1],encoding="utf-8").read(); json.loads(s); bad=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)",re.I); raise SystemExit(1) if bad.search(s) else None' "$output" || die "JSON output is invalid or secret-bearing"
+	python3 -c 'import json,re,sys; s=open(sys.argv[1],encoding="utf-8").read(); json.loads(s); bad=re.compile(r"(api[_-]?key|access[_-]?token|secret|password|credential|oauth|authorization|bearer|(?<![A-Za-z0-9])sk-[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]+|(?<![A-Za-z0-9])Bearer\s+\S+)",re.I); sys.exit(1 if bad.search(s) else 0)' "$output" || die "JSON output is invalid or secret-bearing"
 }
 
 ADD_JSON="$RUN_ROOT/marketplace-add.json"
