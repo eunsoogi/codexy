@@ -15,7 +15,7 @@ from .component_lifecycle_admission import (
 from .component_lifecycle_interlock import migration_rejection
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import (
-    existing_marketplace_root,
+    existing_marketplace,
     recorded_selection,
     validate_request,
 )
@@ -118,7 +118,7 @@ def run_operation(
                 StateFailure.INCONSISTENT_INSTALLED_STATE,
             )
         try:
-            root = existing_marketplace_root(executable, invoke)
+            root = existing_marketplace(executable, invoke, manifest)
             inventory = _list(executable, invoke)
             if (
                 pending is not None
@@ -181,7 +181,7 @@ def run_operation(
                     manifest,
                     root or official_marketplace_root(executable, invoke),
                 )
-            root = existing_marketplace_root(executable, invoke)
+            root = existing_marketplace(executable, invoke, manifest)
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root, command)
             recorded = recorded_selection(home, manifest)

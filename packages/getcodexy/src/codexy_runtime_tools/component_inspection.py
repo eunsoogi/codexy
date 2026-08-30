@@ -19,7 +19,12 @@ from .component_resolver import (
 )
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
-from .plugin_resolution import named_marketplace, official_marketplace
+from .plugin_resolution import (
+    MarketplaceBinding,
+    marketplace_identity,
+    named_marketplace,
+    validate_local_marketplace,
+)
 from .pre_session import _find_codex, _json, _run
 from .updater import _absolute, _validate_real_path
 
@@ -110,7 +115,7 @@ def _inspect(
             host_error = ProbeStage.PLUGIN_LIST.value
         else:
             try:
-                root = _marketplace_root(executable, invoke)
+                root = _marketplace_root(executable, invoke, manifest)
             except (OSError, RuntimeError, ValueError):
                 observed = observe_installed_inventory(manifest, installed)
                 actual, records, admission_error = (
@@ -176,16 +181,29 @@ def _recorded(
     )
 
 
-def _marketplace_root(executable: Path, invoke: Runner) -> Path | None:
+def _marketplace_root(
+    executable: Path, invoke: Runner, manifest: ComponentManifest | None = None
+) -> MarketplaceBinding | None:
     payload = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "plugin marketplace list",
     )
-    return official_marketplace(payload) if named_marketplace(payload) else None
+    if not named_marketplace(payload):
+        return None
+    binding = marketplace_identity(payload)
+    if manifest is not None:
+        validate_local_marketplace(
+            binding,
+            manifest.version,
+            tuple(component.plugin for component in manifest.components),
+        )
+    return binding
 
 
 def _actual(
-    manifest: ComponentManifest, installed: object, root: Path | None
+    manifest: ComponentManifest,
+    installed: object,
+    root: MarketplaceBinding | None,
 ) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
     actual: tuple[str, ...] = ()
     records: dict[str, dict[str, object]] = {}

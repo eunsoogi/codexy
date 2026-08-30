@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from .component_inventory_classification import (
     ClassifiedInstalledRecord,
     ClassifiedInstalledInventory,
@@ -14,6 +12,7 @@ from .component_inventory_classification import (
 )
 from .component_inventory_records import component_records, valid_observed_record
 from .component_manifest import ComponentManifest, valid_semver
+from .plugin_resolution import MarketplaceBinding
 
 
 def resolve_components(
@@ -54,7 +53,7 @@ def canonical_components(
 
 
 def reconcile_installed_inventory(
-    manifest: ComponentManifest, inventory: object, marketplace_root: Path
+    manifest: ComponentManifest, inventory: object, marketplace_root: MarketplaceBinding
 ) -> tuple[str, ...]:
     return _reconcile_classified_inventory(
         manifest, classify_installed_inventory(manifest, inventory), marketplace_root
@@ -62,7 +61,9 @@ def reconcile_installed_inventory(
 
 
 def admit_installed_inventory(
-    manifest: ComponentManifest, inventory: object, marketplace_root: Path | None
+    manifest: ComponentManifest,
+    inventory: object,
+    marketplace_root: MarketplaceBinding | None,
 ) -> tuple[str, ...]:
     """Complete host inventory admission before lifecycle mutation or recovery."""
     classified = classify_installed_inventory(manifest, inventory)
@@ -75,7 +76,7 @@ def admit_installed_inventory(
 def admit_operation_inventory(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     command: str,
 ) -> tuple[str, ...]:
     """Require current retained components unless this operation will upgrade them."""
@@ -95,7 +96,7 @@ def admit_operation_inventory(
 def admit_recovery_inventory(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     expected: tuple[str, ...],
 ) -> tuple[str, ...]:
     """Admit a pending transaction's host state without rejecting its own mixed-version update."""
@@ -123,7 +124,7 @@ def admit_recovery_inventory(
 def admit_bootstrap_recovery_inventory(
     manifest: ComponentManifest,
     inventory: object,
-    marketplace_root: Path | None,
+    marketplace_root: MarketplaceBinding | None,
     before: tuple[str, ...],
     target: tuple[str, ...],
 ) -> tuple[str, ...]:
@@ -139,7 +140,7 @@ def admit_bootstrap_recovery_inventory(
 def _reconcile_classified_inventory(
     manifest: ComponentManifest,
     classified: ClassifiedInstalledInventory,
-    marketplace_root: Path,
+    marketplace_root: MarketplaceBinding,
 ) -> tuple[str, ...]:
     records = component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}
@@ -161,7 +162,7 @@ def verify_post_operation_inventory(
     manifest: ComponentManifest,
     inventory: object,
     expected: tuple[str, ...],
-    marketplace_root: Path,
+    marketplace_root: MarketplaceBinding,
 ) -> tuple[str, ...]:
     selected = reconcile_installed_inventory(manifest, inventory, marketplace_root)
     records = component_records(

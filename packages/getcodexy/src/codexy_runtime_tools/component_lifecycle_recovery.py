@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_lifecycle_admission import matching_receipt, replay_receipt
+from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
 from .component_resolver import (
     ComponentResolutionError,
@@ -25,6 +26,7 @@ from .component_transaction_state import (
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import validate_or_quarantine_marketplace
 from .pre_session import _json, official_marketplace_root
+from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -35,7 +37,7 @@ def recover_if_needed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
 ) -> None:
     journal = read_journal(home)
     if journal is None:
@@ -86,7 +88,7 @@ def rollback_or_raise(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     cause: BaseException,
 ) -> None:
@@ -116,7 +118,7 @@ def write_completed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     installed: tuple[str, ...],
 ) -> dict[str, object]:
@@ -130,7 +132,7 @@ def finish_committed(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
 ) -> dict[str, object]:
     installed = verify_post_operation_inventory(
@@ -159,7 +161,7 @@ def restore_selection(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     before: tuple[str, ...],
 ) -> None:
     current = selection(manifest, list_installed(executable, invoke), root)
@@ -175,30 +177,34 @@ def apply_forward(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
-    root: Path,
+    root: MarketplaceBinding,
     journal: Journal,
     adds: tuple[str, ...],
     removes: tuple[str, ...],
     home: Path,
 ) -> tuple[str, ...]:
     if journal.command in {"update", "bootstrap"}:
-        _json(
-            invoke(
-                [
-                    str(executable),
-                    "plugin",
-                    "marketplace",
-                    "upgrade",
-                    "codexy",
-                    "--json",
-                ]
-            ),
-            "plugin marketplace upgrade",
-        )
-        root = official_marketplace_root(executable, invoke)
-        validate_or_quarantine_marketplace(
-            executable, invoke, home, root, f"v{manifest.version}"
-        )
+        if isinstance(root, MarketplaceIdentity) and root.source_type == "local":
+            if existing_marketplace(executable, invoke, manifest) != root:
+                raise ValueError("local Codexy marketplace identity changed")
+        else:
+            _json(
+                invoke(
+                    [
+                        str(executable),
+                        "plugin",
+                        "marketplace",
+                        "upgrade",
+                        "codexy",
+                        "--json",
+                    ]
+                ),
+                "plugin marketplace upgrade",
+            )
+            root = official_marketplace_root(executable, invoke)
+            validate_or_quarantine_marketplace(
+                executable, invoke, home, root, f"v{manifest.version}"
+            )
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
@@ -234,6 +240,6 @@ def list_installed(executable: Path, invoke: Runner) -> object:
 
 
 def selection(
-    manifest: ComponentManifest, payload: object, root: Path
+    manifest: ComponentManifest, payload: object, root: MarketplaceBinding
 ) -> tuple[str, ...]:
     return reconcile_installed_inventory(manifest, payload, root)

@@ -9,7 +9,13 @@ from typing import Callable
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, resolve_components
 from .component_transaction_state import read_inventory
-from .plugin_resolution import named_marketplace, official_marketplace
+from .plugin_resolution import (
+    MarketplaceBinding,
+    marketplace_identity,
+    marketplace_path,
+    named_marketplace,
+    validate_local_marketplace,
+)
 from .pre_session import _json
 
 
@@ -27,12 +33,28 @@ def validate_request(
         resolve_components(manifest, requested)
 
 
-def existing_marketplace_root(executable: Path, invoke: Runner) -> Path | None:
+def existing_marketplace(
+    executable: Path,
+    invoke: Runner,
+    manifest: ComponentManifest | None = None,
+) -> MarketplaceBinding | None:
     payload = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
         "plugin marketplace list",
     )
-    return official_marketplace(payload) if named_marketplace(payload) else None
+    binding = marketplace_identity(payload) if named_marketplace(payload) else None
+    if binding is not None and manifest is not None:
+        validate_local_marketplace(
+            binding,
+            manifest.version,
+            tuple(component.plugin for component in manifest.components),
+        )
+    return binding
+
+
+def existing_marketplace_root(executable: Path, invoke: Runner) -> Path | None:
+    binding = existing_marketplace(executable, invoke)
+    return None if binding is None else marketplace_path(binding)
 
 
 def recorded_selection(

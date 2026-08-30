@@ -186,10 +186,28 @@ def _authority_valid(record):
         return False
     key = next((key for key in AUTHORITY_KEYS if key in record), None)
     if key is None:
-        return record.get("marketplaceSource") == {
+        if record.get("marketplaceSource") == {
             "sourceType": "git",
             "source": "https://github.com/eunsoogi/codexy.git",
-        }
+        }:
+            return True
+        installed_source = record.get("source")
+        marketplace_source = record.get("marketplaceSource")
+        if not (
+            isinstance(installed_source, dict)
+            and isinstance(installed_source.get("path"), str)
+            and isinstance(marketplace_source, dict)
+            and marketplace_source.get("sourceType") == "local"
+            and isinstance(marketplace_source.get("source"), str)
+        ):
+            return False
+        path, root = Path(installed_source["path"]), Path(marketplace_source["source"])
+        return (
+            path.is_absolute()
+            and root.is_absolute()
+            and path.parent.name == "plugins"
+            and path.parent.parent == root
+        )
     authority = record[key]
     return isinstance(authority, dict) and authority.get("state") in {
         "valid",
