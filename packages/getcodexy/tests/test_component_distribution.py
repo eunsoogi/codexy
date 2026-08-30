@@ -10,17 +10,48 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_distribution_support import (
     DISTRIBUTION_HOST,
     copy_marketplace_plugins,
+    measure_hook_probes,
+    windows_argv,
 )
 
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
 REPOSITORY = Path(__file__).parents[3]
+
+
+class CapabilityProcessTests(unittest.TestCase):
+    def test_windows_batch_hooks_use_explicit_clean_command_processor(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+
+        with tempfile.TemporaryDirectory() as directory:
+            paths, batch, raw, py, ran = windows_argv(probe, Path(directory))
+        for launcher, command in zip(paths, batch, strict=True):
+            self.assertIn(" /d /s /c ", command)
+            self.assertTrue(command.endswith(f'""{launcher}" PermissionRequest"'))
+        self.assertEqual(raw[0], "powershell.exe -NoProfile -File hook.ps1".split())
+        self.assertEqual(raw[1], [str(py), "hook.py"])
+        self.assertEqual(ran, (0, 0, 0) if os.name == "nt" else ())
+
+    def test_process_failures_keep_timeout_exit_and_missing_distinct(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+
+        cases = (
+            (subprocess.TimeoutExpired(["hook"], 5), "timeout"),
+            (subprocess.CompletedProcess(["hook"], 9, stdout=""), "nonzero-exit"),
+            (OSError("missing"), "missing-launcher"),
+        )
+        for outcome, category in cases:
+            with self.subTest(category=category):
+                with patch.object(probe.subprocess, "run", side_effect=[outcome]):
+                    result = probe._run(["hook"], Path.cwd(), "{}")
+                self.assertEqual(result.category, category)
 
 
 class ComponentDistributionTests(unittest.TestCase):
@@ -155,6 +186,12 @@ class ComponentDistributionTests(unittest.TestCase):
             json.dumps(doctor, indent=2, sort_keys=True),
         )
         self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
+        if os.name == "nt":
+            measurements = measure_hook_probes(self.marketplace, self.version)
+            print(json.dumps({"windows_capability_probes": measurements}), flush=True)
+            for measurement in measurements:
+                self.assertEqual(measurement["category"], "success", measurement)
+                self.assertLess(measurement["elapsed_seconds"], 4.5, measurement)
 
     def test_installed_cli_rolls_back_a_failed_add(self) -> None:
         self._run("install", "github")
