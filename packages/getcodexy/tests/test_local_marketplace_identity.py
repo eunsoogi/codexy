@@ -38,39 +38,47 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
                 }
             )
 
-        self.assertEqual(identity.source_type, "local")
-        self.assertEqual(identity.root, root)
-        self.assertEqual(
-            identity.host_source,
-            {"sourceType": "local", "source": str(root)},
-        )
+        self.assertEqual((identity.source_type, identity.root), ("local", root))
+        expected = {"sourceType": "local", "source": str(root)}
+        self.assertEqual(identity.host_source, expected)
 
     def test_local_archive_install_and_status_use_local_host_identity(self) -> None:
         with LocalHost() as host:
-            receipt = run_operation(
-                "install",
-                (),
-                host.home,
-                host.codex,
-                host.run,
-                operation_id="op-local-archive",
-            )
+            receipt = host.operate("install", "op-local-archive")
             observed = status(host.home, codex=host.codex, runner=host.run)
             diagnosed = doctor(host.home, codex=host.codex, runner=host.run)
 
+        expected = ["core", "github", "devtools"]
         self.assertEqual(receipt["outcome"], "completed")
-        self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
-        self.assertEqual(
-            observed["installed_components"], ["core", "github", "devtools"]
-        )
+        self.assertEqual(receipt["selection_after"], expected)
+        self.assertEqual(observed["installed_components"], expected)
         self.assertEqual(observed["errors"], [])
         self.assertEqual(diagnosed["inventory_consistency"], "consistent")
         self.assertNotIn({"code": "invalid-installed-inventory"}, diagnosed["errors"])
 
+    def test_update_and_bootstrap_preserve_frozen_local_identity(self) -> None:
+        for command in ("update", "bootstrap"):
+            with self.subTest(command=command), LocalHost() as host:
+                if command == "update":
+                    installed = host.operate("install", "op-local-install")
+                    self.assertEqual(installed["outcome"], "completed")
+                start, reads = len(host.mutations), host.marketplace_reads
+                receipt = host.operate(command, f"op-local-{command}")
+                mutations = host.mutations[start:]
+
+                self.assertEqual(receipt["outcome"], "completed")
+                self.assertEqual(host.marketplace_reads, reads + 2)
+                self.assertEqual(
+                    receipt["selection_after"], ["core", "github", "devtools"]
+                )
+                self.assertNotIn(
+                    ("plugin", "marketplace", "upgrade", "codexy", "--json"),
+                    mutations,
+                )
+
     def test_foreign_unbound_or_ambiguous_local_sources_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
-            foreign = root / "foreign"
             cases = (
                 (
                     "foreign",
@@ -109,14 +117,7 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
                 "sourceType": "local",
                 "source": str(foreign),
             }
-            receipt = run_operation(
-                "install",
-                ("github",),
-                host.home,
-                host.codex,
-                host.run,
-                operation_id="op-mismatched-local-source",
-            )
+            receipt = host.operate("install", "op-mismatched-local-source", ("github",))
 
         self.assertEqual(receipt["outcome"], "rejected")
         self.assertEqual(host.mutations, [])
@@ -139,14 +140,7 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
                     data["repository"] = "https://example.invalid/foreign"
                     manifest.write_text(json.dumps(data), encoding="utf-8")
                 metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-                receipt = run_operation(
-                    "install",
-                    (),
-                    host.home,
-                    host.codex,
-                    host.run,
-                    operation_id=f"op-provenance-{field}",
-                )
+                receipt = host.operate("install", f"op-provenance-{field}")
 
             self.assertEqual(receipt["outcome"], "rejected")
             self.assertEqual(host.mutations, [])
@@ -163,8 +157,8 @@ class LocalHost:
         self.codex = self.root / "trusted-codex"
         self.codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         self.codex.chmod(self.codex.stat().st_mode | stat.S_IXUSR)
-        self.selection: set[str] = set()
-        self.mutations: list[tuple[str, ...]] = []
+        self.selection, self.mutations = set(), []
+        self.marketplace_reads = 0
         self.installed_source: dict[str, str] | None = None
 
     def __enter__(self) -> "LocalHost":
@@ -172,6 +166,16 @@ class LocalHost:
 
     def __exit__(self, *_: object) -> None:
         self.temporary.cleanup()
+
+    def operate(self, command: str, identifier: str, requested: tuple[str, ...] = ()):
+        return run_operation(
+            command,
+            requested,
+            self.home,
+            self.codex,
+            self.run,
+            operation_id=identifier,
+        )
 
     def _materialize_archive(self) -> None:
         source = REPOSITORY / ".agents/plugins/marketplace.json"
@@ -187,6 +191,7 @@ class LocalHost:
     def run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
         tail = tuple(command[1:])
         if tail == ("plugin", "marketplace", "list", "--json"):
+            self.marketplace_reads += 1
             payload: object = {
                 "marketplaces": [
                     {

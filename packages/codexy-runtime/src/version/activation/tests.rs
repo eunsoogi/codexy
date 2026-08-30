@@ -31,6 +31,13 @@ fn activation_promotes_the_authenticated_source_selected_runtime_pointer() -> Re
         release["artifact"]["tag"],
         format!("v{}", candidate_version())
     );
+    assert_eq!(
+        release["artifact"]["url"],
+        format!(
+            "https://github.com/eunsoogi/codexy/releases/download/v{}/codexy-runtime-package.tar.gz",
+            candidate_version()
+        )
+    );
     assert_eq!(release["artifact"]["sha256"], "f".repeat(64));
     assert_eq!(
         release["platforms"].as_object().map(|map| map.len()),

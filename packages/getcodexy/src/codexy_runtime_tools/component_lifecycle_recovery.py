@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_lifecycle_admission import matching_receipt, replay_receipt
+from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
 from .component_resolver import (
     ComponentResolutionError,
@@ -25,7 +26,7 @@ from .component_transaction_state import (
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import validate_or_quarantine_marketplace
 from .pre_session import _json, official_marketplace_root
-from .plugin_resolution import MarketplaceBinding
+from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -183,23 +184,27 @@ def apply_forward(
     home: Path,
 ) -> tuple[str, ...]:
     if journal.command in {"update", "bootstrap"}:
-        _json(
-            invoke(
-                [
-                    str(executable),
-                    "plugin",
-                    "marketplace",
-                    "upgrade",
-                    "codexy",
-                    "--json",
-                ]
-            ),
-            "plugin marketplace upgrade",
-        )
-        root = official_marketplace_root(executable, invoke)
-        validate_or_quarantine_marketplace(
-            executable, invoke, home, root, f"v{manifest.version}"
-        )
+        if isinstance(root, MarketplaceIdentity) and root.source_type == "local":
+            if existing_marketplace(executable, invoke, manifest) != root:
+                raise ValueError("local Codexy marketplace identity changed")
+        else:
+            _json(
+                invoke(
+                    [
+                        str(executable),
+                        "plugin",
+                        "marketplace",
+                        "upgrade",
+                        "codexy",
+                        "--json",
+                    ]
+                ),
+                "plugin marketplace upgrade",
+            )
+            root = official_marketplace_root(executable, invoke)
+            validate_or_quarantine_marketplace(
+                executable, invoke, home, root, f"v{manifest.version}"
+            )
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:

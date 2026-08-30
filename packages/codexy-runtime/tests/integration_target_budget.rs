@@ -26,7 +26,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
         .collect();
     assert_eq!(
         names,
-        ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_system", "suite_archive"],
+        ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_system", "suite_sync_version", "suite_archive"],
         "integration coverage must use the registered shard plan"
     );
     assert_eq!(
@@ -76,6 +76,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
                 .trim()
                 .strip_prefix("include!(\"")
                 .and_then(|value| value.strip_suffix("\");"))
+                .filter(|value| !value.contains('/'))
             {
                 *included.entry(part.to_owned()).or_default() += 1;
             }
@@ -92,10 +93,14 @@ fn cargo_declares_the_exact_seven_integration_shards() {
     for path in suite_sources {
         let source = std::fs::read_to_string(path).expect("suite or fragment source");
         for line in source.lines() {
+            let line = line.trim();
             if let Some(route) = line
-                .trim()
                 .strip_prefix("#[path = \"../")
                 .and_then(|value| value.strip_suffix("\"]"))
+                .or_else(|| {
+                    line.strip_prefix("include!(\"../")
+                        .and_then(|value| value.strip_suffix("\");"))
+                })
                 .filter(|value| value.ends_with(".rs") && !value.contains('/'))
             {
                 *routes.entry(route.to_owned()).or_default() += 1;
