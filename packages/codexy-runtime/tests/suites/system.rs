@@ -61,6 +61,9 @@ mod release_publication_recovery;
 #[path = "../repository_eol_contract.rs"]
 mod repository_eol_contract;
 
+#[path = "../rust_workflow_budget.rs"]
+mod rust_workflow_budget;
+
 #[path = "../runtime_publication_activation.rs"]
 mod runtime_publication_activation;
 
@@ -211,9 +214,6 @@ mod session_audit_stage_budget_continuity;
 
 #[path = "../structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
-
-#[path = "../sync_version_cli.rs"]
-mod sync_version_cli;
 
 #[path = "../validator_lsp_readiness.rs"]
 mod validator_lsp_readiness;
