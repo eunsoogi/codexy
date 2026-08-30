@@ -40,6 +40,8 @@
       "Use $developer-tools for optional local Codegraph and LSP work when Codexy Devtools is installed."
     ],
     "brandColor": "#2F6F5E",
+    "composerIcon": "./assets/codexy-devtools-icon.png",
+    "logo": "./assets/codexy-devtools-icon.png",
     "screenshots": []
   }
 }
