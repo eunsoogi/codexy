@@ -20,6 +20,17 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
     ] {
         assert_expected_triggers(workflow, has_pull_request)?;
     }
+    let staging_yaml = serde_yaml::to_string(&staging)?;
+    assert!(staging_yaml.contains("branches:\n    - main\n"));
+    let a02 = fs::read_to_string(
+        codexy_runtime::paths::repository_root().join(".github/scripts/a02-clean-runner.sh"),
+    )?;
+    for required in [
+        "EXPECTED_SOURCE_SHA=222b6ce19fb190b8233e7d2d3ae691f66c082c35\nEXPECTED_STACKED_BASE_SHA=c185f9560529ed91a7bc8a331f2bbb2ad8eb9b63\nEXPECTED_STACKED_INTERMEDIATE_SHA=f16e002851681858d139054dd115c76c05c0e43a\nEXPECTED_PR_BASE_BRANCH=main\nEXPECTED_PR_BASE_SHA=2e013f058bb15ea769cebda3fa600157d5d22632",
+        "[[ \"$ACTION\" =~ ^(opened|synchronize|reopened)$ ]] || die \"unsupported pull request action\"\n[[ \"$EVENT_PR_NUMBER\" == \"$WORKFLOW_PR_NUMBER\" && \"$BASE_REF\" == \"$EXPECTED_PR_BASE_BRANCH\" && \"$HEAD_REF\" == \"$EXPECTED_HEAD_BRANCH\" ]] || die \"pull request identity mismatch\"\n[[ \"$BASE_REPO\" == \"$GITHUB_REPOSITORY\" && \"$HEAD_REPO\" == \"$GITHUB_REPOSITORY\" ]] || die \"foreign pull request repository\"\n[[ \"$BASE_SHA\" == \"$EXPECTED_PR_BASE_SHA\" && \"$BASE_SHA\" =~ ^[0-9a-f]{40}$ && \"$HEAD_SHA\" =~ ^[0-9a-f]{40}$ ]] || die \"pull request SHA admission mismatch\"",
+    ] {
+        assert!(a02.contains(required), "missing A02 admission: {required}");
+    }
     assert_eq!(
         bootstrap["jobs"]["publish-bootstrap"]["permissions"]["id-token"],
         "write"
