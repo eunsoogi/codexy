@@ -2,18 +2,16 @@ use std::{
     cell::Cell,
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::Command,
 };
 
-use crate::support::{
-    FixtureCommand, write_posix_fixture_command,
-};
+use crate::support::write_posix_fixture_command;
 
+mod command;
 mod metadata;
+mod real_source_pointer;
 mod receipt;
 mod shell_runner;
-mod command;
-mod real_source_pointer;
 
 use command::run as command;
 use receipt::receipt_value;
@@ -82,7 +80,14 @@ impl Fixture {
                 .arg("-C")
                 .arg(&repo),
         )?;
-        for relative in ["plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd", "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"] { fs::remove_file(repo.join(relative))?; }
+        for relative in [
+            "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+            "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+        ] {
+            fs::remove_file(repo.join(relative))?;
+        }
         let runtime = repo.join("packages/codexy-runtime");
         fs::create_dir_all(runtime.join("src/version"))?;
         let suite = runtime.join("tests/suites/all.rs");
@@ -106,7 +111,10 @@ impl Fixture {
             let text = fs::read_to_string(&path)?;
             fs::write(path, text.replacen(marketplace_command, &pin, 1))?;
         }
-        real_source_pointer::restore_pre_activation_runtime_inputs(&repo, &pre_activation_revision)?;
+        real_source_pointer::restore_pre_activation_runtime_inputs(
+            &repo,
+            &pre_activation_revision,
+        )?;
         metadata::make_uv_lock_stale(&repo)?;
         let workflow = ".github/workflows/plugin-runtime-binaries.yml";
         let workflow_target = repo.join(workflow);
@@ -191,42 +199,6 @@ impl Fixture {
         })
     }
 
-    fn verify(&self, base: &str, version: &str) -> Result<Output, Box<dyn std::error::Error>> {
-        let mut path = vec![self.bin.clone()];
-        path.extend(std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?));
-        let mut command = FixtureCommand::new(&self.runner);
-        command
-            .args(["activation", base, version])
-            .arg(&self.receipt)
-            .current_dir(&self.repo);
-        command
-            .env("CODEXY_TEST_MODE", "1")
-            .envs([("GIT_CONFIG_COUNT", "2"), ("GIT_CONFIG_KEY_0", "maintenance.auto"), ("GIT_CONFIG_VALUE_0", "false"), ("GIT_CONFIG_KEY_1", "gc.auto"), ("GIT_CONFIG_VALUE_1", "0")])
-            .env_path(
-                "CODEXY_FIXTURE_VERIFY_RUNTIME_ACTIVATION_BRANCH",
-                self.repo.join("scripts/verify-runtime-activation-branch"),
-            )
-            .env_path("CODEXY_FIXTURE_GH", self.bin.join("gh"))
-            .env_path("CODEXY_FIXTURE_COMMAND_TRACE", &self.command_trace)
-            .env_path(
-                "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
-                env!("CARGO_BIN_EXE_codexy-activate-runtime"),
-            )
-            .env_path("CODEXY_TEST_ACTIVATE_RUNTIME", &self.activator)
-            .env_path(
-                "CODEXY_TEST_BOOTSTRAP_SOURCE",
-                codexy_runtime::paths::runtime_package_root().join("src/version/bootstrap.rs"),
-            )
-            .env_path(
-                "CODEXY_TEST_SYNC_VERSION_BINARY",
-                env!("CARGO_BIN_EXE_codexy-sync-version"),
-            )
-            .env_path_list("PATH", path);
-        let output = command.output()?;
-        self.record_external_activation_process_invocation();
-        Ok(output)
-    }
-
     fn external_activation_process_invocations(&self) -> usize {
         self.external_activation_process_invocations.get()
     }
@@ -245,4 +217,6 @@ impl Fixture {
     }
 }
 
-fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> { command(Command::new("git").args(args).current_dir(root)) }
+fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    command(Command::new("git").args(args).current_dir(root))
+}

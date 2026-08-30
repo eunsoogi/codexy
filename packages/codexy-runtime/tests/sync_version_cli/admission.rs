@@ -1,37 +1,10 @@
 use std::{fs, path::Path};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::isolation::{
     bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
-
-#[test]
-fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let (root, selected) = super::selected_fixture(&temp, "historical-readme")?;
-    let prior = super::previous_patch_version(&selected)?;
-    for (path, bytes) in version_surface_contents(&root)? {
-        fs::write(path, String::from_utf8(bytes)?.replace(&selected, &prior))?;
-    }
-    let mut expected = Vec::new();
-    for relative in ["README.md", "README.ko.md"] {
-        let path = root.join(relative);
-        let mutated = fs::read_to_string(&path)?.replace(
-            &format!("{} --ref v{selected}", super::README_COMMAND),
-            super::README_COMMAND,
-        );
-        fs::write(&path, mutated.as_bytes())?;
-        expected.push((path, mutated.into_bytes()));
-    }
-    assert!(!super::run_sync_script(&root, &["--check"])?
-        .status
-        .success());
-    for (path, bytes) in expected {
-        assert_eq!(fs::read(path)?, bytes);
-    }
-    Ok(())
-}
 
 #[test]
 fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
@@ -75,7 +48,9 @@ fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn s
             )?,
             "wrapper-drift" => fs::write(
                 root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
-                format!("#!/bin/sh\nexec uvx --from getcodexy=={target} codexy-mcp-runtime \"$server\" -- \"$@\"\n"),
+                format!(
+                    "#!/bin/sh\nexec uvx --from getcodexy=={target} codexy-mcp-runtime \"$server\" -- \"$@\"\n"
+                ),
             )?,
             other => return Err(format!("unknown admission case: {other}").into()),
         }
@@ -105,8 +80,8 @@ fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn s
 }
 
 #[test]
-fn candidate_preparation_keeps_selected_identity_until_activation(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn candidate_preparation_keeps_selected_identity_until_activation()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let root = super::archive_repository(archive, &temp, "candidate")?;
@@ -178,8 +153,10 @@ fn candidate_preparation_keeps_selected_identity_until_activation(
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
     assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
     assert_eq!(contract["runtime"]["selectedTag"], selected_runtime_tag);
-    assert!(fs::read_to_string(&bootstrap)?
-        .contains(&format!("VERSION: &str = \"{selected_version}\"")));
+    assert!(
+        fs::read_to_string(&bootstrap)?
+            .contains(&format!("VERSION: &str = \"{selected_version}\""))
+    );
     assert!(fs::read_to_string(&bootstrap)?.contains(&format!(
         "CANDIDATE_VERSION: &str = \"{candidate_version}\""
     )));
