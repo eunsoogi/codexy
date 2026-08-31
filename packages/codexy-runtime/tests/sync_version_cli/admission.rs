@@ -185,7 +185,11 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
                     .as_array()
                     .ok_or("component manifest array")?
                 {
-                    assert_eq!(entry["version"], candidate_version);
+                    assert_eq!(
+                        entry["version"],
+                        selected_version,
+                        "candidate {field} changed selected identity"
+                    );
                 }
             }
             continue;

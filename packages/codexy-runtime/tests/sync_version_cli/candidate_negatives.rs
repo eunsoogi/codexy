@@ -108,7 +108,7 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
 }
 
 #[test]
-fn candidate_preparation_projects_the_packaged_component_manifest()
+fn candidate_preparation_preserves_the_packaged_component_manifest()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = selected_fixture(shared_repository_archive()?, &temp, "component-manifest")?;
@@ -121,7 +121,11 @@ fn candidate_preparation_projects_the_packaged_component_manifest()
     let candidate_version = next_patch_version(&selected_version)?;
     for field in ["components", "compatibleCombinations"] {
         for entry in manifest[field].as_array().ok_or("component manifest array")? {
-            assert_eq!(entry["version"], candidate_version, "candidate {field} is stale");
+            assert_eq!(
+                entry["version"],
+                selected_version,
+                "candidate {field} changed selected identity"
+            );
         }
     }
     let contract: Value = serde_json::from_str(&fs::read_to_string(
