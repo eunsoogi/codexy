@@ -14,8 +14,8 @@ branch="codexy/version-${VERSION}"
 owner=${GITHUB_REPOSITORY%%/*}
 name=${GITHUB_REPOSITORY#*/}
 mkdir -p "$state_dir"
-git diff --name-only --diff-filter=ACMRTUXB > "$state_dir/changed-files.txt"
-git diff --name-only -z --diff-filter=ACMRTUXB > "$state_dir/changed-files.z"
+git diff --name-only --diff-filter=ACDMRTUXB > "$state_dir/changed-files.txt"
+git diff --name-only -z --diff-filter=ACDMRTUXB > "$state_dir/changed-files.z"
 
 refresh_version_pr_snapshot() {
   gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
@@ -107,14 +107,30 @@ action=$(scripts/plan-version-pr-reconciliation \
   --issue-json "$state_dir/issue.json" "${observed_pr_args[@]}")
 
 expected_head_oid=""
+stale_existing=false
 if [ "$action" != first-run ]; then
   expected_head_oid=$remote_oid
   git diff --binary --no-ext-diff > "$state_dir/expected.patch"
   git diff --binary --no-ext-diff origin/main..."origin/$branch" \
     > "$state_dir/remote.patch"
   if ! cmp -s "$state_dir/expected.patch" "$state_dir/remote.patch"; then
-    echo "Existing ${branch} does not match the requested version changes." >&2
-    exit 1
+    if [ "$action" != existing-pr-update ]; then
+      echo "Existing ${branch} does not match the requested version changes." >&2
+      exit 1
+    fi
+    stale_existing=true
+    git diff --name-only --diff-filter=ACDMRTUXB \
+      origin/main..."origin/$branch" | LC_ALL=C sort \
+      > "$state_dir/remote-files.txt"
+    jq -r '.body' "$state_dir/observed-pr.json" | awk '
+      $0 == "## Changed Areas" { inside=1; next }
+      inside && /^## / { exit }
+      inside && /^- `[^`]+`$/ { sub(/^- `/ , ""); sub(/`$/, ""); print }
+    ' | LC_ALL=C sort > "$state_dir/observed-files.txt"
+    if ! cmp -s "$state_dir/remote-files.txt" "$state_dir/observed-files.txt"; then
+      echo "Existing ${branch} contains paths outside its recorded candidate inventory." >&2
+      exit 1
+    fi
   fi
 fi
 render_version_pr_metadata "$publication_phase"
@@ -144,6 +160,29 @@ elif [ "$action" = pushed-no-pr ]; then
   pr_number=$(gh pr view "$pr_url" --repo "$GITHUB_REPOSITORY" \
     --json number --jq .number)
 else
+  if [ "$stale_existing" = true ]; then
+    update_dir="$state_dir/existing-branch-update"
+    git worktree add --detach "$update_dir" "origin/$branch"
+    if ! git -C "$update_dir" merge --no-ff --no-commit origin/main; then
+      test -f "$(git -C "$update_dir" rev-parse --git-path MERGE_HEAD)"
+    fi
+    git -C "$update_dir" restore --source=origin/main --staged --worktree -- .
+    git -C "$update_dir" apply "$state_dir/expected.patch"
+    git -C "$update_dir" add -A
+    git -C "$update_dir" commit -m "chore(plugin): refresh candidate version ${VERSION}"
+    current_remote_oid=$(git ls-remote origin "refs/heads/$branch" | awk '{print $1}')
+    if [ "$current_remote_oid" != "$expected_head_oid" ]; then
+      echo "Existing ${branch} advanced before the update push." >&2
+      exit 1
+    fi
+    git -C "$update_dir" push origin "HEAD:refs/heads/$branch"
+    expected_head_oid=$(git -C "$update_dir" rev-parse HEAD)
+    git fetch origin "$branch:refs/remotes/origin/$branch"
+    test "$(git rev-parse "origin/$branch")" = "$expected_head_oid"
+    git diff --binary --no-ext-diff origin/main..."origin/$branch" \
+      > "$state_dir/updated-remote.patch"
+    cmp -s "$state_dir/expected.patch" "$state_dir/updated-remote.patch"
+  fi
   gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
     --title "$title" \
     --body-file "$state_dir/metadata/body.md" \

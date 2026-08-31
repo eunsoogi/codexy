@@ -11,7 +11,7 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
         "production workflow adapter is missing"
     );
     let fixture = WorkflowFixture::new(root)?;
-    for scenario in [Scenario::NewPr, Scenario::MatchingExisting] {
+    for scenario in [Scenario::NewPr, Scenario::MatchingExisting, Scenario::StaleExisting] {
         fixture.prepare(scenario)?;
         let output = fixture.run()?;
         assert!(
@@ -34,6 +34,20 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
             if matches!(scenario, Scenario::NewPr) { 2 } else { 3 },
             "{scenario:?} PR edit count"
         );
+        assert_eq!(
+            fixture.branch_push_count()?,
+            usize::from(!matches!(scenario, Scenario::MatchingExisting)),
+            "{scenario:?} branch push count"
+        );
+        if matches!(scenario, Scenario::StaleExisting) {
+            let remote_patch = fixture.remote_patch()?;
+            assert_eq!(
+                std::fs::read(fixture.artifact("expected.patch"))?,
+                remote_patch,
+                "stale candidate was not replaced by the current patch"
+            );
+            assert!(!String::from_utf8(remote_patch)?.contains("component-manifest"));
+        }
         for artifact in [
             "metadata/body.md",
             "metadata/title.txt",
@@ -44,6 +58,8 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
         ] {
             assert!(fixture.artifact(artifact).is_file(), "missing {artifact}");
         }
+        let pr_state: serde_json::Value = serde_json::from_slice(&std::fs::read(fixture.artifact("pr-state.json"))?)?;
+        assert_eq!(pr_state["number"], 999, "{scenario:?} PR identity");
     }
 
     fixture.prepare(Scenario::MismatchedIssue)?;
@@ -51,6 +67,33 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("does not match requested issue")
+    );
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+
+    fixture.prepare(Scenario::UnexpectedStalePath)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "unexpected stale path was accepted");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("outside its recorded candidate inventory"));
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+
+    fixture.prepare(Scenario::UnexpectedDeletedPath)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "unexpected deleted path was accepted");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("outside its recorded candidate inventory"));
+    assert_eq!(fixture.branch_push_count()?, 0);
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+
+    fixture.prepare(Scenario::StaleExisting)?;
+    fixture.install_remote_head_race()?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "remote-head race was accepted");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("failed to push"),
+        "race stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
     assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
