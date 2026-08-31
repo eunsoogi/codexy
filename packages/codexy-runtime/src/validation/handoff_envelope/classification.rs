@@ -57,8 +57,8 @@ pub(super) fn route(classification: &StableClassification) -> Result<Route> {
     if !structured {
         ensure!(known_workflow, "handoff has an unknown task classification");
     }
-    let known_surfaces = surfaces.iter().all(|surface| known_surface(surface));
-    let known_risks = risks.iter().all(|risk| known_risk(risk));
+    let known_surfaces = surfaces.iter().map(String::as_str).all(known_surface);
+    let known_risks = risks.iter().map(String::as_str).all(known_risk);
     let fail_closed = if structured {
         !known_workflow
             || !known_surfaces

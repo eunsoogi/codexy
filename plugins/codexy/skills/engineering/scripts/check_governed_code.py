@@ -52,7 +52,9 @@ def main() -> int:
             violations.append(result)
 
     status = "pass" if not violations else "fail"
-    print(json.dumps({"status": status, "policy": "governed-code.v1", "files": results}))
+    print(
+        json.dumps({"status": status, "policy": "governed-code.v1", "files": results})
+    )
     return 0 if not violations else 1
 
 

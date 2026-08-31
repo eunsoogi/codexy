@@ -66,7 +66,9 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             self.runtime.mkdir()
 
     def test_component_sources_are_installed_and_manifest_declares_them(self) -> None:
-        self.assertTrue(RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema")
+        self.assertTrue(
+            RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema"
+        )
         missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
         self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
         manifest_path = ROOT / (

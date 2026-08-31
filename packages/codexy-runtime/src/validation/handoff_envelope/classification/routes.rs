@@ -39,12 +39,12 @@ pub(super) fn known_workflow(value: &str) -> bool {
     TASK_CLASSES.contains(&value) || FAIL_CLOSED_CLASSES.contains(&value)
 }
 
-pub(super) fn known_surface(value: &String) -> bool {
-    SURFACES.contains(&value.as_str())
+pub(super) fn known_surface(value: &str) -> bool {
+    SURFACES.contains(&value)
 }
 
-pub(super) fn known_risk(value: &String) -> bool {
-    RISKS.contains(&value.as_str())
+pub(super) fn known_risk(value: &str) -> bool {
+    RISKS.contains(&value)
 }
 
 pub(super) fn fail_closed_class(value: &str) -> bool {
@@ -65,7 +65,7 @@ pub(super) fn task_route(workflow: &str) -> Option<Vec<String>> {
             "execution_budget",
             "public_extension_contracts",
         ],
-        "implementation" => &[
+        "implementation" | "investigation/debugging" => &[
             "workflow_profiles",
             "task_classification",
             "tdd_classification_policy",
@@ -102,13 +102,6 @@ pub(super) fn task_route(workflow: &str) -> Option<Vec<String>> {
             "execution_budget",
             "proof_completion",
             "public_extension_contracts",
-        ],
-        "investigation/debugging" => &[
-            "workflow_profiles",
-            "task_classification",
-            "tdd_classification_policy",
-            "execution_budget",
-            "proof_completion",
         ],
         "issue/intake only" => &[
             "workflow_profiles",
