@@ -11,6 +11,9 @@ mod admission_runtime;
 mod capability_contract;
 #[path = "validator_hooks/merge_admission.rs"]
 mod merge_admission;
+#[cfg(unix)]
+#[path = "validator_hooks/merge_admission_line_endings.rs"]
+mod merge_admission_line_endings;
 #[path = "validator_hooks/github_authorization_pagination.rs"]
 mod github_authorization_pagination;
 #[path = "validator_hooks/filesystem_aliases.rs"]
