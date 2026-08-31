@@ -3,67 +3,46 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::Path;
 
-use super::{routing_json, routing_measurement};
+use super::routing_json;
 
 mod routes;
 mod thread_capabilities;
 use routes::{child_to_root_route, selected_general_route, simple_route};
 use thread_capabilities::ThreadCapabilities;
 
-const POLICY_PATH: &str = "skills/orchestration/references/child-routing-policy.json";
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Policy {
     pub(super) schema: String,
     pub(super) generic: Route,
     pub(super) generic_fallback: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
-    pub(super) general: General,
     pub(super) fallback: String,
     pub(super) delivery: Delivery,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Route {
     pub(super) model: String,
     pub(super) thinking: String,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Specialist {
     pub(super) catalog: String,
     pub(super) caller_overrides: String,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Simple {
     pub(super) model: String,
     pub(super) thinking: String,
     pub(super) all_required: Vec<String>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct General {
-    pub(super) candidate_efforts: Vec<String>,
-    pub(super) measurement_results: String,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct Delivery {
     pub(super) parent_to_generic: GenericDelivery,
     pub(super) child_to_root: Route,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(super) struct GenericDelivery {
     pub(super) primary: Route,
     pub(super) fallback: Route,
@@ -102,20 +81,16 @@ struct Predicates {
 }
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
-    load(plugin_root).map_or_else(
-        |error| vec![error.to_string()],
-        |policy| {
-            let results = plugin_root
-                .join("skills/orchestration/references")
-                .join(&policy.general.measurement_results);
-
-            routing_measurement::check_canonical(plugin_root, &results)
-        },
-    )
+    let _ = plugin_root;
+    validate(&contract())
+        .err()
+        .into_iter()
+        .map(|error| error.to_string())
+        .collect()
 }
 
 pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
-    let policy = load(plugin_root)?;
+    let policy = contract();
     let request = parse_request(request)?;
     if let Some(agent_type) = request
         .named_specialist
@@ -139,12 +114,11 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
         )),
-        "general" => selected_general_route(
-            plugin_root,
+        "general" => Ok(selected_general_route(
             &policy,
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
-        ),
+        )),
         "simple" | "ambiguous" | "high_risk" | "incomplete" => Ok(json!({"route":policy.fallback})),
         _ => bail!("child routing request classification is not recognized"),
     }
@@ -160,13 +134,52 @@ fn known_specialist(plugin_root: &Path, policy: &Policy, agent_type: &str) -> Re
         .is_some_and(|files| files.iter().any(|file| file.as_str() == Some(&expected))))
 }
 
-fn load(plugin_root: &Path) -> Result<Policy> {
-    let path = plugin_root.join(POLICY_PATH);
-    let text = std::fs::read_to_string(&path)?;
-    let value = routing_json::parse(&text).map_err(anyhow::Error::msg)?;
-    let policy = serde_json::from_value::<Policy>(value)?;
-    validate(&policy)?;
-    Ok(policy)
+fn contract() -> Policy {
+    Policy {
+        schema: "codexy.child-routing-policy.v1".to_owned(),
+        generic: Route {
+            model: "gpt-5.6-luna".to_owned(),
+            thinking: "max".to_owned(),
+        },
+        generic_fallback: Route {
+            model: "gpt-5.6-terra".to_owned(),
+            thinking: "high".to_owned(),
+        },
+        named_specialist: Specialist {
+            catalog: "agents/catalog.toml".to_owned(),
+            caller_overrides: "forbidden".to_owned(),
+        },
+        simple: Simple {
+            model: "gpt-5.6-luna".to_owned(),
+            thinking: "max".to_owned(),
+            all_required: [
+                "fixed_scope",
+                "deterministic_oracle",
+                "low_risk_reversible",
+                "no_unresolved_decision",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+        },
+        fallback: "root_or_named_specialist".to_owned(),
+        delivery: Delivery {
+            parent_to_generic: GenericDelivery {
+                primary: Route {
+                    model: "gpt-5.6-luna".to_owned(),
+                    thinking: "max".to_owned(),
+                },
+                fallback: Route {
+                    model: "gpt-5.6-terra".to_owned(),
+                    thinking: "high".to_owned(),
+                },
+            },
+            child_to_root: Route {
+                model: "gpt-5.6-sol".to_owned(),
+                thinking: "medium".to_owned(),
+            },
+        },
+    }
 }
 
 fn parse_request(text: &str) -> Result<Request> {
@@ -210,13 +223,6 @@ fn validate(policy: &Policy) -> Result<()> {
             .iter()
             .map(String::as_str)
             .eq(required)
-        || !policy
-            .general
-            .candidate_efforts
-            .iter()
-            .map(String::as_str)
-            .eq(["high", "xhigh", "max"])
-        || policy.general.measurement_results != "routing-evaluation-results.json"
         || policy.fallback != "root_or_named_specialist"
         || policy.delivery.parent_to_generic.primary.model != policy.generic.model
         || policy.delivery.parent_to_generic.primary.thinking != policy.generic.thinking

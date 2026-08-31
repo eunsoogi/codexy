@@ -1,15 +1,12 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs,
     path::Path,
 };
 
 use anyhow::{Result, bail};
 use serde::Deserialize;
 
-const PATH: &str = "skills/orchestration/references/workflow-review-classification.json";
 const SCHEMA: &str = "codexy.workflow-profile-classification.v2";
-const POLICY_SCHEMA: &str = "codexy.workflow-review-classification-policy.v1";
 const STRICT_TRIGGERS: [&str; 11] = [
     "destructive",
     "security",
@@ -23,14 +20,6 @@ const STRICT_TRIGGERS: [&str; 11] = [
     "multi_lane_ownership",
     "explicit_audit_evidence",
 ];
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Policy {
-    schema: String,
-    work_classes: Vec<String>,
-    strict_triggers: Vec<String>,
-}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -48,12 +37,11 @@ pub(super) struct TriggerDecision {
     applies: bool,
 }
 
-pub(super) fn check(plugin_root: &Path) -> Result<()> {
-    load(plugin_root).map(|_| ())
+pub(super) fn check(_plugin_root: &Path) -> Result<()> {
+    Ok(())
 }
 
-pub(super) fn select(plugin_root: &Path, input: Input) -> Result<String> {
-    let policy = load(plugin_root)?;
+pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<String> {
     if input.schema != SCHEMA {
         bail!("workflow classification has an unsupported schema");
     }
@@ -63,7 +51,10 @@ pub(super) fn select(plugin_root: &Path, input: Input) -> Result<String> {
             bail!("workflow classification duplicates a strict trigger decision");
         }
     }
-    let expected = policy.strict_triggers.into_iter().collect::<BTreeSet<_>>();
+    let expected = STRICT_TRIGGERS
+        .iter()
+        .map(ToString::to_string)
+        .collect::<BTreeSet<_>>();
     if decisions.keys().cloned().collect::<BTreeSet<_>>() != expected {
         bail!("workflow classification must decide every closed strict trigger");
     }
@@ -77,20 +68,4 @@ pub(super) fn select(plugin_root: &Path, input: Input) -> Result<String> {
     } else {
         non_strict.into()
     })
-}
-
-fn load(plugin_root: &Path) -> Result<Policy> {
-    let text = fs::read_to_string(plugin_root.join(PATH))?;
-    let policy: Policy = serde_json::from_str(&text)?;
-    let expected = STRICT_TRIGGERS
-        .iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>();
-    if policy.schema != POLICY_SCHEMA
-        || policy.work_classes != ["low_risk", "middle"]
-        || policy.strict_triggers != expected
-    {
-        bail!("workflow review classification policy must retain the closed typed contract");
-    }
-    Ok(policy)
 }

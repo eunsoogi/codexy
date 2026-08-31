@@ -9,9 +9,7 @@ import sys
 from pathlib import Path
 
 
-POLICY_PATH = (
-    Path(__file__).resolve().parents[1] / "references" / "governed-code-policy.json"
-)
+MAX_PHYSICAL_LINES = 250
 
 
 def arguments() -> argparse.Namespace:
@@ -32,15 +30,7 @@ def line_count(path: Path) -> int:
 
 def main() -> int:
     args = arguments()
-    try:
-        policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
-        maximum = int(policy["max_physical_lines"])
-    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-        print(
-            json.dumps({"status": "error", "error": f"invalid package policy: {error}"})
-        )
-        return 2
-
+    maximum = MAX_PHYSICAL_LINES
     results = []
     violations = []
     for raw_path in args.paths:
@@ -62,7 +52,9 @@ def main() -> int:
             violations.append(result)
 
     status = "pass" if not violations else "fail"
-    print(json.dumps({"status": status, "policy": str(POLICY_PATH), "files": results}))
+    print(
+        json.dumps({"status": status, "policy": "governed-code.v1", "files": results})
+    )
     return 0 if not violations else 1
 
 
