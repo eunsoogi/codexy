@@ -17,6 +17,7 @@ _CALL_REPAIR = f"use the reported safe component fallback and {_RERUN}"
 _EXPOSED_REPAIR = "repair the Codexy registration, then restart Codex"
 _IDENTITY_REPAIR = "reinstall the selected release, then restart Codex"
 _RUN_OPTIONS = {"capture_output": True, "text": True, "timeout": 5}
+_RUN_OPTIONS["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _RunResult = namedtuple("_RunResult", "returncode stdout category")
 FAILURES = {
     "trusted-inventory-unavailable": (_INVENTORY_REPAIR, False),
@@ -71,6 +72,7 @@ def _probe_hook(component, plugin, base):
         json.dumps(payload),
         os.environ | {"PLUGIN_ROOT": str(plugin)},
     )
+    base["_category"] = result.category
     if result.category == "missing-launcher":
         return _failure(base, "component-start-failed", started=False)
     if result.category in {"timeout", "nonzero-exit"}:
@@ -84,11 +86,10 @@ def _probe_hook(component, plugin, base):
         )
     except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         valid = False
-    return _outcome(
-        base,
-        callable=valid,
-        reason_code=None if valid else "capability-not-exposed",
-    )
+    if not valid:
+        base["_category"] = "malformed-output"
+    reason = None if valid else "capability-not-exposed"
+    return _outcome(base, callable=valid, reason_code=reason)
 
 
 def _registered_hook(plugin, event, marker):
@@ -164,9 +165,7 @@ def probe_server(server, plugin, config):
     result = call.get("result") if isinstance(call, dict) else None
     if (
         not isinstance(result, dict)
-        or call.get("error")
-        or call.get("isError")
-        or result.get("isError")
+        or any((call.get("error"), call.get("isError"), result.get("isError")))
         or not isinstance(result.get("content"), list)
     ):
         return _failure(base, "capability-call-failed")
