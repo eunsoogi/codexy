@@ -7,12 +7,9 @@ const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Scenario {
-    NewPr,
-    MatchingExisting,
-    StaleExisting,
-    UnexpectedStalePath,
-    UnexpectedDeletedPath,
-    MismatchedIssue,
+    NewPr, MatchingExisting,
+    StaleExisting, StaleExistingCrlf, MalformedChangedArea,
+    UnexpectedStalePath, UnexpectedDeletedPath, MismatchedIssue,
 }
 pub(super) struct WorkflowFixture {
     _temporary: tempfile::TempDir,
@@ -60,7 +57,7 @@ impl WorkflowFixture {
         let mut existing = serde_json::json!([]);
         if !matches!(scenario, Scenario::NewPr) {
             git(&self.repo, &["switch", "-qc", BRANCH])?;
-            if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
+            if matches!(scenario, Scenario::StaleExisting | Scenario::StaleExistingCrlf | Scenario::MalformedChangedArea | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
                 fs::write(self.repo.join(COMPONENT_MANIFEST), "{\"selectedVersion\":\"1.3.1\"}\n")?;
             }
             if matches!(scenario, Scenario::UnexpectedStalePath) {
@@ -211,12 +208,14 @@ fn write_fixture(repo: &Path, path: &str, text: &str) -> std::io::Result<()> {
 }
 fn write_state(state: &Path, scenario: Scenario, existing: serde_json::Value) -> std::io::Result<()> {
     let observed_issue = if matches!(scenario, Scenario::MismatchedIssue) { 302 } else { 301 };
-    let changed_areas = if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
+    let changed_areas = if matches!(scenario, Scenario::StaleExisting | Scenario::StaleExistingCrlf | Scenario::MalformedChangedArea | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
         "- `packages/codexy-runtime/Cargo.toml`\n- `packages/getcodexy/src/codexy_runtime_tools/component-manifest.json`\n"
     } else {
         "- `packages/codexy-runtime/Cargo.toml`\n"
     };
-    let body = format!("## Changed Areas\n\n{changed_areas}\n## Evidence\n\nTracks #{observed_issue}\n");
+    let mut body = format!("## Changed Areas\n\n{changed_areas}\n## Evidence\n\nTracks #{observed_issue}\n");
+    if matches!(scenario, Scenario::StaleExistingCrlf) { body = body.replace('\n', "\r\n"); }
+    if matches!(scenario, Scenario::MalformedChangedArea) { body = body.replacen("\n\n## Evidence", "\n- malformed\n\n## Evidence", 1); }
     let values = [
         ("existing-prs.json", existing),
         ("issue.json", serde_json::json!({"number":301, "state":"OPEN",

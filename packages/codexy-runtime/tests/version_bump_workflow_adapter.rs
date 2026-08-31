@@ -101,6 +101,36 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
 }
 
 #[test]
+fn changed_areas_inventory_accepts_equivalent_line_endings() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let fixture = WorkflowFixture::new(root)?;
+    for scenario in [Scenario::StaleExisting, Scenario::StaleExistingCrlf] {
+        fixture.prepare(scenario)?;
+        let output = fixture.run()?;
+        assert!(
+            output.status.success(),
+            "{scenario:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(fixture.branch_push_count()?, 1, "{scenario:?} branch push count");
+    }
+    Ok(())
+}
+
+#[test]
+fn changed_areas_inventory_rejects_malformed_lines() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let fixture = WorkflowFixture::new(root)?;
+    fixture.prepare(Scenario::MalformedChangedArea)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "malformed Changed Areas line was accepted");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("has a malformed Changed Areas inventory"));
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+    Ok(())
+}
+
+#[test]
 fn governing_issue_request_is_canonicalized_before_mutation() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let fixture = WorkflowFixture::new(root)?;

@@ -122,11 +122,17 @@ if [ "$action" != first-run ]; then
     git diff --name-only --diff-filter=ACDMRTUXB \
       origin/main..."origin/$branch" | LC_ALL=C sort \
       > "$state_dir/remote-files.txt"
-    jq -r '.body' "$state_dir/observed-pr.json" | awk '
+    if ! jq -r '.body' "$state_dir/observed-pr.json" | awk '
+      { sub(/\r$/, "") }
       $0 == "## Changed Areas" { inside=1; next }
       inside && /^## / { exit }
-      inside && /^- `[^`]+`$/ { sub(/^- `/ , ""); sub(/`$/, ""); print }
-    ' | LC_ALL=C sort > "$state_dir/observed-files.txt"
+      inside && $0 == "" { next }
+      inside && /^- `[^`]+`$/ { sub(/^- `/ , ""); sub(/`$/, ""); print; next }
+      inside { exit 2 }
+    ' | LC_ALL=C sort > "$state_dir/observed-files.txt"; then
+      echo "Existing ${branch} has a malformed Changed Areas inventory." >&2
+      exit 1
+    fi
     if ! cmp -s "$state_dir/remote-files.txt" "$state_dir/observed-files.txt"; then
       echo "Existing ${branch} contains paths outside its recorded candidate inventory." >&2
       exit 1
