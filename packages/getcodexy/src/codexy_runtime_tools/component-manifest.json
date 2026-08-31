@@ -33,7 +33,6 @@
         "requiredPaths": [
           ".codex-plugin/plugin.json",
           "assets/codexy-icon.png",
-          "skills/dreaming/references/handoff-runtime.schema.json",
           "skills/dreaming/scripts/resumable-context-capsule.sh",
           "skills/dreaming/scripts/resumable-context-capsule.cmd",
           "skills/dreaming/scripts/resumable_context_capsule.py"

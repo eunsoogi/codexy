@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
 PLUGIN_FILES = tuple(
-    "skills/dreaming/references/handoff-runtime.schema.json skills/dreaming/scripts/resumable-context-capsule.sh skills/dreaming/scripts/resumable-context-capsule.cmd skills/dreaming/scripts/resumable_context_capsule.py".split()
+    "skills/dreaming/scripts/resumable-context-capsule.sh skills/dreaming/scripts/resumable-context-capsule.cmd skills/dreaming/scripts/resumable_context_capsule.py".split()
 )
 KINDS = {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}
 MACHINES = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x86_64", "AMD64": "x86_64"}
@@ -32,7 +32,8 @@ VOLATILE_TEMPLATE = json.loads(
     '"authoritative_refresh_handles":[],"omissions":{"authoritative_refresh_handles":"not_applicable",'
     '"pr":"not_created","preserved_artifacts":"not_applicable"}}'
 )
-POLICY = ROOT / "plugins/codexy/skills/orchestration/references/context-tiers.json"
+POLICY = ROOT / "plugins/codexy/skills/orchestration/references/context-tiers.md"
+RUNTIME_SCHEMA = ROOT / "packages/codexy-runtime/schemas/handoff-runtime.schema.json"
 STABLE = json.loads(
     '{"policy_digest":"","workflow_profile":"strict","task_classification":"implementation",'
     '"selected_references":["workflow_profiles","task_classification","tdd_classification_policy","execution_budget","proof_completion"]}'
@@ -65,6 +66,9 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             self.runtime.mkdir()
 
     def test_component_sources_are_installed_and_manifest_declares_them(self) -> None:
+        self.assertTrue(
+            RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema"
+        )
         missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
         self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
         manifest_path = ROOT / (

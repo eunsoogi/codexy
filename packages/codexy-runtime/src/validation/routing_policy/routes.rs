@@ -1,13 +1,9 @@
-use anyhow::Result;
 use serde_json::{Value, json};
-use std::path::Path;
 
 use super::{
     Policy,
     thread_capabilities::{self, ThreadCapabilities},
 };
-use crate::validation::routing_measurement;
-
 pub(super) fn simple_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
@@ -38,21 +34,11 @@ pub(super) fn child_to_root_route(
 }
 
 pub(super) fn selected_general_route(
-    plugin_root: &Path,
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
-) -> Result<Value> {
-    let corpus = plugin_root.join("skills/orchestration/references/routing-evaluation-corpus.json");
-    let results = plugin_root
-        .join("skills/orchestration/references")
-        .join(&policy.general.measurement_results);
-    let corpus = std::fs::read_to_string(corpus)?;
-    let results = std::fs::read_to_string(results)?;
-    // Keep the paired measurement baseline valid, but never let its selected
-    // effort override the capability-driven Luna-first generic contract.
-    routing_measurement::selected_effort(plugin_root, &corpus, &results)?;
-    Ok(generic_or_fallback(policy, capabilities, operation))
+) -> Value {
+    generic_or_fallback(policy, capabilities, operation)
 }
 
 fn generic_or_fallback(

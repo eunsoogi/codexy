@@ -81,7 +81,7 @@ edits.
   checks, main updates, or merge sequencing; `codexy-shipwright` for release,
   packaging, version, marketplace, manifest, tag, or rollback work; the optional
   `codexy-github` plugin's `codexy-weaver` for GitHub integration when
-  installed; and the reviewer selected only by `review-profiles.json` for the
+  installed; and the reviewer selected only by `review-profiles.md` for the
   final reviewer gate. Orchestration owns planning; generic owning children use
   the engineering workflow for diagnosis, TDD, QA, and refactoring and directly
   own scoped implementation, documentation, and handoff. They MUST NOT recreate
@@ -92,7 +92,7 @@ edits.
 - If a required execution tool is unavailable, say so in the thread and use the
   closest available fallback. MUST NOT silently skip the discipline.
 - Before handoff, PR readiness, completion, or parent acceptance, the child MUST
-  follow the one-reviewer contract in `review-profiles.json`: light has no LLM
+  follow the one-reviewer contract in `review-profiles.md`: light has no LLM
   reviewer, standard runs `plugins/codexy/agents/codexy-inspector.toml`, and
   strict runs `plugins/codexy/agents/codexy-sentinel.toml` against the current
   diff, exact head or file state, lane scope, touched implementation-file LOC

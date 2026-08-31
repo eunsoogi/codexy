@@ -102,17 +102,47 @@ pub(crate) mod stage_budget_test_support {
     }
 
     pub(crate) fn fixture() -> Value {
-        let mut value: Value = serde_json::from_str(include_str!(
-            "../../../../plugins/codexy/skills/orchestration/templates/stage-budget-receipt.json"
-        ))
-        .unwrap();
-        value["limits"] = json!({"contextBytes":1000,"toolOutputBytes":1000,"replayEvents":10,"turns":10,"toolCalls":10});
-        value["usage"] = json!({"contextBytes":100,"toolOutputBytes":100,"turns":1,"toolCalls":1});
-        value["measures"]["toolOutputBytes"]["value"] = json!(100);
-        value["identity"]["stable"] = json!("stage-601");
-        value["identity"]["volatile"] = json!("event-1");
-        value["events"]["identities"] = json!(["event-1"]);
-        value
+        json!({
+            "schema": "codexy.stage-budget.v1",
+            "metadataOnly": true,
+            "stage": "child-implementation",
+            "stageSequence": 1,
+            "previousReceiptIdentity": null,
+            "receiptIdentity": "3a4af7ec2d381c6b53d82008df4f6e7448172d13de6425db3541969cce131f2b",
+            "continuity": { "previous": null, "cumulativeReplayEvents": 0 },
+            "owner": { "kind": "child", "id": "child-id" },
+            "identity": { "stable": "stage-identity", "volatile": "event-identity" },
+            "units": { "context": "utf8_bytes_after_serialization", "toolOutput": "utf8_bytes_emitted" },
+            "safety": {
+                "issuePrIdentity": { "issue": "601", "pr": null },
+                "ownerWorktree": { "ownerThreadId": "owner-thread", "branch": "branch", "worktree": "worktree" },
+                "baseHeadSha": {
+                    "base": "0000000000000000000000000000000000000000",
+                    "head": "0000000000000000000000000000000000000000"
+                },
+                "dirtyIndexState": { "dirty": false, "index": false },
+                "checks": [{ "name": "focused-tests", "state": "pending" }],
+                "unresolvedReviewThreads": [],
+                "selectedReviewerState": "not-applicable",
+                "verification": ["not-started"],
+                "externalGate": "none"
+            },
+            "proof": { "goal": "active", "plan": "active", "verification": "pending" },
+            "limits": { "contextBytes": 100000, "toolOutputBytes": 100000, "replayEvents": 100, "turns": 20, "toolCalls": 50 },
+            "usage": { "contextBytes": 0, "toolOutputBytes": 0, "turns": 0, "toolCalls": 0 },
+            "events": { "identities": ["event-identity"], "unchangedWaits": 0, "fullStateReplays": 0, "oversizedPreviewReads": 0 },
+            "measures": {
+                "inputTokens": { "availability": "unavailable", "value": null, "reason": "runtime-not-exposed" },
+                "wallTimeMs": { "availability": "unavailable", "value": null, "reason": "runtime-not-exposed" },
+                "observedCostUsd": { "availability": "unavailable", "value": null, "reason": "runtime-not-exposed" },
+                "toolInputBytes": { "availability": "available", "value": 0, "reason": null },
+                "toolOutputBytes": { "availability": "available", "value": 100, "reason": null },
+                "cacheInputTokens": { "availability": "unavailable", "value": null, "reason": "runtime-not-exposed" }
+            },
+            "oversizedResult": null,
+            "decision": "continue",
+            "nextAction": "continue-stage"
+        })
     }
 
     pub(crate) fn oversized(value: &mut Value, kind: &str, identity: &str, bytes: u64, state: &str) {

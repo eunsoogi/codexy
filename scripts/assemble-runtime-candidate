@@ -33,7 +33,7 @@ cp -R staged-runtime "$root/runtime"
 mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
 python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 
-core_sources="plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
+core_sources="packages/codexy-runtime/schemas/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
 core_count=0
 for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
 case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *)

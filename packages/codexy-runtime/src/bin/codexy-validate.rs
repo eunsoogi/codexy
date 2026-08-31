@@ -63,12 +63,6 @@ struct Cli {
     #[arg(long, requires = "check_completion_handoff")]
     pr_state_file: Option<PathBuf>,
     #[arg(long)]
-    check_routing_measurement: bool,
-    #[arg(long, requires = "check_routing_measurement")]
-    routing_corpus_file: Option<PathBuf>,
-    #[arg(long, requires = "check_routing_measurement")]
-    routing_results_file: Option<PathBuf>,
-    #[arg(long)]
     resolve_child_routing: bool,
     #[arg(long, requires = "resolve_child_routing")]
     routing_request_file: Option<PathBuf>,
@@ -164,11 +158,6 @@ fn main() -> Result<()> {
             handoff: read_required_file(&cli.handoff_file, "--handoff-file")?,
             pr_state: read_required_file(&cli.pr_state_file, "--pr-state-file")?,
         }
-    } else if cli.check_routing_measurement {
-        validation::Mode::RoutingMeasurement {
-            corpus: read_required_file(&cli.routing_corpus_file, "--routing-corpus-file")?,
-            results: read_required_file(&cli.routing_results_file, "--routing-results-file")?,
-        }
     } else if cli.check_mcp {
         validation::Mode::Mcp
     } else if cli.check_hooks {
@@ -209,7 +198,6 @@ fn ensure_one_mode(cli: &Cli) -> Result<()> {
         cli.check_issue_title,
         cli.check_issue_intake,
         cli.check_completion_handoff,
-        cli.check_routing_measurement,
         cli.resolve_child_routing,
         cli.resolve_tdd_classification,
         cli.check_mcp,

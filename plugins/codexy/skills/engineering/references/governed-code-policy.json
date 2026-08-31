@@ -1,7 +1,0 @@
-{
-  "schema": "codexy.governed-code-policy.v1",
-  "max_physical_lines": 250,
-  "path_selection": "explicit_only",
-  "directory_traversal": "forbidden",
-  "non_code_selection": "caller_excludes_non_code"
-}

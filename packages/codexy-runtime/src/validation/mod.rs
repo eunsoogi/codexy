@@ -63,7 +63,6 @@ mod completion_handoff_pending_worktree_search;
 mod completion_handoff_pending_worktree_segments;
 mod completion_handoff_pending_worktree_text;
 mod completion_handoff_waiting;
-mod context_tiers;
 mod conventional_commit;
 mod custom_agent_mcp;
 mod custom_agent_mcp_tools;
@@ -104,8 +103,6 @@ mod review_thread_waiting_refs;
 mod roles;
 mod roles_yaml;
 mod routing_json;
-mod routing_measurement;
-mod routing_measurement_schema;
 mod routing_policy;
 mod runtime;
 mod runtime_candidate_manifest;
@@ -124,42 +121,8 @@ use std::path::Path;
 use anyhow::Result;
 
 pub use mode::Mode;
-pub use mode_dispatch::{
-    context_identities, covered_extensions, errors, run, validate_context_envelope,
-};
+pub use mode_dispatch::{covered_extensions, errors, run};
 pub(super) use value_arrays::{json_array_strings, toml_array_strings};
-
-const FORWARDED_CONTEXT_TYPES: [&str; 4] = [
-    "retained_slot",
-    "selected_reference",
-    "qualifying_event_delta",
-    "authoritative_refresh_handle",
-];
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(dead_code)]
-pub(super) struct BudgetSemantics {
-    pub context_unit: String,
-    pub output_unit: String,
-    pub limit_source: String,
-    pub stages: Vec<String>,
-    pub context_floor: Vec<String>,
-    pub refresh_only: String,
-    pub overflow_order: Vec<String>,
-    pub required_output: Vec<String>,
-    pub cache_metadata: String,
-    pub cache_savings_claims: String,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum ForwardedContext {
-    RetainedSlot,
-    SelectedReference,
-    QualifyingEventDelta,
-    AuthoritativeRefreshHandle,
-}
 
 pub(crate) fn validate_getcodexy_component_contract(plugin_root: &Path) -> Result<()> {
     getcodexy_component_contract::validate(plugin_root).map_err(anyhow::Error::msg)
