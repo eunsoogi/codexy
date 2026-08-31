@@ -52,8 +52,8 @@ Before artifact analysis, requests outside this trigger MUST return exactly one
 
 ## Output contract
 
-For an in-trigger request, return only one JSON object matching
-[schema.json](schema.json), with no prose or code fence. It MUST contain exactly
+For an in-trigger request, return only the one result described by
+[contract.md](contract.md), with no prose or code fence. It MUST contain exactly
 `interpreted_purpose`, `unresolved_reference`, and `action_blocker` in that
 order. The purpose MUST be a nonempty string; both arrays MUST contain unique
 nonempty strings in first appearance order. Empty arrays mean only that no
