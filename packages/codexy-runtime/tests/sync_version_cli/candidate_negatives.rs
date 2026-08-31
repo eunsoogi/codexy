@@ -14,8 +14,10 @@ use super::{archive_repository, shared_repository_archive};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type TempDir = tempfile::TempDir;
-const COMPONENT_MANIFEST: &str =
-    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
+
+#[path = "candidate_negatives/component_manifest.rs"]
+mod component_manifest;
+
 #[derive(Clone, Copy)]
 enum NegativeCase {
     CandidateNotAdvanced,
@@ -106,45 +108,6 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
         }
-    }
-    Ok(())
-}
-#[test]
-fn candidate_preparation_preserves_the_packaged_component_manifest() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let root = selected_fixture(shared_repository_archive()?, &temp, "component-manifest")?;
-    prepare_candidate(&root)?;
-
-    let manifest: Value = serde_json::from_str(&fs::read_to_string(root.join(COMPONENT_MANIFEST))?)?;
-    let selected_version = fixture_version(&root)?;
-    let candidate_version = next_patch_version(&selected_version)?;
-    for field in ["components", "compatibleCombinations"] {
-        for entry in manifest[field].as_array().ok_or("component manifest array")? {
-            assert_eq!(
-                entry["version"],
-                selected_version,
-                "candidate {field} changed selected identity"
-            );
-        }
-    }
-    let contract: Value = serde_json::from_str(&fs::read_to_string(
-        root.join(".agents/plugins/release-publish-contract.json"),
-    )?)?;
-    assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
-    assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
-    Ok(())
-}
-#[test]
-fn candidate_check_rejects_each_component_manifest_drift() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    for field in ["components", "compatibleCombinations"] {
-        let root = selected_fixture(shared_repository_archive()?, &temp, field)?;
-        prepare_candidate(&root)?;
-        let candidate_version = next_patch_version(&fixture_version(&root)?)?;
-        mutate_json(&root.join(COMPONENT_MANIFEST), |value| {
-            value[field][0]["version"] = json!(candidate_version);
-        })?;
-        reject(&root, &["--check-candidate"], &format!("{field}-component-drift"))?;
     }
     Ok(())
 }
