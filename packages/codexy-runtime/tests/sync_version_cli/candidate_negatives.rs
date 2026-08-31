@@ -6,17 +6,16 @@ use std::{
 
 use serde_json::{Value, json};
 
-use super::archive::RepositoryArchive;
 use super::isolation::{
     bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
-use super::{archive_repository, shared_repository_archive};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type TempDir = tempfile::TempDir;
 
 #[path = "candidate_negatives/component_manifest.rs"]
 mod component_manifest;
+use component_manifest::{candidate_fixture, selected_fixture};
 
 #[derive(Clone, Copy)]
 enum NegativeCase {
@@ -31,8 +30,6 @@ enum NegativeCase {
 
 #[test]
 fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let archive = shared_repository_archive()?;
     for case in [
         NegativeCase::CandidateNotAdvanced,
         NegativeCase::MalformedCandidate,
@@ -42,7 +39,13 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
         NegativeCase::PackageMismatch,
         NegativeCase::CheckFalsePositive,
     ] {
-        let root = selected_fixture(archive, &temp, case_name(case))?;
+        let fixture = match case {
+            NegativeCase::SelectedIdentityDrift
+            | NegativeCase::PackageMismatch
+            | NegativeCase::CheckFalsePositive => candidate_fixture()?,
+            _ => selected_fixture()?,
+        };
+        let root = &fixture.root;
         let selected_version = fixture_version(&root)?;
         let candidate_version = next_patch_version(&selected_version)?;
         match case {
@@ -54,7 +57,11 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 )?;
             }
             NegativeCase::MalformedCandidate => {
-                reject(&root, &["--prepare-candidate", "not-semver"], case_name(case))?;
+                reject(
+                    &root,
+                    &["--prepare-candidate", "not-semver"],
+                    case_name(case),
+                )?;
             }
             NegativeCase::DuplicateCandidateDeclaration => {
                 append_bootstrap(
@@ -75,7 +82,6 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 reject_candidate_commands(&root, case_name(case))?;
             }
             NegativeCase::SelectedIdentityDrift => {
-                prepare_candidate(&root)?;
                 mutate_json(
                     &root.join(".agents/plugins/release-publish-contract.json"),
                     |value| {
@@ -85,7 +91,6 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
             NegativeCase::PackageMismatch => {
-                prepare_candidate(&root)?;
                 let path = root.join("packages/getcodexy/pyproject.toml");
                 let text = fs::read_to_string(&path)?;
                 let mismatch = text.replace(
@@ -97,12 +102,10 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
             NegativeCase::CheckFalsePositive => {
-                prepare_candidate(&root)?;
                 mutate_json(
                     &root.join(".agents/plugins/release-publish-contract.json"),
                     |value| {
-                        value["runtime"]["selectedTag"] =
-                            json!(format!("v{candidate_version}"));
+                        value["runtime"]["selectedTag"] = json!(format!("v{candidate_version}"));
                     },
                 )?;
                 reject(&root, &["--check-candidate"], case_name(case))?;
@@ -122,44 +125,6 @@ fn case_name(case: NegativeCase) -> &'static str {
         NegativeCase::PackageMismatch => "package-mismatch",
         NegativeCase::CheckFalsePositive => "check-false-positive",
     }
-}
-
-fn selected_fixture(archive: &RepositoryArchive, temp: &TempDir, name: &str) -> TestResult<PathBuf> {
-    let root = archive_repository(archive, temp, name)?;
-    let selected_version = fixture_version(&root)?;
-    let output = run(&root, &["--version", selected_version.as_str()])?;
-    assert!(
-        output.status.success(),
-        "selected fixture normalization failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let bootstrap = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
-    let text = fs::read_to_string(&bootstrap)?;
-    let current_candidate = bootstrap_candidate_version(&root)?;
-    fs::write(
-        bootstrap,
-        text.replace(
-            &format!("CANDIDATE_VERSION: &str = \"{current_candidate}\""),
-            &format!("CANDIDATE_VERSION: &str = \"{selected_version}\""),
-        ),
-    )?;
-    mutate_json(
-        &root.join(".agents/plugins/release-publish-contract.json"),
-        |value| value["bootstrap"]["candidateVersion"] = json!(selected_version),
-    )?;
-    Ok(root)
-}
-
-fn prepare_candidate(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let selected_version = fixture_version(root)?;
-    let candidate_version = next_patch_version(&selected_version)?;
-    let output = run(root, &["--prepare-candidate", candidate_version.as_str()])?;
-    assert!(
-        output.status.success(),
-        "candidate preparation failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
 }
 
 fn append_bootstrap(root: &Path, suffix: &str) -> TestResult {
