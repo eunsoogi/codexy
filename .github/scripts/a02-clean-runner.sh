@@ -211,6 +211,7 @@ for name,(prefix,fields,identity) in specs.items():
 def cases(name,prefix):
  t=contracts[name]; blocks=re.findall(r"(?ms)^### ([A-Z]+-[PN][0-9]+) \| (POSITIVE|NEGATIVE)\n(.*?)(?=^### |\Z)",t)
  def parse(body):
+  body=re.sub(r"\n  "," ",body)
   d={k:v.strip().strip("`") for k,v in re.findall(r"^- ([a-z_]+): (.*)$",body,re.M)}
   for group in ("input","result"):
    if group in d: d.update(dict(x.split("=",1) for x in re.split(r"; (?=(?:[^`]*`[^`]*`)*[^`]*$)",d.pop(group))))

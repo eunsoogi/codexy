@@ -6,14 +6,16 @@ This file is the readable output contract and deterministic corpus for the
 ## Contract identity
 
 - schema: `codexy.project-brief.corpus.v1`
-- fields (in order): `objective`, `owner`, `verified_phase`, `changes_since_touch`, `decision_required`, `evidence_handle`, `next_action`, `done_when`
+- fields (in order): `objective`, `owner`, `verified_phase`,
+  `changes_since_touch`, `decision_required`, `evidence_handle`, `next_action`,
+  `done_when`
 
 ## Output fields
 
 - `objective`, `owner`, `verified_phase`, `decision_required`, `next_action`,
   and `done_when`: nonempty strings
-- `changes_since_touch` and `evidence_handle`: lists with at least one
-  nonempty string
+- `changes_since_touch` and `evidence_handle`: lists with at least one nonempty
+  string
 - A missing scalar is the literal `unavailable`; a missing list is the one-item
   list `unavailable`.
 - The result contains exactly the eight fields above in the stated order.
@@ -37,7 +39,10 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P01 | POSITIVE
 
 - scenario: return after inactivity with all eight recorded fields
-- recorded: objective=`ship task`; owner=`lane owner`; verified_phase=`local proof passed`; changes_since_touch=`head is abc123`; decision_required=`approve review`; evidence_handle=`PR #12`; next_action=`request review`; done_when=`public proof passes`
+- recorded: objective=`ship task`; owner=`lane owner`;
+  verified_phase=`local proof passed`; changes_since_touch=`head is abc123`;
+  decision_required=`approve review`; evidence_handle=`PR #12`;
+  next_action=`request review`; done_when=`public proof passes`
 - expected_objective: `ship task`
 - expected_owner: `lane owner`
 - expected_verified_phase: `local proof passed`
@@ -76,7 +81,8 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P04 | POSITIVE
 
 - scenario: proof completed after last touch
-- recorded: verified_phase=`integration proof passed`; changes_since_touch=`integration proof completed`
+- recorded: verified_phase=`integration proof passed`;
+  changes_since_touch=`integration proof completed`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
 - expected_verified_phase: `integration proof passed`
