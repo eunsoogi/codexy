@@ -38,10 +38,15 @@ identifiers and bytes. MUST return `HANDOFF_REQUIRED` without mutation for:
 MUST NOT choose authority, change ownership or policy, move a source, read a
 sibling artifact, or make another path writable. MUST hand off scope expansion.
 
+## Contract
+
+The exact receipt fields and deterministic corpus are maintained in
+[contract.md](contract.md).
+
 ## Receipt
 
-MUST return only the seven `schema.json` keys and echo both input identifiers
-exactly.
+MUST return only the seven fields listed in [contract.md](contract.md) and echo
+both input identifiers exactly.
 
 - `UPDATED` MUST contain a nonempty digest-keyed `removed` map, final artifact
   hash, and `NONE`.
@@ -51,7 +56,7 @@ exactly.
   reason, and no mutation.
 
 Each removal MUST use its `claim_sha256` as the `removed` map key and its `kind`
-as the value. The schema MUST be `codexy.artifact-refresh.v1`.
+as the value. The contract schema MUST be `codexy.artifact-refresh.v1`.
 
 ## Proof
 

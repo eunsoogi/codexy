@@ -29,8 +29,8 @@ GitHub state.
 
 ## Projection
 
-MUST emit one JSON object with exactly these keys in this order and no other
-prose:
+MUST emit the result described in [contract.md](contract.md), with exactly these
+keys in this order and no other prose:
 
 ```json
 {
