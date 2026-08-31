@@ -5,12 +5,14 @@ This file is the readable output contract and deterministic corpus for the
 
 ## Contract identity
 
-- fields (in order): `interpreted_purpose`, `unresolved_reference`, `action_blocker`
+- fields (in order): `interpreted_purpose`, `unresolved_reference`,
+  `action_blocker`
 
 ## Output fields
 
 - `interpreted_purpose`: a nonempty string
-- `unresolved_reference`: a unique list of nonempty strings in first-appearance order
+- `unresolved_reference`: a unique list of nonempty strings in first-appearance
+  order
 - `action_blocker`: a unique list of nonempty strings in first-appearance order
 - The result contains exactly the three fields above and no prose or code fence.
 - Empty lists mean only that no blocking gap was found.
