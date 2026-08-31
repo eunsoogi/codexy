@@ -19,15 +19,15 @@ This file is the readable output contract and deterministic corpus for the
 
 ## Boundary responses
 
-- Inputs must contain exactly `artifact_bytes`, `intended_audience`, and
-  `intended_action`; missing input returns `BLOCKED_INPUT` without analysis.
-- Requests outside the trigger return exactly one `HANDOFF_REQUIRED:<reason>`
-  string before artifact analysis.
-- The first matching reason is selected in this order: `FACT_CHECK`,
+- Inputs MUST contain exactly `artifact_bytes`, `intended_audience`, and
+  `intended_action`; missing input MUST return `BLOCKED_INPUT` without analysis.
+- Requests outside the trigger MUST return exactly one
+  `HANDOFF_REQUIRED:<reason>` string before artifact analysis.
+- The first matching reason MUST be selected in this order: `FACT_CHECK`,
   `CORRECTNESS_VERDICT`, `MUTATION`, `REFRESH`, `AUTHOR_INTERVIEW`,
   `HIDDEN_CRITERIA`, `HISTORY`, `VOTE`, `STATUS_RECONSTRUCTION`,
   `MULTIPLE_ARTIFACTS`.
-- A fresh reader uses only the supplied artifact bytes and does not edit,
+- A fresh reader MUST use only the supplied artifact bytes and MUST NOT edit,
   normalize, fact-check, judge, reconstruct history, or compare artifacts.
 
 ## Corpus
