@@ -4,8 +4,6 @@ use serde_json::{Value, json};
 
 use crate::support::{self, TestResult};
 
-const POLICY: &str = "skills/orchestration/references/tdd-classification-policy.json";
-
 #[test]
 fn resolver_classifies_engineering_non_engineering_and_mixed_boundaries() -> TestResult {
     let fixture = support::plugin_fixture()?;
@@ -57,41 +55,6 @@ fn resolver_rejects_unknown_or_incomplete_machine_owned_requests() -> TestResult
     Ok(())
 }
 
-#[test]
-fn check_rejects_a_malformed_or_unknown_policy_boundary() -> TestResult {
-    let fixture = support::plugin_fixture_with_mutable_files(&[Path::new(POLICY)])?;
-    assert_eq!(
-        support::fixture_mutable_files(fixture.root()),
-        Some(vec![Path::new(POLICY).to_path_buf()])
-    );
-    let path = fixture.root().join(POLICY);
-    let mut policy = json!({
-        "schema": "codexy.tdd-classification-policy.v1",
-        "engineering_boundaries": ["production_code"],
-        "non_engineering_boundaries": ["documentation"]
-    });
-    std::fs::write(&path, serde_json::to_vec(&policy)?)?;
-    assert!(
-        !check(fixture.root())?.status.success(),
-        "incomplete policy passed"
-    );
-    policy["engineering_boundaries"] = json!(["documentation"]);
-    std::fs::write(&path, serde_json::to_vec(&policy)?)?;
-    assert!(!check(fixture.root())?.status.success(), "invalid policy passed");
-    policy = json!({
-        "schema": "codexy.tdd-classification-policy.v1",
-        "engineering_boundaries": ["production_code"],
-        "non_engineering_boundaries": ["documentation"],
-        "unexpected": true
-    });
-    std::fs::write(&path, serde_json::to_vec(&policy)?)?;
-    assert!(
-        !check(fixture.root())?.status.success(),
-        "unknown policy field passed"
-    );
-    Ok(())
-}
-
 fn assert_resolution(root: &Path, boundaries: Value, expected: Value) -> TestResult {
     let output = resolve(
         root,
@@ -118,11 +81,5 @@ fn resolve(root: &Path, request: Value) -> TestResult<std::process::Output> {
             "--tdd-classification-request-file",
         ])
         .arg(request_path)
-        .output()?)
-}
-
-fn check(root: &Path) -> TestResult<std::process::Output> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args(["--plugin-root", root.to_str().ok_or("plugin root")?, "--check"])
         .output()?)
 }

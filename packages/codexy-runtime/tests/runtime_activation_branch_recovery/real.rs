@@ -81,12 +81,15 @@ impl Fixture {
                 .arg(&repo),
         )?;
         for relative in [
-            "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
+            "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
             "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
             "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
             "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
         ] {
-            fs::remove_file(repo.join(relative))?;
+            let path = repo.join(relative);
+            if path.is_file() {
+                fs::remove_file(path)?;
+            }
         }
         let runtime = repo.join("packages/codexy-runtime");
         fs::create_dir_all(runtime.join("src/version"))?;

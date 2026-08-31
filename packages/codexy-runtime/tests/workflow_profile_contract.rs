@@ -2,50 +2,6 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn workflow_profiles_are_exactly_versioned_and_have_one_invariant_floor() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        root.join("plugins/codexy/skills/orchestration/references/workflow-profiles.json"),
-    )?)?;
-
-    assert_eq!(contract["version"], 1);
-    assert_eq!(contract["defaultProfile"], "light");
-    assert_eq!(contract["escalationOrder"], serde_json::json!(["light", "standard", "strict"]));
-    assert_eq!(contract["profiles"].as_object().map(|profiles| profiles.len()), Some(3));
-    assert_eq!(contract["profiles"]["light"]["includes"], serde_json::json!([
-        "read-only",
-        "documentation",
-        "tiny fixes",
-        "ordinary single-owner mutations"
-    ]));
-    assert_eq!(contract["profiles"]["standard"]["includes"], serde_json::json!(["non-trivial single-owner work"]));
-    assert_eq!(contract["profiles"]["strict"]["requiresFormalEvidence"], true);
-    assert_eq!(contract["proofAndReview"]["strict"], "formal current-head proof and the applicable Sentinel review");
-
-    let triggers = contract["formalEvidenceTriggers"]
-        .as_array()
-        .ok_or("formal evidence triggers must be an array")?;
-    for trigger in ["strict", "durable delegation", "multi-lane ownership", "explicit audit evidence"] {
-        assert!(triggers.iter().any(|value| value == trigger), "missing {trigger}");
-    }
-    for invariant in [
-        "destructive-action safety",
-        "user and unrelated change preservation",
-        "no force push or force-with-lease",
-        "current-head readiness proof",
-        "every governed file at or below 250 LOC with no exceptions",
-    ] {
-        assert!(contract["invariantFloor"].as_array().is_some_and(|items| {
-            items.iter().any(|value| value == invariant)
-        }), "missing invariant {invariant}");
-    }
-    assert_eq!(contract["authorizedMergeGates"], serde_json::json!([
-        "title", "label", "thread", "connector", "merge-message"
-    ]));
-    Ok(())
-}
-
-#[test]
 fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
     for (name, evidence) in [
         ("strict requires formal evidence", "Workflow profile: strict"),
@@ -173,32 +129,6 @@ fn workflow_profile_metadata_is_current_lane_active_markdown_and_unambiguous() -
         &format!("Workflow profile: strict\n```text\n{}\n```", formal_classification()),
         false,
     )?;
-    Ok(())
-}
-
-#[test]
-fn workflow_profile_contract_rejects_extra_or_contradictory_structure() -> TestResult {
-    let contract_path = std::path::Path::new(
-        "skills/orchestration/references/workflow-profiles.json",
-    );
-    for (field, value) in [
-        (
-            "formalEvidenceTriggers",
-            serde_json::json!(["strict", "durable delegation", "multi-lane ownership", "explicit audit evidence", "extra"]),
-        ),
-        (
-            "authorizedMergeGates",
-            serde_json::json!(["title", "label", "thread", "connector", "merge-message", "extra"]),
-        ),
-    ] {
-        let (_temp, plugin_root) =
-            crate::support::copy_plugin_fixture_with_mutable_files(&[contract_path])?;
-        let path = plugin_root.join(contract_path);
-        let mut contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
-        contract[field] = value;
-        std::fs::write(&path, serde_json::to_string(&contract)?)?;
-        assert!(!crate::support::validator(&plugin_root, "--check")?.status.success());
-    }
     Ok(())
 }
 

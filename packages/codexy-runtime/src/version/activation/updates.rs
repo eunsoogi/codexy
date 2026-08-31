@@ -12,7 +12,7 @@ use tempfile::NamedTempFile;
 use super::{canonical, receipt};
 
 const CORE_HANDOFF_SOURCES: [&str; 4] = [
-    "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
+    "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
     "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
     "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
     "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",

@@ -1,10 +1,9 @@
 use std::path::Path;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::workflow_profile_evidence::{current_active_lines, field_value, has_strict_work_signal};
 
-const CONTRACT_PATH: &str = "skills/orchestration/references/workflow-profiles.json";
 const PROFILES: [&str; 3] = ["light", "standard", "strict"];
 const TRIGGERS: [&str; 4] = [
     "strict",
@@ -61,11 +60,40 @@ pub(super) fn check_evidence(plugin_root: &Path, evidence: &str) -> Vec<String> 
 }
 
 fn load(plugin_root: &Path) -> Result<Value, String> {
-    let path = plugin_root.join(CONTRACT_PATH);
-    let text = std::fs::read_to_string(&path)
-        .map_err(|error| format!("{} cannot be read: {error}", path.display()))?;
-    serde_json::from_str(&text)
-        .map_err(|error| format!("{} is invalid JSON: {error}", path.display()))
+    let _ = plugin_root;
+    Ok(contract())
+}
+
+fn contract() -> Value {
+    json!({
+        "version": 1,
+        "defaultProfile": "light",
+        "escalationOrder": PROFILES,
+        "profiles": {
+            "light": {
+                "includes": ["read-only", "documentation", "tiny fixes", "ordinary single-owner mutations"],
+                "doesNotRequire": ["formal classification table", "goal/plan receipts", "multi-agent decisions", "specialist skip rationales", "unavailable-tool explanations"],
+                "requiresFormalEvidence": false
+            },
+            "standard": {
+                "includes": ["non-trivial single-owner work"],
+                "doesNotRequire": ["formal classification table"],
+                "requiresFormalEvidence": false
+            },
+            "strict": {
+                "includes": ["high-risk, security, release, multi-lane, and merge-sensitive work"],
+                "requiresFormalEvidence": true
+            }
+        },
+        "proofAndReview": {
+            "light": "proportionate to the requested mutation and invariant floor",
+            "standard": "proportionate planning and proof for non-trivial single-owner work",
+            "strict": "formal current-head proof and the applicable Sentinel review"
+        },
+        "formalEvidenceTriggers": TRIGGERS,
+        "invariantFloor": INVARIANTS,
+        "authorizedMergeGates": ["title", "label", "thread", "connector", "merge-message"]
+    })
 }
 
 fn validate(contract: Value) -> Result<Value, String> {

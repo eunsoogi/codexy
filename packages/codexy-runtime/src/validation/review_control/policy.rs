@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
@@ -6,16 +6,7 @@ use serde_json::{Value, json};
 
 use super::classification;
 
-const PATH: &str = "skills/orchestration/references/review-profiles.json";
 const REQUEST_SCHEMA: &str = "codexy.review-profile-request.v1";
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Policy {
-    schema: String,
-    issue_terminal_review_limit: u8,
-    profiles: BTreeMap<String, Profile>,
-}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -44,10 +35,8 @@ struct Request {
 }
 
 pub(super) fn load(plugin_root: &Path) -> Result<BTreeMap<String, Profile>> {
-    let text = fs::read_to_string(plugin_root.join(PATH))?;
-    let policy: Policy = serde_json::from_str(&text)?;
-    validate(&policy)?;
-    Ok(policy.profiles)
+    let _ = plugin_root;
+    Ok(profiles())
 }
 
 pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
@@ -55,7 +44,7 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
     if request.schema != REQUEST_SCHEMA {
         bail!("review-profile request has an unsupported schema");
     }
-    let profiles = load(plugin_root)?;
+    let profiles = profiles();
     let selected = classification::select(plugin_root, request.classification)?;
     let profile = profiles
         .get(&selected)
@@ -84,8 +73,8 @@ fn rank(profile: &str) -> u8 {
     }
 }
 
-fn validate(policy: &Policy) -> Result<()> {
-    let expected = BTreeMap::from([
+fn profiles() -> BTreeMap<String, Profile> {
+    BTreeMap::from([
         (
             "light".to_owned(),
             Profile {
@@ -121,14 +110,5 @@ fn validate(policy: &Policy) -> Result<()> {
                 max_blocking_findings: u8::MAX,
             },
         ),
-    ]);
-    if policy.schema != "codexy.review-profiles.v1"
-        || policy.issue_terminal_review_limit != 3
-        || policy.profiles != expected
-    {
-        bail!(
-            "review-profile policy must retain the closed light/standard/strict reviewer contract"
-        );
-    }
-    Ok(())
+    ])
 }

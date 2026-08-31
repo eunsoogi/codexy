@@ -118,7 +118,6 @@ fn removed_audit_products_are_absent_from_package_and_cli_surfaces()
     for path in [
         "packages/codexy-runtime/src/bin/codexy-session-audit.rs",
         "packages/codexy-runtime/tests/fixtures/session-audit",
-        "plugins/codexy/skills/orchestration/references/read-batch.schema.json",
         "plugins/codexy/skills/orchestration/templates/read-batch-plan.json",
         "plugins/codexy/skills/orchestration/templates/session-audit-proof-receipt.json",
         "scripts/session-audit",

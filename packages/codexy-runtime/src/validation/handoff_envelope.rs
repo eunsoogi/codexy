@@ -10,12 +10,11 @@ pub use schema::{
     OwnerWorktree, ReviewThread, StableHandoff,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{cell::RefCell, collections::BTreeSet, rc::Rc};
 const MAX_ENVELOPE_BYTES: usize = 64 * 1024;
 const POLICY: &str =
-    include_str!("../../../../plugins/codexy/skills/orchestration/references/context-tiers.json");
+    include_str!("../../../../plugins/codexy/skills/orchestration/references/context-tiers.md");
 const STABLE_PREFIX: &str = "codexy.handoff.stable.v1";
 const VOLATILE_PREFIX: &str = "codexy.handoff.volatile.v1";
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -164,16 +163,14 @@ fn validate_intrinsic(envelope: &HandoffEnvelope) -> Result<()> {
     Ok(())
 }
 fn validate_stable(stable: &StableHandoff) -> Result<()> {
-    let policy: serde_json::Value = serde_json::from_str(POLICY)?;
-    let profiles = policy
-        .get("profile_matrix")
-        .and_then(Value::as_object)
-        .ok_or_else(|| anyhow::anyhow!("canonical policy has no profile matrix"))?;
     ensure!(
-        profiles.contains_key(&stable.workflow_profile),
+        matches!(
+            stable.workflow_profile.as_str(),
+            "light" | "standard" | "strict"
+        ),
         "handoff has an unknown workflow profile"
     );
-    let route = classification::route(&policy, &stable.task_classification)?;
+    let route = classification::route(&stable.task_classification)?;
     schema::validate_unique_strings(&stable.selected_references, "selected_references")?;
     stable
         .selected_references

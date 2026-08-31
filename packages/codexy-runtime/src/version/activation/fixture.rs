@@ -73,7 +73,7 @@ impl Fixture {
         fs::create_dir_all(root.join("packages/codexy-runtime/src/version"))?;
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(root.join("plugins/codexy-devtools/.codex-plugin"))?;
-        fs::create_dir_all(root.join("plugins/codexy/skills/dreaming/references"))?;
+        fs::create_dir_all(root.join("packages/codexy-runtime/schemas"))?;
         fs::create_dir_all(root.join("plugins/codexy/skills/dreaming/scripts"))?;
         fs::create_dir_all(&mcp)?;
         write(
@@ -87,7 +87,7 @@ impl Fixture {
         )?;
         for (path, contents) in [
             (
-                "plugins/codexy/skills/dreaming/references/handoff-runtime.schema.json",
+                "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
                 "{}",
             ),
             (

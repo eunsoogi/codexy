@@ -28,10 +28,6 @@ pub enum Mode {
         handoff: String,
         pr_state: String,
     },
-    RoutingMeasurement {
-        corpus: String,
-        results: String,
-    },
     Mcp,
     Hooks,
     Roles,

@@ -1,7 +1,12 @@
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::BTreeSet;
+
+mod routes;
+use routes::{
+    fail_closed_class, fallback_route, known_risk, known_surface, known_workflow, risk_route,
+    surface_route, task_route,
+};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
@@ -35,15 +40,11 @@ impl From<String> for StableClassification {
     }
 }
 
-pub(super) fn route(policy: &Value, classification: &StableClassification) -> Result<Route> {
-    let routing = policy
-        .get("routing")
-        .and_then(Value::as_object)
-        .ok_or_else(|| anyhow::anyhow!("canonical policy has no routing contract"))?;
+pub(super) fn route(classification: &StableClassification) -> Result<Route> {
     let (workflow, surfaces, risks, structured) = match classification {
-        StableClassification::Legacy(workflow) => (workflow, &[][..], &[][..], false),
+        StableClassification::Legacy(workflow) => (workflow.as_str(), &[][..], &[][..], false),
         StableClassification::Structured(value) => (
-            &value.workflow,
+            value.workflow.as_str(),
             value.surfaces.as_slice(),
             value.risks.as_slice(),
             true,
@@ -52,51 +53,38 @@ pub(super) fn route(policy: &Value, classification: &StableClassification) -> Re
     label(workflow, "task classification")?;
     unique_labels(surfaces, "surface")?;
     unique_labels(risks, "risk")?;
-    let tasks = strings(routing.get("task_classes"))?;
-    let fail_closed_classes = strings(routing.get("fail_closed_classes"))?;
-    let known_workflow = tasks.contains(workflow) || fail_closed_classes.contains(workflow);
+    let known_workflow = known_workflow(workflow);
     if !structured {
         ensure!(known_workflow, "handoff has an unknown task classification");
     }
-    let known_surfaces = surfaces.iter().all(|surface| {
-        routing["surface_names"]
-            .as_array()
-            .is_some_and(|names| names.iter().any(|name| name.as_str() == Some(surface)))
-    });
-    let known_risks = risks.iter().all(|risk| {
-        routing["risk_names"]
-            .as_array()
-            .is_some_and(|names| names.iter().any(|name| name.as_str() == Some(risk)))
-    });
+    let known_surfaces = surfaces.iter().all(|surface| known_surface(surface));
+    let known_risks = risks.iter().all(|risk| known_risk(risk));
     let fail_closed = if structured {
         !known_workflow
             || !known_surfaces
             || !known_risks
             || surfaces.is_empty()
             || !risks.is_empty()
-            || fail_closed_classes.contains(workflow)
+            || fail_closed_class(workflow)
     } else {
-        fail_closed_classes.contains(workflow)
+        fail_closed_class(workflow)
     };
     let mut references = Vec::new();
     if fail_closed {
-        add(
-            &mut references,
-            strings(routing.get("fallback_reference_route"))?,
-        );
-    } else if let Some(values) = routing["task_reference_routes"].get(workflow) {
-        add(&mut references, strings(Some(values))?);
+        add(&mut references, fallback_route());
+    } else if let Some(values) = task_route(workflow) {
+        add(&mut references, values);
         for surface in surfaces {
-            if let Some(values) = routing["surface_reference_routes"].get(surface) {
-                add(&mut references, strings(Some(values))?);
+            if let Some(values) = surface_route(surface) {
+                add(&mut references, values);
             }
         }
     } else {
         ensure!(!structured, "handoff has an unknown task classification");
     }
     for risk in risks {
-        if let Some(values) = routing["risk_reference_routes"].get(risk) {
-            add(&mut references, strings(Some(values))?);
+        if let Some(values) = risk_route(risk) {
+            add(&mut references, values);
         }
     }
     Ok(Route {
@@ -111,19 +99,6 @@ fn add(target: &mut Vec<String>, values: Vec<String>) {
             target.push(value);
         }
     }
-}
-
-fn strings(value: Option<&Value>) -> Result<Vec<String>> {
-    value
-        .and_then(Value::as_array)
-        .ok_or_else(|| anyhow::anyhow!("policy route must be an array of strings"))?
-        .iter()
-        .map(|item| {
-            item.as_str()
-                .map(ToOwned::to_owned)
-                .ok_or_else(|| anyhow::anyhow!("policy route contains a non-string"))
-        })
-        .collect()
 }
 
 fn label(value: &str, field: &str) -> Result<()> {

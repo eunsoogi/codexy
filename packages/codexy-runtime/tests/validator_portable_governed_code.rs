@@ -5,9 +5,7 @@ use crate::support::TestResult;
 #[test]
 fn package_owned_checker_is_explicit_path_only_and_enforces_250_lines() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
-    let policy = root.join("skills/engineering/references/governed-code-policy.json");
     let checker = root.join("skills/engineering/scripts/check_governed_code.py");
-    assert!(policy.is_file(), "missing package-owned LOC policy");
     assert!(checker.is_file(), "missing package-owned LOC checker");
 
     let temp = tempfile::tempdir()?;
