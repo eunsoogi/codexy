@@ -151,9 +151,7 @@ def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, objec
             {
                 "component": component,
                 "elapsed_seconds": round(perf_counter() - started, 6),
-                "category": "success"
-                if result.get("callable")
-                else result.get("reason_code"),
+                "category": result.get("_category") or result.get("reason_code"),
                 "started": result.get("started"),
                 "callable": result.get("callable"),
             }

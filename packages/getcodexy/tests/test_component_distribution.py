@@ -180,18 +180,18 @@ class ComponentDistributionTests(unittest.TestCase):
             self._run("bootstrap")["selection_after"], ["core", "github", "devtools"]
         )
         doctor = self._run("doctor", expected=2)
-        self.assertEqual(
-            _health(doctor),
-            {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
-            json.dumps(doctor, indent=2, sort_keys=True),
-        )
-        self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
         if os.name == "nt":
             measurements = measure_hook_probes(self.marketplace, self.version)
             print(json.dumps({"windows_capability_probes": measurements}), flush=True)
             for measurement in measurements:
                 self.assertEqual(measurement["category"], "success", measurement)
                 self.assertLess(measurement["elapsed_seconds"], 4.5, measurement)
+        self.assertEqual(
+            _health(doctor),
+            {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
+            json.dumps(doctor, indent=2, sort_keys=True),
+        )
+        self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
 
     def test_installed_cli_rolls_back_a_failed_add(self) -> None:
         self._run("install", "github")
