@@ -14,8 +14,8 @@ branch="codexy/version-${VERSION}"
 owner=${GITHUB_REPOSITORY%%/*}
 name=${GITHUB_REPOSITORY#*/}
 mkdir -p "$state_dir"
-git diff --name-only --diff-filter=ACMRTUXB > "$state_dir/changed-files.txt"
-git diff --name-only -z --diff-filter=ACMRTUXB > "$state_dir/changed-files.z"
+git diff --name-only --diff-filter=ACDMRTUXB > "$state_dir/changed-files.txt"
+git diff --name-only -z --diff-filter=ACDMRTUXB > "$state_dir/changed-files.z"
 
 refresh_version_pr_snapshot() {
   gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
@@ -119,7 +119,7 @@ if [ "$action" != first-run ]; then
       exit 1
     fi
     stale_existing=true
-    git diff --name-only --diff-filter=ACMRTUXB \
+    git diff --name-only --diff-filter=ACDMRTUXB \
       origin/main..."origin/$branch" | LC_ALL=C sort \
       > "$state_dir/remote-files.txt"
     jq -r '.body' "$state_dir/observed-pr.json" | awk '

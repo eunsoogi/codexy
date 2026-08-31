@@ -78,6 +78,14 @@ fn production_workflow_adapter_local_surface_matrix() -> TestResult {
     assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
     assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
 
+    fixture.prepare(Scenario::UnexpectedDeletedPath)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "unexpected deleted path was accepted");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("outside its recorded candidate inventory"));
+    assert_eq!(fixture.branch_push_count()?, 0);
+    assert_eq!(fixture.mutation_events()?, Vec::<String>::new());
+    assert_eq!(std::fs::read(fixture.mutation_sentinel())?, b"unchanged\n");
+
     fixture.prepare(Scenario::StaleExisting)?;
     fixture.install_remote_head_race()?;
     let output = fixture.run()?;

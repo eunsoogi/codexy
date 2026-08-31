@@ -11,6 +11,7 @@ pub(super) enum Scenario {
     MatchingExisting,
     StaleExisting,
     UnexpectedStalePath,
+    UnexpectedDeletedPath,
     MismatchedIssue,
 }
 pub(super) struct WorkflowFixture {
@@ -59,17 +60,16 @@ impl WorkflowFixture {
         let mut existing = serde_json::json!([]);
         if !matches!(scenario, Scenario::NewPr) {
             git(&self.repo, &["switch", "-qc", BRANCH])?;
-            if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath) {
+            if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
                 fs::write(self.repo.join(COMPONENT_MANIFEST), "{\"selectedVersion\":\"1.3.1\"}\n")?;
             }
             if matches!(scenario, Scenario::UnexpectedStalePath) {
                 fs::write(self.repo.join("unexpected.txt"), "not a candidate file\n")?;
             }
-            git(&self.repo, &["add", "packages/codexy-runtime/Cargo.toml"])?;
-            git(&self.repo, &["add", COMPONENT_MANIFEST])?;
-            if matches!(scenario, Scenario::UnexpectedStalePath) {
-                git(&self.repo, &["add", "unexpected.txt"])?;
+            if matches!(scenario, Scenario::UnexpectedDeletedPath) {
+                fs::remove_file(self.repo.join("unexpected-delete.txt"))?;
             }
+            git(&self.repo, &["add", "-A"])?;
             git(&self.repo, &["commit", "-qm", "fixture version"])?;
             git(&self.repo, &["push", "-q", "-u", "origin", BRANCH])?;
             let oid = git_stdout(&self.repo, &["rev-parse", "HEAD"])?;
@@ -190,6 +190,7 @@ fn write_version_files(repo: &Path) -> std::io::Result<()> {
         ".agents/plugins/release-publish-contract.json", "plugins/codexy/.codex-plugin/plugin.json",
         "plugins/codexy-devtools/.codex-plugin/plugin.json", "plugins/codexy-github/.codex-plugin/plugin.json",
         COMPONENT_MANIFEST,
+        "unexpected-delete.txt",
     ] {
         write_fixture(repo, path, "{}\n")?;
     }
@@ -210,7 +211,7 @@ fn write_fixture(repo: &Path, path: &str, text: &str) -> std::io::Result<()> {
 }
 fn write_state(state: &Path, scenario: Scenario, existing: serde_json::Value) -> std::io::Result<()> {
     let observed_issue = if matches!(scenario, Scenario::MismatchedIssue) { 302 } else { 301 };
-    let changed_areas = if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath) {
+    let changed_areas = if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
         "- `packages/codexy-runtime/Cargo.toml`\n- `packages/getcodexy/src/codexy_runtime_tools/component-manifest.json`\n"
     } else {
         "- `packages/codexy-runtime/Cargo.toml`\n"
