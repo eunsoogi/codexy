@@ -7,8 +7,7 @@ multi-lane, and merge-sensitive work.
 
 Strict work requires formal current-head proof and the applicable Sentinel
 review. The invariant floor includes destructive-action safety, preservation of
-unrelated changes, no force push, current-head readiness proof, and a maximum
-of 250 physical lines for every governed file.
+unrelated changes, no force push, current-head readiness proof, and a maximum of
+250 physical lines for every governed file.
 
-The executable profile contract is maintained by the packaged runtime
-validator.
+The executable profile contract is maintained by the packaged runtime validator.

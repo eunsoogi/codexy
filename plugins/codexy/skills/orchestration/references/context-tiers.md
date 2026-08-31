@@ -1,7 +1,7 @@
 # Context retention and safety
 
-The runtime retains safety state on every handoff: issue and PR identity,
-owner and worktree, base and head, dirty-index state, checks, unresolved review
+The runtime retains safety state on every handoff: issue and PR identity, owner
+and worktree, base and head, dirty-index state, checks, unresolved review
 threads, selected reviewer state, verification, external gates, and the next
 action. Omitted safety state is typed and never treated as proof of absence.
 
