@@ -159,17 +159,13 @@ class CapabilityProbeCases:
             self.assertFalse(failed["started"])
             self.assertEqual(failed["reason_code"], "component-start-failed")
 
-    def test_hook_probe_preserves_distinct_internal_failure_categories(self) -> None:
+    def test_hook_probe_preserves_distinct_internal_failure_categories(self):
         from codexy_runtime_tools import component_capability_probe as probe
         from component_lifecycle_support import fixture
 
         cases = (
             (probe._RunResult(-1, "", "timeout"), True, "capability-call-failed"),
-            (
-                probe._RunResult(9, "", "nonzero-exit"),
-                True,
-                "capability-call-failed",
-            ),
+            (probe._RunResult(9, "", "nonzero-exit"), True, "capability-call-failed"),
             (
                 probe._RunResult(0, "not-json", "success"),
                 True,
@@ -185,13 +181,18 @@ class CapabilityProbeCases:
             materialize(state, "core")
             plugin = state.marketplace / "plugins/codexy"
             for run, started, reason in cases:
-                with self.subTest(category=run.category):
-                    with patch.object(probe, "_run", return_value=run):
-                        observed = probe._probe_hook("core", plugin, {})
-                    self.assertEqual(
-                        (observed["started"], observed["reason_code"]),
-                        (started, reason),
-                    )
+                with (
+                    self.subTest(category=run.category),
+                    patch.object(probe, "_run", return_value=run),
+                ):
+                    observed = probe._probe_hook("core", plugin, {})
+                self.assertEqual(
+                    (observed["started"], observed["reason_code"]), (started, reason)
+                )
+                expected = (
+                    "malformed-output" if run.category == "success" else run.category
+                )
+                self.assertEqual(observed["_category"], expected)
 
     def _records(self, manifest):
         return {
