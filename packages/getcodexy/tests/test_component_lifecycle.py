@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
 from codexy_runtime_tools.component_transaction_state import read_journal
+from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_lifecycle_update_failure_cases import (
     ComponentLifecycleUpdateFailureCases,
 )
@@ -71,7 +72,7 @@ class ComponentLifecycleTests(
                     "add",
                     "eunsoogi/codexy",
                     "--ref",
-                    f"v{VERSION}",
+                    f"v{default_package_version()}",
                     "--json",
                 ),
                 state.mutations,

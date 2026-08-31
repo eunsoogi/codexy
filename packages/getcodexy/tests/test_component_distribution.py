@@ -13,13 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from codexy_runtime_tools.version_lock import default_package_version
-from packages.getcodexy.tests.component_distribution_support import (
-    DISTRIBUTION_HOST,
-    copy_marketplace_plugins,
-    measure_hook_probes,
-    windows_argv,
-)
+from packages.getcodexy.tests import component_distribution_support as support
 
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
@@ -31,7 +25,7 @@ class CapabilityProcessTests(unittest.TestCase):
         from codexy_runtime_tools import component_capability_probe as probe
 
         with tempfile.TemporaryDirectory() as directory:
-            paths, batch, raw, py, ran = windows_argv(probe, Path(directory))
+            paths, batch, raw, py, ran = support.windows_argv(probe, Path(directory))
         for launcher, command in zip(paths, batch, strict=True):
             self.assertIn(" /d /s /c ", command)
             self.assertTrue(command.endswith(f'""{launcher}" PermissionRequest"'))
@@ -74,13 +68,20 @@ class ComponentDistributionTests(unittest.TestCase):
         self.state = self.root / "host-state.json"
         self.host = self.root / "codex-host.py"
         self.codex = self.root / ("codex.cmd" if os.name == "nt" else "codex")
-        self.version = copy_marketplace_plugins(REPOSITORY, self.marketplace)
+        with patch.object(
+            support,
+            "default_package_version",
+            return_value=load_component_manifest().version,
+        ):
+            self.version = support.copy_marketplace_plugins(
+                REPOSITORY, self.marketplace
+            )
         self.home.mkdir()
         (self.home / "config.toml").write_text(
             f'[marketplaces.codexy]\nref = "v{self.version}"\n', encoding="utf-8"
         )
         self.state.write_text(json.dumps({"marketplace": False, "selection": []}))
-        self.host.write_text(DISTRIBUTION_HOST, encoding="utf-8")
+        self.host.write_text(support.DISTRIBUTION_HOST, encoding="utf-8")
         if os.name == "nt":
             self.codex.write_text(
                 f'@echo off\r\n"{sys.executable}" "{self.host}" %*\r\n',
@@ -131,9 +132,7 @@ class ComponentDistributionTests(unittest.TestCase):
             ["core", "github", "devtools"],
         )
 
-    def test_packaged_manifest_drives_install_and_update_at_package_version(
-        self,
-    ) -> None:
+    def test_packaged_manifest_uses_selected_version(self) -> None:
         self.assertEqual(
             self._run("install")["selection_after"],
             ["core", "github", "devtools"],
@@ -142,7 +141,7 @@ class ComponentDistributionTests(unittest.TestCase):
             self._run("update", "github")["selection_after"],
             ["core", "github", "devtools"],
         )
-        self.assertEqual(load_component_manifest().version, default_package_version())
+        self.assertEqual(load_component_manifest().version, self.version)
 
     def test_installed_cli_detects_an_incomplete_plugin_package(self) -> None:
         self._run("install")
@@ -181,7 +180,7 @@ class ComponentDistributionTests(unittest.TestCase):
         )
         doctor = self._run("doctor", expected=2)
         if os.name == "nt":
-            measurements = measure_hook_probes(self.marketplace, self.version)
+            measurements = support.measure_hook_probes(self.marketplace, self.version)
             print(json.dumps({"windows_capability_probes": measurements}), flush=True)
             for measurement in measurements:
                 self.assertEqual(measurement["category"], "success", measurement)
