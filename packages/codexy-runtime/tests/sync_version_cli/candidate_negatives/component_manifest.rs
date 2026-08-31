@@ -7,6 +7,7 @@ use std::{
 
 use serde_json::{Value, json};
 
+use super::super::restoration::{ByteSnapshot, VERSION_FIXTURE_PATHS};
 use super::{
     TempDir, TestResult, bootstrap_candidate_version, fixture_version, mutate_json,
     next_patch_version, reject, run,
@@ -19,6 +20,8 @@ const COMPONENT_MANIFEST: &str =
 fn candidate_preparation_preserves_the_packaged_component_manifest() -> TestResult {
     let fixture = candidate_fixture()?;
     let root = &fixture.root;
+    let snapshot = ByteSnapshot::capture(root, VERSION_FIXTURE_PATHS)?;
+    let mut restoration = snapshot.guard();
 
     let manifest: Value =
         serde_json::from_str(&fs::read_to_string(root.join(COMPONENT_MANIFEST))?)?;
@@ -40,14 +43,17 @@ fn candidate_preparation_preserves_the_packaged_component_manifest() -> TestResu
     )?)?;
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
     assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
+    restoration.restore_checked()?;
     Ok(())
 }
 
 #[test]
 fn candidate_check_rejects_each_component_manifest_drift() -> TestResult {
+    let fixture = candidate_fixture()?;
+    let root = &fixture.root;
+    let snapshot = ByteSnapshot::capture(root, VERSION_FIXTURE_PATHS)?;
     for field in ["components", "compatibleCombinations"] {
-        let fixture = candidate_fixture()?;
-        let root = &fixture.root;
+        let mut restoration = snapshot.guard();
         let candidate_version = next_patch_version(&fixture_version(&root)?)?;
         mutate_json(&root.join(COMPONENT_MANIFEST), |value| {
             value[field][0]["version"] = json!(candidate_version);
@@ -57,6 +63,7 @@ fn candidate_check_rejects_each_component_manifest_drift() -> TestResult {
             &["--check-candidate"],
             &format!("{field}-component-drift"),
         )?;
+        restoration.restore_checked()?;
     }
     Ok(())
 }

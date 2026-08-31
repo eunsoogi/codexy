@@ -1,21 +1,23 @@
 use std::{fs, process::Command};
 
+use super::isolation::{fixture_version, next_patch_version};
 use super::{
-    archive_repository, shared_repository_archive,
+    archive_repository,
     isolation::version_surface_contents,
+    restoration::{ByteSnapshot, VERSION_FIXTURE_PATHS},
+    shared_repository_archive,
     strict_manifest::select_version_advance,
 };
-use super::isolation::{fixture_version, next_patch_version};
 
-const COMPONENT_MANIFEST: &str = "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
+const COMPONENT_MANIFEST: &str =
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 
 #[test]
 fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
     let (version, version_needle) = {
-        let text = fs::read_to_string(
-            codexy_runtime::paths::repository_root().join(COMPONENT_MANIFEST),
-        )?;
+        let text =
+            fs::read_to_string(codexy_runtime::paths::repository_root().join(COMPONENT_MANIFEST))?;
         let manifest: serde_json::Value = serde_json::from_str(&text)?;
         let version = manifest["components"]
             .as_array()
@@ -27,9 +29,14 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
     let leading_zero = format!("\"version\": \"0{version}\"");
     let malformed = format!(
         "\"version\": \"{}\"",
-        version.rsplit_once('.').map_or(version.as_str(), |(prefix, _)| prefix)
+        version
+            .rsplit_once('.')
+            .map_or(version.as_str(), |(prefix, _)| prefix)
     );
     let prerelease = format!("\"version\": \"{version}-beta\"");
+    let temp = tempfile::tempdir()?;
+    let repo = archive_repository(shared_repository_archive()?, &temp, "component-manifest")?;
+    let snapshot = ByteSnapshot::capture(&repo, VERSION_FIXTURE_PATHS)?;
     for (label, needle, replacement) in [
         (
             "top-level duplicate",
@@ -62,8 +69,7 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             "\"components\": [\"github\"],",
         ),
     ] {
-        let temp = tempfile::tempdir()?;
-        let repo = archive_repository(shared_repository_archive()?, &temp, label)?;
+        let mut restoration = snapshot.guard();
         let selected_version = fixture_version(&repo)?;
         let target = next_patch_version(&selected_version)?;
         select_version_advance(&repo, &target)?;
@@ -74,9 +80,9 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             let combination = manifest["compatibleCombinations"]
                 .as_array_mut()
                 .and_then(|combinations| {
-                    combinations
-                        .iter_mut()
-                        .find(|combination| combination["components"] == serde_json::json!(["core", "github"]))
+                    combinations.iter_mut().find(|combination| {
+                        combination["components"] == serde_json::json!(["core", "github"])
+                    })
                 })
                 .ok_or("compatible combination fixture")?;
             combination["components"] = serde_json::json!(["github"]);
@@ -100,6 +106,7 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
             before,
             "{label} changed a managed version surface before rejection"
         );
+        restoration.restore_checked()?;
     }
     Ok(())
 }
@@ -107,6 +114,9 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
 #[test]
 fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let repo = archive_repository(shared_repository_archive()?, &temp, "cargo-rewriter")?;
+    let snapshot = ByteSnapshot::capture(&repo, VERSION_FIXTURE_PATHS)?;
     for (line_ending_label, line_ending) in [("LF", "\n"), ("CRLF", "\r\n")] {
         for (label, relative) in [
             (
@@ -119,8 +129,7 @@ fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes
             ),
         ] {
             let label = format!("{label} ({line_ending_label})");
-            let temp = tempfile::tempdir()?;
-            let repo = archive_repository(shared_repository_archive()?, &temp, &label)?;
+            let mut restoration = snapshot.guard();
             let selected_version = fixture_version(&repo)?;
             let target = next_patch_version(&selected_version)?;
             let (needle, replacement) = if relative.ends_with("Cargo.toml") {
@@ -158,12 +167,16 @@ fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes
                 before,
                 "{label} changed a managed version surface before rejection"
             );
+            restoration.restore_checked()?;
         }
     }
     Ok(())
 }
 
-fn sync_version(root: &std::path::Path, version: &str) -> Result<std::process::Output, std::io::Error> {
+fn sync_version(
+    root: &std::path::Path,
+    version: &str,
+) -> Result<std::process::Output, std::io::Error> {
     Command::new(env!("CARGO_BIN_EXE_codexy-sync-version"))
         .args(["--version", version])
         .env("CODEXY_REPO_ROOT", root)

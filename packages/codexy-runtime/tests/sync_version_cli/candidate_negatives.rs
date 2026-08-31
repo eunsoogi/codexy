@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use super::isolation::{
     bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
+use super::restoration::{ByteSnapshot, VERSION_FIXTURE_PATHS};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type TempDir = tempfile::TempDir;
@@ -30,6 +31,10 @@ enum NegativeCase {
 
 #[test]
 fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult {
+    let selected = selected_fixture()?;
+    let candidate = candidate_fixture()?;
+    let selected_snapshot = ByteSnapshot::capture(&selected.root, VERSION_FIXTURE_PATHS)?;
+    let candidate_snapshot = ByteSnapshot::capture(&candidate.root, VERSION_FIXTURE_PATHS)?;
     for case in [
         NegativeCase::CandidateNotAdvanced,
         NegativeCase::MalformedCandidate,
@@ -39,13 +44,13 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
         NegativeCase::PackageMismatch,
         NegativeCase::CheckFalsePositive,
     ] {
-        let fixture = match case {
+        let (root, snapshot) = match case {
             NegativeCase::SelectedIdentityDrift
             | NegativeCase::PackageMismatch
-            | NegativeCase::CheckFalsePositive => candidate_fixture()?,
-            _ => selected_fixture()?,
+            | NegativeCase::CheckFalsePositive => (&candidate.root, &candidate_snapshot),
+            _ => (&selected.root, &selected_snapshot),
         };
-        let root = &fixture.root;
+        let mut restoration = snapshot.guard();
         let selected_version = fixture_version(&root)?;
         let candidate_version = next_patch_version(&selected_version)?;
         match case {
@@ -111,6 +116,7 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult
                 reject(&root, &["--check-candidate"], case_name(case))?;
             }
         }
+        restoration.restore_checked()?;
     }
     Ok(())
 }
