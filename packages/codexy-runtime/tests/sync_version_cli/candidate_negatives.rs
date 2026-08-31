@@ -12,6 +12,10 @@ use super::isolation::{
 };
 use super::{archive_repository, shared_repository_archive};
 
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+type TempDir = tempfile::TempDir;
+const COMPONENT_MANIFEST: &str =
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 #[derive(Clone, Copy)]
 enum NegativeCase {
     CandidateNotAdvanced,
@@ -24,8 +28,7 @@ enum NegativeCase {
 }
 
 #[test]
-fn candidate_state_negative_matrix_fails_closed_without_mutation()
--> Result<(), Box<dyn std::error::Error>> {
+fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult {
     let temp = tempfile::tempdir()?;
     let archive = shared_repository_archive()?;
     for case in [
@@ -106,17 +109,13 @@ fn candidate_state_negative_matrix_fails_closed_without_mutation()
     }
     Ok(())
 }
-
 #[test]
-fn candidate_preparation_preserves_the_packaged_component_manifest()
--> Result<(), Box<dyn std::error::Error>> {
+fn candidate_preparation_preserves_the_packaged_component_manifest() -> TestResult {
     let temp = tempfile::tempdir()?;
     let root = selected_fixture(shared_repository_archive()?, &temp, "component-manifest")?;
     prepare_candidate(&root)?;
 
-    let manifest: Value = serde_json::from_str(&fs::read_to_string(
-        root.join("packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"),
-    )?)?;
+    let manifest: Value = serde_json::from_str(&fs::read_to_string(root.join(COMPONENT_MANIFEST))?)?;
     let selected_version = fixture_version(&root)?;
     let candidate_version = next_patch_version(&selected_version)?;
     for field in ["components", "compatibleCombinations"] {
@@ -135,6 +134,20 @@ fn candidate_preparation_preserves_the_packaged_component_manifest()
     assert_eq!(contract["bootstrap"]["candidateVersion"], candidate_version);
     Ok(())
 }
+#[test]
+fn candidate_check_rejects_each_component_manifest_drift() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    for field in ["components", "compatibleCombinations"] {
+        let root = selected_fixture(shared_repository_archive()?, &temp, field)?;
+        prepare_candidate(&root)?;
+        let candidate_version = next_patch_version(&fixture_version(&root)?)?;
+        mutate_json(&root.join(COMPONENT_MANIFEST), |value| {
+            value[field][0]["version"] = json!(candidate_version);
+        })?;
+        reject(&root, &["--check-candidate"], &format!("{field}-component-drift"))?;
+    }
+    Ok(())
+}
 
 fn case_name(case: NegativeCase) -> &'static str {
     match case {
@@ -148,11 +161,7 @@ fn case_name(case: NegativeCase) -> &'static str {
     }
 }
 
-fn selected_fixture(
-    archive: &RepositoryArchive,
-    temp: &tempfile::TempDir,
-    name: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn selected_fixture(archive: &RepositoryArchive, temp: &TempDir, name: &str) -> TestResult<PathBuf> {
     let root = archive_repository(archive, temp, name)?;
     let selected_version = fixture_version(&root)?;
     let output = run(&root, &["--version", selected_version.as_str()])?;
@@ -190,7 +199,7 @@ fn prepare_candidate(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn append_bootstrap(root: &Path, suffix: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn append_bootstrap(root: &Path, suffix: &str) -> TestResult {
     let path = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
     let mut text = fs::read_to_string(&path)?;
     text.push_str(suffix);
@@ -198,10 +207,7 @@ fn append_bootstrap(root: &Path, suffix: &str) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn reject_candidate_commands(
-    root: &Path,
-    label: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn reject_candidate_commands(root: &Path, label: &str) -> TestResult {
     let selected_version = fixture_version(root)?;
     let candidate_version = next_patch_version(&selected_version)?;
     for args in [
@@ -213,7 +219,7 @@ fn reject_candidate_commands(
     Ok(())
 }
 
-fn reject(root: &Path, args: &[&str], label: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn reject(root: &Path, args: &[&str], label: &str) -> TestResult {
     let before = state_contents(root)?;
     let output = run(root, args)?;
     assert!(!output.status.success(), "{label} unexpectedly succeeded");
@@ -229,17 +235,14 @@ fn run(root: &Path, args: &[&str]) -> Result<Output, std::io::Error> {
         .output()
 }
 
-fn state_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {
+fn state_contents(root: &Path) -> TestResult<Vec<(PathBuf, Vec<u8>)>> {
     let mut contents = version_surface_contents(root)?;
     let bootstrap = root.join("packages/codexy-runtime/src/version/bootstrap.rs");
     contents.push((bootstrap.clone(), fs::read(bootstrap)?));
     Ok(contents)
 }
 
-fn mutate_json(
-    path: &Path,
-    mutation: impl FnOnce(&mut Value),
-) -> Result<(), Box<dyn std::error::Error>> {
+fn mutate_json(path: &Path, mutation: impl FnOnce(&mut Value)) -> TestResult {
     let mut value: Value = serde_json::from_str(&fs::read_to_string(path)?)?;
     mutation(&mut value);
     fs::write(path, format!("{}\n", serde_json::to_string_pretty(&value)?))?;
