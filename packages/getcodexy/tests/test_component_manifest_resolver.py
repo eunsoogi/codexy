@@ -26,7 +26,6 @@ from codexy_runtime_tools.component_resolver import (
     resolve_components,
     verify_post_operation_inventory,
 )
-from codexy_runtime_tools.version_lock import default_package_version
 
 
 class ComponentManifestResolverTests(
@@ -44,11 +43,11 @@ class ComponentManifestResolverTests(
         self.assertEqual(self.manifest.component("github").dependencies, ("core",))
         self.assertEqual(self.manifest.component("devtools").dependencies, ("core",))
         self.assertTrue(self.manifest.component("core").asset.required_paths)
-        self.assertEqual(self.manifest.version, default_package_version())
         root = Path(__file__).parents[3]
         selected_version = json.loads(
             (root / ".agents/plugins/release-publish-contract.json").read_text()
         )["bootstrap"]["selectedVersion"]
+        self.assertEqual(self.manifest.version, selected_version)
         for component in self.manifest.components:
             plugin_root = root / component.asset.package_root
             plugin = json.loads((plugin_root / ".codex-plugin/plugin.json").read_text())
