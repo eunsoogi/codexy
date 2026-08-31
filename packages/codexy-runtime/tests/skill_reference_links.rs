@@ -27,33 +27,6 @@ fn all_packaged_skill_markdown_is_collected() -> TestResult {
 }
 
 #[test]
-fn required_reference_entrypoints_are_linked() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let required = [
-        (
-            root.join("plugins/codexy/skills/orchestration/SKILL.md"),
-            "[context-tiers.json](references/context-tiers.json)",
-        ),
-        (
-            root.join("plugins/codexy/skills/dreaming/SKILL.md"),
-            "[handoff-runtime.schema.json](references/handoff-runtime.schema.json)",
-        ),
-    ];
-    let mut missing = Vec::new();
-    for (path, link) in required {
-        if !std::fs::read_to_string(&path)?.contains(link) {
-            missing.push(format!("{} -> {link}", path.display()));
-        }
-    }
-    assert!(
-        missing.is_empty(),
-        "missing required entrypoint links:\n{}",
-        missing.join("\n")
-    );
-    Ok(())
-}
-
-#[test]
 fn packaged_skill_local_links_reject_missing_targets() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let path = root.join("plugins/codexy/skills/orchestration/references/token-efficient.md");

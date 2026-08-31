@@ -46,9 +46,6 @@ supported. Installed `scripts/resumable-context-capsule.sh` or `.cmd` launchers
 MUST validate a capsule through the native bridge with a separate trusted live
 authority document before it is consumed.
 
-The canonical packaged capsule schema is
-[handoff-runtime.schema.json](references/handoff-runtime.schema.json).
-
 Before changing or removing a schema, launcher, or resolver, MUST inventory its
 direct, dynamic, package, and public consumers. If any consumer cannot be
 classified, stop with `BLOCKED_CONSUMER_UNKNOWN` and preserve the invocation.
