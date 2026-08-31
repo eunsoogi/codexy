@@ -134,7 +134,7 @@ struct FixtureSeed {
 impl FixtureSeed {
     fn create() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        let (_root, selected) = super::selected_fixture_snapshot(&temp, "readme-root")?;
+        let (_root, selected) = super::selected_fixture(&temp, "readme-root")?;
         let archive = temp.path().join("readme-fixtures.tar");
         let archived = Command::new("tar")
             .args(["-cf"])
