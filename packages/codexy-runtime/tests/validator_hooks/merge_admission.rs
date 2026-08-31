@@ -204,7 +204,7 @@ fn wrapper_output(root: &std::path::Path, capture: &str, fail_api: bool) -> Test
 }
 
 #[cfg(unix)]
-fn wrapper_with_payload(root: &std::path::Path, capture: &str, fail_api: bool, message_text: &str, subject: &str, body_text: &str, mutate_body: bool, launcher: bool) -> TestResult<(std::process::Output, bool, String)> {
+pub(super) fn wrapper_with_payload(root: &std::path::Path, capture: &str, fail_api: bool, message_text: &str, subject: &str, body_text: &str, mutate_body: bool, launcher: bool) -> TestResult<(std::process::Output, bool, String)> {
     let workspace = tempfile::tempdir()?;
     let owned = super::admission_runtime::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let message = owned.join("message.txt");
@@ -244,7 +244,7 @@ exit 1
 }
 
 fn contract() -> &'static str { r#"{"kind":"repository-workflow-contract","intent":"merge","mergeClass":"squash","prNumber":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","contractCommentId":"IC_contract","contractCommentUrl":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","target":"current-pull-request","negated":false,"revoked":false}"# }
-fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","title":"fix(workflow): require intent","body":"Fixes #503\n","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer"},"authorAssociation":"MEMBER"}]}"# }
-fn github_plugin_root() -> std::path::PathBuf {
+pub(super) fn state() -> &'static str { r#"{"repository":"eunsoogi/codexy","number":128,"baseRefName":"main","headRefOid":"32b03a210b3defb2d29dd352283ea2488e60d893","title":"fix(workflow): require intent","body":"Fixes #503\n","comments":[{"id":"IC_contract","url":"https://github.com/eunsoogi/codexy/pull/128#issuecomment-129","body":"AUTHORIZE REPOSITORY SQUASH CONTRACT: PR #128 BASE main HEAD 32b03a210b3defb2d29dd352283ea2488e60d893","author":{"login":"maintainer"},"authorAssociation":"MEMBER"}]}"# }
+pub(super) fn github_plugin_root() -> std::path::PathBuf {
     codexy_runtime::paths::repository_root().join("plugins/codexy-github")
 }
