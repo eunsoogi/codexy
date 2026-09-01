@@ -11,10 +11,6 @@ on:
         required: false
         default: ""
         type: string
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
 permissions: { contents: read }
 jobs:
   verify-source-commit:
@@ -212,33 +208,5 @@ jobs:
         with:
           name: runtime-pr-head-${{ github.run_id }}-${{ github.run_attempt }}
           path: "dist/codexy-marketplace-plugin.tar.gz\ndist/runtime-staging-receipt.json\ndist/runtime-staging-provenance.json\n"
-          if-no-files-found: error
-          retention-days: 14
-  a02-clean-runner:
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'eunsoogi/787-official-no-node-runner' && github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    env:
-      PATH: /usr/bin:/bin:/usr/sbin:/sbin
-      GIT_CONFIG_GLOBAL: /dev/null
-      GIT_CONFIG_SYSTEM: /dev/null
-      GIT_CONFIG_NOSYSTEM: "1"
-      GIT_TERMINAL_PROMPT: "0"
-      GITHUB_TOKEN: ""
-      GH_TOKEN: ""
-    steps:
-      - name: Fetch exact pull request head without an action checkout
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -Eeuo pipefail
-          git clone --no-tags --filter=blob:none --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$RUNNER_TEMP/a02-source"; git -C "$RUNNER_TEMP/a02-source" fetch --no-tags --depth=1 origin "$HEAD_SHA"; git -C "$RUNNER_TEMP/a02-source" checkout --detach "$HEAD_SHA"; bash "$RUNNER_TEMP/a02-source/.github/scripts/a02-clean-runner.sh"
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: a02-no-node-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/a02-no-node/receipt.json
           if-no-files-found: error
           retention-days: 14
