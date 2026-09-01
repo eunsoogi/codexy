@@ -14,7 +14,7 @@ fn public_artifact_proof_retries_incomplete_json_and_fails_closed() -> TestResul
         "publish-bootstrap",
         "Prove public wheel and source distribution availability",
     )?;
-    let version = "1.6.0";
+    let version = codexy_runtime::version::runtime_version();
     let incomplete = artifact_json(version, false);
     let complete = artifact_json(version, true);
     for (mode, expected_attempts, expected_json) in
