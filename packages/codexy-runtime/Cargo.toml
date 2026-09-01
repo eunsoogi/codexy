@@ -110,6 +110,10 @@ name = "suite_runtime_activation"
 path = "tests/suites/runtime_activation_suite.rs"
 
 [[test]]
+name = "suite_runtime_activation_autocrlf"
+path = "tests/suites/runtime_activation_autocrlf_suite.rs"
+
+[[test]]
 name = "suite_sync_version"
 path = "tests/suites/sync_version_suite.rs"
 

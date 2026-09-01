@@ -6,7 +6,7 @@ const REQUIRED_JOBS: [(&str, &str, &str); 2] = [
     ("rust-test", "Ubuntu", "ubuntu-latest"),
     ("windows-rust-test", "Windows", "windows-latest"),
 ];
-const REQUIRED_TARGETS: [&str; 12] = [
+const REQUIRED_TARGETS: [&str; 13] = [
     "--lib --bins",
     "--test suite_support",
     "--test suite_agent",
@@ -17,6 +17,7 @@ const REQUIRED_TARGETS: [&str; 12] = [
     "--test suite_system",
     "--test suite_runtime",
     "--test suite_runtime_activation",
+    "--test suite_runtime_activation_autocrlf",
     "--test suite_sync_version",
     "--test suite_archive",
 ];
