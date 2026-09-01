@@ -1,7 +1,7 @@
 use std::fs;
 
 use super::*;
-
+#[path = "publication/public_artifact_proof.rs"] mod public_artifact_proof;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
