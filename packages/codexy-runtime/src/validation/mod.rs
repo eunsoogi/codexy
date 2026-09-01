@@ -72,8 +72,6 @@ mod github_labels;
 mod handoff_claims;
 mod handoff_envelope;
 mod hooks;
-mod issue_intake;
-mod issue_intake_receipt;
 mod lsp;
 mod manifest;
 mod markdown;
