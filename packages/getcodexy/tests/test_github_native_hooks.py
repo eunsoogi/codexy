@@ -10,8 +10,65 @@ from pathlib import Path
 
 from github_native_hook_support import PLUGIN, ROOT, GithubNativeHookSupport
 
+WINDOWS_KEYWORDS = tuple(
+    "GitHub|issue|pull request|pull-request|pullrequest|review|merge".split("|")
+)
+CONTEXT_JSON = (
+    '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":'
+    '"Codexy GitHub workflow is installed. Use $git-workflow; its package-owned '
+    'generic admission hooks are active."}}'
+)
+
 
 class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
+    def _run_process(
+        self,
+        command: list[str],
+        payload: str,
+        environment: dict[str, str] | None = None,
+    ) -> str:
+        result = subprocess.run(
+            command,
+            input=payload,
+            text=True,
+            capture_output=True,
+            env=environment,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_windows_workflow_context_is_native_and_exact(self) -> None:
+        launcher = (PLUGIN / "hooks/codexy-github-workflow-context.cmd").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("powershell", launcher.lower())
+        self.assertNotIn(">", launcher)
+        self.assertIn("%SystemRoot%\\System32\\findstr.exe", launcher)
+        for keyword in WINDOWS_KEYWORDS:
+            self.assertIn(f'/c:"{keyword.lower()}"', launcher.lower())
+        self.assertIn(f"echo {CONTEXT_JSON}", launcher)
+
+    def test_workflow_context_preserves_prompt_parity(self) -> None:
+        if os.name == "nt":
+            matching_prompts = WINDOWS_KEYWORDS
+            hook = str(PLUGIN / "hooks/codexy-github-workflow-context.cmd")
+            command, environment = ["cmd.exe", "/d", "/c", hook], None
+        else:
+            matching_prompts = ("Create a GitHub pull request",)
+            hook = str(PLUGIN / "hooks/codexy-github-workflow-context.sh")
+            command = [hook]
+            environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
+        for prompt in (*matching_prompts, "Explain a Python list"):
+            with self.subTest(prompt=prompt):
+                payload = json.dumps({"prompt": prompt})
+                expected = (
+                    "" if prompt == "Explain a Python list" else f"{CONTEXT_JSON}\n"
+                )
+                self.assertEqual(
+                    self._run_process(command, payload, environment), expected
+                )
+
     def test_plugin_declares_host_discovered_workflow_hook(self) -> None:
         hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text(encoding="utf-8"))
         command = hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
@@ -29,32 +86,6 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
         self.assertIn("DisableDelayedExpansion", windows)
         self.assertIn("%SystemRoot%\\System32\\WindowsPowerShell", windows)
         self.assertNotIn("%*", windows)
-
-    def test_host_resolved_plugin_hook_adds_context_only_for_github_prompts(
-        self,
-    ) -> None:
-        command = [str(PLUGIN / "hooks/codexy-github-workflow-context.sh")]
-        environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
-        github = subprocess.run(
-            command,
-            input=json.dumps({"prompt": "Create a GitHub pull request"}),
-            text=True,
-            capture_output=True,
-            env=environment,
-            check=False,
-        )
-        self.assertEqual(github.returncode, 0, github.stderr)
-        self.assertIn("$git-workflow", github.stdout)
-        unrelated = subprocess.run(
-            command,
-            input=json.dumps({"prompt": "Explain a Python list"}),
-            text=True,
-            capture_output=True,
-            env=environment,
-            check=False,
-        )
-        self.assertEqual(unrelated.returncode, 0, unrelated.stderr)
-        self.assertEqual(unrelated.stdout, "")
 
     @unittest.skipUnless(shutil.which("codex"), "Codex host is required")
     def test_isolated_direct_install_exposes_only_installed_github_artifacts(
@@ -82,35 +113,26 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
                 {"codexy@codexy", "codexy-github@codexy"},
             )
             installed = Path(github["installedPath"])
+            hook_root = installed / "hooks"
             self.assertTrue((installed / "skills/git-workflow/SKILL.md").is_file())
             self.assertTrue((installed / "agents/codexy-weaver.toml").is_file())
-            self.assertTrue((installed / "hooks/hooks.json").is_file())
-            result = subprocess.run(
-                [str(installed / "hooks/codexy-github-workflow-context.sh")],
-                input=json.dumps({"prompt": "Open a GitHub issue"}),
-                text=True,
-                capture_output=True,
-                env={**environment, "PLUGIN_ROOT": str(installed)},
-                check=False,
+            self.assertTrue((hook_root / "hooks.json").is_file())
+            self.assertIn(
+                "$git-workflow",
+                self._run_process(
+                    [str(hook_root / "codexy-github-workflow-context.sh")],
+                    json.dumps({"prompt": "Open a GitHub issue"}),
+                    {**environment, "PLUGIN_ROOT": str(installed)},
+                ),
             )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("$git-workflow", result.stdout)
-            self._admission(
-                installed, environment, "issue", "feat(github): extract workflow", True
+            admissions = (
+                ("issue", "feat(github): extract workflow", True),
+                ("issue", "Extract GitHub workflow", False),
+                ("pr", "Extract GitHub workflow", True),
+                ("pr", "refactor(github): extract workflow", False),
             )
-            self._admission(
-                installed, environment, "issue", "Extract GitHub workflow", False
-            )
-            self._admission(
-                installed, environment, "pr", "Extract GitHub workflow", True
-            )
-            self._admission(
-                installed,
-                environment,
-                "pr",
-                "refactor(github): extract workflow",
-                False,
-            )
+            for rule, title, denied in admissions:
+                self._admission(installed, environment, rule, title, denied)
             self._admission_payload(
                 installed,
                 environment,
@@ -141,21 +163,16 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
                 {"cwd": "fix: decoy", "tool_input": {"title": "Extract workflow"}},
                 True,
             )
-            self._admission_raw(
-                installed,
-                environment,
-                "issue",
-                '{"tool_input":{"title":"Extract workflow","title":"extract workflow"}}',
-                True,
+            raw_admissions = (
+                (
+                    '{"tool_input":{"title":"Extract workflow","title":"extract workflow"}}',
+                    True,
+                ),
+                ('{"tool_input":{"title":"Extract\\u0020workflow"}}', False),
+                ("{", True),
             )
-            self._admission_raw(
-                installed,
-                environment,
-                "issue",
-                '{"tool_input":{"title":"Extract\\u0020workflow"}}',
-                False,
-            )
-            self._admission_raw(installed, environment, "issue", "{", True)
+            for payload, denied in raw_admissions:
+                self._admission_raw(installed, environment, "issue", payload, denied)
             self._admission_payload(
                 installed,
                 environment,
@@ -168,51 +185,38 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
                 },
                 True,
             )
-            unavailable = subprocess.run(
-                [
-                    str(installed / "hooks/codexy-github-admission.sh"),
-                    "--rule",
-                    "issue",
-                ],
-                input="{}",
-                text=True,
-                capture_output=True,
-                env=environment,
-                check=False,
+            unavailable = self._run_process(
+                [str(hook_root / "codexy-github-admission.sh"), "--rule", "issue"],
+                "{}",
+                environment,
             )
-            self.assertEqual(unavailable.returncode, 0, unavailable.stderr)
-            self.assertIn("permissionDecision", unavailable.stdout)
-            repository_hook = subprocess.run(
-                [str(installed / "hooks/codexy-repository-issue.sh"), "PreToolUse"],
-                input=json.dumps(
-                    {
-                        "hook_event_name": "PreToolUse",
-                        "tool_name": "mcp__codex_apps__github_create_issue",
-                        "tool_input": {
-                            "repository_full_name": "eunsoogi/codexy",
-                            "title": "Require typed connector ownership",
-                            "body": "## Problem\n\n## Scope\n\n## Acceptance Criteria\n\n## Verification",
-                        },
-                        "cwd": str(ROOT),
-                    }
+            self.assertIn("permissionDecision", unavailable)
+            repository_payload = {
+                "hook_event_name": "PreToolUse",
+                "tool_name": "mcp__codex_apps__github_create_issue",
+                "tool_input": {
+                    "repository_full_name": "eunsoogi/codexy",
+                    "title": "Require typed connector ownership",
+                    "body": "## Problem\n\n## Scope\n\n## Acceptance Criteria\n\n## Verification",
+                },
+                "cwd": str(ROOT),
+            }
+            repository_hook = hook_root / "codexy-repository-issue.sh"
+            self.assertEqual(
+                self._run_process(
+                    [str(repository_hook), "PreToolUse"],
+                    json.dumps(repository_payload),
+                    {**environment, "PLUGIN_ROOT": str(installed)},
                 ),
-                text=True,
-                capture_output=True,
-                env={**environment, "PLUGIN_ROOT": str(installed)},
-                check=False,
+                "",
             )
-            self.assertEqual(repository_hook.returncode, 0, repository_hook.stderr)
-            self.assertEqual(repository_hook.stdout, "")
-            self._run(
-                installed / "hooks/codexy-issue-title-check.sh",
-                "--issue-title",
-                "Extract GitHub workflow",
-            )
-            self._run(
-                installed / "hooks/codexy-pr-title-check.sh",
-                "--pr-title",
-                "refactor(github): extract workflow",
-            )
+            title_checks = {
+                "issue": "Extract GitHub workflow",
+                "pr": "refactor(github): extract workflow",
+            }
+            for kind, title in title_checks.items():
+                title_check = hook_root / f"codexy-{kind}-title-check.sh"
+                self._run(title_check, f"--{kind}-title", title)
             state = home / "captured PR state.json"
             state.write_text(
                 json.dumps(

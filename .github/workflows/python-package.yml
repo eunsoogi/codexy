@@ -80,6 +80,18 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
+          $hookRoot = Join-Path $PWD "plugins/codexy-github/hooks"
+          $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; its package-owned generic admission hooks are active."}}'
+          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+          $context = '{"prompt":"GitHub"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $stopwatch.Stop()
+          $elapsed = $stopwatch.Elapsed.TotalSeconds
+          Write-Host (@{ windows_first_cold_github_hook_seconds = $elapsed } | ConvertTo-Json -Compress)
+          if ($context -cne $expectedContext) { throw "first cold GitHub hook returned unexpected output" }
+          if ($elapsed -ge 4.5) { throw "first cold GitHub hook invocation took $elapsed seconds" }
+          python -m unittest packages/getcodexy/tests/test_github_native_hooks.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $componentTests = @(
             "packages/getcodexy/tests/test_component_cli.py"
             "packages/getcodexy/tests/test_component_lifecycle.py"
