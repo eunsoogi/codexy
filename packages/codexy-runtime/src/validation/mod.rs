@@ -74,7 +74,6 @@ mod handoff_envelope;
 mod hooks;
 mod lsp;
 mod manifest;
-mod markdown;
 mod mcp;
 mod mcp_required;
 mod mcp_runtime;
