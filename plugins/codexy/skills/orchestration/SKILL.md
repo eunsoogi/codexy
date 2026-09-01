@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: MUST classify; load authorities.
+description: Use when classifying workflow, surface, and risk or coordinating ownership, goals, agents, threads, worktrees, reviews, compaction, and handoff; load only applicable authorities.
 ---
 
 Read request/issue/PR/AGENTS.md and classify task/surface/risk. Read the

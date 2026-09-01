@@ -1,6 +1,0 @@
-interface:
-  display_name: "Frame Check"
-  short_description: "Surface credible alternative frames without choosing one."
-  default_prompt: "Use $frame-check only after I explicitly opt in and provide one proposal with its authoritative constraints; return the bounded read-only receipt without ranking, selecting, or changing anything."
-policy:
-  allow_implicit_invocation: true

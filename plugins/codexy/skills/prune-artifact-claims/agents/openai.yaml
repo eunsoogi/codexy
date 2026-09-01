@@ -1,0 +1,6 @@
+interface:
+  display_name: Prune Artifact Claims
+  short_description: Delete claims from one artifact using one governing source
+  default_prompt: MUST use $prune-artifact-claims to remove only conflicting, superseded, or duplicated claims from one exact non-code artifact.
+policy:
+  allow_implicit_invocation: true

@@ -1,6 +1,0 @@
-interface:
-  display_name: Artifact Refresh
-  short_description: Refresh one artifact from one governing source
-  default_prompt: MUST use $artifact-refresh to remove only conflicting, superseded, or duplicated claims from one exact non-code artifact.
-policy:
-  allow_implicit_invocation: true

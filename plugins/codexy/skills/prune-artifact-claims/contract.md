@@ -1,11 +1,11 @@
-# Artifact Refresh Contract
+# Prune Artifact Claims Contract
 
 This file is the readable output contract and deterministic corpus for the
-`artifact-refresh` skill. It replaces the former machine-oriented references.
+`prune-artifact-claims` skill. It replaces the former machine-oriented references.
 
 ## Contract identity
 
-- schema: `codexy.artifact-refresh.v1`
+- schema: `codexy.prune-artifact-claims.v1`
 - default_request: `Remove only conflicting, superseded, or duplicated claims.`
 - artifact_identifier: `{id}-artifact.md`
 - governing_source_identifier: `{id}-governing.md`
@@ -14,7 +14,7 @@ This file is the readable output contract and deterministic corpus for the
 
 - fields (in order): `schema`, `artifact`, `governing_source`, `outcome`,
   `removed`, `proof_handle`, `handoff_reason`
-- `schema`: exactly `codexy.artifact-refresh.v1`
+- `schema`: exactly `codexy.prune-artifact-claims.v1`
 - `artifact`: a nonempty string containing the exact input identifier
 - `governing_source`: a nonempty string containing the exact input identifier
 - `outcome`: one of `UPDATED`, `NO_CHANGE`, or `HANDOFF_REQUIRED`

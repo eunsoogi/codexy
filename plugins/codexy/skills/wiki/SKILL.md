@@ -1,12 +1,16 @@
 ---
 name: wiki
-description: Use only for explicit $wiki or topic-wiki requests.
+description: Use for natural-language requests to build or operate one bounded, source-backed topic knowledge base; not for ordinary repository search, README summary, planning, session memory, or unrelated research.
 ---
 
 # Wiki
 
-MUST select only for explicit wiki intent, never for ordinary search, README
-summary, planning, session memory, or unrelated research.
+MUST select for a natural-language request to build or operate one bounded,
+source-backed topic knowledge base; explicit `$wiki` invocation remains
+supported.
+
+MUST NOT select for ordinary repository search, README summary, planning,
+session memory, or unrelated research.
 
 ## Route the request
 
