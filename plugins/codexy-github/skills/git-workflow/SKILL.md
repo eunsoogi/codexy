@@ -13,7 +13,6 @@ authenticated admission and lifecycle boundaries.
 
 ## Read The Matching Reference
 
-- Issue creation: [issue-intake.md](references/issue-intake.md)
 - Branch, worktree, commit, or conflict work:
   [local-git-and-branches.md](references/local-git-and-branches.md)
 - PR creation, readiness, review, or child handoff:
