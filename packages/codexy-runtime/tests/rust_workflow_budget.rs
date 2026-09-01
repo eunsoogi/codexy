@@ -18,15 +18,15 @@ const REQUIRED_TARGETS: [&str; 10] = [
     "--test suite_sync_version",
     "--test suite_archive",
 ];
-const CARGO_COMMAND: &str =
-    "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}";
-const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 14] = [
+const CARGO_COMMAND: &str = "cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}";
+const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 15] = [
     "|| true",
     "exit 0",
     "--ignored",
     "--skip",
     "retry",
     "sleep",
+    "cargo fetch",
     "profiler",
     "receipt",
     "telemetry",
@@ -74,7 +74,7 @@ fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
             accepted.push(suffix);
         }
     }
-    assert!(accepted.is_empty(), "validator accepted {}", accepted.join(", "));
+    assert!(accepted.is_empty(), "validator accepted {accepted:?}");
     Ok(())
 }
 
@@ -127,15 +127,13 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
                 failures.push(format!("{platform} cargo test is not locked"));
             }
             if !run.contains("${{ matrix.target.args }}") {
-                failures.push(format!("{platform} cargo test does not consume the target matrix"));
+                failures.push(format!("{platform} cargo test misses target matrix"));
             }
             if run.contains("--all-targets") {
-                failures.push(format!("{platform} cargo test still aggregates all targets"));
+                failures.push(format!("{platform} cargo test aggregates targets"));
             }
             let expected = if platform == "Windows" {
-                format!(
-                    "{CARGO_COMMAND}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}"
-                )
+                format!("{CARGO_COMMAND}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}")
             } else {
                 CARGO_COMMAND.to_owned()
             };
@@ -144,7 +142,7 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
             }
         }
         if weakens_failure_propagation(job) {
-            failures.push(format!("{platform} job weakens command failure propagation"));
+            failures.push(format!("{platform} job weakens failure propagation"));
         }
     }
 
@@ -179,7 +177,7 @@ fn validate_target_union(platform: &str, actual: &[&str], failures: &mut Vec<Str
     }
     for target in actual {
         if !REQUIRED_TARGETS.contains(target) {
-            failures.push(format!("{platform} matrix contains unexpected target {target}"));
+            failures.push(format!("{platform} has unexpected target {target}"));
         }
     }
 }

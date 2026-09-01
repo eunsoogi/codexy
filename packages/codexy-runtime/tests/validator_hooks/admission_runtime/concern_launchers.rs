@@ -17,8 +17,8 @@ pub(super) fn assert_input(
     let event = input["hook_event_name"].as_str().ok_or("event")?;
     let tool = input["tool_name"].as_str().ok_or("tool")?;
     let launchers = launchers(tool)?;
-    let mut denials = 0;
-    let mut diagnostics = Vec::new();
+    let input = serde_json::to_vec(&input)?;
+    let mut children = Vec::with_capacity(launchers.len());
     for launcher in &launchers {
         let mut child = Command::new(root.join("hooks").join(format!("{launcher}.sh")));
         child.arg(event);
@@ -33,11 +33,12 @@ pub(super) fn assert_input(
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         let mut child = child.spawn()?;
-        child
-            .stdin
-            .take()
-            .ok_or("stdin")?
-            .write_all(&serde_json::to_vec(&input)?)?;
+        child.stdin.take().ok_or("stdin")?.write_all(&input)?;
+        children.push(child);
+    }
+    let mut denials = 0;
+    let mut diagnostics = Vec::new();
+    for child in children {
         let output = child.wait_with_output()?;
         diagnostics.push(String::from_utf8_lossy(&output.stderr).into_owned());
         assert!(

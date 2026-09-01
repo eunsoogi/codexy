@@ -83,6 +83,6 @@ jobs:
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
-        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; cargo fetch --manifest-path packages/codexy-runtime/Cargo.toml --locked; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
