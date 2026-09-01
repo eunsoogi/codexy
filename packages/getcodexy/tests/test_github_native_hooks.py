@@ -43,6 +43,7 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
             encoding="utf-8"
         )
         self.assertNotIn("powershell", launcher.lower())
+        self.assertNotIn(">", launcher)
         self.assertIn("%SystemRoot%\\System32\\findstr.exe", launcher)
         for keyword in WINDOWS_KEYWORDS:
             self.assertIn(f'/c:"{keyword.lower()}"', launcher.lower())
