@@ -29,6 +29,8 @@ jobs:
             args: --test suite_orchestration
           - name: governance suite
             args: --test suite_governance
+          - name: governance workflows suite
+            args: --test suite_governance_workflows
           - name: system suite
             args: --test suite_system
           - name: runtime suite
@@ -68,6 +70,8 @@ jobs:
             args: --test suite_orchestration
           - name: governance suite
             args: --test suite_governance
+          - name: governance workflows suite
+            args: --test suite_governance_workflows
           - name: system suite
             args: --test suite_system
           - name: runtime suite
