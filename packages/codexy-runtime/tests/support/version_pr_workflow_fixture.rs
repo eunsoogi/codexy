@@ -2,7 +2,7 @@ use crate::support::FixtureCommand as Command;
 use std::{fs, path::{Path, PathBuf}, process::Output};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
-const BRANCH: &str = "codexy/version-1.3.1";
+pub(super) const BRANCH: &str = "codexy/version-1.3.1";
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 #[derive(Clone, Copy, Debug)]
@@ -10,9 +10,32 @@ pub(super) enum Scenario {
     NewPr,
     MatchingExisting,
     StaleExisting,
+    StaleExistingCrlf,
+    MalformedChangedArea,
     UnexpectedStalePath,
     UnexpectedDeletedPath,
     MismatchedIssue,
+}
+impl Scenario {
+    fn uses_full_inventory(self) -> bool {
+        !matches!(self, Self::NewPr | Self::MatchingExisting | Self::MismatchedIssue)
+    }
+    fn pull_request_body(self) -> String {
+        let observed_issue = if matches!(self, Self::MismatchedIssue) { 302 } else { 301 };
+        let changed_areas = if self.uses_full_inventory() {
+            "- `packages/codexy-runtime/Cargo.toml`\n- `packages/getcodexy/src/codexy_runtime_tools/component-manifest.json`\n"
+        } else {
+            "- `packages/codexy-runtime/Cargo.toml`\n"
+        };
+        let body = format!("## Changed Areas\n\n{changed_areas}\n## Evidence\n\nTracks #{observed_issue}\n");
+        match self {
+            Self::StaleExistingCrlf => body.replace('\n', "\r\n"),
+            Self::MalformedChangedArea => {
+                body.replacen("\n\n## Evidence", "\n- malformed\n\n## Evidence", 1)
+            }
+            _ => body,
+        }
+    }
 }
 pub(super) struct WorkflowFixture {
     _temporary: tempfile::TempDir,
@@ -60,7 +83,7 @@ impl WorkflowFixture {
         let mut existing = serde_json::json!([]);
         if !matches!(scenario, Scenario::NewPr) {
             git(&self.repo, &["switch", "-qc", BRANCH])?;
-            if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
+            if scenario.uses_full_inventory() {
                 fs::write(self.repo.join(COMPONENT_MANIFEST), "{\"selectedVersion\":\"1.3.1\"}\n")?;
             }
             if matches!(scenario, Scenario::UnexpectedStalePath) {
@@ -109,26 +132,8 @@ impl WorkflowFixture {
             .output()
     }
     pub(super) fn artifact(&self, name: &str) -> PathBuf { self.runner.join("version-pr").join(name) }
-    pub(super) fn mutation_events(&self) -> std::io::Result<Vec<String>> {
-        match fs::read_to_string(self.state.join("mutations.log")) {
-            Ok(log) => Ok(log.lines().map(str::to_owned).collect()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
-            Err(error) => Err(error),
-        }
-    }
-    pub(super) fn mutation_sentinel(&self) -> PathBuf { self.state.join("mutation-sentinel") }
-    pub(super) fn gate_events(&self) -> std::io::Result<String> { fs::read_to_string(self.state.join("gates.log")) }
-    pub(super) fn branch_push_count(&self) -> std::io::Result<usize> {
-        let trace = fs::read_to_string(self.state.join("git.trace"))?;
-        Ok(trace.lines().filter(|line| line.contains(" built-in: git push origin ")).count())
-    }
-    pub(super) fn remote_patch(&self) -> std::io::Result<Vec<u8>> {
-        Ok(Command::new("git")
-            .args(["diff", "--binary", "--no-ext-diff", &format!("origin/main...origin/{BRANCH}")])
-            .current_dir(&self.repo)
-            .output()?
-            .stdout)
-    }
+    pub(super) fn repo(&self) -> &Path { &self.repo }
+    pub(super) fn state_path(&self, name: &str) -> PathBuf { self.state.join(name) }
     pub(super) fn install_remote_head_race(&self) -> Result<(), Box<dyn std::error::Error>> {
         let old = git_stdout(&self.repo, &["rev-parse", &format!("origin/{BRANCH}")])?;
         let tree = git_stdout(&self.repo, &["rev-parse", &format!("origin/{BRANCH}^{{tree}}")])?;
@@ -210,13 +215,7 @@ fn write_fixture(repo: &Path, path: &str, text: &str) -> std::io::Result<()> {
     fs::write(target, text)
 }
 fn write_state(state: &Path, scenario: Scenario, existing: serde_json::Value) -> std::io::Result<()> {
-    let observed_issue = if matches!(scenario, Scenario::MismatchedIssue) { 302 } else { 301 };
-    let changed_areas = if matches!(scenario, Scenario::StaleExisting | Scenario::UnexpectedStalePath | Scenario::UnexpectedDeletedPath) {
-        "- `packages/codexy-runtime/Cargo.toml`\n- `packages/getcodexy/src/codexy_runtime_tools/component-manifest.json`\n"
-    } else {
-        "- `packages/codexy-runtime/Cargo.toml`\n"
-    };
-    let body = format!("## Changed Areas\n\n{changed_areas}\n## Evidence\n\nTracks #{observed_issue}\n");
+    let body = scenario.pull_request_body();
     let values = [
         ("existing-prs.json", existing),
         ("issue.json", serde_json::json!({"number":301, "state":"OPEN",
