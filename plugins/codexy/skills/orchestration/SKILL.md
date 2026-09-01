@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: MUST classify; load authorities.
+description: Use when classifying workflow, surface, and risk or coordinating ownership, goals, agents, threads, worktrees, reviews, compaction, and handoff; load only applicable authorities.
 ---
 
 Read request/issue/PR/AGENTS.md and classify task/surface/risk. Read the
@@ -31,7 +31,7 @@ current wins; missing proof MUST NOT permit action.
 ### Execute and report
 
 - MUST read [orchestration loop](references/orchestration-loop.md) when moving
-  from intake through planning, delegation, verification, or handoff.
+  through planning, delegation, verification, or handoff.
 - MUST read [execution budget](references/execution-budget.md) when capping
   repair, review, fanout, or wait work.
 - MUST read [token-efficient coordination](references/token-efficient.md) when

@@ -5,8 +5,8 @@ use anyhow::{Result, bail};
 use super::{
     Mode, child_goal_blocked_audit, child_lane_ownership, child_lifecycle_events,
     child_terminal_handoff, completion_handoff, conventional_commit, getcodexy_component_contract,
-    github_labels, hooks, issue_intake, lsp, manifest, mcp, merge_authorization, merge_message,
-    review_control, roles, roles_yaml, routing_policy, runtime, tdd_classification, touched_loc,
+    github_labels, hooks, lsp, manifest, mcp, merge_authorization, merge_message, review_control,
+    roles, roles_yaml, routing_policy, runtime, tdd_classification, touched_loc,
     workflow_profile_evidence, workflow_profiles,
 };
 
@@ -58,7 +58,6 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::PrTitle { title } => conventional_commit::check_pr_title(&title),
         Mode::IssueTitle { title } => conventional_commit::check_issue_title(&title),
         Mode::PrLabels { pr_state } => github_labels::check_pr_labels(&pr_state),
-        Mode::IssueIntake { receipt } => issue_intake::check(&receipt),
         Mode::CompletionHandoff { handoff, pr_state } => {
             let mut errors = completion_handoff::check(plugin_root, &handoff, &pr_state);
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));

@@ -217,14 +217,12 @@ fn requires_orchestration_route(plugin_root: &Path, path: &Path) -> bool {
 
 fn is_explicit_only_core_skill(plugin_root: &Path, path: &Path) -> bool {
     plugin_name(plugin_root).as_deref() == Some("codexy")
-        && ["wiki", "realtime-voice-orchestration"]
-            .iter()
-            .any(|skill| {
-                path == plugin_root
-                    .join("skills")
-                    .join(skill)
-                    .join("agents/openai.yaml")
-            })
+        && ["realtime-voice-orchestration"].iter().any(|skill| {
+            path == plugin_root
+                .join("skills")
+                .join(skill)
+                .join("agents/openai.yaml")
+        })
 }
 
 fn plugin_name(plugin_root: &Path) -> Option<String> {

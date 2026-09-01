@@ -34,9 +34,6 @@ mod validator_hooks;
 #[path = "../validator_issue_title_hook.rs"]
 mod validator_issue_title_hook;
 
-#[path = "../validator_issue_intake.rs"]
-mod validator_issue_intake;
-
 #[path = "../validator_merge_message.rs"]
 mod validator_merge_message;
 

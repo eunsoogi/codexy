@@ -147,7 +147,9 @@ fn validator_rejects_combined_validation_modes() -> Result<(), Box<dyn std::erro
             authorization_path.to_str().ok_or("authorization path")?,
             "--merge-authorization-pr-state-file",
             pr_state_path.to_str().ok_or("PR state path")?,
-            "--check-issue-intake",
+            "--resolve-child-routing",
+            "--routing-request-file",
+            authorization_path.to_str().ok_or("routing request path")?,
         ])
         .output()?;
     assert!(!output.status.success(), "{}", stderr(&output));

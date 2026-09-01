@@ -1,6 +1,6 @@
 interface:
   display_name: "Git Workflow"
-  short_description: "Use Codexy issue, PR, review, and squash-merge rules."
-  default_prompt: "You MUST use $git-workflow to run this repository change through issue, worktree, PR, review-thread resolution, squash merge, and main sync."
+  short_description: "Use GitHub workflow rules in any repository."
+  default_prompt: "You MUST use $git-workflow for GitHub work in any repository, following the applicable issue, worktree, PR, review-thread, squash-merge, and main-sync lifecycle."
 policy:
   allow_implicit_invocation: true

@@ -1,9 +1,9 @@
 ---
-name: artifact-refresh
-description: Use when one exact non-code artifact must be refreshed against one exact governing source by removing conflicting, superseded, or duplicated claims.
+name: prune-artifact-claims
+description: Use when one exact non-code artifact must be refreshed against one exact governing source by deleting only conflicting, superseded, or duplicated claims.
 ---
 
-# Artifact Refresh
+# Prune Artifact Claims
 
 ## Trigger
 
@@ -56,7 +56,7 @@ both input identifiers exactly.
   reason, and no mutation.
 
 Each removal MUST use its `claim_sha256` as the `removed` map key and its `kind`
-as the value. The contract schema MUST be `codexy.artifact-refresh.v1`.
+as the value. The contract schema MUST be `codexy.prune-artifact-claims.v1`.
 
 ## Proof
 

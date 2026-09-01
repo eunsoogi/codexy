@@ -1,15 +1,16 @@
 ---
-name: frame-check
-description: Use when a user explicitly asks to check the framing of one proposed direction against supplied authoritative constraints.
+name: frame-alternatives
+description: Use when a user explicitly asks to surface credible alternatives for one proposed direction against supplied authoritative constraints.
 ---
 
-# Frame Check
+# Frame Alternatives
 
 ## Boundary
 
 MUST act only when the user supplies one proposal, its authoritative
-constraints, and explicit opt-in to frame-check. Invoking `$frame-check`
-explicitly counts as opt-in. Otherwise MUST decline without producing a receipt.
+constraints, and explicit opt-in to frame-alternatives. Invoking
+`$frame-alternatives` explicitly counts as opt-in. Otherwise MUST decline
+without producing a receipt.
 
 MUST decline current-diff verdicts, proof or completion claims, voting or
 consensus, model routing, owner assignment, implementation or mutation,

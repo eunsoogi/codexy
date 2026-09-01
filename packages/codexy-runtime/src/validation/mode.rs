@@ -21,9 +21,6 @@ pub enum Mode {
     PrLabels {
         pr_state: String,
     },
-    IssueIntake {
-        receipt: String,
-    },
     CompletionHandoff {
         handoff: String,
         pr_state: String,

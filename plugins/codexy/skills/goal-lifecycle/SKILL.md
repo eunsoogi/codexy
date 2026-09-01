@@ -1,9 +1,9 @@
 ---
-name: goal-state-recovery
+name: goal-lifecycle
 description: Use when real goal tools (`create_goal`, `get_goal`, or `update_goal`) are used, or when resuming a task controlled by a goal state; MUST NOT load it for work that does not use goal tooling.
 ---
 
-# Goal State Recovery
+# Goal Lifecycle
 
 ## Purpose
 

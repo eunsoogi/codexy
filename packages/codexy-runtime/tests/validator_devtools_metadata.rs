@@ -40,18 +40,24 @@ fn direct_devtools_check_rejects_invalid_agent_metadata() -> TestResult {
 
 #[test]
 fn core_check_accepts_explicit_only_designated_skill_metadata() -> TestResult {
-    for relative in [
-        "skills/wiki/agents/openai.yaml",
-        "skills/realtime-voice-orchestration/agents/openai.yaml",
-    ] {
-        let temp = tempfile::tempdir()?;
-        let core = temp.path().join("plugins/codexy");
-        copy_core(&core)?;
-        set_implicit_invocation(&core.join(relative), false)?;
+    let temp = tempfile::tempdir()?;
+    let core = temp.path().join("plugins/codexy");
+    copy_core(&core)?;
+    set_implicit_invocation(
+        &core.join("skills/realtime-voice-orchestration/agents/openai.yaml"),
+        false,
+    )?;
 
-        assert_accepted(&core)?;
-    }
-    Ok(())
+    assert_accepted(&core)
+}
+
+#[test]
+fn core_check_accepts_implicit_wiki_metadata() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let core = temp.path().join("plugins/codexy");
+    copy_core(&core)?;
+
+    assert_accepted(&core)
 }
 
 #[test]
@@ -59,6 +65,7 @@ fn core_check_rejects_explicit_only_other_core_metadata() -> TestResult {
     for relative in [
         "agents/openai.yaml",
         "skills/engineering/agents/openai.yaml",
+        "skills/wiki/agents/openai.yaml",
     ] {
         let temp = tempfile::tempdir()?;
         let core = temp.path().join("plugins/codexy");

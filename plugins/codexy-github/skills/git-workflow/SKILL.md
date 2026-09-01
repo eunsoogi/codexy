@@ -1,14 +1,15 @@
 ---
 name: git-workflow
-description: Use for GitHub issue, branch, worktree, pull request, review, merge, CI, and release workflow with the public Codexy orchestration contract.
+description: Use for GitHub issue, branch, worktree, pull request, review, merge, CI, and release work in any repository under the public Codexy orchestration contract.
 ---
 
 # Git Workflow
 
 MUST use this skill with `$orchestration` before any GitHub workflow action.
-Repository instructions, user direction, and the live GitHub issue or PR define
-local scope; this skill owns only GitHub-specific authenticated admission and
-lifecycle boundaries.
+This skill applies to GitHub work in any repository. Repository-local
+requirements come only from user direction, governing `AGENTS.md`, and
+authenticated live GitHub state; this skill owns only GitHub-specific
+authenticated admission and lifecycle boundaries.
 
 ## Read The Matching Reference
 
