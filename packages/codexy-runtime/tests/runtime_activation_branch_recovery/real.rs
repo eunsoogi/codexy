@@ -28,14 +28,3 @@ fn real_pre_671_committed_tree_authenticates_retry_and_metadata_matrix()
     );
     Ok(())
 }
-
-#[test]
-fn real_base_activator_preserves_candidate_bytes_with_autocrlf()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new()?;
-    let candidate = metadata::current_candidate_version()?;
-    metadata::enable_autocrlf(&fixture.repo)?;
-    metadata::assert_canonical_preserved_eol(&fixture.repo)?;
-    real_source_pointer::assert_result(fixture.verify("main", &candidate)?, true, "autocrlf retry");
-    Ok(())
-}

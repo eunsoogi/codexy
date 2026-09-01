@@ -26,7 +26,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
         .collect();
     assert_eq!(
         names,
-        ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_system", "suite_runtime", "suite_runtime_activation", "suite_sync_version", "suite_archive"],
+        ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_governance_workflows", "suite_system", "suite_runtime", "suite_runtime_activation", "suite_runtime_activation_autocrlf", "suite_sync_version", "suite_archive"],
         "integration coverage must use the registered shard plan"
     );
     assert_eq!(

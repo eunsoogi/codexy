@@ -29,12 +29,16 @@ jobs:
             args: --test suite_orchestration
           - name: governance suite
             args: --test suite_governance
+          - name: governance workflows suite
+            args: --test suite_governance_workflows
           - name: system suite
             args: --test suite_system
           - name: runtime suite
             args: --test suite_runtime
           - name: runtime activation suite
             args: --test suite_runtime_activation
+          - name: runtime activation autocrlf suite
+            args: --test suite_runtime_activation_autocrlf
           - name: sync version suite
             args: --test suite_sync_version
           - name: archive suite
@@ -68,12 +72,16 @@ jobs:
             args: --test suite_orchestration
           - name: governance suite
             args: --test suite_governance
+          - name: governance workflows suite
+            args: --test suite_governance_workflows
           - name: system suite
             args: --test suite_system
           - name: runtime suite
             args: --test suite_runtime
           - name: runtime activation suite
             args: --test suite_runtime_activation
+          - name: runtime activation autocrlf suite
+            args: --test suite_runtime_activation_autocrlf
           - name: sync version suite
             args: --test suite_sync_version
           - name: archive suite
