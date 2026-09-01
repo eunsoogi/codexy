@@ -54,10 +54,10 @@ stale, too weak, or contradictory.
   CI, handoff, or current-state requirement; outside that exact sequence, the
   ordinary completion prohibitions remain unchanged. If the host explicitly
   refuses that transition solely because the unfinished blocked objective cannot
-  be marked complete, `$goal-lifecycle` MAY use its bounded same-directory
-  fork, original-task archive, and forked `get_goal=null` fallback to recover
-  control. That fallback is also administrative only and MUST NOT apply to
-  timeout, permission, transport, or ambiguous errors.
+  be marked complete, `$goal-lifecycle` MAY use its bounded same-directory fork,
+  original-task archive, and forked `get_goal=null` fallback to recover control.
+  That fallback is also administrative only and MUST NOT apply to timeout,
+  permission, transport, or ambiguous errors.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
   state machines. Consume their current evidence without restating or replacing
   their authority here.

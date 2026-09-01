@@ -1,7 +1,8 @@
 # Prune Artifact Claims Contract
 
 This file is the readable output contract and deterministic corpus for the
-`prune-artifact-claims` skill. It replaces the former machine-oriented references.
+`prune-artifact-claims` skill. It replaces the former machine-oriented
+references.
 
 ## Contract identity
 

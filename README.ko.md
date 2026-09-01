@@ -230,24 +230,24 @@ runtime 경계는 [아키텍처 안내서](docs/architecture.md)에서 확인할
 | 호출                           | 설명                                                                                                                                                                                                                 |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agents-md-authoring`          | 저장소 root 지침, 하위 디렉터리 규칙, 지침 우선순위, 범위 경계, 검증과 readback 기대 사항을 포함해 AGENTS.md 지침 파일을 만들거나 수정·리뷰·이동할 때 반드시 사용합니다.                                             |
-| `prune-artifact-claims`       | 코드가 아닌 하나의 정확한 artifact를 하나의 정확한 기준 source에 맞춰 갱신하면서 충돌하거나 대체됐거나 중복된 주장만 삭제할 때 사용합니다.                                                                      |
+| `prune-artifact-claims`        | 코드가 아닌 하나의 정확한 artifact를 하나의 정확한 기준 source에 맞춰 갱신하면서 충돌하거나 대체됐거나 중복된 주장만 삭제할 때 사용합니다.                                                                           |
 | `blind-read`                   | 새로운 독자가 외부 context를 판단·편집·재구성하지 않고, 지정된 audience와 action을 위해 하나의 artifact를 해석해야 할 때 사용합니다.                                                                                 |
 | `decision-rationale`           | 사용자가 이미 선택한 option의 명시된 이유, 근거의 뒷받침 여부, 근거 없는 가정, 결정을 다시 열 조건을 결정 자체를 바꾸지 않고 살펴볼 때 사용합니다.                                                                   |
 | `dreaming`                     | context compaction 뒤 활성 Codex task를 재개하거나, 상속된 summary가 오래됐거나 과도해 보이거나, 해결한 작업이 계속 활성 상태로 나타나거나, durable fact·active fix·stale detail을 구분해야 할 때 반드시 사용합니다. |
 | `engineering`                  | 하나의 atomic engineering workflow에서 진단, 명세, domain modeling, TDD, refactoring, QA를 수행할 때 반드시 사용합니다.                                                                                              |
-| `frame-alternatives`           | 사용자가 제안한 하나의 방향에 대해 제공된 authoritative constraint를 만족하는 대안을 제시해 달라고 명시적으로 요청할 때 사용합니다.                                                                         |
-| `goal-lifecycle`               | 실제 goal tool(`create_goal`, `get_goal`, `update_goal`)을 사용하거나 goal state가 제어하는 task를 재개할 때 사용하며, goal tooling을 사용하지 않는 작업에는 불러오지 않습니다.                         |
-| `orchestration`                | workflow·surface·risk를 분류하거나 ownership, goal, agent, thread, worktree, review, compaction, handoff를 조정할 때 사용하며, 해당 authority만 불러옵니다.                                           |
+| `frame-alternatives`           | 사용자가 제안한 하나의 방향에 대해 제공된 authoritative constraint를 만족하는 대안을 제시해 달라고 명시적으로 요청할 때 사용합니다.                                                                                  |
+| `goal-lifecycle`               | 실제 goal tool(`create_goal`, `get_goal`, `update_goal`)을 사용하거나 goal state가 제어하는 task를 재개할 때 사용하며, goal tooling을 사용하지 않는 작업에는 불러오지 않습니다.                                      |
+| `orchestration`                | workflow·surface·risk를 분류하거나 ownership, goal, agent, thread, worktree, review, compaction, handoff를 조정할 때 사용하며, 해당 authority만 불러옵니다.                                                          |
 | `plan-stress-test`             | 사용자가 구현 전에 acceptance criteria로 하나의 중요한 plan을 stress-test하는 데 명시적으로 동의했을 때 사용합니다.                                                                                                  |
 | `project-brief`                | 진행 중인 task로 돌아온 사람이 ownership, status, plan, action을 바꾸지 않고 기록된 현재 상태의 read-only brief가 필요할 때 사용합니다.                                                                              |
 | `proof-driven-completion`      | 코드, 문서, workflow, UI, plugin, marketplace, release 작업의 완료 주장, 인수인계, PR 생성·병합, issue 종료, 성공 보고, goal 완료 전에 반드시 사용합니다.                                                            |
 | `realtime-voice-orchestration` | authoritative Codex project owner에게 task나 status 요청을 전달하고 orchestration을 넘겨받지 않은 채 검증된 진행 상황을 요약해야 하는 realtime voice interaction을 사용자가 명시적으로 요청할 때 사용합니다.         |
-| `wiki`                         | 자연어로 하나의 bounded source-backed topic knowledge base를 만들거나 운영할 때 사용하며, 일반 repository search·README summary·planning·session memory·무관한 research에는 사용하지 않습니다.       |
+| `wiki`                         | 자연어로 하나의 bounded source-backed topic knowledge base를 만들거나 운영할 때 사용하며, 일반 repository search·README summary·planning·session memory·무관한 research에는 사용하지 않습니다.                       |
 
 ### GitHub
 
-| 호출           | 설명                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 호출           | 설명                                                                                                                                                        |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `git-workflow` | 공개 Codexy orchestration 계약에 따라 어느 repository에서든 GitHub issue, branch, worktree, PR, review, merge, CI, release workflow를 수행할 때 사용합니다. |
 
 ### Devtools
