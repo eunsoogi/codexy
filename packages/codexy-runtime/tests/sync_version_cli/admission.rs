@@ -5,22 +5,24 @@ use serde_json::{Value, json};
 use super::isolation::{
     bootstrap_candidate_version, fixture_version, next_patch_version, version_surface_contents,
 };
+use super::restoration::{ByteSnapshot, VERSION_FIXTURE_PATHS};
 
 #[test]
 fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
-    let current = super::archive_repository(archive, &temp, "current")?;
-    let current_version = fixture_version(&current)?;
+    let root = super::archive_repository(archive, &temp, "admission")?;
+    let current_version = fixture_version(&root)?;
     let non_selected_version = next_patch_version(&current_version)?;
     for (version, accepted) in [(&current_version, true), (&non_selected_version, false)] {
         assert_eq!(
-            super::run_sync(&current, &["--admit-version", version])?
+            super::run_sync(&root, &["--admit-version", version])?
                 .status
                 .success(),
             accepted
         );
     }
+    let snapshot = ByteSnapshot::capture(&root, VERSION_FIXTURE_PATHS)?;
 
     for case in [
         "exact",
@@ -29,7 +31,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn s
         "legacy-runtime",
         "wrapper-drift",
     ] {
-        let root = super::archive_repository(archive, &temp, case)?;
+        let mut restoration = snapshot.guard();
         let target = next_patch_version(&current_version)?;
         select_next_public_identities(&root, &target, &current_version)?;
         match case {
@@ -75,6 +77,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn s
                 String::from_utf8_lossy(&check.stderr),
             );
         }
+        restoration.restore_checked()?;
     }
     Ok(())
 }
@@ -85,6 +88,8 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
     let temp = tempfile::tempdir()?;
     let archive = super::shared_repository_archive()?;
     let root = super::archive_repository(archive, &temp, "candidate")?;
+    let snapshot = ByteSnapshot::capture(&root, VERSION_FIXTURE_PATHS)?;
+    let mut restoration = snapshot.guard();
     let selected_version = fixture_version(&root)?;
     let candidate_version = next_patch_version(&selected_version)?;
     let selected = super::run_sync(&root, &["--version", &selected_version])?;
@@ -185,13 +190,17 @@ fn candidate_preparation_keeps_selected_identity_until_activation()
                     .as_array()
                     .ok_or("component manifest array")?
                 {
-                    assert_eq!(entry["version"], candidate_version);
+                    assert_eq!(
+                        entry["version"], selected_version,
+                        "candidate {field} changed selected identity"
+                    );
                 }
             }
             continue;
         }
         assert_eq!(fs::read(path)?, bytes);
     }
+    restoration.restore_checked()?;
     Ok(())
 }
 

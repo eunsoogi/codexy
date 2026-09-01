@@ -20,6 +20,8 @@ mod isolation;
 mod mutation_preflight;
 #[path = "sync_version_cli/readme.rs"]
 mod readme;
+#[path = "sync_version_cli/restoration.rs"]
+mod restoration;
 #[path = "sync_version_cli/strict_manifest.rs"]
 mod strict_manifest;
 #[path = "sync_version_cli/uv_lock.rs"]

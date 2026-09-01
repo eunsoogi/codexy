@@ -16,6 +16,10 @@ def string(value, field):
     return item if isinstance(item, str) and item else None
 
 
+def normalize_line_endings(value):
+    return value.replace("\r\n", "\n") if isinstance(value, str) else value
+
+
 def parse_state(path):
     try:
         with open(path, encoding="utf-8") as source:
@@ -149,7 +153,7 @@ def main():
             body = source.read()
     except OSError as error:
         fail(f"could not read merge body: {error}")
-    if body != state.get("body"):
+    if normalize_line_endings(body) != normalize_line_endings(state.get("body")):
         fail("merge body does not match the current PR body")
     comments = state.get("comments")
     if not isinstance(comments, list):

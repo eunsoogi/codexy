@@ -59,7 +59,6 @@ pub fn prepare_candidate(version: &str) -> Result<String> {
         uv_lock::prepare_version(version)?,
         uv_lock::prepare_pyproject_version(version)?,
         super::bootstrap::prepare_candidate_version(version)?,
-        component_manifest::prepare_version(version)?,
         Update::json(publish_path, &publish)?,
     ];
     updates.extend(readme::prepare_version(version)?);
@@ -119,7 +118,7 @@ pub fn check_candidate() -> Result<String> {
     }
     github_plugin::check(&selected)?;
     devtools_plugin::check(&selected)?;
-    component_manifest::check(&candidate)?;
+    component_manifest::check(&selected)?;
     cargo::check_version(&root, &selected)?;
     let prior = runtime_selection::wrapper_version(&root)?;
     wrappers::check_version_at(&root, &prior)?;
