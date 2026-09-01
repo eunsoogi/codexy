@@ -34,9 +34,6 @@ mod system {
     mod release_workflow_parity {
         include!("../release_workflow_parity.rs");
     }
-    mod runtime_activation_branch_recovery {
-        include!("../runtime_activation_branch_recovery.rs");
-    }
     mod runtime_candidate_assembly_contract {
         include!("../runtime_candidate_assembly_contract.rs");
     }
