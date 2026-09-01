@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import json
 import re
 import shutil
 import tomllib
@@ -242,7 +241,8 @@ class PublicActivationContractTests(unittest.TestCase):
                 shutil.copytree(repository / "plugins" / component, plugin)
                 source = plugin / relative
                 source.write_bytes(source.read_bytes() + b"\n# ordinary source edit\n")
-                verified = verify_component(plugin, component, "1.5.1")
+                data = json.loads((plugin / ".codex-plugin/plugin.json").read_bytes())
+                verified = verify_component(plugin, component, data["version"])
                 self.assertEqual(verified[Path(relative)], source.read_bytes())
 
 

@@ -14,7 +14,7 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let fixtures = shared_fixtures()?;
     let root = &fixtures.root;
     let selected = &fixtures.selected;
-    let prior = previous_patch_version(selected)?;
+    let prior = stale_version(selected)?;
     for (path, bytes) in version_surface_contents(root)? {
         fs::write(path, String::from_utf8(bytes)?.replace(selected, &prior))?;
     }
@@ -41,7 +41,7 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
     let fixtures = shared_fixtures()?;
     let root = &fixtures.root;
     let selected = &fixtures.selected;
-    let prior = previous_patch_version(selected)?;
+    let prior = stale_version(selected)?;
     for (case, replacement, diagnostic) in [
         (
             "stale-prior",
@@ -198,13 +198,31 @@ fn fixture_contents(root: &Path) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std:
     Ok(contents)
 }
 
-fn previous_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let (prefix, patch) = version.rsplit_once('.').ok_or("version")?;
-    Ok(format!(
-        "{prefix}.{}",
-        patch
-            .parse::<u64>()?
-            .checked_sub(1)
-            .ok_or("version underflow")?
-    ))
+#[test]
+fn stale_version_handles_semver_boundaries() -> Result<(), Box<dyn std::error::Error>> {
+    for (selected, expected) in [("7.4.9", "7.4.8"), ("7.4.0", "7.3.0"), ("7.0.0", "6.0.0")] {
+        assert_eq!(stale_version(selected)?, expected);
+        assert_ne!(selected, expected);
+    }
+    Ok(())
+}
+
+fn stale_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let components: Vec<u64> = version
+        .split('.')
+        .map(str::parse)
+        .collect::<Result<_, _>>()?;
+    let [major, minor, patch] = components.as_slice() else {
+        return Err("version must be MAJOR.MINOR.PATCH".into());
+    };
+    if *patch > 0 {
+        return Ok(format!("{major}.{minor}.{}", *patch - 1));
+    }
+    if *minor > 0 {
+        return Ok(format!("{major}.{}.0", *minor - 1));
+    }
+    if *major > 0 {
+        return Ok(format!("{}.0.0", *major - 1));
+    }
+    Err("version underflow".into())
 }
