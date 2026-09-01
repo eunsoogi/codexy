@@ -73,13 +73,18 @@ jobs:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: |
           attempt=0
-          until curl --fail --silent --show-error --location "https://pypi.org/pypi/getcodexy/${BOOTSTRAP_VERSION}/json" -o pypi.json; do
+          while :; do
             attempt=$((attempt + 1))
-            test "$attempt" -lt 12 || exit 1
-            sleep 10
-          done
-          BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" python3 - <<'PY' > public-artifacts.tsv
-          import json, os
+            if ! curl --fail --silent --show-error --location "https://pypi.org/pypi/getcodexy/${BOOTSTRAP_VERSION}/json" -o pypi.json; then
+              if test "$attempt" -ge 12; then
+                echo "PyPI JSON did not become available after ${attempt} bounded checks." >&2
+                exit 1
+              fi
+              sleep 10
+              continue
+            fi
+            if BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" python3 - <<'PY' > public-artifacts.tsv
+          import json, os, sys
           document = json.load(open("pypi.json", encoding="utf-8"))
           if document["info"]["version"] != os.environ["BOOTSTRAP_VERSION"]:
               raise SystemExit("PyPI version mismatch")
@@ -87,10 +92,25 @@ jobs:
           for package_type in ("bdist_wheel", "sdist"):
               matches = [item for item in files if item["packagetype"] == package_type]
               if len(matches) != 1:
-                  raise SystemExit(f"expected one public {package_type}, got {len(matches)}")
+                  print(f"expected one public {package_type}, got {len(matches)}", file=sys.stderr)
+                  raise SystemExit(2)
               item = matches[0]
               print(package_type, item["url"], item["digests"]["sha256"], sep="\t")
           PY
+            then
+              break
+            else
+              status=$?
+            fi
+            if test "$status" -ne 2; then
+              exit "$status"
+            fi
+            if test "$attempt" -ge 12; then
+              echo "PyPI public artifact cardinality did not converge after ${attempt} bounded checks; refusing public artifact proof." >&2
+              exit 1
+            fi
+            sleep 10
+          done
           while IFS="$(printf '\t')" read -r package_type url digest; do
             curl --fail --silent --show-error --location "$url" -o "public-${package_type}"
             printf '%s  %s\n' "$digest" "public-${package_type}" | sha256sum -c -
