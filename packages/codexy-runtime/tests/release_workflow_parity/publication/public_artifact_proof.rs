@@ -30,7 +30,14 @@ fn public_artifact_proof_retries_incomplete_json_and_fails_closed() -> TestResul
             mode,
         )?;
         let attempts = fs::read_to_string(root.path().join("pypi-attempts"))?;
-        assert_eq!(attempts.trim().parse::<u32>()?, expected_attempts);
+        assert_eq!(
+            attempts.trim().parse::<u32>()?,
+            expected_attempts,
+            "status={:?}\nstdout={}\nstderr={}",
+            result.status,
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
         if mode == "propagate" {
             assert!(result.status.success());
             assert_eq!(
@@ -101,7 +108,19 @@ fn run_public_artifact_preflight(
     esac
 }}
 sleep() {{ :; }}
+python3() {{
+    local output status
+    if output=$(command python3 "$@"); then
+        status=0
+    else
+        status=$?
+    fi
+    printf '%s\n' "$output" | awk '{{ printf "%s%c%c", $0, 13, 10 }}'
+    return "$status"
+}}
 {preflight}
+tr -d '\r' < public-artifacts.tsv > public-artifacts.lf
+mv public-artifacts.lf public-artifacts.tsv
 {artifact_loop}"#
     );
     Ok(bash_command()?
