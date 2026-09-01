@@ -5,8 +5,8 @@ repository-generic and does not depend on repository-specific files or policy.
 
 ## Before creating an issue
 
-1. Confirm that issue creation is authorized and within the requested
-   repository and scope.
+1. Confirm that issue creation is authorized and within the requested repository
+   and scope.
 2. Search both open and closed issues using the problem, affected surface, and
    likely terminology. Classify exact matches separately from related work.
 3. Check whether an existing issue or pull request already owns the work. Link
@@ -14,8 +14,8 @@ repository-generic and does not depend on repository-specific files or policy.
 4. Read the live repository taxonomies for labels, milestones, and assignees.
    Select only values that exist in those taxonomies.
 5. Draft a substantive issue body with the required sections below.
-6. Immediately before mutation, refresh the duplicate search and the live
-   label, milestone, and assignee evidence.
+6. Immediately before mutation, refresh the duplicate search and the live label,
+   milestone, and assignee evidence.
 
 Do not create an issue when the request is unauthorized or out of scope, an
 exact duplicate exists, an existing owner covers the work, or the selected
