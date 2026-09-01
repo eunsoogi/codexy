@@ -94,12 +94,24 @@ name = "suite_governance"
 path = "tests/suites/governance_suite.rs"
 
 [[test]]
+name = "suite_governance_workflows"
+path = "tests/suites/governance_workflows_suite.rs"
+
+[[test]]
 name = "suite_system"
 path = "tests/suites/system_suite.rs"
 
 [[test]]
 name = "suite_runtime"
 path = "tests/suites/runtime_suite.rs"
+
+[[test]]
+name = "suite_runtime_activation"
+path = "tests/suites/runtime_activation_suite.rs"
+
+[[test]]
+name = "suite_runtime_activation_autocrlf"
+path = "tests/suites/runtime_activation_autocrlf_suite.rs"
 
 [[test]]
 name = "suite_sync_version"
