@@ -91,6 +91,11 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     assert!(release.matches("verify_tag_if_present \"$remote_tag\"").count() >= 3);
     let upload = release.find("upload_release_asset").ok_or("asset upload")?;
     assert!(create < upload);
+    let patch = release.find("gh api --method PATCH").ok_or("draft retarget")?;
+    let reread = patch + release[patch..]
+        .find("release_state \"$1\" > release-state.json")
+        .ok_or("retarget readback")?;
+    assert!(patch < reread && reread < upload);
     assert!(!release.lines().any(|line| {
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));
@@ -109,6 +114,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "-f \"target_commitish=$ACTIVATION_COMMIT\" -f \"name=$RELEASE_TAG\"",
             "-f \"body=$changelog_notes\" -F draft=true -F prerelease=false",
             "release_create_diagnostic",
+            "retarget_existing_draft",
+            "gh api --method PATCH",
+            "-f \"target_commitish=$ACTIVATION_COMMIT\"",
         ],
     );
     #[cfg(unix)]
