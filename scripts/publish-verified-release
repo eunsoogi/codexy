@@ -108,7 +108,8 @@ retarget_existing_draft() {
     return 0
   fi
   test "$(jq '.assets | length' release-state.json)" -eq 0
-  test -z "$(authenticated_remote_tag)"
+  race_tag_snapshot="$(authenticated_remote_tag)"
+  test -z "$race_tag_snapshot"
   case "$retarget_target" in *[!0-9a-f]*|'') release_error "draft target is not a commit" ;; esac
   test "${#retarget_target}" -eq 40
   git cat-file -e "$retarget_target^{commit}"
