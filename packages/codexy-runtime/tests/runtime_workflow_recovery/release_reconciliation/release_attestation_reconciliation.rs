@@ -28,7 +28,10 @@ case "$1" in
         case "${ATTESTATION_STATE:?}" in absent) printf '%s\n' 'HTTP/2 404 Not Found' ;; *) printf '%s\n' 'HTTP/2 200 OK' ;; esac ;;
       --paginate)
         test "$3" = --slurp && test "$4" = -H && test "$5" = "$header" && test "$6" = "$route" || exit 2
-        printf '%s\n' '[{"attestations":[{}]},{"attestations":[{}]}]' ;;
+        case "${ATTESTATION_STATE:?}" in
+          many-unrelated) jq -n '[{attestations: ([range(31) | {kind: "unrelated"}] + [{kind: "matching"}])}]' ;;
+          *) printf '%s\n' '[{"attestations":[{}]},{"attestations":[{}]}]' ;;
+        esac ;;
       *) exit 2 ;;
     esac ;;
   attestation)
@@ -36,9 +39,16 @@ case "$1" in
       test "$6" = --signer-workflow && test "$7" = "$repo/.github/workflows/${EXPECTED_WORKFLOW:?}" && \
       test "$8" = --source-ref && test "$9" = refs/heads/main && \
       test "${10}" = --source-digest && test "${11}" = "${EXPECTED_SOURCE_DIGEST:?}" && \
-      test "${12}" = --deny-self-hosted-runners && test "${13}" = --format && test "${14}" = json || exit 2
+      test "${12}" = --deny-self-hosted-runners && test "${13}" = --limit && test "${14}" = 1000 && test "${15}" = --format && test "${16}" = json || exit 2
     case "${ATTESTATION_STATE:?}" in
       mismatch) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"},{"name":"two"}]}}}]' ;;
+      many-unrelated)
+        # The matching runtime attestation follows 31 unrelated records.
+        unrelated_count=31
+        case "$*" in
+          *"--limit 1000"*) test "$unrelated_count" -gt 30 || exit 2; printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}]' ;;
+          *) printf '%s\n' '[]' ;;
+        esac ;;
       *)
         case "${ATTESTATION_SUBJECTS:-single}" in
           runtime-valid) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}]' ;;
@@ -95,6 +105,14 @@ esac
         "runtime-valid",
     )?;
     assert!(runtime.status.success(), "runtime candidate policy rejected: stdout: {} stderr: {}", String::from_utf8_lossy(&runtime.stdout), String::from_utf8_lossy(&runtime.stderr));
+    let many_unrelated = run(
+        "many-unrelated",
+        "runtime-candidate.yml",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "codexy-runtime-package.tar.gz",
+        "single",
+    )?;
+    assert!(many_unrelated.status.success(), "runtime candidate after 31 unrelated attestations was rejected: stdout: {} stderr: {}", String::from_utf8_lossy(&many_unrelated.stdout), String::from_utf8_lossy(&many_unrelated.stderr));
     for subjects in ["runtime-missing", "runtime-extra", "runtime-duplicate", "runtime-renamed", "runtime-arbitrary", "runtime-malformed-top-level", "runtime-malformed-subject-object"] {
         fs::write(&environment, "")?;
         let rejected = run(
