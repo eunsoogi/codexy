@@ -82,6 +82,7 @@ fn release_script_uses_the_immutable_draft_contract() -> Result<(), Box<dyn std:
             "-f \"body=$changelog_notes\"",
             "-F draft=true",
             "-F prerelease=false",
+            "ACTIVATION_COMMIT=\"$ACTIVATION_COMMIT\" scripts/generate-release-changelog \"$RELEASE_TAG\"",
             "release_create_diagnostic",
             "release_id_for_tag",
             "remote_tag_oid",
@@ -171,7 +172,7 @@ fn run_release_fixture(publisher: &str, mode: &str) -> Result<(Output, String), 
     }
     fs::write(root.join("dist/runtime-release-receipt.json"), "{\"source\":{\"stagingSourceCommit\":\"0123456789abcdef0123456789abcdef01234567\",\"activationCommit\":\"89abcdef0123456789abcdef0123456789abcdef\"},\"staging\":{\"runId\":42}}")?;
     let script = root.join("publish.sh");
-    fs::write(&script, publisher.replace("scripts/generate-release-changelog \"$RELEASE_TAG\"", "printf notes"))?;
+    fs::write(&script, publisher.replace("ACTIVATION_COMMIT=\"$ACTIVATION_COMMIT\" scripts/generate-release-changelog \"$RELEASE_TAG\"", "printf notes"))?;
     support::make_executable(&script)?;
     let baseline = root.join("scripts/reconcile-release-baseline");
     fs::write(&baseline, "#!/bin/sh\nprintf '%s\\n' baseline >> events\n")?;
