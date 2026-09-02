@@ -43,27 +43,36 @@ fn candidate_assembly_projects_target_version_without_mutating_protected_payload
     let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
     fixture.enable_core_runtime()?;
     assert!(!fixture.assemble_with_target(None).status.success(), "missing target version was accepted");
-    let first = fixture.assemble_with_target(Some("1.6.0"));
-    assert!(first.status.success(), "target assembly failed: {}", String::from_utf8_lossy(&first.stderr));
+    assert!(fixture.assemble_with_target(Some("1.6.0")).status.success(), "target assembly failed");
     let plugin = fixture.root().join("dist/candidate/plugins/codexy-devtools");
-    let manifest: serde_json::Value = serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
     assert_eq!(manifest["version"], "1.6.0");
-    let protected = ["runtime/codexy-mcp-lsp-darwin-arm64.bin", "runtime/codexy-mcp-codegraph-darwin-arm64.bin", "runtime/codexy-mcp-lsp-linux-x86_64.bin", "runtime/codexy-mcp-codegraph-linux-x86_64.bin", "runtime/codexy-mcp-lsp-windows-x86_64.exe", "runtime/codexy-mcp-codegraph-windows-x86_64.exe", "runtime/codexy-handoff-validate-darwin-arm64.bin", "runtime/codexy-handoff-validate-linux-x86_64.bin", "runtime/codexy-handoff-validate-windows-x86_64.exe", "handoff-runtime.json", "runtime-candidate.json"];
-    let before = protected.map(|path| fs::read(plugin.join(path))).into_iter().collect::<Result<Vec<_>, _>>()?;
-    let receipt: serde_json::Value = serde_json::from_slice(&fs::read(fixture.root().join("dist/runtime-staging-receipt.json"))?)?;
+    let runtime = fs::read_dir(plugin.join("runtime"))?
+        .map(|entry| {
+            let entry = entry?;
+            Ok((entry.file_name(), fs::read(entry.path())?))
+        })
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
+    let handoff = fs::read(plugin.join("handoff-runtime.json"))?;
+    let candidate = fs::read(plugin.join("runtime-candidate.json"))?;
+    let receipt: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.root().join("dist/runtime-staging-receipt.json"))?)?;
     assert_eq!(receipt["candidate"]["artifact"]["stagingRunId"], 1);
     assert_eq!(receipt["provenance"]["runId"], 1);
-    for (path, expected) in protected.iter().zip(&before) {
-        if let Some(name) = path.strip_prefix("runtime/") {
-            assert_eq!(expected, &fs::read(fixture.root().join("staged-runtime").join(name))?, "staged runtime changed: {path}");
-        }
-    }
+
     for target in ["1.7.0", "01.6.0", "1.6.0;touch pwned"] {
         assert!(!fixture.assemble_with_target(Some(target)).status.success(), "target {target} was accepted");
     }
-    for (path, expected) in protected.into_iter().zip(before) {
-        assert_eq!(fs::read(plugin.join(path))?, expected, "protected payload changed: {path}");
+
+    for (name, expected) in runtime {
+        let staged = fs::read(fixture.root().join("staged-runtime").join(&name))?;
+        let packaged = fs::read(plugin.join("runtime").join(name))?;
+        assert_eq!(staged, expected);
+        assert_eq!(packaged, expected);
     }
+    assert_eq!(fs::read(plugin.join("handoff-runtime.json"))?, handoff);
+    assert_eq!(fs::read(plugin.join("runtime-candidate.json"))?, candidate);
     assert!(!fixture.root().join("pwned").exists());
     Ok(())
 }

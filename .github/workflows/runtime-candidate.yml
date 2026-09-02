@@ -34,7 +34,11 @@ jobs:
         run: |
           scripts/verify-runtime-candidate-source.sh
           if test -z "$EXACT_PR_NUMBER"; then
-            test "$(git show "$SOURCE_COMMIT:.agents/plugins/release-publish-contract.json" | jq -r .bootstrap.candidateVersion)" = "$TARGET_VERSION"
+            candidate_version="$(
+              git show "$SOURCE_COMMIT:.agents/plugins/release-publish-contract.json" |
+                jq -r .bootstrap.candidateVersion
+            )"
+            test "$candidate_version" = "$TARGET_VERSION"
           fi
   build-runtime:
     if: github.event_name == 'workflow_dispatch'

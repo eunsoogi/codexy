@@ -34,7 +34,9 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     let inputs = publisher["on"]["workflow_dispatch"]["inputs"]
         .as_mapping()
         .ok_or("publisher inputs")?;
-    assert!(inputs.contains_key("target_version"));
+    for input in ["target_version", "staging_source_commit", "activation_commit", "staging_run_id"] {
+        assert!(inputs.contains_key(input), "missing publisher input: {input}");
+    }
     assert_eq!(publisher["concurrency"]["cancel-in-progress"], false);
     assert_eq!(publisher["concurrency"]["group"], "codexy-release-${{ inputs.target_version }}");
 
@@ -46,10 +48,11 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
         "scripts/admit-pypi-environment",
     );
     let admission = named_run(job, "Validate target version and release lifecycle contract")?;
-    for required in ["scripts/validate-release-lifecycle-contract"] {
-        assert!(admission.contains(required), "missing publisher admission: {required}");
-    }
-    assert_eq!(job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Validate target version and release lifecycle contract")).and_then(|step| step["env"]["TARGET_VERSION"].as_str()), Some("${{ inputs.target_version }}"));
+    assert!(admission.contains("scripts/validate-release-lifecycle-contract"), "missing publisher admission");
+    assert_eq!(
+        publisher["env"]["TARGET_VERSION"],
+        "${{ inputs.target_version }}"
+    );
     let materialize = named_run(job, "Materialize and exercise activated final artifacts")?;
     assert!(materialize.contains("RELEASE_TAG=\"$RELEASE_TAG\""));
     assert!(materialize.contains("scripts/create_release_train_receipt.py"));
@@ -102,15 +105,20 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     )?;
     assert!(activation_run.contains("version ${BOOTSTRAP_VERSION}"));
     assert!(!activation_run.contains("Fixes #"));
-    let staging_inputs = staging["on"]["workflow_dispatch"]["inputs"].as_mapping().ok_or("staging inputs")?;
-    assert!(staging_inputs.contains_key("target_version"));
-    assert_eq!(staging_inputs["target_version"]["type"], "string");
-    assert_eq!(staging_inputs["target_version"]["required"], true);
-    let staging_job = staging["jobs"]["stage-runtime"].as_mapping().ok_or("staging job")?;
-    let staging_step = staging_job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Assemble canonical staged archive and receipt")).ok_or("staging assembly step")?;
+    let staging_inputs = &staging["on"]["workflow_dispatch"]["inputs"];
+    assert!(staging_inputs["target_version"]["type"] == "string"
+        && staging_inputs["target_version"]["required"] == true);
+    let staging_step = staging["jobs"]["stage-runtime"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| {
+            step["name"] == "Assemble canonical staged archive and receipt"
+        }))
+        .ok_or("staging assembly step")?;
     assert_eq!(staging_step["env"]["TARGET_VERSION"], "${{ inputs.target_version }}");
     assert_eq!(staging_step["run"], "scripts/assemble-runtime-candidate");
-    assert!(download.contains("test \"$(tar -xOzf public-runtime.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\""));
+    assert!(download.contains(
+        "test \"$(tar -xOzf public-runtime.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\""
+    ));
     Ok(())
 }
 

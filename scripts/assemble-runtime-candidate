@@ -24,10 +24,13 @@ if test -n "$target_version"; then
 	# shellcheck disable=SC2086
 	set -- $target_version
 	unset IFS
-	test "$#" = 3 && test -n "$1" && test -n "$2" && test -n "$3" || {
+	if test "$#" != 3 ||
+		test -z "$1" ||
+		test -z "$2" ||
+		test -z "$3"; then
 		printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
 		exit 1
-	}
+	fi
 	for component in "$@"; do
 		case "$component" in
 		0 | [1-9] | [1-9][0-9]*) ;;
@@ -37,19 +40,21 @@ if test -n "$target_version"; then
 			;;
 		esac
 		length=${#component}
-		if test "$length" -gt 10 || { test "$length" -eq 10 && test "$component" -gt 2147483647; }; then
+		if test "$length" -gt 10 ||
+			test "$length" -eq 10 && test "$component" -gt 2147483647; then
 			printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
 			exit 1
 		fi
 	done
-	candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)" || {
+	if ! candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)"; then
 		printf '%s\n' 'source commit lacks release-publish contract' >&2
 		exit 1
-	}
-	test "$(printf '%s' "$candidate_contract" | jq -r .bootstrap.candidateVersion)" = "$target_version" || {
+	fi
+	candidate_version="$(printf '%s' "$candidate_contract" | jq -r .bootstrap.candidateVersion)"
+	if ! test "$candidate_version" = "$target_version"; then
 		printf '%s\n' 'target version is not the admitted candidate version' >&2
 		exit 1
-	}
+	fi
 fi
 
 root=dist/candidate/plugins/codexy-devtools
@@ -92,7 +97,19 @@ for platform in darwin-arm64 linux-x86_64; do
 done
 
 SOURCE_TREE="$(git rev-parse "${source_commit}^{tree}")"
-SOURCE_COMMIT="$source_commit" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" TARGET_VERSION="$target_version" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" ROOT="$root" python3 - <<'PY'
+SOURCE_COMMIT="$source_commit" \
+	SOURCE_TREE="$SOURCE_TREE" \
+	CORE_AWARE="$core_aware" \
+	STAGING_RUN_ID="$STAGING_RUN_ID" \
+	STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" \
+	MODE="$mode" \
+	EXACT_PR_NUMBER="$pull_request" \
+	WORKFLOW_SHA="$workflow_sha" \
+	ARTIFACT_NAME="$artifact_name" \
+	TARGET_VERSION="$target_version" \
+	GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" \
+	ROOT="$root" \
+	python3 - <<'PY'
 import hashlib, json, os
 
 root = os.environ["ROOT"]
@@ -155,7 +172,17 @@ fi
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
-SOURCE_COMMIT="$source_commit" ARCHIVE_SHA="$archive_sha" MANIFEST_SHA="$manifest_sha" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" python3 - <<'PY'
+SOURCE_COMMIT="$source_commit" \
+	ARCHIVE_SHA="$archive_sha" \
+	MANIFEST_SHA="$manifest_sha" \
+	STAGING_RUN_ID="$STAGING_RUN_ID" \
+	STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" \
+	MODE="$mode" \
+	EXACT_PR_NUMBER="$pull_request" \
+	WORKFLOW_SHA="$workflow_sha" \
+	ARTIFACT_NAME="$artifact_name" \
+	GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" \
+	python3 - <<'PY'
 import json, os
 
 candidate = json.load(open("dist/candidate/plugins/codexy-devtools/runtime-candidate.json"))
