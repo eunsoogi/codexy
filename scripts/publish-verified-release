@@ -94,6 +94,11 @@ verify_existing_tag() {
   test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
   git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 }
+verify_tag_if_present() {
+  if test -n "$1"; then
+    verify_existing_tag "$1"
+  fi
+}
 release_error() {
   printf '%s\n' "$1" >&2
   exit 1
@@ -108,13 +113,13 @@ fi
 tag_ref="refs/tags/$RELEASE_TAG"
 remote_tag="$(authenticated_remote_tag)"
 if test "$release_exists" = true; then
-  test -n "$remote_tag" || release_error "release exists without its version tag"
+  verify_tag_if_present "$remote_tag"
 fi
 if test "$release_exists" = false; then
   changelog_notes="$(ACTIVATION_COMMIT="$ACTIVATION_COMMIT" scripts/generate-release-changelog "$RELEASE_TAG")"
   if test -n "$remote_tag"; then
-    verify_existing_tag "$remote_tag"
-    verify_existing_tag "$remote_tag"
+    verify_tag_if_present "$remote_tag"
+    verify_tag_if_present "$remote_tag"
   else
     test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
   fi
@@ -149,15 +154,7 @@ fi
 release_state "$release_id" > release-state.json
 validate_release_state
 remote_tag="$(authenticated_remote_tag)"
-test -n "$remote_tag"
-remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
-test "$remote_tag_oid" = "$ACTIVATION_COMMIT"
-git fetch --tags --force origin
-tag_commit="$(git rev-parse --verify "$tag_ref^{commit}")"
-test "$tag_commit" = "$ACTIVATION_COMMIT"
-test "$remote_tag" = "$(authenticated_remote_tag)"
-git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+verify_tag_if_present "$remote_tag"
 release_asset_id() {
   jq -er --arg asset "$1" '
     [.assets[] | select(.name == $asset)] |
@@ -200,6 +197,8 @@ for asset in $release_assets; do
 done
 case "$release_id" in '' | *[!0-9]*) release_error "release id is invalid" ;; esac
 release_state "$release_id" > release-state.json
+remote_tag="$(authenticated_remote_tag)"
+verify_tag_if_present "$remote_tag"
 for asset in $release_assets; do
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json > /dev/null || release_error "release asset is missing after reconciliation: $asset"
   verify_release_asset "$verified_release"
@@ -208,3 +207,5 @@ if test -n "${GITHUB_ENV:-}"; then
   printf 'RELEASE_ID=%s\n' "$release_id" >> "$GITHUB_ENV"
 fi
 RELEASE_ID="$release_id" scripts/reconcile-release-baseline
+remote_tag="$(authenticated_remote_tag)"
+verify_tag_if_present "$remote_tag"
