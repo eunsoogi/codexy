@@ -1,5 +1,7 @@
 use std::fs;
 
+use crate::support;
+
 #[path = "release_tag_admission/fixture.rs"]
 mod fixture;
 
@@ -58,6 +60,24 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api()
             state.create_api_calls(),
             "{state:?} API admission count"
         );
+        match state {
+            RemoteTag::ConcurrentWrong | RemoteTag::ConcurrentUnpeelable => {
+                assert_create_reference_diagnostic(&output, "422", "HTTP/2.0 422 Unprocessable Entity");
+            }
+            RemoteTag::ApiAuth => {
+                assert_create_reference_diagnostic(&output, "401", "HTTP/2.0 401 Unauthorized");
+            }
+            RemoteTag::ApiFailure => {
+                assert_create_reference_diagnostic(&output, "500", "HTTP/2.0 500 Server Error");
+            }
+            _ => {}
+        }
+        if matches!(state, RemoteTag::ConcurrentWrong) {
+            assert_eq!(fixture.remote_state()?, "wrong", "API did not set wrong remote ref");
+            for (name, expected) in [("git", 7), ("jq", 3), ("gh", 2)] {
+                assert_eq!(fixture.command_calls(name)?, expected, "{name} host fallthrough");
+            }
+        }
     }
     for state in [
         RemoteTag::Exact,
@@ -87,33 +107,65 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api()
             state.create_api_calls(),
             "{state:?} API admission count"
         );
+        if matches!(state, RemoteTag::ConcurrentExact) {
+            assert_create_reference_diagnostic(
+                &output,
+                "422",
+                "HTTP/2.0 422 Unprocessable Entity",
+            );
+        }
     }
     Ok(())
 }
 
+#[cfg(unix)]
 #[test]
-fn concurrent_wrong_uses_only_fixture_commands_before_rejection()
+fn create_reference_diagnostic_and_auth_are_bounded_and_credential_safe()
 -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new(RemoteTag::ConcurrentWrong)?;
-    let output = fixture.run()?;
-    assert!(
-        !output.status.success(),
-        "concurrent wrong tag unexpectedly admitted"
-    );
-    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called");
-    assert_eq!(
-        fixture.remote_state()?,
-        "wrong",
-        "API did not set wrong remote ref"
-    );
-    assert_eq!(
-        fixture.release_calls()?,
-        0,
-        "wrong tag reached release creation"
-    );
-    assert_eq!(fixture.command_calls("git")?, 7, "host git fallthrough");
-    assert_eq!(fixture.command_calls("jq")?, 3, "host jq fallthrough");
-    assert_eq!(fixture.command_calls("gh")?, 2, "host gh fallthrough");
+    let publisher = fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
+    )?;
+    let temp = tempfile::tempdir()?;
+    let response = temp.path().join("response");
+    fs::write(&response, format!(
+        "HTTP/2.0 422 Unprocessable Entity\n{}\n\n{{\"token\":\"fixture-token\"}}\n{}",
+        "header\n".repeat(25), "body\n".repeat(200)
+    ))?;
+    let probe = temp.path().join("probe.sh");
+    fs::write(&probe, format!(
+        "#!/bin/sh\n{}\ntag_create_diagnostic 422 \"$1\"\n",
+        extract_function(&publisher, "tag_create_diagnostic")?
+    ))?;
+    let output = std::process::Command::new("sh")
+        .arg(&probe)
+        .arg(&response)
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("HTTP/2.0 422 Unprocessable Entity body=body"));
+    assert!(!stderr.contains("fixture-token"), "diagnostic leaked fixture credential");
+    assert!(stderr.len() < 700, "diagnostic exceeded bound: {}", stderr.len());
+
+    let bin = temp.path().join("bin"); fs::create_dir(&bin)?;
+    let git = bin.join("git");
+    fs::write(&git, "#!/bin/sh\nset -eu\ntest \"$1\" = ls-remote\ntest \"${GIT_CONFIG_COUNT:-}\" = 1\ntest \"${GIT_CONFIG_KEY_0:-}\" = http.extraheader\ntest \"${GIT_CONFIG_VALUE_0:-}\" = 'Authorization: Basic eC1hY2Nlc3MtdG9rZW46Zml4dHVyZS10b2tlbg=='\ncase \"${GIT_CONFIG_VALUE_0:-}\" in *fixture-token*) exit 1 ;; esac\nprintf '%s\\n' basic-auth-probe-ok\n")?;
+    support::make_executable(&git)?;
+    let probe = temp.path().join("auth-probe.sh");
+    fs::write(&probe, format!(
+        "#!/bin/sh\n{}\ntag_ref=refs/tags/v1.6.0\nauthenticated_remote_tag\n",
+        extract_function(&publisher, "authenticated_remote_tag")?
+    ))?;
+    let host_path = std::env::var_os("PATH").ok_or("PATH")?;
+    let path = std::env::join_paths(std::iter::once(bin.clone()).chain(std::env::split_paths(&host_path)))?;
+    let output = std::process::Command::new("sh")
+        .arg(&probe)
+        .env("PATH", path)
+        .env("GH_TOKEN", "fixture-token")
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "Basic auth probe failed: {stdout}");
+    assert!(stdout.contains("basic-auth-probe-ok")
+        && !stdout.contains("fixture-token")
+        && !String::from_utf8_lossy(&output.stderr).contains("fixture-token"));
     Ok(())
 }
 
@@ -169,4 +221,30 @@ fn assert_inherited_state_discarded(
     );
     assert_eq!(fixture.command_calls("gh")?, 2, "inherited state leaked");
     Ok(())
+}
+
+fn assert_create_reference_diagnostic(
+    output: &std::process::Output,
+    status: &str,
+    response: &str,
+) {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(&format!("create-reference status={status} response=")),
+        "missing create-reference status diagnostic: {stderr}"
+    );
+    assert!(
+        stderr.contains(response),
+        "missing bounded create-reference response: {stderr}"
+    );
+    assert!(!stderr.contains("fixture-token"), "diagnostic leaked fixture credential");
+}
+
+fn extract_function<'a>(
+    source: &'a str,
+    name: &str,
+) -> Result<&'a str, Box<dyn std::error::Error>> {
+    let start = source.find(&format!("{name}() {{")).ok_or("function start")?;
+    let end = source[start..].find("\n}\nrelease_exists=false").ok_or("function end")? + 2;
+    Ok(&source[start..start + end])
 }
