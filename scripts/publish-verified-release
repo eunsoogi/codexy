@@ -20,13 +20,11 @@ release_state() {
 }
 release_id_for_tag() {
   gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
-    jq -er --arg tag "$RELEASE_TAG" --arg target "$ACTIVATION_COMMIT" '
+    jq -er --arg tag "$RELEASE_TAG" '
       [.[] | select(.name == $tag or .tag_name == $tag)] as $matches |
       if ($matches | length) != 1 then error("release identity is not unique")
       elif ($matches[0].id | type) != "number" then error("release id is not numeric")
-      elif $matches[0].name != $tag or $matches[0].tag_name != $tag or
-        $matches[0].target_commitish != $target or $matches[0].draft != true or
-        $matches[0].prerelease != false then error("release identity mismatch")
+      elif $matches[0].name != $tag or $matches[0].tag_name != $tag then error("release identity mismatch")
       else $matches[0].id end'
 }
 validate_release_state() {
@@ -99,6 +97,30 @@ verify_tag_if_present() {
     verify_existing_tag "$1"
   fi
 }
+retarget_existing_draft() {
+  release_state "$1" > release-state.json
+  retarget_target="$(jq -r .targetCommitish release-state.json)"
+  test "$(jq -r .name release-state.json)" = "$RELEASE_TAG" || release_error "release identity mismatch"
+  test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG" || release_error "release identity mismatch"
+  test "$(jq -r .isDraft release-state.json)" = true || release_error "release identity mismatch"
+  test "$(jq -r .isPrerelease release-state.json)" = false || release_error "release identity mismatch"
+  if test "$retarget_target" = "$ACTIVATION_COMMIT"; then
+    return 0
+  fi
+  test "$(jq '.assets | length' release-state.json)" -eq 0
+  test -z "$(authenticated_remote_tag)"
+  case "$retarget_target" in *[!0-9a-f]*|'') release_error "draft target is not a commit" ;; esac
+  test "${#retarget_target}" -eq 40
+  git cat-file -e "$retarget_target^{commit}"
+  git merge-base --is-ancestor "$retarget_target" "$ACTIVATION_COMMIT"
+  git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+  test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+  gh api --method PATCH -H 'X-GitHub-Api-Version: 2026-03-10' \
+    "repos/$GITHUB_REPOSITORY/releases/$1" -f "target_commitish=$ACTIVATION_COMMIT" > /dev/null
+  release_state "$1" > release-state.json
+  git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+  test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+}
 release_error() {
   printf '%s\n' "$1" >&2
   exit 1
@@ -114,6 +136,7 @@ tag_ref="refs/tags/$RELEASE_TAG"
 remote_tag="$(authenticated_remote_tag)"
 if test "$release_exists" = true; then
   verify_tag_if_present "$remote_tag"
+  retarget_existing_draft "$release_id"
 fi
 if test "$release_exists" = false; then
   changelog_notes="$(ACTIVATION_COMMIT="$ACTIVATION_COMMIT" scripts/generate-release-changelog "$RELEASE_TAG")"
@@ -150,6 +173,7 @@ if test "$release_exists" = false; then
   case "$release_id" in '' | *[!0-9]*) release_error "release id is invalid" ;; esac
   release_exists=true
   rm -f "$draft_release_response"
+  retarget_existing_draft "$release_id"
 fi
 release_state "$release_id" > release-state.json
 validate_release_state
