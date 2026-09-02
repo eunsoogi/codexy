@@ -41,7 +41,10 @@ case "$1" in
       test "${10}" = --source-digest && test "${11}" = "${EXPECTED_SOURCE_DIGEST:?}" && \
       test "${12}" = --deny-self-hosted-runners && test "${13}" = --limit && test "${14}" = 1000 && test "${15}" = --format && test "${16}" = json || exit 2
     case "${ATTESTATION_STATE:?}" in
+      prior-source) exit 1 ;;
       mismatch) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"},{"name":"two"}]}}}]' ;;
+      current) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"one"}]}}}]' ;;
+      malformed-current) printf '%s\n' '[{"verificationResult":{"statement":{"subject":{"name":"one"}}}}]' ;;
       many-unrelated)
         # The matching runtime attestation follows 31 unrelated records.
         unrelated_count=31
@@ -90,9 +93,17 @@ esac
     assert!(absent.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&absent.stdout), String::from_utf8_lossy(&absent.stderr));
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=true\n");
     fs::write(&environment, "")?;
-    let existing = run("existing", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json", "single")?;
-    assert!(existing.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&existing.stdout), String::from_utf8_lossy(&existing.stderr));
+    let exact_current = run("current", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json", "single")?;
+    assert!(exact_current.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&exact_current.stdout), String::from_utf8_lossy(&exact_current.stderr));
     assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=false\n");
+    fs::write(&environment, "")?;
+    let prior = run("prior-source", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json", "single")?;
+    assert!(prior.status.success(), "prior-source attestation was not admitted for creation: stdout: {} stderr: {}", String::from_utf8_lossy(&prior.stdout), String::from_utf8_lossy(&prior.stderr));
+    assert_eq!(fs::read_to_string(&environment)?, "ATTEST_ORIGINAL=true\n");
+    fs::write(&environment, "")?;
+    let malformed_current = run("malformed-current", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json", "single")?;
+    assert!(!malformed_current.status.success(), "malformed exact current-source attestation was admitted");
+    assert_eq!(fs::read_to_string(&environment)?, "");
     fs::write(&environment, "")?;
     let mismatch = run("mismatch", "publish-version-release.yml", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "release-baseline.json", "single")?;
     assert!(!mismatch.status.success(), "multi-subject attestation was admitted");
