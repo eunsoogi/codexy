@@ -17,7 +17,6 @@ _CALL_REPAIR = f"use the reported safe component fallback and {_RERUN}"
 _EXPOSED_REPAIR = "repair the Codexy registration, then restart Codex"
 _IDENTITY_REPAIR = "reinstall the selected release, then restart Codex"
 _RUN_OPTIONS = {"capture_output": True, "text": True, "timeout": 5}
-_RUN_OPTIONS["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _RunResult = namedtuple("_RunResult", "returncode stdout category")
 FAILURES = {
     "trusted-inventory-unavailable": (_INVENTORY_REPAIR, False),

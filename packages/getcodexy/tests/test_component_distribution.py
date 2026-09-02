@@ -41,6 +41,7 @@ class CapabilityProcessTests(unittest.TestCase):
             (subprocess.CompletedProcess(["hook"], 9, stdout=""), "nonzero-exit"),
             (OSError("missing"), "missing-launcher"),
         )
+        self.assertNotIn("creationflags", probe._RUN_OPTIONS)
         for outcome, category in cases:
             with self.subTest(category=category):
                 with patch.object(probe.subprocess, "run", side_effect=[outcome]):
