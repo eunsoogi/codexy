@@ -29,26 +29,51 @@ if test "$name" = codexy-runtime-package.tar.gz; then
 	: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
 	signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 	source_digest="$STAGING_SOURCE_COMMIT"
-else
-	signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
-	source_digest="$ACTIVATION_COMMIT"
-fi
-if ! gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
-	--signer-workflow "$signer" --source-ref refs/heads/main \
-	--source-digest "$source_digest" --deny-self-hosted-runners \
-	--limit 1000 \
-	--format json >"$artifact.preflight-attestations.json"; then
-	if test "$name" = codexy-runtime-package.tar.gz; then
+	if ! gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
+		--signer-workflow "$signer" --source-ref refs/heads/main \
+		--source-digest "$source_digest" --deny-self-hosted-runners \
+		--limit 1000 \
+		--format json >"$artifact.preflight-attestations.json"; then
 		exit 1
 	fi
-	printf '%s=true\n' "$variable" >>"$GITHUB_ENV"
-	exit 0
-fi
-if test "$name" = codexy-runtime-package.tar.gz; then
 	jq -e 'type == "array" and length > 0 and all(.[]; (.verificationResult.statement.subject | type) == "array" and ([.verificationResult.statement.subject[].name] | sort) == ["codexy-marketplace-plugin.tar.gz", "runtime-staging-receipt.json"])' \
 		"$artifact.preflight-attestations.json" >/dev/null
-else
-	jq -e 'type == "array" and length > 0 and all(.[]; (.verificationResult.statement.subject | type) == "array" and (.verificationResult.statement.subject | length == 1))' \
-		"$artifact.preflight-attestations.json" >/dev/null
+	printf '%s=false\n' "$variable" >>"$GITHUB_ENV"
+	exit 0
 fi
-printf '%s=false\n' "$variable" >>"$GITHUB_ENV"
+signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+source_digest="$ACTIVATION_COMMIT"
+if ! gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
+	--deny-self-hosted-runners \
+	--limit 1000 \
+	--format json >"$artifact.preflight-attestations.json"; then
+	exit 1
+fi
+jq -e 'type == "array" and length > 0 and all(.[];
+	(.verificationResult.signature.certificate | type == "object" and
+		(.subjectAlternativeName | type == "string") and
+		(.sourceRepositoryDigest | type == "string") and
+		(.sourceRepositoryRef | type == "string")) and
+	(.verificationResult.statement | type == "object") and
+	(.verificationResult.statement.subject | type == "array")
+)' "$artifact.preflight-attestations.json" >/dev/null
+if jq -e --arg signer "https://github.com/$signer" --arg source "$source_digest" '
+	def exact:
+		((.verificationResult.signature.certificate.subjectAlternativeName | ascii_downcase) | startswith($signer | ascii_downcase)) and
+		((.verificationResult.signature.certificate.sourceRepositoryRef | ascii_downcase) == "refs/heads/main") and
+		((.verificationResult.signature.certificate.sourceRepositoryDigest | ascii_downcase) == ($source | ascii_downcase));
+	any(.[]; exact)
+' "$artifact.preflight-attestations.json" >/dev/null; then
+	jq -e --arg signer "https://github.com/$signer" --arg source "$source_digest" '
+		def exact:
+			((.verificationResult.signature.certificate.subjectAlternativeName | ascii_downcase) | startswith($signer | ascii_downcase)) and
+			((.verificationResult.signature.certificate.sourceRepositoryRef | ascii_downcase) == "refs/heads/main") and
+			((.verificationResult.signature.certificate.sourceRepositoryDigest | ascii_downcase) == ($source | ascii_downcase));
+		[.[] | select(exact)] as $current |
+		($current | length > 0) and
+		all($current[]; (.verificationResult.statement.subject | type == "array" and length == 1 and all(.[]; type == "object" and (.name | type == "string"))))
+	' "$artifact.preflight-attestations.json" >/dev/null
+	printf '%s=false\n' "$variable" >>"$GITHUB_ENV"
+else
+	printf '%s=true\n' "$variable" >>"$GITHUB_ENV"
+fi
