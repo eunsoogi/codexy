@@ -8,6 +8,49 @@ pull_request=${EXACT_PR_NUMBER:-}
 workflow_sha=${WORKFLOW_SHA:-$(git rev-parse HEAD)}
 artifact_name=${ARTIFACT_NAME:-runtime-staging-${STAGING_RUN_ID}-${STAGING_RUN_ATTEMPT}}
 mode=protected-main
+target_version=${TARGET_VERSION:-}
+if test -z "$pull_request"; then
+	: "${TARGET_VERSION:?target version is required}"
+fi
+case "$target_version" in
+'') ;;
+*[!0-9.]* | *.*.*.* | .* | *.)
+	printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+	exit 1
+	;;
+esac
+if test -n "$target_version"; then
+	IFS=.
+	# shellcheck disable=SC2086
+	set -- $target_version
+	unset IFS
+	test "$#" = 3 && test -n "$1" && test -n "$2" && test -n "$3" || {
+		printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+		exit 1
+	}
+	for component in "$@"; do
+		case "$component" in
+		0 | [1-9] | [1-9][0-9]*) ;;
+		*)
+			printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+			exit 1
+			;;
+		esac
+		length=${#component}
+		if test "$length" -gt 10 || { test "$length" -eq 10 && test "$component" -gt 2147483647; }; then
+			printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+			exit 1
+		fi
+	done
+	candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)" || {
+		printf '%s\n' 'source commit lacks release-publish contract' >&2
+		exit 1
+	}
+	test "$(printf '%s' "$candidate_contract" | jq -r .bootstrap.candidateVersion)" = "$target_version" || {
+		printf '%s\n' 'target version is not the admitted candidate version' >&2
+		exit 1
+	}
+fi
 
 root=dist/candidate/plugins/codexy-devtools
 mkdir -p dist/candidate/plugins
@@ -49,7 +92,7 @@ for platform in darwin-arm64 linux-x86_64; do
 done
 
 SOURCE_TREE="$(git rev-parse "${source_commit}^{tree}")"
-SOURCE_COMMIT="$source_commit" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" ROOT="$root" python3 - <<'PY'
+SOURCE_COMMIT="$source_commit" SOURCE_TREE="$SOURCE_TREE" CORE_AWARE="$core_aware" STAGING_RUN_ID="$STAGING_RUN_ID" STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" MODE="$mode" EXACT_PR_NUMBER="$pull_request" WORKFLOW_SHA="$workflow_sha" ARTIFACT_NAME="$artifact_name" TARGET_VERSION="$target_version" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-eunsoogi/codexy}" ROOT="$root" python3 - <<'PY'
 import hashlib, json, os
 
 root = os.environ["ROOT"]
@@ -100,6 +143,8 @@ open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_ke
 manifest_path = f"{root}/.codex-plugin/plugin.json"
 manifest = json.load(open(manifest_path, encoding="utf-8"))
 manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
+if os.environ["TARGET_VERSION"]:
+    manifest["version"] = os.environ["TARGET_VERSION"]
 open(manifest_path, "w", encoding="utf-8").write(json.dumps(manifest, indent=2) + "\n")
 PY
 

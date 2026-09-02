@@ -8,6 +8,7 @@ use crate::support;
 fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_version()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
+    let staging = workflow("runtime-candidate.yml")?;
     let language_lint = workflow("language-lint.yml")?;
     let power_shell_install = named_run(
         language_lint["jobs"]["lint"].as_mapping().ok_or("language lint job")?,
@@ -101,6 +102,15 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     )?;
     assert!(activation_run.contains("version ${BOOTSTRAP_VERSION}"));
     assert!(!activation_run.contains("Fixes #"));
+    let staging_inputs = staging["on"]["workflow_dispatch"]["inputs"].as_mapping().ok_or("staging inputs")?;
+    assert!(staging_inputs.contains_key("target_version"));
+    assert_eq!(staging_inputs["target_version"]["type"], "string");
+    assert_eq!(staging_inputs["target_version"]["required"], true);
+    let staging_job = staging["jobs"]["stage-runtime"].as_mapping().ok_or("staging job")?;
+    let staging_step = staging_job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Assemble canonical staged archive and receipt")).ok_or("staging assembly step")?;
+    assert_eq!(staging_step["env"]["TARGET_VERSION"], "${{ inputs.target_version }}");
+    assert_eq!(staging_step["run"], "scripts/assemble-runtime-candidate");
+    assert!(download.contains("test \"$(tar -xOzf public-runtime.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\""));
     Ok(())
 }
 

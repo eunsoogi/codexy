@@ -6,6 +6,10 @@ on:
         description: "Exact immutable source commit to build"
         required: true
         type: string
+      target_version:
+        description: "Admitted candidate version to embed in the staged plugin manifest"
+        required: true
+        type: string
       exact_pr_number:
         description: "Optional exact same-repository PR number"
         required: false
@@ -23,10 +27,15 @@ jobs:
       - name: Verify candidate source admission
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
+          TARGET_VERSION: ${{ inputs.target_version }}
           EXACT_PR_NUMBER: ${{ inputs.exact_pr_number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
-        run: scripts/verify-runtime-candidate-source.sh
+        run: |
+          scripts/verify-runtime-candidate-source.sh
+          if test -z "$EXACT_PR_NUMBER"; then
+            test "$(git show "$SOURCE_COMMIT:.agents/plugins/release-publish-contract.json" | jq -r .bootstrap.candidateVersion)" = "$TARGET_VERSION"
+          fi
   build-runtime:
     if: github.event_name == 'workflow_dispatch'
     needs: verify-source-commit
@@ -183,6 +192,7 @@ jobs:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           STAGING_RUN_ID: ${{ github.run_id }}
           STAGING_RUN_ATTEMPT: ${{ github.run_attempt }}
+          TARGET_VERSION: ${{ inputs.target_version }}
           EXACT_PR_NUMBER: ${{ inputs.exact_pr_number }}
           WORKFLOW_SHA: ${{ github.workflow_sha }}
           ARTIFACT_NAME: ${{ inputs.exact_pr_number != '' && format('runtime-pr-head-{0}-{1}', github.run_id, github.run_attempt) || format('runtime-staging-{0}-{1}', github.run_id, github.run_attempt) }}

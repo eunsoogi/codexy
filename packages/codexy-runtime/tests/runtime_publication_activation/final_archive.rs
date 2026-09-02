@@ -19,7 +19,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
     let inputs = publisher.2["on"]["workflow_dispatch"]["inputs"]
         .as_mapping()
         .ok_or("final publisher dispatch inputs")?;
-    for input in ["staging_source_commit", "activation_commit", "staging_run_id"] {
+    for input in ["target_version", "staging_source_commit", "activation_commit", "staging_run_id"] {
         assert!(inputs.contains_key(input), "final publisher lacks {input}");
     }
     support::assert_structured_literals(
@@ -42,7 +42,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "RELEASE_ID", "gh api --method POST", "uploadUrl: .upload_url", "release_upload_url", "\"$upload_url?name=$asset\"",
             "releases/assets/$asset_id", "gh api --method PATCH",
             "release asset differs from verified bytes",
-            "--plugin-root \"$PWD/plugins/codexy-devtools\"",
+            "--plugin-root \"$PWD/plugins/codexy-devtools\"", "test \"$(tar -xOzf staging/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\"", "test \"$(tar -xOzf public-runtime.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\"",
         ],
     );
     support::assert_structured_absent_literals(
@@ -50,7 +50,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
         "immutable release asset reconciliation",
         &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz", "gh release upload \"$RELEASE_TAG\"", "gh release download \"$RELEASE_TAG\"", "releases/tags/$RELEASE_TAG"],
     );
-    assert!(run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() < run.find("scripts/materialize-runtime-release-archive").unwrap(), "candidate-proven runtime bytes must be copied before public materialization");
+    assert!(run.find("test \"$(tar -xOzf staging/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\"").unwrap() < run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() && run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() < run.find("scripts/materialize-runtime-release-archive").unwrap(), "staged identity must be checked before the byte-preserving copy and public materialization");
     Ok(())
 }
 #[test]

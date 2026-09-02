@@ -57,7 +57,15 @@ impl CandidateFixture {
     }
 
     pub(super) fn assemble(&self) -> std::process::Output {
-        Command::new("sh")
+        self.assemble_with_target(Some("1.6.0"))
+    }
+
+    pub(super) fn assemble_with_target(
+        &self,
+        target_version: Option<&str>,
+    ) -> std::process::Output {
+        let mut command = Command::new("sh");
+        command
             .arg("scripts/assemble-runtime-candidate")
             .current_dir(self.root())
             .env("SOURCE_COMMIT", &self.source_commit)
@@ -72,13 +80,31 @@ impl CandidateFixture {
                     self.root().join("test-bin").display(),
                     std::env::var("PATH").expect("PATH")
                 ),
-            )
-            .output()
-            .expect("candidate assembly starts")
+            );
+        if let Some(target_version) = target_version {
+            command.env("TARGET_VERSION", target_version);
+        } else {
+            command.env_remove("TARGET_VERSION");
+        }
+        command.output().expect("candidate assembly starts")
     }
 
     pub(super) fn root(&self) -> &Path {
         self.temp.path()
+    }
+
+    pub(super) fn enable_core_runtime(&self) -> Result<(), Box<dyn std::error::Error>> {
+        for (platform, extension) in [("darwin-arm64", "bin"), ("linux-x86_64", "bin"), ("windows-x86_64", "exe")] {
+            fs::write(self.root().join("staged-runtime").join(format!("codexy-handoff-validate-{platform}.{extension}")), format!("handoff-{platform}\n"))?;
+        }
+        let repository = codexy_runtime::paths::repository_root();
+        for (source, target) in [("packages/codexy-runtime/schemas/handoff-runtime.schema.json", "packages/codexy-runtime/schemas/handoff-runtime.schema.json"), ("plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh"), ("plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd", "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd"), ("plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py", "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py")] {
+            let target = self.root().join(target);
+            fs::create_dir_all(target.parent().ok_or("core source parent")?)?;
+            fs::copy(repository.join(source), target)?;
+        }
+        fs::copy(repository.join("scripts/handoff_runtime_contract.py"), self.root().join("scripts/handoff_runtime_contract.py"))?;
+        Ok(())
     }
 }
 
@@ -96,7 +122,9 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
         fs::create_dir_all(root.join("staged-runtime"))?;
         fs::create_dir_all(root.join("scripts"))?;
         fs::create_dir_all(root.join("test-bin"))?;
-        fs::write(plugin.join(".codex-plugin/plugin.json"), "{}\n")?;
+        fs::create_dir_all(root.join(".agents/plugins"))?;
+        fs::write(plugin.join(".codex-plugin/plugin.json"), "{\"name\":\"codexy-devtools\",\"version\":\"1.5.1\",\"repository\":\"https://github.com/eunsoogi/codexy\",\"supportedPlatforms\":[\"darwin-arm64\",\"linux-x86_64\"]}\n")?;
+        fs::write(root.join(".agents/plugins/release-publish-contract.json"), "{\"bootstrap\":{\"candidateVersion\":\"1.6.0\"}}\n")?;
         for server in ["lsp", "codegraph"] {
             for (platform, extension) in [
                 ("darwin-arm64", "bin"),
