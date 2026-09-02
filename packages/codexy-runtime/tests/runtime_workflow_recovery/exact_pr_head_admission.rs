@@ -24,7 +24,7 @@ fn exact_pr_mode_contract() -> Result<(), Box<dyn std::error::Error>> {
             "type: string",
             "default: \"\"",
             "scripts/verify-runtime-candidate-source.sh",
-            "github.workflow_sha",
+            "git show \"$WORKFLOW_SHA:scripts/assemble-runtime-candidate\" > scripts/assemble-runtime-candidate",
             "git fetch --no-tags origin \"$SOURCE_COMMIT\"",
             "runtime-pr-head-${{ github.run_id }}-${{ github.run_attempt }}",
             "runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}",
@@ -149,6 +149,7 @@ fn exact_pr_archive_rejects_symlinks_and_source_runtime_material() -> Result<(),
     let run = |source: &str, workflow: &str, pr: &str| {
         Command::new("sh").arg(root.join("scripts/assemble-runtime-candidate")).current_dir(root)
             .env("SOURCE_COMMIT", source).env("WORKFLOW_SHA", workflow).env("EXACT_PR_NUMBER", pr)
+            .env("TARGET_VERSION", CandidateFixture::TARGET_VERSION)
             .env("ARTIFACT_NAME", if pr.is_empty() { "runtime-staging-1-1" } else { "runtime-pr-head-1-1" })
             .env("STAGING_RUN_ID", "1").env("STAGING_RUN_ATTEMPT", "1")
             .env("GITHUB_SERVER_URL", "https://github.invalid").env("GITHUB_REPOSITORY", REPOSITORY).env("PATH", &path).output()
@@ -246,5 +247,4 @@ fn pr_json(
 ) -> String {
     json!({"number": number, "state": state, "merged_at": merged_at, "base": {"ref": base_ref, "repo": {"full_name": base_repository}}, "head": {"sha": head_sha, "repo": {"full_name": head_repository}}}).to_string()
 }
-#[cfg(unix)]
 fn stderr(output: &std::process::Output) -> String { String::from_utf8_lossy(&output.stderr).into_owned() }

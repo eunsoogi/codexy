@@ -8,6 +8,7 @@ use crate::support;
 fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_version()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
+    let staging = workflow("runtime-candidate.yml")?;
     let language_lint = workflow("language-lint.yml")?;
     let power_shell_install = named_run(
         language_lint["jobs"]["lint"].as_mapping().ok_or("language lint job")?,
@@ -45,10 +46,11 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
         "scripts/admit-pypi-environment",
     );
     let admission = named_run(job, "Validate target version and release lifecycle contract")?;
-    for required in ["scripts/validate-release-lifecycle-contract"] {
-        assert!(admission.contains(required), "missing publisher admission: {required}");
-    }
-    assert_eq!(job["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Validate target version and release lifecycle contract")).and_then(|step| step["env"]["TARGET_VERSION"].as_str()), Some("${{ inputs.target_version }}"));
+    assert!(admission.contains("scripts/validate-release-lifecycle-contract"), "missing publisher admission");
+    assert_eq!(
+        publisher["env"]["TARGET_VERSION"],
+        "${{ inputs.target_version }}"
+    );
     let materialize = named_run(job, "Materialize and exercise activated final artifacts")?;
     assert!(materialize.contains("RELEASE_TAG=\"$RELEASE_TAG\""));
     assert!(materialize.contains("scripts/create_release_train_receipt.py"));
@@ -101,6 +103,19 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     )?;
     assert!(activation_run.contains("version ${BOOTSTRAP_VERSION}"));
     assert!(!activation_run.contains("Fixes #"));
+    let staging_inputs = &staging["on"]["workflow_dispatch"]["inputs"];
+    assert!(staging_inputs["target_version"]["type"] == "string"
+        && staging_inputs["target_version"]["required"] == true);
+    let staging_step = staging["jobs"]["stage-runtime"]["steps"]
+        .as_sequence()
+        .and_then(|steps| steps.iter().find(|step| {
+            step["name"] == "Assemble canonical staged archive and receipt"
+        }))
+        .ok_or("staging assembly step")?;
+    assert_eq!(staging_step["env"]["TARGET_VERSION"], "${{ inputs.target_version }}");
+    assert_eq!(staging_step["run"], "scripts/assemble-runtime-candidate");
+    assert!(download.contains("tar -xOzf public-runtime.tar.gz"));
+    assert!(download.contains("jq -er .version\n)\" = \"$TARGET_VERSION\""));
     Ok(())
 }
 

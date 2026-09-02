@@ -16,12 +16,6 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
         fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?,
         fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/finalize-verified-release"))?,
     );
-    let inputs = publisher.2["on"]["workflow_dispatch"]["inputs"]
-        .as_mapping()
-        .ok_or("final publisher dispatch inputs")?;
-    for input in ["staging_source_commit", "activation_commit", "staging_run_id"] {
-        assert!(inputs.contains_key(input), "final publisher lacks {input}");
-    }
     support::assert_structured_literals(
         &run,
         "final publisher lineage and archive contract",
@@ -43,6 +37,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "releases/assets/$asset_id", "gh api --method PATCH",
             "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy-devtools\"",
+            "jq -er .version\n          )\" = \"$TARGET_VERSION\"",
         ],
     );
     support::assert_structured_absent_literals(
@@ -50,7 +45,14 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
         "immutable release asset reconciliation",
         &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz", "gh release upload \"$RELEASE_TAG\"", "gh release download \"$RELEASE_TAG\"", "releases/tags/$RELEASE_TAG"],
     );
-    assert!(run.find("cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz").unwrap() < run.find("scripts/materialize-runtime-release-archive").unwrap(), "candidate-proven runtime bytes must be copied before public materialization");
+    let marker = |needle: &str| run.find(needle).ok_or("publisher ordering");
+    let staged_identity = marker("tar -xOzf staging/codexy-marketplace-plugin.tar.gz")?;
+    let runtime_copy = marker("cp staging/codexy-marketplace-plugin.tar.gz")?;
+    let public_materialization = marker("scripts/materialize-runtime-release-archive")?;
+    assert!(
+        staged_identity < runtime_copy && runtime_copy < public_materialization,
+        "staged identity must be checked before the byte-preserving copy and public materialization"
+    );
     Ok(())
 }
 #[test]

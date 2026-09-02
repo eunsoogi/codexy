@@ -38,6 +38,47 @@ fn candidate_assembly_accepts_first_and_subsequent_truthful_wrapper_declarations
 }
 
 #[test]
+fn candidate_assembly_projects_target_version_without_mutating_protected_payloads()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
+    fixture.enable_core_runtime()?;
+    let succeeds = |target| fixture.assemble_with_target(target).status.success();
+    assert!(!succeeds(None));
+    assert!(succeeds(Some("1.6.0")));
+    let plugin = fixture.root().join("dist/candidate/plugins/codexy-devtools");
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
+    assert_eq!(manifest["version"], "1.6.0");
+    let runtime = fs::read_dir(plugin.join("runtime"))?
+        .map(|entry| {
+            let entry = entry?;
+            Ok((entry.file_name(), fs::read(entry.path())?))
+        })
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
+    let handoff = fs::read(plugin.join("handoff-runtime.json"))?;
+    let candidate = fs::read(plugin.join("runtime-candidate.json"))?;
+    let receipt: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.root().join("dist/runtime-staging-receipt.json"))?)?;
+    assert_eq!(receipt["candidate"]["artifact"]["stagingRunId"], 1);
+    assert_eq!(receipt["provenance"]["runId"], 1);
+
+    for target in ["1.7.0", "01.6.0", "1.6.0;touch pwned"] {
+        assert!(!succeeds(Some(target)));
+    }
+
+    for (name, expected) in runtime {
+        let staged = fs::read(fixture.root().join("staged-runtime").join(&name))?;
+        let packaged = fs::read(plugin.join("runtime").join(name))?;
+        assert_eq!(staged, expected);
+        assert_eq!(packaged, expected);
+    }
+    assert_eq!(fs::read(plugin.join("handoff-runtime.json"))?, handoff);
+    assert_eq!(fs::read(plugin.join("runtime-candidate.json"))?, candidate);
+    assert!(!fixture.root().join("pwned").exists());
+    Ok(())
+}
+
+#[test]
 fn candidate_assembly_removes_stale_repository_only_skills() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
     let stale = ["plugin-marketplace-prep", "release-engineering"]

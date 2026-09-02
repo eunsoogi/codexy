@@ -7,6 +7,8 @@ use std::{
 
 use tempfile::tempdir;
 
+type FixtureResult<T> = Result<T, Box<dyn std::error::Error>>;
+
 struct CandidateFixtureSeed {
     _temporary: tempfile::TempDir,
     root: PathBuf,
@@ -20,20 +22,17 @@ pub(super) struct CandidateFixture {
 }
 
 impl CandidateFixture {
+    pub(super) const TARGET_VERSION: &str = "1.6.0";
+
     pub(super) fn new(wrapper: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Self::new_with_dispatcher(wrapper, true)
     }
 
-    pub(super) fn new_without_dispatcher(
-        wrapper: &str,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn new_without_dispatcher(wrapper: &str) -> FixtureResult<Self> {
         Self::new_with_dispatcher(wrapper, false)
     }
 
-    fn new_with_dispatcher(
-        wrapper: &str,
-        include_dispatcher: bool,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    fn new_with_dispatcher(wrapper: &str, include_dispatcher: bool) -> FixtureResult<Self> {
         let temp = tempdir()?;
         let root = temp.path();
         let seed_root = candidate_fixture_seed()?;
@@ -48,8 +47,7 @@ impl CandidateFixture {
         }
         run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
         run_git(root, &["commit", "-qm", "fixture wrapper"])?;
-        let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])? )
-            .map_err(|error| error.to_string())?;
+        let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])?)?;
         Ok(Self {
             temp,
             source_commit: source_commit.trim().into(),
@@ -57,7 +55,15 @@ impl CandidateFixture {
     }
 
     pub(super) fn assemble(&self) -> std::process::Output {
-        Command::new("sh")
+        self.assemble_with_target(Some(Self::TARGET_VERSION))
+    }
+
+    pub(super) fn assemble_with_target(
+        &self,
+        target_version: Option<&str>,
+    ) -> std::process::Output {
+        let mut command = Command::new("sh");
+        command
             .arg("scripts/assemble-runtime-candidate")
             .current_dir(self.root())
             .env("SOURCE_COMMIT", &self.source_commit)
@@ -72,13 +78,45 @@ impl CandidateFixture {
                     self.root().join("test-bin").display(),
                     std::env::var("PATH").expect("PATH")
                 ),
-            )
-            .output()
-            .expect("candidate assembly starts")
+            );
+        if let Some(target_version) = target_version {
+            command.env("TARGET_VERSION", target_version);
+        } else {
+            command.env_remove("TARGET_VERSION");
+            command.env("EXACT_PR_NUMBER", "7");
+        }
+        command.output().expect("candidate assembly starts")
     }
 
     pub(super) fn root(&self) -> &Path {
         self.temp.path()
+    }
+
+    pub(super) fn enable_core_runtime(&self) -> Result<(), Box<dyn std::error::Error>> {
+        for (platform, extension) in [
+            ("darwin-arm64", "bin"),
+            ("linux-x86_64", "bin"),
+            ("windows-x86_64", "exe"),
+        ] {
+            let path = self
+                .root()
+                .join("staged-runtime")
+                .join(format!("codexy-handoff-validate-{platform}.{extension}"));
+            fs::write(path, format!("handoff-{platform}\n"))?;
+        }
+        let repository = codexy_runtime::paths::repository_root();
+        for source in [
+            "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+            "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+            "scripts/handoff_runtime_contract.py",
+        ] {
+            let target = self.root().join(source);
+            fs::create_dir_all(target.parent().ok_or("core source parent")?)?;
+            fs::copy(repository.join(source), target)?;
+        }
+        Ok(())
     }
 }
 
@@ -96,7 +134,16 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
         fs::create_dir_all(root.join("staged-runtime"))?;
         fs::create_dir_all(root.join("scripts"))?;
         fs::create_dir_all(root.join("test-bin"))?;
-        fs::write(plugin.join(".codex-plugin/plugin.json"), "{}\n")?;
+        let contract = root.join(".agents/plugins");
+        fs::create_dir_all(&contract)?;
+        fs::write(
+            plugin.join(".codex-plugin/plugin.json"),
+            concat!(r#"{"name":"codexy-devtools","version":"1.5.1"}"#, "\n"),
+        )?;
+        fs::write(
+            contract.join("release-publish-contract.json"),
+            concat!(r#"{"bootstrap":{"candidateVersion":"1.6.0"}}"#, "\n"),
+        )?;
         for server in ["lsp", "codegraph"] {
             for (platform, extension) in [
                 ("darwin-arm64", "bin"),
@@ -110,14 +157,13 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
                 )?;
             }
         }
-        fs::copy(
-            codexy_runtime::paths::repository_root().join("scripts/assemble-runtime-candidate"),
-            root.join("scripts/assemble-runtime-candidate"),
-        )?;
-        fs::copy(
-            codexy_runtime::paths::repository_root().join("scripts/inspect-release-archive-contract.py"),
-            root.join("scripts/inspect-release-archive-contract.py"),
-        )?;
+        let repository = codexy_runtime::paths::repository_root();
+        for name in ["assemble-runtime-candidate", "inspect-release-archive-contract.py"] {
+            fs::copy(
+                repository.join("scripts").join(name),
+                root.join("scripts").join(name),
+            )?;
+        }
         let tar = root.join("test-bin/tar");
         fs::write(&tar, "#!/bin/sh\nexit 0\n")?;
         crate::support::make_executable(&tar)?;
@@ -145,14 +191,13 @@ fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {
 fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let output = Command::new("git").args(arguments).current_dir(root).output()?;
     if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(format!(
-            "git {arguments:?} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into())
+        return Ok(output.stdout);
     }
+    Err(format!(
+        "git {arguments:?} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    )
+    .into())
 }
 
 #[cfg(test)]

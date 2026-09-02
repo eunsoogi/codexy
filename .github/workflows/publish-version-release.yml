@@ -29,9 +29,15 @@ permissions:
   attestations: write
   contents: write
   id-token: write
+env:
+  TARGET_VERSION: ${{ inputs.target_version }}
 jobs:
   publish-release:
     runs-on: ubuntu-latest
+    env:
+      STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+      ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+      STAGING_RUN_ID: ${{ inputs.staging_run_id }}
     environment:
       name: pypi
       url: https://pypi.org/p/getcodexy
@@ -47,9 +53,6 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: scripts/admit-pypi-environment
       - name: Verify selected protected-main source
-        env:
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
           for commit in "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"; do
             case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
@@ -64,8 +67,6 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main
           git show "$GITHUB_SHA:scripts/project-release-verifiers.sh" > "$RUNNER_TEMP/project-release-verifiers" && chmod 755 "$RUNNER_TEMP/project-release-verifiers" && "$RUNNER_TEMP/project-release-verifiers" "$ACTIVATION_COMMIT"
       - name: Validate target version and release lifecycle contract
-        env:
-          TARGET_VERSION: ${{ inputs.target_version }}
         run: |
           scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
       - name: Download authenticated staging artifact
@@ -73,13 +74,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
           SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: scripts/download-runtime-staging-artifact staging
       - name: Verify selected archive identity
-        env:
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
-          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           receipt=staging/runtime-staging-receipt.json
           test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
@@ -92,6 +88,11 @@ jobs:
           jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
           cmp receipt-provenance.json staged-provenance.json
           sha256sum staging/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 "$receipt")"
+          test "$(
+            tar -xOzf staging/codexy-marketplace-plugin.tar.gz \
+              plugins/codexy-devtools/.codex-plugin/plugin.json |
+              jq -er .version
+          )" = "$TARGET_VERSION"
           record=.agents/plugins/runtime-activation.json
           test "$(jq -r .candidate.artifact.stagingRunId "$record")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.source.commit "$record")" = "$STAGING_SOURCE_COMMIT"
@@ -99,10 +100,6 @@ jobs:
           test "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$record")" = "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
           test ! -e plugins/codexy-devtools/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
-        env:
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
-          STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
           mkdir -p dist final-inspect
           cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
@@ -114,23 +111,18 @@ jobs:
           scripts/create_release_train_receipt.py dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz dist/codexy-runtime-package.tar.gz staging/runtime-staging-receipt.json staging/runtime-staging-run.json dist/runtime-release-receipt.json
       - name: Reconcile marketplace archive attestation
         env:
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_MARKETPLACE codexy-marketplace-plugin.tar.gz
       - name: Reconcile runtime archive attestation
         env:
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_RUNTIME codexy-runtime-package.tar.gz
       - name: Reconcile marketplace bundle attestation
         env:
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_BUNDLE codexy-marketplace-bundle.tar.gz
       - name: Reconcile release receipt attestation
         env:
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_RECEIPT runtime-release-receipt.json
       - name: Attest marketplace archive
@@ -163,7 +155,6 @@ jobs:
       - name: Reconcile immutable release baseline attestation
         if: env.BASELINE_CREATED == 'true'
         env:
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
           GH_TOKEN: ${{ github.token }}
         run: scripts/reconcile-release-attestations dist ATTEST_BASELINE release-baseline.json
       - name: Attest immutable release baseline
@@ -174,12 +165,14 @@ jobs:
       - name: Finalize authenticated public release
         env:
           GH_TOKEN: ${{ github.token }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: scripts/finalize-verified-release
 
   verify-public-release:
     needs: publish-release
     runs-on: ubuntu-latest
+    env:
+      STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+      ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
     permissions:
       contents: read
       attestations: read
@@ -192,10 +185,7 @@ jobs:
         env:
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
-          TARGET_VERSION: ${{ inputs.target_version }}
           RELEASE_TAG: v${{ inputs.target_version }}
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main && git show "$GITHUB_SHA:scripts/project-release-verifiers.sh" > "$RUNNER_TEMP/project-release-verifiers" && chmod 755 "$RUNNER_TEMP/project-release-verifiers" && "$RUNNER_TEMP/project-release-verifiers" "$ACTIVATION_COMMIT"
           base="https://github.com/eunsoogi/codexy/releases/download/$RELEASE_TAG"
@@ -216,14 +206,17 @@ jobs:
           scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools public-release
           scripts/inspect_release_train_archive.py public-bundle.tar.gz "$PWD" "$RELEASE_TAG"
           test "$(jq -r .version public-inspect/plugins/codexy-devtools/.codex-plugin/plugin.json)" = "$TARGET_VERSION"
+          test "$(
+            tar -xOzf public-runtime.tar.gz \
+              plugins/codexy-devtools/.codex-plugin/plugin.json |
+              jq -er .version
+          )" = "$TARGET_VERSION"
           test ! -e public-inspect/plugins/codexy-devtools/runtime-release.json
           test ! -e public-inspect/plugins/codexy-devtools/runtime-candidate.json
       - name: Verify public release attestations with a read-only token
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ""
-          STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
-          ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
         run: |
           mkdir public-attested
           cp public.tar.gz public-attested/codexy-marketplace-plugin.tar.gz
@@ -242,7 +235,6 @@ jobs:
         env:
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
-          TARGET_VERSION: ${{ inputs.target_version }}
         run: |
           python -m venv public-bootstrap
           public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
