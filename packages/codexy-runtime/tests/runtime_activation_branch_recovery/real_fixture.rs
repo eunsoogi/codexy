@@ -28,11 +28,6 @@ impl Fixture {
         let temp = prepared.temp;
         let repo = prepared.repo;
         let candidate = prepared.candidate;
-        git(&repo, &["init", "-b", "main"])?;
-        git(&repo, &["config", "user.name", "test"])?;
-        git(&repo, &["config", "user.email", "test@example.com"])?;
-        git(&repo, &["add", "."])?;
-        git(&repo, &["commit", "-m", "base"])?;
         git(&repo, &["switch", "-c", "activation"])?;
         metadata::select_current_bootstrap(&repo)?;
         let receipt = temp.path().join("receipt.json");
