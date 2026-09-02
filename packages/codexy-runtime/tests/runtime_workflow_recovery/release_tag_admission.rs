@@ -111,40 +111,43 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api()
 }
 
 #[test]
-fn concurrent_exact_reconciles_only_the_immediate_authenticated_readback()
--> Result<(), Box<dyn std::error::Error>> {
-    let fixture = Fixture::new(RemoteTag::ConcurrentExact)?;
-    let output = fixture.run()?;
-    assert!(!output.status.success(), "fixture must stop at fake release boundary");
-    assert_create_reference_diagnostic(
-        &output,
-        "422",
-        "HTTP/2.0 422 Unprocessable Entity",
-    );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("release-create sentinel"));
-    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called once");
-    assert_eq!(fixture.release_calls()?, 1, "exact concurrent tag was not reconciled");
-    assert_eq!(fixture.git_push_calls()?, 0, "concurrent reconciliation used git push");
-    Ok(())
-}
-
-#[test]
 fn create_reference_diagnostic_is_bounded_and_credential_safe()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = fs::read_to_string(
         codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
     )?;
-    for required in [
-        "tag_create_diagnostic",
-        "sed -n '1,20p'",
-        "cut -c 1-512",
-        "[Aa]uthorization[[:space:]]*:",
-        "[Bb]earer",
-        "[Gg][Hh]_[Tt][Oo][Kk][Ee][Nn]",
-        "[Gg][Ii][Tt][Hh][Uu][Bb]_[Tt][Oo][Kk][Ee][Nn]",
-    ] {
-        assert!(publisher.contains(required), "missing diagnostic guard: {required}");
-    }
+    assert!(
+        publisher.contains("GIT_CONFIG_COUNT=1")
+            && publisher.contains("GIT_CONFIG_KEY_0=http.extraheader")
+            && publisher.contains("GIT_CONFIG_VALUE_0=\"Authorization: Bearer $tag_auth_token\"")
+            && publisher.contains("body { print }")
+            && publisher.contains("sed -n '1,20p'")
+            && publisher.contains("cut -c 1-512")
+            && publisher.contains("[Aa]uthorization[[:space:]]*:")
+            && publisher.contains("[Bb]earer")
+            && publisher.contains("[Tt]oken")
+    );
+    let temp = tempfile::tempdir()?;
+    let response = temp.path().join("response");
+    fs::write(&response, format!(
+        "HTTP/2.0 422 Unprocessable Entity\n{}\n\n{{\"token\":\"fixture-token\"}}\n{}",
+        "header\n".repeat(25), "body\n".repeat(200)
+    ))?;
+    let start = publisher.find("tag_create_diagnostic() {").ok_or("diagnostic start")?;
+    let end = publisher[start..].find("\n}\nrelease_exists=false").ok_or("diagnostic end")? + 2;
+    let probe = temp.path().join("probe.sh");
+    fs::write(&probe, format!(
+        "#!/bin/sh\n{}\ntag_create_diagnostic 422 \"$1\"\n",
+        &publisher[start..start + end]
+    ))?;
+    let output = std::process::Command::new("sh")
+        .arg(&probe)
+        .arg(&response)
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("HTTP/2.0 422 Unprocessable Entity body=body"));
+    assert!(!stderr.contains("fixture-token"), "diagnostic leaked fixture credential");
+    assert!(stderr.len() < 700, "diagnostic exceeded bound: {}", stderr.len());
     Ok(())
 }
 

@@ -50,8 +50,13 @@ validate_release_state() {
 tag_create_diagnostic() {
   tag_create_status="$1"
   tag_create_response="$2"
-  tag_create_excerpt="$(
-    sed -n '1,20p' "$tag_create_response" |
+  tag_create_body="$(
+    awk '
+      $1 ~ /^HTTP\/[0-9.]+$/ { seen_status=1; next }
+      seen_status && /^[[:space:]]*$/ { body=1; next }
+      body { print }
+    ' "$tag_create_response" |
+      sed -n '1,20p' |
       sed -E \
         -e '/[Aa]uthorization[[:space:]]*:/d' \
         -e '/[Bb]earer[[:space:]]/d' \
@@ -61,8 +66,15 @@ tag_create_diagnostic() {
       tr '\r\n' ' ' |
       cut -c 1-512
   )"
+  tag_create_status_line="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print; exit }' "$tag_create_response")"
   printf 'create-reference status=%s response=%s\n' \
-    "$tag_create_status" "${tag_create_excerpt:-<empty>}" >&2
+    "$tag_create_status" "${tag_create_status_line:-<empty>} body=${tag_create_body:-<empty>}" >&2
+}
+authenticated_remote_tag() {
+  tag_auth_token="${GH_TOKEN:-unavailable}"
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader \
+    GIT_CONFIG_VALUE_0="Authorization: Bearer $tag_auth_token" \
+    git ls-remote --refs origin "$tag_ref"
 }
 release_exists=false
 release_id=
@@ -74,7 +86,7 @@ if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tag
   validate_release_state
 fi
 tag_ref="refs/tags/$RELEASE_TAG"
-remote_tag="$(git ls-remote --refs origin "$tag_ref")"
+remote_tag="$(authenticated_remote_tag)"
 if test -z "$remote_tag"; then
   test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
 fi
@@ -94,14 +106,14 @@ if test -z "$remote_tag"; then
   fi
   rm -f "$tag_create_response"
 fi
-remote_tag="$(git ls-remote --refs origin "$tag_ref")"
+remote_tag="$(authenticated_remote_tag)"
 test -n "$remote_tag"
 remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
 test "$remote_tag_oid" = "$ACTIVATION_COMMIT"
 git fetch --tags --force origin
 tag_commit="$(git rev-parse --verify "$tag_ref^{commit}")"
 test "$tag_commit" = "$ACTIVATION_COMMIT"
-test "$remote_tag" = "$(git ls-remote --refs origin "$tag_ref")"
+test "$remote_tag" = "$(authenticated_remote_tag)"
 git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 
