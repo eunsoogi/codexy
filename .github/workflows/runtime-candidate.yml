@@ -172,6 +172,13 @@ jobs:
           fetch-depth: 0,
           persist-credentials: false,
         }
+      - name: Materialize trusted assembler for selected source
+        if: inputs.exact_pr_number == ''
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          git show "$WORKFLOW_SHA:scripts/assemble-runtime-candidate" > scripts/assemble-runtime-candidate
+          chmod 755 scripts/assemble-runtime-candidate
       - name: Recheck exact PR admission before staging
         if: inputs.exact_pr_number != ''
         env:

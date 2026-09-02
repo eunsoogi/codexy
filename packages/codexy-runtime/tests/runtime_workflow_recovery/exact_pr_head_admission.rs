@@ -24,7 +24,7 @@ fn exact_pr_mode_contract() -> Result<(), Box<dyn std::error::Error>> {
             "type: string",
             "default: \"\"",
             "scripts/verify-runtime-candidate-source.sh",
-            "github.workflow_sha",
+            "git show \"$WORKFLOW_SHA:scripts/assemble-runtime-candidate\" > scripts/assemble-runtime-candidate",
             "git fetch --no-tags origin \"$SOURCE_COMMIT\"",
             "runtime-pr-head-${{ github.run_id }}-${{ github.run_attempt }}",
             "runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}",
