@@ -11,32 +11,38 @@ artifact="$artifact_dir/$name"
 digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
 response="$(gh api --include -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" 2>/dev/null || true)"
 case "$response" in
-  '{'*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
-  'HTTP/'*' 200 '*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
-  'HTTP/'*' 404 '*) total=0 ;;
-  *) exit 1 ;;
+'{'*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
+'HTTP/'*' 200 '*) total="$(gh api --paginate --slurp -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" | jq -er 'if type == "array" then [.[] | .attestations[]] else .attestations end | length')" ;;
+'HTTP/'*' 404 '*) total=0 ;;
+*) exit 1 ;;
 esac
-case "$total" in *[!0-9]*|'') exit 1 ;; esac
+case "$total" in *[!0-9]* | '') exit 1 ;; esac
 if test "$total" = 0; then
-  if test "$name" = codexy-runtime-package.tar.gz; then
-    printf '%s\n' 'runtime candidate attestation is missing' >&2
-    exit 1
-  fi
-  printf '%s=true\n' "$variable" >> "$GITHUB_ENV"
-  exit 0
+	if test "$name" = codexy-runtime-package.tar.gz; then
+		printf '%s\n' 'runtime candidate attestation is missing' >&2
+		exit 1
+	fi
+	printf '%s=true\n' "$variable" >>"$GITHUB_ENV"
+	exit 0
 fi
 if test "$name" = codexy-runtime-package.tar.gz; then
-  : "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
-  signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
-  source_digest="$STAGING_SOURCE_COMMIT"
+	: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
+	signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
+	source_digest="$STAGING_SOURCE_COMMIT"
 else
-  signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
-  source_digest="$ACTIVATION_COMMIT"
+	signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+	source_digest="$ACTIVATION_COMMIT"
 fi
 gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
-  --signer-workflow "$signer" --source-ref refs/heads/main \
-  --source-digest "$source_digest" --deny-self-hosted-runners \
-  --format json > "$artifact.preflight-attestations.json"
-jq -e 'length > 0 and all(.[]; .verificationResult.statement.subject | length == 1)' \
-  "$artifact.preflight-attestations.json" >/dev/null
-printf '%s=false\n' "$variable" >> "$GITHUB_ENV"
+	--signer-workflow "$signer" --source-ref refs/heads/main \
+	--source-digest "$source_digest" --deny-self-hosted-runners \
+	--limit 1000 \
+	--format json >"$artifact.preflight-attestations.json"
+if test "$name" = codexy-runtime-package.tar.gz; then
+	jq -e 'type == "array" and length > 0 and all(.[]; (.verificationResult.statement.subject | type) == "array" and ([.verificationResult.statement.subject[].name] | sort) == ["codexy-marketplace-plugin.tar.gz", "runtime-staging-receipt.json"])' \
+		"$artifact.preflight-attestations.json" >/dev/null
+else
+	jq -e 'type == "array" and length > 0 and all(.[]; (.verificationResult.statement.subject | type) == "array" and (.verificationResult.statement.subject | length == 1))' \
+		"$artifact.preflight-attestations.json" >/dev/null
+fi
+printf '%s=false\n' "$variable" >>"$GITHUB_ENV"

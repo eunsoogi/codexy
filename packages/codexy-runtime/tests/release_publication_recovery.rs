@@ -25,9 +25,15 @@ fn attestation_set_fails_closed_and_sorts_complete_sets()
         fs::write(artifacts.join(name), name)?;
     }
     let gh = bin.join("gh");
-    fs::write(&gh, "#!/bin/sh\nif test \"${FAIL_ATTESTATION:-false}\" = true; then exit 1; fi\nprintf '%s\\n' '[{\"verificationResult\":{\"statement\":{\"subject\":[{\"name\":\"artifact\"}]}}}]'\n")?;
+    fs::write(&gh, r#"#!/bin/sh
+if test "${FAIL_ATTESTATION:-false}" = true; then exit 1; fi
+case "$3" in
+  *codexy-runtime-package.tar.gz) case "${RUNTIME_SUBJECTS:-valid}" in malformed-top-level) printf '%s\n' '{"attestation":{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}}' ;; malformed-subject-object) printf '%s\n' '[{"verificationResult":{"statement":{"subject":{"first":{"name":"codexy-marketplace-plugin.tar.gz"},"second":{"name":"runtime-staging-receipt.json"}}}}}]' ;; *) jq -n --arg names "${RUNTIME_SUBJECTS:-codexy-marketplace-plugin.tar.gz,runtime-staging-receipt.json}" '[{"verificationResult":{"statement":{"subject": ($names | split(",") | map({name: .}))}}}]' ;; esac ;;
+  *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"artifact"}]}}}]' ;;
+esac
+"#)?;
     make_executable(&gh)?;
-    let run = |mode: &str, output: &std::path::Path, fail: bool| {
+    let run = |mode: &str, output: &std::path::Path, fail: bool, runtime_subjects: &str| {
         let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
         let mut command = Command::new(codexy_runtime::paths::repository_root().join("scripts/verify-release-attestation-set"));
         command.args([artifacts.as_path(), output, std::path::Path::new(mode)])
@@ -36,19 +42,34 @@ fn attestation_set_fails_closed_and_sorts_complete_sets()
             .env("ACTIVATION_COMMIT", COMMIT)
             .env("STAGING_SOURCE_COMMIT", COMMIT)
             .env("FAIL_ATTESTATION", fail.to_string())
+            .env("RUNTIME_SUBJECTS", runtime_subjects)
             .output()
     };
     let failed_output = root.join("failed.json");
-    assert!(!run("release", &failed_output, true)?.status.success());
+    assert!(!run("release", &failed_output, true, "")?.status.success());
     assert_ne!(fs::read_to_string(&failed_output).unwrap_or_default(), "[]\n");
     for (mode, expected) in [("release", &[ASSETS[1], ASSETS[0], ASSETS[2], ASSETS[3]][..]), ("baseline", &["release-baseline.json"][..])] {
         let output = root.join(format!("{mode}.json"));
-        let result = run(mode, &output, false)?;
+        let result = run(mode, &output, false, "")?;
         assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
         let records: Vec<serde_json::Value> = serde_json::from_slice(&fs::read(output)?)?;
         let names = records.iter().map(|record| record["name"].as_str().unwrap()).collect::<Vec<_>>();
         assert_eq!(names, expected);
         assert!(records.iter().all(|record| record["count"] == 1 && record["fingerprint"].as_str().is_some_and(|value| value.len() == 64)));
+    }
+    for (subjects, accepted) in [
+        ("codexy-marketplace-plugin.tar.gz,runtime-staging-receipt.json", true),
+        ("runtime-staging-receipt.json,codexy-marketplace-plugin.tar.gz", true),
+        ("codexy-marketplace-plugin.tar.gz", false),
+        ("codexy-marketplace-plugin.tar.gz,runtime-staging-receipt.json,extra", false),
+        ("codexy-marketplace-plugin.tar.gz,codexy-marketplace-plugin.tar.gz", false),
+        ("codexy-marketplace-plugin.tar.gz,renamed-receipt.json", false),
+        ("arbitrary-one,arbitrary-two", false),
+        ("malformed-top-level", false),
+        ("malformed-subject-object", false),
+    ] {
+        let result = run("release", &root.join("runtime-subjects.json"), false, subjects)?;
+        assert_eq!(result.status.success(), accepted, "runtime subject set {subjects}");
     }
     Ok(())
 }
@@ -63,13 +84,13 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
     ] {
         let fixture = Fixture::new(existing, published, false)?;
         fixture.run_all()?;
-        assert!(fixture.reads()?.contains("api-download"), "{name} did not download assets by numeric release identity");
-        assert!(fixture.log()?.contains("api-upload"), "{name} did not upload assets by numeric release identity");
-        let published_log = fixture.log()?;
+        assert!(fixture.read("reads")?.contains("api-download"), "{name} did not download assets by numeric release identity");
+        assert!(fixture.read("log")?.contains("api-upload"), "{name} did not upload assets by numeric release identity");
+        let published_log = fixture.read("log")?;
         fixture.run_all()?;
-        assert_eq!(fixture.log()?, published_log, "{name} public rerun mutated release state");
+        assert_eq!(fixture.read("log")?, published_log, "{name} public rerun mutated release state");
         assert_eq!(fixture.assets()?, [ASSETS.as_slice(), &["release-baseline.json"]].concat(), "{name}");
-        assert!(fixture.log()?.contains("publish"), "{name} did not finalize");
+        assert!(fixture.read("log")?.contains("publish"), "{name} did not finalize");
     }
     Ok(())
 }
@@ -78,12 +99,12 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
 fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&ASSETS, false, false)?;
-    let publish = fixture.run("publish-verified-release")?;
+    let publish = fixture.run_with_policy("publish-verified-release", false, true)?;
     assert!(publish.status.success());
     let baseline_created = fixture.last_baseline_created()?;
     let finalize = fixture.run_with_policy("finalize-verified-release", baseline_created, false)?;
     assert!(!finalize.status.success());
-    assert!(fixture.log()?.contains("publish\n"), "fixture did not exercise the post-publication observation");
+    assert!(fixture.read("log")?.contains("publish\n"), "fixture did not exercise the post-publication observation");
     Ok(())
 }
 
@@ -91,9 +112,9 @@ fn finalizer_rejects_an_immutable_false_post_publication_observation()
 fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new(&[ASSETS[1]], false, true)?;
-    let result = fixture.run("publish-verified-release")?;
+    let result = fixture.run_with_policy("publish-verified-release", false, true)?;
     assert!(!result.status.success());
-    assert!(fixture.log()?.is_empty(), "mismatch mutated release state");
+    assert!(fixture.read("log")?.is_empty(), "mismatch mutated release state");
     Ok(())
 }
 
@@ -159,9 +180,8 @@ impl Fixture {
         }
         Ok(Self { _temp: temp, root })
     }
-
     fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let publish = self.run("publish-verified-release")?;
+        let publish = self.run_with_policy("publish-verified-release", false, true)?;
         assert!(
             publish.status.success(),
             "stdout: {} stderr: {}",
@@ -173,11 +193,6 @@ impl Fixture {
         assert!(finalize.status.success(), "{}", String::from_utf8_lossy(&finalize.stderr));
         Ok(())
     }
-
-    fn run(&self, name: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
-        self.run_with_policy(name, false, true)
-    }
-
     fn run_with_policy(
         &self,
         name: &str,
@@ -228,11 +243,7 @@ impl Fixture {
         Ok(ASSETS.into_iter().chain(["release-baseline.json"]).filter(|name| names.iter().any(|actual| actual == name)).collect())
     }
 
-    fn log(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(fs::read_to_string(self.root.join("log")).unwrap_or_default())
-    }
-
-    fn reads(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(fs::read_to_string(self.root.join("reads")).unwrap_or_default())
+    fn read(&self, name: &str) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(fs::read_to_string(self.root.join(name)).unwrap_or_default())
     }
 }
