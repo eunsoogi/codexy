@@ -88,7 +88,7 @@ fn final_publisher_keeps_changelog_materialization_readable() -> Result<(), Box<
         &[
             "release_exists=false",
             "if gh release view \"$RELEASE_TAG\" --repo \"$GITHUB_REPOSITORY\" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then",
-            "if test \"$release_exists\" = false; then\n  changelog_notes=\"$(scripts/generate-release-changelog \"$RELEASE_TAG\")\"",
+            "if test \"$release_exists\" = false; then\n  changelog_notes=\"$(ACTIVATION_COMMIT=\"$ACTIVATION_COMMIT\" scripts/generate-release-changelog \"$RELEASE_TAG\")\"",
         ],
     );
     support::assert_structured_absent_literals(

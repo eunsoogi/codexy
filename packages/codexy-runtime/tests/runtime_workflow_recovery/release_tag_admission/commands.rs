@@ -7,7 +7,7 @@ pub(super) fn release_step() -> Result<String, Box<dyn std::error::Error>> {
         codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
     )?
     .replace(
-        "scripts/generate-release-changelog \"$RELEASE_TAG\"",
+        "ACTIVATION_COMMIT=\"$ACTIVATION_COMMIT\" scripts/generate-release-changelog \"$RELEASE_TAG\"",
         "printf notes",
     ))
 }

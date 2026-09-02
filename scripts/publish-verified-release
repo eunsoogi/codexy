@@ -111,7 +111,7 @@ if test "$release_exists" = true; then
   test -n "$remote_tag" || release_error "release exists without its version tag"
 fi
 if test "$release_exists" = false; then
-  changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
+  changelog_notes="$(ACTIVATION_COMMIT="$ACTIVATION_COMMIT" scripts/generate-release-changelog "$RELEASE_TAG")"
   if test -n "$remote_tag"; then
     verify_existing_tag "$remote_tag"
     verify_existing_tag "$remote_tag"

@@ -3,19 +3,34 @@ set -eu
 
 release_tag="${1:?release tag required}"
 previous_tag="${2:-}"
+display_tag="$release_tag"
+release_commit="${ACTIVATION_COMMIT-$release_tag}"
+
+if ! git rev-parse --verify "${release_commit}^{commit}" > /dev/null 2>&1; then
+  printf 'release commit is not a commit: %s\n' "$release_commit" >&2
+  exit 1
+fi
 
 if [ -z "$previous_tag" ]; then
-  previous_tag="$(git tag --merged "$release_tag" --sort=-creatordate | grep -vxF "$release_tag" | head -n 1 || true)"
+  release_tag="$release_commit"
+  release_tags="$(git tag --merged "$release_tag" --sort=-creatordate || true)"
+  release_tag="$display_tag"
+  previous_tag="$(printf '%s\n' "$release_tags" | grep -vxF "$release_tag" | head -n 1 || true)"
+fi
+
+if [ -n "$previous_tag" ] && ! git rev-parse --verify "${previous_tag}^{commit}" > /dev/null 2>&1; then
+  printf 'previous tag is not a commit: %s\n' "$previous_tag" >&2
+  exit 1
 fi
 
 echo "## Codexy ${release_tag}"
 echo
 if [ -n "$previous_tag" ]; then
   echo "Changes since ${previous_tag}:"
-  changelog_body="$(git log --pretty=format:'- %s (%h)' "${previous_tag}..${release_tag}")"
+  changelog_body="$(git log --pretty=format:'- %s (%h)' "${previous_tag}..${release_commit}")"
 else
   echo "Changes:"
-  changelog_body="$(git log --pretty=format:'- %s (%h)' "$release_tag")"
+  changelog_body="$(git log --pretty=format:'- %s (%h)' "$release_commit")"
 fi
 
 if [ -n "$changelog_body" ]; then
