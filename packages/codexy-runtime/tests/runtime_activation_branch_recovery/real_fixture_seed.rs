@@ -14,7 +14,8 @@ pub(super) struct MaterializedFixture {
 }
 
 struct FixtureSeed {
-    archive: Vec<u8>,
+    _temp: tempfile::TempDir,
+    repo: PathBuf,
     candidate: String,
 }
 
@@ -24,31 +25,42 @@ impl FixtureSeed {
         let prepared = temp.path().join("prepared");
         fs::create_dir(&prepared)?;
         let candidate = prepare(&prepared, temp.path())?;
-        let archive = temp.path().join("prepared.tar");
-        archive_directory(&prepared, &archive)?;
-        fs::remove_dir_all(&prepared)?;
+        initialize_repository(&prepared)?;
         Ok(Self {
-            archive: fs::read(archive)?,
+            _temp: temp,
+            repo: prepared,
             candidate,
         })
     }
 
     fn materialize(&self) -> Result<MaterializedFixture, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
-        let archive = temp.path().join("prepared.tar");
         let repo = temp.path().join("repo with spaces");
-        fs::write(&archive, &self.archive)?;
-        fs::create_dir(&repo)?;
-        let mut extract = Command::new("tar");
-        extract.arg("-xf").arg(&archive).arg("-C").arg(&repo);
-        run(&mut extract)?;
-        fs::remove_file(archive)?;
+        let mut clone = Command::new("git");
+        clone
+            .args(["-c", "core.autocrlf=false", "clone", "--shared"])
+            .arg(&self.repo)
+            .arg(&repo);
+        run(&mut clone)?;
+        configure_repository(&repo)?;
         Ok(MaterializedFixture {
             temp,
             repo,
             candidate: self.candidate.clone(),
         })
     }
+}
+
+fn initialize_repository(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    git(repo, &["init", "-b", "main"])?;
+    configure_repository(repo)?;
+    git(repo, &["add", "."])?;
+    git(repo, &["commit", "-m", "base"])
+}
+
+fn configure_repository(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    git(repo, &["config", "user.name", "test"])?;
+    git(repo, &["config", "user.email", "test@example.com"])
 }
 
 pub(super) fn materialize() -> Result<MaterializedFixture, Box<dyn std::error::Error>> {
@@ -132,10 +144,10 @@ fn prepare(repo: &Path, temp_root: &Path) -> Result<String, Box<dyn std::error::
     Ok(candidate)
 }
 
-fn archive_directory(root: &Path, archive: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let mut create = Command::new("tar");
-    create.arg("-cf").arg(archive).arg("-C").arg(root).arg(".");
-    run(&mut create)
+fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    let mut command = Command::new("git");
+    command.args(args).current_dir(root);
+    run(&mut command)
 }
 
 fn run(process: &mut Command) -> Result<(), Box<dyn std::error::Error>> {
