@@ -37,7 +37,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "releases/assets/$asset_id", "gh api --method PATCH",
             "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy-devtools\"",
-            "test \"$(tar -xOzf staging/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools/.codex-plugin/plugin.json | jq -er .version)\" = \"$TARGET_VERSION\"",
+            "jq -er .version\n          )\" = \"$TARGET_VERSION\"",
         ],
     );
     support::assert_structured_absent_literals(

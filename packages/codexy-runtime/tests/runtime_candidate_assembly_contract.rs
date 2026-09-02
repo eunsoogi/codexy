@@ -42,8 +42,9 @@ fn candidate_assembly_projects_target_version_without_mutating_protected_payload
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
     fixture.enable_core_runtime()?;
-    assert!(!fixture.assemble_with_target(None).status.success(), "missing target version was accepted");
-    assert!(fixture.assemble_with_target(Some("1.6.0")).status.success(), "target assembly failed");
+    let succeeds = |target| fixture.assemble_with_target(target).status.success();
+    assert!(!succeeds(None));
+    assert!(succeeds(Some("1.6.0")));
     let plugin = fixture.root().join("dist/candidate/plugins/codexy-devtools");
     let manifest: serde_json::Value =
         serde_json::from_slice(&fs::read(plugin.join(".codex-plugin/plugin.json"))?)?;
@@ -62,7 +63,7 @@ fn candidate_assembly_projects_target_version_without_mutating_protected_payload
     assert_eq!(receipt["provenance"]["runId"], 1);
 
     for target in ["1.7.0", "01.6.0", "1.6.0;touch pwned"] {
-        assert!(!fixture.assemble_with_target(Some(target)).status.success(), "target {target} was accepted");
+        assert!(!succeeds(Some(target)));
     }
 
     for (name, expected) in runtime {

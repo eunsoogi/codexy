@@ -8,53 +8,51 @@ pull_request=${EXACT_PR_NUMBER:-}
 workflow_sha=${WORKFLOW_SHA:-$(git rev-parse HEAD)}
 artifact_name=${ARTIFACT_NAME:-runtime-staging-${STAGING_RUN_ID}-${STAGING_RUN_ATTEMPT}}
 mode=protected-main
-target_version=${TARGET_VERSION:-}
-if test -z "$pull_request"; then
-	: "${TARGET_VERSION:?target version is required}"
-fi
+target_version=${TARGET_VERSION:?target version is required}
 case "$target_version" in
-'') ;;
 *[!0-9.]* | *.*.*.* | .* | *.)
 	printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
 	exit 1
 	;;
 esac
-if test -n "$target_version"; then
-	IFS=.
-	# shellcheck disable=SC2086
-	set -- $target_version
-	unset IFS
-	if test "$#" != 3 ||
-		test -z "$1" ||
-		test -z "$2" ||
-		test -z "$3"; then
+
+IFS=.
+# shellcheck disable=SC2086
+set -- $target_version
+unset IFS
+if test "$#" != 3 ||
+	test -z "$1" ||
+	test -z "$2" ||
+	test -z "$3"; then
+	printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+	exit 1
+fi
+for component in "$@"; do
+	case "$component" in
+	0 | [1-9] | [1-9][0-9]*) ;;
+	*)
+		printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
+		exit 1
+		;;
+	esac
+	length=${#component}
+	if test "$length" -gt 10 ||
+		test "$length" -eq 10 && test "$component" -gt 2147483647; then
 		printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
 		exit 1
 	fi
-	for component in "$@"; do
-		case "$component" in
-		0 | [1-9] | [1-9][0-9]*) ;;
-		*)
-			printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
-			exit 1
-			;;
-		esac
-		length=${#component}
-		if test "$length" -gt 10 ||
-			test "$length" -eq 10 && test "$component" -gt 2147483647; then
-			printf '%s\n' 'target version must be MAJOR.MINOR.PATCH' >&2
-			exit 1
-		fi
-	done
-	if ! candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)"; then
-		printf '%s\n' 'source commit lacks release-publish contract' >&2
-		exit 1
-	fi
-	candidate_version="$(printf '%s' "$candidate_contract" | jq -r .bootstrap.candidateVersion)"
-	if ! test "$candidate_version" = "$target_version"; then
-		printf '%s\n' 'target version is not the admitted candidate version' >&2
-		exit 1
-	fi
+done
+if ! candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)"; then
+	printf '%s\n' 'source commit lacks release-publish contract' >&2
+	exit 1
+fi
+candidate_version="$(
+	printf '%s' "$candidate_contract" |
+		jq -r .bootstrap.candidateVersion
+)"
+if ! test "$candidate_version" = "$target_version"; then
+	printf '%s\n' 'target version is not the admitted candidate version' >&2
+	exit 1
 fi
 
 root=dist/candidate/plugins/codexy-devtools
