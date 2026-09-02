@@ -111,6 +111,8 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
     let staging_commit = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let statement = r#"[{"subject":[{"name":"subject"}]}]"#;
     let fingerprint = format!("{:x}", Sha256::digest(format!("{statement}\n").as_bytes()));
+    let runtime_statement = r#"[{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}]"#;
+    let runtime_fingerprint = format!("{:x}", Sha256::digest(format!("{runtime_statement}\n").as_bytes()));
     let assets = serde_json::json!([
         {"id": 2, "name": "codexy-marketplace-plugin.tar.gz", "size": 1, "digest": "sha256:marketplace"},
         {"id": 3, "name": "codexy-marketplace-bundle.tar.gz", "size": 1, "digest": "sha256:bundle"},
@@ -137,7 +139,7 @@ fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_base
         "attestations": [
             {"name": "codexy-marketplace-bundle.tar.gz", "count": 1, "fingerprint": fingerprint},
             {"name": "codexy-marketplace-plugin.tar.gz", "count": 1, "fingerprint": fingerprint},
-            {"name": "codexy-runtime-package.tar.gz", "count": 1, "fingerprint": fingerprint},
+            {"name": "codexy-runtime-package.tar.gz", "count": 1, "fingerprint": runtime_fingerprint},
             {"name": "runtime-release-receipt.json", "count": 1, "fingerprint": fingerprint}
         ]
     });
@@ -159,6 +161,11 @@ case "$*" in
     case "${ATTESTATION_STATE:?}" in
       release|extra) printf '%s\n' '{"attestations":[{},{}]}' ;;
       *) printf '%s\n' '{"attestations":[{}]}' ;;
+    esac ;;
+  *attestation*codexy-runtime-package.tar.gz*--format\ json*)
+    case "${ATTESTATION_STATE:?}" in
+      extra) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]} }},{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}]' ;;
+      *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}]' ;;
     esac ;;
   *attestation*--format\ json*)
     case "${ATTESTATION_STATE:?}" in
