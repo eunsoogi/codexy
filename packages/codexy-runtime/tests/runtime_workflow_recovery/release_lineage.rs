@@ -115,7 +115,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "-f \"body=$changelog_notes\" -F draft=true -F prerelease=false",
             "release_create_diagnostic",
             "retarget_existing_draft",
+            "releases?per_page=100",
             "gh api --method PATCH",
+            "-f \"tag_name=$RELEASE_TAG\"",
             "-f \"target_commitish=$ACTIVATION_COMMIT\"",
         ],
     );
