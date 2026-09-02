@@ -72,8 +72,9 @@ tag_create_diagnostic() {
 }
 authenticated_remote_tag() {
   tag_auth_token="${GH_TOKEN:-unavailable}"
+  tag_auth_basic="$(printf 'x-access-token:%s' "$tag_auth_token" | base64 | tr -d '\r\n')"
   GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader \
-    GIT_CONFIG_VALUE_0="Authorization: Bearer $tag_auth_token" \
+    GIT_CONFIG_VALUE_0="Authorization: Basic $tag_auth_basic" \
     git ls-remote --refs origin "$tag_ref"
 }
 release_exists=false
