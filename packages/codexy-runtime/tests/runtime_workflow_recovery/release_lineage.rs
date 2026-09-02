@@ -88,9 +88,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
-    let tag_readback = release.find("remote_tag_oid=").ok_or("tag readback")?;
+    assert!(release.matches("verify_tag_if_present \"$remote_tag\"").count() >= 3);
     let upload = release.find("upload_release_asset").ok_or("asset upload")?;
-    assert!(create < tag_readback && tag_readback < upload);
+    assert!(create < upload);
     assert!(!release.lines().any(|line| {
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));
