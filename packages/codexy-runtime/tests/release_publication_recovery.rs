@@ -3,7 +3,6 @@ use std::{fs, process::Command};
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;
 use fixture::{gh_fixture, git_fixture, make_executable};
-
 const ASSETS: [&str; 4] = [
     "codexy-marketplace-plugin.tar.gz",
     "codexy-marketplace-bundle.tar.gz",
@@ -73,7 +72,6 @@ esac
     }
     Ok(())
 }
-
 #[test]
 fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_states()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -87,14 +85,20 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
         assert!(fixture.read("reads")?.contains("api-download"), "{name} did not download assets by numeric release identity");
         assert!(fixture.read("log")?.contains("api-upload"), "{name} did not upload assets by numeric release identity");
         let published_log = fixture.read("log")?;
-        fixture.run_all()?;
+        let published_baseline = fs::read(fixture.root.join("remote/release-baseline.json"))?;
+        let rerun = fixture.run_with_policy("publish-verified-release", false, true)?;
+        assert!(!rerun.status.success(), "{name} admitted an already-published release");
+        assert!(String::from_utf8_lossy(&rerun.stderr).contains("release identity mismatch"), "{name} did not fail at the non-draft identity gate");
+        let immutable_readback = fixture.run_with_policy("finalize-verified-release", false, true)?;
+        assert!(immutable_readback.status.success(), "{name} immutable public readback failed: {}", String::from_utf8_lossy(&immutable_readback.stderr));
         assert_eq!(fixture.read("log")?, published_log, "{name} public rerun mutated release state");
+        assert_eq!(fs::read(fixture.root.join("remote/release-baseline.json"))?, published_baseline, "{name} public baseline changed");
+        assert_eq!(fixture.read("draft")?, "false", "{name} public release draft state changed");
         assert_eq!(fixture.assets()?, [ASSETS.as_slice(), &["release-baseline.json"]].concat(), "{name}");
         assert!(fixture.read("log")?.contains("publish"), "{name} did not finalize");
     }
     Ok(())
 }
-
 #[test]
 fn finalizer_rejects_an_immutable_false_post_publication_observation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -107,7 +111,6 @@ fn finalizer_rejects_an_immutable_false_post_publication_observation()
     assert!(fixture.read("log")?.contains("publish\n"), "fixture did not exercise the post-publication observation");
     Ok(())
 }
-
 #[test]
 fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -117,7 +120,6 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
     assert!(fixture.read("log")?.is_empty(), "mismatch mutated release state");
     Ok(())
 }
-
 struct Fixture {
     _temp: tempfile::TempDir,
     root: std::path::PathBuf,
@@ -225,7 +227,6 @@ impl Fixture {
         }
         Ok(command.output()?)
     }
-
     fn last_baseline_created(&self) -> Result<bool, Box<dyn std::error::Error>> {
         Ok(fs::read_to_string(self.root.join("release.env"))?
             .lines()
