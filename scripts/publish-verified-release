@@ -20,42 +20,43 @@ release_state() {
 }
 release_id_for_tag() {
   gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
-    jq -r --arg tag "$RELEASE_TAG" --arg target "$ACTIVATION_COMMIT" '
-      [.[] | select(.name == $tag and .tag_name == $tag and .target_commitish == $target)] |
-      if length > 1 then error("multiple releases match tag and activation") elif length == 1 then .[0].id else empty end'
+    jq -er --arg tag "$RELEASE_TAG" --arg target "$ACTIVATION_COMMIT" '
+      [.[] | select(.name == $tag or .tag_name == $tag)] as $matches |
+      if ($matches | length) != 1 then error("release identity is not unique")
+      elif ($matches[0].id | type) != "number" then error("release id is not numeric")
+      elif $matches[0].name != $tag or $matches[0].tag_name != $tag or
+        $matches[0].target_commitish != $target or $matches[0].draft != true or
+        $matches[0].prerelease != false then error("release identity mismatch")
+      else $matches[0].id end'
 }
 validate_release_state() {
   test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
   test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
   test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
+  test "$(jq -r .isDraft release-state.json)" = true
   test "$(jq -r .isPrerelease release-state.json)" = false
   for name in $(jq -r '.assets[].name' release-state.json); do
     case "$name" in
-      codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;;
-      release-baseline.json) ;;
-      *) exit 1 ;;
+    codexy-marketplace-plugin.tar.gz | codexy-marketplace-bundle.tar.gz | codexy-runtime-package.tar.gz | runtime-release-receipt.json) ;;
+    release-baseline.json) ;;
+    *) exit 1 ;;
     esac
   done
-  if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
+  if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json > /dev/null; then
     for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
-      jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
-    done
-  fi
-  if test "$(jq -r .isDraft release-state.json)" = false; then
-    for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
-      jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json >/dev/null
+      jq -e --arg name "$name" '.assets[] | select(.name == $name)' release-state.json > /dev/null
     done
   fi
 }
-tag_create_diagnostic() {
-  tag_create_status="$1"
-  tag_create_response="$2"
-  tag_create_body="$(
+release_create_diagnostic() {
+  release_create_status="$1"
+  release_create_response="$2"
+  release_create_body="$(
     awk '
       $1 ~ /^HTTP\/[0-9.]+$/ { seen_status=1; next }
       seen_status && /^[[:space:]]*$/ { body=1; next }
       body { print }
-    ' "$tag_create_response" |
+    ' "$release_create_response" |
       sed -n '1,20p' |
       sed -E \
         -e '/[Aa]uthorization[[:space:]]*:/d' \
@@ -66,9 +67,13 @@ tag_create_diagnostic() {
       tr '\r\n' ' ' |
       cut -c 1-512
   )"
-  tag_create_status_line="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print; exit }' "$tag_create_response")"
-  printf 'create-reference status=%s response=%s\n' \
-    "$tag_create_status" "${tag_create_status_line:-<empty>} body=${tag_create_body:-<empty>}" >&2
+  release_create_status_line="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print; exit }' "$release_create_response")"
+  printf 'create-release status=%s response=%s\n' \
+    "$release_create_status" "${release_create_status_line:-<empty>} body=${release_create_body:-<empty>}" >&2
+}
+release_create_id() {
+  awk 'seen && /^[[:space:]]*$/ { body=1; next } body { print } $1 ~ /^HTTP\/[0-9.]+$/ { seen=1 }' "$1" |
+    jq -er .id 2> /dev/null || jq -er .id "$1"
 }
 authenticated_remote_tag() {
   tag_auth_token="${GH_TOKEN:-unavailable}"
@@ -77,36 +82,72 @@ authenticated_remote_tag() {
     GIT_CONFIG_VALUE_0="Authorization: Basic $tag_auth_basic" \
     git ls-remote --refs origin "$tag_ref"
 }
+verify_existing_tag() {
+  tag_snapshot="$1"
+  tag_snapshot_oid="$(printf '%s\n' "$tag_snapshot" | awk 'NR == 1 { print $1 }')"
+  test "$tag_snapshot_oid" = "$ACTIVATION_COMMIT"
+  git fetch --tags --force origin
+  tag_snapshot_commit="$(git rev-parse --verify "$tag_ref^{commit}")"
+  test "$tag_snapshot_commit" = "$ACTIVATION_COMMIT"
+  test "$tag_snapshot" = "$(authenticated_remote_tag)"
+  git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+  test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+  git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
+}
+release_error() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
 release_exists=false
 release_id=
 if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
   release_exists=true
   release_id="$(release_id_for_tag)"
   test -n "$release_id"
-  release_state "$release_id" > release-state.json
-  validate_release_state
 fi
 tag_ref="refs/tags/$RELEASE_TAG"
 remote_tag="$(authenticated_remote_tag)"
-if test -z "$remote_tag"; then
-  test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
+if test "$release_exists" = true; then
+  test -n "$remote_tag" || release_error "release exists without its version tag"
 fi
-if test -z "$remote_tag"; then
-  tag_create_response=tag-create-response.txt
-  if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response" 2>&1; then
-    tag_create_exit=0
+if test "$release_exists" = false; then
+  changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
+  if test -n "$remote_tag"; then
+    verify_existing_tag "$remote_tag"
+    verify_existing_tag "$remote_tag"
   else
-    tag_create_exit=$?
+    test "$ACTIVATION_COMMIT" = "$(git rev-parse origin/main)"
   fi
-  tag_create_status="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print $2; exit }' "$tag_create_response")"
-  test -n "$tag_create_status" || tag_create_status=unknown
-  if test "$tag_create_status" = 201 && test "$tag_create_exit" -eq 0; then
-    :
+  draft_release_response=draft-release-response.txt
+  if release_create_response="$(gh api --method POST --include -H 'X-GitHub-Api-Version: 2026-03-10' \
+    "repos/$GITHUB_REPOSITORY/releases" -f "tag_name=$RELEASE_TAG" \
+    -f "target_commitish=$ACTIVATION_COMMIT" -f "name=$RELEASE_TAG" \
+    -f "body=$changelog_notes" -F draft=true -F prerelease=false 2>&1)"; then
+    release_create_exit=0
   else
-    tag_create_diagnostic "$tag_create_status" "$tag_create_response"
+    release_create_exit=$?
   fi
-  rm -f "$tag_create_response"
+  printf '%s\n' "$release_create_response" > "$draft_release_response"
+  release_create_status="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print $2; exit }' "$draft_release_response")"
+  test -n "$release_create_status" || release_create_status=unknown
+  if test "$release_create_exit" -eq 0; then
+    case "$release_create_status" in
+    201 | unknown) release_id="$(release_create_id "$draft_release_response")" ;;
+    *)
+      release_create_diagnostic "$release_create_status" "$draft_release_response"
+      release_id="$(release_id_for_tag)"
+      ;;
+    esac
+  else
+    release_create_diagnostic "$release_create_status" "$draft_release_response"
+    release_id="$(release_id_for_tag)"
+  fi
+  case "$release_id" in '' | *[!0-9]*) release_error "release id is invalid" ;; esac
+  release_exists=true
+  rm -f "$draft_release_response"
 fi
+release_state "$release_id" > release-state.json
+validate_release_state
 remote_tag="$(authenticated_remote_tag)"
 test -n "$remote_tag"
 remote_tag_oid="$(printf '%s\n' "$remote_tag" | awk 'NR == 1 { print $1 }')"
@@ -117,32 +158,6 @@ test "$tag_commit" = "$ACTIVATION_COMMIT"
 test "$remote_tag" = "$(authenticated_remote_tag)"
 git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
-
-if test "$release_exists" = false; then
-  changelog_notes="$(scripts/generate-release-changelog "$RELEASE_TAG")"
-  if release_create_response="$(gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' \
-    "repos/$GITHUB_REPOSITORY/releases" -f "tag_name=$RELEASE_TAG" \
-    -f "target_commitish=$ACTIVATION_COMMIT" -f "name=$RELEASE_TAG" \
-    -f "body=$changelog_notes" -F draft=true)"; then
-    release_id="$(printf '%s' "$release_create_response" | jq -er .id)"
-    test -n "$release_id"
-    release_state "$release_id" > release-state.json
-    validate_release_state
-  else
-    create_status=$?
-    test "$create_status" -eq 1
-    release_id="$(release_id_for_tag)"
-    test -n "$release_id"
-    release_exists=true
-    release_state "$release_id" > release-state.json
-    validate_release_state
-  fi
-fi
-
-release_error() {
-  printf '%s\n' "$1" >&2
-  exit 1
-}
 release_asset_id() {
   jq -er --arg asset "$1" '
     [.assets[] | select(.name == $asset)] |
@@ -156,13 +171,13 @@ upload_release_asset() {
   asset="$1"
   upload_url="$(release_upload_url)"
   gh api --method POST -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Content-Type: application/octet-stream' \
-    "$upload_url?name=$asset" --input "dist/$asset" >/dev/null
+    "$upload_url?name=$asset" --input "dist/$asset" > /dev/null
 }
 download_release_asset() {
   directory="$1"
   asset="$2"
   asset_id="$(release_asset_id "$asset")"
-  case "$asset_id" in ''|*[!0-9]*) release_error "release asset id is invalid: $asset" ;; esac
+  case "$asset_id" in '' | *[!0-9]*) release_error "release asset id is invalid: $asset" ;; esac
   gh api -H 'X-GitHub-Api-Version: 2026-03-10' -H 'Accept: application/octet-stream' \
     "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$directory/$asset"
 }
@@ -174,19 +189,19 @@ existing_release="$(mktemp -d)"
 verified_release="$(mktemp -d)"
 release_assets='codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
 for asset in $release_assets; do
-  if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
+  if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json > /dev/null; then
     verify_release_asset "$existing_release"
   fi
 done
 for asset in $release_assets; do
-  if ! jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null; then
+  if ! jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json > /dev/null; then
     upload_release_asset "$asset"
   fi
 done
-case "$release_id" in ''|*[!0-9]*) release_error "release id is invalid" ;; esac
+case "$release_id" in '' | *[!0-9]*) release_error "release id is invalid" ;; esac
 release_state "$release_id" > release-state.json
 for asset in $release_assets; do
-  jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null || release_error "release asset is missing after reconciliation: $asset"
+  jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json > /dev/null || release_error "release asset is missing after reconciliation: $asset"
   verify_release_asset "$verified_release"
 done
 if test -n "${GITHUB_ENV:-}"; then

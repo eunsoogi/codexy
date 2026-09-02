@@ -85,25 +85,30 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     for required in [
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
         "git ls-remote --refs origin \"$tag_ref\"",
-        "gh api --method POST --include \"repos/$GITHUB_REPOSITORY/git/refs\"",
-        "-f ref=\"$tag_ref\" -f sha=\"$ACTIVATION_COMMIT\"",
-        "tag_create_response=tag-create-response.txt",
-        "git fetch --tags --force origin",
-        "$tag_ref^{commit}",
-        "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
+    let tag_readback = release.find("remote_tag_oid=").ok_or("tag readback")?;
+    let upload = release.find("upload_release_asset").ok_or("asset upload")?;
+    assert!(create < tag_readback && tag_readback < upload);
     assert!(!release.lines().any(|line| {
         line.split_ascii_whitespace().collect::<Vec<_>>().windows(2).any(|words| words == ["git", "push"])
     }));
+    support::assert_structured_absent_literals(
+        &release,
+        "draft release must not use a standalone reference",
+        &["repos/$GITHUB_REPOSITORY/git/refs", "tag_create_diagnostic", "-F draft=false"],
+    );
     support::assert_structured_literals(
         &release,
         "exact-tag release creation",
         &[
             "release_create_response=\"$(gh api --method POST",
+            "gh api --method POST --include",
             "repos/$GITHUB_REPOSITORY/releases\" -f \"tag_name=$RELEASE_TAG\"",
             "-f \"target_commitish=$ACTIVATION_COMMIT\" -f \"name=$RELEASE_TAG\"",
+            "-f \"body=$changelog_notes\" -F draft=true -F prerelease=false",
+            "release_create_diagnostic",
         ],
     );
     #[cfg(unix)]
