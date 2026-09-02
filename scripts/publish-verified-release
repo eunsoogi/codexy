@@ -47,6 +47,23 @@ validate_release_state() {
     done
   fi
 }
+tag_create_diagnostic() {
+  tag_create_status="$1"
+  tag_create_response="$2"
+  tag_create_excerpt="$(
+    sed -n '1,20p' "$tag_create_response" |
+      sed -E \
+        -e '/[Aa]uthorization[[:space:]]*:/d' \
+        -e '/[Bb]earer[[:space:]]/d' \
+        -e '/[Gg][Hh]_[Tt][Oo][Kk][Ee][Nn]/d' \
+        -e '/[Gg][Ii][Tt][Hh][Uu][Bb]_[Tt][Oo][Kk][Ee][Nn]/d' \
+        -e '/[Tt]oken/d' |
+      tr '\r\n' ' ' |
+      cut -c 1-512
+  )"
+  printf 'create-reference status=%s response=%s\n' \
+    "$tag_create_status" "${tag_create_excerpt:-<empty>}" >&2
+}
 release_exists=false
 release_id=
 if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName,targetCommitish,isDraft,isPrerelease,assets > release-state.json 2>/dev/null; then
@@ -63,11 +80,19 @@ if test -z "$remote_tag"; then
 fi
 if test -z "$remote_tag"; then
   tag_create_response=tag-create-response.txt
-  if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response"; then
-    test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 201
+  if gh api --method POST --include "repos/$GITHUB_REPOSITORY/git/refs" -f ref="$tag_ref" -f sha="$ACTIVATION_COMMIT" > "$tag_create_response" 2>&1; then
+    tag_create_exit=0
   else
-    test "$(awk 'NR == 1 { print $2 }' "$tag_create_response")" = 422
+    tag_create_exit=$?
   fi
+  tag_create_status="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print $2; exit }' "$tag_create_response")"
+  test -n "$tag_create_status" || tag_create_status=unknown
+  if test "$tag_create_status" = 201 && test "$tag_create_exit" -eq 0; then
+    :
+  else
+    tag_create_diagnostic "$tag_create_status" "$tag_create_response"
+  fi
+  rm -f "$tag_create_response"
 fi
 remote_tag="$(git ls-remote --refs origin "$tag_ref")"
 test -n "$remote_tag"

@@ -58,6 +58,18 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api()
             state.create_api_calls(),
             "{state:?} API admission count"
         );
+        match state {
+            RemoteTag::ConcurrentWrong | RemoteTag::ConcurrentUnpeelable => {
+                assert_create_reference_diagnostic(&output, "422", "HTTP/2.0 422 Unprocessable Entity");
+            }
+            RemoteTag::ApiAuth => {
+                assert_create_reference_diagnostic(&output, "401", "HTTP/2.0 401 Unauthorized");
+            }
+            RemoteTag::ApiFailure => {
+                assert_create_reference_diagnostic(&output, "500", "HTTP/2.0 500 Server Error");
+            }
+            _ => {}
+        }
     }
     for state in [
         RemoteTag::Exact,
@@ -87,6 +99,51 @@ fn remote_version_tag_admission_uses_authenticated_create_only_api()
             state.create_api_calls(),
             "{state:?} API admission count"
         );
+        if matches!(state, RemoteTag::ConcurrentExact) {
+            assert_create_reference_diagnostic(
+                &output,
+                "422",
+                "HTTP/2.0 422 Unprocessable Entity",
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn concurrent_exact_reconciles_only_the_immediate_authenticated_readback()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new(RemoteTag::ConcurrentExact)?;
+    let output = fixture.run()?;
+    assert!(!output.status.success(), "fixture must stop at fake release boundary");
+    assert_create_reference_diagnostic(
+        &output,
+        "422",
+        "HTTP/2.0 422 Unprocessable Entity",
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("release-create sentinel"));
+    assert_eq!(fixture.api_calls()?, 1, "authenticated API was not called once");
+    assert_eq!(fixture.release_calls()?, 1, "exact concurrent tag was not reconciled");
+    assert_eq!(fixture.git_push_calls()?, 0, "concurrent reconciliation used git push");
+    Ok(())
+}
+
+#[test]
+fn create_reference_diagnostic_is_bounded_and_credential_safe()
+-> Result<(), Box<dyn std::error::Error>> {
+    let publisher = fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
+    )?;
+    for required in [
+        "tag_create_diagnostic",
+        "sed -n '1,20p'",
+        "cut -c 1-512",
+        "[Aa]uthorization[[:space:]]*:",
+        "[Bb]earer",
+        "[Gg][Hh]_[Tt][Oo][Kk][Ee][Nn]",
+        "[Gg][Ii][Tt][Hh][Uu][Bb]_[Tt][Oo][Kk][Ee][Nn]",
+    ] {
+        assert!(publisher.contains(required), "missing diagnostic guard: {required}");
     }
     Ok(())
 }
@@ -169,4 +226,21 @@ fn assert_inherited_state_discarded(
     );
     assert_eq!(fixture.command_calls("gh")?, 2, "inherited state leaked");
     Ok(())
+}
+
+fn assert_create_reference_diagnostic(
+    output: &std::process::Output,
+    status: &str,
+    response: &str,
+) {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(&format!("create-reference status={status} response=")),
+        "missing create-reference status diagnostic: {stderr}"
+    );
+    assert!(
+        stderr.contains(response),
+        "missing bounded create-reference response: {stderr}"
+    );
+    assert!(!stderr.contains("fixture-token"), "diagnostic leaked fixture credential");
 }
