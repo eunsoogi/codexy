@@ -24,7 +24,7 @@ from .component_transaction_state import (
     write_journal,
 )
 from .component_lifecycle_terminal import terminal
-from .marketplace_repin import validate_or_quarantine_marketplace
+from .marketplace_repin import reconcile_official_marketplace_root
 from .pre_session import _json, official_marketplace_root
 from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
 
@@ -188,22 +188,11 @@ def apply_forward(
             if existing_marketplace(executable, invoke, manifest) != root:
                 raise ValueError("local Codexy marketplace identity changed")
         else:
-            _json(
-                invoke(
-                    [
-                        str(executable),
-                        "plugin",
-                        "marketplace",
-                        "upgrade",
-                        "codexy",
-                        "--json",
-                    ]
-                ),
-                "plugin marketplace upgrade",
-            )
-            root = official_marketplace_root(executable, invoke)
-            validate_or_quarantine_marketplace(
-                executable, invoke, home, root, f"v{manifest.version}"
+            root = reconcile_official_marketplace_root(
+                executable,
+                invoke,
+                manifest.version,
+                home,
             )
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)

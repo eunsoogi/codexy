@@ -59,6 +59,10 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
     assert_eq!(prepublish_smoke, "scripts/smoke-public-getcodexy-release.sh");
     let prepublish_step = &steps(&publisher, job)?[smoke];
     assert_eq!(
+        prepublish_step["env"]["CODEXY_RUNTIME_PACKAGE_PATH"],
+        "${{ github.workspace }}/dist/codexy-runtime-package.tar.gz"
+    );
+    assert_eq!(
         prepublish_step["env"]["GETCODEXY_DIST"],
         "${{ runner.temp }}/getcodexy-dist"
     );
@@ -95,6 +99,7 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
     for required in [
         "CODEX_HOME",
         "getcodexy install --json",
+        "getcodexy update --json",
         "plugin list --json",
         "getcodexy status --json",
         "getcodexy doctor --json",
@@ -102,6 +107,9 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
         "GETCODEXY_DIST",
         "PUBLIC_BUNDLE_ARCHIVE",
         "PUBLIC_INSPECT_ROOT",
+        "UPGRADE_FROM_VERSION",
+        "FAIL_MARKETPLACE_UPGRADE",
+        "installed-components.json",
     ] {
         assert!(public.contains(required), "missing public install proof: {required}");
     }
@@ -112,6 +120,8 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
         r#""marketplaceSource": {"#,
         r#""sourceType": "git""#,
         r#""source": "https://github.com/eunsoogi/codexy.git""#,
+        r#"state["versions"]"#,
+        r#"unexpected unpinned marketplace upgrade"#,
     ] {
         assert!(
             fake_host.contains(required),

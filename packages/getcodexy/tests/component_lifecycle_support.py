@@ -18,6 +18,7 @@ class fixture:
         selection: set[str] | None = None,
         *,
         fail_add: str | None = None,
+        fail_marketplace_add: bool = False,
         fail_remove: str | None = None,
         fail_upgrade: bool = False,
         interrupt_add: str | None = None,
@@ -29,6 +30,7 @@ class fixture:
         (
             self.selection,
             self.fail_add,
+            self.fail_marketplace_add,
             self.fail_remove,
             self.fail_upgrade,
             self.interrupt_add,
@@ -39,6 +41,7 @@ class fixture:
         ) = (
             selection or set(),
             fail_add,
+            fail_marketplace_add,
             fail_remove,
             fail_upgrade,
             interrupt_add,
@@ -90,8 +93,15 @@ class fixture:
             )
             payload: object = {"marketplaces": entries}
         elif tail[:3] == ("plugin", "marketplace", "add"):
-            self.marketplace_present = True
             self.mutations.append(tail)
+            if self.fail_marketplace_add:
+                self.fail_marketplace_add = False
+                return subprocess.CompletedProcess(command, 1, "", "failed")
+            self.marketplace_present = True
+            self._ensure_marketplace_identity()
+            (self.home / "config.toml").write_text(
+                f'[marketplaces.codexy]\nref = "v{VERSION}"\n', encoding="utf-8"
+            )
             payload = {"ok": True}
         elif tail[:3] == ("plugin", "marketplace", "remove"):
             self.marketplace_present = False
@@ -185,6 +195,18 @@ def component_id(plugin: str) -> str:
     return {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}[
         plugin
     ]
+
+
+def exact_marketplace_add(version: str = VERSION) -> tuple[str, ...]:
+    return (
+        "plugin",
+        "marketplace",
+        "add",
+        "eunsoogi/codexy",
+        "--ref",
+        f"v{version}",
+        "--json",
+    )
 
 
 def installed(root: Path, component: str, version: str = VERSION) -> dict[str, object]:

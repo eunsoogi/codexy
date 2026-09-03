@@ -131,6 +131,7 @@ jobs:
             --version "$TARGET_VERSION"
       - name: Smoke exact final package before publication
         env:
+          CODEXY_RUNTIME_PACKAGE_PATH: ${{ github.workspace }}/dist/codexy-runtime-package.tar.gz
           GETCODEXY_DIST: ${{ runner.temp }}/getcodexy-dist
           PUBLIC_BUNDLE_ARCHIVE: dist/codexy-marketplace-bundle.tar.gz
           PUBLIC_INSPECT_ROOT: final-inspect

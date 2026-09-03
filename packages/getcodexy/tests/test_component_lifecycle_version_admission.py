@@ -7,7 +7,7 @@ from codexy_runtime_tools.component_transaction_state import (
     read_journal,
     write_inventory,
 )
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
 
 class VersionAdmissionTests(unittest.TestCase):
@@ -19,8 +19,20 @@ class VersionAdmissionTests(unittest.TestCase):
             )
 
             self.assertEqual(receipt["outcome"], "completed")
-            self.assertIn(
+            self.assertNotIn(
                 ("plugin", "marketplace", "upgrade", "codexy", "--json"), state.calls
+            )
+            self.assertIn(
+                (
+                    "plugin",
+                    "marketplace",
+                    "add",
+                    "eunsoogi/codexy",
+                    "--ref",
+                    f"v{VERSION}",
+                    "--json",
+                ),
+                state.calls,
             )
 
     def test_older_coherent_selection_rejects_install_and_remove_before_mutation(

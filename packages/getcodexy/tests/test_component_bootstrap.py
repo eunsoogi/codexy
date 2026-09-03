@@ -18,7 +18,7 @@ from codexy_runtime_tools.component_transaction_state import (
     Journal,
     write_journal,
 )
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 from packages.getcodexy.tests.component_bootstrap_rollback_cases import (
     BootstrapRollbackCases,
 )
@@ -89,7 +89,16 @@ class BootstrapTests(BootstrapRollbackCases, unittest.TestCase):
             self.assertEqual(
                 state.mutations,
                 [
-                    ("plugin", "marketplace", "upgrade", "codexy", "--json"),
+                    ("plugin", "marketplace", "remove", "codexy", "--json"),
+                    (
+                        "plugin",
+                        "marketplace",
+                        "add",
+                        "eunsoogi/codexy",
+                        "--ref",
+                        f"v{VERSION}",
+                        "--json",
+                    ),
                     ("plugin", "add", "codexy@codexy", "--json"),
                     ("plugin", "add", "codexy-github@codexy", "--json"),
                     ("plugin", "add", "codexy-devtools@codexy", "--json"),

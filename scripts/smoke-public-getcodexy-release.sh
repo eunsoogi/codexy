@@ -24,9 +24,6 @@ git -C public-marketplace config user.email "codexy-public-proof@example.invalid
 git -C public-marketplace add --all
 git -C public-marketplace commit -qm "public release proof"
 git -C public-marketplace tag "v${TARGET_VERSION}"
-public_marketplace_revision="$(git -C public-marketplace rev-parse HEAD)"
-printf '{"source_type":"git","source":"https://github.com/eunsoogi/codexy.git","ref_name":"v%s","revision":"%s"}\n' \
-	"$TARGET_VERSION" "$public_marketplace_revision" >public-marketplace/.codex-marketplace-install.json
 cp scripts/fake_public_codex_host.py "$RUNNER_TEMP/codex"
 chmod 755 "$RUNNER_TEMP/codex"
 public_code_home="$RUNNER_TEMP/empty-codex-home"
@@ -41,3 +38,36 @@ jq -e --arg version "$TARGET_VERSION" '(.installed | length == 3) and ([.install
 jq -e '.schema == "getcodexy.status.v1" and .outcome == "completed" and .inventory_consistency == "consistent" and .errors == [] and ([.installed_components[]] | sort == ["core", "devtools", "github"])' public-status.json >/dev/null
 "${proof_env[@]}" public-bootstrap/bin/getcodexy doctor --json >public-doctor.json
 jq -e --arg version "$TARGET_VERSION" '.schema == "getcodexy.doctor.v1" and .outcome == "completed" and .inventory_consistency == "consistent" and .host_readiness.state == "ready" and .errors == [] and ([.component_health[]] | length == 3) and ([.component_health[] | select(.healthy == true and .state == "healthy" and .observed.plugin.version == $version and .observed.runtime.version == $version)] | length == 3)' public-doctor.json >/dev/null
+
+previous_version=${UPGRADE_FROM_VERSION:-}
+if [[ -z "$previous_version" ]]; then
+	while read -r revision; do
+		candidate=$(git show "$revision:packages/getcodexy/pyproject.toml" | sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' | head -n 1)
+		if [[ -n "$candidate" && "$candidate" != "$TARGET_VERSION" ]]; then
+			previous_version=$candidate
+			break
+		fi
+	done < <(git log --format=%H -- packages/getcodexy/pyproject.toml)
+fi
+case "$previous_version" in
+'' | *[!0-9.]*)
+	echo "previous package version is unavailable" >&2
+	exit 1
+	;;
+esac
+test "$previous_version" != "$TARGET_VERSION"
+upgrade_code_home="$RUNNER_TEMP/upgrade-codex-home"
+mkdir -p "$upgrade_code_home/getcodexy"
+printf '[marketplaces.codexy]\nref = "v%s"\n' "$previous_version" >"$upgrade_code_home/config.toml"
+touch "$upgrade_code_home/.codexy-public-marketplace-present"
+jq -n --arg version "$previous_version" '{selection:["core","github","devtools"],versions:{core:$version,github:$version,devtools:$version}}' >"$upgrade_code_home/.codexy-public-proof.json"
+printf '{"components":["core","github","devtools"],"schema":"getcodexy.installed-component-inventory.v1"}\n' >"$upgrade_code_home/getcodexy/installed-components.json"
+upgrade_env=(env PATH="$RUNNER_TEMP:$PATH" CODEX_HOME="$upgrade_code_home" CODEXY_RUNTIME_PLATFORM=linux-x86_64 CODEXY_MARKETPLACE_ROOT="$PWD/public-marketplace" FAIL_MARKETPLACE_UPGRADE=1)
+"${upgrade_env[@]}" public-bootstrap/bin/getcodexy update --json >public-upgrade.json
+jq -e '.schema == "getcodexy.operation-receipt.v1" and .command == "update" and .outcome == "completed" and .errors == [] and (.selection_after | sort == ["core", "devtools", "github"])' public-upgrade.json >/dev/null
+"${upgrade_env[@]}" codex plugin list --json >public-upgrade-plugin-inventory.json
+jq -e --arg version "$TARGET_VERSION" '(.installed | length == 3) and ([.installed[] | select(.installed == true and .enabled == true and .version == $version)] | length == 3)' public-upgrade-plugin-inventory.json >/dev/null
+"${upgrade_env[@]}" public-bootstrap/bin/getcodexy status --json >public-upgrade-status.json
+jq -e '.outcome == "completed" and .inventory_consistency == "consistent" and .errors == []' public-upgrade-status.json >/dev/null
+"${upgrade_env[@]}" public-bootstrap/bin/getcodexy doctor --json >public-upgrade-doctor.json
+jq -e --arg version "$TARGET_VERSION" '.outcome == "completed" and .inventory_consistency == "consistent" and .host_readiness.state == "ready" and .errors == [] and ([.component_health[] | select(.healthy == true and .observed.plugin.version == $version and .observed.runtime.version == $version)] | length == 3)' public-upgrade-doctor.json >/dev/null
