@@ -15,13 +15,13 @@ struct Concern {
 const CONCERNS: &[Concern] = &[
     Concern {
         id: "thread-delivery",
-        matcher: "^codex_app__send_message_to_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
         launcher: "codexy-thread-delivery",
         diagnostic: "CODEXY_THREAD_DELIVERY_",
     },
     Concern {
         id: "child-thread-creation",
-        matcher: "^codex_app__create_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
@@ -60,13 +60,13 @@ const CONCERNS: &[Concern] = &[
 const INSTALLED_CONCERNS: &[Concern] = &[
     Concern {
         id: "thread-delivery",
-        matcher: "^codex_app__send_message_to_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
         launcher: "codexy-thread-delivery",
         diagnostic: "CODEXY_THREAD_DELIVERY_",
     },
     Concern {
         id: "child-thread-creation",
-        matcher: "^codex_app__create_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
@@ -177,7 +177,7 @@ fn bash_concern_adapters_do_not_import_each_others_policy() -> Result<(), Box<dy
 fn each_concern_emits_only_its_event_native_diagnostic_family()
 -> Result<(), Box<dyn std::error::Error>> {
     let tools = [
-        "codex_app__send_message_to_thread",
+        "mcp__codex_app__send_message_to_thread",
         "codex_app__create_thread",
         "mcp__codex_apps__github_create_issue",
         "mcp__codex_apps__github_create_pull_request",

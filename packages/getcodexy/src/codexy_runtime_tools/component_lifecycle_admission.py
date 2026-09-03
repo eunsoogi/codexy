@@ -87,7 +87,7 @@ def admit_pending_receipt(
         )
     if (
         journal.phase == "committed"
-        and receipt["outcome"] == "completed"
+        and receipt["outcome"] in {"completed", "pending-action"}
         and receipt["selection_after"] == list(journal.target)
     ):
         return receipt

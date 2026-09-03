@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,12 @@ class LifecycleInterruptionTests(unittest.TestCase):
                 root / "codex",
             )
             market.mkdir()
+            repository = Path(__file__).parents[3]
+            for plugin in ("codexy", "codexy-github", "codexy-devtools"):
+                shutil.copytree(
+                    repository / "plugins" / plugin,
+                    market / "plugins" / plugin,
+                )
             state.write_text(json.dumps(["core"]), encoding="utf-8")
             inventory = inventory_path(home)
             inventory.parent.mkdir(parents=True)
@@ -82,6 +89,7 @@ def _child_program(home: str, codex: str) -> str:
 def _host_script(version: str) -> str:
     return """#!/usr/bin/env python3
 import json, os, signal, sys
+from pathlib import Path
 root = os.path.dirname(__file__)
 state = os.path.join(root, "state.json")
 market = os.path.join(root, "market")
@@ -89,6 +97,54 @@ names = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtoo
 reverse = {value: key for key, value in names.items()}
 selected = json.load(open(state))
 command = sys.argv[1:]
+events = {"PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest", "UserPromptSubmit": "userPromptSubmit"}
+event_keys = {"PreToolUse": "pre_tool_use", "PermissionRequest": "permission_request", "UserPromptSubmit": "user_prompt_submit"}
+
+def hook_rows():
+    rows = []
+    for component in selected:
+        plugin_name = names[component]
+        plugin = Path(market) / "plugins" / plugin_name
+        path = plugin / "hooks" / "hooks.json"
+        if not path.is_file():
+            continue
+        value = json.loads(path.read_text())
+        for event, groups in value["hooks"].items():
+            for group_index, group in enumerate(groups):
+                for hook_index, hook in enumerate(group["hooks"]):
+                    command_key = "commandWindows" if os.name == "nt" else "command"
+                    command = hook[command_key].replace("${PLUGIN_ROOT}", str(plugin))
+                    rows.append({
+                        "key": f"{plugin_name}@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
+                        "eventName": events[event],
+                        "handlerType": "command",
+                        "command": command,
+                        "async": hook.get("async", False),
+                        "matcher": group.get("matcher"),
+                        "timeoutSec": hook.get("timeout", 600),
+                        "sourcePath": str(path),
+                        "pluginId": f"{plugin_name}@codexy",
+                        "enabled": True,
+                        "isManaged": False,
+                        "currentHash": "sha256:fixture",
+                        "trustStatus": "trusted",
+                    })
+    return rows
+
+if command[:3] == ["app-server", "--listen", "stdio://"]:
+    for line in sys.stdin:
+        request = json.loads(line)
+        identifier = request.get("id")
+        if request.get("method") == "initialize" and identifier is not None:
+            result = {"userAgent": "fixture", "codexHome": "fixture"}
+        elif request.get("method") == "hooks/list" and identifier is not None:
+            cwds = request.get("params", {}).get("cwds", [])
+            result = {"data": [{"cwd": cwds[0] if cwds else ".", "hooks": hook_rows(), "warnings": [], "errors": []}]}
+        else:
+            continue
+        print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
+    raise SystemExit(0)
+
 if command[:3] == ["plugin", "marketplace", "list"]:
     payload = {"marketplaces": [{"name": "codexy", "root": market, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}]}
 elif command[:2] == ["plugin", "list"]:

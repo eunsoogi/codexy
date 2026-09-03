@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from component_hook_host_fixture import HOOK_LIST_HOST, write_host
+from component_marketplace_fixture import populate_plugins
 from codexy_runtime_tools.component_manifest import load_component_manifest
 
 
@@ -62,13 +64,11 @@ class fixture:
         self.main_revision: str | None = None
         self.home.mkdir()
         self.marketplace.mkdir()
+        populate_plugins(self.marketplace)
         (self.home / "config.toml").write_text(
             f'[marketplaces.codexy]\nref = "v{VERSION}"\n', encoding="utf-8"
         )
-        self.codex = self.root / "trusted/codex"
-        self.codex.parent.mkdir(parents=True)
-        self.codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        self.codex.chmod(0o700)
+        self.codex = write_host(self.root)
 
     def __enter__(self) -> "fixture":
         return self
@@ -162,6 +162,7 @@ class fixture:
     def _ensure_marketplace_identity(self) -> None:
         if self.tag_revision is not None:
             return
+        populate_plugins(self.marketplace)
         _git(self.marketplace, "init", "-q")
         _git(self.marketplace, "branch", "-M", "main")
         _git(self.marketplace, "config", "user.name", "fixture")

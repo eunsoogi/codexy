@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .component_manifest import ComponentManifest
+from .component_hook_activation import ACTIVATION_ERRORS
 from .component_resolver import ComponentResolutionError
 from .component_transition_rejections import Rejection, valid_rejection
 from .component_transaction_identity import valid_operation_id
@@ -50,14 +51,24 @@ class OperationReceipt:
 
     @classmethod
     def from_journal(
-        cls, journal: Journal, outcome: str, after: tuple[str, ...]
+        cls,
+        journal: Journal,
+        outcome: str,
+        after: tuple[str, ...],
+        errors: tuple[str, ...] = (),
     ) -> OperationReceipt:
-        if outcome not in {"completed", "rolled-back"}:
+        if outcome not in {"completed", "pending-action", "rolled-back"}:
             raise ValueError("a journal cannot produce a rejected receipt")
-        if outcome == "completed" and after != journal.target:
+        if outcome in {"completed", "pending-action"} and after != journal.target:
             raise ValueError("a completion receipt must use the transition target")
         if outcome == "rolled-back" and after != journal.before:
             raise ValueError("a rollback receipt must use the transition pre-state")
+        if outcome == "completed" and errors:
+            raise ValueError("a completed receipt cannot contain errors")
+        if outcome == "pending-action" and (
+            not errors or any(error not in ACTIVATION_ERRORS for error in errors)
+        ):
+            raise ValueError("a pending-action receipt must contain activation errors")
         return cls(
             journal.identifier,
             journal.command,
@@ -66,7 +77,13 @@ class OperationReceipt:
             journal.resolved,
             journal.before,
             after,
-            () if outcome == "completed" else ("operation-failed",),
+            (
+                errors
+                if outcome == "pending-action"
+                else ()
+                if outcome == "completed"
+                else ("operation-failed",)
+            ),
         )
 
     @classmethod
@@ -100,7 +117,7 @@ class OperationReceipt:
         if (
             not valid_operation_id(identifier)
             or command not in {"install", "update", "remove", "bootstrap"}
-            or outcome not in {"completed", "rejected", "rolled-back"}
+            or outcome not in {"completed", "pending-action", "rejected", "rolled-back"}
         ):
             raise ValueError("operation receipt has an invalid shape")
         parts = tuple(
@@ -132,7 +149,8 @@ class OperationReceipt:
         if (
             not valid_operation_id(self.identifier)
             or self.command not in {"install", "update", "remove", "bootstrap"}
-            or self.outcome not in {"completed", "rejected", "rolled-back"}
+            or self.outcome
+            not in {"completed", "pending-action", "rejected", "rolled-back"}
         ):
             raise ValueError("operation receipt has invalid terminal state")
         return {
@@ -153,7 +171,8 @@ class OperationReceipt:
         if (
             not valid_operation_id(self.identifier)
             or self.command not in {"install", "update", "remove", "bootstrap"}
-            or self.outcome not in {"completed", "rejected", "rolled-back"}
+            or self.outcome
+            not in {"completed", "pending-action", "rejected", "rolled-back"}
         ):
             raise ValueError("operation receipt has invalid terminal state")
         if (
@@ -192,6 +211,12 @@ class OperationReceipt:
             raise ValueError("operation receipt has an invalid resolved selection")
         if self.outcome == "completed" and (self.after != plan.target or self.errors):
             raise ValueError("operation receipt has invalid completion semantics")
+        if self.outcome == "pending-action" and (
+            self.after != plan.target
+            or not self.errors
+            or any(error not in ACTIVATION_ERRORS for error in self.errors)
+        ):
+            raise ValueError("operation receipt has invalid pending-action semantics")
         if self.outcome == "rolled-back" and (
             self.after != self.before or self.errors != ("operation-failed",)
         ):

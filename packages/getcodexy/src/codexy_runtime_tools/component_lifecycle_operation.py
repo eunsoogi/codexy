@@ -12,6 +12,7 @@ from .component_lifecycle_admission import (
     admitted_selection,
     replay_receipt,
 )
+from .component_hook_activation import HookLister
 from .component_lifecycle_interlock import migration_rejection
 from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import (
@@ -64,6 +65,7 @@ def run_operation(
     *,
     operation_id: str | None = None,
     lock_held: bool = False,
+    hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     """Run a serialized operation, recovering any preceding interrupted operation first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
@@ -174,12 +176,9 @@ def run_operation(
                     return replay
                 pending = None
             if pending is not None:
+                root = root or official_marketplace_root(executable, invoke)
                 _recover_if_needed(
-                    home,
-                    executable,
-                    invoke,
-                    manifest,
-                    root or official_marketplace_root(executable, invoke),
+                    home, executable, invoke, manifest, root, hook_lister
                 )
             root = existing_marketplace(executable, invoke, manifest)
             inventory = _list(executable, invoke)
@@ -244,5 +243,5 @@ def run_operation(
             clear_journal(home)
             return receipt
         return _write_completed(
-            home, executable, invoke, manifest, root, journal, installed
+            home, executable, invoke, manifest, root, journal, installed, hook_lister
         )

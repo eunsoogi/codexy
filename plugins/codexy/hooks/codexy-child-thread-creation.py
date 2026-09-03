@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from codexy_policy.child_thread_creation import forbidden
 from codexy_policy.envelope import evaluate
 
-TOOLS = frozenset({"codex_app__create_thread"})
+TOOLS = frozenset({"codex_app__create_thread", "mcp__codex_app__create_thread"})
 
 
 def main() -> int:

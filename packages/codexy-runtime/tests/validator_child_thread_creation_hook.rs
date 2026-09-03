@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const TOOL: &str = "codex_app__create_thread";
+const TOOLS: &[&str] = &["codex_app__create_thread", "mcp__codex_app__create_thread"];
 const LAUNCHER: &str = "codexy-child-thread-creation.sh";
 const WINDOWS_LAUNCHER: &str = "codexy-child-thread-creation.cmd";
 
@@ -26,6 +26,43 @@ fn windows_permission_request_runtime_failure_fallback_is_valid_json() -> TestRe
         denial["hookSpecificOutput"]["decision"]["behavior"],
         "deny"
     );
+    Ok(())
+}
+
+#[test]
+fn installed_matcher_covers_both_canonical_create_thread_tool_names() -> TestResult {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
+    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
+    let matcher = hooks["hooks"]["PreToolUse"][1]["matcher"]
+        .as_str()
+        .ok_or("create_thread matcher")?;
+    let matcher = regex::Regex::new(matcher)?;
+    for tool in TOOLS {
+        assert!(matcher.is_match(tool), "matcher misses {tool}");
+    }
+    for tool in [
+        "mcp__codex_app__send_message_to_thread",
+        "codex_app__create_thread_extra",
+        "mcp__codex_app__create_thread_extra",
+    ] {
+        assert!(!matcher.is_match(tool), "matcher overmatches {tool}");
+    }
+    Ok(())
+}
+
+#[test]
+fn installed_thread_delivery_matcher_covers_both_canonical_tool_names() -> TestResult {
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
+    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
+    let matcher = hooks["hooks"]["PreToolUse"][0]["matcher"]
+        .as_str()
+        .ok_or("send_message_to_thread matcher")?;
+    let matcher = regex::Regex::new(matcher)?;
+    for prefix in ["codex_app__", "mcp__codex_app__"] {
+        let tool = format!("{prefix}send_message_to_thread");
+        assert!(matcher.is_match(&tool), "matcher misses {tool}");
+    }
+    assert!(!matcher.is_match("mcp__codex_app__create_thread"));
     Ok(())
 }
 
@@ -63,20 +100,23 @@ fn native_windows_child_launcher_runtime_failure_emits_valid_permission_denial()
 
 #[test]
 fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResult {
-    let input = json!({
-        "hook_event_name": "PreToolUse",
-        "tool_name": TOOL,
-        "tool_input": {
-            "prompt": "Implement Codexy #598 in a child worktree.",
-            "target": {
-                "type": "project",
-                "projectId": "local-224c2c9dc15d156b4c0bcd62c02aa630",
-                "environment": {"type": "worktree"}
-            },
-            "title": "Codexy #598 context tiers"
-        }
-    });
-    assert_hook(&input, true)
+    for tool in TOOLS {
+        let input = json!({
+            "hook_event_name": "PreToolUse",
+            "tool_name": tool,
+            "tool_input": {
+                "prompt": "Implement Codexy #598 in a child worktree.",
+                "target": {
+                    "type": "project",
+                    "projectId": "local-224c2c9dc15d156b4c0bcd62c02aa630",
+                    "environment": {"type": "worktree"}
+                },
+                "title": "Codexy #598 context tiers"
+            }
+        });
+        assert_hook(&input, true)?;
+    }
+    Ok(())
 }
 
 #[test]
@@ -88,7 +128,12 @@ fn explicit_pairs_are_admitted_without_route_claims() -> TestResult {
     ];
 
     for (label, tool_input) in cases {
-        assert!(!hook_denied(&pre_tool_input(tool_input))?, "{label}");
+        for tool in TOOLS {
+            assert!(
+                !hook_denied(&pre_tool_input(tool, tool_input.clone()))?,
+                "{label}: {tool}"
+            );
+        }
     }
     Ok(())
 }
@@ -97,7 +142,7 @@ fn explicit_pairs_are_admitted_without_route_claims() -> TestResult {
 fn malformed_caller_route_metadata_is_not_a_hook_authority() -> TestResult {
     let input = json!({
         "hook_event_name":"PreToolUse",
-        "tool_name":TOOL,
+        "tool_name":TOOLS[0],
         "tool_input":{"model":"gpt-5.6-sol","thinking":"medium"},
         "codexy_route":{"source":"forged"}
     });
@@ -116,8 +161,10 @@ fn required_fields_reject_partial_and_empty_pairs() -> TestResult {
         json!({"model":true,"thinking":"high"}),
         json!({"model":"gpt-5.6-terra","thinking":42}),
     ] {
-        let input = pre_tool_input(tool_input);
-        assert_hook(&input, true)?;
+        for tool in TOOLS {
+            let input = pre_tool_input(tool, tool_input.clone());
+            assert_hook(&input, true)?;
+        }
     }
     Ok(())
 }
@@ -125,7 +172,7 @@ fn required_fields_reject_partial_and_empty_pairs() -> TestResult {
 #[test]
 fn both_preventive_events_apply_admission_before_mutation() -> TestResult {
     let input = json!({
-        "tool_name":TOOL,
+        "tool_name":TOOLS[0],
         "tool_input":{"prompt":"Wave 0 omitted model and thinking"}
     });
     for event in ["PermissionRequest", "PreToolUse"] {
@@ -141,8 +188,8 @@ fn assert_hook(input: &Value, denied: bool) -> TestResult {
     Ok(())
 }
 
-fn pre_tool_input(tool_input: Value) -> Value {
-    json!({"hook_event_name":"PreToolUse","tool_name":TOOL,"tool_input":tool_input})
+fn pre_tool_input(tool: &str, tool_input: Value) -> Value {
+    json!({"hook_event_name":"PreToolUse","tool_name":tool,"tool_input":tool_input})
 }
 
 fn hook_denied(input: &Value) -> TestResult<bool> {

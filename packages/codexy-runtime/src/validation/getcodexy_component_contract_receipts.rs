@@ -43,6 +43,48 @@ pub(super) fn rollback(receipt: &serde_json::Map<String, Value>) -> Result<(), S
     )
 }
 
+pub(super) fn pending_hook_activation(
+    receipt: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    if receipt.len() != 11 {
+        return Err(
+            "pending-action receipt must have the complete mutation receipt shape".to_owned(),
+        );
+    }
+    exact_map_string(receipt, "schema", "getcodexy.operation-receipt.v1")?;
+    exact_map_string(receipt, "command", "update")?;
+    exact_map_string(receipt, "outcome", "pending-action")?;
+    exact_array_value(
+        receipt.get("requested_components"),
+        &["core"],
+        "requested_components",
+    )?;
+    exact_array_value(
+        receipt.get("resolved_components"),
+        &["core"],
+        "resolved_components",
+    )?;
+    for field in [
+        "selection_before",
+        "selection_after",
+        "installed_components",
+    ] {
+        exact_array_value(receipt.get(field), &["core"], field)?;
+    }
+    exact_map_string(receipt, "source_of_truth", "installed-component-inventory")?;
+    let errors = array(receipt.get("errors"), "errors")?;
+    if errors.len() != 1 {
+        return Err("pending-action receipt must contain exactly one error".to_owned());
+    }
+    exact_map_string(
+        errors[0]
+            .as_object()
+            .ok_or_else(|| "pending-action receipt error must be an object".to_owned())?,
+        "code",
+        "required-hook-trust-missing",
+    )
+}
+
 pub(super) fn statuses(cases: &[Value]) -> Result<(), String> {
     for (id, state, components, consistency, error) in [
         (

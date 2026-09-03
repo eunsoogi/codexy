@@ -2,7 +2,7 @@
   "hooks": {
     "PermissionRequest": [
       {
-        "matcher": "^codex_app__send_message_to_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
         "hooks": [
           {
             "type": "command",
@@ -13,7 +13,7 @@
         ]
       },
       {
-        "matcher": "^codex_app__create_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
         "hooks": [
           {
             "type": "command",
@@ -26,7 +26,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "^codex_app__send_message_to_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
         "hooks": [
           {
             "type": "command",
@@ -37,7 +37,7 @@
         ]
       },
       {
-        "matcher": "^codex_app__create_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
         "hooks": [
           {
             "type": "command",

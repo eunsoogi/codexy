@@ -10,6 +10,7 @@
     "conflicting-component-request": "A component request contains a duplicate or conflicting operand.",
     "conflicting-installed-state": "An installed record does not match its official marketplace asset.",
     "dependency-protected-removal": "A retained component still requires a requested removal.",
+    "hook-state-unavailable": "The trusted host did not return an inspectable effective Codexy hook state.",
     "incompatible-component-selection": "A component selection is not in the manifest compatibility set.",
     "inconsistent-installed-state": "The installed inventory violates component dependencies.",
     "installed-state-mismatch": "The fresh installed inventory differs from the expected selection.",
@@ -18,6 +19,9 @@
     "mixed-version-state": "Installed components do not share one lockstep version.",
     "no-recorded-selection": "update requires a recorded installed component inventory.",
     "operation-failed": "A mutation did not complete and its pre-operation selection was restored.",
+    "required-hook-disabled": "A required Codexy hook is present but disabled in the host activation state.",
+    "required-hook-trust-missing": "A required Codexy hook is not present in the host trusted activation state.",
+    "required-hook-trust-stale": "A required Codexy hook trust entry no longer matches the installed hook.",
     "unknown-component": "A named component is not core, github, or devtools.",
     "unknown-installed-component": "The official Codexy marketplace inventory contains an unrecognized product."
   },

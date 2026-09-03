@@ -138,6 +138,14 @@ class ComponentInstallationContractTests(unittest.TestCase):
             fixtures["status-inconsistent-json"]["stdout"]["errors"][0]["code"],
             "inconsistent-installed-state",
         )
+        self.assertEqual(
+            fixtures["update-pending-hook-activation"]["outcome"],
+            "pending-action",
+        )
+        self.assertEqual(
+            fixtures["update-pending-hook-activation"]["stdout"]["errors"],
+            [{"code": "required-hook-trust-missing"}],
+        )
 
     def test_every_state_transition_has_deterministic_selection_and_receipt_contract(
         self,
@@ -150,7 +158,8 @@ class ComponentInstallationContractTests(unittest.TestCase):
                     transition["source_of_truth"], "installed-component-inventory"
                 )
                 self.assertIn(
-                    transition["outcome"], {"completed", "rejected", "rolled-back"}
+                    transition["outcome"],
+                    {"completed", "pending-action", "rejected", "rolled-back"},
                 )
                 self.assertEqual(
                     transition["selection_before"],

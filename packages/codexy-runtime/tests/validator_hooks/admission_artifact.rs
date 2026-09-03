@@ -161,8 +161,8 @@ fn shared_envelope_fails_closed_at_every_input_boundary()
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let cases = [
         vec![0xff],
-        br#"{"hook_event_name":"PreToolUse","hook_event_name":"PreToolUse","tool_name":"codex_app__send_message_to_thread"}"#.to_vec(),
-        br#"{"hook_event_name":"PermissionRequest","tool_name":"codex_app__send_message_to_thread","tool_input":null}"#.to_vec(),
+        br#"{"hook_event_name":"PreToolUse","hook_event_name":"PreToolUse","tool_name":"mcp__codex_app__send_message_to_thread"}"#.to_vec(),
+        br#"{"hook_event_name":"PermissionRequest","tool_name":"mcp__codex_app__send_message_to_thread","tool_input":null}"#.to_vec(),
         vec![b' '; 1024 * 1024 + 1],
     ];
     for payload in cases {

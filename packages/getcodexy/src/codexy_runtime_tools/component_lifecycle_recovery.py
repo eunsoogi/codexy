@@ -6,7 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from .component_lifecycle_admission import matching_receipt, replay_receipt
+from .component_hook_activation import HookLister
+from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
 from .component_resolver import (
@@ -38,13 +39,24 @@ def recover_if_needed(
     invoke: Runner,
     manifest: ComponentManifest,
     root: MarketplaceBinding,
+    hook_lister: HookLister | None = None,
 ) -> None:
     journal = read_journal(home)
     if journal is None:
         return
     journal.validate(manifest, decode_inventory)
     if journal.phase == "committed":
-        finish_committed(home, executable, invoke, manifest, root, journal)
+        finish_committed(
+            home,
+            executable,
+            invoke,
+            manifest,
+            root,
+            journal,
+            hook_lister,
+            list_installed,
+            clear_journal,
+        )
         return
     if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
@@ -56,7 +68,9 @@ def recover_if_needed(
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)
             return
-        write_completed(home, executable, invoke, manifest, root, journal, installed)
+        write_completed(
+            home, executable, invoke, manifest, root, journal, installed, hook_lister
+        )
         return
     if journal.phase == "started":
         try:
@@ -67,7 +81,14 @@ def recover_if_needed(
             installed = None
         if installed is not None:
             write_completed(
-                home, executable, invoke, manifest, root, journal, installed
+                home,
+                executable,
+                invoke,
+                manifest,
+                root,
+                journal,
+                installed,
+                hook_lister,
             )
             return
     rollback_or_raise(
@@ -121,40 +142,21 @@ def write_completed(
     root: MarketplaceBinding,
     journal: Journal,
     installed: tuple[str, ...],
+    hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     write_inventory(home, installed)
     write_journal(home, journal.with_phase("committed"))
-    return finish_committed(home, executable, invoke, manifest, root, journal)
-
-
-def finish_committed(
-    home: Path,
-    executable: Path,
-    invoke: Runner,
-    manifest: ComponentManifest,
-    root: MarketplaceBinding,
-    journal: Journal,
-) -> dict[str, object]:
-    installed = verify_post_operation_inventory(
-        manifest, list_installed(executable, invoke), journal.target, root
+    return finish_committed(
+        home,
+        executable,
+        invoke,
+        manifest,
+        root,
+        journal,
+        hook_lister,
+        list_installed,
+        clear_journal,
     )
-    receipt = journal.receipt("completed", installed)
-    if matching_receipt(home, manifest, receipt.encode()):
-        clear_journal(home)
-        return receipt.encode()
-    if (
-        replay_receipt(
-            home, manifest, journal.identifier, journal.command, journal.requested
-        )
-        is not None
-    ):
-        raise ValueError(
-            f"operation receipt conflicts with committed transaction: {journal.identifier}"
-        )
-    write_inventory(home, installed)
-    encoded = terminal(home, manifest, receipt)
-    clear_journal(home)
-    return encoded
 
 
 def restore_selection(

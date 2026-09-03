@@ -108,6 +108,7 @@
     "components-not-accepted": "The command does not accept component arguments.",
     "missing-removal-target": "remove requires one or more component arguments.",
     "dependency-protected-removal": "A requested removal is still required by a retained component.",
+    "hook-state-unavailable": "The trusted host did not return an inspectable effective Codexy hook state.",
     "no-recorded-selection": "update requires a recorded installed component inventory.",
     "inconsistent-installed-state": "The installed inventory violates the dependency graph.",
     "unknown-installed-component": "The official Codexy marketplace inventory contains an unrecognized product.",
@@ -118,6 +119,9 @@
     "conflicting-component-request": "A component request contains a duplicate or conflicting operand.",
     "incompatible-component-selection": "A component selection is not in the manifest compatibility set.",
     "installed-state-mismatch": "The fresh installed inventory differs from the expected selection.",
-    "operation-failed": "A mutation did not complete and the pre-operation selection was restored."
+    "operation-failed": "A mutation did not complete and the pre-operation selection was restored.",
+    "required-hook-disabled": "A required Codexy hook is present but disabled in the host activation state.",
+    "required-hook-trust-missing": "A required Codexy hook is not present in the host trusted activation state.",
+    "required-hook-trust-stale": "A required Codexy hook trust entry no longer matches the installed hook."
   }
 }

@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from component_lifecycle_support import HOOK_LIST_HOST
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
@@ -16,7 +17,6 @@ from codexy_runtime_tools.plugin_resolution import marketplace_identity
 
 REPOSITORY = Path(__file__).parents[3]
 MANIFEST = load_component_manifest()
-PLUGIN_NAMES = tuple(component.plugin for component in MANIFEST.components)
 
 
 class LocalMarketplaceIdentityTests(unittest.TestCase):
@@ -155,7 +155,7 @@ class LocalHost:
         self.home.mkdir()
         self._materialize_archive()
         self.codex = self.root / "trusted-codex"
-        self.codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        self.codex.write_text(HOOK_LIST_HOST, encoding="utf-8")
         self.codex.chmod(self.codex.stat().st_mode | stat.S_IXUSR)
         self.selection, self.mutations = set(), []
         self.marketplace_reads = 0
@@ -182,7 +182,7 @@ class LocalHost:
         destination = self.marketplace / ".agents/plugins/marketplace.json"
         destination.parent.mkdir(parents=True)
         shutil.copy2(source, destination)
-        for name in PLUGIN_NAMES:
+        for name in (component.plugin for component in MANIFEST.components):
             shutil.copytree(
                 REPOSITORY / "plugins" / name,
                 self.marketplace / "plugins" / name,
@@ -208,7 +208,7 @@ class LocalHost:
             payload = {
                 "installed": [
                     self._installed(name, self.installed_source)
-                    for name in PLUGIN_NAMES
+                    for name in (component.plugin for component in MANIFEST.components)
                     if self._component(name) in self.selection
                 ]
             }
