@@ -29,6 +29,11 @@ Install the `getcodexy` command, then install the complete Codexy product:
 ```sh
 uv tool install getcodexy
 uv tool update-shell
+```
+
+Start a new shell so the updated tool path is available, then install Codexy:
+
+```sh
 getcodexy install
 ```
 
