@@ -56,9 +56,29 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
     assert_diagnostic(&results[7], "activation branch has a closed or ambiguous pull request");
     assert_diagnostic(&results[8], "activation branch has a closed or ambiguous pull request");
     assert_diagnostic(&results[9], "test activator override requires CODEXY_TEST_MODE=1");
-    assert_eq!(matrix.git_setup_starts(), 21, "seed plus mutation setup inventory");
+    assert_eq!(matrix.git_setup_starts(), 22, "seed plus mutation setup inventory");
     assert_eq!(matrix.batched_case_count(), 10, "all verifier states must remain");
     assert_eq!(matrix.verifier_starts(), 2, "single and batched verifier entrypoints");
+    Ok(())
+}
+
+#[test]
+fn activation_seed_is_immutable_during_repeated_fixture_snapshots()
+-> Result<(), Box<dyn std::error::Error>> {
+    let matrix = FixtureMatrix::new()?;
+    for _ in 0..16 {
+        let fixture = matrix.case(Change::Exact)?;
+        let config = Command::new("git")
+            .args(["config", "--local", "--get", "maintenance.auto"])
+            .current_dir(&fixture.repo)
+            .output()?;
+        assert!(
+            config.status.success(),
+            "fixture seed must disable Git maintenance: {}",
+            String::from_utf8_lossy(&config.stderr)
+        );
+        assert_eq!(config.stdout, b"false\n");
+    }
     Ok(())
 }
 
