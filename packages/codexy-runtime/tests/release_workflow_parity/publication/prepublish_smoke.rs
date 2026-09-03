@@ -63,6 +63,10 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
         "${{ github.workspace }}/dist/codexy-runtime-package.tar.gz"
     );
     assert_eq!(
+        prepublish_step["env"]["CODEXY_RUNTIME_PACKAGE_SHA256"],
+        "${{ hashFiles('dist/codexy-runtime-package.tar.gz') }}"
+    );
+    assert_eq!(
         prepublish_step["env"]["GETCODEXY_DIST"],
         "${{ runner.temp }}/getcodexy-dist"
     );
