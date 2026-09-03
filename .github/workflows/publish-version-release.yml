@@ -100,9 +100,13 @@ jobs:
           test "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$record")" = "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
           test ! -e plugins/codexy-devtools/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
+        id: materialize_final_artifacts
         run: |
           mkdir -p dist final-inspect
           cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
+          runtime_package_sha256="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
+          test "$runtime_package_sha256" = "$(jq -er .artifact.sha256 staging/runtime-staging-receipt.json)"
+          printf 'runtime_package_sha256=%s\n' "$runtime_package_sha256" >> "$GITHUB_OUTPUT"
           RELEASE_TAG="$RELEASE_TAG" scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
           RELEASE_TAG="$RELEASE_TAG" scripts/assemble-release-train-archive.sh dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz
           tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
@@ -132,7 +136,7 @@ jobs:
       - name: Smoke exact final package before publication
         env:
           CODEXY_RUNTIME_PACKAGE_PATH: ${{ github.workspace }}/dist/codexy-runtime-package.tar.gz
-          CODEXY_RUNTIME_PACKAGE_SHA256: ${{ hashFiles('dist/codexy-runtime-package.tar.gz') }}
+          CODEXY_RUNTIME_PACKAGE_SHA256: ${{ steps.materialize_final_artifacts.outputs.runtime_package_sha256 }}
           GETCODEXY_DIST: ${{ runner.temp }}/getcodexy-dist
           PUBLIC_BUNDLE_ARCHIVE: dist/codexy-marketplace-bundle.tar.gz
           PUBLIC_INSPECT_ROOT: final-inspect
