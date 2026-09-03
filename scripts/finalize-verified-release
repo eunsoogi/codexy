@@ -6,12 +6,70 @@ set -eu
 : "${RELEASE_ID:?RELEASE_ID is required}"
 : "${ACTIVATION_COMMIT:?ACTIVATION_COMMIT is required}"
 case "$RELEASE_ID" in ''|*[!0-9]*) exit 1 ;; esac
+case "$ACTIVATION_COMMIT" in ''|*[!0-9a-f]*) exit 1 ;; esac
+test "${#ACTIVATION_COMMIT}" -eq 40
+git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 final_release="$(mktemp -d)"
+finalize_response="$(mktemp)"
+tag_ref="refs/tags/$RELEASE_TAG"
+trap 'rm -f "$finalize_response"' EXIT
 release_state() {
   gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" |
     jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, uploadUrl: .upload_url, assets}'
+}
+finalize_diagnostic() {
+  response_file="$1"
+  status_line="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print; exit }' "$response_file" | cut -c 1-256)"
+  status_code="$(printf '%s\n' "$status_line" | awk 'NF { print $2; exit }')"
+  response_body="$(awk '
+      $1 ~ /^HTTP\/[0-9.]+$/ { seen_status=1; next }
+      seen_status && /^[[:space:]]*$/ { body=1; next }
+      body { print }
+    ' "$response_file" |
+      sed -n '1,20p' |
+      sed -E \
+        -e 's/[Aa]uthorization[[:space:]]*:[[:space:]]*[^[:space:]]+/Authorization: <redacted>/g' \
+        -e 's/[Bb]earer[[:space:]]+[^[:space:]]+/Bearer <redacted>/g' \
+        -e 's/("[Tt]oken"|"[Gg][Hh]_[Tt][Oo][Kk][Ee][Nn]"|"[Gg][Ii][Tt][Hh][Uu][Bb]_[Tt][Oo][Kk][Ee][Nn]")[[:space:]]*:[[:space:]]*"[^"]*"/\1:"<redacted>"/g' \
+        -e 's/fixture-token/<redacted>/g' |
+      awk -v gh_token="${GH_TOKEN:-}" -v github_token="${GITHUB_TOKEN:-}" '
+        function replace_literal(text, needle, replacement, at) {
+          if (needle == "") return text
+          while ((at = index(text, needle)) != 0)
+            text = substr(text, 1, at - 1) replacement substr(text, at + length(needle))
+          return text
+        }
+        {
+          line = replace_literal($0, gh_token, "<redacted>")
+          line = replace_literal(line, github_token, "<redacted>")
+          print line
+        }
+      ' |
+      tr '\r\n' ' ' |
+      cut -c 1-512
+  )"
+  printf 'finalize-release status=%s response=%s body=%s\n' \
+    "${status_code:-unknown}" "${status_line:-<empty>}" "${response_body:-<empty>}" >&2
+}
+authenticated_tag_snapshot() {
+  tag_auth_token="${GH_TOKEN:-unavailable}"
+  tag_auth_basic="$(printf 'x-access-token:%s' "$tag_auth_token" | base64 | tr -d '\r\n')"
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader \
+    GIT_CONFIG_VALUE_0="Authorization: Basic $tag_auth_basic" \
+    git ls-remote --refs origin "$1"
+}
+verify_tag_ref() {
+  tag_snapshot="$(authenticated_tag_snapshot "$tag_ref")"
+  test "$(printf '%s\n' "$tag_snapshot" | awk 'NF' | wc -l | tr -d '[:space:]')" -eq 1
+  test "$(printf '%s\n' "$tag_snapshot" | awk 'NR == 1 { print $2 }')" = "$tag_ref"
+  test "$(printf '%s\n' "$tag_snapshot" | awk 'NR == 1 { print $1 }')" = "$ACTIVATION_COMMIT"
+  git fetch --no-tags origin "+$tag_ref:$tag_ref"
+  test "$(git rev-parse --verify "$tag_ref^{commit}")" = "$ACTIVATION_COMMIT"
+  test "$tag_snapshot" = "$(authenticated_tag_snapshot "$tag_ref")"
 }
 release_upload_url() {
   jq -er .uploadUrl release-state.json | sed 's/{?name,label}$//'
@@ -66,8 +124,22 @@ jq -e --slurpfile baseline "$final_release/release-baseline.json" --slurpfile at
   ($expected.attestations == $attestations[0])
 ' release-state.json >/dev/null
 if test "$(jq -r .isDraft release-state.json)" = true; then
-  gh api --method PATCH -H 'X-GitHub-Api-Version: 2026-03-10' \
-    "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false >/dev/null
+  if finalize_response_body="$(gh api --method PATCH --include -H 'X-GitHub-Api-Version: 2026-03-10' \
+    "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+    -f "tag_name=$RELEASE_TAG" \
+    -f "target_commitish=$ACTIVATION_COMMIT" \
+    -f "name=$RELEASE_TAG" \
+    -F draft=false \
+    -F prerelease=false 2>&1)"; then
+    finalize_exit=0
+  else
+    finalize_exit=$?
+  fi
+  printf '%s\n' "$finalize_response_body" >"$finalize_response"
+  if test "$finalize_exit" -ne 0; then
+    finalize_diagnostic "$finalize_response"
+    exit "$finalize_exit"
+  fi
 fi
 gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > final-release-state.json
 jq -e --slurpfile baseline "$final_release/release-baseline.json" '
@@ -79,3 +151,4 @@ jq -e --slurpfile baseline "$final_release/release-baseline.json" '
   ([.assets[] | select(.name != "release-baseline.json") | {name, size, digest}] | sort_by(.name) == $expected.assets) and
   ([.assets[].name] | sort == ["codexy-marketplace-bundle.tar.gz", "codexy-marketplace-plugin.tar.gz", "codexy-runtime-package.tar.gz", "release-baseline.json", "runtime-release-receipt.json"])
 ' final-release-state.json >/dev/null
+verify_tag_ref

@@ -67,8 +67,20 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "runtime-release-receipt.json release-baseline.json",
             "final_release=\"$(mktemp -d)\"",
             "scripts/verify-release-attestation-set \"$final_release\" final-baseline-attestation.json baseline",
-            "gh api --method PATCH",
-            "releases/$RELEASE_ID\" -F draft=false",
+            "gh api --method PATCH --include",
+            "-f \"tag_name=$RELEASE_TAG\"",
+            "-f \"target_commitish=$ACTIVATION_COMMIT\"",
+            "-f \"name=$RELEASE_TAG\"",
+            "-F draft=false",
+            "-F prerelease=false",
+            "finalize-release status=",
+            "tag_ref=\"refs/tags/$RELEASE_TAG\"",
+            "git ls-remote --refs origin \"$1\"",
+            "git fetch --no-tags origin \"+$tag_ref:$tag_ref\"",
+            "git rev-parse --verify \"$tag_ref^{commit}\"",
+            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main",
+            "test \"$(git rev-parse \"$ACTIVATION_COMMIT\")\" = \"$ACTIVATION_COMMIT\"",
+            "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
         ],
     );
     support::assert_structured_absent_literals(
@@ -79,6 +91,8 @@ fn finalization_verifies_all_attested_assets_before_publication()
             "gh release download \"$RELEASE_TAG\"",
             "releases/tags/$RELEASE_TAG",
             "gh release edit \"$RELEASE_TAG\" --draft=false",
+            "test \"$(git rev-parse HEAD)\" = \"$ACTIVATION_COMMIT\"",
+            "test \"$GITHUB_SHA\" = \"$ACTIVATION_COMMIT\"",
         ],
     );
     let publish = finalizer.find("gh api --method PATCH").ok_or("public release")?;
