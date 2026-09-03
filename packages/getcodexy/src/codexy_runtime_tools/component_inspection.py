@@ -1,5 +1,7 @@
 """Read-only component status and diagnostic reports."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import os
@@ -8,16 +10,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable
 
-from .component_manifest import ComponentManifest, load_component_manifest
 from .component_hook_activation import HookLister, activation_for_inventory
-from .component_observed_inventory import observe_installed_inventory
 from .component_health import health as _health
-from .component_resolver import (
-    ComponentResolutionError,
-    admit_installed_inventory,
-    canonical_components,
-    classify_installed_inventory,
-)
+from .component_inspection_types import InspectionReport
+from .component_inventory_classification import ComponentResolutionError
+from .component_inventory_classification import classify_installed_inventory
+from .component_manifest import ComponentManifest, load_component_manifest
+from .component_observed_inventory import observe_installed_inventory
+from .component_resolver import admit_installed_inventory, canonical_components
 from .component_transaction_state import read_inventory
 from .github_pre_session import trusted_codex
 from .plugin_resolution import (
@@ -72,10 +72,12 @@ def doctor(
 ) -> dict[str, object]:
     """Inspect canonical managed files and return actionable repairs."""
     report = _inspect(codex_home, codex, runner, hook_lister)
-    missing_requirements = [report["host_error"]] if report["host_error"] else []
+    missing_requirements: list[str] = (
+        [report["host_error"]] if report["host_error"] else []
+    )
     if "hook-state-unavailable" in set(report["activation"].values()):
         missing_requirements.append("codex-hooks-list")
-    readiness = (
+    readiness: dict[str, str | list[str]] = (
         {"state": "error", "missing_requirements": missing_requirements}
         if missing_requirements
         else {"state": "ready", "missing_requirements": []}
@@ -106,7 +108,7 @@ def _inspect(
     codex: Path | None,
     runner: Runner | None,
     hook_lister: HookLister | None = None,
-) -> dict[str, object]:
+) -> InspectionReport:
     home, manifest = _absolute(codex_home), load_component_manifest()
     _validate_real_path(home, require_exists=False)
     recorded, inventory, inventory_error = _recorded(home)
@@ -117,6 +119,7 @@ def _inspect(
     executable, invoke, probe = _host(home, codex, runner)
     host_error = probe.value if probe else None
     if probe is None:
+        assert executable is not None and invoke is not None
         try:
             installed = _json(
                 invoke([str(executable), "plugin", "list", "--json"]), "plugin list"
@@ -176,7 +179,7 @@ def _inspect(
 
 def _host(
     home: Path, codex: Path | None, runner: Runner | None
-) -> tuple[Path | None, Runner | None, ProbeStage | None]:
+) -> tuple[Path, Runner, None] | tuple[None, None, ProbeStage]:
     try:
         return (
             trusted_codex(codex or _find_codex()),
