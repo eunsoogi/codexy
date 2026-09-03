@@ -85,6 +85,9 @@ impl FixtureMatrix {
         fs::create_dir_all(&expected)?;
         fs::create_dir_all(&bin)?;
         git(&seed_repo, &["init", "-b", "main"], &git_starts)?;
+        // Git maintenance can mutate .git/objects while a cached seed is copied.
+        // Disable it before creating the snapshot that later fixtures share.
+        git(&seed_repo, &["config", "maintenance.auto", "false"], &git_starts)?;
         git(&seed_repo, &["config", "user.name", "test"], &git_starts)?;
         git(&seed_repo, &["config", "user.email", "test@example.com"], &git_starts)?;
         git(&seed_repo, &["config", "core.autocrlf", "false"], &git_starts)?;
