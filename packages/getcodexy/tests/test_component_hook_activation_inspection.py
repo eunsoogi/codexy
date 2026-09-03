@@ -76,6 +76,10 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
                     lambda current: [
                         {
                             **row,
+                            "currentHash": "sha256:changed-host-registration"
+                            if row["key"]
+                            == "codexy@codexy:hooks/hooks.json:pre_tool_use:1:0"
+                            else row["currentHash"],
                             "trustStatus": "modified"
                             if row["key"]
                             == "codexy@codexy:hooks/hooks.json:pre_tool_use:1:0"
@@ -139,6 +143,9 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
             rows = [
                 {
                     **row,
+                    # currentHash is opaque host registration metadata; trustStatus
+                    # is the authoritative staleness signal from hooks/list.
+                    "currentHash": "sha256:opaque-host-registration",
                     "command": row["command"].replace(str(plugin), str(cache)),
                     "sourcePath": str(cache / "hooks/hooks.json"),
                 }
