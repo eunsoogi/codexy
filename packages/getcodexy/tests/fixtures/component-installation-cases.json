@@ -219,6 +219,27 @@
       "selection_after": [],
       "outcome": "rejected",
       "error": { "code": "unknown-component" }
+    },
+    {
+      "id": "update-pending-hook-activation",
+      "command": "update",
+      "requested_components": ["core"],
+      "selection_before": ["core"],
+      "selection_after": ["core"],
+      "outcome": "pending-action",
+      "stdout": {
+        "schema": "getcodexy.operation-receipt.v1",
+        "operation_id": "op-update-pending-hooks",
+        "command": "update",
+        "outcome": "pending-action",
+        "requested_components": ["core"],
+        "resolved_components": ["core"],
+        "selection_before": ["core"],
+        "selection_after": ["core"],
+        "installed_components": ["core"],
+        "source_of_truth": "installed-component-inventory",
+        "errors": [{ "code": "required-hook-trust-missing" }]
+      }
     }
   ],
   "state_transitions": [

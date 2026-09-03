@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from .component_manifest import ComponentManifest, load_component_manifest
+from .component_hook_activation import HookLister, activation_for_inventory
 from .component_observed_inventory import observe_installed_inventory
 from .component_health import health as _health
 from .component_resolver import (
@@ -45,9 +46,10 @@ def status(
     *,
     codex: Path | None = None,
     runner: Runner | None = None,
+    hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     """Report actual installed components without changing the Codex home."""
-    report = _inspect(codex_home, codex, runner)
+    report = _inspect(codex_home, codex, runner, hook_lister)
     return {
         "schema": STATUS_SCHEMA,
         "command": "status",
@@ -66,13 +68,16 @@ def doctor(
     *,
     codex: Path | None = None,
     runner: Runner | None = None,
+    hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     """Inspect canonical managed files and return actionable repairs."""
-    report = _inspect(codex_home, codex, runner)
-    host_error = report["host_error"]
+    report = _inspect(codex_home, codex, runner, hook_lister)
+    missing_requirements = [report["host_error"]] if report["host_error"] else []
+    if "hook-state-unavailable" in set(report["activation"].values()):
+        missing_requirements.append("codex-hooks-list")
     readiness = (
-        {"state": "error", "missing_requirements": [host_error]}
-        if host_error
+        {"state": "error", "missing_requirements": missing_requirements}
+        if missing_requirements
         else {"state": "ready", "missing_requirements": []}
     )
     return {
@@ -88,7 +93,8 @@ def doctor(
             report["recorded"],
             report["records"],
             report["admission_error"],
-            bool(host_error),
+            bool(report["host_error"]),
+            report["activation"],
         ),
         "source_of_truth": "installed-component-inventory",
         "errors": report["errors"],
@@ -96,7 +102,10 @@ def doctor(
 
 
 def _inspect(
-    codex_home: str | os.PathLike[str], codex: Path | None, runner: Runner | None
+    codex_home: str | os.PathLike[str],
+    codex: Path | None,
+    runner: Runner | None,
+    hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     home, manifest = _absolute(codex_home), load_component_manifest()
     _validate_real_path(home, require_exists=False)
@@ -104,6 +113,7 @@ def _inspect(
     actual: tuple[str, ...] = ()
     records: dict[str, dict[str, object]] = {}
     admission_error: str | None = None
+    activation: dict[str, str] = {}
     executable, invoke, probe = _host(home, codex, runner)
     host_error = probe.value if probe else None
     if probe is None:
@@ -126,9 +136,18 @@ def _inspect(
                 host_error = ProbeStage.MARKETPLACE_LIST.value
             else:
                 actual, records, admission_error = _actual(manifest, installed, root)
-    errors = ([{"code": "invalid-installed-inventory"}] if host_error else []) + [
-        {"code": code} for code in (admission_error, inventory_error) if code
-    ]
+                if not admission_error and root is not None:
+                    activation = activation_for_inventory(
+                        manifest,
+                        installed,
+                        root,
+                        executable,
+                        home,
+                        hook_lister=hook_lister,
+                    )
+    errors = [{"code": "invalid-installed-inventory"}] if host_error else []
+    errors += [{"code": code} for code in (admission_error, inventory_error) if code]
+    errors += [{"code": code} for code in dict.fromkeys(activation.values())]
     inconsistent = bool(
         host_error
         or admission_error
@@ -143,6 +162,7 @@ def _inspect(
         "records": records,
         "admission_error": admission_error,
         "host_error": host_error,
+        "activation": activation,
         "inventory": inventory,
         "consistency": "inconsistent"
         if inconsistent

@@ -171,12 +171,15 @@ class Journal:
             raise ValueError("component transaction journal does not match its plan")
 
     def receipt(
-        self, outcome: Outcome, after: tuple[str, ...] | None = None
+        self,
+        outcome: Outcome,
+        after: tuple[str, ...] | None = None,
+        errors: tuple[str, ...] = (),
     ) -> OperationReceipt:
         from .component_transition_receipt import OperationReceipt
 
         return OperationReceipt.from_journal(
-            self, outcome, self.target if after is None else after
+            self, outcome, self.target if after is None else after, errors
         )
 
     @property

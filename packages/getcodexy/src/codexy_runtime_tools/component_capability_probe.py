@@ -6,6 +6,7 @@ from collections import namedtuple
 import shlex
 import subprocess
 
+from .component_hook_activation import ACTIVATION_REPAIRS
 from .version_lock import default_package_version
 
 
@@ -27,6 +28,7 @@ FAILURES = {
     "capability-call-failed": (_CALL_REPAIR, False),
     "runtime-identity-mismatch": (_IDENTITY_REPAIR, True),
     "artifact-authority-invalid": ("reinstall from a trusted release artifact", True),
+    **ACTIVATION_REPAIRS,
 }
 HOOK_SPECS = {
     "core": ("PermissionRequest", "codexy-thread-delivery"),

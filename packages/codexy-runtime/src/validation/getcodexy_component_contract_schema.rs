@@ -7,6 +7,7 @@ pub(super) const DOMAIN_ERRORS: &[&str] = &[
     "conflicting-component-request",
     "conflicting-installed-state",
     "dependency-protected-removal",
+    "hook-state-unavailable",
     "incompatible-component-selection",
     "inconsistent-installed-state",
     "installed-state-mismatch",
@@ -15,6 +16,9 @@ pub(super) const DOMAIN_ERRORS: &[&str] = &[
     "mixed-version-state",
     "no-recorded-selection",
     "operation-failed",
+    "required-hook-disabled",
+    "required-hook-trust-missing",
+    "required-hook-trust-stale",
     "unknown-component",
     "unknown-installed-component",
 ];

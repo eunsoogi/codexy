@@ -1,7 +1,5 @@
 """Authoritative package data for Codexy component selection."""
 
-from __future__ import annotations
-
 import json
 import re
 from dataclasses import dataclass
@@ -26,6 +24,7 @@ DOMAIN_ERRORS = frozenset(
         "conflicting-component-request",
         "conflicting-installed-state",
         "dependency-protected-removal",
+        "hook-state-unavailable",
         "incompatible-component-selection",
         "inconsistent-installed-state",
         "installed-state-mismatch",
@@ -34,6 +33,9 @@ DOMAIN_ERRORS = frozenset(
         "mixed-version-state",
         "no-recorded-selection",
         "operation-failed",
+        "required-hook-disabled",
+        "required-hook-trust-missing",
+        "required-hook-trust-stale",
         "unknown-component",
         "unknown-installed-component",
     }

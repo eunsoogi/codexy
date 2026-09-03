@@ -44,6 +44,13 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
     same_selection(update)?;
     exact_string(update, "outcome", "completed")?;
 
+    let pending = case(cases, "update-pending-hook-activation")?;
+    exact_string(pending, "command", "update")?;
+    exact_operands(pending, &["core"])?;
+    same_selection(pending)?;
+    exact_string(pending, "outcome", "pending-action")?;
+    receipts::pending_hook_activation(object(pending, "stdout")?)?;
+
     rejected_case(
         cases,
         "remove-core-with-dependent",

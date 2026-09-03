@@ -77,18 +77,19 @@ validation additionally reports `unknown-installed-component`,
 
 ## State transitions
 
-| Before                   | Command                    | After                         | Outcome                                |
-| ------------------------ | -------------------------- | ----------------------------- | -------------------------------------- |
-| none                     | `install`                  | core, github, devtools        | completed                              |
-| none                     | `install core`             | core                          | completed                              |
-| none                     | `install github`           | core, github                  | completed                              |
-| none                     | `install devtools`         | core, devtools                | completed                              |
-| core, devtools           | `install github`           | core, github, devtools        | completed                              |
-| core, devtools           | `update`                   | core, devtools                | completed                              |
-| core, github, devtools   | `remove github`            | core, devtools                | completed                              |
-| core, github             | `remove core`              | core, github                  | rejected: dependency-protected-removal |
-| core, github             | `remove core github`       | none                          | completed                              |
-| any consistent selection | a mutating operation fails | exact pre-operation selection | rolled-back                            |
+| Before                       | Command                             | After                         | Outcome                                                         |
+| ---------------------------- | ----------------------------------- | ----------------------------- | --------------------------------------------------------------- |
+| none                         | `install`                           | core, github, devtools        | completed                                                       |
+| none                         | `install core`                      | core                          | completed                                                       |
+| none                         | `install github`                    | core, github                  | completed                                                       |
+| none                         | `install devtools`                  | core, devtools                | completed                                                       |
+| core, devtools               | `install github`                    | core, github, devtools        | completed                                                       |
+| core, devtools               | `update`                            | core, devtools                | completed                                                       |
+| core, github, devtools       | `remove github`                     | core, devtools                | completed                                                       |
+| core, github                 | `remove core`                       | core, github                  | rejected: dependency-protected-removal                          |
+| core, github                 | `remove core github`                | none                          | completed                                                       |
+| any installed hook component | `install`, `update`, or `bootstrap` | requested selection           | pending-action: host hook trust or enablement is still required |
+| any consistent selection     | a mutating operation fails          | exact pre-operation selection | rolled-back                                                     |
 
 ## Rollback
 
@@ -97,6 +98,13 @@ installed selection and returns terminal `outcome: "rolled-back"`. Its JSON
 operation receipt includes a stable `operation_id`, the attempted command,
 requested and resolved components, selection before and after, installed
 components, source of truth, and structured error codes.
+
+An install, update, or bootstrap that has durably installed the target packages
+but cannot prove every required Codexy hook is trusted and enabled returns
+terminal `outcome: "pending-action"` with the installed target selection. It
+does not write host trust state or reinterpret the mutation as a rollback.
+`getcodexy status` and `getcodexy doctor` report the same pending condition
+until the host activates the exact installed hook entries.
 
 There is deliberately no `getcodexy rollback RECEIPT_ID` command in this
 contract. Manual rollback syntax, durable receipt storage, retention, lookup,
@@ -121,12 +129,24 @@ the same inventory consistency report.
 
 Both read commands take a fresh `codex plugin list --json` snapshot and never
 acquire a lifecycle lock, recover a journal, write a receipt, execute an MCP
-wrapper, or invoke an activation helper. `selected_components` is the durable
-selection record when present; `installed_components` is the fresh host
-snapshot. Doctor reports only present or selected components, classifying them
-as `healthy`, `missing`, `stale`, or `incompatible`, and attaches a declarative
-repair. Recoverable missing and stale states use `getcodexy bootstrap`;
-incompatible registrations require repair before the next doctor run.
+wrapper, or invoke a plugin hook launcher. They also take a read-only
+`hooks/list` snapshot from the trusted Codex app-server for each installed hook
+component. `selected_components` is the durable selection record when present;
+`installed_components` is the fresh host snapshot. Doctor reports only present
+or selected components, classifying them as `healthy`, `missing`, `stale`,
+`pending-trust`, or `incompatible`, and attaches a declarative repair. Missing,
+disabled, or untrusted required hooks use an actionable host-activation repair;
+stale or unavailable hook state fails closed and requires a fresh doctor run
+after repair.
+
+The `hooks/list` readback proves the trusted native Codex dispatcher has the
+exact installed registration and trust state; it does not prove that an outer
+Codex app connector or coordinator API call was routed through that dispatcher.
+A real-surface probe must record both facts separately: native hook execution
+must deny an invalid child-thread request and admit an explicit model/thinking
+pair, while the coordinator call path must independently be shown to enforce the
+same boundary. `getcodexy` never approves host trust, wraps a connector call, or
+replaces a host path that bypasses native hook dispatch.
 
 `bootstrap --json` emits its own typed transactional receipt with
 `command: "bootstrap"`. It is idempotent and reaches the same full default

@@ -24,7 +24,7 @@ from .component_transaction_snapshot import InventorySnapshot
 
 Command = Literal["install", "update", "remove", "bootstrap"]
 Phase = Literal["started", "rolling-back", "committed"]
-Outcome = Literal["completed", "rejected", "rolled-back"]
+Outcome = Literal["completed", "pending-action", "rejected", "rolled-back"]
 
 
 @dataclass(frozen=True)
