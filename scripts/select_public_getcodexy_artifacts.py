@@ -15,9 +15,16 @@ def main() -> int:
     if document.get("info", {}).get("version") != version:
         raise SystemExit("public getcodexy version mismatch")
     for package_type in ("bdist_wheel", "sdist"):
-        matches = [item for item in document.get("urls", []) if item.get("packagetype") == package_type]
+        matches = [
+            item
+            for item in document.get("urls", [])
+            if item.get("packagetype") == package_type
+        ]
         if len(matches) != 1:
-            print(f"expected one public {package_type}, got {len(matches)}", file=sys.stderr)
+            print(
+                f"expected one public {package_type}, got {len(matches)}",
+                file=sys.stderr,
+            )
             return 2
         item = matches[0]
         filename = urlsplit(item["url"]).path.rsplit("/", 1)[-1]

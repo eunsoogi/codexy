@@ -56,7 +56,9 @@ def _verify_wheel(path: Path, expected: str) -> None:
 def _verify_sdist(path: Path, expected: str) -> None:
     with tarfile.open(path, "r:gz") as archive:
         members = [member for member in archive.getmembers() if member.isfile()]
-        manifests = [member for member in members if member.name.endswith(MANIFEST_SUFFIX)]
+        manifests = [
+            member for member in members if member.name.endswith(MANIFEST_SUFFIX)
+        ]
         if len(manifests) != 1:
             raise SystemExit(f"sdist must contain one component manifest: {path}")
         metadata = [member for member in members if member.name.endswith("/PKG-INFO")]
@@ -68,8 +70,11 @@ def _verify_sdist(path: Path, expected: str) -> None:
 
 def _verify_metadata(raw: bytes, expected: str, artifact: str) -> None:
     version = next(
-        (line.removeprefix("Version: ").strip() for line in raw.decode().splitlines()
-         if line.startswith("Version: ")),
+        (
+            line.removeprefix("Version: ").strip()
+            for line in raw.decode().splitlines()
+            if line.startswith("Version: ")
+        ),
         None,
     )
     if version != expected:
@@ -85,16 +90,16 @@ def _verify_manifest(raw: bytes, expected: str, artifact: str) -> None:
     combinations = (
         manifest.get("compatibleCombinations") if isinstance(manifest, dict) else None
     )
-    versions = [
-        item.get("version")
-        for item in components
-        if isinstance(item, dict)
-    ] if isinstance(components, list) else []
-    combination_versions = [
-        item.get("version")
-        for item in combinations
-        if isinstance(item, dict)
-    ] if isinstance(combinations, list) else []
+    versions = (
+        [item.get("version") for item in components if isinstance(item, dict)]
+        if isinstance(components, list)
+        else []
+    )
+    combination_versions = (
+        [item.get("version") for item in combinations if isinstance(item, dict)]
+        if isinstance(combinations, list)
+        else []
+    )
     if (
         not isinstance(manifest, dict)
         or manifest.get("schema") != "getcodexy.component-manifest.v1"

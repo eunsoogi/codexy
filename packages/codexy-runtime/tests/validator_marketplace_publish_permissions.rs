@@ -64,7 +64,7 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
         codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
     )?;
     support::assert_structured_literals(
-        verify,
+        &verify,
         "tokenless public release smoke",
         &["python -m venv public-bootstrap"],
     );
