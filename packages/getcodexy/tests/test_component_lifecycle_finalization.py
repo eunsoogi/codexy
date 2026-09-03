@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+from codexy_runtime_tools.component_hook_activation_host import list_hooks
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
 from codexy_runtime_tools.component_transaction_state import (
     clear_journal,
@@ -60,6 +62,13 @@ class LifecycleFinalizationTests(unittest.TestCase):
         with fixture() as state:
             import codexy_runtime_tools.component_lifecycle_recovery as recovery
 
+            calls = 0
+
+            def lister(executable: Path, home: Path) -> object:
+                nonlocal calls
+                calls += 1
+                return [] if calls == 1 else list_hooks(executable, home)
+
             with (
                 patch.object(
                     recovery, "clear_journal", side_effect=OSError("cleanup failed")
@@ -73,9 +82,12 @@ class LifecycleFinalizationTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-cleanup",
+                    hook_lister=lister,
                 )
             receipt = inventory_path(state.home).parent / "receipts" / "op-cleanup.json"
-            self.assertEqual(json.loads(receipt.read_text())["outcome"], "completed")
+            self.assertEqual(
+                json.loads(receipt.read_text())["outcome"], "pending-action"
+            )
             self.assertEqual(read_journal(state.home).phase, "committed")
 
             next_receipt = run_operation(
@@ -85,8 +97,10 @@ class LifecycleFinalizationTests(unittest.TestCase):
                 state.codex,
                 state.run,
                 operation_id="op-cleanup",
+                hook_lister=lister,
             )
             self.assertEqual(next_receipt, json.loads(receipt.read_text()))
+            self.assertEqual(calls, 1)
             self.assertFalse(
                 (inventory_path(state.home).parent / "inflight.json").exists()
             )
