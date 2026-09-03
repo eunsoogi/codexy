@@ -4,57 +4,10 @@ use serde_json::{Value, json};
 
 use crate::support::{self, FixtureCommand as Command};
 
-use super::{final_archive_fixture::{FinalArchiveFixture, RUNTIME}, workflow};
+use super::final_archive_fixture::{FinalArchiveFixture, RUNTIME};
 
-#[test]
-fn final_publisher_materializes_and_exercises_the_public_archive()
--> Result<(), Box<dyn std::error::Error>> {
-    let publisher = workflow("publish-version-release.yml")?;
-    let run = format!(
-        "{}\n{}\n{}",
-        publisher.1,
-        fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?,
-        fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/finalize-verified-release"))?,
-    );
-    support::assert_structured_literals(
-        &run,
-        "final publisher lineage and archive contract",
-        &[
-            "STAGING_SOURCE_COMMIT",
-            "ACTIVATION_COMMIT",
-            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main",
-            "test \"$ACTIVATION_COMMIT\" = \"$(git rev-parse origin/main)\"",
-            "scripts/materialize-runtime-release-archive",
-            "scripts/assemble-release-train-archive.sh",
-            "codexy-marketplace-bundle.tar.gz",
-            "cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz",
-            "runtime-release-receipt.json",
-            "scripts/inspect-release-archive public.tar.gz public-inspect/plugins/codexy-devtools",
-            "scripts/verify-release-attestation-set",
-            "gh release view \"$RELEASE_TAG\"",
-            "-F draft=true",
-            "RELEASE_ID", "gh api --method POST", "uploadUrl: .upload_url", "release_upload_url", "\"$upload_url?name=$asset\"",
-            "releases/assets/$asset_id", "gh api --method PATCH",
-            "release asset differs from verified bytes",
-            "--plugin-root \"$PWD/plugins/codexy-devtools\"",
-            "jq -er .version\n          )\" = \"$TARGET_VERSION\"",
-        ],
-    );
-    support::assert_structured_absent_literals(
-        &run,
-        "immutable release asset reconciliation",
-        &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz", "gh release upload \"$RELEASE_TAG\"", "gh release download \"$RELEASE_TAG\"", "releases/tags/$RELEASE_TAG"],
-    );
-    let marker = |needle: &str| run.find(needle).ok_or("publisher ordering");
-    let staged_identity = marker("tar -xOzf staging/codexy-marketplace-plugin.tar.gz")?;
-    let runtime_copy = marker("cp staging/codexy-marketplace-plugin.tar.gz")?;
-    let public_materialization = marker("scripts/materialize-runtime-release-archive")?;
-    assert!(
-        staged_identity < runtime_copy && runtime_copy < public_materialization,
-        "staged identity must be checked before the byte-preserving copy and public materialization"
-    );
-    Ok(())
-}
+#[path = "final_archive/publication_contract.rs"]
+mod publication_contract;
 #[test]
 fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
 -> Result<(), Box<dyn std::error::Error>> {

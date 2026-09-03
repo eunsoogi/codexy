@@ -29,7 +29,7 @@ validate_release_state() {
   jq -e --arg tag "$RELEASE_TAG" --arg id "$release_id" '.name == $tag and (.id | tostring) == $id' release-state.json > /dev/null
   test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
   test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
-  test "$(jq -r .isDraft release-state.json)" = true
+  test "$(jq -r .isDraft release-state.json)" = "${1:-true}"
   test "$(jq -r .isPrerelease release-state.json)" = false
   for name in $(jq -r '.assets[].name' release-state.json); do
     case "$name" in
@@ -99,7 +99,7 @@ retarget_existing_draft() {
   release_state "$1" > release-state.json
   retarget_target="$(jq -r .targetCommitish release-state.json)"
   retarget_tag="$(jq -r .tagName release-state.json)"
-  jq -e --arg tag "$RELEASE_TAG" '.name == $tag and .isDraft == true and .isPrerelease == false' release-state.json > /dev/null || release_error "release identity mismatch"
+  jq -e --arg tag "$RELEASE_TAG" --arg commit "$ACTIVATION_COMMIT" '.name == $tag and .isPrerelease == false and (.isDraft == true or (.isDraft == false and .tagName == $tag and .targetCommitish == $commit and ([.assets[].name] | sort == ["codexy-marketplace-bundle.tar.gz", "codexy-marketplace-plugin.tar.gz", "codexy-runtime-package.tar.gz", "release-baseline.json", "runtime-release-receipt.json"])))' release-state.json > /dev/null || release_error "release identity mismatch"
   if test "$retarget_tag" != "$RELEASE_TAG"; then
     case "$retarget_tag" in untagged-*) retarget_placeholder="${retarget_tag#untagged-}"; case "$retarget_placeholder" in '' | *[!0-9a-f]*) release_error "draft tag is not a generated placeholder" ;; esac ;; *) release_error "release identity mismatch" ;; esac
     placeholder_tag_snapshot="$(authenticated_remote_tag "refs/tags/$retarget_tag")" || release_error "placeholder tag lookup failed"
@@ -190,7 +190,7 @@ if test "$release_exists" = false; then
   retarget_existing_draft "$release_id"
 fi
 release_state "$release_id" > release-state.json
-validate_release_state
+validate_release_state "$(jq -r .isDraft release-state.json)"
 remote_tag="$(authenticated_remote_tag)"
 verify_tag_if_present "$remote_tag"
 release_asset_id() {

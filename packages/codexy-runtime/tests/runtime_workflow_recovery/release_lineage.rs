@@ -1,16 +1,21 @@
 use std::fs;
 
-#[cfg(unix)]
-use std::{path::Path, process::Command};
-
 use serde_yaml::Value;
 
 use crate::support;
+
+#[cfg(unix)]
+#[path = "release_lineage/projection_cases.rs"]
+mod projection_cases;
+#[cfg(unix)]
+use projection_cases::assert_projection_cases;
 
 #[test]
 fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");
     let publisher: Value = serde_yaml::from_str(&fs::read_to_string(path)?)?;
+    let verifier_path = codexy_runtime::paths::repository_root().join(".github/workflows/verify-version-release.yml");
+    let verifier: Value = serde_yaml::from_str(&fs::read_to_string(verifier_path)?)?;
     let source = publisher["jobs"]["publish-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify selected protected-main source"))
@@ -39,7 +44,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     ] {
         assert_eq!(step["env"][name], format!("${{{{ inputs.{input} }}}}"));
     }
-    let public = publisher["jobs"]["verify-public-release"]["steps"]
+    let public = verifier["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Download and verify reconciled public release without a token"))
         .and_then(|step| step["run"].as_str())
@@ -48,7 +53,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         public,
         "public verifier current source projection",
         &[
-            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main && git show \"$GITHUB_SHA:scripts/project-release-verifiers.sh\" > \"$RUNNER_TEMP/project-release-verifiers\" && chmod 755 \"$RUNNER_TEMP/project-release-verifiers\" && \"$RUNNER_TEMP/project-release-verifiers\" \"$ACTIVATION_COMMIT\"",
+            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main",
+            "git show \"$GITHUB_SHA:scripts/project-release-verifiers.sh\" > \"$RUNNER_TEMP/project-release-verifiers\"",
+            "\"$RUNNER_TEMP/project-release-verifiers\" \"$ACTIVATION_COMMIT\"",
         ],
     );
     support::assert_structured_absent_literals(
@@ -124,127 +131,5 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     );
     #[cfg(unix)]
     assert_projection_cases(&projection)?;
-    Ok(())
-}
-
-#[cfg(unix)]
-fn assert_projection_cases(projection: &str) -> Result<(), Box<dyn std::error::Error>> {
-    for (name, kind, expected_success) in [
-        ("no-delta", "no-delta", true),
-        ("allowed-verifier-delta", "verifier-delta", true),
-        ("allowed-reconciliation-delta", "reconciliation-delta", true),
-        ("allowed-finalizer-delta", "finalizer-delta", true),
-        ("forbidden-scripts-delta", "forbidden-delta", false),
-    ] {
-        run_projection_case(projection, name, kind, expected_success)?;
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-fn run_projection_case(
-    projection: &str,
-    name: &str,
-    kind: &str,
-    expected_success: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let temporary = tempfile::tempdir()?;
-    let root = temporary.path();
-    run_git(root, &["init", "--quiet", "--initial-branch=main"])?;
-    run_git(root, &["config", "user.email", "codexy-test@example.invalid"])?;
-    run_git(root, &["config", "user.name", "codexy-test"])?;
-
-    let scripts = root.join("scripts");
-    fs::create_dir(&scripts)?;
-    write_executable(&scripts.join("project-release-verifiers.sh"), projection)?;
-    write_executable(&scripts.join("reconcile-release-attestations"), "activation-reconcile\n")?;
-    write_executable(&scripts.join("verify-release-attestation-set"), "activation-set\n")?;
-    write_executable(&scripts.join("finalize-verified-release"), "activation-finalizer\n")?;
-    run_git(root, &["add", "scripts"])?;
-    run_git(root, &["commit", "--quiet", "-m", "activation"])?;
-    let activation = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
-
-    match kind {
-        "no-delta" => {
-            run_git(root, &["commit", "--quiet", "--allow-empty", "-m", "main"])?;
-        }
-        "verifier-delta" => {
-            fs::write(
-                scripts.join("verify-release-attestation-set"),
-                "activation-set\nchanged-set\n",
-            )?;
-            run_git(root, &["add", "scripts/verify-release-attestation-set"])?;
-            run_git(root, &["commit", "--quiet", "-m", "main"])?;
-        }
-        "reconciliation-delta" => {
-            fs::write(
-                scripts.join("reconcile-release-attestations"),
-                "main-reconcile\n",
-            )?;
-            run_git(root, &["add", "scripts/reconcile-release-attestations"])?;
-            run_git(root, &["commit", "--quiet", "-m", "main"])?;
-        }
-        "finalizer-delta" => {
-            fs::write(scripts.join("finalize-verified-release"), "main-finalizer\n")?;
-            run_git(root, &["add", "scripts/finalize-verified-release"])?;
-            run_git(root, &["commit", "--quiet", "-m", "main"])?;
-        }
-        "forbidden-delta" => {
-            fs::write(scripts.join("unrelated-script"), "forbidden\n")?;
-            run_git(root, &["add", "scripts/unrelated-script"])?;
-            run_git(root, &["commit", "--quiet", "-m", "main"])?;
-        }
-        other => return Err(format!("unknown projection fixture: {other}").into()),
-    }
-    let current = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
-    run_git(root, &["update-ref", "refs/remotes/origin/main", &current])?;
-
-    let output = Command::new(scripts.join("project-release-verifiers.sh"))
-        .current_dir(root)
-        .env("GITHUB_SHA", &current)
-        .env("GITHUB_REF", "refs/heads/main")
-        .arg(&activation)
-        .output()?;
-    assert_eq!(
-        output.status.success(),
-        expected_success,
-        "{name} projection case had unexpected status: {}",
-        String::from_utf8_lossy(&output.stderr),
-    );
-    if expected_success {
-        assert_eq!(run_git(root, &["rev-parse", "HEAD"])?.trim(), activation);
-        let verifier_set = fs::read_to_string(scripts.join("verify-release-attestation-set"))?;
-        let reconciliation = fs::read_to_string(scripts.join("reconcile-release-attestations"))?;
-        let expected_verifier = if kind == "verifier-delta" { "activation-set\nchanged-set\n" } else { "activation-set\n" };
-        let expected_reconciliation = if kind == "reconciliation-delta" { "main-reconcile\n" } else { "activation-reconcile\n" };
-        let expected_finalizer = if kind == "finalizer-delta" { "main-finalizer\n" } else { "activation-finalizer\n" };
-        assert_eq!(verifier_set, expected_verifier);
-        assert_eq!(reconciliation, expected_reconciliation);
-        assert_eq!(fs::read_to_string(scripts.join("finalize-verified-release"))?, expected_finalizer);
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-fn run_git(cwd: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
-    let output = Command::new("git").current_dir(cwd).args(args).output()?;
-    if !output.status.success() {
-        return Err(format!(
-            "git {args:?} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-    Ok(String::from_utf8(output.stdout)?)
-}
-
-#[cfg(unix)]
-fn write_executable(path: &Path, contents: &str) -> Result<(), Box<dyn std::error::Error>> {
-    use std::os::unix::fs::PermissionsExt;
-
-    fs::write(path, contents)?;
-    let mut permissions = fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    fs::set_permissions(path, permissions)?;
     Ok(())
 }

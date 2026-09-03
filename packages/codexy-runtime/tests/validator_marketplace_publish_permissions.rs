@@ -41,6 +41,7 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
     assert!(checkout_persists(&activation, "open-activation-pr")?);
 
     let publisher = document("publish-version-release.yml")?;
+    let verifier = document("verify-version-release.yml")?;
     let permissions = mapping(&publisher["permissions"])?;
     assert_eq!(permissions[Value::String("contents".into())], "write");
     assert_eq!(permissions[Value::String("id-token".into())], "write");
@@ -52,24 +53,28 @@ fn staging_activation_and_final_release_write_only_at_explicit_boundaries() -> R
     assert_eq!(public.len(), 2);
     assert_eq!(public[Value::String("contents".into())], "read");
     assert_eq!(public[Value::String("attestations".into())], "read");
-    assert!(!checkout_persists(&publisher, "verify-public-release")?);
+    assert!(!checkout_persists(&verifier, "verify-public-release")?);
     let verify = run(
-        &publisher,
+        &verifier,
         "verify-public-release",
         "Smoke public release without a token",
     )?;
+    assert_eq!(verify, "scripts/smoke-public-getcodexy-release.sh");
+    let verify = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
+    )?;
     support::assert_structured_literals(
-        verify,
+        &verify,
         "tokenless public release smoke",
         &["python -m venv public-bootstrap"],
     );
-    let step = publisher["jobs"]["verify-public-release"]["steps"]
+    let step = verifier["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Smoke public release without a token"))
         .ok_or("public release smoke step")?;
     assert_eq!(step["env"]["GH_TOKEN"], "");
     assert_eq!(step["env"]["GITHUB_TOKEN"], "");
-    let attestation = publisher["jobs"]["verify-public-release"]["steps"]
+    let attestation = verifier["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == "Verify public release attestations with a read-only token"))
         .ok_or("public release attestation step")?;

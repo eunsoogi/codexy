@@ -28,15 +28,17 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
     let proof = run(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap and authenticated staging identity",
+        "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
     support::assert_structured_literals(
         proof,
         "activation bootstrap and staging workflow proof",
         &[
-            "python -m venv public-bootstrap",
+            "git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main",
+            "python -m build --outdir \"$RUNNER_TEMP/local-bootstrap-dist\" packages/getcodexy",
             "getcodexy==${BOOTSTRAP_VERSION}",
-            "public-bootstrap/bin/codexy-mcp-runtime --help",
+            "local-bootstrap/bin/codexy-mcp-runtime",
+            "--help",
             "scripts/download-runtime-staging-artifact staging",
         ],
     );
@@ -99,7 +101,7 @@ fn activation_requires_a_successful_authenticated_staging_binding()
     let proof = run(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap and authenticated staging identity",
+        "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
     assert!(proof.contains("scripts/download-runtime-staging-artifact staging"));
     let download = script("download-runtime-staging-artifact")?;

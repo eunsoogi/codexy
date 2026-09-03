@@ -55,10 +55,12 @@ fn windows_runtime_candidate_provisions_uv_before_installed_contract()
 #[test]
 fn final_publisher_is_version_only() -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
+    let verifier = workflow("verify-version-release.yml")?;
     assert!(has_dispatch(&publisher.2), "final publisher needs workflow_dispatch");
     let lifecycle = format!(
-        "{}\n{}",
+        "{}\n{}\n{}",
         publisher.1,
+        verifier.1,
         std::fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?,
     );
     support::assert_structured_literals(
