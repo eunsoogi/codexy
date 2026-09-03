@@ -1,14 +1,14 @@
 {
   "schema": "codexy.internal.release-publish-contract.v2",
   "name": "codexy",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "bootstrap": {
-    "selectedVersion": "1.6.0",
+    "selectedVersion": "1.6.1",
     "candidateVersion": "1.6.1",
     "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
   },
   "runtime": {
-    "selectedTag": "v1.6.0",
+    "selectedTag": "v1.6.1",
     "stagingWorkflow": ".github/workflows/runtime-candidate.yml",
     "activationWorkflow": ".github/workflows/runtime-activation.yml",
     "finalPublisherWorkflow": ".github/workflows/publish-version-release.yml",
@@ -21,10 +21,10 @@
   },
   "currentMarketplace": {
     "repository": "https://github.com/eunsoogi/codexy",
-    "ref": "v1.6.0",
+    "ref": "v1.6.1",
     "marketplacePath": ".agents/plugins/marketplace.json",
     "pluginPath": "./plugins/codexy",
-    "installCommand": "codex plugin marketplace add eunsoogi/codexy --ref v1.6.0"
+    "installCommand": "codex plugin marketplace add eunsoogi/codexy --ref v1.6.1"
   },
   "package": {
     "workflow": ".github/workflows/plugin-runtime-binaries.yml",
