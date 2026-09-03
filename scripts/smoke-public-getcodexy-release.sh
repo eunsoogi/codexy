@@ -40,15 +40,6 @@ jq -e '.schema == "getcodexy.status.v1" and .outcome == "completed" and .invento
 jq -e --arg version "$TARGET_VERSION" '.schema == "getcodexy.doctor.v1" and .outcome == "completed" and .inventory_consistency == "consistent" and .host_readiness.state == "ready" and .errors == [] and ([.component_health[]] | length == 3) and ([.component_health[] | select(.healthy == true and .state == "healthy" and .observed.plugin.version == $version and .observed.runtime.version == $version)] | length == 3)' public-doctor.json >/dev/null
 
 previous_version=${UPGRADE_FROM_VERSION:-}
-if [[ -z "$previous_version" ]]; then
-	while read -r revision; do
-		candidate=$(git show "$revision:packages/getcodexy/pyproject.toml" | sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' | head -n 1)
-		if [[ -n "$candidate" && "$candidate" != "$TARGET_VERSION" ]]; then
-			previous_version=$candidate
-			break
-		fi
-	done < <(git log --format=%H -- packages/getcodexy/pyproject.toml)
-fi
 case "$previous_version" in
 '' | *[!0-9.]*)
 	echo "previous package version is unavailable" >&2

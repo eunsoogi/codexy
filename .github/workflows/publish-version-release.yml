@@ -34,6 +34,8 @@ env:
 jobs:
   publish-release:
     runs-on: ubuntu-latest
+    outputs:
+      upgrade_from_version: ${{ steps.resolve_previous_package_version.outputs.version }}
     env:
       STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
       ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
@@ -133,6 +135,25 @@ jobs:
           python3 "$package_root/scripts/verify_getcodexy_package_artifact.py" \
             --dist "$RUNNER_TEMP/getcodexy-dist" \
             --version "$TARGET_VERSION"
+      - name: Resolve previous package version from full history
+        id: resolve_previous_package_version
+        run: |
+          previous_version=
+          while read -r revision; do
+            candidate="$(git show "$revision:packages/getcodexy/pyproject.toml" | sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' | head -n 1)"
+            if [[ -n "$candidate" && "$candidate" != "$TARGET_VERSION" ]]; then
+              previous_version=$candidate
+              break
+            fi
+          done < <(git log --format=%H "$ACTIVATION_COMMIT" -- packages/getcodexy/pyproject.toml)
+          case "$previous_version" in
+            '' | *[!0-9.]*)
+              echo "previous package version is unavailable" >&2
+              exit 1
+              ;;
+          esac
+          test "$previous_version" != "$TARGET_VERSION"
+          printf 'version=%s\n' "$previous_version" >> "$GITHUB_OUTPUT"
       - name: Smoke exact final package before publication
         env:
           CODEXY_RUNTIME_PACKAGE_PATH: ${{ github.workspace }}/dist/codexy-runtime-package.tar.gz
@@ -140,6 +161,7 @@ jobs:
           GETCODEXY_DIST: ${{ runner.temp }}/getcodexy-dist
           PUBLIC_BUNDLE_ARCHIVE: dist/codexy-marketplace-bundle.tar.gz
           PUBLIC_INSPECT_ROOT: final-inspect
+          UPGRADE_FROM_VERSION: ${{ steps.resolve_previous_package_version.outputs.version }}
         run: scripts/smoke-public-getcodexy-release.sh
       - name: Reconcile marketplace archive attestation
         env:
@@ -213,3 +235,4 @@ jobs:
       target_version: ${{ inputs.target_version }}
       staging_source_commit: ${{ inputs.staging_source_commit }}
       activation_commit: ${{ inputs.activation_commit }}
+      upgrade_from_version: ${{ needs.publish-release.outputs.upgrade_from_version }}
