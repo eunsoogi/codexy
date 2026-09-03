@@ -5,11 +5,19 @@ set -euo pipefail
 : "${RUNNER_TEMP:?}"
 
 python -m venv public-bootstrap
-public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
+if [[ -n "${GETCODEXY_DIST:-}" ]]; then
+	public-bootstrap/bin/python -m pip install --no-cache-dir --no-index \
+		--find-links "$GETCODEXY_DIST" "getcodexy==${TARGET_VERSION}"
+else
+	public-bootstrap/bin/python -m pip install --no-cache-dir \
+		--index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
+fi
+public_inspect_root=${PUBLIC_INSPECT_ROOT:-public-inspect}
+public_bundle_archive=${PUBLIC_BUNDLE_ARCHIVE:-public-bundle.tar.gz}
 CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/plugins/codexy-devtools" -- --help
-CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/public-inspect/plugins/codexy-devtools" -- --help
+CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/$public_inspect_root/plugins/codexy-devtools" -- --help
 mkdir -p public-marketplace
-tar --no-same-owner --no-same-permissions -xzf public-bundle.tar.gz -C public-marketplace
+tar --no-same-owner --no-same-permissions -xzf "$public_bundle_archive" -C public-marketplace
 git -C public-marketplace init -q
 git -C public-marketplace config user.name "Codexy public proof"
 git -C public-marketplace config user.email "codexy-public-proof@example.invalid"

@@ -42,7 +42,16 @@ def installed(name: str) -> dict[str, object]:
 
 if command == ["plugin", "marketplace", "list", "--json"]:
     marketplaces = (
-        [{"name": "codexy", "root": str(root.resolve())}]
+        [
+            {
+                "name": "codexy",
+                "root": str(root.resolve()),
+                "marketplaceSource": {
+                    "sourceType": "git",
+                    "source": "https://github.com/eunsoogi/codexy.git",
+                },
+            }
+        ]
         if marketplace_path.is_file()
         else []
     )
