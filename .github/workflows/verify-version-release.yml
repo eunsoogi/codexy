@@ -83,11 +83,15 @@ jobs:
           attempt=0
           while :; do
             attempt=$((attempt + 1))
-            if curl --fail --silent --show-error --location "https://pypi.org/pypi/getcodexy/${TARGET_VERSION}/json" -o public-getcodexy.json \
-              && scripts/select_public_getcodexy_artifacts.py public-getcodexy.json "$TARGET_VERSION" > public-package-artifacts.tsv; then
-              break
+            if curl --fail --silent --show-error --location "https://pypi.org/pypi/getcodexy/${TARGET_VERSION}/json" -o public-getcodexy.json; then
+              if scripts/select_public_getcodexy_artifacts.py public-getcodexy.json "$TARGET_VERSION" > public-package-artifacts.tsv; then
+                break
+              else
+                status=$?
+              fi
+            else
+              status=2
             fi
-            status=$?
             if test "$status" -ne 2 || test "$attempt" -ge 12; then
               echo "PyPI getcodexy==${TARGET_VERSION} did not converge after ${attempt} bounded checks." >&2
               exit 1

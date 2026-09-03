@@ -87,8 +87,7 @@ fn publisher_baseline_and_finalizer_recover_fresh_partial_exact_and_public_state
         let published_log = fixture.read("log")?;
         let published_baseline = fs::read(fixture.root.join("remote/release-baseline.json"))?;
         let rerun = fixture.run_with_policy("publish-verified-release", false, true)?;
-        assert!(!rerun.status.success(), "{name} admitted an already-published release");
-        assert!(String::from_utf8_lossy(&rerun.stderr).contains("release identity mismatch"), "{name} did not fail at the non-draft identity gate");
+        assert!(rerun.status.success(), "{name} could not resume exact public release: stdout={} stderr={}", String::from_utf8_lossy(&rerun.stdout), String::from_utf8_lossy(&rerun.stderr));
         let immutable_readback = fixture.run_with_policy("finalize-verified-release", false, true)?;
         assert!(immutable_readback.status.success(), "{name} immutable public readback failed: {}", String::from_utf8_lossy(&immutable_readback.stderr));
         assert_eq!(fixture.read("log")?, published_log, "{name} public rerun mutated release state");

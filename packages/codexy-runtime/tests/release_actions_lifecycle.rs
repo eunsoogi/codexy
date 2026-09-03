@@ -98,6 +98,12 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     ] {
         assert!(download.contains(required), "missing verifier projection: {required}");
     }
+    let package = named_run(public, "Prove exact public getcodexy package")?;
+    let package_lines: Vec<_> = package.lines().map(str::trim).collect();
+    assert!(package_lines.windows(2).any(|lines| lines == ["else", "status=$?"]));
+    for required in ["if curl --fail", "status=2", "test \"$attempt\" -ge 12", "sleep 10"] {
+        assert!(package.contains(required), "missing bounded package retry contract: {required}");
+    }
     let smoke = named_run(public, "Smoke public release without a token")?;
     assert_eq!(smoke, "scripts/smoke-public-getcodexy-release.sh");
     let smoke_script = fs::read_to_string(
