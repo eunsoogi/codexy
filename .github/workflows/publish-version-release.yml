@@ -109,6 +109,33 @@ jobs:
           scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
           scripts/inspect_release_train_archive.py dist/codexy-marketplace-bundle.tar.gz "$PWD" "$RELEASE_TAG"
           scripts/create_release_train_receipt.py dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz dist/codexy-runtime-package.tar.gz staging/runtime-staging-receipt.json staging/runtime-staging-run.json dist/runtime-release-receipt.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build and verify exact final getcodexy package
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+        run: |
+          package_root="$RUNNER_TEMP/final-package"
+          git worktree add --detach "$package_root" "$ACTIVATION_COMMIT"
+          test "$(git -C "$package_root" rev-parse HEAD)" = "$ACTIVATION_COMMIT"
+          (
+            cd "$package_root"
+            scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
+            scripts/sync-plugin-version.sh --check
+          )
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir "$RUNNER_TEMP/getcodexy-dist" "$package_root/packages/getcodexy"
+          python3 "$package_root/scripts/verify_getcodexy_package_artifact.py" \
+            --dist "$RUNNER_TEMP/getcodexy-dist" \
+            --version "$TARGET_VERSION"
+      - name: Smoke exact final package before publication
+        env:
+          CODEXY_RUNTIME_PACKAGE_PATH: ${{ github.workspace }}/dist/codexy-runtime-package.tar.gz
+          GETCODEXY_DIST: ${{ runner.temp }}/getcodexy-dist
+          PUBLIC_BUNDLE_ARCHIVE: dist/codexy-marketplace-bundle.tar.gz
+          PUBLIC_INSPECT_ROOT: final-inspect
+        run: scripts/smoke-public-getcodexy-release.sh
       - name: Reconcile marketplace archive attestation
         env:
           GH_TOKEN: ${{ github.token }}
@@ -166,26 +193,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/finalize-verified-release
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Build and verify exact final getcodexy package
-        env:
-          TARGET_VERSION: ${{ inputs.target_version }}
-        run: |
-          package_root="$RUNNER_TEMP/final-package"
-          git worktree add --detach "$package_root" "$ACTIVATION_COMMIT"
-          test "$(git -C "$package_root" rev-parse HEAD)" = "$ACTIVATION_COMMIT"
-          (
-            cd "$package_root"
-            scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
-            scripts/sync-plugin-version.sh --check
-          )
-          python -m pip install --disable-pip-version-check build
-          python -m build --outdir "$RUNNER_TEMP/getcodexy-dist" "$package_root/packages/getcodexy"
-          python3 "$package_root/scripts/verify_getcodexy_package_artifact.py" \
-            --dist "$RUNNER_TEMP/getcodexy-dist" \
-            --version "$TARGET_VERSION"
       - name: Publish exact final getcodexy package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

@@ -25,7 +25,14 @@ def require_pinned_registration(
         )
 
     metadata_path = marketplace_root / ".codex-marketplace-install.json"
-    _validate_real_path(metadata_path, require_exists=True)
+    _validate_real_path(metadata_path, require_exists=False)
+    expected_revision = _git_revision(marketplace_root, expected)
+    if not metadata_path.exists():
+        if _git_revision(marketplace_root, "HEAD") != expected_revision:
+            raise RuntimeError(
+                "official marketplace checkout revision is outside the expected release tag"
+            )
+        return
     try:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
@@ -47,7 +54,6 @@ def require_pinned_registration(
         raise RuntimeError(
             "official marketplace install metadata has an invalid revision"
         )
-    expected_revision = _git_revision(marketplace_root, expected)
     if (
         revision != expected_revision
         or _git_revision(marketplace_root, "HEAD") != expected_revision

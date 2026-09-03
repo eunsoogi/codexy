@@ -10,21 +10,23 @@ root = Path(os.environ["CODEXY_MARKETPLACE_ROOT"])
 home = Path(os.environ["CODEX_HOME"])
 state_path = home / ".codexy-public-proof.json"
 marketplace_path = home / ".codexy-public-marketplace-present"
+target = os.environ["TARGET_VERSION"]
+plugins = {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}
 state = (
     json.loads(state_path.read_text(encoding="utf-8"))
     if state_path.is_file()
-    else {"selection": []}
+    else {"selection": [], "versions": {}}
 )
-target = os.environ["TARGET_VERSION"]
-plugins = {"codexy": "core", "codexy-github": "github", "codexy-devtools": "devtools"}
+state.setdefault("versions", {})
 command = sys.argv[1:]
 
 
 def installed(name: str) -> dict[str, object]:
     plugin = root / "plugins" / name
-    version = json.loads(
+    packaged_version = json.loads(
         (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
     )["version"]
+    version = state["versions"].get(plugins[name], packaged_version)
     return {
         "pluginId": f"{name}@codexy",
         "name": name,
@@ -42,7 +44,16 @@ def installed(name: str) -> dict[str, object]:
 
 if command == ["plugin", "marketplace", "list", "--json"]:
     marketplaces = (
-        [{"name": "codexy", "root": str(root.resolve())}]
+        [
+            {
+                "name": "codexy",
+                "root": str(root.resolve()),
+                "marketplaceSource": {
+                    "sourceType": "git",
+                    "source": "https://github.com/eunsoogi/codexy.git",
+                },
+            }
+        ]
         if marketplace_path.is_file()
         else []
     )
@@ -58,6 +69,8 @@ elif command == ["plugin", "marketplace", "remove", "codexy", "--json"]:
     marketplace_path.unlink(missing_ok=True)
     result = {"ok": True}
 elif command == ["plugin", "marketplace", "upgrade", "codexy", "--json"]:
+    if os.environ.get("FAIL_MARKETPLACE_UPGRADE") == "1":
+        raise SystemExit("unexpected unpinned marketplace upgrade")
     result = {"ok": True}
 elif command == ["plugin", "list", "--json"]:
     result = {
@@ -73,12 +86,14 @@ elif command[:2] == ["plugin", "add"]:
         raise SystemExit(f"unknown plugin: {name}")
     if plugins[name] not in state["selection"]:
         state["selection"].append(plugins[name])
+    state["versions"][plugins[name]] = target
     home.mkdir(parents=True, exist_ok=True)
     state_path.write_text(json.dumps(state), encoding="utf-8")
     result = {"ok": True}
 elif command[:2] == ["plugin", "remove"]:
     name = command[2].split("@", 1)[0]
     state["selection"] = [item for item in state["selection"] if item != plugins[name]]
+    state["versions"].pop(plugins[name], None)
     state_path.write_text(json.dumps(state), encoding="utf-8")
     result = {"ok": True}
 else:

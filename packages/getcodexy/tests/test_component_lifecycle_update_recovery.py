@@ -18,6 +18,7 @@ from codexy_runtime_tools.component_transaction_state import (
 from packages.getcodexy.tests.component_lifecycle_support import (
     VERSION,
     _git,
+    exact_marketplace_add,
     fixture,
 )
 
@@ -61,15 +62,18 @@ class UpdateRecoveryTests(unittest.TestCase):
                 operation_id="op-after-update",
             )
 
-            upgrade = ("plugin", "marketplace", "upgrade", "codexy", "--json")
-            self.assertIn(upgrade, state.calls)
+            self.assertIn(
+                ("plugin", "marketplace", "remove", "codexy", "--json"),
+                state.calls,
+            )
+            self.assertIn(exact_marketplace_add(), state.calls)
             prior = target.parent / "receipts" / "op-interrupted-update.json"
             self.assertEqual(
                 json.loads(prior.read_text(encoding="utf-8"))["outcome"], "completed"
             )
             self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
 
-    def test_cli_update_and_bootstrap_quarantine_independent_marketplace_drift(
+    def test_cli_update_and_bootstrap_reject_exact_repin_drift(
         self,
     ) -> None:
         drifts = (
@@ -78,7 +82,6 @@ class UpdateRecoveryTests(unittest.TestCase):
             "metadata-revision",
             "checkout-head",
         )
-        upgrade = ("plugin", "marketplace", "upgrade", "codexy", "--json")
         for command in ("update", "bootstrap"):
             for drift in drifts:
                 with (
@@ -88,10 +91,14 @@ class UpdateRecoveryTests(unittest.TestCase):
                     if command == "update":
                         write_inventory(state.home, ("core",))
 
+                    drifted = False
+
                     def runner(args: list[str]) -> object:
+                        nonlocal drifted
                         result = state.run(args)
-                        if tuple(args[1:]) == upgrade:
+                        if tuple(args[1:]) == exact_marketplace_add() and not drifted:
                             _apply_drift(state, drift)
+                            drifted = True
                         return result
 
                     output, errors = io.StringIO(), io.StringIO()
@@ -120,7 +127,7 @@ class UpdateRecoveryTests(unittest.TestCase):
                     self.assertEqual(receipt["command"], command)
                     self.assertEqual(receipt["outcome"], "rolled-back")
                     self.assertEqual(receipt["selection_after"], ["core"])
-                    self.assertIn(upgrade, state.mutations)
+                    self.assertIn(exact_marketplace_add(), state.mutations)
                     self.assertIn(
                         ("plugin", "marketplace", "remove", "codexy", "--json"),
                         state.mutations,
@@ -131,17 +138,14 @@ class UpdateRecoveryTests(unittest.TestCase):
                             for mutation in state.mutations
                         )
                     )
-                    self.assertNotIn(
-                        "[marketplaces.codexy]",
+                    self.assertIn(
+                        f'ref = "v{VERSION}"',
                         (state.home / "config.toml").read_text(encoding="utf-8"),
                     )
-                    recovery = json.loads(
+                    self.assertFalse(
                         (
                             state.home / "getcodexy" / "marketplace-recovery.json"
-                        ).read_text(encoding="utf-8")
-                    )
-                    self.assertEqual(
-                        recovery["reason"], "post-upgrade-marketplace-drift"
+                        ).exists()
                     )
                     self.assertIsNone(read_journal(state.home))
 
@@ -186,9 +190,7 @@ class UpdateRecoveryTests(unittest.TestCase):
                 operation_id="op-after-older-update",
             )
 
-            self.assertIn(
-                ("plugin", "marketplace", "upgrade", "codexy", "--json"), state.calls
-            )
+            self.assertIn(exact_marketplace_add(), state.calls)
             self.assertIsNone(read_journal(state.home))
             self.assertEqual(
                 json.loads(

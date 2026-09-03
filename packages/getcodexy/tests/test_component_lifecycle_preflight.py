@@ -74,7 +74,9 @@ class LifecyclePreflightTests(unittest.TestCase):
     def test_older_lockstep_update_failure_preserves_the_prior_version_and_receipt(
         self,
     ) -> None:
-        with fixture({"core"}, fail_upgrade=True, versions={"core": "1.2.0"}) as state:
+        with fixture(
+            {"core"}, fail_marketplace_add=True, versions={"core": "1.2.0"}
+        ) as state:
             target = inventory_path(state.home)
             target.parent.mkdir(parents=True)
             target.write_text(

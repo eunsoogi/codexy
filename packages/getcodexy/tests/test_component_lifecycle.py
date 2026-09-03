@@ -23,7 +23,10 @@ from packages.getcodexy.tests.component_lifecycle_recovery_cases import (
     ComponentLifecycleRecoveryCases,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record, recorded
-from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
+from packages.getcodexy.tests.component_lifecycle_support import (
+    exact_marketplace_add,
+    fixture,
+)
 
 
 class ComponentLifecycleTests(
@@ -66,15 +69,7 @@ class ComponentLifecycleTests(
             self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
             self.assertTrue(state.marketplace_present)
             self.assertIn(
-                (
-                    "plugin",
-                    "marketplace",
-                    "add",
-                    "eunsoogi/codexy",
-                    "--ref",
-                    f"v{default_package_version()}",
-                    "--json",
-                ),
+                exact_marketplace_add(default_package_version()),
                 state.mutations,
             )
 
@@ -95,7 +90,8 @@ class ComponentLifecycleTests(
             self.assertEqual(receipt["selection_after"], ["core", "github", "devtools"])
             self.assertEqual(state.selection, {"core", "github", "devtools"})
             self.assertIn(
-                ("plugin", "marketplace", "upgrade", "codexy", "--json"), state.calls
+                exact_marketplace_add(),
+                state.calls,
             )
             self.assertIn(("plugin", "add", "codexy@codexy", "--json"), state.calls)
 

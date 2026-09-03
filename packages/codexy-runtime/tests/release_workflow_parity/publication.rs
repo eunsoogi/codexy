@@ -2,6 +2,7 @@ use std::fs;
 
 use super::*;
 #[path = "publication/public_artifact_proof.rs"] mod public_artifact_proof;
+#[path = "publication/prepublish_smoke.rs"] mod prepublish_smoke;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -141,80 +142,5 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
         "Create and verify the only public version release",
     )?;
     assert!(release.contains("scripts/publish-verified-release"));
-    Ok(())
-}
-#[test]
-fn final_package_publication_is_bound_after_public_release_and_payload_gated() -> TestResult {
-    let publisher = document("publish-version-release.yml")?;
-    let verifier = document("verify-version-release.yml")?;
-    let job = "publish-release";
-    let finalize = step_index(&publisher, job, "Finalize authenticated public release")?;
-    let package = step_index(
-        &publisher,
-        job,
-        "Build and verify exact final getcodexy package",
-    )?;
-    let publish = steps(&publisher, job)?
-        .iter()
-        .position(|step| step["name"] == "Publish exact final getcodexy package")
-        .ok_or("package publication")?;
-    assert!(finalize < package && package < publish);
-
-    let build = run(
-        &publisher,
-        job,
-        "Build and verify exact final getcodexy package",
-    )?;
-    for required in [
-        "git worktree add --detach",
-        "$ACTIVATION_COMMIT",
-        "scripts/validate-release-lifecycle-contract \"$TARGET_VERSION\"",
-        "scripts/sync-plugin-version.sh --check",
-        "scripts/verify_getcodexy_package_artifact.py",
-        "python -m build",
-    ] {
-        assert!(build.contains(required), "missing final package gate: {required}");
-    }
-    let publication = &steps(&publisher, job)?[publish];
-    assert_eq!(
-        publication["uses"],
-        "pypa/gh-action-pypi-publish@release/v1"
-    );
-    assert!(publication["with"]["packages-dir"].as_str().is_some());
-
-    let bootstrap = document("bootstrap-package.yml")?;
-    let guard = run(
-        &bootstrap,
-        "publish-bootstrap",
-        "Reject bootstrap-first PyPI publication",
-    )?;
-    assert!(guard.contains("exit 1") && guard.contains("final publisher"));
-    assert!(!steps(&bootstrap, "publish-bootstrap")?
-        .iter()
-        .any(|step| step["uses"].as_str().is_some_and(|uses| uses.starts_with("pypa/"))));
-
-    assert_eq!(
-        publisher["jobs"]["verify-public-release"]["uses"],
-        "./.github/workflows/verify-version-release.yml"
-    );
-    let public = run(
-        &verifier,
-        "verify-public-release",
-        "Smoke public release without a token",
-    )?;
-    assert_eq!(public, "scripts/smoke-public-getcodexy-release.sh");
-    let public = fs::read_to_string(
-        codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
-    )?;
-    for required in [
-        "CODEX_HOME",
-        "getcodexy install --json",
-        "plugin list --json",
-        "getcodexy status --json",
-        "getcodexy doctor --json",
-        "component_health",
-    ] {
-        assert!(public.contains(required), "missing public install proof: {required}");
-    }
     Ok(())
 }
