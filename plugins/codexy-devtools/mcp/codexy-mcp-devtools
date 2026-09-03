@@ -42,4 +42,4 @@ if ! command -v uvx >/dev/null 2>&1; then
   echo "codexy-mcp-devtools requires uvx on PATH; install uv or provide a bundled runtime" >&2
   exit 127
 fi
-exec uvx --from getcodexy==1.6.2 codexy-mcp-runtime "$server" --plugin-root "$plugin_root" -- "$@"
+exec uvx --from getcodexy==1.6.3 codexy-mcp-runtime "$server" --plugin-root "$plugin_root" -- "$@"
