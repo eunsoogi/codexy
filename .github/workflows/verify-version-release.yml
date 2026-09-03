@@ -12,6 +12,10 @@ on:
       activation_commit:
         required: true
         type: string
+      upgrade_from_version:
+        description: "Exact prior public getcodexy version for mandatory upgrade proof"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -108,4 +112,5 @@ jobs:
         env:
           GH_TOKEN: ""
           GITHUB_TOKEN: ""
+          UPGRADE_FROM_VERSION: ${{ inputs.upgrade_from_version }}
         run: scripts/smoke-public-getcodexy-release.sh

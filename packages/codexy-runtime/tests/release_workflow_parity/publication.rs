@@ -3,6 +3,8 @@ use std::fs;
 use super::*;
 #[path = "publication/public_artifact_proof.rs"] mod public_artifact_proof;
 #[path = "publication/prepublish_smoke.rs"] mod prepublish_smoke;
+#[cfg(unix)]
+#[path = "publication/shallow_history.rs"] mod shallow_history;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
