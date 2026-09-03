@@ -131,10 +131,10 @@ fn draft_release_flow_checks_payload_tag_and_assets_before_baseline() -> Result<
             assert!(stderr.len() < 700, "mode={mode} diagnostic exceeded bound");
         }
     }
-    for mode in ["non-draft", "wrong-target", "duplicate", "stale-with-tag", "stale-assets", "stale-non-draft", "stale-prerelease", "stale-malformed-target", "stale-unrelated-target", "stale-main-moved", "stale-patch-failure", "stale-race-check-failure"] {
+    for mode in ["non-draft", "wrong-target", "duplicate", "stale-with-tag", "stale-assets", "stale-non-draft", "stale-prerelease", "stale-malformed-target", "stale-unrelated-target", "stale-main-moved", "stale-patch-failure", "stale-race-check-failure", "untagged-malformed", "untagged-alternate", "untagged-present-tag", "untagged-placeholder-present", "untagged-placeholder-lookup-failure", "untagged-assets", "untagged-non-draft", "untagged-prerelease", "untagged-duplicate", "untagged-wrong-target", "untagged-list-failure", "untagged-patch-failure", "untagged-main-moved"] {
         let (output, events) = run_release_fixture(&publisher, mode)?;
         assert!(!output.status.success(), "mode={mode} was admitted");
-        assert!(!events.contains("upload:") && !events.contains("baseline") && !events.contains("retarget"), "mode={mode} crossed a recovery boundary"); if mode == "stale-race-check-failure" { assert!(events.contains("tag-read-2")); }
+        assert!(!events.contains("upload:") && !events.contains("baseline") && !events.contains("retarget"), "mode={mode} crossed a recovery boundary"); if mode == "stale-race-check-failure" { assert!(events.contains("tag-read-2")); } if mode.starts_with("untagged-") { assert!(!events.contains("release-create")); } if mode.starts_with("untagged-placeholder-") { assert!(events.contains("placeholder-tag-read")); }
     }
     Ok(())
 }
@@ -143,9 +143,9 @@ fn draft_release_flow_checks_payload_tag_and_assets_before_baseline() -> Result<
 #[test]
 fn existing_draft_release_can_keep_tag_absent_through_baseline() -> Result<(), Box<dyn std::error::Error>> {
     let publisher = fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"))?;
-    for mode in ["existing-draft-no-tag", "stale-draft-no-tag"] {
+    for mode in ["existing-draft-no-tag", "stale-draft-no-tag", "untagged-draft", "untagged-stale-draft"] {
         let (output, events) = run_release_fixture(&publisher, mode)?; assert!(output.status.success(), "mode={mode} failed: {} events={events}", String::from_utf8_lossy(&output.stderr));
-        assert!(!events.contains("release-create") && events.contains("upload:codexy-marketplace-plugin.tar.gz")); assert!(events.contains("baseline") && events.contains("tag-read-2")); if mode == "stale-draft-no-tag" { assert!(events.contains("retarget-payload-ok") && events.contains("retarget-readback")); assert!(events.find("retarget-readback").unwrap() < events.find("upload:").unwrap()); }
+        assert!(!events.contains("release-create") && events.contains("upload:codexy-marketplace-plugin.tar.gz")); assert!(events.contains("baseline") && events.contains("tag-read-2")); if mode != "existing-draft-no-tag" { assert!(events.contains("retarget-payload-ok") && events.contains("retarget-tag-payload-ok") && events.contains("retarget-readback")); assert!(events.find("retarget-readback").unwrap() < events.find("upload:").unwrap()); } if mode.starts_with("untagged-") { assert!(events.contains("untagged-payload-ok") && events.matches("releases?per_page=100").count() == 1); }
     }
     Ok(())
 }
@@ -189,8 +189,8 @@ fn run_release_fixture(publisher: &str, mode: &str) -> Result<(Output, String), 
     fs::write(&baseline, "#!/bin/sh\nprintf '%s\\n' baseline >> events\n")?;
     support::make_executable(&baseline)?;
     fs::write(root.join("tag-reads"), "0")?;
-    fs::write(root.join("uploads"), if mode == "stale-assets" { "4" } else { "0" })?; fs::write(root.join("release-target"), if mode == "stale-malformed-target" { "not-a-commit" } else if mode == "stale-unrelated-target" { "ffffffffffffffffffffffffffffffffffffffff" } else if mode.starts_with("stale-") || mode == "wrong-target" { "0123456789abcdef0123456789abcdef01234567" } else { "89abcdef0123456789abcdef0123456789abcdef" })?;
-    if matches!(mode, "non-draft" | "wrong-target" | "duplicate" | "stale-with-tag") {
+    fs::write(root.join("uploads"), if mode == "stale-assets" || mode == "untagged-assets" { "4" } else { "0" })?; fs::write(root.join("release-target"), if mode == "stale-malformed-target" { "not-a-commit" } else if mode == "stale-unrelated-target" || mode == "untagged-wrong-target" { "ffffffffffffffffffffffffffffffffffffffff" } else if mode.starts_with("stale-") || mode == "wrong-target" || mode == "untagged-stale-draft" { "0123456789abcdef0123456789abcdef01234567" } else { "89abcdef0123456789abcdef0123456789abcdef" })?; fs::write(root.join("release-tag-name"), if mode == "untagged-malformed" { "untagged-not-hex" } else if mode == "untagged-alternate" { "release-alternate" } else if mode.starts_with("untagged-") { "untagged-0123456789abcdef" } else { "v1.3.0" })?;
+    if matches!(mode, "non-draft" | "wrong-target" | "duplicate" | "stale-with-tag" | "untagged-present-tag") {
         fs::write(root.join("tag-created"), "")?;
     }
     fs::write(bin.join("git"), lifecycle_git())?;
@@ -206,7 +206,7 @@ fn run_release_fixture(publisher: &str, mode: &str) -> Result<(Output, String), 
         .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
         .env("GH_TOKEN", "fixture-token")
         .env("RELEASE_MODE", mode)
-        .env("TAG_CREATED", root.join("tag-created")).env("RELEASE_TARGET", root.join("release-target"))
+        .env("TAG_CREATED", root.join("tag-created")).env("RELEASE_TARGET", root.join("release-target")).env("RELEASE_TAG_NAME", root.join("release-tag-name"))
         .env("TAG_READS", root.join("tag-reads"))
         .env("UPLOADS", root.join("uploads"))
         .env("EVENTS", root.join("events"))
@@ -220,26 +220,26 @@ fn run_release_fixture(publisher: &str, mode: &str) -> Result<(Output, String), 
 
 #[cfg(unix)]
 fn lifecycle_git() -> &'static str {
-    "#!/bin/sh\nset -eu\ncase \"$1\" in fetch|cat-file) exit 0 ;; merge-base) test \"$RELEASE_MODE\" = stale-unrelated-target && test \"$3\" != \"$ACTIVATION_COMMIT\" && exit 1; exit 0 ;; rev-parse) case \"$*\" in *origin/main*) test \"$RELEASE_MODE\" = stale-main-moved && printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff || printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *refs/tags/*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;; ls-remote) n=$(cat \"$TAG_READS\"); n=$((n + 1)); printf '%s\\n' \"tag-read-$n\" >> \"$EVENTS\"; printf '%s\\n' \"$n\" > \"$TAG_READS\"; test \"$RELEASE_MODE\" = stale-race-check-failure && test \"$n\" -eq 2 && exit 1; if test -f \"$TAG_CREATED\"; then printf '%s\\trefs/tags/%s\\n' \"$ACTIVATION_COMMIT\" \"$RELEASE_TAG\"; fi; exit 0 ;; push) printf '%s\\n' git-push >> \"$EVENTS\"; exit 1 ;; *) exit 1 ;; esac\n"
+    "#!/bin/sh\nset -eu\ncase \"$1\" in fetch|cat-file) exit 0 ;; merge-base) (test \"$RELEASE_MODE\" = stale-unrelated-target || test \"$RELEASE_MODE\" = untagged-wrong-target) && test \"$3\" != \"$ACTIVATION_COMMIT\" && exit 1; exit 0 ;; rev-parse) case \"$*\" in *origin/main*) (test \"$RELEASE_MODE\" = stale-main-moved || test \"$RELEASE_MODE\" = untagged-main-moved) && printf '%s\\n' ffffffffffffffffffffffffffffffffffffffff || printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *refs/tags/*) printf '%s\\n' \"$ACTIVATION_COMMIT\" ;; *) printf '%s\\n' \"$2\" ;; esac ;; ls-remote) n=$(cat \"$TAG_READS\"); n=$((n + 1)); printf '%s\\n' \"tag-read-$n\" >> \"$EVENTS\"; printf '%s\\n' \"$n\" > \"$TAG_READS\"; test \"$RELEASE_MODE\" = stale-race-check-failure && test \"$n\" -eq 2 && exit 1; if test \"$4\" = refs/tags/untagged-0123456789abcdef; then printf '%s\\n' placeholder-tag-read >> \"$EVENTS\"; test \"$RELEASE_MODE\" = untagged-placeholder-lookup-failure && exit 1; test \"$RELEASE_MODE\" = untagged-placeholder-present && printf '%s\\t%s\\n' \"$ACTIVATION_COMMIT\" \"$4\"; exit 0; fi; if test -f \"$TAG_CREATED\"; then printf '%s\\trefs/tags/%s\\n' \"$ACTIVATION_COMMIT\" \"$RELEASE_TAG\"; fi; exit 0 ;; push) printf '%s\\n' git-push >> \"$EVENTS\"; exit 1 ;; *) exit 1 ;; esac\n"
 }
 
 #[cfg(unix)]
 fn lifecycle_gh() -> &'static str {
     r#"#!/bin/sh
 set -eu
-state() { n=$(cat "$UPLOADS"); assets='[]'; test "$n" -ge 4 && assets='[{"id":1,"name":"codexy-marketplace-plugin.tar.gz","size":1,"digest":"sha256:plugin"},{"id":2,"name":"codexy-marketplace-bundle.tar.gz","size":1,"digest":"sha256:bundle"},{"id":3,"name":"codexy-runtime-package.tar.gz","size":1,"digest":"sha256:runtime"},{"id":4,"name":"runtime-release-receipt.json","size":1,"digest":"sha256:receipt"}]'; target=$(cat "$RELEASE_TARGET"); draft=true; prerelease=false; test "$RELEASE_MODE" = non-draft || test "$RELEASE_MODE" = stale-non-draft && draft=false; test "$RELEASE_MODE" = stale-prerelease && prerelease=true; test "$RELEASE_MODE" = stale-draft-no-tag && test "$target" = "$ACTIVATION_COMMIT" && printf '%s\n' retarget-readback >> "$EVENTS"; printf '{"id":42,"name":"%s","tag_name":"%s","target_commitish":"%s","draft":%s,"prerelease":%s,"upload_url":"https://uploads.example/repos/eunsoogi/codexy/releases/42/assets{?name,label}","assets":%s}\n' "$RELEASE_TAG" "$RELEASE_TAG" "$target" "$draft" "$prerelease" "$assets"; }
+state() { n=$(cat "$UPLOADS"); assets='[]'; test "$n" -ge 4 && assets='[{"id":1,"name":"codexy-marketplace-plugin.tar.gz","size":1,"digest":"sha256:plugin"},{"id":2,"name":"codexy-marketplace-bundle.tar.gz","size":1,"digest":"sha256:bundle"},{"id":3,"name":"codexy-runtime-package.tar.gz","size":1,"digest":"sha256:runtime"},{"id":4,"name":"runtime-release-receipt.json","size":1,"digest":"sha256:receipt"}]'; target=$(cat "$RELEASE_TARGET"); tag_name=$(cat "$RELEASE_TAG_NAME"); draft=true; prerelease=false; test "$RELEASE_MODE" = non-draft || test "$RELEASE_MODE" = stale-non-draft || test "$RELEASE_MODE" = untagged-non-draft && draft=false; test "$RELEASE_MODE" = stale-prerelease || test "$RELEASE_MODE" = untagged-prerelease && prerelease=true; case "$RELEASE_MODE" in stale-draft-no-tag|untagged-*) test "$tag_name" = "$RELEASE_TAG" && test "$target" = "$ACTIVATION_COMMIT" && printf '%s\n' retarget-readback >> "$EVENTS" ;; esac; printf '{"id":42,"name":"%s","tag_name":"%s","target_commitish":"%s","draft":%s,"prerelease":%s,"upload_url":"https://uploads.example/repos/eunsoogi/codexy/releases/42/assets{?name,label}","assets":%s}\n' "$RELEASE_TAG" "$tag_name" "$target" "$draft" "$prerelease" "$assets"; }
 printf 'gh:%s\n' "$*" >> "$EVENTS"
 if [ "$1" = release ]; then case "$RELEASE_MODE" in existing-draft-no-tag|stale-*|non-draft|wrong-target|duplicate) state; exit 0 ;; *) printf '%s\n' release-view >> "$EVENTS"; exit 1 ;; esac; fi
 if [ "$1" != api ]; then exit 1; fi
 case "$*" in
   *"releases/42/assets?name="*) name=$(printf '%s\n' "$*" | sed -E 's/.*[?]name=([^ ]*).*/\1/'); printf '%s\n' "upload:$name" >> "$EVENTS"; n=$(cat "$UPLOADS"); printf '%s\n' $((n + 1)) > "$UPLOADS"; printf '{}\n' ;;
-  *"--method PATCH"*"repos/eunsoogi/codexy/releases/42"*) test "$RELEASE_MODE" = stale-patch-failure && exit 1; case "$*" in *"-f target_commitish=89abcdef0123456789abcdef0123456789abcdef"*) printf '%s\n' retarget-payload-ok >> "$EVENTS" ;; *) exit 89 ;; esac; printf '%s\n' retarget >> "$EVENTS"; printf '%s\n' "$ACTIVATION_COMMIT" > "$RELEASE_TARGET" ;;
+  *"--method PATCH"*"repos/eunsoogi/codexy/releases/42"*) test "$RELEASE_MODE" = stale-patch-failure || test "$RELEASE_MODE" = untagged-patch-failure && exit 1; case "$*" in *"-f target_commitish=89abcdef0123456789abcdef0123456789abcdef"*) printf '%s\n' retarget-payload-ok >> "$EVENTS" ;; *) exit 89 ;; esac; case "$*" in *"-f tag_name=v1.3.0"*) printf '%s\n' retarget-tag-payload-ok >> "$EVENTS" ;; *) exit 89 ;; esac; case "$RELEASE_MODE" in untagged-*) printf '%s\n' untagged-payload-ok >> "$EVENTS"; printf '%s\n' "$RELEASE_TAG" > "$RELEASE_TAG_NAME" ;; esac; printf '%s\n' retarget >> "$EVENTS"; printf '%s\n' "$ACTIVATION_COMMIT" > "$RELEASE_TARGET" ;;
   *"repos/eunsoogi/codexy/releases/42"*) state ;;
-  *"repos/eunsoogi/codexy/releases?per_page=100"*) case "$RELEASE_MODE" in concurrent|existing-draft-no-tag|stale-*|non-draft|wrong-target) printf '[%s]\n' "$(state)" ;; duplicate) printf '[%s,%s]\n' "$(state)" "$(state)" ;; *) printf '[]\n' ;; esac ;;
+  *"repos/eunsoogi/codexy/releases?per_page=100"*) case "$RELEASE_MODE" in untagged-list-failure) exit 1 ;; duplicate|untagged-duplicate) printf '[%s,%s]\n' "$(state)" "$(state)" ;; concurrent) grep -q release-create "$EVENTS" && printf '[%s]\n' "$(state)" || printf '[]\n' ;; existing-draft-no-tag|stale-*|non-draft|wrong-target|untagged-*) printf '[%s]\n' "$(state)" ;; *) printf '[]\n' ;; esac ;;
   *"--method POST"*"repos/eunsoogi/codexy/releases "*)
     case "$*" in *"-f tag_name=v1.3.0"*"-f target_commitish=89abcdef0123456789abcdef0123456789abcdef"*"-f name=v1.3.0"*"-f body=notes"*) printf '%s\n' payload-ok >> "$EVENTS" ;; *) exit 88 ;; esac
     printf '%s\n' release-create >> "$EVENTS"; case "$RELEASE_MODE" in draft-no-tag) printf '%s\n' draft-without-tag >> "$EVENTS" ;; *) : > "$TAG_CREATED" ;; esac
-    case "$RELEASE_MODE" in success|draft-no-tag) printf 'HTTP/2.0 201 Created\nContent-Type: application/json\n\n%s' "$(state)" ;; concurrent) printf 'HTTP/2.0 422 Unprocessable Entity\n\n{"message":"fixture-token Reference update failed"}\n'; exit 1 ;; 401|422|500) printf 'HTTP/2.0 %s Failure\n\n{"message":"fixture-token failure"}\n' "$RELEASE_MODE"; exit 1 ;; esac ;;
+    case "$RELEASE_MODE" in success|draft-no-tag) printf 'HTTP/2.0 201 Created\nContent-Type: application/json\n\n%s' "$(state)" ;; concurrent|untagged-*) printf 'HTTP/2.0 422 Unprocessable Entity\n\n{"message":"fixture-token Reference update failed"}\n'; exit 1 ;; 401|422|500) printf 'HTTP/2.0 %s Failure\n\n{"message":"fixture-token failure"}\n' "$RELEASE_MODE"; exit 1 ;; esac ;;
   *"releases/assets/1"*) printf 'bytes:codexy-marketplace-plugin.tar.gz' ;;
   *"releases/assets/2"*) printf 'bytes:codexy-marketplace-bundle.tar.gz' ;;
   *"releases/assets/3"*) printf 'bytes:codexy-runtime-package.tar.gz' ;;

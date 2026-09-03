@@ -84,7 +84,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
     let create = release.find("release_create_response=\"$(gh api --method POST").ok_or("version release")?;
     for required in [
         "test \"$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)\" = \"$STAGING_SOURCE_COMMIT\"",
-        "git ls-remote --refs origin \"$tag_ref\"",
+        "git ls-remote --refs origin \"${1:-$tag_ref}\"",
     ] {
         assert!(release.find(required).ok_or(required)? < create);
     }
@@ -115,7 +115,9 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "-f \"body=$changelog_notes\" -F draft=true -F prerelease=false",
             "release_create_diagnostic",
             "retarget_existing_draft",
+            "releases?per_page=100",
             "gh api --method PATCH",
+            "-f \"tag_name=$RELEASE_TAG\"",
             "-f \"target_commitish=$ACTIVATION_COMMIT\"",
         ],
     );
