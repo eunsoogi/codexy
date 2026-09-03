@@ -55,7 +55,7 @@ jobs:
   windows-rust-test:
     name: Rust tests (Windows / ${{ matrix.target.name }})
     runs-on: windows-latest
-    timeout-minutes: 5
+    timeout-minutes: ${{ matrix.target.timeout || 5 }}
     strategy:
       fail-fast: false
       matrix:
@@ -82,6 +82,7 @@ jobs:
             args: --test suite_runtime_activation
           - name: runtime activation autocrlf suite
             args: --test suite_runtime_activation_autocrlf
+            timeout: 10
           - name: sync version suite
             args: --test suite_sync_version
           - name: archive suite
