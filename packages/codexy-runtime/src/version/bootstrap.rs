@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result, bail};
 use super::{mutation::Update, repo_path, require_semver};
 
 pub(super) const VERSION: &str = "1.6.0";
-pub(super) const CANDIDATE_VERSION: &str = "1.6.0";
+pub(super) const CANDIDATE_VERSION: &str = "1.6.1";
 
 const PATH: &str = "packages/codexy-runtime/src/version/bootstrap.rs";
 

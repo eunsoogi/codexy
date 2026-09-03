@@ -117,7 +117,7 @@ Marketplace 직접 설치는 개발 또는 통제된 복구를 위한 고급 경
 컴포넌트를 직접 설치해야 할 때 사용하고 `core`부터 설치하세요.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v1.6.0
+codex plugin marketplace add eunsoogi/codexy --ref v1.6.1
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
