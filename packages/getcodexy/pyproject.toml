@@ -6,7 +6,8 @@ backend-path = ["."]
 [project]
 name = "getcodexy"
 version = "1.6.3"
-description = "Version-pinned MCP runtime bootstrap tools for Codexy"
+description = "A component-aware Codex harness for owned work, specialist help, and proof-driven completion."
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Eunsoo Lee" }]
@@ -23,4 +24,4 @@ codexy-github-check = "codexy_runtime_tools.github_checks:main"
 [tool.uv.build-backend]
 module-name = "codexy_runtime_tools"
 module-root = "src"
-source-include = ["build_backend.py", "uv.lock"]
+source-include = ["README.md", "build_backend.py", "uv.lock"]
