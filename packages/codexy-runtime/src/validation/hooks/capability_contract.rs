@@ -29,7 +29,7 @@ const CONCERNS: &[Expected] = &[
     },
     Expected {
         id: "child-thread-creation",
-        trigger: "^codex_app__create_thread$",
+        trigger: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         input: "codexy.hooks.child-thread-creation.v1",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",

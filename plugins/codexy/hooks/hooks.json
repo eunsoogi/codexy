@@ -13,7 +13,7 @@
         ]
       },
       {
-        "matcher": "^codex_app__create_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
         "hooks": [
           {
             "type": "command",
@@ -37,7 +37,7 @@
         ]
       },
       {
-        "matcher": "^codex_app__create_thread$",
+        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
         "hooks": [
           {
             "type": "command",

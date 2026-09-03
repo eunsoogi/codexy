@@ -21,7 +21,7 @@ const CONCERNS: &[Concern] = &[
     },
     Concern {
         id: "child-thread-creation",
-        matcher: "^codex_app__create_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
@@ -66,7 +66,7 @@ const INSTALLED_CONCERNS: &[Concern] = &[
     },
     Concern {
         id: "child-thread-creation",
-        matcher: "^codex_app__create_thread$",
+        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
