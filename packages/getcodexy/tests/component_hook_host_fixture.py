@@ -1,5 +1,29 @@
 """Fake app-server host for effective hook registry tests."""
 
+import os
+import sys
+from pathlib import Path
+
+
+def write_host(root: Path) -> Path:
+    host = root / "trusted/codex-host.py"
+    codex = root / ("trusted/codex.cmd" if os.name == "nt" else "trusted/codex")
+    codex.parent.mkdir(parents=True)
+    host.write_text(HOOK_LIST_HOST, encoding="utf-8")
+    if os.name == "nt":
+        codex.write_text(
+            f'@echo off\r\n"{sys.executable}" "{host}" %*\r\n',
+            encoding="utf-8",
+        )
+    else:
+        codex.write_text(
+            f'#!/bin/sh\nexec "{sys.executable}" "{host}" "$@"\n',
+            encoding="utf-8",
+        )
+        codex.chmod(0o700)
+    return codex
+
+
 HOOK_LIST_HOST = r"""#!/usr/bin/env python3
 import json
 import os

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
-from component_hook_host_fixture import HOOK_LIST_HOST
+from component_hook_host_fixture import write_host
 from component_marketplace_fixture import populate_plugins
 from codexy_runtime_tools.component_manifest import load_component_manifest
 
@@ -70,23 +68,7 @@ class fixture:
         (self.home / "config.toml").write_text(
             f'[marketplaces.codexy]\nref = "v{VERSION}"\n', encoding="utf-8"
         )
-        self.host = self.root / "trusted/codex-host.py"
-        self.codex = self.root / (
-            "trusted/codex.cmd" if os.name == "nt" else "trusted/codex"
-        )
-        self.codex.parent.mkdir(parents=True)
-        self.host.write_text(HOOK_LIST_HOST, encoding="utf-8")
-        if os.name == "nt":
-            self.codex.write_text(
-                f'@echo off\r\n"{sys.executable}" "{self.host}" %*\r\n',
-                encoding="utf-8",
-            )
-        else:
-            self.codex.write_text(
-                f'#!/bin/sh\nexec "{sys.executable}" "{self.host}" "$@"\n',
-                encoding="utf-8",
-            )
-            self.codex.chmod(0o700)
+        self.codex = write_host(self.root)
 
     def __enter__(self) -> "fixture":
         return self
