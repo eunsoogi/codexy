@@ -13,6 +13,28 @@ pub(super) struct MaterializedFixture {
     pub(super) candidate: String,
 }
 
+const PREPARED_PATHS: [&str; 19] = [
+    ".agents/plugins",
+    ".gitattributes",
+    ".github/workflows/plugin-runtime-binaries.yml",
+    "README.md",
+    "README.ko.md",
+    "docs/getcodexy-component-installation.md",
+    "packages/codexy-runtime",
+    "packages/getcodexy/contracts/component-installation-contract.json",
+    "packages/getcodexy/pyproject.toml",
+    "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
+    "packages/getcodexy/tests/fixtures/component-installation-cases.json",
+    "packages/getcodexy/uv.lock",
+    "plugins/codexy",
+    "plugins/codexy-devtools",
+    "plugins/codexy-github",
+    "scripts/activate-runtime-contract.sh",
+    "scripts/download-selected-runtime-package.sh",
+    "scripts/sync-plugin-version.sh",
+    "scripts/verify-runtime-activation-branch",
+];
+
 struct FixtureSeed {
     _temp: tempfile::TempDir,
     repo: PathBuf,
@@ -23,8 +45,7 @@ impl FixtureSeed {
     fn create() -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         let prepared = temp.path().join("prepared");
-        fs::create_dir(&prepared)?;
-        let candidate = prepare(&prepared, temp.path())?;
+        let candidate = prepare(&prepared)?;
         initialize_repository(&prepared)?;
         Ok(Self {
             _temp: temp,
@@ -52,10 +73,16 @@ impl FixtureSeed {
 }
 
 fn initialize_repository(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    git(repo, &["init", "-b", "main"])?;
     configure_repository(repo)?;
-    git(repo, &["add", "."])?;
-    git(repo, &["commit", "-m", "base"])
+    let mut add = Command::new("git");
+    add.args(["add", "-A", "--"])
+        .args(PREPARED_PATHS)
+        .current_dir(repo);
+    run(&mut add)?;
+    let tree = git_output(repo, &["write-tree"])?;
+    let commit = git_output(repo, &["commit-tree", &tree, "-m", "base"])?;
+    git(repo, &["reset", "--hard", &commit])?;
+    git(repo, &["switch", "-C", "main"])
 }
 
 fn configure_repository(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -71,23 +98,15 @@ pub(super) fn materialize() -> Result<MaterializedFixture, Box<dyn std::error::E
     }
 }
 
-fn prepare(repo: &Path, temp_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let historical_archive = temp_root.join("historical.tar");
+fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let pre_activation_revision = metadata::pre_activation_revision()?;
-    let mut archive_historical = Command::new("git");
-    archive_historical
-        .args(["archive", "--format=tar", &pre_activation_revision])
-        .arg("-o")
-        .arg(&historical_archive)
-        .current_dir(codexy_runtime::paths::repository_root());
-    run(&mut archive_historical)?;
-    let mut extract_historical = Command::new("tar");
-    extract_historical
-        .arg("-xf")
-        .arg(&historical_archive)
-        .arg("-C")
+    let mut clone = Command::new("git");
+    clone
+        .args(["-c", "core.autocrlf=false", "clone", "--shared", "--no-tags", "--no-checkout"])
+        .arg(codexy_runtime::paths::repository_root())
         .arg(repo);
-    run(&mut extract_historical)?;
+    run(&mut clone)?;
+    git(repo, &["checkout", "--detach", &pre_activation_revision])?;
     for relative in [
         "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
         "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
@@ -148,6 +167,14 @@ fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     let mut command = Command::new("git");
     command.args(args).current_dir(root);
     run(&mut command)
+}
+
+fn git_output(root: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").args(args).current_dir(root).output()?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned().into());
+    }
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }
 
 fn run(process: &mut Command) -> Result<(), Box<dyn std::error::Error>> {

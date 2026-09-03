@@ -41,7 +41,7 @@ const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 15] = [
 ];
 
 #[test]
-fn rust_workflow_has_exact_fail_closed_timeout_matrix_per_platform() -> TestResult {
+fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {
     let workflow = workflow_text()?;
     let failures = workflow_failures(&workflow)?;
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -111,16 +111,10 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
         if job.get("runs-on").and_then(Value::as_str) != Some(runner) {
             failures.push(format!("{platform} job must run on {runner}"));
         }
-        let valid_timeout = if platform == "Windows" {
-            job.get("timeout-minutes").and_then(Value::as_str)
-                == Some("${{ matrix.target.timeout || 5 }}")
-        } else {
-            job.get("timeout-minutes").and_then(Value::as_u64) == Some(5)
-        };
-        if !valid_timeout {
-            failures.push(format!("{platform} job has an invalid timeout budget"));
+        if job.get("timeout-minutes").and_then(Value::as_u64) != Some(5) {
+            failures.push(format!("{platform} job is missing timeout-minutes: 5"));
         }
-        match matrix_target_args(job, platform) {
+        match matrix_target_args(job) {
             Ok(actual) => validate_target_union(platform, &actual, &mut failures),
             Err(error) => failures.push(format!("{platform} {error}")),
         }
@@ -191,10 +185,7 @@ fn validate_target_union(platform: &str, actual: &[&str], failures: &mut Vec<Str
     }
 }
 
-fn matrix_target_args<'a>(
-    job: &'a Mapping,
-    platform: &str,
-) -> Result<Vec<&'a str>, Box<dyn std::error::Error>> {
+fn matrix_target_args(job: &Mapping) -> Result<Vec<&str>, Box<dyn std::error::Error>> {
     let strategy = mapping_field(Some(job), "strategy", "job")?;
     let matrix = mapping_field(Some(strategy), "matrix", "strategy")?;
     if matrix.len() != 1 {
@@ -207,18 +198,11 @@ fn matrix_target_args<'a>(
     targets
         .iter()
         .map(|target| {
-            let target = target.as_mapping().ok_or("matrix target is not a mapping")?;
-            let args = target
-                .get("args")
+            target
+                .as_mapping()
+                .and_then(|target| target.get("args"))
                 .and_then(Value::as_str)
-                .ok_or("matrix target missing args")?;
-            let timeout = target.get("timeout").and_then(Value::as_u64);
-            match (platform, args, timeout) {
-                ("Windows", "--test suite_runtime_activation_autocrlf", Some(10))
-                | ("Windows", _, None)
-                | ("Ubuntu", _, None) => Ok(args),
-                _ => Err("matrix target has an invalid timeout override".into()),
-            }
+                .ok_or_else(|| "matrix target missing args".into())
         })
         .collect()
 }
