@@ -1,6 +1,6 @@
 {
   "name": "codexy-devtools",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Optional Codegraph and LSP developer-tool integrations for Codexy.",
   "author": {
     "name": "Eunsoo Lee",

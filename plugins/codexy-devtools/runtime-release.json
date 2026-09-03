@@ -2,8 +2,8 @@
   "artifact": {
     "payloadManifestSha256": "ae1855a563a73e69bd6b850b1eba1a2cdf34549d8d1e2d7cec15e6d5dd828870",
     "sha256": "e1aae1767cad45e8831ee36e00eee21a594adefa190aaf1492992ef890a8ec09",
-    "tag": "v1.6.0",
-    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.6.0/codexy-runtime-package.tar.gz"
+    "tag": "v1.6.1",
+    "url": "https://github.com/eunsoogi/codexy/releases/download/v1.6.1/codexy-runtime-package.tar.gz"
   },
   "classes": {
     "coreHandoff": {
