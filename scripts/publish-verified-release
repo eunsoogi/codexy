@@ -76,7 +76,7 @@ authenticated_remote_tag() {
   tag_auth_basic="$(printf 'x-access-token:%s' "$tag_auth_token" | base64 | tr -d '\r\n')"
   GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader \
     GIT_CONFIG_VALUE_0="Authorization: Basic $tag_auth_basic" \
-    git ls-remote --refs origin "$tag_ref"
+    git ls-remote --refs origin "${1:-$tag_ref}"
 }
 verify_existing_tag() {
   tag_snapshot="$1"
@@ -102,6 +102,8 @@ retarget_existing_draft() {
   jq -e --arg tag "$RELEASE_TAG" '.name == $tag and .isDraft == true and .isPrerelease == false' release-state.json > /dev/null || release_error "release identity mismatch"
   if test "$retarget_tag" != "$RELEASE_TAG"; then
     case "$retarget_tag" in untagged-*) retarget_placeholder="${retarget_tag#untagged-}"; case "$retarget_placeholder" in '' | *[!0-9a-f]*) release_error "draft tag is not a generated placeholder" ;; esac ;; *) release_error "release identity mismatch" ;; esac
+    placeholder_tag_snapshot="$(authenticated_remote_tag "refs/tags/$retarget_tag")" || release_error "placeholder tag lookup failed"
+    test -z "$placeholder_tag_snapshot" || release_error "draft tag has a backing ref"
   fi
   if test "$retarget_target" = "$ACTIVATION_COMMIT" && test "$retarget_tag" = "$RELEASE_TAG"; then
     return 0
