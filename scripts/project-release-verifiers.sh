@@ -20,6 +20,11 @@ if test -n "$actual_paths"; then
 		scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)
 			git checkout "$GITHUB_SHA" -- "$path"
 			;;
+		scripts/finalize-verified-release)
+			git checkout "$GITHUB_SHA" -- "$path"
+			test -x "$path"
+			test "$(git hash-object "$path")" = "$(git rev-parse "$GITHUB_SHA:scripts/finalize-verified-release")"
+			;;
 		*)
 			exit 1
 			;;

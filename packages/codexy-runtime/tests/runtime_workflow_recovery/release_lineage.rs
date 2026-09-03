@@ -72,6 +72,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)",
             "git checkout \"$GITHUB_SHA\" -- \"$path\"",
             "git hash-object \"$verifier\"",
+            "git rev-parse \"$GITHUB_SHA:scripts/finalize-verified-release\"",
         ],
     );
     support::assert_structured_absent_literals(
@@ -132,6 +133,7 @@ fn assert_projection_cases(projection: &str) -> Result<(), Box<dyn std::error::E
         ("no-delta", "no-delta", true),
         ("allowed-verifier-delta", "verifier-delta", true),
         ("allowed-reconciliation-delta", "reconciliation-delta", true),
+        ("allowed-finalizer-delta", "finalizer-delta", true),
         ("forbidden-scripts-delta", "forbidden-delta", false),
     ] {
         run_projection_case(projection, name, kind, expected_success)?;
@@ -157,6 +159,7 @@ fn run_projection_case(
     write_executable(&scripts.join("project-release-verifiers.sh"), projection)?;
     write_executable(&scripts.join("reconcile-release-attestations"), "activation-reconcile\n")?;
     write_executable(&scripts.join("verify-release-attestation-set"), "activation-set\n")?;
+    write_executable(&scripts.join("finalize-verified-release"), "activation-finalizer\n")?;
     run_git(root, &["add", "scripts"])?;
     run_git(root, &["commit", "--quiet", "-m", "activation"])?;
     let activation = run_git(root, &["rev-parse", "HEAD"])?.trim().to_owned();
@@ -179,6 +182,11 @@ fn run_projection_case(
                 "main-reconcile\n",
             )?;
             run_git(root, &["add", "scripts/reconcile-release-attestations"])?;
+            run_git(root, &["commit", "--quiet", "-m", "main"])?;
+        }
+        "finalizer-delta" => {
+            fs::write(scripts.join("finalize-verified-release"), "main-finalizer\n")?;
+            run_git(root, &["add", "scripts/finalize-verified-release"])?;
             run_git(root, &["commit", "--quiet", "-m", "main"])?;
         }
         "forbidden-delta" => {
@@ -207,16 +215,12 @@ fn run_projection_case(
         assert_eq!(run_git(root, &["rev-parse", "HEAD"])?.trim(), activation);
         let verifier_set = fs::read_to_string(scripts.join("verify-release-attestation-set"))?;
         let reconciliation = fs::read_to_string(scripts.join("reconcile-release-attestations"))?;
-        if kind == "verifier-delta" {
-            assert_eq!(verifier_set, "activation-set\nchanged-set\n");
-        } else {
-            assert_eq!(verifier_set, "activation-set\n");
-        }
-        if kind == "reconciliation-delta" {
-            assert_eq!(reconciliation, "main-reconcile\n");
-        } else {
-            assert_eq!(reconciliation, "activation-reconcile\n");
-        }
+        let expected_verifier = if kind == "verifier-delta" { "activation-set\nchanged-set\n" } else { "activation-set\n" };
+        let expected_reconciliation = if kind == "reconciliation-delta" { "main-reconcile\n" } else { "activation-reconcile\n" };
+        let expected_finalizer = if kind == "finalizer-delta" { "main-finalizer\n" } else { "activation-finalizer\n" };
+        assert_eq!(verifier_set, expected_verifier);
+        assert_eq!(reconciliation, expected_reconciliation);
+        assert_eq!(fs::read_to_string(scripts.join("finalize-verified-release"))?, expected_finalizer);
     }
     Ok(())
 }
