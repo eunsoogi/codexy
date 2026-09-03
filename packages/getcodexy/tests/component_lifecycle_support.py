@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from component_hook_host_fixture import write_host
+from component_hook_host_fixture import HOOK_LIST_HOST, write_host
 from component_marketplace_fixture import populate_plugins
 from codexy_runtime_tools.component_manifest import load_component_manifest
 
