@@ -4,10 +4,14 @@ use serde_yaml::Value;
 
 use crate::support;
 
+#[path = "release_actions_lifecycle/supported_action_versions.rs"]
+mod supported_action_versions;
+
 #[test]
 fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_version()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;
+    let verifier = workflow("verify-version-release.yml")?;
     let staging = workflow("runtime-candidate.yml")?;
     let language_lint = workflow("language-lint.yml")?;
     let power_shell_install = named_run(
@@ -69,7 +73,11 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     ] {
         assert!(release_script.contains(required), "missing version-neutral release operation: {required}");
     }
-    let public = publisher["jobs"]["verify-public-release"]
+    assert_eq!(
+        publisher["jobs"]["verify-public-release"]["uses"],
+        "./.github/workflows/verify-version-release.yml"
+    );
+    let public = verifier["jobs"]["verify-public-release"]
         .as_mapping()
         .ok_or("version-neutral public verifier")?;
     let checkout = public["steps"]
@@ -91,7 +99,11 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
         assert!(download.contains(required), "missing verifier projection: {required}");
     }
     let smoke = named_run(public, "Smoke public release without a token")?;
-    assert!(smoke.contains("getcodexy==${TARGET_VERSION}"));
+    assert_eq!(smoke, "scripts/smoke-public-getcodexy-release.sh");
+    let smoke_script = fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
+    )?;
+    assert!(smoke_script.contains("getcodexy==${TARGET_VERSION}"));
     assert_eq!(public["steps"].as_sequence().and_then(|steps| steps.iter().find(|step| step["name"] == "Download and verify reconciled public release without a token")).and_then(|step| step["env"]["RELEASE_TAG"].as_str()), Some("v${{ inputs.target_version }}"));
 
     let activation = workflow("runtime-activation.yml")?;
@@ -115,7 +127,7 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     assert_eq!(staging_step["env"]["TARGET_VERSION"], "${{ inputs.target_version }}");
     assert_eq!(staging_step["run"], "scripts/assemble-runtime-candidate");
     assert!(download.contains("tar -xOzf public-runtime.tar.gz"));
-    assert!(download.contains("jq -er .version\n)\" = \"$TARGET_VERSION\""));
+    assert!(download.contains("jq -er .version)\" = \"$TARGET_VERSION\""));
     Ok(())
 }
 
@@ -146,9 +158,11 @@ fn release_publication_paths_do_not_depend_on_a_policy_pat_preflight()
     }
     assert!(!root.join("scripts/verify-release-settings").exists());
 
-    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["environment"]["name"], "pypi");
-    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["actions"], "read");
-    assert_eq!(bootstrap["jobs"]["publish-bootstrap"]["permissions"]["id-token"], "write");
+    let bootstrap_job = bootstrap["jobs"]["publish-bootstrap"]
+        .as_mapping()
+        .ok_or("bootstrap job")?;
+    assert!(!bootstrap_job.contains_key(Value::String("environment".into())));
+    assert!(!bootstrap_job.contains_key(Value::String("permissions".into())));
     assert_eq!(publisher["permissions"]["id-token"], "write");
     assert_eq!(publisher["permissions"]["attestations"], "write");
     assert_eq!(publisher["jobs"]["publish-release"]["environment"]["name"], "pypi");
@@ -181,52 +195,22 @@ fn release_edit_verifier_allows_only_body_changes_and_rechecks_actions_baseline(
 }
 
 #[test]
-fn bootstrap_publication_uses_minimal_build_dependencies_and_protected_pypi_environment()
+fn bootstrap_publication_is_fail_closed_and_final_publisher_owns_pypi()
 -> Result<(), Box<dyn std::error::Error>> {
     let bootstrap = workflow("bootstrap-package.yml")?;
     assert_eq!(bootstrap["concurrency"]["cancel-in-progress"], false);
     assert_eq!(bootstrap["concurrency"]["group"], "codexy-bootstrap-${{ inputs.bootstrap_version }}");
     let job = bootstrap["jobs"]["publish-bootstrap"].as_mapping().ok_or("bootstrap job")?;
-    assert_eq!(job["environment"]["name"], "pypi");
-    let admission = named_run(job, "Admit current protected-main bootstrap source")?;
-    assert!(admission.contains("git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main"));
-    let build = named_run(job, "Build and publish bootstrap package")?;
-    assert!(build.contains("python -m pip install --disable-pip-version-check build"));
-    assert!(build.contains("python -m build --outdir dist packages/getcodexy"));
-    for forbidden in ["--require-hashes", "release-build.txt", "--no-isolation"] {
-        assert!(!build.contains(forbidden), "bootstrap build retains {forbidden}");
-    }
-    let publish = job["steps"]
-        .as_sequence()
-        .and_then(|steps| steps.iter().find(|step| step["uses"].as_str().is_some_and(|value| value.starts_with("pypa/gh-action-pypi-publish@"))))
-        .and_then(|step| step["uses"].as_str())
-        .ok_or("pypi action")?;
-    assert_eq!(publish, "pypa/gh-action-pypi-publish@release/v1");
-    Ok(())
-}
-
-#[test]
-fn release_workflows_use_supported_action_version_tags() -> Result<(), Box<dyn std::error::Error>> {
-    for name in [
-        "bootstrap-package.yml",
-        "runtime-candidate.yml",
-        "runtime-activation.yml",
-        "plugin-runtime-binaries.yml",
-        "plugin-version-bump.yml",
-        "publish-version-release.yml",
-        "verify-release-edit.yml",
-    ] {
-        let document = workflow(name)?;
-        for job in document["jobs"].as_mapping().ok_or("workflow jobs")?.values() {
-            for step in job["steps"].as_sequence().ok_or("workflow steps")? {
-                let Some(uses) = step["uses"].as_str() else { continue };
-                assert!(
-                    uses.rsplit_once('@').is_some_and(|(_, tag)| !tag.is_empty() && !tag.bytes().all(|byte| byte.is_ascii_hexdigit())),
-                    "workflow action must use a supported version tag: {uses}"
-                );
-            }
-        }
-    }
+    assert!(!job.contains_key(Value::String("environment".into())));
+    assert!(!job.contains_key(Value::String("permissions".into())));
+    let guard = named_run(job, "Reject bootstrap-first PyPI publication")?;
+    assert!(guard.contains("bootstrap-first PyPI publication is retired"));
+    assert!(guard.contains("final publisher must create the GitHub release first"));
+    assert!(guard.contains("exit 1"));
+    assert!(!guard.contains("python -m build"));
+    assert!(!job["steps"].as_sequence().ok_or("bootstrap steps")?.iter().any(|step| {
+        step["uses"].as_str().is_some_and(|value| value.starts_with("pypa/gh-action-pypi-publish@"))
+    }));
     Ok(())
 }
 

@@ -45,6 +45,14 @@ lock_version="$(python3 -c 'import tomllib; print(next(package["version"] for pa
 test "$lock_version" = "$target_version"
 package_version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
 test "$package_version" = "$lock_version"
+component_manifest=packages/getcodexy/src/codexy_runtime_tools/component-manifest.json
+jq -e --arg version "$target_version" '
+  .schema == "getcodexy.component-manifest.v1" and
+  (.components | length == 3) and
+  (.compatibleCombinations | length > 0) and
+  ([.components[].version] | all(. == $version)) and
+  ([.compatibleCombinations[].version] | all(. == $version))
+' "$component_manifest" >/dev/null
 
 if test -n "${GITHUB_ENV:-}"; then
   printf 'TARGET_VERSION=%s\nRELEASE_TAG=%s\n' "$target_version" "$release_tag" >> "$GITHUB_ENV"

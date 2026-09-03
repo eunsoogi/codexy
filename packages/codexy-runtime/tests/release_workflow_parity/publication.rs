@@ -29,70 +29,13 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
         assert!(!staging_text.contains(removed), "historical A02 reference remains: {removed}");
     }
     assert!(!root.join(".github/scripts/a02-clean-runner.sh").exists());
-    assert_eq!(
-        bootstrap["jobs"]["publish-bootstrap"]["permissions"]["id-token"],
-        "write"
-    );
-    let bootstrap_proof = run(
+    let bootstrap_guard = run(
         &bootstrap,
         "publish-bootstrap",
-        "Prove public wheel and source distribution availability",
+        "Reject bootstrap-first PyPI publication",
     )?;
-    for fragment in [
-        "attempt=",
-        "test \"$attempt\"",
-        "package_type",
-        "sha256sum -c -",
-    ] {
-        assert!(
-            bootstrap_proof.contains(fragment),
-            "missing bootstrap proof: {fragment}"
-        );
-    }
-    let bootstrap_clean_index = step_index(
-        &bootstrap,
-        "publish-bootstrap",
-        "Prove clean public bootstrap install",
-    )?;
-    assert!(
-        step_index(
-            &bootstrap,
-            "publish-bootstrap",
-            "Prove public wheel and source distribution availability"
-        )? < bootstrap_clean_index
-    );
-    let bootstrap_clean = run(
-        &bootstrap,
-        "publish-bootstrap",
-        "Prove clean public bootstrap install",
-    )?;
-    for required in [
-        "simple_index_attempt=0",
-        "https://pypi.org/simple/getcodexy/",
-        "BOOTSTRAP_VERSION=\"$BOOTSTRAP_VERSION\" python3 - simple-index.html <<'PY'",
-        "version_prefix = f\"getcodexy-{version}\"",
-        "simple_index_attempt",
-        "refusing exact-version install",
-        "python -m venv public-bootstrap",
-        "public-bootstrap/bin/python -m pip install --index-url https://pypi.org/simple \"getcodexy==${BOOTSTRAP_VERSION}\"",
-        "public-bootstrap/bin/codexy-mcp-runtime --help",
-    ] {
-        assert!(
-            bootstrap_clean.contains(required),
-            "missing clean-install propagation contract: {required}"
-        );
-    }
-    assert!(!bootstrap_clean.contains("pip install --retries"));
-    assert!(
-        bootstrap_clean
-            .find("python -m venv public-bootstrap")
-            .unwrap()
-            < bootstrap_clean.find("pip install --index-url").unwrap()
-    );
-    assert!(
-        bootstrap_clean.find("pip install --index-url").unwrap()
-            < bootstrap_clean.find("codexy-mcp-runtime --help").unwrap()
-    );
+    assert!(bootstrap_guard.contains("exit 1"));
+    assert!(!bootstrap_guard.contains("pypa/gh-action-pypi-publish"));
     let staging_assembly = run(
         &staging,
         "stage-runtime",
@@ -119,7 +62,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
     let proof = step_index(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap and authenticated staging identity",
+        "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
     let apply = step_index(
         &activation,
@@ -143,7 +86,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
     let activation_proof = run(
         &activation,
         "open-activation-pr",
-        "Prove public bootstrap and authenticated staging identity",
+        "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
     assert!(activation_proof.contains("scripts/download-runtime-staging-artifact staging"));
     assert!(super::command_present(
@@ -201,48 +144,77 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
     Ok(())
 }
 #[test]
-fn clean_bootstrap_preflight_exercises_visibility_and_failure_boundaries() -> TestResult {
+fn final_package_publication_is_bound_after_public_release_and_payload_gated() -> TestResult {
+    let publisher = document("publish-version-release.yml")?;
+    let verifier = document("verify-version-release.yml")?;
+    let job = "publish-release";
+    let finalize = step_index(&publisher, job, "Finalize authenticated public release")?;
+    let package = step_index(
+        &publisher,
+        job,
+        "Build and verify exact final getcodexy package",
+    )?;
+    let publish = steps(&publisher, job)?
+        .iter()
+        .position(|step| step["name"] == "Publish exact final getcodexy package")
+        .ok_or("package publication")?;
+    assert!(finalize < package && package < publish);
+
+    let build = run(
+        &publisher,
+        job,
+        "Build and verify exact final getcodexy package",
+    )?;
+    for required in [
+        "git worktree add --detach",
+        "$ACTIVATION_COMMIT",
+        "scripts/validate-release-lifecycle-contract \"$TARGET_VERSION\"",
+        "scripts/sync-plugin-version.sh --check",
+        "scripts/verify_getcodexy_package_artifact.py",
+        "python -m build",
+    ] {
+        assert!(build.contains(required), "missing final package gate: {required}");
+    }
+    let publication = &steps(&publisher, job)?[publish];
+    assert_eq!(
+        publication["uses"],
+        "pypa/gh-action-pypi-publish@release/v1"
+    );
+    assert!(publication["with"]["packages-dir"].as_str().is_some());
+
     let bootstrap = document("bootstrap-package.yml")?;
-    let clean = run(
+    let guard = run(
         &bootstrap,
         "publish-bootstrap",
-        "Prove clean public bootstrap install",
+        "Reject bootstrap-first PyPI publication",
     )?;
-    let package: toml::Value = toml::from_str(&fs::read_to_string(
-        codexy_runtime::paths::repository_root().join("packages/getcodexy/pyproject.toml"),
-    )?)?;
-    let version = package["project"]["version"]
-        .as_str()
-        .ok_or("package version")?;
-    let exact_index = format!(
-        "<a href=\"https://files.pythonhosted.org/getcodexy-{version}-py3-none-any.whl\">getcodexy-{version}-py3-none-any.whl</a>\\n<a href=\"https://files.pythonhosted.org/getcodexy-{version}.tar.gz\">getcodexy-{version}.tar.gz</a>"
+    assert!(guard.contains("exit 1") && guard.contains("final publisher"));
+    assert!(!steps(&bootstrap, "publish-bootstrap")?
+        .iter()
+        .any(|step| step["uses"].as_str().is_some_and(|uses| uses.starts_with("pypa/"))));
+
+    assert_eq!(
+        publisher["jobs"]["verify-public-release"]["uses"],
+        "./.github/workflows/verify-version-release.yml"
     );
-    let adjacent_index = format!(
-        "<a href=\"https://files.pythonhosted.org/getcodexy-{version}.post1-py3-none-any.whl\">getcodexy-{version}.post1-py3-none-any.whl</a>"
-    );
-    let stale_root = tempfile::tempdir()?;
-    let stale_curl = format!(
-        "count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -eq 1; then return 7; fi; printf '%s\\n' '{adjacent_index}' > simple-index.html"
-    );
-    let stale = run_clean_preflight(clean, stale_root.path(), version, &stale_curl)?;
-    let attempts = fs::read_to_string(stale_root.path().join("simple-index-attempts"))?;
-    assert!(attempts.trim().parse::<u32>()? > 0);
-    assert_eq!(stale.status.code(), Some(1));
-    assert!(String::from_utf8_lossy(&stale.stderr).contains("after 12 bounded checks"));
-    let positive_root = tempfile::tempdir()?;
-    let positive_curl = format!("printf '%s\\n' '{exact_index}' > simple-index.html");
-    let positive = run_clean_preflight(clean, positive_root.path(), version, &positive_curl)?;
-    assert!(positive.status.success());
-    let transport_root = tempfile::tempdir()?;
-    let transport_curl = format!(
-        "count=0; test -f simple-index-attempts && count=$(cat simple-index-attempts); count=$((count + 1)); printf '%s\\n' \"$count\" > simple-index-attempts; if test \"$count\" -lt 2; then return 7; fi; printf '%s\\n' '{exact_index}' > simple-index.html"
-    );
-    let transport = run_clean_preflight(clean, transport_root.path(), version, &transport_curl)?;
-    let retries = fs::read_to_string(transport_root.path().join("simple-index-attempts"))?;
-    assert!(
-        transport.status.success()
-            && retries.trim().parse::<u32>()? > 1
-            && String::from_utf8_lossy(&transport.stdout).contains("exposes getcodexy==")
-    );
+    let public = run(
+        &verifier,
+        "verify-public-release",
+        "Smoke public release without a token",
+    )?;
+    assert_eq!(public, "scripts/smoke-public-getcodexy-release.sh");
+    let public = fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
+    )?;
+    for required in [
+        "CODEX_HOME",
+        "getcodexy install --json",
+        "plugin list --json",
+        "getcodexy status --json",
+        "getcodexy doctor --json",
+        "component_health",
+    ] {
+        assert!(public.contains(required), "missing public install proof: {required}");
+    }
     Ok(())
 }

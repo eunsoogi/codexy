@@ -34,7 +34,10 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: true
-      - name: Prove public bootstrap and authenticated staging identity
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build local candidate bootstrap and prove authenticated staging identity
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           GH_TOKEN: ${{ github.token }}
@@ -42,11 +45,18 @@ jobs:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           STAGING_RUN_ID: ${{ inputs.staging_run_id }}
         run: |
-          curl --fail --location "https://pypi.org/pypi/getcodexy/${BOOTSTRAP_VERSION}/json" -o bootstrap.json
-          test "$(jq -r .info.version bootstrap.json)" = "$BOOTSTRAP_VERSION"
-          python -m venv public-bootstrap
-          public-bootstrap/bin/python -m pip install --no-cache-dir --index-url https://pypi.org/simple "getcodexy==${BOOTSTRAP_VERSION}"
-          public-bootstrap/bin/codexy-mcp-runtime --help
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          main_at_admission="$(git rev-parse origin/main)"
+          test "$GITHUB_SHA" = "$main_at_admission"
+          test "$(git rev-parse HEAD)" = "$main_at_admission"
+          version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
+          test "$version" = "$(python3 -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
+          test "$version" = "$BOOTSTRAP_VERSION"
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir "$RUNNER_TEMP/local-bootstrap-dist" packages/getcodexy
+          python -m venv "$RUNNER_TEMP/local-bootstrap"
+          "$RUNNER_TEMP/local-bootstrap/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/local-bootstrap-dist" "getcodexy==${BOOTSTRAP_VERSION}"
+          "$RUNNER_TEMP/local-bootstrap/bin/codexy-mcp-runtime" --help
           scripts/download-runtime-staging-artifact staging
           receipt=staging/runtime-staging-receipt.json
           test "$(jq -r .schema "$receipt")" = codexy-runtime-candidate-receipt/v1

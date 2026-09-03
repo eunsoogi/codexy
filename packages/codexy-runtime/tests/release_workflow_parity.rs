@@ -1,9 +1,4 @@
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
-
 use serde_yaml::Value;
-
-use crate::support;
 
 #[path = "release_workflow_parity/publication.rs"]
 mod publication;
@@ -195,50 +190,6 @@ fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn s
         .and_then(|step| step["run"].as_str())
         .ok_or_else(|| "run".into())
 }
-fn run_clean_preflight(
-    run: &str,
-    root: &Path,
-    version: &str,
-    curl_body: &str,
-) -> Result<Output, Box<dyn std::error::Error>> {
-    let preflight = run
-        .splitn(2, "\npython -m venv public-bootstrap")
-        .next()
-        .ok_or("clean-install preflight")?;
-    let script = format!("curl() {{ {curl_body}; }}\nsleep() {{ :; }}\n{preflight}");
-    Ok(bash_command()?
-        .args(["-euo", "pipefail", "-c", &script])
-        .current_dir(root)
-        .env("BOOTSTRAP_VERSION", version)
-        .output()?)
-}
-
-fn bash_command() -> Result<Command, Box<dyn std::error::Error>> {
-    let bash = if cfg!(windows) {
-        let mut path =
-            std::env::split_paths(&std::env::var_os("PATH").ok_or("PATH")?).collect::<Vec<_>>();
-        for (variable, append_git) in [
-            ("GIT_INSTALL_ROOT", false),
-            ("ProgramFiles", true),
-            ("ProgramFiles(x86)", true),
-        ] {
-            if let Some(root) = std::env::var_os(variable) {
-                let git = append_git
-                    .then(|| PathBuf::from(&root).join("Git"))
-                    .unwrap_or_else(|| PathBuf::from(root));
-                path.extend([git.join("bin"), git.join("usr").join("bin")]);
-            }
-        }
-        let path = std::env::join_paths(path)?;
-        let extensions =
-            std::env::var_os("PATHEXT").unwrap_or_else(|| ".COM;.EXE;.BAT;.CMD".into());
-        support::executable_path::executable_path_in("bash", &path, &extensions)?
-    } else {
-        PathBuf::from("bash")
-    };
-    Ok(Command::new(bash))
-}
-
 fn named_step_run<'a>(steps: &'a [Value], name: &str) -> Result<&'a str, &'static str> {
     steps
         .iter()
