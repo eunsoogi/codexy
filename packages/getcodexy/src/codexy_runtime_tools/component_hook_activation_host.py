@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from typing import TextIO, cast
 
 from .version_lock import default_package_version
 
@@ -30,7 +31,7 @@ _ENVIRONMENT_UNSAFE = (
 class HookStateError(RuntimeError):
     """The trusted host did not return an inspectable hook state."""
 
-    code = HOOK_STATE_UNAVAILABLE
+    code: str = HOOK_STATE_UNAVAILABLE
 
 
 def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], ...]:
@@ -43,7 +44,7 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
         ) from error
     environment = os.environ.copy()
     for name in _ENVIRONMENT_UNSAFE:
-        environment.pop(name, None)
+        _ = environment.pop(name, None)
     environment.update(
         {
             "CODEX_HOME": str(codex_home),
@@ -71,9 +72,9 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
     def read_lines() -> None:
         assert process.stdout is not None
         try:
-            for line in process.stdout:
+            for line in cast(TextIO, process.stdout):
                 try:
-                    values.put(json.loads(line))
+                    values.put(cast(object, json.loads(line)))
                 except (UnicodeError, ValueError):
                     values.put(None)
         finally:
@@ -96,14 +97,14 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 },
             },
         }
-        process.stdin.write(json.dumps(initialize) + "\n")
-        process.stdin.flush()
+        _ = process.stdin.write(json.dumps(initialize) + "\n")
+        _ = process.stdin.flush()
         response = _response(values, 1)
         if response.get("error") is not None or not isinstance(
             response.get("result"), dict
         ):
             raise HookStateError("trusted Codex app-server initialization failed")
-        for request in (
+        requests: tuple[dict[str, object], ...] = (
             {"jsonrpc": "2.0", "method": "initialized", "params": {}},
             {
                 "jsonrpc": "2.0",
@@ -111,9 +112,10 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 "id": 2,
                 "params": {"cwds": [str(cwd)]},
             },
-        ):
-            process.stdin.write(json.dumps(request) + "\n")
-            process.stdin.flush()
+        )
+        for request in requests:
+            _ = process.stdin.write(json.dumps(request) + "\n")
+            _ = process.stdin.flush()
         response = _response(values, 2)
         if response.get("error") is not None:
             raise HookStateError("trusted Codex app-server rejected hooks/list")
@@ -129,12 +131,12 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
         except OSError:
             pass
         if process.poll() is None:
-            process.terminate()
+            _ = process.terminate()
             try:
-                process.wait(timeout=1)
+                _ = process.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=1)
+                _ = process.kill()
+                _ = process.wait(timeout=1)
         reader.join(timeout=1)
         try:
             if process.stdout is not None:
@@ -147,31 +149,40 @@ def _extract_hooks(response: dict[str, object]) -> tuple[dict[str, object], ...]
     result = response.get("result")
     if not isinstance(result, dict):
         raise HookStateError("hooks/list returned no result")
-    return _rows(result)
+    return normalize_hook_rows(cast(dict[str, object], result))
 
 
-def _rows(value: object) -> tuple[dict[str, object], ...]:
+def normalize_hook_rows(value: object) -> tuple[dict[str, object], ...]:
     if isinstance(value, dict):
-        if isinstance(value.get("hooks"), list):
-            value = value["hooks"]
-        elif isinstance(value.get("data"), list):
-            flattened = []
-            for item in value["data"]:
-                if not isinstance(item, dict) or not isinstance(
-                    item.get("hooks"), list
-                ):
+        mapping = cast(dict[str, object], value)
+        hooks = mapping.get("hooks")
+        data = mapping.get("data")
+        if isinstance(hooks, list):
+            value = cast(list[object], hooks)
+        elif isinstance(data, list):
+            flattened: list[dict[str, object]] = []
+            for item_value in cast(list[object], data):
+                if not isinstance(item_value, dict):
+                    raise HookStateError("hooks/list returned an invalid cwd entry")
+                item = cast(dict[str, object], item_value)
+                item_hooks = item.get("hooks")
+                if not isinstance(item_hooks, list):
                     raise HookStateError("hooks/list returned an invalid cwd entry")
                 if item.get("warnings", []) or item.get("errors", []):
                     raise HookStateError("hooks/list returned warnings or errors")
-                flattened.extend(item["hooks"])
+                flattened.extend(cast(list[dict[str, object]], item_hooks))
             value = flattened
         else:
             raise HookStateError("hooks/list returned an invalid result")
     if not isinstance(value, (list, tuple)):
         raise HookStateError("hooks/list returned an invalid hook collection")
-    rows = []
-    for row in value:
-        if not isinstance(row, dict) or not isinstance(row.get("key"), str):
+    collection = cast(list[object] | tuple[object, ...], value)
+    rows: list[dict[str, object]] = []
+    for item in collection:
+        if not isinstance(item, dict):
+            raise HookStateError("hooks/list returned a malformed hook entry")
+        row = cast(dict[str, object], item)
+        if not isinstance(row.get("key"), str):
             raise HookStateError("hooks/list returned a malformed hook entry")
         rows.append(row)
     return tuple(rows)
@@ -189,5 +200,7 @@ def _response(values: queue.Queue[object], identifier: int) -> dict[str, object]
             raise HookStateError(
                 "trusted Codex app-server hooks/list timed out"
             ) from error
-        if isinstance(value, dict) and value.get("id") == identifier:
-            return value
+        if isinstance(value, dict):
+            response = cast(dict[str, object], value)
+            if response.get("id") == identifier:
+                return response

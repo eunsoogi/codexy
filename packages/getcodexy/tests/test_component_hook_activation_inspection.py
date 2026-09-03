@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -17,30 +18,14 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
         with fixture({"core"}) as state:
             materialize(state, "core")
             plugin = state.marketplace / "plugins/codexy"
-            hooks = json.loads(
-                (plugin / "hooks/hooks.json").read_text(encoding="utf-8")
-            )
-            rows = []
-            for group_index, group in enumerate(hooks["hooks"]["PreToolUse"]):
-                if group_index != 0:
-                    continue
-                for hook_index, hook in enumerate(group["hooks"]):
-                    rows.append(
-                        {
-                            "key": f"codexy@codexy:hooks/hooks.json:pre_tool_use:{group_index}:{hook_index}",
-                            "eventName": "preToolUse",
-                            "handlerType": "command",
-                            "command": hook["command"].replace(
-                                "${PLUGIN_ROOT}", str(plugin)
-                            ),
-                            "matcher": group["matcher"],
-                            "sourcePath": str(plugin / "hooks/hooks.json"),
-                            "pluginId": "codexy@codexy",
-                            "enabled": True,
-                            "trustStatus": "trusted",
-                            "currentHash": "sha256:fixture",
-                        }
-                    )
+            rows = [
+                row
+                for row in _hook_rows(plugin)
+                if any(
+                    f":{event}:0:" in row["key"]
+                    for event in ("pre_tool_use", "permission_request")
+                )
+            ]
             result = doctor(
                 state.home,
                 codex=state.codex,
@@ -122,6 +107,52 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
                         doctor_result["component_health"][0]["reason_code"], reason
                     )
 
+    def test_status_rejects_a_hook_from_an_alternate_plugin_root(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            plugin = state.marketplace / "plugins/codexy"
+            alternate = state.root / "alternate/plugins/codexy"
+            shutil.copytree(plugin, alternate)
+            rows = [
+                {
+                    **row,
+                    "command": row["command"].replace(str(plugin), str(alternate)),
+                    "sourcePath": str(alternate / "hooks/hooks.json"),
+                }
+                for row in _hook_rows(plugin)
+            ]
+            result = status(
+                state.home,
+                codex=state.codex,
+                runner=state.run,
+                hook_lister=lambda _executable, _home: rows,
+            )
+
+        self.assertEqual(result["errors"], [{"code": "required-hook-trust-stale"}])
+
+    def test_status_accepts_the_host_cache_copy_of_installed_registration(self) -> None:
+        with fixture({"core"}) as state:
+            materialize(state, "core")
+            plugin = state.marketplace / "plugins/codexy"
+            cache = state.home / "plugins/cache/codexy/codexy/1.6.3"
+            shutil.copytree(plugin, cache)
+            rows = [
+                {
+                    **row,
+                    "command": row["command"].replace(str(plugin), str(cache)),
+                    "sourcePath": str(cache / "hooks/hooks.json"),
+                }
+                for row in _hook_rows(plugin)
+            ]
+            result = status(
+                state.home,
+                codex=state.codex,
+                runner=state.run,
+                hook_lister=lambda _executable, _home: rows,
+            )
+
+        self.assertEqual(result["errors"], [])
+
     def test_doctor_does_not_execute_an_untrusted_hook_launcher(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
@@ -159,14 +190,13 @@ def _hook_rows(plugin: Path) -> list[dict[str, object]]:
     for event, groups in value["hooks"].items():
         for group_index, group in enumerate(groups):
             for hook_index, hook in enumerate(group["hooks"]):
+                command = hook["command"].replace("${PLUGIN_ROOT}", str(plugin))
                 rows.append(
                     {
                         "key": f"codexy@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
                         "eventName": events[event],
                         "handlerType": "command",
-                        "command": hook["command"].replace(
-                            "${PLUGIN_ROOT}", str(plugin)
-                        ),
+                        "command": command,
                         "async": hook.get("async", False),
                         "matcher": group.get("matcher"),
                         "timeoutSec": hook.get("timeout", 600),

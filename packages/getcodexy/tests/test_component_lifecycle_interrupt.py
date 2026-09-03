@@ -112,11 +112,13 @@ def hook_rows():
         for event, groups in value["hooks"].items():
             for group_index, group in enumerate(groups):
                 for hook_index, hook in enumerate(group["hooks"]):
+                    command_key = "commandWindows" if os.name == "nt" else "command"
+                    command = hook[command_key].replace("${PLUGIN_ROOT}", str(plugin))
                     rows.append({
                         "key": f"{plugin_name}@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
                         "eventName": events[event],
                         "handlerType": "command",
-                        "command": hook["command"].replace("${PLUGIN_ROOT}", str(plugin)),
+                        "command": command,
                         "async": hook.get("async", False),
                         "matcher": group.get("matcher"),
                         "timeoutSec": hook.get("timeout", 600),

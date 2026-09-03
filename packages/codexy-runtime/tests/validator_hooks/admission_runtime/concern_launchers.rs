@@ -73,7 +73,9 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
             "codexy-repository-github-command",
             "codexy-destructive-command",
         ]),
-        "codex_app__send_message_to_thread" => Ok(vec!["codexy-thread-delivery"]),
+        "codex_app__send_message_to_thread" | "mcp__codex_app__send_message_to_thread" => {
+            Ok(vec!["codexy-thread-delivery"])
+        }
         "codex_app__create_thread" | "mcp__codex_app__create_thread" => {
             Ok(vec!["codexy-child-thread-creation"])
         }

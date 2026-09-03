@@ -71,7 +71,7 @@ def activation_for_inventory(
     try:
         rows = (hook_lister or list_hooks)(executable, codex_home)
         expected = expected_hooks(manifest, components, records)
-        return classify_activation(expected, rows)
+        return classify_activation(expected, rows, codex_home=codex_home)
     except HookStateError:
         return {component: HOOK_STATE_UNAVAILABLE for component in components}
     except (OSError, TypeError, ValueError):

@@ -102,9 +102,10 @@ def _bash_hooks(event: str) -> list[dict[str, object]]:
     ]
 
 
+_CORE_TOOL_PREFIX = "^(?:codex_app__|mcp__codex_app__)"
 _CORE_COMMAND_HOOKS = (
-    ("^codex_app__send_message_to_thread$", "codexy-thread-delivery"),
-    ("^(?:codex_app__|mcp__codex_app__)create_thread$", "codexy-child-thread-creation"),
+    (_CORE_TOOL_PREFIX + "send_message_to_thread$", "codexy-thread-delivery"),
+    (_CORE_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
 )
 
 

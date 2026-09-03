@@ -6,6 +6,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from .component_hook_activation_host import HookStateError
 from .component_manifest import ComponentManifest
@@ -60,33 +61,51 @@ def expected_hooks(
     for component in components:
         record = records.get(component)
         source = record.get("source") if isinstance(record, dict) else None
-        path_value = source.get("path") if isinstance(source, dict) else None
+        source_map = cast(dict[str, object], source) if isinstance(source, dict) else {}
+        path_value = source_map.get("path")
         if not isinstance(path_value, str) or not Path(path_value).is_absolute():
             raise HookStateError("installed hook source path is not absolute")
         plugin = Path(path_value)
         hooks_path = plugin / "hooks/hooks.json"
         try:
-            value = json.loads(hooks_path.read_text(encoding="utf-8"))
+            value = cast(object, json.loads(hooks_path.read_text(encoding="utf-8")))
         except (OSError, UnicodeError, ValueError) as error:
             raise HookStateError("installed hook registration is unreadable") from error
-        if not isinstance(value, dict) or not isinstance(value.get("hooks"), dict):
+        if not isinstance(value, dict):
             raise HookStateError("installed hook registration has an invalid shape")
-        entries = []
-        for event, groups in value["hooks"].items():
+        value_map = cast(dict[str, object], value)
+        hooks = value_map.get("hooks")
+        if not isinstance(hooks, dict):
+            raise HookStateError("installed hook registration has an invalid shape")
+        hooks_map = cast(dict[str, object], hooks)
+        entries: list[ExpectedHook] = []
+        for event, groups_value in hooks_map.items():
             if event not in _EVENT_LABELS or event not in _EVENT_KEYS:
                 raise HookStateError("installed hook registration has an unknown event")
-            if not isinstance(groups, list):
+            if not isinstance(groups_value, list):
                 raise HookStateError("installed hook registration has invalid groups")
-            for group_index, group in enumerate(groups):
-                if not isinstance(group, dict) or not isinstance(
-                    group.get("hooks"), list
-                ):
+            groups = cast(list[object], groups_value)
+            for group_index, group_value in enumerate(groups):
+                if not isinstance(group_value, dict):
+                    raise HookStateError(
+                        "installed hook registration has invalid group"
+                    )
+                group = cast(dict[str, object], group_value)
+                group_hooks = group.get("hooks")
+                if not isinstance(group_hooks, list):
                     raise HookStateError(
                         "installed hook registration has invalid group"
                     )
                 matcher = group.get("matcher")
-                for hook_index, hook in enumerate(group["hooks"]):
-                    if not isinstance(hook, dict) or hook.get("type") != "command":
+                for hook_index, hook_value in enumerate(
+                    cast(list[object], group_hooks)
+                ):
+                    if not isinstance(hook_value, dict):
+                        raise HookStateError(
+                            "installed hook registration contains a non-command hook"
+                        )
+                    hook = cast(dict[str, object], hook_value)
+                    if hook.get("type") != "command":
                         raise HookStateError(
                             "installed hook registration contains a non-command hook"
                         )
