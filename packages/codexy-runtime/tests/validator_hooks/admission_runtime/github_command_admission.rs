@@ -10,6 +10,8 @@ const READ_ONLY_COMPOSITES: &[&str] = &[
     "for run in 33827377016; do gh run view \"$run\" --repo eunsoogi/codexy; done",
     "for pr in 879 883 884; do gh pr view \"$pr\" --repo eunsoogi/codexy --json headRefOid,statusCheckRollup | jq ...; done",
 ];
+const POST_MERGE_READ_ONLY_COMPOSITE: &str =
+    "for pr in 879 884 887 888; do gh pr view \"$pr\" --repo eunsoogi/codexy --json number,headRefOid,baseRefOid,isDraft,mergeable,mergeStateStatus --jq ...; done";
 const CACHE_CLEANUP_AND_STAGE: &str =
     "find . -type d -name __pycache__ -prune -exec rm -rf {} + && git add -- plugins/codexy-github/hooks/codexy_policy/repository_github_command.py packages/codexy-runtime/tests/validator_hooks/admission_runtime/repository_policy_runtime.rs";
 
@@ -36,6 +38,11 @@ fn issue_876_second_read_only_composite_is_admitted_for_both_events() -> TestRes
 #[test]
 fn issue_876_third_read_only_composite_is_admitted_for_both_events() -> TestResult {
     assert_admitted(READ_ONLY_COMPOSITES[2])
+}
+
+#[test]
+fn issue_876_post_merge_read_only_pr_loop_is_admitted_for_both_events() -> TestResult {
+    assert_admitted(POST_MERGE_READ_ONLY_COMPOSITE)
 }
 
 #[test]
