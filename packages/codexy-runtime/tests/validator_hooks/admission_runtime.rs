@@ -223,9 +223,7 @@ pub(super) fn assert_tool_case(root: &Path, tool_name: &str, tool_input: Value, 
         &[],
     )
 }
-fn assert_input(root: &Path, input: Value, denied: bool, environment: &[(&str, &std::ffi::OsStr)]) -> TestResult {
-    concern_launchers::assert_input(root, input, denied, environment)
-}
+pub(super) use concern_launchers::{assert_event_cases, assert_input};
 
 pub(super) fn executable(name: &str) -> TestResult<PathBuf> {
     crate::support::executable_path(name).map_err(Into::into)
