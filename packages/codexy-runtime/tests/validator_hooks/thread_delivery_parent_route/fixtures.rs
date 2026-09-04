@@ -199,7 +199,7 @@ fn launcher(root: &Path) -> Command {
 }
 
 pub(super) fn assert_denied(output: std::process::Output) -> TestResult {
-    assert_denied_with(output, "EXPECTED_RECIPIENT")
+    assert_denied_with(output, "MISSING_IDENTITY")
 }
 
 pub(super) fn assert_denied_with(

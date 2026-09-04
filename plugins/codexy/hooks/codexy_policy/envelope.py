@@ -20,6 +20,12 @@ class Request:
     transcript_path: object
 
 
+@dataclass(frozen=True)
+class Diagnostic:
+    code: str
+    message: str
+
+
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in items:
@@ -29,9 +35,10 @@ def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def deny(event: str, diagnostic: str, code: str) -> bytes:
+def deny(event: str, diagnostic: str, code: str, message: str | None = None) -> bytes:
     event = event if event in EVENTS else "PreToolUse"
-    reason = f"{diagnostic}{code}: Codexy policy MUST NOT execute this operation."
+    detail = message or "Codexy policy MUST NOT execute this operation."
+    reason = f"{diagnostic}{code}: {detail}"
     if event == "PermissionRequest":
         output = {
             "hookEventName": event,
@@ -53,7 +60,7 @@ def evaluate(
     payload: bytes,
     tools: frozenset[str],
     diagnostic: str,
-    forbidden: Callable[[Request], bool | str],
+    forbidden: Callable[[Request], bool | str | Diagnostic],
 ) -> bytes:
     if event not in EVENTS or len(payload) > MAX_INPUT:
         return deny(event, diagnostic, "ENVELOPE")
@@ -79,6 +86,8 @@ def evaluate(
         blocked = forbidden(request)
     except (OSError, TypeError, ValueError):
         return deny(event, diagnostic, "RUNTIME")
+    if isinstance(blocked, Diagnostic):
+        return deny(event, diagnostic, blocked.code, blocked.message)
     if isinstance(blocked, str):
         return deny(event, diagnostic, blocked)
     return deny(event, diagnostic, "DENIED") if blocked else b""

@@ -44,7 +44,7 @@ fn installed_hook_preserves_authenticated_parent_route() -> TestResult {
     assert!(
         denial["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("EXPECTED_PARENT_SETTINGS")),
+            .is_some_and(|reason| reason.contains("UNSUPPORTED_MODEL")),
         "wrong parent route was admitted: {}",
         String::from_utf8_lossy(&wrong.stdout)
     );
@@ -59,40 +59,43 @@ fn installed_hook_preserves_authenticated_parent_route() -> TestResult {
 fn installed_hook_fails_closed_for_untrusted_child_context() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("child.jsonl");
-    for bytes in [
-        child_transcript(OTHER, &[PARENT]),
-        child_transcript(CHILD, &[PARENT, OTHER]),
-        child_transcript_text(
-            CHILD,
-            &format!(
-                "{}{}",
-                delegation(PARENT, "First."),
-                delegation(OTHER, "Second.")
+    for (bytes, expected) in [
+        (child_transcript(OTHER, &[PARENT]), "UNTRUSTED_CONTEXT"),
+        (child_transcript(CHILD, &[PARENT, OTHER]), "UNTRUSTED_CONTEXT"),
+        (
+            child_transcript_text(
+                CHILD,
+                &format!(
+                    "{}{}",
+                    delegation(PARENT, "First."),
+                    delegation(OTHER, "Second.")
+                ),
             ),
+            "UNTRUSTED_CONTEXT",
         ),
-        child_transcript(CHILD, &[OTHER]),
-        b"not-json\n".to_vec(),
+        (child_transcript(CHILD, &[OTHER]), "WRONG_RECIPIENT"),
+        (b"not-json\n".to_vec(), "UNTRUSTED_CONTEXT"),
     ] {
         std::fs::write(&transcript, bytes)?;
-        assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?)?;
+        assert_denied_with(run(&transcript, "gpt-5.6-sol", "medium")?, expected)?;
     }
     std::fs::File::create(&transcript)?.set_len(32 * 1024 * 1024 + 1)?;
-    assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?)?;
-    assert_denied(run(temp.path(), "gpt-5.6-sol", "medium")?)?;
+    assert_denied_with(run(&transcript, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+    assert_denied_with(run(temp.path(), "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     #[cfg(unix)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::unix::fs::symlink(&transcript, &link)?;
-        assert_denied(run(&link, "gpt-5.6-sol", "medium")?)?;
+        assert_denied_with(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
         let fifo = temp.path().join("fifo.jsonl");
         assert!(Command::new("mkfifo").arg(&fifo).status()?.success());
-        assert_denied(run(&fifo, "gpt-5.6-sol", "medium")?)?;
+        assert_denied_with(run(&fifo, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     #[cfg(windows)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::windows::fs::symlink_file(&transcript, &link)?;
-        assert_denied(run(&link, "gpt-5.6-sol", "medium")?)?;
+        assert_denied_with(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     Ok(())
 }
@@ -119,7 +122,7 @@ fn installed_hook_binds_root_to_child_delivery_to_child_recipient_settings() -> 
     assert!(
         denial["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("EXPECTED_CHILD_SETTINGS")),
+            .is_some_and(|reason| reason.contains("UNSUPPORTED_MODEL")),
         "parent settings were copied across the child recipient boundary: {}",
         String::from_utf8_lossy(&copied_sender.stdout)
     );
@@ -129,6 +132,6 @@ fn installed_hook_binds_root_to_child_delivery_to_child_recipient_settings() -> 
         "session_id":PARENT,
         "tool_input":{"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"medium"}
     }))?;
-    assert_denied(partial)?;
+    assert_denied_with(partial, "MISSING_IDENTITY")?;
     Ok(())
 }

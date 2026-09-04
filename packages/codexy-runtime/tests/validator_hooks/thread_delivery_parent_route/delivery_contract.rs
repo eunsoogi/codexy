@@ -41,7 +41,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                         tool,
                         event,
                     )?,
-                    "EXPECTED_CHILD_SETTINGS",
+                    "UNSUPPORTED_MODEL",
                 )?;
                 assert_admitted(run_route_at(
                     root,
@@ -64,7 +64,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                         tool,
                         event,
                     )?,
-                    "EXPECTED_PARENT_SETTINGS",
+                    "UNSUPPORTED_MODEL",
                 )?;
             }
         }
@@ -77,11 +77,11 @@ fn recipient_delivery_requires_explicit_model_and_thinking() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("root.jsonl");
     std::fs::write(&transcript, root_transcript(PARENT))?;
-    for tool_input in [
-        json!({"threadId":CHILD,"thinking":"max"}),
-        json!({"threadId":CHILD,"model":"gpt-5.6-luna"}),
-        json!({"threadId":CHILD,"model":"","thinking":"max"}),
-        json!({"threadId":CHILD,"model":"gpt-5.6-luna","thinking":""}),
+    for (tool_input, expected) in [
+        (json!({"threadId":CHILD,"thinking":"max"}), "MISSING_MODEL"),
+        (json!({"threadId":CHILD,"model":"gpt-5.6-luna"}), "MISSING_THINKING"),
+        (json!({"threadId":CHILD,"model":"","thinking":"max"}), "MISSING_MODEL"),
+        (json!({"threadId":CHILD,"model":"gpt-5.6-luna","thinking":""}), "MISSING_THINKING"),
     ] {
         assert_denied_with(
             run_payload(json!({
@@ -91,7 +91,7 @@ fn recipient_delivery_requires_explicit_model_and_thinking() -> TestResult {
                 "transcript_path":transcript,
                 "tool_input":tool_input
             }))?,
-            "MODEL_THINKING_REQUIRED",
+            expected,
         )?;
     }
     Ok(())
