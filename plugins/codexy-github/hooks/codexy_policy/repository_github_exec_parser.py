@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 MAX_TOKENS = 10_000
+MAX_TEMPLATE_DEPTH = 32
 ESCAPES = {
     "b": "\b",
     "f": "\f",
@@ -18,7 +19,9 @@ ESCAPES = {
     "'": "'",
     '"': '"',
 }
-LITERALS = {"true": True, "false": False, "null": None}
+REGEX_AFTER = frozenset(
+    "await case delete do else in new of return throw typeof void yield".split()
+)
 
 
 class Token(NamedTuple):
@@ -31,6 +34,12 @@ class ParseError(ValueError):
 
 
 def tokenize(source: str) -> list[Token]:
+    return _tokenize(source, 0)
+
+
+def _tokenize(source: str, template_depth: int) -> list[Token]:
+    if template_depth > MAX_TEMPLATE_DEPTH:
+        raise ParseError("template nesting")
     result: list[Token] = []
     index = 0
     while index < len(source):
@@ -50,8 +59,11 @@ def tokenize(source: str) -> list[Token]:
             value, index = _string(source, index)
             result.append(Token("string", value))
         elif character == "`":
-            index = _template_end(source, index)
-            result.append(Token("dynamic", "template"))
+            template, index = _template(source, index, template_depth)
+            result.extend(template)
+        elif character == "/" and _regex_start(result):
+            index = _regex(source, index)
+            result.append(Token("regex", "regex"))
         elif character.isalpha() or character in "_$":
             end = index + 1
             while end < len(source) and (source[end].isalnum() or source[end] in "_$"):
@@ -75,6 +87,113 @@ def tokenize(source: str) -> list[Token]:
         if len(result) > MAX_TOKENS:
             raise ParseError("too many tokens")
     return result
+
+
+def _template(source: str, index: int, depth: int) -> tuple[list[Token], int]:
+    result = [Token("dynamic", "template")]
+    index += 1
+    while index < len(source):
+        if source[index] == "\\":
+            index += 2
+        elif source[index] == "`":
+            return result, index + 1
+        elif source.startswith("${", index):
+            start = index + 2
+            end = _template_expression_end(source, start, depth)
+            result.append(Token("dynamic", "template_expression_start"))
+            result.extend(_tokenize(source[start:end], depth + 1))
+            result.append(Token("dynamic", "template_expression_end"))
+            index = end + 1
+        else:
+            index += 1
+    raise ParseError("unterminated template")
+
+
+def _template_expression_end(source: str, index: int, depth: int) -> int:
+    braces = 1
+    while index < len(source):
+        character = source[index]
+        if character in "'\"":
+            _, index = _string(source, index)
+        elif character == "`":
+            _, index = _template(source, index, depth + 1)
+        elif source.startswith("//", index):
+            index = source.find("\n", index + 2)
+            if index == -1:
+                return len(source)
+        elif source.startswith("/*", index):
+            end = source.find("*/", index + 2)
+            if end == -1:
+                raise ParseError("unterminated comment")
+            index = end + 2
+        elif character == "/" and _source_regex_start(source, index):
+            index = _regex(source, index)
+        elif character == "{":
+            braces += 1
+            index += 1
+        elif character == "}":
+            braces -= 1
+            if braces == 0:
+                return index
+            index += 1
+        else:
+            index += 1
+    raise ParseError("unterminated template expression")
+
+
+def _source_regex_start(source: str, index: int) -> bool:
+    cursor = index - 1
+    while cursor >= 0 and source[cursor].isspace():
+        cursor -= 1
+    if cursor < 0:
+        return True
+    character = source[cursor]
+    if character in ")]}'\"":
+        return False
+    if character.isalnum() or character in "_$":
+        end = cursor + 1
+        while cursor >= 0 and (source[cursor].isalnum() or source[cursor] in "_$"):
+            cursor -= 1
+        return source[cursor + 1 : end] in REGEX_AFTER
+    return True
+
+
+def _regex_start(tokens: list[Token]) -> bool:
+    if not tokens:
+        return True
+    previous = tokens[-1]
+    if previous.kind in {"identifier", "number", "string", "regex"}:
+        return previous.kind == "identifier" and previous.value in REGEX_AFTER
+    return previous.value not in {
+        ")",
+        "]",
+        "}",
+    }
+
+
+def _regex(source: str, index: int) -> int:
+    index += 1
+    in_class = False
+    while index < len(source):
+        character = source[index]
+        if character in "\r\n":
+            raise ParseError("newline in regex")
+        if character == "\\":
+            index += 2
+        elif character == "[":
+            in_class = True
+            index += 1
+        elif character == "]":
+            in_class = False
+            index += 1
+        elif character == "/" and not in_class:
+            index += 1
+            while index < len(source) and source[index].isalpha():
+                index += 1
+            return index
+        else:
+            index += 1
+    raise ParseError("unterminated regex")
 
 
 def _string(source: str, index: int) -> tuple[str, int]:
@@ -109,93 +228,3 @@ def _string(source: str, index: int) -> tuple[str, int]:
         else:
             raise ParseError("unsupported escape")
     raise ParseError("unterminated string")
-
-
-def _template_end(source: str, index: int) -> int:
-    index += 1
-    while index < len(source):
-        if source[index] == "\\":
-            index += 2
-        elif source[index] == "`":
-            return index + 1
-        else:
-            index += 1
-    raise ParseError("unterminated template")
-
-
-class LiteralParser:
-    def __init__(self, tokens: list[Token], index: int) -> None:
-        self.tokens, self.index = tokens, index
-
-    def parse(self) -> dict[str, Any]:
-        value = self.value(0)
-        if not isinstance(value, dict):
-            raise ParseError("mutation payload must be an object")
-        return value
-
-    def value(self, depth: int) -> Any:
-        if depth > 32:
-            raise ParseError("literal nesting")
-        token = self.peek()
-        if token.value == "{":
-            return self.object(depth + 1)
-        if token.value == "[":
-            return self.array(depth + 1)
-        token = self.take()
-        if token.kind == "string":
-            return token.value
-        if token.kind == "number":
-            return int(token.value)
-        if token.kind == "identifier" and token.value in LITERALS:
-            return LITERALS[token.value]
-        raise ParseError("dynamic literal")
-
-    def object(self, depth: int) -> dict[str, Any]:
-        self.expect("{")
-        result: dict[str, Any] = {}
-        if self.accept("}"):
-            return result
-        while True:
-            key = self.take()
-            if key.kind not in {"identifier", "string"} or key.value in result:
-                raise ParseError("literal key")
-            self.expect(":")
-            result[key.value] = self.value(depth)
-            if self.accept("}"):
-                return result
-            self.expect(",")
-            if self.accept("}"):
-                return result
-
-    def array(self, depth: int) -> list[Any]:
-        self.expect("[")
-        result: list[Any] = []
-        if self.accept("]"):
-            return result
-        while True:
-            result.append(self.value(depth))
-            if self.accept("]"):
-                return result
-            self.expect(",")
-            if self.accept("]"):
-                return result
-
-    def peek(self) -> Token:
-        if self.index >= len(self.tokens):
-            raise ParseError("unexpected end")
-        return self.tokens[self.index]
-
-    def take(self) -> Token:
-        token = self.peek()
-        self.index += 1
-        return token
-
-    def expect(self, value: str) -> None:
-        if self.take().value != value:
-            raise ParseError(f"expected {value}")
-
-    def accept(self, value: str) -> bool:
-        if self.index < len(self.tokens) and self.tokens[self.index].value == value:
-            self.index += 1
-            return True
-        return False

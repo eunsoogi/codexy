@@ -93,8 +93,38 @@ fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResu
             true,
         ),
         (
+            "optional computed nested mutation",
+            r#"await tools?.[fullName]({repository_full_name:"eunsoogi/codexy", title:"Create optional nested issue"});"#,
+            true,
+        ),
+        (
+            "concatenated computed nested mutation",
+            r#"await tools["mcp__codex_apps__" + "github_create_issue"]({repository_full_name:"eunsoogi/codexy", title:"Create concatenated nested issue"});"#,
+            true,
+        ),
+        (
+            "parenthesized Reflect.get mutation",
+            r#"(Reflect.get)(tools, "mcp__codex_apps__github_create_issue")({repository_full_name:"eunsoogi/codexy", title:"Create reflected nested issue"});"#,
+            true,
+        ),
+        (
+            "literal eval nested mutation",
+            r#"eval("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"Create evaluated nested issue\"});");"#,
+            true,
+        ),
+        (
+            "template expression nested mutation",
+            r#"`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`"#,
+            true,
+        ),
+        (
             "GitHub names in comments and strings",
             r#"// tools.mcp__codex_apps__github_create_issue({title:"not a call"}); text("mcp__codex_apps__github_create_issue");"#,
+            false,
+        ),
+        (
+            "GitHub name in regex literal",
+            r#"const pattern = /mcp__codex_apps__github_create_issue/;"#,
             false,
         ),
         (

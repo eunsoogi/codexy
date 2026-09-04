@@ -43,6 +43,36 @@ def assert_nested_exec_cases(
             "await tools.some_other_tool({value:getValue()});",
             False,
         ),
+        (
+            "PermissionRequest",
+            'await tools?.[fullName]({repository_full_name:"eunsoogi/codexy", title:"Create optional nested issue"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            'await tools["mcp__codex_apps__" + "github_create_issue"]({repository_full_name:"eunsoogi/codexy", title:"Create concatenated nested issue"});',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            '(Reflect.get)(tools, "mcp__codex_apps__github_create_issue")({repository_full_name:"eunsoogi/codexy", title:"Create reflected nested issue"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            'eval("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\\"eunsoogi/codexy\\", title:\\"Create evaluated nested issue\\"});");',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            '`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`',
+            True,
+        ),
+        (
+            "PreToolUse",
+            "const pattern = /mcp__codex_apps__github_create_issue/;",
+            False,
+        ),
     )
     for event, code, denied in nested_cases:
         with test_case.subTest(event=event, code=code):
