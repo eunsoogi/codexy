@@ -76,8 +76,6 @@ def hook_rows():
     return rows
 
 if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
-    if os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"):
-        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line); identifier = request.get("id")
         if request.get("method") == "initialize" and identifier is not None:
@@ -88,6 +86,8 @@ if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
         else:
             continue
         print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
+        if request.get("method") == "hooks/list" and os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"):
+            child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     raise SystemExit(0)
 
 def installed(component):
