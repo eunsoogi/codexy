@@ -40,6 +40,7 @@ DISTRIBUTION_HOST = """#!/usr/bin/env python3
 import json, os, sys, threading
 from pathlib import Path
 
+os.environ.setdefault("CODEXY_MATRIX_STATE", str(Path(os.environ["CODEX_HOME"]).parent / "host-state.json")); os.environ.setdefault("CODEXY_MATRIX_MARKETPLACE", str(Path(os.environ["CODEX_HOME"]).parent / "marketplace")); os.environ.setdefault("CODEXY_MATRIX_VERSION", "fixture")
 state_path, root, version = Path(os.environ["CODEXY_MATRIX_STATE"]), Path(os.environ["CODEXY_MATRIX_MARKETPLACE"]).resolve(), os.environ["CODEXY_MATRIX_VERSION"]; state = json.loads(state_path.read_text())
 plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
 
