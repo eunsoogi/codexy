@@ -81,6 +81,8 @@ fn issue_876_dangerous_boundaries_remain_denied_for_both_events() -> TestResult 
         "git add .",
         "git add -- :/",
         "git add -- ':(top)README.md'",
+        "git add :/",
+        "git add ':(top)README.md'",
     ];
     for event in ["PermissionRequest", "PreToolUse"] {
         for command in commands {

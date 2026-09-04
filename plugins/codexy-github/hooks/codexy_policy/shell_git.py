@@ -151,8 +151,15 @@ def _unsafe_push(arguments: list[str]) -> bool:
 
 def _broad_stage(arguments: list[str]) -> bool:
     separator = arguments.index("--") if "--" in arguments else len(arguments)
-    options = arguments[:separator]
-    operands = arguments[separator + 1 :] if separator < len(arguments) else ()
+    options, operands, option_mode = [], [], True
+    for argument in arguments[:separator]:
+        if option_mode and argument.startswith("-") and argument != "-":
+            options.append(argument)
+        else:
+            option_mode = False
+            operands.append(argument)
+    if separator < len(arguments):
+        operands.extend(arguments[separator + 1 :])
     return any(
         arg in {"-A", "-u", "--all", "--update", ".", "./"}
         or arg.startswith(("--all=", "--update="))
