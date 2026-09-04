@@ -3,20 +3,30 @@
 from __future__ import annotations
 
 import re
+from typing import Protocol
 
-from .execution_context_types import ExecutionContext
+from .execution_context_types import CommandEffect, ExecutionContext
 from .invocation import Invocation
 from .shell_opaque import resolved_segments
 
 SAFE_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
+class DiagnosticPolicy(Protocol):
+    def opaque_invocation(self, invocation: Invocation) -> bool: ...
+
+    def command(
+        self, invocation: Invocation, outer: ExecutionContext, depth: int
+    ) -> tuple[bool, CommandEffect] | None: ...
+
+
 def describe(
     code: str,
     command: str | None = None,
     context: ExecutionContext | None = None,
+    policy: DiagnosticPolicy | None = None,
 ) -> str:
-    rule, operation, remediation = _details(code, command, context)
+    rule, operation, remediation = _details(code, command, context, policy)
     return f"{code}: rule={rule}; operation={operation}; remediation={remediation}"
 
 
@@ -24,6 +34,7 @@ def _details(
     code: str,
     command: str | None,
     context: ExecutionContext | None,
+    policy: DiagnosticPolicy | None,
 ) -> tuple[str, str, str]:
     if code == "CREDENTIAL_EXPOSURE":
         return (
@@ -43,7 +54,7 @@ def _details(
             "dynamic or opaque protected command",
             "spell out the executable, repository, and arguments in the supported grammar",
         )
-    invocation = _invocation(command, context)
+    invocation = _invocation(command, context, policy)
     if code == "REMOTE_MUTATION":
         return _remote(invocation)
     if code == "DESTRUCTIVE_EFFECT":
@@ -56,7 +67,9 @@ def _details(
 
 
 def _invocation(
-    command: str | None, context: ExecutionContext | None
+    command: str | None,
+    context: ExecutionContext | None,
+    policy: DiagnosticPolicy | None,
 ) -> Invocation | None:
     if command is None or context is None:
         return None
@@ -66,6 +79,15 @@ def _invocation(
         return None
     if walked is None:
         return None
+    for segment in walked:
+        invocation = segment.invocation
+        if (
+            invocation is not None
+            and invocation.executable in {"gh", "git", "rm", "find"}
+            and policy is not None
+            and _denied_invocation(invocation, policy)
+        ):
+            return invocation
     return next(
         (
             segment.invocation
@@ -75,6 +97,15 @@ def _invocation(
         ),
         None,
     )
+
+
+def _denied_invocation(invocation: Invocation, policy: DiagnosticPolicy) -> bool:
+    if invocation.opaque and policy.opaque_invocation(invocation):
+        return True
+    if invocation.script is not None:
+        return False
+    result = policy.command(invocation, invocation.context, 0)
+    return result is not None and result[0]
 
 
 def _remote(invocation: Invocation | None) -> tuple[str, str, str]:

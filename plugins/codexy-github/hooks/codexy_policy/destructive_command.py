@@ -6,6 +6,7 @@ from .envelope import Request
 from .policy_diagnostics import describe
 from .shell_entry import context as shell_context
 from .shell_destructive import forbidden as shell_forbidden
+from .shell_destructive_policy import POLICY
 from .shell_opaque import unresolved_alias_transition, unresolved_protected_effect
 
 
@@ -47,5 +48,5 @@ def forbidden(request: Request) -> bool | str:
         git_config_environment,
         runtime_environment=runtime_environment,
     ):
-        return describe("DESTRUCTIVE_EFFECT", command, context)
+        return describe("DESTRUCTIVE_EFFECT", command, context, policy=POLICY)
     return False

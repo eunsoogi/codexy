@@ -53,6 +53,8 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
             "codexy-repository-issue" | "codexy-repository-pull-request"
         ) {
             "_ENVELOPE"
+        } else if launcher == "codexy-repository-github-command" {
+            "_UNRESOLVED_TARGET"
         } else {
             "_RUNTIME"
         };

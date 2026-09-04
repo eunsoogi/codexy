@@ -6,6 +6,7 @@ from .envelope import Request
 from .policy_diagnostics import describe
 from .shell_entry import context as shell_context
 from .shell_github import forbidden as shell_forbidden
+from .shell_github_policy import POLICY
 from .shell_evaluator import credential_exposure
 from .shell_opaque import unresolved_protected_effect
 
@@ -48,5 +49,5 @@ def forbidden(request: Request) -> bool | str:
         git_config_environment,
         runtime_environment=runtime_environment,
     ):
-        return describe("REMOTE_MUTATION", command, context)
+        return describe("REMOTE_MUTATION", command, context, policy=POLICY)
     return False

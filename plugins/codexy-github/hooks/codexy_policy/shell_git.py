@@ -150,6 +150,9 @@ def _unsafe_push(arguments: list[str]) -> bool:
 
 
 def _broad_stage(arguments: list[str]) -> bool:
+    separator = arguments.index("--") if "--" in arguments else len(arguments)
+    options = arguments[:separator]
+    operands = arguments[separator + 1 :] if separator < len(arguments) else ()
     return any(
         arg in {"-A", "-u", "--all", "--update", ".", "./"}
         or arg.startswith(("--all=", "--update="))
@@ -158,8 +161,8 @@ def _broad_stage(arguments: list[str]) -> bool:
             and not arg.startswith("--")
             and any(flag in arg[1:] for flag in "Au")
         )
-        for arg in arguments
-    )
+        for arg in options
+    ) or any(operand in {".", "./"} or operand.startswith(":") for operand in operands)
 
 
 def explicit_owned(
