@@ -41,9 +41,9 @@ nothing to reclassify; MUST NOT create a report or other artifact.
 
 ## Implementation sanity
 
-Only when the current `Fix` is an implementation obligation, run one bounded
-sanity pass before choosing the next action. Read-only and other
-non-implementation recovery does not trigger it.
+When the current `Fix` is an implementation obligation, MUST run one bounded
+sanity pass before choosing the next action. When the current `Fix` is read-only
+or otherwise non-implementation recovery, MUST NOT run it.
 
 Using only the current diff, governing scope, and meaningful tests, ask whether:
 
