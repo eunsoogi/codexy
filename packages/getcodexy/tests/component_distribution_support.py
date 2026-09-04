@@ -235,7 +235,7 @@ def windows_argv(probe, root: Path):
 
 def host_process_active(path: Path) -> bool:
     pid = path.read_text().strip()
-    return os.name == "nt" and pid in subprocess.getoutput(f'tasklist /FI "PID eq {pid}" /NH')
+    return pid in subprocess.getoutput(f'tasklist /FI "PID eq {pid}" /NH')
 
 
 def _git(root: Path, *arguments: str) -> str:

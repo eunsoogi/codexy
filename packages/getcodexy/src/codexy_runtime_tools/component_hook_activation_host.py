@@ -150,9 +150,7 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
 
 def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
     taskkill = (
-        Path(os.environ.get("SystemRoot", r"C:\Windows"))
-        / "System32"
-        / "taskkill.exe"
+        Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "taskkill.exe"
     )
     try:
         _ = subprocess.run(
