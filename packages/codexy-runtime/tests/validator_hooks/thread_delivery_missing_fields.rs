@@ -156,7 +156,15 @@ fn plugin_roots(temp: &Path) -> TestResult<[PathBuf; 2]> {
 }
 
 fn root_transcript(session: &str) -> Vec<u8> {
-    transcript(session, "Root-owned work.")
+    let mut bytes = transcript(session, "Root-owned work.");
+    bytes.extend_from_slice(
+        format!(
+            "{}\n",
+            json!({"type":"response_item","payload":{"type":"function_call_output","name":"create_thread","namespace":"codex_app","output":json!({"threadId":CHILD,"parentThreadId":session}).to_string()}})
+        )
+        .as_bytes(),
+    );
+    bytes
 }
 
 fn child_transcript(session: &str, parent: &str) -> Vec<u8> {

@@ -24,6 +24,9 @@ _probe_cases = importlib.import_module(
 )
 CapabilityProbeCases = _probe_cases.CapabilityProbeCases
 materialize = _probe_cases.materialize
+CORE_HOOK_DEPENDENCIES = importlib.import_module(
+    "packages.getcodexy.tests.component_hook_dependencies"
+).CORE_HOOK_DEPENDENCIES
 
 
 class ComponentInspectionTests(
@@ -192,16 +195,7 @@ class ComponentInspectionTests(
     def test_doctor_rejects_missing_or_tampered_canonical_hook_dependencies(
         self,
     ) -> None:
-        dependencies = (
-            "hooks/codexy-thread-delivery.sh",
-            "hooks/codexy-thread-delivery.cmd",
-            "hooks/codexy-child-thread-creation.sh",
-            "hooks/codexy-child-thread-creation.cmd",
-            "hooks/codexy-child-thread-creation.py",
-            "hooks/codexy_policy/child_thread_creation.py",
-            "hooks/codexy_policy/envelope.py",
-        )
-        for relative in dependencies:
+        for relative in CORE_HOOK_DEPENDENCIES:
             for mutation in ("missing", "tampered"):
                 with (
                     self.subTest(relative=relative, mutation=mutation),

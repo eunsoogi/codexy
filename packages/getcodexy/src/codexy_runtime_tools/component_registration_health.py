@@ -7,6 +7,11 @@ import os
 import shutil
 from pathlib import Path
 
+from .component_core_hooks import (
+    COMMAND_HOOKS as _CORE_COMMAND_HOOKS,
+    DEPENDENCIES as CORE_HOOK_DEPENDENCIES,
+    LAUNCHERS as CORE_HOOK_LAUNCHERS,
+)
 from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
 from .component_manifest import load_component_manifest
 
@@ -102,13 +107,6 @@ def _bash_hooks(event: str) -> list[dict[str, object]]:
     ]
 
 
-_CORE_TOOL_PREFIX = "^(?:codex_app__|mcp__codex_app__)"
-_CORE_COMMAND_HOOKS = (
-    (_CORE_TOOL_PREFIX + "send_message_to_thread$", "codexy-thread-delivery"),
-    (_CORE_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
-)
-
-
 HOOKS = {
     "core": {
         "hooks": {
@@ -159,12 +157,7 @@ MCP = {
     },
 }
 LAUNCHERS = {
-    "core": (
-        "hooks/codexy-thread-delivery.sh",
-        "hooks/codexy-thread-delivery.cmd",
-        "hooks/codexy-child-thread-creation.sh",
-        "hooks/codexy-child-thread-creation.cmd",
-    ),
+    "core": CORE_HOOK_LAUNCHERS,
     "github": (
         "hooks/codexy-github-workflow-context.sh",
         "hooks/codexy-github-workflow-context.cmd",
@@ -184,11 +177,6 @@ LAUNCHERS = {
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
-CORE_HOOK_DEPENDENCIES = (
-    "hooks/codexy-child-thread-creation.py",
-    "hooks/codexy_policy/child_thread_creation.py",
-    "hooks/codexy_policy/envelope.py",
-)
 
 
 def valid_registration(plugin: Path, component: str) -> bool:
