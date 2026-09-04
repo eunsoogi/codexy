@@ -32,13 +32,14 @@ pub(super) fn has_create_evidence(lines: &[&str]) -> bool {
 
 pub(super) fn transactions(
     lines: &[&str],
+    raw_lines: &[&str],
     source: &str,
     authorized: &str,
 ) -> Result<Vec<Transaction>, &'static str> {
-    let calls = parse::calls(lines)?;
+    let calls = parse::calls(lines, raw_lines)?;
     let mut keys = std::collections::HashSet::new();
     for call in &calls {
-        if !keys.insert(call.key) {
+        if !keys.insert(&call.key) {
             return Err("goal tool call transition key must be unique per tool call");
         }
         parse::require_parent(lines[call.index], source)?;
@@ -46,17 +47,18 @@ pub(super) fn transactions(
     reject_orphans(lines, &calls, source)?;
     calls
         .iter()
-        .map(|call| build_transaction(lines, call, source, authorized))
+        .map(|call| build_transaction(lines, raw_lines, call, source, authorized))
         .collect()
 }
 
 fn build_transaction(
     lines: &[&str],
+    raw_lines: &[&str],
     call: &parse::Call<'_>,
     source: &str,
     authorized: &str,
 ) -> Result<Transaction, &'static str> {
-    let posts = matching_records(lines, parse::RecordKind::Post, call.operation, call.key);
+    let posts = matching_records(lines, parse::RecordKind::Post, call.operation, &call.key);
     let [post_index] = posts.as_slice() else {
         return Err("goal tool call requires exactly one matching post-result receipt");
     };
@@ -65,8 +67,11 @@ fn build_transaction(
     }
     parse::require_parent(lines[*post_index], source)?;
     parse::require_confirmed(lines[*post_index])?;
-    let result = parse::field(parse::normalized(lines[*post_index]), "exact tool result")
-        .ok_or("goal post-result receipt requires the exact tool result")?;
+    let result = parse::field(
+        parse::normalized(raw_lines[*post_index]),
+        "exact tool result",
+    )
+    .ok_or("goal post-result receipt requires the exact tool result")?;
     let state = parse::goal_state(result);
     let pre_index = if call.operation == Operation::Create {
         if call.objective != Some(authorized) {
@@ -74,7 +79,7 @@ fn build_transaction(
                 "create_goal objective must exactly match the authorized assignment objective",
             );
         }
-        let pres = matching_records(lines, parse::RecordKind::Pre, call.operation, call.key);
+        let pres = matching_records(lines, parse::RecordKind::Pre, call.operation, &call.key);
         let [pre_index] = pres.as_slice() else {
             return Err("create_goal requires exactly one matching pre-delivery receipt");
         };
@@ -83,7 +88,7 @@ fn build_transaction(
         }
         parse::require_parent(lines[*pre_index], source)?;
         parse::require_confirmed(lines[*pre_index])?;
-        parse::require_create_pre_fields(lines[*pre_index], authorized)?;
+        parse::require_create_pre_fields(raw_lines[*pre_index], authorized)?;
         match &state {
             GoalState::Active(Some(objective)) if objective == authorized => {}
             _ => return Err("create_goal post-result must contain the matching active objective"),

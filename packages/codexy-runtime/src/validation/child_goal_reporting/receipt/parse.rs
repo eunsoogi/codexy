@@ -9,31 +9,54 @@ pub(super) enum RecordKind {
 pub(super) struct Call<'a> {
     pub(super) index: usize,
     pub(super) operation: Operation,
-    pub(super) key: &'a str,
+    pub(super) key: String,
     pub(super) objective: Option<&'a str>,
 }
 
-pub(super) fn calls<'a>(lines: &'a [&'a str]) -> Result<Vec<Call<'a>>, &'static str> {
+pub(super) fn calls<'a>(
+    lines: &[&str],
+    raw_lines: &'a [&'a str],
+) -> Result<Vec<Call<'a>>, &'static str> {
     lines
         .iter()
         .enumerate()
-        .filter_map(|(index, line)| parse_call(index, normalized(line)))
+        .filter_map(|(index, line)| {
+            raw_lines
+                .get(index)
+                .and_then(|raw_line| parse_call(index, normalized(line), raw_line))
+        })
         .collect()
 }
 
-fn parse_call(index: usize, line: &str) -> Option<Result<Call<'_>, &'static str>> {
+fn parse_call<'a>(
+    index: usize,
+    line: &str,
+    raw_line: &'a str,
+) -> Option<Result<Call<'a>, &'static str>> {
     let payload = line.strip_prefix("goal tool call: ")?;
     let operation = payload
         .rsplit_once("; parent task=")
         .map_or(payload, |(operation, _)| operation)
         .trim();
+    let raw_payload = strip_prefix_ascii_case(raw_line, "goal tool call: ")?;
+    let raw_operation = rsplit_once_ascii_case(raw_payload, "; parent task=")
+        .map_or(raw_payload, |(operation, _)| operation)
+        .trim();
     let (operation, objective) = if operation == "get_goal" {
         (Operation::Get, None)
+    } else if let Some(value) = operation.strip_prefix("create_goal(objective=") {
+        let Some(_) = value.strip_suffix(')') else {
+            return Some(Err("goal tool call has malformed operation or objective"));
+        };
+        let Some(raw_value) = raw_operation
+            .get("create_goal(objective=".len()..)
+            .and_then(|value| value.strip_suffix(')'))
+        else {
+            return Some(Err("goal tool call has malformed operation or objective"));
+        };
+        (Operation::Create, Some(raw_value.trim()))
     } else {
-        let objective = operation
-            .strip_prefix("create_goal(objective=")
-            .and_then(|value| value.strip_suffix(')'))?;
-        (Operation::Create, Some(objective.trim()))
+        return Some(Err("goal tool call has malformed operation or objective"));
     };
     Some(
         field(line, "transition key")
@@ -41,7 +64,7 @@ fn parse_call(index: usize, line: &str) -> Option<Result<Call<'_>, &'static str>
             .map(|key| Call {
                 index,
                 operation,
-                key,
+                key: key.to_owned(),
                 objective,
             })
             .ok_or("goal tool call requires a transition key"),
@@ -82,7 +105,6 @@ pub(super) fn require_confirmed(line: &str) -> Result<(), &'static str> {
 }
 
 pub(super) fn require_create_pre_fields(line: &str, authorized: &str) -> Result<(), &'static str> {
-    let line = normalized(line);
     let required = [
         "issue/pr",
         "parent task",
@@ -112,14 +134,16 @@ pub(super) fn goal_state(result: &str) -> GoalState {
         };
     };
     if value.is_null() || value.get("goal").is_some_and(serde_json::Value::is_null) {
-        return if value
-            .get("status")
-            .and_then(serde_json::Value::as_str)
-            .is_none_or(|status| status == "complete")
-        {
-            GoalState::AllowsCreate
-        } else {
-            GoalState::Invalid
+        return match value.get("status") {
+            None => GoalState::AllowsCreate,
+            Some(status)
+                if status
+                    .as_str()
+                    .is_some_and(|status| status.eq_ignore_ascii_case("complete")) =>
+            {
+                GoalState::AllowsCreate
+            }
+            _ => GoalState::Invalid,
         };
     }
     let goal = value.get("goal").unwrap_or(&value);
@@ -128,12 +152,12 @@ pub(super) fn goal_state(result: &str) -> GoalState {
         .or_else(|| value.get("status"))
         .and_then(serde_json::Value::as_str);
     match status {
-        Some("active") => GoalState::Active(
+        Some(status) if status.eq_ignore_ascii_case("active") => GoalState::Active(
             goal.get("objective")
                 .and_then(serde_json::Value::as_str)
                 .map(str::to_owned),
         ),
-        Some("complete") => GoalState::AllowsCreate,
+        Some(status) if status.eq_ignore_ascii_case("complete") => GoalState::AllowsCreate,
         _ => GoalState::Invalid,
     }
 }
@@ -142,15 +166,14 @@ pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let prefix = format!("{name}=");
     let payload = line.split_once(": ").map_or(line, |(_, payload)| payload);
     if matches!(name, "exact tool result" | "pending objective") {
-        return payload
-            .split_once(&prefix)
-            .and_then(|(_, value)| value.rsplit_once("; parent task="))
+        return split_once_ascii_case(payload, &prefix)
+            .and_then(|(_, value)| rsplit_once_ascii_case(value, "; parent task="))
             .map(|(value, _)| value.trim());
     }
     let mut values = payload
         .split(';')
         .map(str::trim)
-        .filter_map(|part| part.strip_prefix(&prefix));
+        .filter_map(|part| strip_prefix_ascii_case(part, &prefix));
     let value = values.next()?;
     values.next().is_none().then_some(value)
 }
@@ -161,4 +184,25 @@ fn valid_value(value: &str) -> bool {
 
 pub(super) fn normalized(line: &str) -> &str {
     super::super::super::child_terminal_handoff::without_metadata_prefix(line).trim()
+}
+
+fn strip_prefix_ascii_case<'a>(value: &'a str, prefix: &str) -> Option<&'a str> {
+    value
+        .get(..prefix.len())
+        .filter(|head| head.eq_ignore_ascii_case(prefix))
+        .map(|_| &value[prefix.len()..])
+}
+
+fn split_once_ascii_case<'a>(value: &'a str, needle: &str) -> Option<(&'a str, &'a str)> {
+    let index = value
+        .to_ascii_lowercase()
+        .find(&needle.to_ascii_lowercase())?;
+    Some((&value[..index], &value[index + needle.len()..]))
+}
+
+fn rsplit_once_ascii_case<'a>(value: &'a str, needle: &str) -> Option<(&'a str, &'a str)> {
+    let index = value
+        .to_ascii_lowercase()
+        .rfind(&needle.to_ascii_lowercase())?;
+    Some((&value[..index], &value[index + needle.len()..]))
 }

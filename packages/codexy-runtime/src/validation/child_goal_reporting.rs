@@ -8,6 +8,10 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         .iter()
         .map(|line| line.text.as_str())
         .collect::<Vec<_>>();
+    let raw_lines = active
+        .iter()
+        .map(|line| line.raw_text.as_str())
+        .collect::<Vec<_>>();
     let clear = is_clear_child_implementation(&lines);
     if clear
         && lines
@@ -25,14 +29,14 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
             Vec::new()
         };
     }
-    let result = objective::binding(&lines).and_then(|authorized| {
+    let result = objective::binding(&raw_lines).and_then(|authorized| {
         let source = source_parent(&lines)
             .ok_or("clear delegated assignment requires one source thread id")?;
         let control = format!("goal control state: source_thread_id={source}");
         if !lines.iter().any(|line| line.trim() == control) {
             return Err("goal control state must match source thread id");
         }
-        let transactions = receipt::transactions(&lines, source, authorized)?;
+        let transactions = receipt::transactions(&lines, &raw_lines, source, authorized)?;
         sequence_error(&transactions, authorized)
     });
     result.err().map(String::from).into_iter().collect()
