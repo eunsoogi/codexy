@@ -13,6 +13,30 @@ goal tools as authoritative. This skill recovers a stale `blocked` control-plane
 record so the existing owner can resume. It MUST NOT implement goal state or
 replace the owner thread, branch, or worktree.
 
+## Delegated assignment authorization
+
+A concrete delegated task assignment is explicit authorization for the assigned
+child to create one finite execution goal for that same work. The assignment
+MUST name the authorized objective and success criteria; an issue-sized handoff
+that also supplies scope, verification, and a stop condition satisfies this
+contract. The child MUST NOT require a second instruction containing the word
+`goal` or another opt-in phrase.
+
+The parent handoff MUST state the assigned objective once as
+`Assignment objective:`. The child MUST project that exact value into an
+`Authorized goal objective:` control record and MUST use it unchanged for
+`create_goal`, the create result, and the active `get_goal` readback. This
+record documents the assignment already given; it MUST NOT act as a second
+authorization, broaden the parent-supplied objective, or become a user opt-in.
+
+The finite goal MUST match the assignment and MUST NOT broaden scope, invent
+work, replace external proof, or override the authoritative lifecycle state. A
+parent instruction that requires non-trivial child implementation while saying
+that available goal tools are unauthorized is contradictory and MUST be
+rejected; the child MUST NOT follow that prohibition. Ambiguous conversation,
+incidental discussion, and unassigned suggestions are not delegated task
+assignments and MUST NOT create a goal.
+
 ## Required first transition
 
 Before any edit, command, verification, GitHub mutation, delegation, or other
@@ -20,7 +44,7 @@ task work, the task MUST call `get_goal` and MUST use its current result:
 
 1. If the result is exactly `null`, is a host response envelope whose top-level
    `goal` is exactly `null`, or has exactly `status=complete`, the task MUST
-   create the new finite goal normally.
+   create the new finite goal for the authorized assignment.
 2. If the result is `active`, the task MUST compare its objective with the
    requested work. The task MUST continue only when it is the exact active
    objective. Otherwise the task MUST stop and MUST obtain an explicit lifecycle

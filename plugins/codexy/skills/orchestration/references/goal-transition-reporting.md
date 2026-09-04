@@ -28,6 +28,23 @@ same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
 as deduplicated; it MUST NOT imply a second goal call.
 
+## Delegated assignment authorization
+
+A parent-supplied assignment that names the objective and success criteria is
+the child's authorization to create the matching finite goal. An issue-sized
+handoff with scope, verification, and a stop condition MUST NOT require a second
+`use goal` instruction. A prohibition on available goal tools in that same
+non-trivial implementation assignment is contradictory and MUST be rejected.
+Ambiguous discussion, incidental context, and unassigned suggestions MUST NOT
+authorize goal creation.
+
+The parent handoff MUST expose the authoritative value as one
+`Assignment objective:` record. The child MUST derive one
+`Authorized goal objective:` record from it before the goal transition. The two
+records, create call, create result, and active `get_goal` readback MUST match
+exactly. This derived record is evidence of the existing assignment, not a
+second authorization phrase or an authority to broaden the objective.
+
 ## Runtime Polling Boundary
 
 Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
@@ -62,6 +79,15 @@ After every goal tool call, including `get_goal`, the child MUST send a
 post-result receipt containing the exact tool result, operation, parent task id,
 matching transition key, and confirmed task-surface delivery. A prose-only claim
 that delivery or a result happened is not a receipt.
+
+Static evidence for `create_goal` MUST bind one source-parent-matching
+pre-delivery receipt, the actual tool call, and one source-parent-matching
+post-result receipt with the same transition key. The pre-delivery receipt MUST
+include every field named above and an exact `pending objective`; the tool-call
+record MUST include `parent task` and `transition key`. The post-result MUST
+contain the matching active objective. The required active readback MUST be a
+separate `get_goal` tool call and matching post-result receipt after the create
+post-result.
 
 `update_goal(blocked)` MUST NOT execute until parent delivery is confirmed. If
 the delivery is unavailable, static evidence MUST show one terminal
