@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -183,6 +184,13 @@ def _broad_stage_operand(operand: str, cwd: str) -> bool:
     root = worktree_root(Path(cwd))
     if root is None:
         return True
+    lexical_root = _lexical_path(str(root), cwd)
+    lexical_current = _lexical_path(cwd, cwd)
+    lexical_candidate = _lexical_path(operand, cwd)
+    if lexical_candidate == lexical_root or _is_ancestor(
+        lexical_candidate, lexical_current
+    ):
+        return True
     try:
         root = root.resolve(strict=False)
         current = Path(cwd).resolve(strict=False)
@@ -200,6 +208,19 @@ def _broad_stage_operand(operand: str, cwd: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _lexical_path(value: str, cwd: str) -> str:
+    """Normalize a native path before filesystem resolution can change its spelling."""
+    path = value if os.path.isabs(value) else os.path.join(cwd, value)
+    return os.path.normcase(os.path.normpath(os.path.abspath(path)))
+
+
+def _is_ancestor(candidate: str, current: str) -> bool:
+    try:
+        return os.path.commonpath((candidate, current)) == candidate
+    except ValueError:
+        return False
 
 
 def explicit_owned(
