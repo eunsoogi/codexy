@@ -7,7 +7,7 @@ use super::routing_json;
 
 mod routes;
 mod thread_capabilities;
-use routes::{child_to_root_route, selected_general_route, simple_route};
+use routes::{child_to_root_route, parent_to_generic_route, selected_general_route, simple_route};
 use thread_capabilities::ThreadCapabilities;
 
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
@@ -39,13 +39,8 @@ pub(super) struct Simple {
 }
 
 pub(super) struct Delivery {
-    pub(super) parent_to_generic: GenericDelivery,
+    pub(super) parent_to_generic: Route,
     pub(super) child_to_root: Route,
-}
-
-pub(super) struct GenericDelivery {
-    pub(super) primary: Route,
-    pub(super) fallback: Route,
 }
 
 #[derive(Deserialize)]
@@ -108,6 +103,13 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             &request.codex_thread_operation,
         ));
     }
+    if request.codex_thread_direction == Some(ThreadDirection::ParentToGeneric) {
+        return Ok(parent_to_generic_route(
+            &policy,
+            request.codex_thread_capabilities.as_ref(),
+            &request.codex_thread_operation,
+        ));
+    }
     match request.classification.as_str() {
         "simple" if simple_is_complete(request.simple_predicates.as_ref()) => Ok(simple_route(
             &policy,
@@ -164,15 +166,9 @@ fn contract() -> Policy {
         },
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
-            parent_to_generic: GenericDelivery {
-                primary: Route {
-                    model: "gpt-5.6-luna".to_owned(),
-                    thinking: "max".to_owned(),
-                },
-                fallback: Route {
-                    model: "gpt-5.6-terra".to_owned(),
-                    thinking: "high".to_owned(),
-                },
+            parent_to_generic: Route {
+                model: "gpt-5.6-luna".to_owned(),
+                thinking: "max".to_owned(),
             },
             child_to_root: Route {
                 model: "gpt-5.6-sol".to_owned(),
@@ -224,10 +220,8 @@ fn validate(policy: &Policy) -> Result<()> {
             .map(String::as_str)
             .eq(required)
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.primary.model != policy.generic.model
-        || policy.delivery.parent_to_generic.primary.thinking != policy.generic.thinking
-        || policy.delivery.parent_to_generic.fallback.model != policy.generic_fallback.model
-        || policy.delivery.parent_to_generic.fallback.thinking != policy.generic_fallback.thinking
+        || policy.delivery.parent_to_generic.model != "gpt-5.6-luna"
+        || policy.delivery.parent_to_generic.thinking != "max"
         || policy.delivery.child_to_root.model != "gpt-5.6-sol"
         || policy.delivery.child_to_root.thinking != "medium"
     {

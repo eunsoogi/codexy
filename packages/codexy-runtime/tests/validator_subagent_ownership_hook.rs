@@ -60,7 +60,14 @@ fn packaged_specialist_catalogs_remain_admitted() -> TestResult {
 fn windows_launcher_uses_an_absolute_interpreter_path() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let launcher = std::fs::read_to_string(root.join("codexy-subagent-ownership.cmd"))?;
-    assert!(launcher.contains("\"%SystemRoot%\\py.exe\" -3 -I -B"));
+    assert!(launcher.contains("%SystemRoot%\\py.exe"));
+    assert!(launcher.contains(
+        "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+    ));
+    assert!(launcher.contains("Get-ChildItem -LiteralPath $dir -Filter 'py*.exe' -File"));
+    assert!(launcher.contains("set \"runtime_args=-3\""));
+    assert!(launcher.contains("\"%runtime%\" %runtime_args% -I -B"));
+    assert!(!launcher.contains("python"));
     assert!(!launcher.lines().any(|line| line.starts_with("py ")));
     Ok(())
 }

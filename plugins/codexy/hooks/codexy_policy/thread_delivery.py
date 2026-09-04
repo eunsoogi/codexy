@@ -8,12 +8,25 @@ import stat
 from .envelope import Request, _pairs
 
 FIELDS = ("model", "thinking")
-EXPECTED = ("gpt-5.6-sol", "medium")
+EXPECTED_CHILD = ("gpt-5.6-luna", "max")
+EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
 MAX_TRANSCRIPT = 32 * 1024 * 1024
 DELEGATION = re.compile(
     r"<codex_delegation>\s*<source_thread_id>([^<]+)</source_thread_id>"
     r"\s*<input>.*?</input>\s*</codex_delegation>",
     re.DOTALL,
+)
+TRANSITION_KEY = re.compile(r"\btransition key\s*=\s*([^;\n]+)", re.IGNORECASE)
+DELIVERY_KEY = re.compile(
+    r"\b(?:event id|transition key|state fingerprint)\s*=\s*([^;\n]+)",
+    re.IGNORECASE,
+)
+DELIVERY_TOOLS = frozenset(
+    {
+        "send_message_to_thread",
+        "codex_app__send_message_to_thread",
+        "mcp__codex_app__send_message_to_thread",
+    }
 )
 
 
@@ -34,23 +47,30 @@ def forbidden(request: Request) -> bool | str:
         not isinstance(data.get(field), str) or not data[field].strip()
         for field in FIELDS
     ):
-        return True
+        return "MODEL_THINKING_REQUIRED"
     try:
-        parent = _authenticated_parent(transcript, session)
+        records = _records(transcript)
+        parent = _authenticated_parent(records, session)
     except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
         return "EXPECTED_RECIPIENT"
-    if parent is None:
-        return False
     recipient = data.get("threadId")
-    if recipient != parent:
+    if not isinstance(recipient, str) or not recipient.strip():
         return "EXPECTED_RECIPIENT"
-    return (
-        False if (data["model"], data["thinking"]) == EXPECTED else "EXPECTED_RECIPIENT"
-    )
+    route = (data["model"], data["thinking"])
+    if parent is None:
+        if recipient == session:
+            return "EXPECTED_RECIPIENT"
+        if route != EXPECTED_CHILD:
+            return "EXPECTED_CHILD_SETTINGS"
+    else:
+        if recipient != parent:
+            return "EXPECTED_RECIPIENT"
+        if route != EXPECTED_PARENT:
+            return "EXPECTED_PARENT_SETTINGS"
+    return _duplicate_delivery(records, data)
 
 
-def _authenticated_parent(path: str, session: str) -> str | None:
-    records = _records(path)
+def _authenticated_parent(records: list[dict], session: str) -> str | None:
     metadata = [item for item in records if item.get("type") == "session_meta"]
     if len(metadata) != 1 or not isinstance(metadata[0].get("payload"), dict):
         raise ValueError("session metadata")
@@ -89,6 +109,77 @@ def _authenticated_parent(path: str, session: str) -> str | None:
     if len(parents) > 1 or "" in parents:
         raise ValueError("ambiguous parent")
     return parents[0] if parents else None
+
+
+def _duplicate_delivery(records: list[dict], data: dict) -> bool | str:
+    prompt = data.get("prompt")
+    if not isinstance(prompt, str):
+        return False
+    phase = _delivery_phase(prompt)
+    if phase is None:
+        return False
+    key = _delivery_key(prompt, phase)
+    if key is None:
+        return "DELIVERY_KEY_REQUIRED"
+    recipient = data["threadId"]
+    for item in _completed_deliveries(records):
+        if item.get("threadId") != recipient:
+            continue
+        prior = item.get("prompt")
+        if not isinstance(prior, str) or _delivery_phase(prior) != phase:
+            continue
+        if _delivery_key(prior, phase) == key:
+            return "DUPLICATE_DELIVERY"
+    return False
+
+
+def _delivery_phase(prompt: str) -> str | None:
+    lowered = prompt.lower()
+    if "post-result receipt" in lowered:
+        return "post-result"
+    if "pre-delivery" in lowered:
+        return "pre-delivery"
+    if "handoff" in lowered:
+        return "handoff"
+    if any(
+        marker in lowered
+        for marker in ("receipt", "event id=", "transition key=", "state fingerprint=")
+    ):
+        return "status"
+    return None
+
+
+def _delivery_key(prompt: str, phase: str) -> str | None:
+    matcher = (
+        TRANSITION_KEY if phase in {"pre-delivery", "post-result"} else DELIVERY_KEY
+    )
+    match = matcher.search(prompt)
+    if match is None:
+        return None
+    key = match.group(1).strip()
+    if not key or len(key) > 256 or any(ord(character) < 32 for character in key):
+        return None
+    return key
+
+
+def _completed_deliveries(records: list[dict]):
+    for record in records:
+        if record.get("type") != "event_msg":
+            continue
+        payload = record.get("payload")
+        if not isinstance(payload, dict) or payload.get("type") != "item_completed":
+            continue
+        item = payload.get("item")
+        if (
+            not isinstance(item, dict)
+            or item.get("type") != "McpToolCall"
+            or item.get("server") != "codex_app"
+            or item.get("tool") not in DELIVERY_TOOLS
+            or item.get("status") != "completed"
+            or not isinstance(item.get("arguments"), dict)
+        ):
+            continue
+        yield item["arguments"]
 
 
 def _delegated_parent(text: str) -> str | None:
