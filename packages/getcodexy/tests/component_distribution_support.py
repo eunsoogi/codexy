@@ -76,7 +76,7 @@ def hook_rows():
     return rows
 
 if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
-    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"]); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line); identifier = request.get("id")
         if request.get("method") == "initialize" and identifier is not None:
