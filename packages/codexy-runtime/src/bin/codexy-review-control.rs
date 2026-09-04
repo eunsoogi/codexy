@@ -28,10 +28,12 @@ struct Cli {
     produce_review_control: bool,
     #[arg(long)]
     input: Option<PathBuf>,
-    #[arg(long)]
+    #[arg(long, visible_alias = "current-pr-state-file")]
     base_pr_state_file: Option<PathBuf>,
     #[arg(long)]
     review_control_state_file: Option<PathBuf>,
+    #[arg(long)]
+    previous_pr_state_file: Option<PathBuf>,
     #[arg(long)]
     output: Option<PathBuf>,
     #[arg(long)]
@@ -75,6 +77,9 @@ fn main() -> Result<()> {
             &serde_json::to_string(&request)?,
         )?;
     } else if cli.build_pr_state {
+        let repository_root = cli
+            .repository_root
+            .unwrap_or_else(|| paths::repository_root().to_path_buf());
         let base = fs::read_to_string(
             cli.base_pr_state_file
                 .ok_or_else(|| anyhow::anyhow!("--base-pr-state-file is required"))?,
@@ -83,12 +88,22 @@ fn main() -> Result<()> {
             cli.review_control_state_file
                 .ok_or_else(|| anyhow::anyhow!("--review-control-state-file is required"))?,
         )?;
+        let previous = fs::read_to_string(
+            cli.previous_pr_state_file
+                .ok_or_else(|| anyhow::anyhow!("--previous-pr-state-file is required"))?,
+        )?;
         let output = cli
             .output
             .ok_or_else(|| anyhow::anyhow!("--output is required"))?;
         fs::write(
             output,
-            serde_json::to_vec(&validation::build_review_pr_state(&root, &base, &control)?)?,
+            serde_json::to_vec(&validation::build_review_pr_state(
+                &root,
+                &repository_root,
+                &base,
+                &control,
+                &previous,
+            )?)?,
         )?;
     } else if cli.resolve_profile {
         let input = fs::read_to_string(
