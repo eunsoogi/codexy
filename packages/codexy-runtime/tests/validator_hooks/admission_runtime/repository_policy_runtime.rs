@@ -1,6 +1,9 @@
 use super::{TestResult, assert_case, assert_event_case, executable, plugin_root, repository};
 use serde_json::json;
 
+#[path = "github_command_admission.rs"]
+mod github_command_admission;
+
 #[test]
 fn initial_repository_policy_survives_shell_directory_changes() -> TestResult {
     let root = plugin_root();

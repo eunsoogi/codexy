@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from .execution_context import ExecutionContext, git_config
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .repository import UrlRewrite, identity, rewrite_url
+from .repository_policy import worktree_root
 from .shell_context import flag
 
 REMOTE_URL_CONFIG = re.compile(
@@ -104,18 +107,127 @@ def evaluate(
     if arguments is None:
         return applies, None, None
     if push_like:
-        forced = any(
-            arg in {"--force", "--force-with-lease", "--mirror"}
-            or arg.startswith(("--force=", "--force-with-lease=", "--mirror="))
-            or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:])
-            or arg.startswith("+")
-            for arg in arguments
-        )
-        return applies and forced, None, None
-    denied = (invocation.operation == "reset" and "--hard" in arguments) or (
-        invocation.operation == "clean" and flag(arguments, "f", "--force")
+        return applies and _unsafe_push(arguments), None, None
+    denied = (
+        (invocation.operation == "add" and _broad_stage(arguments, invocation.cwd))
+        or (invocation.operation == "reset" and "--hard" in arguments)
+        or (invocation.operation == "clean" and flag(arguments, "f", "--force"))
     )
     return applies and denied, None, None
+
+
+def _unsafe_push(arguments: list[str]) -> bool:
+    return any(
+        arg
+        in {
+            "--delete",
+            "--prune",
+            "--all",
+            "--tags",
+            "--force",
+            "--force-with-lease",
+            "--force-if-includes",
+            "--mirror",
+            "--stdin",
+        }
+        or arg.startswith(
+            (
+                "--delete=",
+                "--prune=",
+                "--all=",
+                "--tags=",
+                "--force=",
+                "--force-with-lease=",
+                "--force-if-includes=",
+                "--mirror=",
+            )
+        )
+        or (
+            arg.startswith("-")
+            and not arg.startswith("--")
+            and any(flag in arg[1:] for flag in "dDAf")
+        )
+        or arg.startswith(":")
+        or arg.startswith("+")
+        for arg in arguments
+    )
+
+
+def _broad_stage(arguments: list[str], cwd: str) -> bool:
+    separator = arguments.index("--") if "--" in arguments else len(arguments)
+    options, operands = [], []
+    for argument in arguments[:separator]:
+        if argument.startswith("-") and argument != "-":
+            options.append(argument)
+        else:
+            operands.append(argument)
+    if separator < len(arguments):
+        operands.extend(arguments[separator + 1 :])
+    if any(
+        arg in {"-A", "-u", "--all", "--update", ".", "./"}
+        or arg.startswith(("--all=", "--update="))
+        or (
+            arg.startswith("-")
+            and not arg.startswith("--")
+            and any(flag in arg[1:] for flag in "Au")
+        )
+        for arg in options
+    ):
+        return True
+    return any(_broad_stage_operand(operand, cwd) for operand in operands)
+
+
+def _broad_stage_operand(operand: str, cwd: str) -> bool:
+    if operand in {".", "./"} or operand.startswith(":"):
+        return True
+    root = worktree_root(Path(cwd))
+    if root is None:
+        return True
+    candidate = Path(operand)
+    if not candidate.is_absolute():
+        candidate = Path(cwd) / candidate
+    try:
+        if candidate.is_dir():
+            return True
+    except OSError:
+        return True
+    lexical_root = _lexical_path(str(root), cwd)
+    lexical_current = _lexical_path(cwd, cwd)
+    lexical_candidate = _lexical_path(operand, cwd)
+    if lexical_candidate == lexical_root or _is_ancestor(
+        lexical_candidate, lexical_current
+    ):
+        return True
+    try:
+        root = root.resolve(strict=False)
+        current = Path(cwd).resolve(strict=False)
+        candidate = Path(operand)
+        if not candidate.is_absolute():
+            candidate = current / candidate
+        candidate = candidate.resolve(strict=False)
+        candidate.relative_to(root)
+        if candidate == root:
+            return True
+    except (OSError, RuntimeError, ValueError):
+        return True
+    try:
+        current.relative_to(candidate)
+    except ValueError:
+        return False
+    return True
+
+
+def _lexical_path(value: str, cwd: str) -> str:
+    """Normalize a native path before filesystem resolution can change its spelling."""
+    path = value if os.path.isabs(value) else os.path.join(cwd, value)
+    return os.path.normcase(os.path.normpath(os.path.abspath(path)))
+
+
+def _is_ancestor(candidate: str, current: str) -> bool:
+    try:
+        return os.path.commonpath((candidate, current)) == candidate
+    except ValueError:
+        return False
 
 
 def explicit_owned(
