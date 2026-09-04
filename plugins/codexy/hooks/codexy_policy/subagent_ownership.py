@@ -46,6 +46,17 @@ _DURABLE_OWNERSHIP = re.compile(
     + r")",
     re.IGNORECASE,
 )
+_DURABLE_BUILD_WRITE = re.compile(
+    r"(?im)(?:"
+    r"(?:^|[.!?;\n]\s*|,\s*(?:and|then|please)\s+)"
+    r"(?:please\s+|must\s+|should\s+)?(?:build|write)\b"
+    r"[^\n;.!?:]{0,70}\b(?:in|on|to|onto|into)\s+(?:the\s+)?"
+    r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
+    r"|(?:^|[.!?;\n]\s*)(?:in|on|to|onto|into)\s+(?:the\s+)?"
+    r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
+    r"[^\n;.!?:]{0,90}\b(?:build|write)\b"
+    r")"
+)
 _DURABLE_OWNERSHIP_KO = re.compile(
     r"(?:"
     + r"(?:소유(?:권|자)?|담당|책임|전담|맡\w*|관리)[^\n,;.!?:]{0,50}"
@@ -106,7 +117,7 @@ def _is_negated(message: str, match: re.Match[str]) -> bool:
 
 
 def _durable_owner_requested(message: str) -> bool:
-    for matcher in (_DURABLE_OWNERSHIP, _DURABLE_OWNERSHIP_KO):
+    for matcher in (_DURABLE_OWNERSHIP, _DURABLE_OWNERSHIP_KO, _DURABLE_BUILD_WRITE):
         for match in matcher.finditer(message):
             if not _is_negated(message, match):
                 return True

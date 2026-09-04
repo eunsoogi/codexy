@@ -119,11 +119,12 @@ fn installed_hook_binds_root_to_child_delivery_to_child_recipient_settings() -> 
     std::fs::write(
         &transcript,
         format!(
-            "{}\n{}\n{}\n{}\n",
+            "{}\n{}\n{}\n{}\n{}\n",
             json!({"type":"session_meta","payload":{"id":PARENT,"session_id":PARENT}}),
             json!({"type":"turn_context","payload":{}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Document the literal <codex_delegation> marker in a root-owned task."}]}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":format!("<codex_delegation><source_thread_id>{PARENT}</source_thread_id><input>Later receipt.</input></codex_delegation>")}]}}),
+            json!({"type":"response_item","payload":{"type":"function_call_output","name":"create_thread","namespace":"codex_app","output":json!({"threadId":CHILD,"parentThreadId":PARENT}).to_string()}}),
         ),
     )?;
     let generic = run_to(&transcript, PARENT, CHILD, "gpt-5.6-luna", "max")?;
@@ -145,5 +146,19 @@ fn installed_hook_binds_root_to_child_delivery_to_child_recipient_settings() -> 
         "tool_input":{"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"medium"}
     }))?;
     assert_denied_with(partial, "MISSING_IDENTITY")?;
+    Ok(())
+}
+
+#[test]
+fn root_delivery_rejects_stale_unrelated_and_mistyped_recipients() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("root.jsonl");
+    std::fs::write(&transcript, root_transcript(PARENT))?;
+    for recipient in [OTHER, "stale-thread-id", "01a03690-a037-7141-af1c-1d7cdb09308"] {
+        assert_denied_with(
+            run_to(&transcript, PARENT, recipient, "gpt-5.6-luna", "max")?,
+            "WRONG_RECIPIENT",
+        )?;
+    }
     Ok(())
 }

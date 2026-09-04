@@ -47,10 +47,18 @@ fn transcript(session: &str, content: Vec<Value>) -> Vec<u8> {
 }
 
 pub(super) fn root_transcript(session: &str) -> Vec<u8> {
-    transcript(
+    let mut bytes = transcript(
         session,
         vec![json!({"type":"input_text","text":"Own the release orchestration."})],
-    )
+    );
+    bytes.extend_from_slice(
+        format!(
+            "{}\n",
+            json!({"type":"response_item","payload":{"type":"function_call_output","name":"create_thread","namespace":"codex_app","output":json!({"threadId":CHILD,"parentThreadId":session}).to_string()}})
+        )
+        .as_bytes(),
+    );
+    bytes
 }
 
 pub(super) fn completed_delivery(

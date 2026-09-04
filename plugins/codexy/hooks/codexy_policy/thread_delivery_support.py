@@ -27,6 +27,10 @@ DELIVERY_TOOLS = frozenset(
         "mcp__codex_app__send_message_to_thread",
     }
 )
+HANDOFF_MARKER = re.compile(
+    r"(?im)^[ \t]*(?:terminal(?:\s+(?:parent|child))?|nonterminal(?:\s+wait)?|"
+    r"idle(?:\s+wait)?|child|parent|structured|status|compaction)\s+handoff\s*:"
+)
 
 
 def authenticated_parent(records: list[dict], session: str) -> str | None:
@@ -109,6 +113,14 @@ def _create_thread_output(record: dict) -> object:
         and item.get("namespace") == "codex_app"
     ):
         return item.get("output")
+    if (
+        item.get("type") == "McpToolCall"
+        and item.get("server") == "codex_app"
+        and item.get("tool")
+        in {"create_thread", "codex_app__create_thread", "mcp__codex_app__create_thread"}
+        and item.get("status") == "completed"
+    ):
+        return item.get("result", item.get("output"))
     return None
 
 
@@ -140,7 +152,7 @@ def delivery_phase(prompt: str) -> str | None:
         return "post-result"
     if "pre-delivery" in lowered:
         return "pre-delivery"
-    if "handoff" in lowered:
+    if HANDOFF_MARKER.search(prompt):
         return "handoff"
     if any(
         marker in lowered

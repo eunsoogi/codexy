@@ -3,8 +3,9 @@
 import json
 from typing import cast
 
-from .envelope import Diagnostic, Request
+from .envelope import Diagnostic, Request, _pairs
 from .thread_delivery_support import (
+    _create_thread_output,
     authenticated_parent,
     duplicate_delivery,
     records as read_records,
@@ -13,6 +14,35 @@ from .thread_delivery_support import (
 FIELDS = ("model", "thinking")
 EXPECTED_CHILD = ("gpt-5.6-luna", "max")
 EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
+_CHILD_ID_KEYS = frozenset(
+    {
+        "threadId",
+        "thread_id",
+        "childId",
+        "child_id",
+        "childThreadId",
+        "child_thread_id",
+        "createdThreadId",
+        "created_thread_id",
+    }
+)
+_PARENT_ID_KEYS = frozenset(
+    {"parentThreadId", "parent_thread_id", "sourceThreadId", "source_thread_id"}
+)
+_CHILD_WRAPPER_KEYS = frozenset(
+    {
+        "child",
+        "content",
+        "createdThread",
+        "created_thread",
+        "data",
+        "result",
+        "structuredContent",
+        "structured_content",
+        "text",
+        "thread",
+    }
+)
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic:
@@ -46,9 +76,9 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
 
     route = (data["model"], data["thinking"])
     if parent is None:
-        # A root task may deliver only to a distinct child using the child's
-        # explicitly selected model/thinking pair. It must never route to itself.
-        if recipient == session:
+        # A root task may deliver only to a child authenticated by native
+        # create_thread provenance using the child's route settings.
+        if recipient == session or recipient not in _authenticated_children(records, session):
             return Diagnostic("WRONG_RECIPIENT", _ROOT_WRONG_RECIPIENT)
         if route != EXPECTED_CHILD:
             if data["model"] != EXPECTED_CHILD[0]:
@@ -64,6 +94,55 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
         if data["thinking"] != EXPECTED_PARENT[1]:
             return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
     return duplicate_delivery(records, data)
+
+
+def _authenticated_children(records: list[dict], session: str) -> frozenset[str]:
+    children: set[str] = set()
+    for record in records:
+        payload = record.get("payload")
+        if record.get("type") == "event_msg" and isinstance(payload, dict):
+            owner = payload.get("thread_id", payload.get("threadId"))
+            if owner is not None and owner != session:
+                continue
+        children.update(_child_ids(_create_thread_output(record), session))
+    return frozenset(children)
+
+
+def _child_ids(output: object, session: str) -> set[str]:
+    pending: list[object] = [output]
+    children: set[str] = set()
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            try:
+                current = json.loads(current, object_pairs_hook=_pairs)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+        if isinstance(current, list):
+            pending.extend(current)
+            continue
+        if not isinstance(current, dict):
+            continue
+        parents = [current[key] for key in _PARENT_ID_KEYS if key in current]
+        if parents and any(
+            not isinstance(parent, str) or parent.strip() != session for parent in parents
+        ):
+            continue
+        for key in _CHILD_ID_KEYS:
+            child = current.get(key)
+            if isinstance(child, str) and child.strip() and child.strip() != session:
+                children.add(child.strip())
+        for key in _CHILD_WRAPPER_KEYS:
+            nested = current.get(key)
+            if isinstance(nested, (dict, list, str)):
+                pending.append(nested)
+        for key in ("child", "thread"):
+            nested = current.get(key)
+            if isinstance(nested, dict):
+                child = nested.get("id")
+                if isinstance(child, str) and child.strip() and child.strip() != session:
+                    children.add(child.strip())
+    return children
 
 
 _ROUTE = "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
@@ -82,8 +161,10 @@ _WRONG_RECIPIENT = (
     "then MUST correct the route and MUST retry once. MUST NOT guess a parent ID."
 )
 _ROOT_WRONG_RECIPIENT = (
-    "Wrong recipient route; root-to-child delivery MUST target a distinct child "
-    f"and MUST use model='{EXPECTED_CHILD[0]}' and thinking='{EXPECTED_CHILD[1]}', "
+    "Wrong recipient route; root-to-child delivery MUST target a child proven by "
+    "this root's native create_thread record, MUST NOT guess a stale or unrelated "
+    "threadId, and MUST use "
+    f"model='{EXPECTED_CHILD[0]}' and thinking='{EXPECTED_CHILD[1]}', "
     "then MUST correct the route and MUST retry once."
 )
 _UNSUPPORTED_MODEL = (

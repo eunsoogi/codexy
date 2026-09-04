@@ -112,11 +112,12 @@ fn installed_hook_preserves_root_to_child_and_rejects_partial_context() -> TestR
     std::fs::write(
         &transcript,
         format!(
-            "{}\n{}\n{}\n{}\n",
+            "{}\n{}\n{}\n{}\n{}\n",
             json!({"type":"session_meta","payload":{"id":PARENT,"session_id":PARENT}}),
             json!({"type":"turn_context","payload":{}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Document the literal <codex_delegation> marker in a root-owned task."}]}}),
             json!({"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":format!("<codex_delegation><source_thread_id>{PARENT}</source_thread_id><input>Later receipt.</input></codex_delegation>")}]}}),
+            json!({"type":"response_item","payload":{"type":"function_call_output","name":"create_thread","namespace":"codex_app","output":json!({"threadId":CHILD,"parentThreadId":PARENT}).to_string()}}),
         ),
     )?;
     let generic = run_to(&transcript, PARENT, CHILD, "gpt-5.6-luna", "max")?;

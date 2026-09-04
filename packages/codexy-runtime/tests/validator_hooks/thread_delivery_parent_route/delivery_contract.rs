@@ -140,3 +140,19 @@ fn post_result_receipts_require_one_stable_transition_key() -> TestResult {
     )?;
     Ok(())
 }
+
+#[test]
+fn ordinary_handoff_wording_is_not_a_control_plane_delivery() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("child.jsonl");
+    std::fs::write(&transcript, child_transcript(CHILD, &[PARENT]))?;
+    assert_admitted(run_route_prompt(
+        &transcript,
+        CHILD,
+        PARENT,
+        "gpt-5.6-sol",
+        "medium",
+        "Search for references to the handoff function",
+    )?)?;
+    Ok(())
+}
