@@ -21,7 +21,7 @@ fn authoritative_and_installed_hooks_reject_missing_identity() -> TestResult {
         "tool_name":"codex_app__send_message_to_thread",
         "tool_input":{"threadId":PARENT,"model":"gpt-5.6-luna","thinking":"max"}
     });
-    assert_denied(run_payload(payload.clone())?)?;
+    assert_denied(run_payload(payload.clone())?, "MISSING_IDENTITY")?;
 
     let temp = tempfile::tempdir()?;
     let installed = temp.path().join("installed");
@@ -29,14 +29,14 @@ fn authoritative_and_installed_hooks_reject_missing_identity() -> TestResult {
         codexy_runtime::paths::repository_root().join("plugins/codexy"),
         &installed,
     )?;
-    assert_denied(run_payload_at(&installed, payload)?)?;
+    assert_denied(run_payload_at(&installed, payload)?, "MISSING_IDENTITY")?;
     let malformed = json!({
         "hook_event_name":"PreToolUse",
         "tool_name":"codex_app__send_message_to_thread",
         "tool_input":{"threadId":PARENT,"thinking":""}
     });
-    assert_denied(run_payload(malformed.clone())?)?;
-    assert_denied(run_payload_at(&installed, malformed)?)?;
+    assert_denied(run_payload(malformed.clone())?, "MISSING_IDENTITY")?;
+    assert_denied(run_payload_at(&installed, malformed)?, "MISSING_IDENTITY")?;
     Ok(())
 }
 
@@ -46,14 +46,14 @@ fn installed_hook_preserves_authenticated_parent_route() -> TestResult {
     let transcript = temp.path().join("child.jsonl");
     std::fs::write(&transcript, child_transcript(CHILD, &[PARENT]))?;
 
-    let wrong = run(&transcript, "gpt-5.6-luna", "max")?;
+    let wrong = run_to(&transcript, CHILD, OTHER, "gpt-5.6-sol", "medium")?;
     assert!(wrong.status.success(), "hook runtime failed");
     assert!(!wrong.stdout.is_empty(), "wrong parent route was admitted");
     let denial: Value = serde_json::from_slice(&wrong.stdout)?;
     assert!(
         denial["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("EXPECTED_RECIPIENT")),
+            .is_some_and(|reason| reason.contains("WRONG_RECIPIENT")),
         "wrong parent route was admitted: {}",
         String::from_utf8_lossy(&wrong.stdout)
     );
@@ -79,29 +79,28 @@ fn installed_hook_fails_closed_for_untrusted_child_context() -> TestResult {
                 delegation(OTHER, "Second.")
             ),
         ),
-        child_transcript(CHILD, &[OTHER]),
         b"not-json\n".to_vec(),
     ] {
         std::fs::write(&transcript, bytes)?;
-        assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?)?;
+        assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     std::fs::File::create(&transcript)?.set_len(32 * 1024 * 1024 + 1)?;
-    assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?)?;
-    assert_denied(run(temp.path(), "gpt-5.6-sol", "medium")?)?;
+    assert_denied(run(&transcript, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+    assert_denied(run(temp.path(), "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     #[cfg(unix)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::unix::fs::symlink(&transcript, &link)?;
-        assert_denied(run(&link, "gpt-5.6-sol", "medium")?)?;
+        assert_denied(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
         let fifo = temp.path().join("fifo.jsonl");
         assert!(Command::new("mkfifo").arg(&fifo).status()?.success());
-        assert_denied(run(&fifo, "gpt-5.6-sol", "medium")?)?;
+        assert_denied(run(&fifo, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     #[cfg(windows)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::windows::fs::symlink_file(&transcript, &link)?;
-        assert_denied(run(&link, "gpt-5.6-sol", "medium")?)?;
+        assert_denied(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     Ok(())
 }
@@ -128,7 +127,7 @@ fn installed_hook_preserves_root_to_child_and_rejects_partial_context() -> TestR
         "session_id":PARENT,
         "tool_input":{"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"medium"}
     }))?;
-    assert_denied(partial)?;
+    assert_denied(partial, "MISSING_IDENTITY")?;
     Ok(())
 }
 
@@ -219,13 +218,13 @@ fn launcher(root: &Path) -> Command {
     Command::new(root.join("hooks/codexy-thread-delivery.sh"))
 }
 
-fn assert_denied(output: std::process::Output) -> TestResult {
+fn assert_denied(output: std::process::Output, expected: &str) -> TestResult {
     assert!(output.status.success(), "hook runtime failed");
     let denial: Value = serde_json::from_slice(&output.stdout)?;
     assert!(
         denial["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("EXPECTED_RECIPIENT")),
+            .is_some_and(|reason| reason.contains(expected)),
         "untrusted child context was admitted"
     );
     Ok(())

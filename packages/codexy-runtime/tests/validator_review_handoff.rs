@@ -33,7 +33,15 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         "unresolved finding",
         "full",
         "delta",
-        "connector_repair",
+        "terminal_review_count",
+        "terminal_review_limit",
+        "terminal_review_history",
+        "required_current_head",
+        "mandatory_base_integration",
+        "in_scope_contract_root_repair",
+        "qualifying_change",
+        "evidence commit",
+        "persisted prior PR snapshot",
     ] {
         assert!(
             handoff.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),

@@ -14,6 +14,8 @@ pub(super) struct Profile {
     pub(super) reviewer: Option<Reviewer>,
     pub(super) full_review_limit: u8,
     pub(super) delta_recheck_limit: u8,
+    pub(super) terminal_review_limit: u8,
+    pub(super) post_cap_re_review_limit: u8,
     pub(super) max_blocking_findings: u8,
 }
 
@@ -54,6 +56,8 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
         "reviewer": profile.reviewer,
         "full_review_limit": profile.full_review_limit,
         "delta_recheck_limit": profile.delta_recheck_limit,
+        "terminal_review_limit": profile.terminal_review_limit,
+        "post_cap_re_review_limit": profile.post_cap_re_review_limit,
     });
     if let Some(prior) = request.prior_profile {
         if rank(&prior) >= rank(route["profile"].as_str().unwrap_or_default()) {
@@ -81,6 +85,8 @@ fn profiles() -> BTreeMap<String, Profile> {
                 reviewer: None,
                 full_review_limit: 0,
                 delta_recheck_limit: 0,
+                terminal_review_limit: 0,
+                post_cap_re_review_limit: 0,
                 max_blocking_findings: 0,
             },
         ),
@@ -94,6 +100,8 @@ fn profiles() -> BTreeMap<String, Profile> {
                 }),
                 full_review_limit: 1,
                 delta_recheck_limit: 1,
+                terminal_review_limit: 3,
+                post_cap_re_review_limit: 1,
                 max_blocking_findings: 3,
             },
         ),
@@ -107,6 +115,8 @@ fn profiles() -> BTreeMap<String, Profile> {
                 }),
                 full_review_limit: 1,
                 delta_recheck_limit: 1,
+                terminal_review_limit: 3,
+                post_cap_re_review_limit: 1,
                 max_blocking_findings: u8::MAX,
             },
         ),

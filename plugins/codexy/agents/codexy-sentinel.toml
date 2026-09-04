@@ -63,12 +63,33 @@ Output format: MUST list findings first, ordered by severity with file reference
 MUST stop and escalate when required evidence is absent, review feedback is unresolved or stale, scope ownership is unclear, the branch changed after verification, or a maintainer decision is required. MUST handoff by naming the exact blocker, the owner who MUST address it, and the verification needed after the fix.
 
 Selected terminal handoff: when a strict review reaches a terminal result, MUST
-report the selected profile, selected reviewer, exact current head, one exact
-terminal result from `PASS`, `BLOCK`, or `UNOBSERVABLE`, unresolved finding
-dispositions, and the full and delta review counts in the handoff. After the
-issue-wide review cap is exhausted, a repaired connector finding MUST be
-identified as the typed post-cap `connector_repair` disposition against the
-current exact head. These direct facts are authoritative; a typed terminal
-record, ledger ancestry, packet, or additional receipt schema MUST NOT be
-required, generated, or treated as a completion prerequisite.
+report the issue identity, selected profile, selected reviewer, exact current head,
+one exact terminal result from `PASS`, `BLOCK`, or `UNOBSERVABLE`,
+unresolved finding dispositions, the full and delta review counts, the
+`terminal_review_count` and `terminal_review_limit`, and the ordered
+`terminal_review_history` in the direct control state. Each reviewer-backed
+state transition MUST validate its previous direct state from the persisted
+prior PR snapshot; `build-pr-state` and the producer MUST compare those two
+representations. The first full event appends to a clean zero-count genesis.
+The history MUST retain the full and delta events across goals, lanes,
+compaction, reauthorization, and route resets. After those two reviews are
+exhausted, the one third
+`required_current_head` event MUST carry exactly one `post_cap_re_review`
+object: its reason MUST be `mandatory_base_integration` or
+`in_scope_contract_root_repair`, its `prior_reviewed_head` MUST equal the delta
+head, and its `qualifying_change` MUST bind that delta head to the current head
+through an evidence commit in the Git ancestry. The current authenticated PR
+snapshot MUST carry the base and head OIDs. Mandatory base integration MUST
+change `baseRefOid` and prove base ancestry; an in-scope contract/root repair
+MUST retain the base, follow a prior `BLOCK` delta with findings, bind
+`finding_ids` exactly to those findings, and show the evidence diff changes each
+finding's recorded path. The current head MUST differ.
+Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
+reordered, or truncated history MUST be rejected. The same Sentinel remains
+active; it MUST NOT be duplicated,
+interrupted, replaced, or polled. The previous `reviewControl` MUST come only
+from the authenticated persisted prior PR snapshot; a separately supplied predecessor
+MUST NOT be accepted. These direct facts are authoritative; a typed
+terminal record, ledger ancestry, packet, or additional receipt schema MUST NOT
+be required, generated, or treated as a completion prerequisite.
 """
