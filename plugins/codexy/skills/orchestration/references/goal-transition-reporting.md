@@ -18,6 +18,21 @@ same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
 as deduplicated; it MUST NOT imply a second goal call.
 
+## Delegated assignment authorization
+
+A parent-supplied assignment that names the objective and success criteria is
+the child's authorization to create the matching finite goal. An issue-sized
+handoff with scope, verification, and a stop condition MUST NOT require a
+second `use goal` instruction. A prohibition on available goal tools in that
+same non-trivial implementation assignment is contradictory and MUST be
+rejected. Ambiguous discussion, incidental context, and unassigned suggestions
+MUST NOT authorize goal creation.
+
+The child MUST derive one `Authorized goal objective:` record from that
+assignment before the goal transition. The create call and active readback MUST
+match it exactly. This derived record is evidence of the existing assignment,
+not a second authorization phrase.
+
 ## Runtime Polling Boundary
 
 Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
