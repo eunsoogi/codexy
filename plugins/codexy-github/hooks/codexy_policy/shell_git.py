@@ -184,6 +184,14 @@ def _broad_stage_operand(operand: str, cwd: str) -> bool:
     root = worktree_root(Path(cwd))
     if root is None:
         return True
+    candidate = Path(operand)
+    if not candidate.is_absolute():
+        candidate = Path(cwd) / candidate
+    try:
+        if candidate.is_dir():
+            return True
+    except OSError:
+        return True
     lexical_root = _lexical_path(str(root), cwd)
     lexical_current = _lexical_path(cwd, cwd)
     lexical_candidate = _lexical_path(operand, cwd)
