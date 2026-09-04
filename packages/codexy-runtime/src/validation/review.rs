@@ -41,17 +41,20 @@ pub fn check_review_economics(
     review_control::check_economics(plugin_root, repository_root, economics)
 }
 
-/// Builds PR state after validating direct current-head review state.
+/// Builds PR state after validating direct current-head review state against
+/// authenticated current and previous PR snapshots.
 ///
 /// # Errors
 ///
 /// Returns an error for malformed state or stale direct review evidence.
 pub fn build_review_pr_state(
     plugin_root: &Path,
+    repository_root: &Path,
     base: &str,
     control: &str,
+    previous: &str,
 ) -> Result<serde_json::Value> {
-    review_control::build_pr_state(plugin_root, base, control)
+    review_control::build_pr_state(plugin_root, repository_root, base, control, previous)
 }
 
 /// Returns direct review state from the compatibility producer entry point.

@@ -3,6 +3,12 @@ use std::{fs, process::Command};
 use crate::support::TestResult;
 use serde_json::json;
 
+#[path = "support/review_control_direct_state.rs"]
+mod direct_state;
+
+const BASE_OID: &str = "f6bc6e1fb67704d24b5ef80439b9a2c336e8718b";
+const HEAD_OID: &str = "2750e1bc9c88b3651f9722d5467d6a0f676ceef1";
+
 #[test]
 fn review_control_producer_writes_only_direct_state() -> TestResult {
     let temporary = tempfile::tempdir()?;
@@ -11,16 +17,14 @@ fn review_control_producer_writes_only_direct_state() -> TestResult {
     fs::write(
         &input,
         serde_json::to_vec(&json!({
-            "control_state": {
-                "schema": "codexy.review-control-state.v1",
-                "profile": "strict",
-                "reviewer": {"name": "codexy-sentinel"},
-                "reviewed_head": "head",
-                "terminal_result": "PASS",
-                "unresolved_findings": [],
-                "full_review_count": 1,
-                "delta_review_count": 0,
-            }
+            "control_state": direct_state::strict_control(725, HEAD_OID),
+            "current_pr_state": direct_state::pr_snapshot(725, BASE_OID, HEAD_OID, None),
+            "previous_pr_state": direct_state::pr_snapshot(
+                725,
+                BASE_OID,
+                BASE_OID,
+                Some(direct_state::strict_genesis(725))
+            )
         }))?,
     )?;
     let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
@@ -55,11 +59,17 @@ fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
 #[test]
 fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
     for result in ["PASS", "BLOCK"] {
-        let record = format!(
-            r#"{{"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[],"full_review_count":1,"delta_review_count":0}}"#
-        );
+        let record = format!(r#"{{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{{"id":"strict-full-1","kind":"full","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"reviewed_head":"head","terminal_result":"{result}","unresolved_findings":[]}}]}}"#);
         let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(&record))?;
         assert!(output.status.success(), "exact {result} must be a typed terminal: {}", String::from_utf8_lossy(&output.stderr));
     }
+    Ok(())
+}
+
+#[test]
+fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
+    let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{"id":"strict-full-1","kind":"full","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"pass","unresolved_findings":[]}]}"#;
+    let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
+    assert!(!output.status.success(), "lowercase terminal result must not be typed evidence");
     Ok(())
 }

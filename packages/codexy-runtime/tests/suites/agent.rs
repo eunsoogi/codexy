@@ -78,3 +78,9 @@ mod validator_review_handoff;
 
 #[path = "../validator_pr_state_capture.rs"]
 mod validator_pr_state_capture;
+
+#[path = "../validator_post_cap_review.rs"]
+mod validator_post_cap_review;
+
+#[path = "../validator_post_cap_review_negatives.rs"]
+mod validator_post_cap_review_negatives;

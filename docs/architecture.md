@@ -179,18 +179,27 @@ flowchart TD
         verdict -->|BLOCK| delta["One same-reviewer delta recheck"]
         delta --> observation
         verdict -->|UNOBSERVABLE| blocked["Readiness remains blocked"]
-        verdict -->|PASS| readiness["Check PR title, labels, review state, and completion handoff"]
+        verdict -->|PASS| head_gate{"Exact-head proof still current?"}
+        head_gate -->|Yes| readiness["Check PR title, labels, review state, and completion handoff"]
+        head_gate -->|No: count=2 and required base/root change| post_cap["One same-reviewer required_current_head re-review"]
+        head_gate -->|No: churn, duplicate, or other change| blocked
+        post_cap --> observation
         readiness --> delivery["PR readiness or explicit draft/wait handoff"]
         delivery --> finish["Complete the goal only at the requested stop condition"]
     end
 ```
 
-The owning lane keeps review-response fixes on the same branch. `PENDING` and
-`RUNNING` are non-terminal observations, so the same reviewer stays active and
-no replacement cycle starts. A `BLOCK` starts a fresh repair proof and the one
-permitted same-reviewer delta recheck; an `UNOBSERVABLE` result is not approval.
-Opening a PR is only a terminal state when the request explicitly says to stop,
-wait, or leave it open.
+The owning lane keeps review-response fixes on the same branch; `PENDING`/`RUNNING` retain the reviewer, while `BLOCK` starts a fresh proof and one same-reviewer
+delta recheck. Once full and delta are consumed, one `required_current_head`
+re-review may consume the third/final verdict only when mandatory base integration
+or an in-scope contract/root repair moved the head; typed reason, prior delta
+head, qualifying heads, and ancestry evidence stay in direct control state.
+The validator uses authenticated current/previous snapshots from canonical GitHub readback, derives the predecessor only from previous `reviewControl`, and
+preserves current head/base identity. Base integration must change/prove base
+ancestry; root repair must retain base, follow a prior `BLOCK` with findings, and
+bind evidence to those IDs. Churn, duplicate/unchanged heads, and review four
+remain blocked. `UNOBSERVABLE` is not approval; opening a PR is terminal only
+when explicitly requested.
 
 ## Plugin and runtime discovery
 
@@ -226,17 +235,15 @@ flowchart LR
 
 ## Keeping the guide current
 
-The focused architecture inventory test reads the packaged agent catalog and
-TOMLs, every skill frontmatter block, and `.mcp.json`, then compares them with
-the three tables above. It rejects omitted or duplicate entries and stale agent
-model or reasoning values. Run it with:
+The focused architecture inventory test reads packaged agent catalog/TOMLs,
+skill frontmatter, and `.mcp.json`, compares them with the three tables, rejects
+omitted or duplicate entries and stale agent model/reasoning values. Run:
 
 ```sh
 cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
-The repository's broader plugin validator remains responsible for manifest,
-agent catalog, skill frontmatter, MCP, and LSP configuration integrity:
+The broader plugin validator checks manifest, agent catalog, skill frontmatter, MCP, and LSP configuration integrity:
 
 ```sh
 scripts/validate-plugin-config.sh --check

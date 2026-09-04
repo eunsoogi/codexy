@@ -21,8 +21,12 @@
 ## Issue Review Ledger
 
 - issue:
-- terminal_review_count (PASS/BLOCK/UNOBSERVABLE only):
-- reviewer task / exact head / terminal verdict for each counted review:
+- terminal_review_count (PASS/BLOCK/UNOBSERVABLE only, maximum three):
+- terminal_review_limit (must remain three for reviewer-backed profiles):
+- terminal_review_history (ordered full, delta, and optional required_current_head events):
+- authoritative prior PR snapshot / exact direct-state match confirmed:
+- exact history prefix and +1 count transition confirmed:
+- reviewer / exact head / terminal verdict for each counted review:
 - remaining_reviews:
 - final-repair-no-review state after a third BLOCK:
 - compaction, fresh-goal, and reauthorization carry-forward confirmed:
@@ -78,6 +82,11 @@ task/thread
 - terminal proof:
 - post-third disposition (not applicable, PASS, final repair, or maintainer
   disposition):
+- post-cap reason (mandatory_base_integration or in_scope_contract_root_repair):
+- prior reviewed head (must equal the delta head):
+- qualifying-change from/to heads and evidence commit in Git ancestry:
+- authenticated current/previous PR snapshots, baseRefOid transition, and
+  finding_ids linkage when root repair applies:
 - fourth profile review: prohibited after the third terminal verdict
 - remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
