@@ -82,24 +82,22 @@ pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
 }
 
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
-    let issue_number = control
-        .get("issue_number")
-        .and_then(Value::as_u64)
-        .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
+    let light = control.get("profile").and_then(Value::as_str) == Some("light");
     let head = control
         .get("reviewed_head")
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty())
-        .or_else(|| {
-            (control.get("profile").and_then(Value::as_str) == Some("light"))
-                .then_some("light-review")
-        })
+        .or_else(|| light.then_some("light-review"))
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    check(
-        plugin_root,
-        &json!({"number": issue_number, "headRefOid": head, "reviewControl": control}),
-        false,
-    )
+    let mut state = json!({"headRefOid": head, "reviewControl": control});
+    if !light {
+        let issue_number = control
+            .get("issue_number")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
+        state["number"] = json!(issue_number);
+    }
+    check(plugin_root, &state, false)
 }
 
 pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<(), String> {

@@ -1,6 +1,6 @@
 use std::{fs, process::Command};
 
-use crate::support::TestResult;
+use crate::support::{FixtureCommand, TestResult};
 use serde_json::json;
 
 #[path = "support/review_control_direct_state.rs"]
@@ -39,6 +39,83 @@ fn review_control_producer_writes_only_direct_state() -> TestResult {
     assert!(produced.get("control_state").is_none());
     assert!(!produced.get("packet").is_some());
     assert!(!produced.get("ledger").is_some());
+    Ok(())
+}
+
+#[test]
+fn review_control_producer_accepts_light_controls_without_reviewer_state() -> TestResult {
+    for control in [
+        json!({"schema": "codexy.review-control-state.v1", "profile": "light"}),
+        json!({"schema": "codexy.review-control-state.v1", "profile": "light", "reviewer": null}),
+    ] {
+        let temporary = tempfile::tempdir()?;
+        let input = temporary.path().join("input.json");
+        let output = temporary.path().join("control.json");
+        let expected = control.clone();
+        fs::write(
+            &input,
+            serde_json::to_vec(&json!({"control_state": control}))?,
+        )?;
+        let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+            .args(["--produce-review-control", "--input"])
+            .arg(&input)
+            .args(["--output"])
+            .arg(&output)
+            .status()?;
+        assert!(result.success(), "light control must remain a valid route");
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&fs::read(output)?)?,
+            expected
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn build_pr_state_skips_review_transition_for_light_controls() -> TestResult {
+    for control in [
+        json!({"schema": "codexy.review-control-state.v1", "profile": "light"}),
+        json!({"schema": "codexy.review-control-state.v1", "profile": "light", "reviewer": null}),
+    ] {
+        let temporary = tempfile::tempdir()?;
+        let current = temporary.path().join("current-pr-state.json");
+        let control_path = temporary.path().join("review-control.json");
+        let previous = temporary.path().join("previous-pr-state.json");
+        let output = temporary.path().join("pr-state.json");
+        fs::write(
+            &current,
+            serde_json::to_vec(&direct_state::pr_snapshot(725, BASE_OID, HEAD_OID, None))?,
+        )?;
+        fs::write(&control_path, serde_json::to_vec(&control)?)?;
+        fs::write(
+            &previous,
+            serde_json::to_vec(&direct_state::pr_snapshot(725, BASE_OID, BASE_OID, None))?,
+        )?;
+        let mut command = FixtureCommand::new(
+            codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
+        );
+        command
+            .arg("--base-pr-state-file")
+            .arg_path(&current)
+            .arg("--review-control-state-file")
+            .arg_path(&control_path)
+            .arg("--previous-pr-state-file")
+            .arg_path(&previous)
+            .arg("--output")
+            .arg_path(&output)
+            .env_path(
+                "CODEXY_REVIEW_CONTROL_BIN",
+                env!("CARGO_BIN_EXE_codexy-review-control"),
+            );
+        let result = command.output()?;
+        assert!(
+            result.status.success(),
+            "build-pr-state must preserve light controls: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let state: serde_json::Value = serde_json::from_slice(&fs::read(output)?)?;
+        assert_eq!(state["reviewControl"], control);
+    }
     Ok(())
 }
 

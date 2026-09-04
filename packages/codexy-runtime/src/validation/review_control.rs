@@ -62,8 +62,16 @@ pub(super) fn build_pr_state(
     }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
-    transition::check_with_repository(plugin_root, repository_root, &previous, &current, &control)
+    if control.get("profile").and_then(Value::as_str) != Some("light") {
+        transition::check_with_repository(
+            plugin_root,
+            repository_root,
+            &previous,
+            &current,
+            &control,
+        )
         .map_err(anyhow::Error::msg)?;
+    }
     let mut state = current;
     let object = state
         .as_object_mut()

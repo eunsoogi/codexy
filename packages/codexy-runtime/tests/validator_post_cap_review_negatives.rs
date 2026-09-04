@@ -106,6 +106,43 @@ fn same_base_oid_optional_churn_is_rejected() -> TestResult {
 }
 
 #[test]
+fn post_cap_re_review_accepts_qualifying_commit_equal_to_current_head() -> TestResult {
+    let mandatory = direct_state::post_cap_control(
+        145,
+        FULL_HEAD_145,
+        DELTA_HEAD_145,
+        direct_state::SYNTHETIC_INTEGRATION_EVIDENCE,
+    );
+    let root = direct_state::post_cap_control_with_evidence(
+        873,
+        FULL_HEAD_145,
+        DELTA_HEAD_145,
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
+        "in_scope_contract_root_repair",
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
+    );
+    for (control, previous_base, current_base) in [
+        (mandatory, PREVIOUS_BASE_145, CURRENT_BASE_145),
+        (root, PREVIOUS_BASE_145, PREVIOUS_BASE_145),
+    ] {
+        let state = post_cap::build_pr_state(&control, previous_base, current_base)?;
+        assert_eq!(state["reviewControl"]["terminal_review_count"], 3);
+        assert_eq!(
+            state["reviewControl"]["terminal_review_history"]
+                .as_array()
+                .map(|history| history.len()),
+            Some(3)
+        );
+        assert_eq!(
+            state["headRefOid"],
+            state["reviewControl"]["post_cap_re_review"]["qualifying_change"]
+                ["evidence_commit"]
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn root_repair_without_prior_block_and_findings_is_rejected() -> TestResult {
     let control = direct_state::post_cap_control_with_findings(
         145,

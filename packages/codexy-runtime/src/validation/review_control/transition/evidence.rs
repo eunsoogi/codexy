@@ -61,9 +61,9 @@ pub(super) fn check(
     ] {
         require_commit(value, label)?;
     }
-    if evidence == from || evidence == to {
+    if evidence == from {
         return Err(
-            "review control transition evidence commit must be an intermediate commit".into(),
+            "review control transition evidence commit must follow the prior delta head".into(),
         );
     }
     check_ancestor(repository_root, from, evidence, "prior delta to evidence")?;
