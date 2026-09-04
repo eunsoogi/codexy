@@ -24,6 +24,8 @@ mod graphql_admission;
 mod shell_context_regressions;
 #[path = "validator_hooks/thread_delivery_parent_route.rs"]
 mod thread_delivery_parent_route;
+#[path = "validator_hooks/thread_delivery_support.rs"]
+mod thread_delivery_support;
 #[path = "validator_hooks/thread_delivery_diagnostics.rs"]
 mod thread_delivery_diagnostics;
 #[path = "validator_hooks/thread_delivery_missing_fields.rs"]

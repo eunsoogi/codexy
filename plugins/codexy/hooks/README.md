@@ -5,18 +5,24 @@ before invoking each configured concern launcher. The hooks are stateless: a
 permitted operation writes zero bytes; a denied operation emits only the
 official event-native denial schema with its concern's diagnostic family.
 
-The installed Codexy plugin activates thread-delivery metadata and
-child-thread-creation admission requiring native, non-empty `model` and
-`thinking` fields. The upstream orchestration resolver selects generic,
-explicit, fallback, and named-role pairs; the native host owns the callable
-pair, and this hook does not infer or authenticate route provenance. The
-installed Codexy GitHub plugin activates generic GitHub-command and destructive
-shell/Git admission through its own `${PLUGIN_ROOT}` hook manifest. A trusted
-repository's `.codex/hooks.json` activates only its repository-specific issue,
-pull-request, merge, and release governance. `PreToolUse` and
-`PermissionRequest` bind the same concern owners; matching handlers are
-independent and any denial is conservative. Malformed governed input fails
-visibly rather than guessing.
+The installed Codexy plugin activates thread-delivery admission through a
+bounded, host-authenticated `codexy_thread_delivery` envelope. The envelope
+binds the current `session_id`, the requested `threadId`, the direction, and
+the target's explicit model/thinking pair. Root-to-child delivery requires
+`gpt-5.6-luna`/`max`; child-to-parent delivery requires
+`gpt-5.6-sol`/`medium`. Missing, malformed, ambiguous, or mismatched metadata
+fails closed. This hook never opens `transcript_path` and never uses a prompt,
+message body, or other conversation content as route authority. The native
+host owns production of the authenticated envelope.
+
+The child-thread-creation concern still requires native, non-empty `model` and
+`thinking` fields. The installed Codexy GitHub plugin activates generic
+GitHub-command and destructive shell/Git admission through its own
+`${PLUGIN_ROOT}` hook manifest. A trusted repository's `.codex/hooks.json`
+activates only its repository-specific issue, pull-request, merge, and release
+governance. `PreToolUse` and `PermissionRequest` bind the same concern owners;
+matching handlers are independent and any denial is conservative. Malformed
+governed input fails visibly rather than guessing.
 
 The launchers run Python isolated from user configuration and never install,
 cache, update, or mutate user state. Their configured outer hook timeout bounds

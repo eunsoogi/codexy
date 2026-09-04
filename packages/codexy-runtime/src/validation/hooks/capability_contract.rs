@@ -23,7 +23,7 @@ const CONCERNS: &[Expected] = &[
     Expected {
         id: "thread-delivery",
         trigger: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
-        input: "codexy.hooks.thread-delivery.v1",
+        input: "codexy.hooks.thread-delivery.v2",
         launcher: "codexy-thread-delivery",
         diagnostic: "CODEXY_THREAD_DELIVERY_",
     },

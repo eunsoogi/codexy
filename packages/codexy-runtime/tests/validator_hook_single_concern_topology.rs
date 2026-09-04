@@ -124,10 +124,12 @@ fn capability_contract_accounts_for_every_concern_once()
         assert_eq!(actual["trigger"], expected.matcher);
         assert_eq!(actual["diagnosticFamily"], expected.diagnostic);
         assert_eq!(actual["events"], serde_json::json!(EVENTS));
-        assert_eq!(
-            actual["inputContract"],
-            format!("codexy.hooks.{}.v1", expected.id)
-        );
+        let input_contract = if expected.id == "thread-delivery" {
+            "codexy.hooks.thread-delivery.v2"
+        } else {
+            "codexy.hooks.child-thread-creation.v1"
+        };
+        assert_eq!(actual["inputContract"], input_contract);
         assert_eq!(
             actual["entrypoints"],
             serde_json::json!([

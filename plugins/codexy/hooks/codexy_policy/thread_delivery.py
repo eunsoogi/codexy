@@ -1,199 +1,165 @@
-"""Authenticated recipient-route admission for Codex task delivery."""
+"""Thread-delivery admission from an authenticated host routing envelope."""
 
-import json
-import os
-import re
-import stat
+from __future__ import annotations
+
 from typing import cast
 
-from .envelope import Diagnostic, Request, _pairs
+from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
-EXPECTED = ("gpt-5.6-sol", "medium")
-MAX_TRANSCRIPT = 32 * 1024 * 1024
-DELEGATION = re.compile(
-    r"<codex_delegation>\s*<source_thread_id>([^<]+)</source_thread_id>"
-    r"\s*<input>.*?</input>\s*</codex_delegation>",
-    re.DOTALL,
+EXPECTED_CHILD = ("gpt-5.6-luna", "max")
+EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
+ROUTING_SCHEMA = "codexy.thread-delivery.v2"
+ROUTING_FIELDS = frozenset(
+    {
+        "schema",
+        "authenticated",
+        "direction",
+        "sender_thread_id",
+        "target_thread_id",
+        "target_model",
+        "target_thinking",
+    }
 )
+DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic:
     session = request.session_id
-    transcript = request.transcript_path
-    if session is None and transcript is None:
+    if not _non_empty_string(session):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
-    if (
-        not isinstance(session, str)
-        or not session.strip()
-        or not isinstance(transcript, str)
-        or not transcript.strip()
-    ):
-        return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
-    try:
-        parent = _authenticated_parent(transcript, session)
-    except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
-        return Diagnostic("UNTRUSTED_CONTEXT", _UNTRUSTED_CONTEXT)
+    metadata = _routing_metadata(
+        request.routing_metadata,
+        request.routing_metadata_present,
+    )
+    if isinstance(metadata, Diagnostic):
+        return metadata
+    metadata = cast(dict[str, object], metadata)
+    direction = cast(str, metadata["direction"])
+
     data = request.tool_input
     if not isinstance(data, dict):
-        return _missing_field_diagnostic(list(FIELDS), parent is not None)
+        return _missing_field_diagnostic(list(FIELDS), direction)
     data = cast(dict[str, object], data)
     missing = _missing_fields(data)
     if missing:
-        return _missing_field_diagnostic(missing, parent is not None)
-    if parent is None:
-        return False
+        return _missing_field_diagnostic(missing, direction)
+
     recipient = data.get("threadId")
-    if recipient != parent:
+    if not _non_empty_string(recipient):
+        return Diagnostic("MISSING_RECIPIENT", _MISSING_RECIPIENT)
+    if metadata["sender_thread_id"] != session:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    if metadata["target_thread_id"] != recipient:
         return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
-    if data["model"] != EXPECTED[0]:
-        return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
-    if data["thinking"] != EXPECTED[1]:
-        return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
+    if metadata["target_thread_id"] == metadata["sender_thread_id"]:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+
+    expected = EXPECTED_PARENT if direction == "child_to_parent" else EXPECTED_CHILD
+    if (metadata["target_model"], metadata["target_thinking"]) != expected:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    if data["model"] != expected[0]:
+        return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
+    if data["thinking"] != expected[1]:
+        return Diagnostic("UNSUPPORTED_THINKING", _unsupported_thinking(direction))
     return False
 
 
-_ROUTE = "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
-_ROOT_ROUTE = "non-empty model and thinking values selected for the child"
-_MISSING_IDENTITY = (
-    "Missing authenticated session_id or transcript_path; MUST NOT retry blindly. "
-    "MUST retry only after Codex supplies both values."
-)
-_UNTRUSTED_CONTEXT = (
-    "Untrusted or malformed delegation context; MUST NOT retry blindly. "
-    "MUST stop and obtain a fresh authenticated child context."
-)
-_WRONG_RECIPIENT = (
-    "Wrong recipient route; MUST set threadId to the authenticated parent from "
-    f"the delegation context and MUST use {_ROUTE} for child-to-parent delivery, "
-    "then MUST correct the route and MUST retry once. MUST NOT guess a parent ID."
-)
-_UNSUPPORTED_MODEL = (
-    f"Unsupported delivery model; MUST use {_ROUTE} for child-to-parent delivery, "
-    "then MUST correct the model and MUST retry once."
-)
-_UNSUPPORTED_THINKING = (
-    f"Unsupported delivery thinking; MUST use {_ROUTE} for child-to-parent "
-    "delivery, then MUST correct the thinking and MUST retry once."
-)
+def _routing_metadata(value: object, present: bool) -> dict[str, object] | Diagnostic:
+    if not present:
+        return Diagnostic("MISSING_ROUTING_METADATA", _MISSING_ROUTING)
+    if not isinstance(value, dict):
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    metadata = cast(dict[str, object], value)
+    if set(metadata) != ROUTING_FIELDS:
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    if metadata["schema"] != ROUTING_SCHEMA or metadata["authenticated"] is not True:
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    if (
+        not isinstance(metadata["direction"], str)
+        or metadata["direction"] not in DIRECTIONS
+    ):
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    for field in (
+        "direction",
+        "sender_thread_id",
+        "target_thread_id",
+        "target_model",
+        "target_thinking",
+    ):
+        if not _non_empty_string(metadata[field]):
+            return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    return metadata
+
+
+def _non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
 def _missing_fields(data: dict[str, object]) -> list[str]:
-    missing: list[str] = []
-    for field in FIELDS:
-        value = data.get(field)
-        if not isinstance(value, str) or not value.strip():
-            missing.append(field)
-    return missing
+    return [field for field in FIELDS if not _non_empty_string(data.get(field))]
 
 
-def _missing_field_diagnostic(fields: list[str], child_to_parent: bool) -> Diagnostic:
+def _missing_field_diagnostic(fields: list[str], direction: str | None) -> Diagnostic:
     names = " and ".join(fields)
     code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
-    if not child_to_parent:
-        return Diagnostic(
-            code,
-            f"Missing {names}; root-to-child delivery requires {_ROOT_ROUTE}. "
-            "MUST provide the missing value, then MUST correct the route and MUST retry once.",
-        )
+    route = _route(direction)
     return Diagnostic(
         code,
-        f"Missing {names}; child-to-parent delivery requires {_ROUTE}. "
-        "MUST correct the field and MUST retry once.",
+        f"Missing {names}; {route}. MUST correct the field and MUST retry once.",
     )
 
 
-def _authenticated_parent(path: str, session: str) -> str | None:
-    records = _records(path)
-    metadata = [item for item in records if item.get("type") == "session_meta"]
-    if len(metadata) != 1 or not isinstance(metadata[0].get("payload"), dict):
-        raise ValueError("session metadata")
-    payload = metadata[0]["payload"]
-    if payload.get("id") != session or payload.get("session_id", session) != session:
-        raise ValueError("session mismatch")
-    context = next(
-        (
-            index
-            for index, item in enumerate(records)
-            if item.get("type") == "turn_context"
-        ),
-        None,
+def _route(direction: str | None) -> str:
+    if direction == "child_to_parent":
+        return f"child-to-parent delivery requires {_PARENT_ROUTE}"
+    if direction == "root_to_child":
+        return f"root-to-child delivery requires {_CHILD_ROUTE}"
+    return "thread delivery requires explicit authenticated host routing metadata"
+
+
+_PARENT_ROUTE = (
+    "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
+)
+_CHILD_ROUTE = (
+    "threadId=<authenticated child>, model='gpt-5.6-luna', and thinking='max'"
+)
+_MISSING_IDENTITY = (
+    "Missing authenticated session_id; MUST NOT retry blindly. "
+    "MUST retry only after Codex supplies it."
+)
+_MISSING_RECIPIENT = (
+    "Missing recipient threadId; MUST NOT retry blindly. "
+    "MUST provide the recipient from the authenticated host route."
+)
+_MISSING_ROUTING = (
+    "Missing authenticated host routing metadata; MUST NOT retry blindly. "
+    "MUST retry only after Codex supplies a bounded codexy_thread_delivery envelope."
+)
+_MALFORMED_ROUTING = (
+    "Malformed or ambiguous authenticated host routing metadata; "
+    "MUST NOT retry blindly. MUST obtain a fresh host envelope."
+)
+_MISMATCHED_ROUTING = (
+    "Mismatched authenticated host routing metadata; MUST NOT retry blindly. "
+    "MUST stop and obtain a fresh host envelope."
+)
+_WRONG_RECIPIENT = (
+    "Wrong recipient route; MUST set threadId to the authenticated host target "
+    f"and MUST use {_PARENT_ROUTE} or {_CHILD_ROUTE}, then MUST correct the route "
+    "and MUST retry once. MUST NOT guess a thread ID."
+)
+
+
+def _unsupported_model(direction: str) -> str:
+    return (
+        f"Unsupported delivery model; {_route(direction)}, then MUST correct the "
+        "model and MUST retry once."
     )
-    if context is None:
-        raise ValueError("turn context")
-    initial = None
-    for item in records[context + 1 :]:
-        payload = item.get("payload")
-        if item.get("type") == "response_item" and isinstance(payload, dict):
-            if payload.get("type") == "message" and payload.get("role") == "user":
-                initial = payload
-                break
-    if initial is None or not isinstance(initial.get("content"), list):
-        raise ValueError("initial user message")
-    parents: list[str] = []
-    for part in initial["content"]:
-        if not isinstance(part, dict) or part.get("type") != "input_text":
-            continue
-        text = part.get("text")
-        if not isinstance(text, str):
-            continue
-        parent = _delegated_parent(text)
-        if parent is not None:
-            parents.append(parent)
-    if len(parents) > 1 or "" in parents:
-        raise ValueError("ambiguous parent")
-    return parents[0] if parents else None
 
 
-def _delegated_parent(text: str) -> str | None:
-    text = text.strip()
-    if not text.startswith("<codex_delegation>"):
-        return None
-    if text.count("<codex_delegation>") != 1 or text.count("</codex_delegation>") != 1:
-        raise ValueError("ambiguous delegation envelope")
-    match = DELEGATION.fullmatch(text)
-    if match is None:
-        raise ValueError("delegation envelope")
-    return match.group(1).strip()
-
-
-def _records(path: str) -> list[dict]:
-    before = os.lstat(path)
-    if not stat.S_ISREG(before.st_mode):
-        raise ValueError("transcript type")
-    flags = (
-        os.O_RDONLY
-        | getattr(os, "O_CLOEXEC", 0)
-        | getattr(os, "O_NOFOLLOW", 0)
-        | getattr(os, "O_NONBLOCK", 0)
-        | getattr(os, "O_BINARY", 0)
+def _unsupported_thinking(direction: str) -> str:
+    return (
+        f"Unsupported delivery thinking; {_route(direction)}, then MUST correct "
+        "the thinking and MUST retry once."
     )
-    descriptor = os.open(path, flags)
-    try:
-        details = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(details.st_mode)
-            or (before.st_dev, before.st_ino) != (details.st_dev, details.st_ino)
-            or details.st_size > MAX_TRANSCRIPT
-        ):
-            raise ValueError("transcript bounds")
-        chunks = []
-        remaining = MAX_TRANSCRIPT + 1
-        while remaining:
-            chunk = os.read(descriptor, min(65536, remaining))
-            if not chunk:
-                break
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        raw = b"".join(chunks)
-        if len(raw) > MAX_TRANSCRIPT:
-            raise ValueError("transcript bounds")
-    finally:
-        os.close(descriptor)
-    records = []
-    for line in raw.decode("utf-8", "strict").splitlines():
-        item = json.loads(line, object_pairs_hook=_pairs)
-        if not isinstance(item, dict):
-            raise ValueError("transcript record")
-        records.append(item)
-    return records
