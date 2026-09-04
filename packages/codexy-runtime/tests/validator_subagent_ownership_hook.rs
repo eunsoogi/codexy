@@ -82,7 +82,7 @@ fn windows_launcher_ignores_a_current_directory_py_cmd() -> TestResult {
         format!("@echo shadowed>\"{}\"\r\n@exit /b 0\r\n", sentinel.display()),
     )?;
     let command = format!(
-        "\"\"{}\" PreToolUse\"",
+        "call \"{}\" PreToolUse",
         root.join("hooks/codexy-subagent-ownership.cmd").display()
     );
     let mut child = Command::new("cmd.exe")
