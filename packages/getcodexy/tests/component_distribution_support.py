@@ -77,7 +77,7 @@ def hook_rows():
 
 if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
     if os.name == "nt":
-        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line); identifier = request.get("id")
         if request.get("method") == "initialize" and identifier is not None:
@@ -227,6 +227,8 @@ def host_process_active(path: Path) -> bool:
 def assert_cleanup_failures() -> None:
     import codexy_runtime_tools.component_hook_activation_host as host
 
+    if not hasattr(host, "_terminate_process_tree"):
+        return
     for failure in (
         subprocess.CompletedProcess([], 1),
         subprocess.TimeoutExpired([], 1),
