@@ -1,51 +1,35 @@
 from __future__ import annotations
 
+import csv
 import json
 import shutil
 import subprocess
 from time import perf_counter
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from codexy_runtime_tools.version_lock import default_package_version
 
 
-OFFICIAL = "https://github.com/eunsoogi/codexy.git"
-COMPONENTS = {
-    "codexy": "core",
-    "codexy-github": "github",
-    "codexy-devtools": "devtools",
-}
-
 FAKE_MCP = r"""#!/usr/bin/env python3
-import json
-import os
-import sys
+import json, os, subprocess, sys
 
-server = sys.argv[1]
-mode = os.environ.get("CODEXY_TEST_PROBE_MODE", "")
-if mode == "exit-127":
+if os.environ.get("CODEXY_TEST_PROBE_MODE", "") == "exit-127":
     raise SystemExit(127)
 for line in sys.stdin:
     request = json.loads(line)
-    identifier = request.get("id")
-    if identifier is None:
+    if (identifier := request.get("id")) is None:
         continue
-    method = request["method"]
-    if method == "initialize":
+    if request["method"] == "initialize":
         params = request.get("params", {})
-        if (
-            not isinstance(params, dict)
-            or params.get("protocolVersion") != "2024-11-05"
-            or not {"capabilities", "clientInfo"} <= params.keys()
-        ):
+        if not isinstance(params, dict) or params.get("protocolVersion") != "2024-11-05" or not {"capabilities", "clientInfo"} <= params.keys():
             raise SystemExit(1)
-        value = {"serverInfo": {"name": "codexy-" + server, "version": "1.5.1"}}
-    elif method == "tools/list":
-        value = {"tools": [{"name": "codegraph_search" if server == "codegraph" else "lsp_status"}]}
-    elif method == "tools/call" and mode == "list-only":
+        value = {"serverInfo": {"name": "codexy-" + sys.argv[1], "version": "1.5.1"}}
+    elif request["method"] == "tools/list":
+        value = {"tools": [{"name": "codegraph_search" if sys.argv[1] == "codegraph" else "lsp_status"}]}
+    elif request["method"] == "tools/call" and os.environ.get("CODEXY_TEST_PROBE_MODE", "") == "list-only":
         continue
-    elif method == "tools/call":
+    elif request["method"] == "tools/call":
         value = {"content": [{"type": "text", "text": "ok"}]}
     else:
         continue
@@ -53,29 +37,22 @@ for line in sys.stdin:
 """
 
 DISTRIBUTION_HOST = """#!/usr/bin/env python3
-import json, os, sys
+import json, os, subprocess, sys, threading
 from pathlib import Path
 
-state_path = Path(os.environ["CODEXY_MATRIX_STATE"])
-root = Path(os.environ["CODEXY_MATRIX_MARKETPLACE"]).resolve()
-version = os.environ["CODEXY_MATRIX_VERSION"]
-state = json.loads(state_path.read_text())
+os.environ.setdefault("CODEXY_MATRIX_STATE", str(Path(os.environ["CODEX_HOME"]).parent / "host-state.json")); os.environ.setdefault("CODEXY_MATRIX_MARKETPLACE", str(Path(os.environ["CODEX_HOME"]).parent / "marketplace")); os.environ.setdefault("CODEXY_MATRIX_VERSION", "fixture")
+state_path, root, version = Path(os.environ["CODEXY_MATRIX_STATE"]), Path(os.environ["CODEXY_MATRIX_MARKETPLACE"]).resolve(), os.environ["CODEXY_MATRIX_VERSION"]; state = json.loads(state_path.read_text())
 plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
-reverse = {value: key for key, value in plugins.items()}
-args = sys.argv[1:]
 
-events = {"PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest", "UserPromptSubmit": "userPromptSubmit"}
-event_keys = {"PreToolUse": "pre_tool_use", "PermissionRequest": "permission_request", "UserPromptSubmit": "user_prompt_submit"}
+events = {"PreToolUse": ("preToolUse", "pre_tool_use"), "PermissionRequest": ("permissionRequest", "permission_request"), "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit")}
 
 def hook_rows():
     rows = []
     for component, plugin_name in plugins.items():
-        if component not in state["selection"]:
-            continue
+        if component not in state["selection"]: continue
         plugin = root / "plugins" / plugin_name
         path = plugin / "hooks" / "hooks.json"
-        if not path.is_file():
-            continue
+        if not path.is_file(): continue
         value = json.loads(path.read_text())
         for event, groups in value["hooks"].items():
             for group_index, group in enumerate(groups):
@@ -83,8 +60,8 @@ def hook_rows():
                     command_key = "commandWindows" if os.name == "nt" else "command"
                     command = hook[command_key].replace("${PLUGIN_ROOT}", str(plugin))
                     rows.append({
-                        "key": f"{plugin_name}@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
-                        "eventName": events[event],
+                        "key": f"{plugin_name}@codexy:hooks/hooks.json:{events[event][1]}:{group_index}:{hook_index}",
+                        "eventName": events[event][0],
                         "handlerType": "command",
                         "command": command,
                         "async": hook.get("async", False),
@@ -99,10 +76,9 @@ def hook_rows():
                     })
     return rows
 
-if args[:3] == ["app-server", "--listen", "stdio://"]:
+if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
     for line in sys.stdin:
-        request = json.loads(line)
-        identifier = request.get("id")
+        request = json.loads(line); identifier = request.get("id")
         if request.get("method") == "initialize" and identifier is not None:
             result = {"userAgent": "fixture", "codexHome": "fixture"}
         elif request.get("method") == "hooks/list" and identifier is not None:
@@ -111,33 +87,32 @@ if args[:3] == ["app-server", "--listen", "stdio://"]:
         else:
             continue
         print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
+        if request.get("method") == "hooks/list" and os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"):
+            child = subprocess.Popen([sys.executable, "-c", "import threading; threading.Event().wait(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
+    if os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"): threading.Event().wait(30)
     raise SystemExit(0)
 
-def save(): state_path.write_text(json.dumps(state))
 def installed(component):
     plugin = plugins[component]
     return {"pluginId": plugin + "@codexy", "name": plugin, "marketplaceName": "codexy", "version": version, "installed": True, "enabled": True, "source": {"source": "local", "path": str(root / "plugins" / plugin)}, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}
 
-if args[:4] == ["plugin", "marketplace", "list", "--json"]:
+if sys.argv[1:][:4] == ["plugin", "marketplace", "list", "--json"]:
     payload = {"marketplaces": [] if not state["marketplace"] else [{"name": "codexy", "root": str(root), "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}]}
-elif args[:3] == ["plugin", "marketplace", "add"]:
-    state["marketplace"] = True; save(); payload = {"ok": True}
-elif args[:3] == ["plugin", "marketplace", "upgrade"]:
+elif sys.argv[1:][:3] == ["plugin", "marketplace", "upgrade"]:
     payload = {"ok": True}
-elif args[:3] == ["plugin", "marketplace", "remove"]:
-    state["marketplace"] = False; save(); payload = {"ok": True}
-elif args[:3] == ["plugin", "list", "--json"]:
+elif sys.argv[1:][:3] in (["plugin", "marketplace", "add"], ["plugin", "marketplace", "remove"]):
+    state["marketplace"] = sys.argv[1:][2] == "add"; state_path.write_text(json.dumps(state)); payload = {"ok": True}
+elif sys.argv[1:][:3] == ["plugin", "list", "--json"]:
     payload = {"installed": [installed(component) for component in ("core", "github", "devtools") if component in state["selection"]]}
-elif args[:2] == ["plugin", "add"]:
-    plugin = args[2].split("@", 1)[0]
-    if state.get("fail_add") == plugin:
-        state.pop("fail_add"); save(); print(json.dumps({"error": "injected"})); raise SystemExit(1)
-    if reverse[plugin] not in state["selection"]: state["selection"].append(reverse[plugin])
-    save(); payload = {"ok": True}
-elif args[:2] == ["plugin", "remove"]:
-    component = reverse[args[2].split("@", 1)[0]]
-    if component in state["selection"]: state["selection"].remove(component)
-    save(); payload = {"ok": True}
+elif sys.argv[1:][:2] in (["plugin", "add"], ["plugin", "remove"]):
+    plugin = sys.argv[1:][2].split("@", 1)[0]
+    component = next(component for component, name in plugins.items() if name == plugin)
+    if sys.argv[1:][1] == "add":
+        if state.get("fail_add") == plugin:
+            state.pop("fail_add"); state_path.write_text(json.dumps(state)); print(json.dumps({"error": "injected"})); raise SystemExit(1)
+        if component not in state["selection"]: state["selection"].append(component)
+    elif component in state["selection"]: state["selection"].remove(component)
+    state_path.write_text(json.dumps(state)); payload = {"ok": True}
 else:
     payload = {"ok": True}
 print(json.dumps(payload))
@@ -146,7 +121,7 @@ print(json.dumps(payload))
 
 def copy_marketplace_plugins(repository: Path, root: Path) -> str:
     version = default_package_version()
-    for plugin in COMPONENTS:
+    for plugin in ("codexy", "codexy-github", "codexy-devtools"):
         destination = root / "plugins" / plugin
         shutil.copytree(repository / "plugins" / plugin, destination)
         manifest_path = destination / ".codex-plugin/plugin.json"
@@ -176,7 +151,7 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
             {
                 "ref_name": tag,
                 "revision": tag_revision,
-                "source": OFFICIAL,
+                "source": "https://github.com/eunsoogi/codexy.git",
                 "source_type": "git",
                 "sparse_paths": [],
             }
@@ -187,8 +162,14 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
 
 
 def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, object]]:
+    from codexy_runtime_tools import component_hook_activation_host as host
     from codexy_runtime_tools.component_capability_probe import probe_component
 
+    host.list_hooks(
+        marketplace.parent / "codex.cmd", marketplace.parent / "tree-probe-home"
+    )
+    assert not host_process_active(marketplace.parent / "host-state.pids")
+    assert_cleanup_failures()
     measurements = []
     for component, plugin_name in (("core", "codexy"), ("github", "codexy-github")):
         plugin = marketplace / "plugins" / plugin_name
@@ -234,13 +215,36 @@ def windows_argv(probe, root: Path):
     return launchers, batch, native, python, executed
 
 
-def _git(root: Path, *arguments: str) -> str:
+def host_process_active(path: Path) -> bool:
+    pid = path.read_text(encoding="utf-8").strip()
     result = subprocess.run(
-        ["git", "-C", str(root), *arguments],
-        text=True,
+        ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
         capture_output=True,
-        check=False,
+        text=True,
+        check=True,
+        timeout=5,
     )
-    if result.returncode:
-        raise RuntimeError(result.stderr)
-    return result.stdout.strip()
+    return any(
+        len(row) == 5 and row[0].lower().endswith((".exe", ".com")) and row[1] == pid
+        for row in csv.reader(result.stdout.splitlines())
+    )
+
+
+def assert_cleanup_failures() -> None:
+    import codexy_runtime_tools.component_hook_activation_host as host
+
+    for failure in (
+        subprocess.CompletedProcess([], 1),
+        subprocess.TimeoutExpired([], 1),
+        OSError("taskkill unavailable"),
+    ):
+        process = Mock(pid=123, poll=Mock(return_value=None))
+        with patch.object(host.subprocess, "run", side_effect=[failure]):
+            assert not host._terminate_process_tree(process)
+        process.kill.assert_called_once_with()
+
+
+def _git(root: Path, *arguments: str) -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(root), *arguments], text=True, stderr=subprocess.PIPE
+    ).strip()

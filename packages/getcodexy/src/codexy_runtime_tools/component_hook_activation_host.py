@@ -130,19 +130,53 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 process.stdin.close()
         except OSError:
             pass
+        cleanup_failed = False
         if process.poll() is None:
-            _ = process.terminate()
-            try:
-                _ = process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                _ = process.kill()
-                _ = process.wait(timeout=1)
+            if os.name == "nt":
+                try:
+                    _ = process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    cleanup_failed = not _terminate_process_tree(process)
+            else:
+                _ = process.terminate()
+            if process.poll() is None:
+                try:
+                    _ = process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    _ = process.kill()
+                    _ = process.wait(timeout=1)
         reader.join(timeout=1)
         try:
             if process.stdout is not None:
                 process.stdout.close()
         except OSError:
             pass
+        if cleanup_failed:
+            raise HookStateError("trusted Codex app-server process tree cleanup failed")
+
+
+def _terminate_process_tree(process: subprocess.Popen[str]) -> bool:
+    taskkill = (
+        Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "taskkill.exe"
+    )
+    try:
+        result = subprocess.run(
+            [str(taskkill), "/pid", str(process.pid), "/t", "/f"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        _ = process.kill()
+        return False
+    if result.returncode != 0:
+        if process.poll() is not None:
+            return True
+        _ = process.kill()
+        return False
+    return True
 
 
 def _extract_hooks(response: dict[str, object]) -> tuple[dict[str, object], ...]:
