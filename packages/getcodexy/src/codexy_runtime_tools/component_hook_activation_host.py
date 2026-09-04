@@ -125,17 +125,17 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
             "trusted Codex app-server stopped before hooks/list"
         ) from error
     finally:
+        cleanup_failed = False
+        if os.name == "nt" and process.poll() is None:
+            cleanup_failed = not _terminate_process_tree(process)
         try:
             if process.stdin is not None:
                 process.stdin.close()
         except OSError:
             pass
-        cleanup_failed = False
+        if os.name != "nt" and process.poll() is None:
+            _ = process.terminate()
         if process.poll() is None:
-            if os.name == "nt":
-                cleanup_failed = not _terminate_process_tree(process)
-            else:
-                _ = process.terminate()
             try:
                 _ = process.wait(timeout=1)
             except subprocess.TimeoutExpired:
