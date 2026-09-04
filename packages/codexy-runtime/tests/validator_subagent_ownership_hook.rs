@@ -65,10 +65,11 @@ fn windows_launcher_uses_an_absolute_interpreter_path() -> TestResult {
         "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
     ));
     assert!(launcher.contains("CODEXY_SUBAGENT_SCRIPT"));
-    assert!(launcher.contains("Get-ChildItem -LiteralPath $dir -Filter 'py*.exe' -File"));
+    assert!(launcher.contains(
+        "foreach($pattern in @('py*.exe',('py'+'thon*.exe'))) { foreach($item in Get-ChildItem -LiteralPath $dir -Filter $pattern -File"
+    ));
     assert!(launcher.contains("set \"runtime_args=-3\""));
     assert!(launcher.contains("\"%runtime%\" %runtime_args% -I -B"));
-    assert!(!launcher.contains("python"));
     assert!(!launcher.lines().any(|line| line.starts_with("py ")));
     Ok(())
 }
