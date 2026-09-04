@@ -133,14 +133,18 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
         cleanup_failed = False
         if process.poll() is None:
             if os.name == "nt":
-                cleanup_failed = not _terminate_process_tree(process)
+                try:
+                    _ = process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    cleanup_failed = not _terminate_process_tree(process)
             else:
                 _ = process.terminate()
-            try:
-                _ = process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                _ = process.kill()
-                _ = process.wait(timeout=1)
+            if process.poll() is None:
+                try:
+                    _ = process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    _ = process.kill()
+                    _ = process.wait(timeout=1)
         reader.join(timeout=1)
         try:
             if process.stdout is not None:
