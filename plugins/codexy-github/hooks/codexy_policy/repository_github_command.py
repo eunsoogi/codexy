@@ -3,8 +3,10 @@
 import os
 
 from .envelope import Request
+from .policy_diagnostics import describe
 from .shell_entry import context as shell_context
 from .shell_github import forbidden as shell_forbidden
+from .shell_github_policy import POLICY
 from .shell_evaluator import credential_exposure
 from .shell_opaque import unresolved_protected_effect
 
@@ -16,7 +18,7 @@ def forbidden(request: Request) -> bool | str:
         or not isinstance(data.get("command"), str)
         or not isinstance(request.cwd, str)
     ):
-        return "UNRESOLVED_TARGET"
+        return describe("UNRESOLVED_TARGET")
     command = data["command"]
     runtime_environment = tuple(
         (key, os.environ.get(key, "")) for key in ("HOME", "PATH", "USER")
@@ -35,19 +37,17 @@ def forbidden(request: Request) -> bool | str:
         runtime_environment,
     )
     if credential_exposure(command, context):
-        return "CREDENTIAL_EXPOSURE"
+        return describe("CREDENTIAL_EXPOSURE", command, context)
     if unresolved_protected_effect(command, context):
-        return "UNRESOLVED_PROTECTED_EFFECT"
-    return (
-        "REMOTE_MUTATION"
-        if shell_forbidden(
-            command,
-            request.cwd,
-            os.environ.get("GH_REPO") or None,
-            os.environ.get("GIT_DIR") or None,
-            os.environ.get("GIT_COMMON_DIR") or None,
-            git_config_environment,
-            runtime_environment=runtime_environment,
-        )
-        else False
-    )
+        return describe("UNRESOLVED_PROTECTED_EFFECT", command, context)
+    if shell_forbidden(
+        command,
+        request.cwd,
+        os.environ.get("GH_REPO") or None,
+        os.environ.get("GIT_DIR") or None,
+        os.environ.get("GIT_COMMON_DIR") or None,
+        git_config_environment,
+        runtime_environment=runtime_environment,
+    ):
+        return describe("REMOTE_MUTATION", command, context, policy=POLICY)
+    return False
