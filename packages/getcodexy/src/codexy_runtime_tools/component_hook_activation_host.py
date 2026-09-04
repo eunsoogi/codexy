@@ -131,7 +131,10 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
         except OSError:
             pass
         if process.poll() is None:
-            _ = process.terminate()
+            if os.name == "nt":
+                _terminate_process_tree(process)
+            else:
+                _ = process.terminate()
             try:
                 _ = process.wait(timeout=1)
             except subprocess.TimeoutExpired:
@@ -143,6 +146,25 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 process.stdout.close()
         except OSError:
             pass
+
+
+def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
+    taskkill = (
+        Path(os.environ.get("SystemRoot", r"C:\Windows"))
+        / "System32"
+        / "taskkill.exe"
+    )
+    try:
+        _ = subprocess.run(
+            [str(taskkill), "/pid", str(process.pid), "/t", "/f"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        _ = process.kill()
 
 
 def _extract_hooks(response: dict[str, object]) -> tuple[dict[str, object], ...]:
