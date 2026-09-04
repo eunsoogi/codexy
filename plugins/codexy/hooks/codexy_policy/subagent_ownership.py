@@ -21,17 +21,21 @@ _SPECIALISTS = frozenset(
 )
 _DURABLE_OWNERSHIP = re.compile(
     r"(?:"
-    r"\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|responsible\s+for|"
+    r"\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
+    r"responsible\s+for(?!\s+review(?:ing)?\b)|"
     r"take\s+ownership(?:\s+of)?|manage|lead)\b[^\n,;.!?:]{0,80}\b"
     r"(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
     r"|\b(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
-    r"[^\n,;.!?:]{0,80}\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|responsible\s+for|"
+    r"[^\n,;.!?:]{0,80}\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
+    r"responsible\s+for(?!\s+review(?:ing)?\b)|"
     r"take\s+ownership(?:\s+of)?|manage|lead)\b"
     r"|\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
     r"[^\n;.!?:]{0,70}\b(?:in|on|to|onto|into)\s+(?:the\s+)?"
     r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
     r"|\b(?:reserved|assigned|dedicated|current|child-owned)\s+(?:branch|worktree)\b"
     r"[^\n;.!?:]{0,80}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
+    r"|\b(?:in|on|to|onto|into)\s+(?:the\s+)?(?:branch|worktree)\b"
+    r"[^\n;.!?]{0,90}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
     r"|\b(?:address|resolve|complete|fix|apply|handle|implement|modify|edit|commit|push|update)\b"
     r"[^\n;.!?]{0,70}\b(?:review[- ]?response|review feedback)\b"
     r"|\b(?:review[- ]?response|review feedback)\b[^\n;.!?]{0,70}\b"
@@ -60,8 +64,18 @@ _DURABLE_OWNERSHIP_KO = re.compile(
     re.IGNORECASE,
 )
 _NEGATION = re.compile(
-    r"(?:\b(?:do\s+not|don't|dont|never|not|no|without)\b|"
+    r"(?:\b(?:do\s+not|don't|dont|never|not|no)\b|"
     r"(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*))",
+    re.IGNORECASE,
+)
+_NEGATION_NEAR_MATCH = re.compile(
+    r"(?:\b(?:do\s+not|don't|dont|never|not|no)\b"
+    r"(?:\s+[\w'-]+){0,4}\s*$|(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*)\s*$)",
+    re.IGNORECASE,
+)
+_OWNERSHIP_NEGATION = re.compile(
+    r"\bwithout\s+(?:own(?:s|ed|ing|ership)?|ownership|being\s+responsible|"
+    r"taking\s+ownership)\b",
     re.IGNORECASE,
 )
 
@@ -80,7 +94,12 @@ def _is_negated(message: str, match: re.Match[str]) -> bool:
         + 1
     )
     prefix = message[max(clause_start, match.start() - 80) : match.start()]
-    if _NEGATION.search(prefix) or _NEGATION.search(match.group(0)):
+    context = prefix + match.group(0)
+    if (
+        _NEGATION_NEAR_MATCH.search(prefix)
+        or _NEGATION.search(match.group(0))
+        or _OWNERSHIP_NEGATION.search(context)
+    ):
         return True
     suffix = message[match.end() : match.end() + 32]
     return bool(re.search(r"(?:하지\s*말\w*|말고|않\w*)", suffix))
