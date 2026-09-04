@@ -22,6 +22,7 @@ ESCAPES = {
 REGEX_AFTER = frozenset(
     "await case delete do else in new of return throw typeof void yield".split()
 )
+LINE_TERMINATORS = frozenset("\r\n\u2028\u2029")
 
 
 class Token(NamedTuple):
@@ -47,8 +48,8 @@ def _tokenize(source: str, template_depth: int) -> list[Token]:
         if character.isspace():
             index += 1
         elif source.startswith("//", index):
-            index = source.find("\n", index + 2)
-            if index == -1:
+            index = _line_comment_end(source, index + 2)
+            if index == len(source):
                 break
         elif source.startswith("/*", index):
             end = source.find("*/", index + 2)
@@ -64,6 +65,8 @@ def _tokenize(source: str, template_depth: int) -> list[Token]:
         elif character == "/" and _regex_start(result):
             index = _regex(source, index)
             result.append(Token("regex", "regex"))
+        elif character == "\\":
+            raise ParseError("unicode identifier escape")
         elif character.isalpha() or character in "_$":
             end = index + 1
             while end < len(source) and (source[end].isalnum() or source[end] in "_$"):
@@ -87,6 +90,12 @@ def _tokenize(source: str, template_depth: int) -> list[Token]:
         if len(result) > MAX_TOKENS:
             raise ParseError("too many tokens")
     return result
+
+
+def _line_comment_end(source: str, index: int) -> int:
+    while index < len(source) and source[index] not in LINE_TERMINATORS:
+        index += 1
+    return index
 
 
 def _template(source: str, index: int, depth: int) -> tuple[list[Token], int]:
@@ -118,8 +127,8 @@ def _template_expression_end(source: str, index: int, depth: int) -> int:
         elif character == "`":
             _, index = _template(source, index, depth + 1)
         elif source.startswith("//", index):
-            index = source.find("\n", index + 2)
-            if index == -1:
+            index = _line_comment_end(source, index + 2)
+            if index == len(source):
                 return len(source)
         elif source.startswith("/*", index):
             end = source.find("*/", index + 2)

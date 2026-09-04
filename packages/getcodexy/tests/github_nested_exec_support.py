@@ -90,6 +90,38 @@ def assert_nested_exec_cases(
         ),
         (
             "PermissionRequest",
+            r'await tools.\u006dcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create escaped nested issue"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            '// ignored\rawait tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): bypass CR comment"});',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            "// ignored\u2028"
+            'await tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): bypass U+2028 comment"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            "// ignored\u2029"
+            'await tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): bypass U+2029 comment"});',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            'const {"mcp__codex_apps__github_create_issue": create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create string destructured nested issue"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            'const {["mcp__codex_apps__github_create_issue"]: create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create computed destructured nested issue"});',
+            True,
+        ),
+        (
+            "PermissionRequest",
             '`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`',
             True,
         ),

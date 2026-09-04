@@ -128,6 +128,36 @@ fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResu
             true,
         ),
         (
+            "escaped identifier nested mutation",
+            r#"await tools.\u006dcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create escaped nested issue"});"#,
+            true,
+        ),
+        (
+            "CR line terminator nested mutation",
+            "// ignored\rawait tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"fix(hooks): bypass CR comment\"});",
+            true,
+        ),
+        (
+            "U+2028 line terminator nested mutation",
+            "// ignored\u{2028}await tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"fix(hooks): bypass U+2028 comment\"});",
+            true,
+        ),
+        (
+            "U+2029 line terminator nested mutation",
+            "// ignored\u{2029}await tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"fix(hooks): bypass U+2029 comment\"});",
+            true,
+        ),
+        (
+            "string destructuring alias nested mutation",
+            r#"const {"mcp__codex_apps__github_create_issue": create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create string destructured nested issue"});"#,
+            true,
+        ),
+        (
+            "computed destructuring alias nested mutation",
+            r#"const {["mcp__codex_apps__github_create_issue"]: create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create computed destructured nested issue"});"#,
+            true,
+        ),
+        (
             "template expression nested mutation",
             r#"`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`"#,
             true,

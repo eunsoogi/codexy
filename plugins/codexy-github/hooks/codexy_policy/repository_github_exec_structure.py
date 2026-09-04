@@ -41,6 +41,36 @@ def global_identifier(tokens: list[Token], index: int) -> bool:
     return index == 0 or tokens[index - 1].value not in {".", "?"}
 
 
+def _destructuring_alias(
+    property_tokens: list[Token], prefix: str
+) -> tuple[str, str | None] | None:
+    if property_tokens and property_tokens[0].value == "[":
+        close = matching(property_tokens, 0, "[", "]")
+        if (
+            close + 2 >= len(property_tokens)
+            or property_tokens[close + 1].value != ":"
+            or property_tokens[close + 2].kind != "identifier"
+        ):
+            return None
+        alias = property_tokens[close + 2].value
+        key = strip_parentheses(property_tokens[1:close])
+        if (
+            len(key) == 1
+            and key[0].kind == "string"
+            and key[0].value.startswith(prefix)
+        ):
+            return alias, key[0].value
+        return alias, None
+    if len(property_tokens) < 3:
+        return None
+    key, colon, alias = property_tokens[:3]
+    if colon.value != ":" or alias.kind != "identifier":
+        return None
+    if key.kind in {"identifier", "string"} and key.value.startswith(prefix):
+        return alias.value, key.value
+    return None
+
+
 def tools_destructuring_aliases(
     tokens: list[Token], prefix: str
 ) -> dict[str, str | None]:
@@ -56,17 +86,14 @@ def tools_destructuring_aliases(
         ):
             continue
         for property_tokens in arguments(tokens, open_index + 1, close):
-            if len(property_tokens) < 3:
+            alias_info = _destructuring_alias(property_tokens, prefix)
+            if alias_info is None:
                 continue
-            key, colon, alias = property_tokens[:3]
-            if colon.value != ":" or alias.kind != "identifier":
-                continue
-            if key.kind != "identifier" or not key.value.startswith(prefix):
-                continue
-            if alias.value not in aliases:
-                aliases[alias.value] = key.value
-            elif aliases[alias.value] != key.value:
-                aliases[alias.value] = None
+            alias, tool = alias_info
+            if alias not in aliases:
+                aliases[alias] = tool
+            elif aliases[alias] != tool:
+                aliases[alias] = None
     return aliases
 
 
