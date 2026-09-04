@@ -1,7 +1,8 @@
 use crate::support::{FixtureCommand as Command, write_posix_fixture_command};
 use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
-
+#[path = "connector_inputs/nested_exec.rs"]
+mod nested_exec;
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {
     let root = plugin_root();
@@ -176,72 +177,6 @@ fn issue_758_pr_754_unhooked_connector_payload_is_unavailable() -> TestResult {
     let reason = denial["hookSpecificOutput"]["permissionDecisionReason"].as_str().unwrap_or_default();
     assert!(reason.contains("UNAVAILABLE"), "{reason}");
     assert!(!recorder.exists(), "nested connector reached fake GitHub merge");
-    Ok(())
-}
-
-#[test]
-fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResult {
-    let root = plugin_root();
-    let workspace = tempfile::tempdir()?;
-    let cwd = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
-    let cases = [
-        (
-            "valid nested issue",
-            r#"await tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create nested issue safely"});"#,
-            false,
-        ),
-        (
-            "invalid nested issue title",
-            r#"await tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): bypass title policy"});"#,
-            true,
-        ),
-        (
-            "valid nested PR",
-            r#"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): create nested PR safely", head_branch:"topic", base_branch:"main"});"#,
-            false,
-        ),
-        (
-            "invalid nested PR title",
-            r#"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"Create nested PR safely", head_branch:"topic", base_branch:"main"});"#,
-            true,
-        ),
-        (
-            "dynamic nested mutation",
-            r#"const title = getTitle(); await tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title});"#,
-            true,
-        ),
-        (
-            "ambiguous nested mutation arguments",
-            r#"await tools.mcp__codex_apps__github_create_issue(getIssueInput());"#,
-            true,
-        ),
-        (
-            "read-only nested GitHub call",
-            r#"await tools.mcp__codex_apps__github_get_repo({repository_full_name:"eunsoogi/codexy"});"#,
-            false,
-        ),
-        (
-            "unrelated functions.exec code",
-            r#"const result = await doSomething(); text(result);"#,
-            false,
-        ),
-    ];
-    for event in ["PermissionRequest", "PreToolUse"] {
-        for (case_id, code, denied) in cases {
-            assert_input(
-                &root,
-                json!({
-                    "hook_event_name": event,
-                    "tool_name": "functions.exec",
-                    "tool_input": {"code": code},
-                    "cwd": cwd,
-                }),
-                denied,
-                &[],
-            )
-            .map_err(|error| format!("{case_id} {event}: {error}"))?;
-        }
-    }
     Ok(())
 }
 

@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from github_nested_exec_support import assert_nested_exec_cases
 from github_native_hook_support import PLUGIN, ROOT, GithubNativeHookSupport
 
 WINDOWS_KEYWORDS = tuple(
@@ -210,6 +211,9 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
                 ),
                 "",
             )
+            assert_nested_exec_cases(
+                self, self._run_process, installed, environment, ROOT
+            )
             title_checks = {
                 "issue": "Extract GitHub workflow",
                 "pr": "refactor(github): extract workflow",
@@ -244,7 +248,3 @@ class GithubNativeHooksTests(GithubNativeHookSupport, unittest.TestCase):
                 "--merge-message",
                 "refactor(github): extract workflow (#554)\n\nFixes #553\n",
             )
-
-
-if __name__ == "__main__":
-    unittest.main()

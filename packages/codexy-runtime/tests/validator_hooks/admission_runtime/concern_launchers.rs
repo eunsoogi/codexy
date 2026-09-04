@@ -122,7 +122,7 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
         | "mcp__codex_apps__github_enable_auto_merge" => {
             Ok(vec!["codexy-repository-merge"])
         }
-        "functions.exec" => Ok(vec!["codexy-repository-issue"]),
+        "functions.exec" => Ok(vec!["codexy-repository-github-exec"]),
         tool if tool.starts_with("mcp__codex_apps__github_") => {
             Ok(vec!["codexy-repository-issue"])
         }

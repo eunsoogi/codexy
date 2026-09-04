@@ -91,6 +91,7 @@ CONNECTOR_HOOKS = (
         r"^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
         "codexy-repository-merge",
     ),
+    (r"^functions\.exec$", "codexy-repository-github-exec"),
 )
 
 
@@ -170,6 +171,8 @@ LAUNCHERS = {
         "hooks/codexy-repository-pull-request.cmd",
         "hooks/codexy-repository-merge.sh",
         "hooks/codexy-repository-merge.cmd",
+        "hooks/codexy-repository-github-exec.sh",
+        "hooks/codexy-repository-github-exec.cmd",
         "hooks/codexy-repository-github-command.sh",
         "hooks/codexy-repository-github-command.cmd",
         "hooks/codexy-destructive-command.sh",

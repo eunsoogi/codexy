@@ -47,6 +47,17 @@
         ]
       },
       {
+        "matcher": "^functions\\.exec$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-exec.sh\" PermissionRequest",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-exec.cmd\" PermissionRequest",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "^Bash$",
         "hooks": [
           {
@@ -121,6 +132,17 @@
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.sh\" PreToolUse",
             "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-merge.cmd\" PreToolUse",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^functions\\.exec$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-exec.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-repository-github-exec.cmd\" PreToolUse",
             "timeout": 5
           }
         ]

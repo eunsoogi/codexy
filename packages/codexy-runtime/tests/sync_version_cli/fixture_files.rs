@@ -25,6 +25,7 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     "plugins/codexy-github/hooks/codexy-repository-issue.cmd",
     "plugins/codexy-github/hooks/codexy-repository-pull-request.cmd",
     "plugins/codexy-github/hooks/codexy-repository-merge.cmd",
+    "plugins/codexy-github/hooks/codexy-repository-github-exec.cmd",
     "plugins/codexy-github/hooks/codexy-repository-github-command.cmd",
     "plugins/codexy-github/hooks/codexy-destructive-command.cmd",
     "plugins/codexy-github/hooks/codexy_policy/connector.py",

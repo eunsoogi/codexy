@@ -22,6 +22,8 @@ pub(super) fn is_launcher(path: &Path) -> bool {
                 | "codexy-repository-pull-request.cmd"
                 | "codexy-repository-merge.sh"
                 | "codexy-repository-merge.cmd"
+                | "codexy-repository-github-exec.sh"
+                | "codexy-repository-github-exec.cmd"
                 | "codexy-repository-github-command.sh"
                 | "codexy-repository-github-command.cmd"
                 | "codexy-destructive-command.sh"
@@ -59,6 +61,7 @@ fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BT
         "codexy-repository-issue.py",
         "codexy-repository-pull-request.py",
         "codexy-repository-merge.py",
+        "codexy_repository_github_exec.py",
         "codexy-repository-github-command.py",
         "codexy-destructive-command.py",
     ] {
