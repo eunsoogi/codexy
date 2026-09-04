@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from .execution_context import ExecutionContext, git_config
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
 from .repository import UrlRewrite, identity, rewrite_url
+from .repository_policy import worktree_root
 from .shell_context import flag
 
 REMOTE_URL_CONFIG = re.compile(
@@ -106,7 +108,7 @@ def evaluate(
     if push_like:
         return applies and _unsafe_push(arguments), None, None
     denied = (
-        (invocation.operation == "add" and _broad_stage(arguments))
+        (invocation.operation == "add" and _broad_stage(arguments, invocation.cwd))
         or (invocation.operation == "reset" and "--hard" in arguments)
         or (invocation.operation == "clean" and flag(arguments, "f", "--force"))
     )
@@ -125,6 +127,7 @@ def _unsafe_push(arguments: list[str]) -> bool:
             "--force-with-lease",
             "--force-if-includes",
             "--mirror",
+            "--stdin",
         }
         or arg.startswith(
             (
@@ -149,7 +152,7 @@ def _unsafe_push(arguments: list[str]) -> bool:
     )
 
 
-def _broad_stage(arguments: list[str]) -> bool:
+def _broad_stage(arguments: list[str], cwd: str) -> bool:
     separator = arguments.index("--") if "--" in arguments else len(arguments)
     options, operands, option_mode = [], [], True
     for argument in arguments[:separator]:
@@ -160,7 +163,7 @@ def _broad_stage(arguments: list[str]) -> bool:
             operands.append(argument)
     if separator < len(arguments):
         operands.extend(arguments[separator + 1 :])
-    return any(
+    if any(
         arg in {"-A", "-u", "--all", "--update", ".", "./"}
         or arg.startswith(("--all=", "--update="))
         or (
@@ -169,7 +172,34 @@ def _broad_stage(arguments: list[str]) -> bool:
             and any(flag in arg[1:] for flag in "Au")
         )
         for arg in options
-    ) or any(operand in {".", "./"} or operand.startswith(":") for operand in operands)
+    ):
+        return True
+    return any(_broad_stage_operand(operand, cwd) for operand in operands)
+
+
+def _broad_stage_operand(operand: str, cwd: str) -> bool:
+    if operand in {".", "./"} or operand.startswith(":"):
+        return True
+    root = worktree_root(Path(cwd))
+    if root is None:
+        return True
+    try:
+        root = root.resolve(strict=False)
+        current = Path(cwd).resolve(strict=False)
+        candidate = Path(operand)
+        if not candidate.is_absolute():
+            candidate = current / candidate
+        candidate = candidate.resolve(strict=False)
+        candidate.relative_to(root)
+        if candidate == root:
+            return True
+    except (OSError, RuntimeError, ValueError):
+        return True
+    try:
+        current.relative_to(candidate)
+    except ValueError:
+        return False
+    return True
 
 
 def explicit_owned(

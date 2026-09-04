@@ -147,3 +147,59 @@ fn issue_876_denials_explain_rule_operation_and_remediation() -> TestResult {
     }
     Ok(())
 }
+
+#[test]
+fn opaque_github_arguments_remain_denied_for_both_events() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for command in [
+            "for args in '--method DELETE repos/eunsoogi/codexy/issues/1'; do gh api $args; done",
+            "for args in '--show-token'; do gh auth status $args; done",
+        ] {
+            assert_event_case(&root, event, &owned, command, true, &[])?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn stdin_fed_send_pack_refspecs_remain_denied_for_both_events() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let command = r#"printf ':refs/heads/topic\n' | git send-pack --stdin git@github.com:eunsoogi/codexy.git"#;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        assert_event_case(&root, event, &owned, command, true, &[])?;
+    }
+    Ok(())
+}
+
+#[test]
+fn git_add_parent_pathspecs_are_denied_but_named_files_are_admitted() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let nested = owned.join("nested");
+    std::fs::create_dir_all(&nested)?;
+    std::fs::write(nested.join("narrow.txt"), "narrow")?;
+    let absolute_root = owned.to_string_lossy().replace('\\', "/");
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for command in ["git add ..", "git add -- ../.."] {
+            assert_event_case(&root, event, &nested, command, true, &[])?;
+        }
+        assert_event_case(
+            &root,
+            event,
+            &nested,
+            &format!("git add -- {absolute_root}"),
+            true,
+            &[],
+        )?;
+        for command in ["git add narrow.txt", "git add -- narrow.txt"] {
+            assert_event_case(&root, event, &nested, command, false, &[])?;
+        }
+    }
+    Ok(())
+}

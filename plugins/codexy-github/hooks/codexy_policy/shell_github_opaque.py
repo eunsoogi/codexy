@@ -19,5 +19,16 @@ def owns(command: str, context: ExecutionContext) -> bool:
 def owns_invocation(invocation: Invocation) -> bool:
     """Classify an already parsed opaque invocation without reparsing its data."""
     return (
-        invocation.executable == "gh" and not read_only(invocation.arguments)
+        invocation.executable == "gh" and not _opaque_read_only(invocation.arguments)
     ) or unresolved_invocation(invocation)
+
+
+def _opaque_read_only(arguments: list[str]) -> bool:
+    """Allow only read forms whose opaque data cannot alter the effect class."""
+    if not read_only(arguments):
+        return False
+    if arguments[:1] == ["api"]:
+        return not any("$" in argument for argument in arguments[1:])
+    if arguments[:2] == ["auth", "status"]:
+        return not any("$" in argument for argument in arguments[2:])
+    return True
