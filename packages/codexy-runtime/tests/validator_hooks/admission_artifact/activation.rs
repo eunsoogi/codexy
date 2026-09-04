@@ -11,6 +11,7 @@ const CONNECTOR_HOOKS: &[(&str, &str)] = &[
     (ISSUE_MATCHER, "codexy-repository-issue"),
     ("^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request"),
     ("^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge"),
+    ("^functions\\.exec$", "codexy-repository-github-exec"),
 ];
 
 #[test]
@@ -20,7 +21,7 @@ fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn st
     let hooks = read(&root.join("hooks/hooks.json"))?;
     assert_eq!(hooks["hooks"]["UserPromptSubmit"].as_array().ok_or("prompt hooks")?.len(), 1);
     let pre_tool_use = hooks["hooks"]["PreToolUse"].as_array().ok_or("admission hooks")?;
-    assert_eq!(pre_tool_use.len(), 7);
+    assert_eq!(pre_tool_use.len(), 8);
     for group in &pre_tool_use[..2] {
         let handler = &group["hooks"][0];
         assert_eq!(handler["type"], "command");
@@ -28,18 +29,18 @@ fn installed_plugin_activates_the_native_github_hooks() -> Result<(), Box<dyn st
         assert!(handler["command"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission.sh"));
         assert!(handler["commandWindows"].as_str().unwrap_or_default().contains("${PLUGIN_ROOT}/hooks/codexy-github-admission-"));
     }
-    for (group, (matcher, launcher)) in pre_tool_use[2..5].iter().zip(CONNECTOR_HOOKS) {
+    for (group, (matcher, launcher)) in pre_tool_use[2..6].iter().zip(CONNECTOR_HOOKS) {
         assert_connector_hook(group, "PreToolUse", matcher, launcher)?;
     }
-    assert_generic_command_safety_hooks(&pre_tool_use[5..], "PreToolUse")?;
+    assert_generic_command_safety_hooks(&pre_tool_use[6..], "PreToolUse")?;
     let permission = hooks["hooks"]["PermissionRequest"]
         .as_array()
         .ok_or("permission hooks")?;
-    assert_eq!(permission.len(), 5);
-    for (group, (matcher, launcher)) in permission[..3].iter().zip(CONNECTOR_HOOKS) {
+    assert_eq!(permission.len(), 6);
+    for (group, (matcher, launcher)) in permission[..4].iter().zip(CONNECTOR_HOOKS) {
         assert_connector_hook(group, "PermissionRequest", matcher, launcher)?;
     }
-    assert_generic_command_safety_hooks(&permission[3..], "PermissionRequest")?;
+    assert_generic_command_safety_hooks(&permission[4..], "PermissionRequest")?;
     let installed = hooks.to_string();
     for (_, launcher) in CONNECTOR_HOOKS {
         assert!(installed.contains(launcher));

@@ -50,7 +50,9 @@ fn native_windows_launchers_keep_concurrent_output_isolated_and_clean() -> Resul
         }
         let diagnostic = if matches!(
             launcher,
-            "codexy-repository-issue" | "codexy-repository-pull-request"
+            "codexy-repository-issue"
+                | "codexy-repository-pull-request"
+                | "codexy-repository-github-exec"
         ) {
             "_ENVELOPE"
         } else if matches!(

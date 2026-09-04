@@ -7,6 +7,7 @@ const LAUNCHERS: &[&str] = &[
     "codexy-repository-issue",
     "codexy-repository-pull-request",
     "codexy-repository-merge",
+    "codexy-repository-github-exec",
     "codexy-repository-github-command",
     "codexy-destructive-command",
 ];
@@ -71,6 +72,7 @@ fn materialized_plugin_executes_every_concern_hook_for_both_events()
         "mcp__codex_apps__github_create_issue",
         "mcp__codex_apps__github_create_pull_request",
         "mcp__codex_apps__github_merge_pull_request",
+        "functions.exec",
         "Bash",
         "Bash",
     ];

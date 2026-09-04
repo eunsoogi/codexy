@@ -43,9 +43,13 @@ pub(crate) fn fixture_native_launcher(is_windows: bool, program: &Path) -> Optio
 /// is unavailable, while preserving the command's `--event` argument contract.
 pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
-    let python = program.with_extension("py");
     let stem = program.file_stem()?.to_string_lossy();
-    let expected = format!("py -3 -I -B \"%~dp0{stem}.py\" --event \"%event%\"");
+    let python_stem = match stem.as_ref() {
+        "codexy-repository-github-exec" => "codexy_repository_github_exec",
+        _ => stem.as_ref(),
+    };
+    let python = program.with_file_name(format!("{python_stem}.py"));
+    let expected = format!("py -3 -I -B \"%~dp0{python_stem}.py\" --event \"%event%\"");
     let command = std::fs::read_to_string(companion)
         .ok()?
         .replace("\r\n", "\n");

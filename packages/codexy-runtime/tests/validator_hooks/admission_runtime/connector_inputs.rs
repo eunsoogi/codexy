@@ -2,6 +2,12 @@ use crate::support::{FixtureCommand as Command, write_posix_fixture_command};
 use super::{TestResult, assert_input, assert_tool_case, plugin_root, repository};
 use serde_json::{Value, json};
 
+use helpers::{assert_connector_case, corrupt_foreign_input};
+#[path = "connector_inputs/helpers.rs"]
+mod helpers;
+#[path = "connector_inputs/nested_exec.rs"]
+mod nested_exec;
+
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {
     let root = plugin_root();
@@ -219,31 +225,4 @@ fn cases() -> [(&'static str, Value, bool); 4] {
             true,
         ),
     ]
-}
-
-fn assert_connector_case(
-    root: &std::path::Path,
-    case_id: &str,
-    tool: &str,
-    input: Value,
-    denied: bool,
-) -> TestResult {
-    let workspace = tempfile::tempdir()?;
-    let cwd = super::repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
-    for event in ["PermissionRequest", "PreToolUse"] {
-        assert_input(
-            root,
-            json!({"hook_event_name":event,"tool_name":format!("mcp__codex_apps__{tool}"),"tool_input":input.clone(),"cwd":cwd}),
-            denied,
-            &[],
-        )
-        .map_err(|error| format!("{case_id} {event}: {error}"))?;
-    }
-    Ok(())
-}
-
-fn corrupt_foreign_input(tool: &str, input: &mut Value) {
-    if tool.ends_with("create_issue") || tool.ends_with("create_pull_request") {
-        input["title"] = Value::Null;
-    }
 }

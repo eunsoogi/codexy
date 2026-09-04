@@ -2,7 +2,7 @@
 entrypoint=${1-}
 event=${2-}
 case "$entrypoint" in
-codexy-thread-delivery.py | codexy-repository-issue.py | codexy-repository-pull-request.py | codexy-repository-merge.py | codexy-repository-github-command.py | codexy-destructive-command.py) ;;
+codexy-thread-delivery.py | codexy-repository-issue.py | codexy-repository-pull-request.py | codexy-repository-merge.py | codexy-repository-github-command.py | codexy_repository_github_exec.py | codexy-destructive-command.py) ;;
 *) exit 1 ;;
 esac
 case "$event" in

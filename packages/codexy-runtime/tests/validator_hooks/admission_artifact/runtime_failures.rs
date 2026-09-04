@@ -79,6 +79,7 @@ fn cmd_launchers_fail_closed_without_a_path_selected_interpreter()
         assert!(source.contains("DisableDelayedExpansion"), "{launcher}");
         if *launcher == "codexy-repository-issue"
             || *launcher == "codexy-repository-pull-request"
+            || *launcher == "codexy-repository-github-exec"
             || *launcher == "codexy-repository-github-command"
             || *launcher == "codexy-destructive-command"
         {
@@ -169,8 +170,13 @@ fn native_windows_launchers_discard_partial_child_stdout_before_fallback()
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     for launcher in LAUNCHERS {
+        let python_stem = if *launcher == "codexy-repository-github-exec" {
+            "codexy_repository_github_exec"
+        } else {
+            launcher
+        };
         std::fs::write(
-            root.join(format!("hooks/{launcher}.py")),
+            root.join(format!("hooks/{python_stem}.py")),
             "import sys\nsys.stdout.write('{\\\"partial\\\":')\nsys.exit(1)\n",
         )?;
         for event in ["PermissionRequest", "PreToolUse"] {
@@ -208,6 +214,7 @@ fn diagnostic(launcher: &str) -> &'static str {
         "codexy-repository-issue" => "CODEXY_REPOSITORY_ISSUE_RUNTIME",
         "codexy-repository-pull-request" => "CODEXY_REPOSITORY_PULL_REQUEST_RUNTIME",
         "codexy-repository-merge" => "CODEXY_REPOSITORY_MERGE_RUNTIME",
+        "codexy-repository-github-exec" => "CODEXY_NESTED_GITHUB_RUNTIME",
         "codexy-repository-github-command" => "CODEXY_REPOSITORY_GITHUB_COMMAND_RUNTIME",
         "codexy-destructive-command" => "CODEXY_DESTRUCTIVE_COMMAND_RUNTIME",
         _ => unreachable!("known launcher"),
