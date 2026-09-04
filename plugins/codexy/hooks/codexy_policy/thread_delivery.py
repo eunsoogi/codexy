@@ -78,7 +78,9 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     if parent is None:
         # A root task may deliver only to a child authenticated by native
         # create_thread provenance using the child's route settings.
-        if recipient == session or recipient not in _authenticated_children(records, session):
+        if recipient == session or recipient not in _authenticated_children(
+            records, session
+        ):
             return Diagnostic("WRONG_RECIPIENT", _ROOT_WRONG_RECIPIENT)
         if route != EXPECTED_CHILD:
             if data["model"] != EXPECTED_CHILD[0]:
@@ -125,7 +127,8 @@ def _child_ids(output: object, session: str) -> set[str]:
             continue
         parents = [current[key] for key in _PARENT_ID_KEYS if key in current]
         if parents and any(
-            not isinstance(parent, str) or parent.strip() != session for parent in parents
+            not isinstance(parent, str) or parent.strip() != session
+            for parent in parents
         ):
             continue
         for key in _CHILD_ID_KEYS:
@@ -140,7 +143,11 @@ def _child_ids(output: object, session: str) -> set[str]:
             nested = current.get(key)
             if isinstance(nested, dict):
                 child = nested.get("id")
-                if isinstance(child, str) and child.strip() and child.strip() != session:
+                if (
+                    isinstance(child, str)
+                    and child.strip()
+                    and child.strip() != session
+                ):
                     children.add(child.strip())
     return children
 

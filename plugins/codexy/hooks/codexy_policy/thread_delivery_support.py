@@ -31,6 +31,7 @@ HANDOFF_MARKER = re.compile(
     r"(?im)^[ \t]*(?:terminal(?:\s+(?:parent|child))?|nonterminal(?:\s+wait)?|"
     r"idle(?:\s+wait)?|child|parent|structured|status|compaction)\s+handoff\s*:"
 )
+_CREATE_THREAD_TOOLS = frozenset({"create_thread", "codex_app__create_thread", "mcp__codex_app__create_thread"})  # fmt: skip
 
 
 def authenticated_parent(records: list[dict], session: str) -> str | None:
@@ -116,8 +117,7 @@ def _create_thread_output(record: dict) -> object:
     if (
         item.get("type") == "McpToolCall"
         and item.get("server") == "codex_app"
-        and item.get("tool")
-        in {"create_thread", "codex_app__create_thread", "mcp__codex_app__create_thread"}
+        and item.get("tool") in _CREATE_THREAD_TOOLS
         and item.get("status") == "completed"
     ):
         return item.get("result", item.get("output"))
