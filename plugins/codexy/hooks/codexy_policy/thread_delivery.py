@@ -25,6 +25,12 @@ DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic:
+    # Hosts that do not yet emit the v2 envelope keep the legacy no-op
+    # admission path. Once the field is present, every v2 check below remains
+    # fail-closed; absence never promotes transcript or message content to
+    # routing authority.
+    if not request.routing_metadata_present:
+        return False
     session = request.session_id
     if not _non_empty_string(session):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)

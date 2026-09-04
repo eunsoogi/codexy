@@ -203,8 +203,8 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
             let payload = serde_json::json!({
                 "hook_event_name": event,
                 "tool_name": tools[index],
-                "tool_input": null,
-                "cwd": "/tmp",
+                "tool_input": null, "cwd": "/tmp",
+                "session_id": "child", "codexy_thread_delivery": {"authenticated":true},
             });
             let installed = INSTALLED_CONCERNS.iter().any(|item| item.id == concern.id);
             let hooks = if installed {

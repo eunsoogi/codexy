@@ -70,7 +70,7 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
 }
 
 #[test]
-fn identity_and_routing_denials_are_distinct_and_non_leaking() -> TestResult {
+fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
@@ -103,14 +103,8 @@ fn identity_and_routing_denials_are_distinct_and_non_leaking() -> TestResult {
             assert!(missing_identity.contains("MUST NOT retry blindly"));
             assert!(!missing_identity.contains(PARENT));
 
-            let missing_routing = reason(
-                run(root, event, &transcript, Some(CHILD), input.clone(), None)?,
-                event,
-            )?;
-            assert!(missing_routing.contains("MISSING_ROUTING_METADATA"));
-            assert!(missing_routing.contains("MUST NOT retry blindly"));
-            assert!(!missing_routing.contains(CHILD));
-            assert!(!missing_routing.contains("not-json"));
+            let legacy = run(root, event, &transcript, Some(CHILD), input.clone(), None)?;
+            assert_admitted(legacy, event, "legacy-metadata-absent")?;
 
             let malformed = reason(
                 run(

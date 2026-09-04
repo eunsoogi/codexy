@@ -77,13 +77,13 @@ fn inherited_git_common_dir_fails_closed_for_mutations_only() -> TestResult {
 }
 
 #[test]
-fn thread_delivery_requires_nonempty_model_and_thinking() -> TestResult {
+fn legacy_thread_delivery_is_a_noop_without_routing_metadata() -> TestResult {
     let root = core_plugin_root();
     assert_tool_case(
         &root,
         "codex_app__send_message_to_thread",
         json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":"medium"}),
-        true,
+        false,
     )?;
     for input in [
         json!({"threadId":"parent","thinking":"medium"}),
@@ -93,7 +93,7 @@ fn thread_delivery_requires_nonempty_model_and_thinking() -> TestResult {
         json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":null}),
         json!({"threadId":"parent","model":"gpt-5.6-sol","thinking":""}),
     ] {
-        assert_tool_case(&root, "codex_app__send_message_to_thread", input, true)?;
+        assert_tool_case(&root, "codex_app__send_message_to_thread", input, false)?;
     }
     Ok(())
 }
