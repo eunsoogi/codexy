@@ -5,21 +5,22 @@ if /I "%event%"=="PreToolUse" goto evaluate
 if /I "%event%"=="PermissionRequest" goto evaluate
 set "event=PreToolUse"
 :evaluate
-set "runtime="
-set "runtime_args="
-if exist "%SystemRoot%\py.exe" (
-  set "runtime=%SystemRoot%\py.exe"
-  set "runtime_args=-3"
-)
-if defined runtime goto invoke
 set "CODEXY_SUBAGENT_SCRIPT=%~dp0codexy-subagent-ownership.py"
 set "CODEXY_SUBAGENT_EVENT=%event%"
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -Command "$ErrorActionPreference='SilentlyContinue'; $cwd=[IO.Path]::GetFullPath((Get-Location).Path); $runtime=$null; foreach($dir in ($env:PATH -split ';')) { if(-not $dir -or -not [IO.Path]::IsPathRooted($dir) -or -not (Test-Path -LiteralPath $dir -PathType Container)) { continue }; foreach($pattern in @('py*.exe',('py'+'thon*.exe'))) { foreach($item in Get-ChildItem -LiteralPath $dir -Filter $pattern -File -ErrorAction SilentlyContinue) { $candidate=[IO.Path]::GetFullPath($item.FullName); if([IO.Path]::GetDirectoryName($candidate) -ieq $cwd) { continue }; $runtime=$candidate; break }; if($runtime) { break } }; if($runtime) { break } }; if(-not $runtime) { exit 1 }; $arguments=@('-I','-B',$env:CODEXY_SUBAGENT_SCRIPT,'--event',$env:CODEXY_SUBAGENT_EVENT); if([IO.Path]::GetFileName($runtime) -like 'py*.exe') { $arguments=@('-3')+$arguments }; & $runtime @arguments; exit $LASTEXITCODE"
-if "%errorlevel%"=="0" exit /b 0
+set "runtime=%SystemRoot%\py.exe"
+set "runtime_args=-3"
+if exist "%runtime%" goto invoke
+set "runtime="
+set "runtime_args="
+for /f "delims=" %%I in ('"%SystemRoot%\System32\where.exe" py*.exe') do if not defined runtime if exist "%%~fI" if /I not "%%~dpI"=="%CD%\" set "runtime=%%~fI"
+if defined runtime set "runtime_args=-3"
+if defined runtime goto invoke
+for /f "delims=" %%I in ('"%SystemRoot%\System32\where.exe" pyth^on.exe') do if not defined runtime if exist "%%~fI" if /I not "%%~dpI"=="%CD%\" set "runtime=%%~fI"
+if defined runtime goto invoke
 goto runtime_deny
 :invoke
 if not exist "%runtime%" goto runtime_deny
-"%runtime%" %runtime_args% -I -B "%~dp0codexy-subagent-ownership.py" --event "%event%"
+"%runtime%" %runtime_args% -I -B "%CODEXY_SUBAGENT_SCRIPT%" --event "%CODEXY_SUBAGENT_EVENT%"
 if "%errorlevel%"=="0" exit /b 0
 :runtime_deny
 if /I "%event%"=="PermissionRequest" goto permission_deny

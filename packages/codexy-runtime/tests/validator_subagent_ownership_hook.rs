@@ -61,13 +61,10 @@ fn windows_launcher_uses_an_absolute_interpreter_path() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let launcher = std::fs::read_to_string(root.join("codexy-subagent-ownership.cmd"))?;
     assert!(launcher.contains("%SystemRoot%\\py.exe"));
-    assert!(launcher.contains(
-        "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
-    ));
     assert!(launcher.contains("CODEXY_SUBAGENT_SCRIPT"));
-    assert!(launcher.contains(
-        "foreach($pattern in @('py*.exe',('py'+'thon*.exe'))) { foreach($item in Get-ChildItem -LiteralPath $dir -Filter $pattern -File"
-    ));
+    assert!(launcher.contains("%SystemRoot%\\System32\\where.exe"));
+    assert!(launcher.contains("py*.exe"));
+    assert!(launcher.contains("pyth^on.exe"));
     assert!(launcher.contains("set \"runtime_args=-3\""));
     assert!(launcher.contains("\"%runtime%\" %runtime_args% -I -B"));
     assert!(!launcher.lines().any(|line| line.starts_with("py ")));
