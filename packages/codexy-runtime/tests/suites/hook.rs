@@ -31,6 +31,9 @@ mod validator_child_thread_creation_hook;
 #[path = "../validator_subagent_ownership_hook.rs"]
 mod validator_subagent_ownership_hook;
 
+#[path = "../validator_subagent_ownership_delta.rs"]
+mod validator_subagent_ownership_delta;
+
 #[cfg(windows)]
 #[path = "../validator_subagent_ownership_windows.rs"]
 mod validator_subagent_ownership_windows;

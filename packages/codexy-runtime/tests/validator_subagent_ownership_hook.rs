@@ -3,7 +3,7 @@ use std::{io::Write as _, process::Stdio};
 use crate::support::FixtureCommand as Command;
 use serde_json::{Value, json};
 
-type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const TOOLS: &[&str] = &[
     "spawn_agent",
@@ -168,7 +168,7 @@ fn malformed_spawn_input_fails_closed() -> TestResult {
     Ok(())
 }
 
-fn assert_admitted(agent_type: &str, message: &str) -> TestResult {
+pub(crate) fn assert_admitted(agent_type: &str, message: &str) -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {
         for tool in TOOLS {
             let output = run_payload(
@@ -181,7 +181,7 @@ fn assert_admitted(agent_type: &str, message: &str) -> TestResult {
     Ok(())
 }
 
-fn assert_denied(agent_type: Option<&str>, message: &str, code: &str) -> TestResult {
+pub(crate) fn assert_denied(agent_type: Option<&str>, message: &str, code: &str) -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {
         for tool in TOOLS {
             let reason = run_payload(&payload(tool, event, agent_type, message), event)?
