@@ -53,7 +53,7 @@ def evaluate(
     payload: bytes,
     tools: frozenset[str],
     diagnostic: str,
-    forbidden: Callable[[Request], bool],
+    forbidden: Callable[[Request], bool | str],
 ) -> bytes:
     if event not in EVENTS or len(payload) > MAX_INPUT:
         return deny(event, diagnostic, "ENVELOPE")

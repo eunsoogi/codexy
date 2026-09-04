@@ -28,6 +28,9 @@ mod validator_hook_single_concern_topology;
 #[path = "../validator_child_thread_creation_hook.rs"]
 mod validator_child_thread_creation_hook;
 
+#[path = "../validator_subagent_ownership_hook.rs"]
+mod validator_subagent_ownership_hook;
+
 #[path = "../validator_hooks.rs"]
 mod validator_hooks;
 
