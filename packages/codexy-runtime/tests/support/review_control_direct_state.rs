@@ -1,5 +1,13 @@
 use serde_json::{Value, json};
 
+pub(crate) const SYNTHETIC_BASE: &str = "synthetic-base";
+pub(crate) const SYNTHETIC_UPDATED_BASE: &str = "synthetic-updated-base";
+pub(crate) const SYNTHETIC_FULL_HEAD: &str = "synthetic-full-head";
+pub(crate) const SYNTHETIC_DELTA_HEAD: &str = "synthetic-delta-head";
+pub(crate) const SYNTHETIC_CURRENT_HEAD: &str = "synthetic-current-head";
+pub(crate) const SYNTHETIC_INTEGRATION_EVIDENCE: &str = "synthetic-integration-evidence";
+pub(crate) const SYNTHETIC_REPAIR_EVIDENCE: &str = "synthetic-repair-evidence";
+
 pub(crate) fn strict_control(issue_number: u64, head: &str) -> Value {
     json!({
         "schema": "codexy.review-control-state.v1",
@@ -107,7 +115,7 @@ pub(crate) fn post_cap_control(
         delta_head,
         current_head,
         "mandatory_base_integration",
-        "166c76f04289e32a65470c9dd33d5983373d8425",
+        SYNTHETIC_INTEGRATION_EVIDENCE,
     )
 }
 
@@ -128,7 +136,7 @@ pub(crate) fn post_cap_control_with_evidence(
             reason,
             evidence_commit,
             "BLOCK",
-            json!([{"id": "goal-objective-delimiter", "path": "orchestration"}]),
+            json!([{"id": "goal-objective-delimiter", "path": "packages/codexy-runtime/src/validation/child_goal_reporting/receipt/parse.rs"}]),
             json!(["goal-objective-delimiter"]),
         );
     }

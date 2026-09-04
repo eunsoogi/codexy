@@ -9,11 +9,11 @@ mod direct_state;
 #[path = "support/post_cap_review.rs"]
 mod post_cap;
 
-const FULL_HEAD_145: &str = "04f1b130ee5004a0347caa60ab4b0cb26795251e";
-const DELTA_HEAD_145: &str = "e49bd44a731f99881cd9213560d3fbd8b360bd90";
-const CURRENT_HEAD_145: &str = "2750e1bc9c88b3651f9722d5467d6a0f676ceef1";
-const PREVIOUS_BASE_145: &str = "f6bc6e1fb67704d24b5ef80439b9a2c336e8718b";
-const CURRENT_BASE_145: &str = "56fdf32299adffd04c30974c4fe837689a20edfd";
+const FULL_HEAD_145: &str = direct_state::SYNTHETIC_FULL_HEAD;
+const DELTA_HEAD_145: &str = direct_state::SYNTHETIC_DELTA_HEAD;
+const CURRENT_HEAD_145: &str = direct_state::SYNTHETIC_CURRENT_HEAD;
+const PREVIOUS_BASE_145: &str = direct_state::SYNTHETIC_BASE;
+const CURRENT_BASE_145: &str = direct_state::SYNTHETIC_UPDATED_BASE;
 
 #[test]
 fn post_cap_re_review_rejects_duplicate_review_ids() -> TestResult {
@@ -113,12 +113,12 @@ fn root_repair_without_prior_block_and_findings_is_rejected() -> TestResult {
         DELTA_HEAD_145,
         CURRENT_HEAD_145,
         "in_scope_contract_root_repair",
-        "166c76f04289e32a65470c9dd33d5983373d8425",
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
         "PASS",
         json!([]),
         json!(["goal-objective-delimiter"]),
     );
-    let result = post_cap::run_build(&control, CURRENT_BASE_145, CURRENT_BASE_145)?;
+    let result = post_cap::run_build(&control, PREVIOUS_BASE_145, PREVIOUS_BASE_145)?;
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
     assert!(stderr.contains("prior BLOCK") || stderr.contains("prior delta findings"));
@@ -133,14 +133,34 @@ fn root_repair_with_unrelated_finding_evidence_is_rejected() -> TestResult {
         DELTA_HEAD_145,
         CURRENT_HEAD_145,
         "in_scope_contract_root_repair",
-        "166c76f04289e32a65470c9dd33d5983373d8425",
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
     );
     control["post_cap_re_review"]["qualifying_change"]["finding_ids"] =
         json!(["unrelated-finding"]);
-    let result = post_cap::run_build(&control, CURRENT_BASE_145, CURRENT_BASE_145)?;
+    let result = post_cap::run_build(&control, PREVIOUS_BASE_145, PREVIOUS_BASE_145)?;
     assert!(!result.status.success());
     assert!(
         String::from_utf8_lossy(&result.stderr).contains("not linked to the prior findings")
+    );
+    Ok(())
+}
+
+#[test]
+fn root_repair_with_same_id_on_unrelated_path_is_rejected() -> TestResult {
+    let mut control = direct_state::post_cap_control_with_evidence(
+        145,
+        FULL_HEAD_145,
+        DELTA_HEAD_145,
+        CURRENT_HEAD_145,
+        "in_scope_contract_root_repair",
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
+    );
+    control["terminal_review_history"][1]["unresolved_findings"][0]["path"] =
+        json!("README.md");
+    let result = post_cap::run_build(&control, PREVIOUS_BASE_145, PREVIOUS_BASE_145)?;
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("not linked to prior finding path")
     );
     Ok(())
 }

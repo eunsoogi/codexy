@@ -9,14 +9,14 @@ mod direct_state;
 #[path = "support/post_cap_review.rs"]
 mod post_cap;
 
-const FULL_HEAD_145: &str = "04f1b130ee5004a0347caa60ab4b0cb26795251e";
-const DELTA_HEAD_145: &str = "e49bd44a731f99881cd9213560d3fbd8b360bd90";
-const CURRENT_HEAD_145: &str = "2750e1bc9c88b3651f9722d5467d6a0f676ceef1";
-const PREVIOUS_BASE_145: &str = "f6bc6e1fb67704d24b5ef80439b9a2c336e8718b";
-const CURRENT_BASE_145: &str = "56fdf32299adffd04c30974c4fe837689a20edfd";
-const FULL_HEAD_873: &str = "7e193801fbdab0480e9798b3e711b87e73f5b0fb";
-const DELTA_HEAD_873: &str = "2a0417ff3f69b69330cea41e4c88a3f6eed3c69e";
-const CURRENT_HEAD_873: &str = "62d00cf4d805be5a8375099730a95a1c796a36ec";
+const FULL_HEAD_145: &str = direct_state::SYNTHETIC_FULL_HEAD;
+const DELTA_HEAD_145: &str = direct_state::SYNTHETIC_DELTA_HEAD;
+const CURRENT_HEAD_145: &str = direct_state::SYNTHETIC_CURRENT_HEAD;
+const PREVIOUS_BASE_145: &str = direct_state::SYNTHETIC_BASE;
+const CURRENT_BASE_145: &str = direct_state::SYNTHETIC_UPDATED_BASE;
+const FULL_HEAD_873: &str = direct_state::SYNTHETIC_FULL_HEAD;
+const DELTA_HEAD_873: &str = direct_state::SYNTHETIC_DELTA_HEAD;
+const CURRENT_HEAD_873: &str = direct_state::SYNTHETIC_CURRENT_HEAD;
 
 #[test]
 fn post_cap_re_review_rejects_untyped_third_verdict() -> TestResult {
@@ -56,8 +56,15 @@ fn post_cap_re_review_accepts_main_integration_after_full_and_delta() -> TestRes
         CURRENT_BASE_145,
     )?;
     assert_eq!(state["reviewControl"]["terminal_review_count"], 3);
-    assert_eq!(state["headRefOid"], CURRENT_HEAD_145);
-    assert_eq!(state["baseRefOid"], CURRENT_BASE_145);
+    assert_eq!(
+        state["headRefOid"],
+        state["reviewControl"]["reviewed_head"]
+    );
+    assert_eq!(
+        state["reviewControl"]["post_cap_re_review"]["qualifying_change"]["to_head"],
+        state["headRefOid"]
+    );
+    assert_eq!(state["baseRefOid"].as_str().map(str::len), Some(40));
     assert_eq!(
         state["reviewControl"]["post_cap_re_review"]["reason"],
         "mandatory_base_integration"
@@ -79,14 +86,17 @@ fn post_cap_re_review_accepts_in_scope_contract_root_repair() -> TestResult {
         DELTA_HEAD_873,
         CURRENT_HEAD_873,
         "in_scope_contract_root_repair",
-        "1f40ca6a6d1ee155049deb5a32407d7ab1a42c0b",
+        direct_state::SYNTHETIC_REPAIR_EVIDENCE,
     );
     assert_eq!(
         control["post_cap_re_review"]["reason"],
         "in_scope_contract_root_repair"
     );
-    let state = post_cap::build_pr_state(&control, CURRENT_BASE_145, CURRENT_BASE_145)?;
-    assert_eq!(state["headRefOid"], CURRENT_HEAD_873);
+    let state = post_cap::build_pr_state(&control, PREVIOUS_BASE_145, PREVIOUS_BASE_145)?;
+    assert_eq!(
+        state["headRefOid"],
+        state["reviewControl"]["reviewed_head"]
+    );
     let output = post_cap::validate_readiness(control, 873, CURRENT_HEAD_873)?;
     assert!(
         output.status.success(),

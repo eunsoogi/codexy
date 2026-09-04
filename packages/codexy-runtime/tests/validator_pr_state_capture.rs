@@ -6,8 +6,8 @@ use crate::support::{FixtureCommand, TestResult};
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
 
-const BASE_OID: &str = "f6bc6e1fb67704d24b5ef80439b9a2c336e8718b";
-const HEAD_OID: &str = "2750e1bc9c88b3651f9722d5467d6a0f676ceef1";
+const BASE_OID: &str = "0000000000000000000000000000000000000001";
+const HEAD_OID: &str = "0000000000000000000000000000000000000002";
 #[test]
 fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
     let state = capture(direct_state::strict_control(725, HEAD_OID))?;

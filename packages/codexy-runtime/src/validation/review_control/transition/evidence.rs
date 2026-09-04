@@ -4,6 +4,8 @@ use serde_json::{Map, Value};
 
 use super::super::snapshot;
 
+mod paths;
+
 struct RootRepair<'a> {
     repository_root: &'a Path,
     previous_base: &'a str,
@@ -144,7 +146,12 @@ fn check_root_repair(context: &RootRepair<'_>) -> Result<(), String> {
     if expected != string_ids(actual, "qualifying change finding ids")? {
         return Err("qualifying change evidence is not linked to the prior findings".into());
     }
-    require_changed_tree(context.repository_root, context.from, context.evidence)
+    paths::check(
+        context.repository_root,
+        context.from,
+        context.evidence,
+        findings,
+    )
 }
 
 fn required_text<'a>(
@@ -183,21 +190,6 @@ fn check_ancestor(
         ));
     }
     Ok(())
-}
-
-fn require_changed_tree(repository_root: &Path, from: &str, to: &str) -> Result<(), String> {
-    let status = Command::new("git")
-        .current_dir(repository_root)
-        .args(["diff", "--quiet", from, to, "--"])
-        .status()
-        .map_err(|error| {
-            format!("review control cannot inspect qualifying repair diff: {error}")
-        })?;
-    match status.code() {
-        Some(1) => Ok(()),
-        Some(0) => Err("contract/root repair evidence must change the reviewed tree".into()),
-        _ => Err("review control cannot inspect qualifying repair diff".into()),
-    }
 }
 
 fn finding_ids(findings: &[Value], label: &str) -> Result<HashSet<String>, String> {

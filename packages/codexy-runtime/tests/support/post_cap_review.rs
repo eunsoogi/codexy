@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use serde_json::{Value, json};
 
@@ -6,6 +6,9 @@ use crate::support::{FixtureCommand, TestResult};
 
 #[path = "review_control_direct_state.rs"]
 mod direct_state;
+
+#[path = "post_cap_review_graph.rs"]
+mod graph;
 
 pub(crate) fn validate_readiness(
     control: Value,
@@ -15,6 +18,15 @@ pub(crate) fn validate_readiness(
     let temporary = tempfile::tempdir()?;
     let handoff = temporary.path().join("handoff.md");
     let state = temporary.path().join("state.json");
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let root_repair = control["post_cap_re_review"]["reason"].as_str()
+        == Some("in_scope_contract_root_repair");
+    let head = repository.resolve(head, root_repair)?;
+    let (control, _, _) = repository.prepare(
+        &control,
+        direct_state::SYNTHETIC_BASE,
+        direct_state::SYNTHETIC_BASE,
+    )?;
     fs::write(&handoff, "PASS on the exact current head.\n")?;
     fs::write(
         &state,
@@ -39,14 +51,23 @@ pub(crate) fn build_pr_state(
     current_base: &str,
 ) -> TestResult<Value> {
     let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let (control, previous_base, current_base) =
+        repository.prepare(control, previous_base, current_base)?;
     let output = temporary.path().join("pr-state.json");
     let (current, control_path, previous) = write_review_inputs(
         temporary.path(),
-        control,
-        previous_base,
-        current_base,
+        &control,
+        &previous_base,
+        &current_base,
     )?;
-    let result = invoke_build(&current, &control_path, &previous, &output)?;
+    let result = invoke_build(
+        &repository.path,
+        &current,
+        &control_path,
+        &previous,
+        &output,
+    )?;
     assert!(
         result.status.success(),
         "build-pr-state must accept the typed post-cap state: {}",
@@ -61,14 +82,23 @@ pub(crate) fn run_build(
     current_base: &str,
 ) -> TestResult<std::process::Output> {
     let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let (control, previous_base, current_base) =
+        repository.prepare(control, previous_base, current_base)?;
     let output = temporary.path().join("pr-state.json");
     let (current, control_path, previous) = write_review_inputs(
         temporary.path(),
-        control,
-        previous_base,
-        current_base,
+        &control,
+        &previous_base,
+        &current_base,
     )?;
-    Ok(invoke_build(&current, &control_path, &previous, &output)?)
+    Ok(invoke_build(
+        &repository.path,
+        &current,
+        &control_path,
+        &previous,
+        &output,
+    )?)
 }
 
 fn write_review_inputs(
@@ -114,6 +144,7 @@ fn write_review_inputs(
 }
 
 fn invoke_build(
+    repository: &Path,
     current: &std::path::Path,
     control: &std::path::Path,
     previous: &std::path::Path,
@@ -123,6 +154,8 @@ fn invoke_build(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
     );
     command
+        .arg("--repository-root")
+        .arg_path(repository)
         .arg("--base-pr-state-file")
         .arg_path(current)
         .arg("--review-control-state-file")

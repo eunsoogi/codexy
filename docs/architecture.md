@@ -199,7 +199,8 @@ direct control state. The validator uses authenticated current/previous
 snapshots from canonical GitHub readback, derives the predecessor only from
 previous `reviewControl`, and preserves current head/base identity. Base
 integration must change/prove base ancestry; root repair must retain base,
-follow a prior `BLOCK` with findings, and bind evidence to those IDs. Churn,
+follow a prior `BLOCK` with findings, bind evidence to those IDs, and show that
+the evidence diff changes every finding's recorded path. Churn,
 duplicate/unchanged heads, and review four remain blocked. `UNOBSERVABLE` is not
 approval; opening a PR is terminal only when explicitly requested.
 

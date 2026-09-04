@@ -87,7 +87,7 @@ task/thread
 - prior reviewed head (must equal the delta head):
 - qualifying-change from/to heads and evidence commit in Git ancestry:
 - authenticated current/previous PR snapshots, baseRefOid transition, and
-  finding_ids linkage when root repair applies:
+  finding_ids plus recorded-path linkage when root repair applies:
 - fourth profile review: prohibited after the third terminal verdict
 - remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 

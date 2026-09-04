@@ -182,10 +182,11 @@ MUST differ, the current base MUST descend from the previous base, and the
 integration evidence MUST descend from the current base. For
 `in_scope_contract_root_repair`, the base OID MUST remain unchanged, the prior
 delta MUST be `BLOCK` with non-empty findings, and
-`qualifying_change.finding_ids` MUST exactly identify those findings. In both
-cases the evidence commit MUST descend from the prior delta and precede the
-current head; a root-repair evidence commit MUST change the reviewed tree.
-Arbitrary JSON agreement is not authenticated readback authority.
+`qualifying_change.finding_ids` MUST exactly identify those findings, and its
+evidence diff MUST change every finding's recorded path. In both cases the
+evidence commit MUST descend from the prior delta and precede the current head;
+a root-repair evidence commit MUST change the reviewed tree. Arbitrary JSON
+agreement is not authenticated readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal

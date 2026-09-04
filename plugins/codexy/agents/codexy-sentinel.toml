@@ -81,8 +81,9 @@ head, and its `qualifying_change` MUST bind that delta head to the current head
 through an evidence commit in the Git ancestry. The current authenticated PR
 snapshot MUST carry the base and head OIDs. Mandatory base integration MUST
 change `baseRefOid` and prove base ancestry; an in-scope contract/root repair
-MUST retain the base, follow a prior `BLOCK` delta with findings, and bind
-`finding_ids` exactly to those findings. The current head MUST differ.
+MUST retain the base, follow a prior `BLOCK` delta with findings, bind
+`finding_ids` exactly to those findings, and show the evidence diff changes each
+finding's recorded path. The current head MUST differ.
 Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
 reordered, or truncated history MUST be rejected. The same Sentinel remains
 active; it MUST NOT be duplicated,
