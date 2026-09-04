@@ -2,7 +2,7 @@
 use std::os::unix::fs::symlink;
 
 use super::admission_runtime::{
-    TestResult, assert_event_case, plugin_root, repository,
+    TestResult, assert_event_cases, plugin_root, repository,
 };
 
 #[cfg(unix)]
@@ -124,37 +124,39 @@ fn link_retarget_and_ambiguous_resolution_fail_closed_for_all_events() -> TestRe
         .chain(std::iter::once("link0 push --force origin topic".to_owned()))
         .collect::<Vec<_>>()
         .join(" && ");
+    let mut cases = Vec::new();
+    for command in [
+        "ln -s /usr/bin/git left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./right push --force origin topic",
+        "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/git link && ./target push --force origin topic",
+        "ln -s /usr/bin/git left && ln -s left right && ln -sfn right left && ./left push --force origin topic",
+        "ln -s \"$UNKNOWN_RUNTIME_VALUE\" safe && ./safe push --force origin topic",
+        "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final || git push --force origin topic",
+        "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -sfn /usr/bin/printf parent && mkdir -p grandchild/final || git push --force origin topic",
+        "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && ln -sfn /usr/bin/printf parent && mkdir -p greatgrandchild/final || git push --force origin topic",
+        &same_kind_retarget,
+        "ln -s cycle-b cycle-a && ln -s cycle-c cycle-b && ln -s cycle-a cycle-c && mkdir -p cycle-a/final || git push --force origin topic",
+        &deep_chain,
+    ] {
+        cases.push((command.to_owned(), true));
+    }
+    for command in [
+        "ln -s /usr/bin/printf left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./left '%s\\n' benign",
+        "ln -s /usr/bin/printf safe && ./safe '%s\\n' benign",
+        "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && mkdir -p child/final && printf benign",
+        "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final && printf benign",
+        "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && mkdir -p grandchild/final && printf benign",
+        "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && mkdir -p greatgrandchild/final && printf benign",
+        &format!(
+            "ln -s {0} parent && ln -s parent child && ln -s child/tool launcher && mkdir -p launcher/final && printf benign",
+            old_target.display(),
+        ),
+        "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
+        "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/printf link && ./target '%s\\n' benign",
+    ] {
+        cases.push((command.to_owned(), false));
+    }
     for event in ["PreToolUse", "PermissionRequest"] {
-        for command in [
-            "ln -s /usr/bin/git left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./right push --force origin topic",
-            "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/git link && ./target push --force origin topic",
-            "ln -s /usr/bin/git left && ln -s left right && ln -sfn right left && ./left push --force origin topic",
-            "ln -s \"$UNKNOWN_RUNTIME_VALUE\" safe && ./safe push --force origin topic",
-            "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final || git push --force origin topic",
-            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -sfn /usr/bin/printf parent && mkdir -p grandchild/final || git push --force origin topic",
-            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && ln -sfn /usr/bin/printf parent && mkdir -p greatgrandchild/final || git push --force origin topic",
-            &same_kind_retarget,
-            "ln -s cycle-b cycle-a && ln -s cycle-c cycle-b && ln -s cycle-a cycle-c && mkdir -p cycle-a/final || git push --force origin topic",
-            &deep_chain,
-        ] {
-            assert_event_case(&root, event, &owned, command, true, &[])?;
-        }
-        for command in [
-            "ln -s /usr/bin/printf left && ln -s /usr/bin/git right && ln -sfn /usr/bin/printf left && ./left '%s\\n' benign",
-            "ln -s /usr/bin/printf safe && ./safe '%s\\n' benign",
-            "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && mkdir -p child/final && printf benign",
-            "ln -s /var/tmp parent && mkdir -p parent/x && ln -s parent/x child && ln -sfn /usr/bin/printf parent && mkdir -p child/final && printf benign",
-            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && mkdir -p grandchild/final && printf benign",
-            "ln -s /var/tmp parent && ln -s parent child && ln -s child grandchild && ln -s grandchild greatgrandchild && mkdir -p greatgrandchild/final && printf benign",
-            &format!(
-                "ln -s {0} parent && ln -s parent child && ln -s child/tool launcher && mkdir -p launcher/final && printf benign",
-                old_target.display(),
-            ),
-            "ln -s /usr/bin/git left && ln -s /usr/bin/git right && cp -fP /usr/bin/printf left && ./right push --force origin topic",
-            "ln -s /usr/bin/printf target && ln -s target link && cp -fP /usr/bin/printf link && ./target '%s\\n' benign",
-        ] {
-            assert_event_case(&root, event, &owned, command, false, &[])?;
-        }
+        assert_event_cases(&root, event, &owned, cases.clone(), &[])?;
     }
     Ok(())
 }
