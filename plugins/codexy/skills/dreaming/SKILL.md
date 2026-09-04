@@ -56,9 +56,10 @@ Using only the current diff, governing scope, and meaningful tests, ask whether:
 
 Report a patch-stack, test-for-test, or avoidable-complexity concern only when
 current evidence supports it. Put that concern in `Fix` and make the single next
-action the smallest structural correction or simpler-design check. When the
-implementation is structurally sound, continue under the existing output
-contract without ceremonial extra output.
+action the smallest structural correction, simpler-design check, or
+behavior/regression-proof correction. When the implementation is structurally
+sound, continue under the existing output contract without ceremonial extra
+output.
 
 This pass is bounded and advisory. It MUST NOT become a general reviewer,
 prescribe an architecture, weaken requirements, delete legitimate edge-case
