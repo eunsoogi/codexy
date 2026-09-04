@@ -158,7 +158,8 @@ fn write_inputs(
     let values = [
         ("pr.json", json!({
             "number": 999, "state": "OPEN", "isDraft": false, "mergeStateStatus": "CLEAN",
-            "reviewDecision": "", "headRefName": "codexy/version-1.3.1", "headRefOid": oid,
+            "reviewDecision": "", "baseRefName": "main", "baseRefOid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "headRefName": "codexy/version-1.3.1", "headRefOid": oid,
             "headRepository": {"name": "codexy"}, "headRepositoryOwner": {"login": "eunsoogi"},
             "isCrossRepository": cross_repository, "labels": pr_labels,
             "closingIssuesReferences": [{"number": 301}]

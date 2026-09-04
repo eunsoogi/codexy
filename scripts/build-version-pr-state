@@ -65,6 +65,8 @@ def build_state(args: argparse.Namespace) -> dict[str, object]:
         fail("expected head ref must be non-empty and trimmed")
 
     pr = require_object(read_json(args.pr_json, "PR JSON"), "PR JSON")
+    if OID_PATTERN.fullmatch(str(pr.get("baseRefOid", ""))) is None:
+        fail("PR base OID must be a lowercase 40-character Git OID")
     issue = require_object(read_json(args.issue_json, "issue JSON"), "issue JSON")
     repository_labels = require_named_items(
         read_json(args.repository_labels_json, "repository labels"), "repository labels"
@@ -123,6 +125,11 @@ def build_state(args: argparse.Namespace) -> dict[str, object]:
     state.update(
         {
             "repository": args.repository,
+            "capture": {
+                "provider": "github",
+                "method": "graphql",
+                "authenticated": True,
+            },
             "repositoryLabels": repository_labels,
             "reviewThreads": review_threads,
             "governingIssue": enriched_reference,
