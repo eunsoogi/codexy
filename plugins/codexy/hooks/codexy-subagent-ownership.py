@@ -12,9 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from codexy_policy.envelope import evaluate
 from codexy_policy.subagent_ownership import forbidden
 
-TOOLS = frozenset(
-    {"spawn_agent", "agents__spawn_agent", "multi_agent_v1__spawn_agent"}
-)
+TOOLS = frozenset({"spawn_agent", "agents__spawn_agent", "multi_agent_v1__spawn_agent"})
 
 
 def main() -> int:

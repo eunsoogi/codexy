@@ -177,6 +177,8 @@ LAUNCHERS = {
     ),
     "devtools": ("mcp/codexy-mcp-devtools",),
 }
+
+
 def valid_registration(plugin: Path, component: str) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
