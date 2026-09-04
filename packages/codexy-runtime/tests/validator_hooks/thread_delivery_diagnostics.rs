@@ -89,11 +89,11 @@ fn identity_and_context_denials_are_distinct_and_non_leaking() -> TestResult {
         for root in &roots {
             let input = json!({"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"medium"});
             let missing = reason(run(root, event, &malformed, None, input.clone())?, event)?;
-            assert!(missing.contains("MISSING_IDENTITY") && missing.contains("do not retry blindly"), "{event}: {missing}");
+            assert!(missing.contains("MISSING_IDENTITY") && missing.contains("MUST NOT retry blindly"), "{event}: {missing}");
             assert!(!missing.contains(PARENT), "{event} leaked parent id: {missing}");
 
             let context = reason(run(root, event, &malformed, Some(CHILD), input)?, event)?;
-            assert!(context.contains("UNTRUSTED_CONTEXT") && context.contains("do not retry blindly"), "{event}: {context}");
+            assert!(context.contains("UNTRUSTED_CONTEXT") && context.contains("MUST NOT retry blindly"), "{event}: {context}");
             assert!(!context.contains(CHILD), "{event} leaked session id: {context}");
             assert!(!context.contains(PARENT), "{event} leaked parent id: {context}");
             assert!(!context.contains("not-json"), "{event} leaked transcript: {context}");

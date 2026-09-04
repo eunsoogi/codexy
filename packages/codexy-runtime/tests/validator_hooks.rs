@@ -26,6 +26,8 @@ mod shell_context_regressions;
 mod thread_delivery_parent_route;
 #[path = "validator_hooks/thread_delivery_diagnostics.rs"]
 mod thread_delivery_diagnostics;
+#[path = "validator_hooks/thread_delivery_missing_fields.rs"]
+mod thread_delivery_missing_fields;
 #[path = "validator_hooks/repository_github_policy_config.rs"]
 mod repository_github_policy_config;
 #[path = "structured_contract_artifacts.rs"]
