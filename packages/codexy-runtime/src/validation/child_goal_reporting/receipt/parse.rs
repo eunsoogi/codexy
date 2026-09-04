@@ -29,13 +29,11 @@ fn parse_call(index: usize, line: &str) -> Option<Result<Call<'_>, &'static str>
         .trim();
     let (operation, objective) = if operation == "get_goal" {
         (Operation::Get, None)
-    } else if let Some(objective) = operation
-        .strip_prefix("create_goal(objective=")
-        .and_then(|value| value.strip_suffix(')'))
-    {
-        (Operation::Create, Some(objective.trim()))
     } else {
-        return None;
+        let objective = operation
+            .strip_prefix("create_goal(objective=")
+            .and_then(|value| value.strip_suffix(')'))?;
+        (Operation::Create, Some(objective.trim()))
     };
     Some(
         field(line, "transition key")

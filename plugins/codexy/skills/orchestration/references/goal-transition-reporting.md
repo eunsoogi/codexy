@@ -22,18 +22,18 @@ as deduplicated; it MUST NOT imply a second goal call.
 
 A parent-supplied assignment that names the objective and success criteria is
 the child's authorization to create the matching finite goal. An issue-sized
-handoff with scope, verification, and a stop condition MUST NOT require a
-second `use goal` instruction. A prohibition on available goal tools in that
-same non-trivial implementation assignment is contradictory and MUST be
-rejected. Ambiguous discussion, incidental context, and unassigned suggestions
-MUST NOT authorize goal creation.
+handoff with scope, verification, and a stop condition MUST NOT require a second
+`use goal` instruction. A prohibition on available goal tools in that same
+non-trivial implementation assignment is contradictory and MUST be rejected.
+Ambiguous discussion, incidental context, and unassigned suggestions MUST NOT
+authorize goal creation.
 
-The parent handoff MUST expose the authoritative value as one `Assignment
-objective:` record. The child MUST derive one `Authorized goal objective:`
-record from it before the goal transition. The two records, create call, create
-result, and active `get_goal` readback MUST match exactly. This derived record is
-evidence of the existing assignment, not a second authorization phrase or an
-authority to broaden the objective.
+The parent handoff MUST expose the authoritative value as one
+`Assignment objective:` record. The child MUST derive one
+`Authorized goal objective:` record from it before the goal transition. The two
+records, create call, create result, and active `get_goal` readback MUST match
+exactly. This derived record is evidence of the existing assignment, not a
+second authorization phrase or an authority to broaden the objective.
 
 ## Runtime Polling Boundary
 

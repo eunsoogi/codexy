@@ -19,9 +19,11 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
         ];
     }
     if !clear {
-        return receipt::has_create_evidence(&lines)
-            .then(|| vec!["create_goal requires a clear delegated assignment authorization".into()])
-            .unwrap_or_default();
+        return if receipt::has_create_evidence(&lines) {
+            vec!["create_goal requires a clear delegated assignment authorization".into()]
+        } else {
+            Vec::new()
+        };
     }
     let result = objective::binding(&lines).and_then(|authorized| {
         let source = source_parent(&lines)
