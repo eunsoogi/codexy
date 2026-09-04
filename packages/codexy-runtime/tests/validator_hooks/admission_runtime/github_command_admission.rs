@@ -78,6 +78,8 @@ fn issue_876_dangerous_boundaries_remain_denied_for_both_events() -> TestResult 
         "rm -rf plugins/codexy",
         "find . -type d -name .cache -delete",
         "git add -A",
+        "git add --dry-run README.md -A",
+        "git add --dry-run README.md -u",
         "git add .",
         "git add -- :/",
         "git add -- ':(top)README.md'",
