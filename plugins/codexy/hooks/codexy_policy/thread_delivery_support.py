@@ -109,7 +109,9 @@ def delivery_phase(prompt: str) -> str | None:
 
 
 def delivery_key(prompt: str, phase: str) -> str | None:
-    matcher = TRANSITION_KEY if phase in {"pre-delivery", "post-result"} else DELIVERY_KEY
+    matcher = (
+        TRANSITION_KEY if phase in {"pre-delivery", "post-result"} else DELIVERY_KEY
+    )
     match = matcher.search(prompt)
     if match is None:
         return None

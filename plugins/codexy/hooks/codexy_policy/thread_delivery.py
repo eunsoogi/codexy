@@ -142,4 +142,3 @@ def _missing_recipient_diagnostic(child_to_parent: bool) -> Diagnostic:
         "MISSING_RECIPIENT",
         _MISSING_RECIPIENT if child_to_parent else _MISSING_ROOT_RECIPIENT,
     )
-
