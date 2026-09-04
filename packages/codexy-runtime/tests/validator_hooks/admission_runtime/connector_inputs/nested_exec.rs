@@ -113,6 +113,21 @@ fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResu
             true,
         ),
         (
+            "parenthesized eval nested mutation",
+            r#"(eval)("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"Create parenthesized evaluated nested issue\"});");"#,
+            true,
+        ),
+        (
+            "optional eval nested mutation",
+            r#"eval?.("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\"eunsoogi/codexy\", title:\"Create optional evaluated nested issue\"});");"#,
+            true,
+        ),
+        (
+            "tools destructuring alias nested mutation",
+            r#"const {mcp__codex_apps__github_create_issue: create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create destructured nested issue"});"#,
+            true,
+        ),
+        (
             "template expression nested mutation",
             r#"`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`"#,
             true,

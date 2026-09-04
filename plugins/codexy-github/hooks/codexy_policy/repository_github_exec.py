@@ -10,9 +10,12 @@ from .repository_github_exec_literals import LiteralParser
 from .repository_github_exec_parser import ParseError, Token, tokenize
 from .repository_github_exec_structure import (
     arguments as _arguments,
+    call_open as _call_open,
+    global_identifier as _global_identifier,
     is_tools as _is_tools,
     matching as _matching,
     strip_parentheses as _strip_parentheses,
+    tools_destructuring_aliases as _tools_destructuring_aliases,
 )
 
 MAX_CODE = 64 * 1024
@@ -57,6 +60,7 @@ def _calls(tokens: list[Token], depth: int = 0) -> list[Call]:
         raise ParseError("evaluation nesting")
     calls: list[Call] = []
     indirect_depth = 0
+    aliases = _tools_destructuring_aliases(tokens, TOOL_PREFIX)
     for index, token in enumerate(tokens):
         if token.kind == "dynamic":
             if token.value == "template_expression_start":
@@ -83,6 +87,14 @@ def _calls(tokens: list[Token], depth: int = 0) -> list[Call]:
         elif token.value.startswith("github_") and not _property_key(tokens, index):
             if token.value[7:] not in READ_OPERATIONS:
                 raise ParseError("aliased mutation name")
+        elif (
+            token.value in aliases
+            and _global_identifier(tokens, index)
+            and _call_open(tokens, index) is not None
+        ):
+            tool = aliases[token.value]
+            if tool is None or tool.rsplit("github_", 1)[-1] not in READ_OPERATIONS:
+                raise ParseError("aliased mutation")
     if indirect_depth:
         raise ParseError("unterminated template expression")
     return calls
@@ -199,10 +211,11 @@ def _reflect_call(tokens: list[Token], index: int) -> Call | None:
 
 
 def _eval_calls(tokens: list[Token], index: int, depth: int) -> list[Call]:
-    if index + 1 >= len(tokens) or tokens[index + 1].value != "(":
+    open_index = _call_open(tokens, index)
+    if open_index is None:
         return []
-    close = _matching(tokens, index + 1, "(", ")")
-    arguments = _arguments(tokens, index + 2, close)
+    close = _matching(tokens, open_index, "(", ")")
+    arguments = _arguments(tokens, open_index + 1, close)
     if len(arguments) != 1:
         raise ParseError("dynamic eval")
     argument = _strip_parentheses(arguments[0])
@@ -214,10 +227,6 @@ def _eval_calls(tokens: list[Token], index: int, depth: int) -> list[Call]:
     ):
         raise ParseError("indirect mutation")
     return []
-
-
-def _global_identifier(tokens: list[Token], index: int) -> bool:
-    return index == 0 or tokens[index - 1].value not in {".", "?"}
 
 
 def _direct_member(tokens: list[Token], index: int) -> bool:

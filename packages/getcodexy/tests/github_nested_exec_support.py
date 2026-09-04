@@ -65,6 +65,31 @@ def assert_nested_exec_cases(
         ),
         (
             "PermissionRequest",
+            'eval("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\\"eunsoogi/codexy\\", title:\\"Create evaluated nested issue from permission\\"});");',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            '(eval)("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\\"eunsoogi/codexy\\", title:\\"Create parenthesized evaluated nested issue\\"});");',
+            True,
+        ),
+        (
+            "PreToolUse",
+            'eval?.("await tools.mcp__codex_apps__github_create_issue({repository_full_name:\\"eunsoogi/codexy\\", title:\\"Create optional evaluated nested issue\\"});");',
+            True,
+        ),
+        (
+            "PermissionRequest",
+            'const {mcp__codex_apps__github_create_issue: create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create destructured nested issue"});',
+            True,
+        ),
+        (
+            "PreToolUse",
+            'const {mcp__codex_apps__github_create_issue: create} = tools; create({repository_full_name:"eunsoogi/codexy", title:"Create destructured nested issue from pre-tool"});',
+            True,
+        ),
+        (
+            "PermissionRequest",
             '`${tools.mcp__codex_apps__github_create_issue({repository_full_name:"eunsoogi/codexy", title:"Create templated nested issue"})}`',
             True,
         ),

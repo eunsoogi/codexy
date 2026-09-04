@@ -22,6 +22,54 @@ def is_tools(tokens: list[Token]) -> bool:
     )
 
 
+def call_open(tokens: list[Token], index: int) -> int | None:
+    cursor = index + 1
+    while cursor < len(tokens) and tokens[cursor].value == ")":
+        cursor += 1
+    if (
+        cursor + 1 < len(tokens)
+        and tokens[cursor].value == "?"
+        and tokens[cursor + 1].value == "."
+    ):
+        cursor += 2
+    if cursor >= len(tokens) or tokens[cursor].value != "(":
+        return None
+    return cursor
+
+
+def global_identifier(tokens: list[Token], index: int) -> bool:
+    return index == 0 or tokens[index - 1].value not in {".", "?"}
+
+
+def tools_destructuring_aliases(
+    tokens: list[Token], prefix: str
+) -> dict[str, str | None]:
+    aliases: dict[str, str | None] = {}
+    for open_index, token in enumerate(tokens):
+        if token.value != "{":
+            continue
+        close = matching(tokens, open_index, "{", "}")
+        if close + 2 >= len(tokens):
+            continue
+        if tokens[close + 1].value != "=" or not is_tools(
+            tokens[close + 2 : close + 3]
+        ):
+            continue
+        for property_tokens in arguments(tokens, open_index + 1, close):
+            if len(property_tokens) < 3:
+                continue
+            key, colon, alias = property_tokens[:3]
+            if colon.value != ":" or alias.kind != "identifier":
+                continue
+            if key.kind != "identifier" or not key.value.startswith(prefix):
+                continue
+            if alias.value not in aliases:
+                aliases[alias.value] = key.value
+            elif aliases[alias.value] != key.value:
+                aliases[alias.value] = None
+    return aliases
+
+
 def arguments(tokens: list[Token], start: int, end: int) -> list[list[Token]]:
     result: list[list[Token]] = []
     begin = start
