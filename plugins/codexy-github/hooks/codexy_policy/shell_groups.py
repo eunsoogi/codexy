@@ -61,7 +61,9 @@ def parse(tokens: list[str]) -> Sequence:
 def _expand_punctuation(tokens: list[str]) -> list[str]:
     expanded: list[str] = []
     for token in tokens:
-        if token and set(token) <= PUNCTUATION:
+        if token == "{}":
+            expanded.append(token)
+        elif token and set(token) <= PUNCTUATION:
             index = 0
             while index < len(token):
                 pair = token[index : index + 2]

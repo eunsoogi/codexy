@@ -79,6 +79,7 @@ fn cmd_launchers_fail_closed_without_a_path_selected_interpreter()
         assert!(source.contains("DisableDelayedExpansion"), "{launcher}");
         if *launcher == "codexy-repository-issue"
             || *launcher == "codexy-repository-pull-request"
+            || *launcher == "codexy-repository-github-command"
         {
             assert!(source.contains("py -3 -I -B"), "{launcher}");
         } else {

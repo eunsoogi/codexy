@@ -1,6 +1,7 @@
 """Opaque-shell selector owned by repository-GitHub-command admission."""
 
 from .execution_context import ExecutionContext
+from .github_workflow import read_only
 from .invocation import Invocation
 from .shell_opaque import (
     contains_policy_executable,
@@ -17,4 +18,6 @@ def owns(command: str, context: ExecutionContext) -> bool:
 
 def owns_invocation(invocation: Invocation) -> bool:
     """Classify an already parsed opaque invocation without reparsing its data."""
-    return invocation.executable == "gh" or unresolved_invocation(invocation)
+    return (
+        invocation.executable == "gh" and not read_only(invocation.arguments)
+    ) or unresolved_invocation(invocation)

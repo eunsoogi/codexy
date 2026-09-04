@@ -104,18 +104,62 @@ def evaluate(
     if arguments is None:
         return applies, None, None
     if push_like:
-        forced = any(
-            arg in {"--force", "--force-with-lease", "--mirror"}
-            or arg.startswith(("--force=", "--force-with-lease=", "--mirror="))
-            or (arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:])
-            or arg.startswith("+")
-            for arg in arguments
-        )
-        return applies and forced, None, None
-    denied = (invocation.operation == "reset" and "--hard" in arguments) or (
-        invocation.operation == "clean" and flag(arguments, "f", "--force")
+        return applies and _unsafe_push(arguments), None, None
+    denied = (
+        (invocation.operation == "add" and _broad_stage(arguments))
+        or (invocation.operation == "reset" and "--hard" in arguments)
+        or (invocation.operation == "clean" and flag(arguments, "f", "--force"))
     )
     return applies and denied, None, None
+
+
+def _unsafe_push(arguments: list[str]) -> bool:
+    return any(
+        arg
+        in {
+            "--delete",
+            "--prune",
+            "--all",
+            "--tags",
+            "--force",
+            "--force-with-lease",
+            "--force-if-includes",
+            "--mirror",
+        }
+        or arg.startswith(
+            (
+                "--delete=",
+                "--prune=",
+                "--all=",
+                "--tags=",
+                "--force=",
+                "--force-with-lease=",
+                "--force-if-includes=",
+                "--mirror=",
+            )
+        )
+        or (
+            arg.startswith("-")
+            and not arg.startswith("--")
+            and any(flag in arg[1:] for flag in "dDAf")
+        )
+        or arg.startswith(":")
+        or arg.startswith("+")
+        for arg in arguments
+    )
+
+
+def _broad_stage(arguments: list[str]) -> bool:
+    return any(
+        arg in {"-A", "-u", "--all", "--update", ".", "./"}
+        or arg.startswith(("--all=", "--update="))
+        or (
+            arg.startswith("-")
+            and not arg.startswith("--")
+            and any(flag in arg[1:] for flag in "Au")
+        )
+        for arg in arguments
+    )
 
 
 def explicit_owned(
