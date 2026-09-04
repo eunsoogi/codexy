@@ -23,7 +23,8 @@
 - issue:
 - terminal_review_count (PASS/BLOCK/UNOBSERVABLE only, maximum three):
 - terminal_review_limit (must remain three for reviewer-backed profiles):
-- terminal_review_history (ordered full, delta, and optional required_current_head events):
+- terminal_review_history (ordered full, delta, and optional
+  required_current_head events):
 - authoritative prior PR snapshot / exact direct-state match confirmed:
 - exact history prefix and +1 count transition confirmed:
 - reviewer / exact head / terminal verdict for each counted review:

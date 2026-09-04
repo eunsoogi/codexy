@@ -65,7 +65,7 @@ pr)
 			cat "$state/observed-pr.json"
 		else
 			oid=$(git rev-parse origin/codexy/version-1.3.1 2>/dev/null || git rev-parse HEAD)
-            base_oid=$(git rev-parse main 2>/dev/null || git rev-parse HEAD)
+			base_oid=$(git rev-parse main 2>/dev/null || git rev-parse HEAD)
 			jq -n --rawfile body "$state/current-body.md" --arg oid "$oid" --arg base_oid "$base_oid" '{
             number:999,state:"OPEN",isDraft:false,mergeStateStatus:"CLEAN",reviewDecision:"",
             baseRefName:"main",baseRefOid:$base_oid,body:$body,headRefName:"codexy/version-1.3.1",headRefOid:$oid,

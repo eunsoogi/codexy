@@ -189,17 +189,19 @@ flowchart TD
     end
 ```
 
-The owning lane keeps review-response fixes on the same branch; `PENDING`/`RUNNING` retain the reviewer, while `BLOCK` starts a fresh proof and one same-reviewer
-delta recheck. Once full and delta are consumed, one `required_current_head`
-re-review may consume the third/final verdict only when mandatory base integration
-or an in-scope contract/root repair moved the head; typed reason, prior delta
-head, qualifying heads, and ancestry evidence stay in direct control state.
-The validator uses authenticated current/previous snapshots from canonical GitHub readback, derives the predecessor only from previous `reviewControl`, and
-preserves current head/base identity. Base integration must change/prove base
-ancestry; root repair must retain base, follow a prior `BLOCK` with findings, and
-bind evidence to those IDs. Churn, duplicate/unchanged heads, and review four
-remain blocked. `UNOBSERVABLE` is not approval; opening a PR is terminal only
-when explicitly requested.
+The owning lane keeps review-response fixes on the same branch;
+`PENDING`/`RUNNING` retain the reviewer, while `BLOCK` starts a fresh proof and
+one same-reviewer delta recheck. Once full and delta are consumed, one
+`required_current_head` re-review may consume the third/final verdict only when
+mandatory base integration or an in-scope contract/root repair moved the head;
+typed reason, prior delta head, qualifying heads, and ancestry evidence stay in
+direct control state. The validator uses authenticated current/previous
+snapshots from canonical GitHub readback, derives the predecessor only from
+previous `reviewControl`, and preserves current head/base identity. Base
+integration must change/prove base ancestry; root repair must retain base,
+follow a prior `BLOCK` with findings, and bind evidence to those IDs. Churn,
+duplicate/unchanged heads, and review four remain blocked. `UNOBSERVABLE` is not
+approval; opening a PR is terminal only when explicitly requested.
 
 ## Plugin and runtime discovery
 
@@ -243,7 +245,8 @@ omitted or duplicate entries and stale agent model/reasoning values. Run:
 cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
-The broader plugin validator checks manifest, agent catalog, skill frontmatter, MCP, and LSP configuration integrity:
+The broader plugin validator checks manifest, agent catalog, skill frontmatter,
+MCP, and LSP configuration integrity:
 
 ```sh
 scripts/validate-plugin-config.sh --check

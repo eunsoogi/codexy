@@ -112,11 +112,12 @@ edits.
   `terminal_review_limit`, and an ordered `terminal_review_history`; the history
   MUST be carried forward rather than reset or shortened at a lane boundary.
   After the third verdict, the owner MUST NOT invoke another profile-selected
-  reviewer. A third `BLOCK` permits one bounded repair of its issue-contract/root
-  findings and exact-head proof before handoff. A third `UNOBSERVABLE` requires a
-  maintainer-owned final disposition with current proof. Neither path waives
-  tests, validators, CI, review-thread, ownership, safety, LOC, or merge gates,
-  and neither may set a goal to `blocked` because of quota exhaustion or a wait.
+  reviewer. A third `BLOCK` permits one bounded repair of its
+  issue-contract/root findings and exact-head proof before handoff. A third
+  `UNOBSERVABLE` requires a maintainer-owned final disposition with current
+  proof. Neither path waives tests, validators, CI, review-thread, ownership,
+  safety, LOC, or merge gates, and neither may set a goal to `blocked` because
+  of quota exhaustion or a wait.
 
 ## Completion-Handoff Validation
 
@@ -146,11 +147,11 @@ current-head control state MUST preserve the existing
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
 `UNOBSERVABLE`, and a readiness handoff MUST have `PASS`, no unresolved
-findings, one full review, and at most one delta review. The history MUST contain
-that one `full` event, optionally followed by one `delta` event, with unique
-review IDs, the selected reviewer on every event, and a different reviewed head
-for each event. Its length MUST equal `terminal_review_count`, and the full and
-delta counters MUST equal the corresponding event kinds.
+findings, one full review, and at most one delta review. The history MUST
+contain that one `full` event, optionally followed by one `delta` event, with
+unique review IDs, the selected reviewer on every event, and a different
+reviewed head for each event. Its length MUST equal `terminal_review_count`, and
+the full and delta counters MUST equal the corresponding event kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST keep the same selected reviewer, bind the current
@@ -168,13 +169,13 @@ event MUST be rejected.
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
 the same PR repository, number, URL, base branch, and authenticated capture
-provenance, and MUST carry `baseRefOid` and `headRefOid`. The previous snapshot's
-direct `reviewControl` is the only predecessor authority; a separately supplied
-`previous_control_state` MUST be rejected. The first full review appends to a
-clean genesis with zero terminal reviews, and later states MUST preserve the
-exact prior history prefix and increment the terminal count by one. The current
-snapshot supplies the current head and base identity; the validator MUST NOT
-rewrite either from caller-supplied review control.
+provenance, and MUST carry `baseRefOid` and `headRefOid`. The previous
+snapshot's direct `reviewControl` is the only predecessor authority; a
+separately supplied `previous_control_state` MUST be rejected. The first full
+review appends to a clean genesis with zero terminal reviews, and later states
+MUST preserve the exact prior history prefix and increment the terminal count by
+one. The current snapshot supplies the current head and base identity; the
+validator MUST NOT rewrite either from caller-supplied review control.
 
 For `mandatory_base_integration`, the previous and current `baseRefOid` values
 MUST differ, the current base MUST descend from the previous base, and the

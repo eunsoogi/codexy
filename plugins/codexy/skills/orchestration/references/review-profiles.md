@@ -20,9 +20,9 @@ from the canonical GitHub readback producer. Snapshots bind the same repository,
 PR number, URL, base branch, capture provenance, `baseRefOid`, and `headRefOid`;
 the previous snapshot's `reviewControl` is the only predecessor authority.
 `previous_control_state` is rejected. Base integration must change and prove
-base ancestry. Contract/root repair must retain the base, follow a prior
-`BLOCK` delta with findings, and bind `qualifying_change.finding_ids` exactly to
-those findings. The current snapshot's head and base identity are preserved.
+base ancestry. Contract/root repair must retain the base, follow a prior `BLOCK`
+delta with findings, and bind `qualifying_change.finding_ids` exactly to those
+findings. The current snapshot's head and base identity are preserved.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.
