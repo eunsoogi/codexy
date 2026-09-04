@@ -4,8 +4,9 @@ import json
 import os
 import re
 import stat
+from typing import cast
 
-from .envelope import Request, _pairs
+from .envelope import Diagnostic, Request, _pairs
 
 FIELDS = ("model", "thinking")
 EXPECTED = ("gpt-5.6-sol", "medium")
@@ -17,35 +18,80 @@ DELEGATION = re.compile(
 )
 
 
-def forbidden(request: Request) -> bool | str:
+def forbidden(request: Request) -> bool | str | Diagnostic:
     session = request.session_id
     transcript = request.transcript_path
     if session is None and transcript is None:
-        return "EXPECTED_RECIPIENT"
+        return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
     if (
         not isinstance(session, str)
         or not session.strip()
         or not isinstance(transcript, str)
         or not transcript.strip()
     ):
-        return "EXPECTED_RECIPIENT"
-    data = request.tool_input
-    if not isinstance(data, dict) or any(
-        not isinstance(data.get(field), str) or not data[field].strip()
-        for field in FIELDS
-    ):
-        return True
+        return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
     try:
         parent = _authenticated_parent(transcript, session)
     except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
-        return "EXPECTED_RECIPIENT"
+        return Diagnostic("UNTRUSTED_CONTEXT", _UNTRUSTED_CONTEXT)
+    data = request.tool_input
+    if not isinstance(data, dict):
+        return _missing_field_diagnostic(list(FIELDS))
+    data = cast(dict[str, object], data)
+    missing = _missing_fields(data)
+    if missing:
+        return _missing_field_diagnostic(missing)
     if parent is None:
         return False
     recipient = data.get("threadId")
     if recipient != parent:
-        return "EXPECTED_RECIPIENT"
-    return (
-        False if (data["model"], data["thinking"]) == EXPECTED else "EXPECTED_RECIPIENT"
+        return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
+    if data["model"] != EXPECTED[0]:
+        return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
+    if data["thinking"] != EXPECTED[1]:
+        return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
+    return False
+
+
+_ROUTE = "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
+_MISSING_IDENTITY = (
+    "Missing authenticated session_id or transcript_path; do not retry blindly. "
+    "Retry only after Codex supplies both values."
+)
+_UNTRUSTED_CONTEXT = (
+    "Untrusted or malformed delegation context; do not retry blindly. "
+    "Stop and obtain a fresh authenticated child context."
+)
+_WRONG_RECIPIENT = (
+    "Wrong recipient route; set threadId to the authenticated parent from the "
+    f"delegation context and use {_ROUTE} for child-to-parent delivery, then "
+    "correct and retry once. Do not guess a parent ID."
+)
+_UNSUPPORTED_MODEL = (
+    f"Unsupported delivery model; use {_ROUTE} for child-to-parent delivery, "
+    "then correct and retry once."
+)
+_UNSUPPORTED_THINKING = (
+    f"Unsupported delivery thinking; use {_ROUTE} for child-to-parent delivery, "
+    "then correct and retry once."
+)
+
+
+def _missing_fields(data: dict[str, object]) -> list[str]:
+    missing: list[str] = []
+    for field in FIELDS:
+        value = data.get(field)
+        if not isinstance(value, str) or not value.strip():
+            missing.append(field)
+    return missing
+
+
+def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
+    names = " and ".join(fields)
+    code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
+    return Diagnostic(
+        code,
+        f"Missing {names}; child-to-parent delivery requires {_ROUTE}. Correct the field and retry once.",
     )
 
 

@@ -13,6 +13,16 @@ source parent Codex task id in lane control state. It MUST use the actual Codex
 task/thread messaging surface to contact that id. Local multi-agent messaging,
 including `agents.send_message('/root')`, MUST NOT be presented as a substitute.
 
+The exact authenticated child-to-parent call is:
+
+```text
+send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", model: "gpt-5.6-sol", thinking: "medium", prompt: "<non-empty compact receipt>" })
+```
+
+The `threadId` MUST be the authenticated parent; children MUST NOT guess or
+copy a parent id from untrusted transcript content. `hostId` MUST be supplied
+when the authenticated parent host is known.
+
 Each receipt MUST carry a stable transition key. A static fixture MUST use the
 same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
