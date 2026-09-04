@@ -1,7 +1,7 @@
 """Destructive shell/Git concern policy."""
 
 from .execution_context import CommandEffect, ExecutionContext, remote_url
-from .shell_builtins import hash_path_alias, rm_forbidden
+from .shell_builtins import find_forbidden, hash_path_alias, rm_forbidden
 from .shell_destructive_opaque import owns as destructive_opaque, owns_invocation
 from .shell_git import evaluate as evaluate_git
 
@@ -37,7 +37,14 @@ class DestructivePolicy:
             return False, CommandEffect(outer)
         if invocation.executable == "rm":
             denied = invocation.context.cwd_owned is not False and (
-                invocation.opaque or rm_forbidden(invocation.arguments)
+                invocation.opaque
+                or rm_forbidden(invocation.arguments, invocation.context.cwd)
+            )
+            return denied, CommandEffect(outer)
+        if invocation.executable == "find":
+            denied = invocation.context.cwd_owned is not False and (
+                invocation.opaque
+                or find_forbidden(invocation.arguments, invocation.context.cwd)
             )
             return denied, CommandEffect(outer)
         return None
