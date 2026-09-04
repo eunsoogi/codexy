@@ -1,20 +1,47 @@
 """Authenticated recipient-route admission for Codex task delivery."""
 
 import json
-import os
-import re
-import stat
 from typing import cast
 
 from .envelope import Diagnostic, Request, _pairs
+from .thread_delivery_support import (
+    _create_thread_output,
+    authenticated_parent,
+    duplicate_delivery,
+    records as read_records,
+)
 
 FIELDS = ("model", "thinking")
-EXPECTED = ("gpt-5.6-sol", "medium")
-MAX_TRANSCRIPT = 32 * 1024 * 1024
-DELEGATION = re.compile(
-    r"<codex_delegation>\s*<source_thread_id>([^<]+)</source_thread_id>"
-    r"\s*<input>.*?</input>\s*</codex_delegation>",
-    re.DOTALL,
+EXPECTED_CHILD = ("gpt-5.6-luna", "max")
+EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
+_CHILD_ID_KEYS = frozenset(
+    {
+        "threadId",
+        "thread_id",
+        "childId",
+        "child_id",
+        "childThreadId",
+        "child_thread_id",
+        "createdThreadId",
+        "created_thread_id",
+    }
+)
+_PARENT_ID_KEYS = frozenset(
+    {"parentThreadId", "parent_thread_id", "sourceThreadId", "source_thread_id"}
+)
+_CHILD_WRAPPER_KEYS = frozenset(
+    {
+        "child",
+        "content",
+        "createdThread",
+        "created_thread",
+        "data",
+        "result",
+        "structuredContent",
+        "structured_content",
+        "text",
+        "thread",
+    }
 )
 
 
@@ -31,7 +58,8 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     ):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
     try:
-        parent = _authenticated_parent(transcript, session)
+        records = read_records(transcript)
+        parent = authenticated_parent(records, session)
     except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
         return Diagnostic("UNTRUSTED_CONTEXT", _UNTRUSTED_CONTEXT)
     data = request.tool_input
@@ -41,16 +69,87 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     missing = _missing_fields(data)
     if missing:
         return _missing_field_diagnostic(missing, parent is not None)
-    if parent is None:
-        return False
+
     recipient = data.get("threadId")
-    if recipient != parent:
-        return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
-    if data["model"] != EXPECTED[0]:
-        return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
-    if data["thinking"] != EXPECTED[1]:
-        return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
-    return False
+    if not isinstance(recipient, str) or not recipient.strip():
+        return _missing_recipient_diagnostic(parent is not None)
+
+    route = (data["model"], data["thinking"])
+    if parent is None:
+        # A root task may deliver only to a child authenticated by native
+        # create_thread provenance using the child's route settings.
+        if recipient == session or recipient not in _authenticated_children(
+            records, session
+        ):
+            return Diagnostic("WRONG_RECIPIENT", _ROOT_WRONG_RECIPIENT)
+        if route != EXPECTED_CHILD:
+            if data["model"] != EXPECTED_CHILD[0]:
+                return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_CHILD_MODEL)
+            return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_CHILD_THINKING)
+    else:
+        # A delegated child may report only to its authenticated parent with
+        # the parent route settings. Never infer or accept another recipient.
+        if recipient != parent:
+            return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
+        if data["model"] != EXPECTED_PARENT[0]:
+            return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
+        if data["thinking"] != EXPECTED_PARENT[1]:
+            return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
+    return duplicate_delivery(records, data)
+
+
+def _authenticated_children(records: list[dict], session: str) -> frozenset[str]:
+    children: set[str] = set()
+    for record in records:
+        payload = record.get("payload")
+        if record.get("type") == "event_msg" and isinstance(payload, dict):
+            owner = payload.get("thread_id", payload.get("threadId"))
+            if owner is not None and owner != session:
+                continue
+        children.update(_child_ids(_create_thread_output(record), session))
+    return frozenset(children)
+
+
+def _child_ids(output: object, session: str) -> set[str]:
+    pending: list[object] = [output]
+    children: set[str] = set()
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            try:
+                current = json.loads(current, object_pairs_hook=_pairs)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+        if isinstance(current, list):
+            pending.extend(current)
+            continue
+        if not isinstance(current, dict):
+            continue
+        parents = [current[key] for key in _PARENT_ID_KEYS if key in current]
+        if parents and any(
+            not isinstance(parent, str) or parent.strip() != session
+            for parent in parents
+        ):
+            continue
+        for key in _CHILD_ID_KEYS:
+            child = current.get(key)
+            if isinstance(child, str) and child.strip() and child.strip() != session:
+                children.add(child.strip())
+        for key in _CHILD_WRAPPER_KEYS:
+            nested = current.get(key)
+            if isinstance(nested, (dict, list, str)):
+                pending.append(nested)
+        for key in ("child", "thread"):
+            nested = current.get(key)
+            if isinstance(nested, dict):
+                child = nested.get("id")
+                if (
+                    isinstance(child, str)
+                    and child.strip()
+                    and child.strip() != session
+                ):
+                    children.add(child.strip())
+    return children
 
 
 _ROUTE = "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
@@ -68,6 +167,13 @@ _WRONG_RECIPIENT = (
     f"the delegation context and MUST use {_ROUTE} for child-to-parent delivery, "
     "then MUST correct the route and MUST retry once. MUST NOT guess a parent ID."
 )
+_ROOT_WRONG_RECIPIENT = (
+    "Wrong recipient route; root-to-child delivery MUST target a child proven by "
+    "this root's native create_thread record, MUST NOT guess a stale or unrelated "
+    "threadId, and MUST use "
+    f"model='{EXPECTED_CHILD[0]}' and thinking='{EXPECTED_CHILD[1]}', "
+    "then MUST correct the route and MUST retry once."
+)
 _UNSUPPORTED_MODEL = (
     f"Unsupported delivery model; MUST use {_ROUTE} for child-to-parent delivery, "
     "then MUST correct the model and MUST retry once."
@@ -75,6 +181,22 @@ _UNSUPPORTED_MODEL = (
 _UNSUPPORTED_THINKING = (
     f"Unsupported delivery thinking; MUST use {_ROUTE} for child-to-parent "
     "delivery, then MUST correct the thinking and MUST retry once."
+)
+_UNSUPPORTED_CHILD_MODEL = (
+    f"Unsupported delivery model; root-to-child delivery requires {_ROOT_ROUTE}, "
+    "then MUST correct the model and MUST retry once."
+)
+_UNSUPPORTED_CHILD_THINKING = (
+    f"Unsupported delivery thinking; root-to-child delivery requires {_ROOT_ROUTE}, "
+    "then MUST correct the thinking and MUST retry once."
+)
+_MISSING_RECIPIENT = (
+    "Missing threadId; delivery MUST target the authenticated route and MUST "
+    "correct the field before retrying once."
+)
+_MISSING_ROOT_RECIPIENT = (
+    "Missing threadId; root-to-child delivery MUST target a distinct child and "
+    "MUST correct the field before retrying once."
 )
 
 
@@ -103,97 +225,8 @@ def _missing_field_diagnostic(fields: list[str], child_to_parent: bool) -> Diagn
     )
 
 
-def _authenticated_parent(path: str, session: str) -> str | None:
-    records = _records(path)
-    metadata = [item for item in records if item.get("type") == "session_meta"]
-    if len(metadata) != 1 or not isinstance(metadata[0].get("payload"), dict):
-        raise ValueError("session metadata")
-    payload = metadata[0]["payload"]
-    if payload.get("id") != session or payload.get("session_id", session) != session:
-        raise ValueError("session mismatch")
-    context = next(
-        (
-            index
-            for index, item in enumerate(records)
-            if item.get("type") == "turn_context"
-        ),
-        None,
+def _missing_recipient_diagnostic(child_to_parent: bool) -> Diagnostic:
+    return Diagnostic(
+        "MISSING_RECIPIENT",
+        _MISSING_RECIPIENT if child_to_parent else _MISSING_ROOT_RECIPIENT,
     )
-    if context is None:
-        raise ValueError("turn context")
-    initial = None
-    for item in records[context + 1 :]:
-        payload = item.get("payload")
-        if item.get("type") == "response_item" and isinstance(payload, dict):
-            if payload.get("type") == "message" and payload.get("role") == "user":
-                initial = payload
-                break
-    if initial is None or not isinstance(initial.get("content"), list):
-        raise ValueError("initial user message")
-    parents: list[str] = []
-    for part in initial["content"]:
-        if not isinstance(part, dict) or part.get("type") != "input_text":
-            continue
-        text = part.get("text")
-        if not isinstance(text, str):
-            continue
-        parent = _delegated_parent(text)
-        if parent is not None:
-            parents.append(parent)
-    if len(parents) > 1 or "" in parents:
-        raise ValueError("ambiguous parent")
-    return parents[0] if parents else None
-
-
-def _delegated_parent(text: str) -> str | None:
-    text = text.strip()
-    if not text.startswith("<codex_delegation>"):
-        return None
-    if text.count("<codex_delegation>") != 1 or text.count("</codex_delegation>") != 1:
-        raise ValueError("ambiguous delegation envelope")
-    match = DELEGATION.fullmatch(text)
-    if match is None:
-        raise ValueError("delegation envelope")
-    return match.group(1).strip()
-
-
-def _records(path: str) -> list[dict]:
-    before = os.lstat(path)
-    if not stat.S_ISREG(before.st_mode):
-        raise ValueError("transcript type")
-    flags = (
-        os.O_RDONLY
-        | getattr(os, "O_CLOEXEC", 0)
-        | getattr(os, "O_NOFOLLOW", 0)
-        | getattr(os, "O_NONBLOCK", 0)
-        | getattr(os, "O_BINARY", 0)
-    )
-    descriptor = os.open(path, flags)
-    try:
-        details = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(details.st_mode)
-            or (before.st_dev, before.st_ino) != (details.st_dev, details.st_ino)
-            or details.st_size > MAX_TRANSCRIPT
-        ):
-            raise ValueError("transcript bounds")
-        chunks = []
-        remaining = MAX_TRANSCRIPT + 1
-        while remaining:
-            chunk = os.read(descriptor, min(65536, remaining))
-            if not chunk:
-                break
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        raw = b"".join(chunks)
-        if len(raw) > MAX_TRANSCRIPT:
-            raise ValueError("transcript bounds")
-    finally:
-        os.close(descriptor)
-    records = []
-    for line in raw.decode("utf-8", "strict").splitlines():
-        item = json.loads(line, object_pairs_hook=_pairs)
-        if not isinstance(item, dict):
-            raise ValueError("transcript record")
-        records.append(item)
-    return records
