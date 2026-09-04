@@ -46,6 +46,8 @@ def authenticated_parent(records: list[dict], session: str) -> str | None:
     )
     if context is None:
         raise ValueError("turn context")
+    if payload.get("thread_source") == "agent_created_thread":
+        return _provenance_parent(records)
     initial = None
     for item in records[context + 1 :]:
         payload = item.get("payload")
@@ -68,6 +70,46 @@ def authenticated_parent(records: list[dict], session: str) -> str | None:
     if len(parents) > 1 or "" in parents:
         raise ValueError("ambiguous parent")
     return parents[0] if parents else None
+
+
+def _provenance_parent(records: list[dict]) -> str:
+    parents: list[str] = []
+    for record in records:
+        output = _create_thread_output(record)
+        if isinstance(output, str):
+            parent = delegated_parent(output)
+            if parent is not None:
+                parents.append(parent)
+    unique = set(parents)
+    if not parents or "" in unique or len(unique) != 1:
+        raise ValueError("delegation provenance")
+    return parents[0]
+
+
+def _create_thread_output(record: dict) -> object:
+    payload = record.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    if record.get("type") == "response_item":
+        if (
+            payload.get("type") == "function_call_output"
+            and payload.get("name") == "create_thread"
+            and payload.get("namespace") == "codex_app"
+        ):
+            return payload.get("output")
+        return None
+    if record.get("type") != "event_msg" or payload.get("type") != "item_completed":
+        return None
+    item = payload.get("item")
+    if not isinstance(item, dict):
+        return None
+    if (
+        item.get("type") == "FunctionCallOutput"
+        and item.get("name") == "create_thread"
+        and item.get("namespace") == "codex_app"
+    ):
+        return item.get("output")
+    return None
 
 
 def duplicate_delivery(records: list[dict], data: dict) -> bool | str:

@@ -10,6 +10,9 @@ use serde_json::{Value, json};
 
 use crate::support::TestResult;
 
+#[path = "fixtures/authentic.rs"]
+mod authentic;
+
 pub(super) const CHILD: &str = "01a03690-a037-7141-af1c-1d7cdb093087";
 pub(super) const PARENT: &str = "01a02ebc-804e-7702-a0ca-503c50741db8";
 pub(super) const OTHER: &str = "01a031f2-da35-7960-9686-502b7e373676";
@@ -19,20 +22,24 @@ pub(super) const TOOLS: &[&str] = &[
 ];
 
 pub(super) fn child_transcript(session: &str, parents: &[&str]) -> Vec<u8> {
-    let content = parents
-        .iter()
-        .map(|parent| json!({"type":"input_text","text":delegation(parent, "Implement the owned lane.")}))
-        .collect::<Vec<_>>();
-    transcript(session, content)
+    let content = vec![json!({
+        "type":"input_text",
+        "text":"Delegated child task body without routing authority."
+    })];
+    authentic::child_transcript(session, parents, content)
 }
 
 pub(super) fn child_transcript_text(session: &str, text: &str) -> Vec<u8> {
-    transcript(session, vec![json!({"type":"input_text","text":text})])
+    authentic::child_transcript(
+        session,
+        &[],
+        vec![json!({"type":"input_text","text":text})],
+    )
 }
 
 fn transcript(session: &str, content: Vec<Value>) -> Vec<u8> {
     let lines = [
-        json!({"type":"session_meta","payload":{"id":session,"session_id":session}}).to_string(),
+        json!({"type":"session_meta","payload":{"id":session,"session_id":session,"thread_source":"user"}}).to_string(),
         json!({"type":"turn_context","payload":{}}).to_string(),
         json!({"type":"response_item","payload":{"type":"message","role":"user","content":content}}).to_string(),
     ];

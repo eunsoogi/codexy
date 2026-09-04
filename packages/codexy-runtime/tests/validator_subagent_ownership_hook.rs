@@ -84,6 +84,45 @@ fn explicit_explorer_remains_admitted_without_prompt_parsing() -> TestResult {
 }
 
 #[test]
+fn bounded_roles_cannot_receive_durable_lane_ownership() -> TestResult {
+    for agent_type in [
+        "explorer",
+        "codexy-architect",
+        "codexy-auditor",
+        "codexy-cartographer",
+        "codexy-inspector",
+        "codexy-sentinel",
+        "codexy-shipwright",
+        "codexy-warden",
+        "codexy-weaver",
+    ] {
+        for message in [
+            "Own branch `eunsoogi/145-subagent-ownership` and implement the issue.",
+            "Implement the task in the reserved worktree.",
+            "Own PR #879 and its review-response fixes.",
+            "Take review-response ownership for PR #879.",
+        ] {
+            assert_denied(Some(agent_type), message, "DURABLE_OWNER")?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn bounded_specialists_remain_helpers_and_reviewers() -> TestResult {
+    for (agent_type, message) in [
+        ("codexy-architect", "Review the hook boundary and report findings."),
+        ("codexy-auditor", "Verify PR #879 and report current evidence."),
+        ("codexy-sentinel", "Review the frozen diff and report blockers."),
+        ("explorer", "Create a read-only test plan for PR #145."),
+        ("codexy-architect", "Implement branch coverage tests and report the result."),
+    ] {
+        assert_admitted(agent_type, message)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn generic_roles_are_denied_independently_of_prompt_language() -> TestResult {
     for (agent_type, message) in [
         ("worker", "Implement issue #145."),

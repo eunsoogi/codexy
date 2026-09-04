@@ -56,6 +56,18 @@ fn installed_hook_preserves_authenticated_parent_route() -> TestResult {
 }
 
 #[test]
+fn authentic_agent_created_thread_binds_parent_from_create_thread_provenance() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("authentic-child.jsonl");
+    std::fs::write(&transcript, child_transcript(CHILD, &[PARENT]))?;
+
+    let wrong = run(&transcript, "gpt-5.6-luna", "max")?;
+    assert_denied_with(wrong, "UNSUPPORTED_MODEL")?;
+    assert_admitted(run(&transcript, "gpt-5.6-sol", "medium")?)?;
+    Ok(())
+}
+
+#[test]
 fn installed_hook_fails_closed_for_untrusted_child_context() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("child.jsonl");
