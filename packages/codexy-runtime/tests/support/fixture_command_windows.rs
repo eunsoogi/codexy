@@ -49,9 +49,18 @@ pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let command = std::fs::read_to_string(companion)
         .ok()?
         .replace("\r\n", "\n");
-    (command.contains(&expected) || is_fail_closed_policy_fixture(&stem, &command))
-        .then_some(python)
-        .filter(|python| python.is_file())
+    (command.contains(&expected)
+        || is_dynamic_python_fixture(&stem, &command)
+        || is_fail_closed_policy_fixture(&stem, &command))
+    .then_some(python)
+    .filter(|python| python.is_file())
+}
+
+fn is_dynamic_python_fixture(stem: &str, command: &str) -> bool {
+    stem == "codexy-subagent-ownership"
+        && command.starts_with("@echo off\nsetlocal EnableExtensions DisableDelayedExpansion\n")
+        && command.contains("CODEXY_SUBAGENT_SCRIPT")
+        && command.contains("py*.exe")
 }
 
 fn is_fail_closed_policy_fixture(stem: &str, command: &str) -> bool {

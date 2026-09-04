@@ -64,6 +64,7 @@ fn windows_launcher_uses_an_absolute_interpreter_path() -> TestResult {
     assert!(launcher.contains(
         "\"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
     ));
+    assert!(launcher.contains("CODEXY_SUBAGENT_SCRIPT"));
     assert!(launcher.contains("Get-ChildItem -LiteralPath $dir -Filter 'py*.exe' -File"));
     assert!(launcher.contains("set \"runtime_args=-3\""));
     assert!(launcher.contains("\"%runtime%\" %runtime_args% -I -B"));
