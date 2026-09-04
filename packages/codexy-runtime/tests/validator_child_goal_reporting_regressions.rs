@@ -1,9 +1,45 @@
 use super::validator_child_goal_reporting::{
-    clear_child_assignment, create_transaction, get_transaction, successful_sequence,
+    AUTHENTIC_OBJECTIVE, authentic_assignment, clear_child_assignment, create_transaction,
+    get_transaction, successful_sequence,
 };
 
 fn validate(evidence: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     Ok(crate::support::validator_child_lane_ownership(evidence)?)
+}
+
+#[test]
+fn semicolon_bearing_authentic_objective_is_bound_end_to_end()
+-> Result<(), Box<dyn std::error::Error>> {
+    let valid = authentic_assignment();
+    let output = validate(&valid)?;
+    assert!(
+        output.status.success(),
+        "authentic assignment must validate: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let broadened = format!("{AUTHENTIC_OBJECTIVE} publish release artifacts");
+    let result_marker = format!(
+        "exact tool result={{\"goal\":{{\"objective\":\"{AUTHENTIC_OBJECTIVE}\",\"status\":\"active\"}}}}; parent task=parent-873"
+    );
+    let broadened_result = valid.replacen(
+        &result_marker,
+        &format!(
+            "exact tool result={{\"goal\":{{\"objective\":\"{broadened}\",\"status\":\"active\"}}}}; parent task=parent-873"
+        ),
+        1,
+    );
+    assert!(!validate(&broadened_result)?.status.success());
+
+    let objective_marker = format!("\"objective\":\"{AUTHENTIC_OBJECTIVE}\"");
+    let broadened_readback = valid
+        .rsplit_once(&objective_marker)
+        .map(|(prefix, suffix)| {
+            format!("{prefix}\"objective\":\"{broadened}\"{suffix}")
+        })
+        .expect("active readback objective fixture");
+    assert!(!validate(&broadened_readback)?.status.success());
+    Ok(())
 }
 
 #[test]

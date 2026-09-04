@@ -74,6 +74,24 @@ pub(super) fn successful_sequence() -> String {
     )
 }
 
+pub(super) const AUTHENTIC_OBJECTIVE: &str = "Implement GitHub issue #873, create focused regression coverage, verify all required checks, and open a PR linked to #873 from a child-owned branch based on current origin/main; stop before merge.";
+
+pub(super) fn authentic_assignment() -> String {
+    let sequence = format!(
+        "{}\n{}\n{}",
+        get_transaction("873:get-null", "{\"goal\":null}", "parent-873"),
+        create_transaction(AUTHENTIC_OBJECTIVE, "873:create", "parent-873"),
+        get_transaction(
+            "873:get-active",
+            &format!(
+                "{{\"goal\":{{\"objective\":\"{AUTHENTIC_OBJECTIVE}\",\"status\":\"active\"}}}}"
+            ),
+            "parent-873",
+        )
+    );
+    clear_child_assignment(&sequence).replace("implement issue #873", AUTHENTIC_OBJECTIVE)
+}
+
 #[test]
 fn rejects_goal_tool_prohibition_on_clear_child_implementation()
 -> Result<(), Box<dyn std::error::Error>> {

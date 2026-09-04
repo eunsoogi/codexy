@@ -23,7 +23,10 @@ pub(super) fn calls<'a>(lines: &'a [&'a str]) -> Result<Vec<Call<'a>>, &'static 
 
 fn parse_call(index: usize, line: &str) -> Option<Result<Call<'_>, &'static str>> {
     let payload = line.strip_prefix("goal tool call: ")?;
-    let operation = payload.split(';').next().unwrap_or_default().trim();
+    let operation = payload
+        .rsplit_once("; parent task=")
+        .map_or(payload, |(operation, _)| operation)
+        .trim();
     let (operation, objective) = if operation == "get_goal" {
         (Operation::Get, None)
     } else if let Some(objective) = operation
@@ -140,7 +143,7 @@ pub(super) fn goal_state(result: &str) -> GoalState {
 pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let prefix = format!("{name}=");
     let payload = line.split_once(": ").map_or(line, |(_, payload)| payload);
-    if name == "exact tool result" {
+    if matches!(name, "exact tool result" | "pending objective") {
         return payload
             .split_once(&prefix)
             .and_then(|(_, value)| value.rsplit_once("; parent task="))
