@@ -1,5 +1,6 @@
 use super::admission_runtime::{
-    TestResult, assert_case, assert_event_case, executable, plugin_root, repository,
+    TestResult, assert_case, assert_event_case, assert_event_cases, executable, plugin_root,
+    repository,
 };
 use crate::support::fixture_hook_path::modeled_path_token;
 use std::path::{Path, PathBuf};
@@ -43,81 +44,76 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let eligible = [
-        ("P-ISS-01", "gh issue create --repo eunsoogi/codexy --title 'Valid issue' --body note --label bug --assignee eunsoogi --milestone 23"),
-        ("P-ISS-02", "gh issue edit 17 --repo eunsoogi/codexy --title 'Updated issue' --body note"),
-        ("P-ISS-03", "gh issue close 17 --repo eunsoogi/codexy --reason completed"),
-        ("P-ISS-03-reopen", "gh issue reopen 17 --repo eunsoogi/codexy"),
-        ("P-ISS-04", "gh issue comment 17 --repo eunsoogi/codexy --body note"),
-        ("P-ISS-05", "gh issue edit 17 --repo eunsoogi/codexy --add-label bug --remove-label old"),
-        ("P-ISS-06", "gh issue edit 17 --repo eunsoogi/codexy --add-assignee eunsoogi --remove-assignee old"),
-        ("P-ISS-07", "gh issue edit 17 --repo eunsoogi/codexy --milestone 23"),
-        ("P-PR-01", "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): admit safe mutations' --head topic --base main --body note --draft --no-maintainer-edit"),
-        ("P-PR-02", "gh pr edit 17 --repo eunsoogi/codexy --title 'fix(hooks): update metadata' --body note --base main --no-maintainer-edit"),
-        ("P-PR-03", "gh pr close 17 --repo eunsoogi/codexy"),
-        ("P-PR-03-reopen", "gh pr reopen 17 --repo eunsoogi/codexy"),
-        ("P-PR-04", "gh pr comment 17 --repo eunsoogi/codexy --body note"),
-        ("P-PR-05", "gh pr review 17 --repo eunsoogi/codexy --approve --body LGTM"),
-        ("P-PR-06", "gh pr edit 17 --repo eunsoogi/codexy --add-reviewer eunsoogi --remove-reviewer old"),
-        ("P-PR-07", "gh pr ready 17 --repo eunsoogi/codexy --undo"),
-        ("P-PR-08", "gh pr ready 17 --repo eunsoogi/codexy"),
-        ("P-ISS-01-rest", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -f body=note"),
-        ("P-ISS-01-rest-redirection", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' > /dev/null"),
-        ("P-ISS-01-rest-sibling-lists", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels=[\"bug\"]' -F 'assignees=[\"eunsoogi\"]'"),
-        ("P-ISS-01-rest-bracket-arrays", "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels[]=bug' -F 'labels[]=workflow'"),
-        ("P-ISS-01-rest-placeholders", "gh api --method POST 'repos/{owner}/{repo}/issues' -f title='Valid issue'"),
-        ("P-ISS-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f title='Updated issue' -f body=note"),
-        ("P-ISS-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f state=closed -f state_reason=completed"),
-        ("P-ISS-04-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/comments -f body=note"),
-        ("P-ISS-05-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/issues/17/labels/old"),
-        ("P-ISS-05-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/labels -F 'labels=[\"bug\"]'"),
-        ("P-ISS-06-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"old\"]'"),
-        ("P-ISS-06-rest", "gh api --method POST repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"eunsoogi\"]'"),
-        ("P-ISS-05-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'labels=[]'"),
-        ("P-ISS-06-clear-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'assignees=[]'"),
-        ("P-ISS-07-rest", "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F milestone=23"),
-        ("P-PR-01-rest", "gh api --method POST repos/eunsoogi/codexy/pulls -f title='fix(hooks): create safe PR' -f head=topic -f base=main"),
-        ("P-PR-02-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'"),
-        ("P-PR-03-rest", "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed"),
-        ("P-PR-06-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]'"),
-        ("P-PR-06-rest-sibling-lists", "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]' -F 'team_reviewers=[\"codexy\"]'"),
-        ("P-PR-06-rest-bracket-arrays", "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers[]=eunsoogi' -F 'reviewers[]=reviewer'"),
-        ("P-PR-06-remove-rest", "gh api --method DELETE repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"old\"]'"),
-        ("P-PR-05-rest", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM"),
+        "gh issue create --repo eunsoogi/codexy --title 'Valid issue' --body note --label bug --assignee eunsoogi --milestone 23",
+        "gh issue edit 17 --repo eunsoogi/codexy --title 'Updated issue' --body note",
+        "gh issue close 17 --repo eunsoogi/codexy --reason completed",
+        "gh issue reopen 17 --repo eunsoogi/codexy",
+        "gh issue comment 17 --repo eunsoogi/codexy --body note",
+        "gh issue edit 17 --repo eunsoogi/codexy --add-label bug --remove-label old",
+        "gh issue edit 17 --repo eunsoogi/codexy --add-assignee eunsoogi --remove-assignee old",
+        "gh issue edit 17 --repo eunsoogi/codexy --milestone 23",
+        "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): admit safe mutations' --head topic --base main --body note --draft --no-maintainer-edit",
+        "gh pr edit 17 --repo eunsoogi/codexy --title 'fix(hooks): update metadata' --body note --base main --no-maintainer-edit",
+        "gh pr close 17 --repo eunsoogi/codexy",
+        "gh pr reopen 17 --repo eunsoogi/codexy",
+        "gh pr comment 17 --repo eunsoogi/codexy --body note",
+        "gh pr review 17 --repo eunsoogi/codexy --approve --body LGTM",
+        "gh pr edit 17 --repo eunsoogi/codexy --add-reviewer eunsoogi --remove-reviewer old",
+        "gh pr ready 17 --repo eunsoogi/codexy --undo",
+        "gh pr ready 17 --repo eunsoogi/codexy",
+        "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -f body=note",
+        "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' > /dev/null",
+        "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels=[\"bug\"]' -F 'assignees=[\"eunsoogi\"]'",
+        "gh api --method POST repos/eunsoogi/codexy/issues -f title='Valid issue' -F 'labels[]=bug' -F 'labels[]=workflow'",
+        "gh api --method POST 'repos/{owner}/{repo}/issues' -f title='Valid issue'",
+        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f title='Updated issue' -f body=note",
+        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -f state=closed -f state_reason=completed",
+        "gh api --method POST repos/eunsoogi/codexy/issues/17/comments -f body=note",
+        "gh api --method DELETE repos/eunsoogi/codexy/issues/17/labels/old",
+        "gh api --method POST repos/eunsoogi/codexy/issues/17/labels -F 'labels=[\"bug\"]'",
+        "gh api --method DELETE repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"old\"]'",
+        "gh api --method POST repos/eunsoogi/codexy/issues/17/assignees -F 'assignees=[\"eunsoogi\"]'",
+        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'labels=[]'",
+        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'assignees=[]'",
+        "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F milestone=23",
+        "gh api --method POST repos/eunsoogi/codexy/pulls -f title='fix(hooks): create safe PR' -f head=topic -f base=main",
+        "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'",
+        "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed",
+        "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]'",
+        "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]' -F 'team_reviewers=[\"codexy\"]'",
+        "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers[]=eunsoogi' -F 'reviewers[]=reviewer'",
+        "gh api --method DELETE repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"old\"]'",
+        "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM",
     ];
-    for (case_id, command) in eligible {
-        for event in ["PermissionRequest", "PreToolUse"] {
-            assert_event_case(&root, event, &owned, command, false, &[])
-                .map_err(|error| format!("{case_id}: {error}"))?;
-        }
-    }
     let denied = [
-        ("N-01", "gh api --method DELETE repos/eunsoogi/codexy"),
-        ("N-02", "gh api --method DELETE repos/eunsoogi/codexy/git/refs/heads/topic"),
-        ("N-03", "gh api --method PUT repos/eunsoogi/codexy/branches/main/protection -f required_status_checks='{}'"),
-        ("N-04", "gh api --method PUT repos/eunsoogi/codexy/actions/secrets/BUILD_KEY -f encrypted_value=fixture"),
-        ("N-05", "gh api --method PUT repos/eunsoogi/codexy/collaborators/mallory -f permission=push"),
-        ("N-06", "gh api --method POST repos/eunsoogi/codexy/hooks -f name=fixture"),
-        ("N-07", "gh workflow run deploy.yml --repo eunsoogi/codexy"),
-        ("N-08", "gh release create v9 --repo eunsoogi/codexy"),
-        ("N-09", "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed"),
-        ("N-10", "gh pr merge 42 --repo eunsoogi/codexy --squash"),
-        ("N-11", "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture"),
-        ("N-12", "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'"),
-        ("N-13", "gh api --method POST repos/other-org/other-repo/issues -f title='Wrong repository'"),
-        ("N-14", "gh api -H 'Authorization: Bearer fixture-secret' repos/eunsoogi/codexy/labels"),
-        ("N-15", "rm -rf /"),
-        ("N-16", "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-        ("N-17", "gh api --method POST repos/eunsoogi/codexy/issues"),
-        ("N-17-review-without-body", "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT"),
-        ("N-17-redirection", "gh api --method POST repos/eunsoogi/codexy/issues > /dev/null"),
-        ("N-18-process-substitution-gh", "cat <(gh issue create --repo eunsoogi/codexy --title invalid)"),
-        ("N-19-process-substitution-git", "cat >(git push --force origin main)"),
+        "gh api --method DELETE repos/eunsoogi/codexy",
+        "gh api --method DELETE repos/eunsoogi/codexy/git/refs/heads/topic",
+        "gh api --method PUT repos/eunsoogi/codexy/branches/main/protection -f required_status_checks='{}'",
+        "gh api --method PUT repos/eunsoogi/codexy/actions/secrets/BUILD_KEY -f encrypted_value=fixture",
+        "gh api --method PUT repos/eunsoogi/codexy/collaborators/mallory -f permission=push",
+        "gh api --method POST repos/eunsoogi/codexy/hooks -f name=fixture",
+        "gh workflow run deploy.yml --repo eunsoogi/codexy",
+        "gh release create v9 --repo eunsoogi/codexy",
+        "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed",
+        "gh pr merge 42 --repo eunsoogi/codexy --squash",
+        "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
+        "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'",
+        "gh api --method POST repos/other-org/other-repo/issues -f title='Wrong repository'",
+        "gh api -H 'Authorization: Bearer fixture-secret' repos/eunsoogi/codexy/labels",
+        "rm -rf /",
+        "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "gh api --method POST repos/eunsoogi/codexy/issues",
+        "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT",
+        "gh api --method POST repos/eunsoogi/codexy/issues > /dev/null",
+        "cat <(gh issue create --repo eunsoogi/codexy --title invalid)",
+        "cat >(git push --force origin main)",
     ];
-    for (case_id, command) in denied {
-        for event in ["PermissionRequest", "PreToolUse"] {
-            assert_event_case(&root, event, &owned, command, true, &[])
-                .map_err(|error| format!("{case_id}: {error}"))?;
-        }
+    let cases = eligible.iter()
+        .map(|command| ((*command).to_owned(), false))
+        .chain(denied.iter().map(|command| ((*command).to_owned(), true)))
+        .collect::<Vec<_>>();
+    for event in ["PermissionRequest", "PreToolUse"] {
+        assert_event_cases(&root, event, &owned, cases.clone(), &[])?;
     }
     Ok(())
 }
@@ -169,35 +165,40 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     let supported = "command ".repeat(7);
     let exhausted = "command ".repeat(8);
     let beyond = "command ".repeat(9);
+    let mut cases = vec![
+        (format!("if true; then '{}' reset --hard; fi", git.display()), true),
+        (format!("if true; then '{}' pr merge 551; fi", gh.display()), true),
+        (format!("if true; then PATH='{}' git-copy reset --hard; fi", renamed.display()), true),
+        (format!("if true; then PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true),
+        (format!("if true; then ! PATH='{}' git-copy reset --hard; fi", renamed.display()), true),
+        (format!("if true; then ! PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true),
+        ("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi".to_owned(), true),
+        ("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi".to_owned(), true),
+        ("if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi".to_owned(), true),
+        (format!("if true; then sudo -i '{}' reset --hard; fi", git.display()), true),
+        (format!("if true; then sudo -i '{}' pr merge 551; fi", gh.display()), true),
+        (format!("if true; then builtin command '{}' reset --hard; fi", git.display()), true),
+        (format!("if true; then builtin command '{}' pr merge 551; fi", gh.display()), true),
+        ("if true; then command -v printf; fi".to_owned(), false),
+        ("if true; then builtin command -v printf; fi".to_owned(), false),
+        (format!("if true; then {supported}'{}' '%s\\n' safe; fi", copied_printf.display()), false),
+    ];
+    for nested in [&exhausted, &beyond] {
+        cases.push((format!("if true; then {nested}'{}' reset --hard; fi", git.display()), true));
+        cases.push((format!("if true; then {nested}'{}' pr merge 551; fi", gh.display()), true));
+    }
+    for (wrapper, option) in wrappers {
+        cases.push((format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true));
+        cases.push((format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true));
+        cases.push((format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), true));
+    }
+    cases.extend([
+        (format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false),
+        (format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false),
+        (format!("if true; then '{}' reset --hard; fi", printf.display()), false),
+    ]);
     for event in ["PermissionRequest", "PreToolUse"] {
-        assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", git.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then '{}' pr merge 551; fi", gh.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then PATH='{}' git-copy reset --hard; fi", renamed.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then ! PATH='{}' git-copy reset --hard; fi", renamed.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then ! PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi", true, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi", true, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi", true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' reset --hard; fi", git.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then sudo -i '{}' pr merge 551; fi", gh.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then builtin command '{}' reset --hard; fi", git.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then builtin command '{}' pr merge 551; fi", gh.display()), true, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then command -v printf; fi", false, &[])?;
-        assert_event_case(&root, event, &owned, "if true; then builtin command -v printf; fi", false, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then {supported}'{}' '%s\\n' safe; fi", copied_printf.display()), false, &[])?;
-        for nested in [&exhausted, &beyond] {
-            assert_event_case(&root, event, &owned, &format!("if true; then {nested}'{}' reset --hard; fi", git.display()), true, &[])?;
-            assert_event_case(&root, event, &owned, &format!("if true; then {nested}'{}' pr merge 551; fi", gh.display()), true, &[])?;
-        }
-        for (wrapper, option) in wrappers {
-            assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true, &[])?;
-            assert_event_case(&root, event, &owned, &format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true, &[])?;
-            assert_event_case(&root, event, &owned, &format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), true, &[])?;
-        }
-        assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false, &[])?;
-        assert_event_case(&root, event, &owned, &format!("if true; then '{}' reset --hard; fi", printf.display()), false, &[])?;
+        assert_event_cases(&root, event, &owned, cases.clone(), &[])?;
     }
     Ok(())
 }
