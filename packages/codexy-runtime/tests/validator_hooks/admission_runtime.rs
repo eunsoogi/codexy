@@ -145,6 +145,10 @@ executable_identity.shutil.which = lambda value, path=None: lookups.append(value
 assert executable_identity._path(r"C:\work\owned", cwd) == NativePath(r"C:\work\owned")
 assert executable_identity._path("C:relative", cwd) is None
 assert lookups == ["C:relative"]
+
+from codexy_policy.repository_identity import identity
+assert identity(r"C:\work\owned") is None
+assert identity("C:/work/owned") is None
 "#,
         )
         .env("PYTHONPATH", root.join("hooks"))
