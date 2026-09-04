@@ -2,12 +2,12 @@ use std::io::Write as _;
 use std::path::Path;
 use std::process::Stdio;
 
-use crate::support::FixtureCommand as Command;
-use serde_json::Value;
+use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
+use serde_json::{Value, json};
 
 use super::TestResult;
 
-pub(super) fn assert_input(
+pub(crate) fn assert_input(
     root: &Path,
     input: Value,
     denied: bool,
@@ -66,6 +66,41 @@ pub(super) fn assert_input(
     );
     Ok(())
 }
+
+pub(crate) fn assert_event_cases(
+    root: &Path,
+    event: &str,
+    cwd: &Path,
+    cases: Vec<(String, bool)>,
+    environment: &[(&str, &std::ffi::OsStr)],
+) -> TestResult {
+    let mut inputs = Vec::with_capacity(cases.len());
+    for (command, denied) in cases {
+        let (command, modeled_cwd) =
+            hook_fixture_model_input(&command, cwd).map_err(std::io::Error::other)?;
+        inputs.push((
+            json!({
+                "hook_event_name": event,
+                "tool_name": "Bash",
+                "tool_input": {"command": command},
+                "cwd": modeled_cwd,
+            }),
+            denied,
+        ));
+    }
+    #[cfg(windows)]
+    return batch_runner::assert_inputs(root, inputs, environment);
+    #[cfg(not(windows))]
+    for (input, denied) in inputs {
+        assert_input(root, input, denied, environment)?;
+    }
+    #[cfg(not(windows))]
+    Ok(())
+}
+
+#[cfg(windows)]
+#[path = "batch_runner.rs"]
+mod batch_runner;
 
 fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
     match tool {
