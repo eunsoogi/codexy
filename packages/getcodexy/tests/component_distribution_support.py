@@ -12,7 +12,7 @@ from codexy_runtime_tools.version_lock import default_package_version
 
 
 FAKE_MCP = r"""#!/usr/bin/env python3
-import json, os, sys
+import json, os, subprocess, sys
 
 if os.environ.get("CODEXY_TEST_PROBE_MODE", "") == "exit-127":
     raise SystemExit(127)
@@ -76,7 +76,7 @@ def hook_rows():
     return rows
 
 if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
-    state_path.with_suffix(".pids").write_text(str(os.getpid()), encoding="utf-8")
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"]); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line); identifier = request.get("id")
         if request.get("method") == "initialize" and identifier is not None:
