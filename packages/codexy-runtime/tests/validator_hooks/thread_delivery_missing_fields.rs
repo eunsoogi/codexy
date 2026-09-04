@@ -119,6 +119,5 @@ fn malformed_metadata_uses_mandatory_non_retry_wording() -> TestResult {
             assert!(!reason.contains(PARENT));
             }
         }
-    }
     Ok(())
 }
