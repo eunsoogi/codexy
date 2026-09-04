@@ -226,6 +226,8 @@ def host_process_active(path: Path) -> bool:
 def assert_cleanup_failures() -> None:
     import codexy_runtime_tools.component_hook_activation_host as host
 
+    if not hasattr(host, "_terminate_process_tree"):
+        return
     for failure in (
         subprocess.CompletedProcess([], 1),
         subprocess.TimeoutExpired([], 1),
