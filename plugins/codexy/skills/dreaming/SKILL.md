@@ -45,7 +45,8 @@ When the current `Fix` is an implementation obligation, MUST run one bounded
 sanity pass before choosing the next action. When the current `Fix` is read-only
 or otherwise non-implementation recovery, MUST NOT run it.
 
-Using only the current diff, governing scope, and meaningful tests, ask whether:
+MUST use only the current diff, governing scope, and meaningful tests to ask
+whether:
 
 1. the change repairs the evidenced structural cause or merely stacks another
    edge-case exception;
@@ -54,12 +55,13 @@ Using only the current diff, governing scope, and meaningful tests, ask whether:
 3. a materially simpler design satisfies the same requirements, invariants, and
    coverage.
 
-Report a patch-stack, test-for-test, or avoidable-complexity concern only when
-current evidence supports it. Put that concern in `Fix` and make the single next
-action the smallest structural correction, simpler-design check, or
-behavior/regression-proof correction. When the implementation is structurally
-sound, continue under the existing output contract without ceremonial extra
-output.
+MUST report a patch-stack, test-for-test, or avoidable-complexity concern only
+when current evidence supports it. MUST NOT report an unsupported concern. MUST
+put that concern in `Fix` and MUST make the single next action the smallest
+structural correction, simpler-design check, or behavior/regression-proof
+correction; MUST NOT choose a different follow-up action. When the
+implementation is structurally sound, MUST continue under the existing output
+contract without ceremonial extra output.
 
 This pass is bounded and advisory. It MUST NOT become a general reviewer,
 prescribe an architecture, weaken requirements, delete legitimate edge-case
