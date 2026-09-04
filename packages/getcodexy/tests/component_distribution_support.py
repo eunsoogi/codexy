@@ -76,7 +76,7 @@ def hook_rows():
     return rows
 
 if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
-    if os.name == "nt":
+    if os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"):
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line); identifier = request.get("id")
@@ -160,8 +160,12 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
 
 
 def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, object]]:
+    from codexy_runtime_tools import component_hook_activation_host as host
     from codexy_runtime_tools.component_capability_probe import probe_component
 
+    host.list_hooks(
+        marketplace.parent / "codex.cmd", marketplace.parent / "tree-probe-home"
+    )
     assert not host_process_active(marketplace.parent / "host-state.pids")
     assert_cleanup_failures()
     measurements = []
@@ -241,12 +245,6 @@ def assert_cleanup_failures() -> None:
 
 
 def _git(root: Path, *arguments: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(root), *arguments],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode:
-        raise RuntimeError(result.stderr)
-    return result.stdout.strip()
+    return subprocess.check_output(
+        ["git", "-C", str(root), *arguments], text=True, stderr=subprocess.PIPE
+    ).strip()
