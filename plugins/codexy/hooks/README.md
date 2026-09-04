@@ -11,13 +11,12 @@ for thread-delivery admission. The envelope binds the current `session_id`, the
 requested `threadId`, the direction, and the target's explicit model/thinking
 pair. Its authenticated sender/target pair carries the native parent/child
 correlation without replaying a transcript. Root-to-child delivery requires
-`gpt-5.6-luna`/`max`; child-to-parent delivery requires
-`gpt-5.6-sol`/`medium`. A legacy host that omits the top-level envelope retains
-the prior no-op admission path until host rollout; present but malformed,
-ambiguous, or mismatched v2 metadata fails closed. This hook never opens
-`transcript_path` and never uses a prompt, message body, or other conversation
-content as route authority. The native host owns production of the
-authenticated envelope.
+`gpt-5.6-luna`/`max`; child-to-parent delivery requires `gpt-5.6-sol`/`medium`.
+A legacy host that omits the top-level envelope retains the prior no-op
+admission path until host rollout; present but malformed, ambiguous, or
+mismatched v2 metadata fails closed. This hook never opens `transcript_path` and
+never uses a prompt, message body, or other conversation content as route
+authority. The native host owns production of the authenticated envelope.
 
 The child-thread-creation concern still requires native, non-empty `model` and
 `thinking` fields. The plugin admits `spawn_agent` only for exact packaged
