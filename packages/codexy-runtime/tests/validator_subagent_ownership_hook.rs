@@ -105,7 +105,13 @@ fn windows_launcher_ignores_a_current_directory_py_cmd() -> TestResult {
             "Implement issue #145.",
         ))?)?;
     let output = child.wait_with_output()?;
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "status={:?} stdout={} stderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(!sentinel.exists(), "current-directory py.cmd executed");
     assert!(String::from_utf8_lossy(&output.stdout).contains("permissionDecision"));
     Ok(())
