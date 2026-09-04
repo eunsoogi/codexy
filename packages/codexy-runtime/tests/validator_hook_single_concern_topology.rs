@@ -2,7 +2,6 @@ use crate::support::FixtureCommand as Command;
 use serde_json::Value;
 use std::io::Write as _;
 use std::process::Stdio;
-
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 struct Concern {
@@ -11,7 +10,6 @@ struct Concern {
     launcher: &'static str,
     diagnostic: &'static str,
 }
-
 const CONCERNS: &[Concern] = &[
     Concern {
         id: "thread-delivery",
@@ -136,10 +134,12 @@ fn capability_contract_accounts_for_every_concern_once()
         assert_eq!(actual["trigger"], expected.matcher);
         assert_eq!(actual["diagnosticFamily"], expected.diagnostic);
         assert_eq!(actual["events"], serde_json::json!(EVENTS));
-        assert_eq!(
-            actual["inputContract"],
-            format!("codexy.hooks.{}.v1", expected.id)
-        );
+        let input_contract = match expected.id {
+            "thread-delivery" => "codexy.hooks.thread-delivery.v2",
+            "subagent-ownership" => "codexy.hooks.subagent-ownership.v1",
+            _ => "codexy.hooks.child-thread-creation.v1",
+        };
+        assert_eq!(actual["inputContract"], input_contract);
         assert_eq!(
             actual["entrypoints"],
             serde_json::json!([
@@ -203,8 +203,8 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
             let payload = serde_json::json!({
                 "hook_event_name": event,
                 "tool_name": tools[index],
-                "tool_input": null,
-                "cwd": "/tmp",
+                "tool_input": null, "cwd": "/tmp",
+                "session_id": "child", "codexy_thread_delivery": {"authenticated":true},
             });
             let installed = INSTALLED_CONCERNS.iter().any(|item| item.id == concern.id);
             let hooks = if installed {

@@ -18,6 +18,8 @@ class Request:
     cwd: object
     session_id: object
     transcript_path: object
+    routing_metadata: object = None
+    routing_metadata_present: bool = False
 
 
 @dataclass(frozen=True)
@@ -81,6 +83,8 @@ def evaluate(
         data.get("cwd"),
         data.get("session_id"),
         data.get("transcript_path"),
+        data.get("codexy_thread_delivery"),
+        "codexy_thread_delivery" in data,
     )
     try:
         blocked = forbidden(request)

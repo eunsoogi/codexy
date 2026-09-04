@@ -1,232 +1,174 @@
-"""Authenticated recipient-route admission for Codex task delivery."""
+"""Thread-delivery admission from an authenticated host routing envelope."""
 
-import json
+from __future__ import annotations
+
 from typing import cast
 
-from .envelope import Diagnostic, Request, _pairs
-from .thread_delivery_support import (
-    _create_thread_output,
-    authenticated_parent,
-    duplicate_delivery,
-    records as read_records,
-)
+from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 EXPECTED_CHILD = ("gpt-5.6-luna", "max")
 EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
-_CHILD_ID_KEYS = frozenset(
+ROUTING_SCHEMA = "codexy.thread-delivery.v2"
+ROUTING_FIELDS = frozenset(
     {
-        "threadId",
-        "thread_id",
-        "childId",
-        "child_id",
-        "childThreadId",
-        "child_thread_id",
-        "createdThreadId",
-        "created_thread_id",
+        "schema",
+        "authenticated",
+        "direction",
+        "sender_thread_id",
+        "target_thread_id",
+        "target_model",
+        "target_thinking",
     }
 )
-_PARENT_ID_KEYS = frozenset(
-    {"parentThreadId", "parent_thread_id", "sourceThreadId", "source_thread_id"}
-)
-_CHILD_WRAPPER_KEYS = frozenset(
-    {
-        "child",
-        "content",
-        "createdThread",
-        "created_thread",
-        "data",
-        "result",
-        "structuredContent",
-        "structured_content",
-        "text",
-        "thread",
-    }
-)
+DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic:
+    # Hosts that do not yet emit the v2 envelope keep the legacy no-op
+    # admission path. Once the field is present, every v2 check below remains
+    # fail-closed; absence never promotes transcript or message content to
+    # routing authority.
+    if not request.routing_metadata_present:
+        return False
     session = request.session_id
-    transcript = request.transcript_path
-    if session is None and transcript is None:
+    if not _non_empty_string(session):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
-    if (
-        not isinstance(session, str)
-        or not session.strip()
-        or not isinstance(transcript, str)
-        or not transcript.strip()
-    ):
-        return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
-    try:
-        records = read_records(transcript)
-        parent = authenticated_parent(records, session)
-    except (OSError, TypeError, UnicodeError, ValueError, json.JSONDecodeError):
-        return Diagnostic("UNTRUSTED_CONTEXT", _UNTRUSTED_CONTEXT)
+    # The host-authenticated sender/target pair is the bounded replacement for
+    # native create_thread provenance; this consumer never reconstructs it from
+    # transcript records or handoff prose.
+    metadata = _routing_metadata(
+        request.routing_metadata,
+        request.routing_metadata_present,
+    )
+    if isinstance(metadata, Diagnostic):
+        return metadata
+    metadata = cast(dict[str, object], metadata)
+    direction = cast(str, metadata["direction"])
+
     data = request.tool_input
     if not isinstance(data, dict):
-        return _missing_field_diagnostic(list(FIELDS), parent is not None)
+        return _missing_field_diagnostic(list(FIELDS), direction)
     data = cast(dict[str, object], data)
     missing = _missing_fields(data)
     if missing:
-        return _missing_field_diagnostic(missing, parent is not None)
+        return _missing_field_diagnostic(missing, direction)
 
     recipient = data.get("threadId")
-    if not isinstance(recipient, str) or not recipient.strip():
-        return _missing_recipient_diagnostic(parent is not None)
+    if not _non_empty_string(recipient):
+        return Diagnostic("MISSING_RECIPIENT", _MISSING_RECIPIENT)
+    if metadata["sender_thread_id"] != session:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    if metadata["target_thread_id"] != recipient:
+        return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
+    if metadata["target_thread_id"] == metadata["sender_thread_id"]:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
 
-    route = (data["model"], data["thinking"])
-    if parent is None:
-        # A root task may deliver only to a child authenticated by native
-        # create_thread provenance using the child's route settings.
-        if recipient == session or recipient not in _authenticated_children(
-            records, session
-        ):
-            return Diagnostic("WRONG_RECIPIENT", _ROOT_WRONG_RECIPIENT)
-        if route != EXPECTED_CHILD:
-            if data["model"] != EXPECTED_CHILD[0]:
-                return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_CHILD_MODEL)
-            return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_CHILD_THINKING)
-    else:
-        # A delegated child may report only to its authenticated parent with
-        # the parent route settings. Never infer or accept another recipient.
-        if recipient != parent:
-            return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
-        if data["model"] != EXPECTED_PARENT[0]:
-            return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
-        if data["thinking"] != EXPECTED_PARENT[1]:
-            return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
-    return duplicate_delivery(records, data)
+    expected = EXPECTED_PARENT if direction == "child_to_parent" else EXPECTED_CHILD
+    if (metadata["target_model"], metadata["target_thinking"]) != expected:
+        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    if data["model"] != expected[0]:
+        return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
+    if data["thinking"] != expected[1]:
+        return Diagnostic("UNSUPPORTED_THINKING", _unsupported_thinking(direction))
+    return False
 
 
-def _authenticated_children(records: list[dict], session: str) -> frozenset[str]:
-    children: set[str] = set()
-    for record in records:
-        payload = record.get("payload")
-        if record.get("type") == "event_msg" and isinstance(payload, dict):
-            owner = payload.get("thread_id", payload.get("threadId"))
-            if owner is not None and owner != session:
-                continue
-        children.update(_child_ids(_create_thread_output(record), session))
-    return frozenset(children)
+def _routing_metadata(value: object, present: bool) -> dict[str, object] | Diagnostic:
+    if not present:
+        return Diagnostic("MISSING_ROUTING_METADATA", _MISSING_ROUTING)
+    if not isinstance(value, dict):
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    metadata = cast(dict[str, object], value)
+    if set(metadata) != ROUTING_FIELDS:
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    if metadata["schema"] != ROUTING_SCHEMA or metadata["authenticated"] is not True:
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    if (
+        not isinstance(metadata["direction"], str)
+        or metadata["direction"] not in DIRECTIONS
+    ):
+        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    for field in (
+        "direction",
+        "sender_thread_id",
+        "target_thread_id",
+        "target_model",
+        "target_thinking",
+    ):
+        if not _non_empty_string(metadata[field]):
+            return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
+    return metadata
 
 
-def _child_ids(output: object, session: str) -> set[str]:
-    pending: list[object] = [output]
-    children: set[str] = set()
-    while pending:
-        current = pending.pop()
-        if isinstance(current, str):
-            try:
-                current = json.loads(current, object_pairs_hook=_pairs)
-            except (TypeError, ValueError, json.JSONDecodeError):
-                continue
-        if isinstance(current, list):
-            pending.extend(current)
-            continue
-        if not isinstance(current, dict):
-            continue
-        parents = [current[key] for key in _PARENT_ID_KEYS if key in current]
-        if parents and any(
-            not isinstance(parent, str) or parent.strip() != session
-            for parent in parents
-        ):
-            continue
-        for key in _CHILD_ID_KEYS:
-            child = current.get(key)
-            if isinstance(child, str) and child.strip() and child.strip() != session:
-                children.add(child.strip())
-        for key in _CHILD_WRAPPER_KEYS:
-            nested = current.get(key)
-            if isinstance(nested, (dict, list, str)):
-                pending.append(nested)
-        for key in ("child", "thread"):
-            nested = current.get(key)
-            if isinstance(nested, dict):
-                child = nested.get("id")
-                if (
-                    isinstance(child, str)
-                    and child.strip()
-                    and child.strip() != session
-                ):
-                    children.add(child.strip())
-    return children
-
-
-_ROUTE = "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
-_ROOT_ROUTE = "non-empty model and thinking values selected for the child"
-_MISSING_IDENTITY = (
-    "Missing authenticated session_id or transcript_path; MUST NOT retry blindly. "
-    "MUST retry only after Codex supplies both values."
-)
-_UNTRUSTED_CONTEXT = (
-    "Untrusted or malformed delegation context; MUST NOT retry blindly. "
-    "MUST stop and obtain a fresh authenticated child context."
-)
-_WRONG_RECIPIENT = (
-    "Wrong recipient route; MUST set threadId to the authenticated parent from "
-    f"the delegation context and MUST use {_ROUTE} for child-to-parent delivery, "
-    "then MUST correct the route and MUST retry once. MUST NOT guess a parent ID."
-)
-_ROOT_WRONG_RECIPIENT = (
-    "Wrong recipient route; root-to-child delivery MUST target a child proven by "
-    "this root's native create_thread record, MUST NOT guess a stale or unrelated "
-    "threadId, and MUST use "
-    f"model='{EXPECTED_CHILD[0]}' and thinking='{EXPECTED_CHILD[1]}', "
-    "then MUST correct the route and MUST retry once."
-)
-_UNSUPPORTED_MODEL = (
-    f"Unsupported delivery model; MUST use {_ROUTE} for child-to-parent delivery, "
-    "then MUST correct the model and MUST retry once."
-)
-_UNSUPPORTED_THINKING = (
-    f"Unsupported delivery thinking; MUST use {_ROUTE} for child-to-parent "
-    "delivery, then MUST correct the thinking and MUST retry once."
-)
-_UNSUPPORTED_CHILD_MODEL = (
-    f"Unsupported delivery model; root-to-child delivery requires {_ROOT_ROUTE}, "
-    "then MUST correct the model and MUST retry once."
-)
-_UNSUPPORTED_CHILD_THINKING = (
-    f"Unsupported delivery thinking; root-to-child delivery requires {_ROOT_ROUTE}, "
-    "then MUST correct the thinking and MUST retry once."
-)
-_MISSING_RECIPIENT = (
-    "Missing threadId; delivery MUST target the authenticated route and MUST "
-    "correct the field before retrying once."
-)
-_MISSING_ROOT_RECIPIENT = (
-    "Missing threadId; root-to-child delivery MUST target a distinct child and "
-    "MUST correct the field before retrying once."
-)
+def _non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
 def _missing_fields(data: dict[str, object]) -> list[str]:
-    missing: list[str] = []
-    for field in FIELDS:
-        value = data.get(field)
-        if not isinstance(value, str) or not value.strip():
-            missing.append(field)
-    return missing
+    return [field for field in FIELDS if not _non_empty_string(data.get(field))]
 
 
-def _missing_field_diagnostic(fields: list[str], child_to_parent: bool) -> Diagnostic:
+def _missing_field_diagnostic(fields: list[str], direction: str | None) -> Diagnostic:
     names = " and ".join(fields)
     code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
-    if not child_to_parent:
-        return Diagnostic(
-            code,
-            f"Missing {names}; root-to-child delivery requires {_ROOT_ROUTE}. "
-            "MUST provide the missing value, then MUST correct the route and MUST retry once.",
-        )
+    route = _route(direction)
     return Diagnostic(
         code,
-        f"Missing {names}; child-to-parent delivery requires {_ROUTE}. "
-        "MUST correct the field and MUST retry once.",
+        f"Missing {names}; {route}. MUST correct the field and MUST retry once.",
     )
 
 
-def _missing_recipient_diagnostic(child_to_parent: bool) -> Diagnostic:
-    return Diagnostic(
-        "MISSING_RECIPIENT",
-        _MISSING_RECIPIENT if child_to_parent else _MISSING_ROOT_RECIPIENT,
+def _route(direction: str | None) -> str:
+    if direction == "child_to_parent":
+        return f"child-to-parent delivery requires {_PARENT_ROUTE}"
+    if direction == "root_to_child":
+        return f"root-to-child delivery requires {_CHILD_ROUTE}"
+    return "thread delivery requires explicit authenticated host routing metadata"
+
+
+_PARENT_ROUTE = (
+    "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
+)
+_CHILD_ROUTE = (
+    "threadId=<authenticated child>, model='gpt-5.6-luna', and thinking='max'"
+)
+_MISSING_IDENTITY = (
+    "Missing authenticated session_id; MUST NOT retry blindly. "
+    "MUST retry only after Codex supplies it."
+)
+_MISSING_RECIPIENT = (
+    "Missing recipient threadId; MUST NOT retry blindly. "
+    "MUST provide the recipient from the authenticated host route."
+)
+_MISSING_ROUTING = (
+    "Missing authenticated host routing metadata; MUST NOT retry blindly. "
+    "MUST retry only after Codex supplies a bounded codexy_thread_delivery envelope."
+)
+_MALFORMED_ROUTING = (
+    "Malformed or ambiguous authenticated host routing metadata; "
+    "MUST NOT retry blindly. MUST obtain a fresh host envelope."
+)
+_MISMATCHED_ROUTING = (
+    "Mismatched authenticated host routing metadata; MUST NOT retry blindly. "
+    "MUST stop and obtain a fresh host envelope."
+)
+_WRONG_RECIPIENT = (
+    "Wrong recipient route; MUST set threadId to the authenticated host target "
+    f"and MUST use {_PARENT_ROUTE} or {_CHILD_ROUTE}, then MUST correct the route "
+    "and MUST retry once. MUST NOT guess a thread ID."
+)
+
+
+def _unsupported_model(direction: str) -> str:
+    return (
+        f"Unsupported delivery model; {_route(direction)}, then MUST correct the "
+        "model and MUST retry once."
+    )
+
+
+def _unsupported_thinking(direction: str) -> str:
+    return (
+        f"Unsupported delivery thinking; {_route(direction)}, then MUST correct "
+        "the thinking and MUST retry once."
     )
