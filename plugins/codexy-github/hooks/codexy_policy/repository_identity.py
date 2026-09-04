@@ -7,9 +7,12 @@ from urllib.parse import urlsplit
 
 
 SCP = re.compile(r"^(?:[A-Za-z0-9._-]+@)?(?P<host>[A-Za-z0-9.-]+):(?P<path>[^\s?#]+)$")
+WINDOWS_DRIVE_PATH = re.compile(r"^[A-Za-z]:")
 
 
 def identity(url: str) -> tuple[str, str, str] | None:
+    if WINDOWS_DRIVE_PATH.match(url):
+        return None
     match = None if "://" in url else SCP.fullmatch(url)
     if match:
         host, path = match.group("host"), match.group("path")

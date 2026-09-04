@@ -79,6 +79,8 @@ fn cmd_launchers_fail_closed_without_a_path_selected_interpreter()
         assert!(source.contains("DisableDelayedExpansion"), "{launcher}");
         if *launcher == "codexy-repository-issue"
             || *launcher == "codexy-repository-pull-request"
+            || *launcher == "codexy-repository-github-command"
+            || *launcher == "codexy-destructive-command"
         {
             assert!(source.contains("py -3 -I -B"), "{launcher}");
         } else {
@@ -99,6 +101,19 @@ fn cmd_pull_request_launcher_invokes_packaged_policy_runtime()
     assert!(source.contains("if /I \"%event%\"==\"PermissionRequest\" goto evaluate"));
     assert!(source.contains("py -3 -I -B -c \"import subprocess,sys;"));
     assert!(source.contains("codexy-repository-pull-request.py\" --event \"%event%\""));
+    assert!(source.contains("sys.stdout.buffer.write(p.stdout if p.returncode==0 else b'')"));
+    Ok(())
+}
+
+#[test]
+fn cmd_destructive_launcher_invokes_packaged_policy_runtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    let hooks = codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks");
+    let source = std::fs::read_to_string(hooks.join("codexy-destructive-command.cmd"))?;
+    assert!(source.contains("if /I \"%event%\"==\"PreToolUse\" goto evaluate"));
+    assert!(source.contains("if /I \"%event%\"==\"PermissionRequest\" goto evaluate"));
+    assert!(source.contains("py -3 -I -B -c \"import subprocess,sys;"));
+    assert!(source.contains("codexy-destructive-command.py\" --event \"%event%\""));
     assert!(source.contains("sys.stdout.buffer.write(p.stdout if p.returncode==0 else b'')"));
     Ok(())
 }
