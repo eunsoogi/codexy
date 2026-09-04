@@ -21,61 +21,61 @@ _SPECIALISTS = frozenset(
 )
 _DURABLE_OWNERSHIP = re.compile(
     r"(?:"
-    r"\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
-    r"responsible\s+for(?!\s+review(?:ing)?\b)|"
-    r"take\s+ownership(?:\s+of)?|manage|lead)\b[^\n,;.!?:]{0,80}\b"
-    r"(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
-    r"|\b(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
-    r"[^\n,;.!?:]{0,80}\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
-    r"responsible\s+for(?!\s+review(?:ing)?\b)|"
-    r"take\s+ownership(?:\s+of)?|manage|lead)\b"
-    r"|\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
-    r"[^\n;.!?:]{0,70}\b(?:in|on|to|onto|into)\s+(?:the\s+)?"
-    r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
-    r"|\b(?:reserved|assigned|dedicated|current|child-owned)\s+(?:branch|worktree)\b"
-    r"[^\n;.!?:]{0,80}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
-    r"|\b(?:in|on|to|onto|into)\s+(?:the\s+)?(?:branch|worktree)\b"
-    r"[^\n;.!?]{0,90}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
-    r"|\b(?:address|resolve|complete|fix|apply|handle|implement|modify|edit|commit|push|update)\b"
-    r"[^\n;.!?]{0,70}\b(?:review[- ]?response|review feedback)\b"
-    r"|\b(?:review[- ]?response|review feedback)\b[^\n;.!?]{0,70}\b"
-    r"(?:address|resolve|complete|fix|apply|handle|implement|modify|edit|commit|push|update)\b"
-    r"|\b(?:create|open|submit|file)\s+(?:a|the|this|your)?\s*(?:pull\s+request|pr\b)"
-    r"|\b(?:durable|long[- ]running|child[- ]owned|implementation)\b.{0,40}\b"
-    r"(?:owner|ownership|lane|context)\b"
-    r")",
+    + r"\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
+    + r"responsible\s+for(?!\s+review(?:ing)?\b)|"
+    + r"take\s+ownership(?:\s+of)?|manage|lead)\b[^\n,;.!?:]{0,80}\b"
+    + r"(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
+    + r"|\b(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
+    + r"[^\n,;.!?:]{0,80}\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
+    + r"responsible\s+for(?!\s+review(?:ing)?\b)|"
+    + r"take\s+ownership(?:\s+of)?|manage|lead)\b"
+    + r"|\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
+    + r"[^\n;.!?:]{0,70}\b(?:in|on|to|onto|into)\s+(?:the\s+)?"
+    + r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
+    + r"|\b(?:reserved|assigned|dedicated|current|child-owned)\s+(?:branch|worktree)\b"
+    + r"[^\n;.!?:]{0,80}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
+    + r"|\b(?:in|on|to|onto|into)\s+(?:the\s+)?(?:branch|worktree)\b"
+    + r"[^\n;.!?]{0,90}\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
+    + r"|\b(?:address|resolve|complete|fix|apply|handle|implement|modify|edit|commit|push|update)\b"
+    + r"[^\n;.!?]{0,70}\b(?:review[- ]?response|review feedback)\b"
+    + r"|\b(?:review[- ]?response|review feedback)\b[^\n;.!?]{0,70}\b"
+    + r"(?:address|resolve|complete|fix|apply|handle|implement|modify|edit|commit|push|update)\b"
+    + r"|\b(?:create|open|submit|file)\s+(?:a|the|this|your)?\s*(?:pull\s+request|pr\b)"
+    + r"|\b(?:durable|long[- ]running|child[- ]owned|implementation)\b.{0,40}\b"
+    + r"(?:owner|ownership|lane|context)\b"
+    + r")",
     re.IGNORECASE,
 )
 _DURABLE_OWNERSHIP_KO = re.compile(
     r"(?:"
-    r"(?:소유(?:권|자)?|담당|책임|전담|맡\w*|관리)[^\n,;.!?:]{0,50}"
-    r"(?:브랜치|워크트리|풀\s*리퀘스트|PR|리뷰\s*(?:응답|피드백|의견))"
-    r"|(?:브랜치|워크트리|풀\s*리퀘스트|PR|리뷰\s*(?:응답|피드백|의견))[^\n,;.!?:]{0,50}"
-    r"(?:소유(?:권|자)?|담당|책임|전담|맡\w*|관리)"
-    r"|(?:할당된|예약된|전용|현재|이|해당)\s*(?:브랜치|워크트리)\s*"
-    r"(?:에서|로|에)[^\n;.!?:]{0,60}(?:구현|수정|편집|커밋|푸시|생성|열|작성|처리|해결|반영|적용)"
-    r"|(?:구현|수정|편집|커밋|푸시|생성|열|작성|처리|해결|반영|적용)[^\n;.!?:]{0,60}"
-    r"(?:할당된|예약된|전용|현재|이|해당)\s*(?:브랜치|워크트리)"
-    r"|(?:리뷰\s*(?:응답|피드백|의견))[^\n;.!?:]{0,60}"
-    r"(?:처리|해결|수정|반영|적용|완료|구현|커밋|푸시|업데이트|담당|맡\w*)"
-    r"|(?:처리|해결|수정|반영|적용|완료|구현|커밋|푸시|업데이트|담당|맡\w*)[^\n;.!?:]{0,60}"
-    r"리뷰\s*(?:응답|피드백|의견)"
-    r")",
+    + r"(?:소유(?:권|자)?|담당|책임|전담|맡\w*|관리)[^\n,;.!?:]{0,50}"
+    + r"(?:브랜치|워크트리|풀\s*리퀘스트|PR|리뷰\s*(?:응답|피드백|의견))"
+    + r"|(?:브랜치|워크트리|풀\s*리퀘스트|PR|리뷰\s*(?:응답|피드백|의견))[^\n,;.!?:]{0,50}"
+    + r"(?:소유(?:권|자)?|담당|책임|전담|맡\w*|관리)"
+    + r"|(?:할당된|예약된|전용|현재|이|해당)\s*(?:브랜치|워크트리)\s*"
+    + r"(?:에서|로|에)[^\n;.!?:]{0,60}(?:구현|수정|편집|커밋|푸시|생성|열|작성|처리|해결|반영|적용)"
+    + r"|(?:구현|수정|편집|커밋|푸시|생성|열|작성|처리|해결|반영|적용)[^\n;.!?:]{0,60}"
+    + r"(?:할당된|예약된|전용|현재|이|해당)\s*(?:브랜치|워크트리)"
+    + r"|(?:리뷰\s*(?:응답|피드백|의견))[^\n;.!?:]{0,60}"
+    + r"(?:처리|해결|수정|반영|적용|완료|구현|커밋|푸시|업데이트|담당|맡\w*)"
+    + r"|(?:처리|해결|수정|반영|적용|완료|구현|커밋|푸시|업데이트|담당|맡\w*)[^\n;.!?:]{0,60}"
+    + r"리뷰\s*(?:응답|피드백|의견)"
+    + r")",
     re.IGNORECASE,
 )
 _NEGATION = re.compile(
     r"(?:\b(?:do\s+not|don't|dont|never|not|no)\b|"
-    r"(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*))",
+    + r"(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*))",
     re.IGNORECASE,
 )
 _NEGATION_NEAR_MATCH = re.compile(
     r"(?:\b(?:do\s+not|don't|dont|never|not|no)\b"
-    r"(?:\s+[\w'-]+){0,4}\s*$|(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*)\s*$)",
+    + r"(?:\s+[\w'-]+){0,4}\s*$|(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*)\s*$)",
     re.IGNORECASE,
 )
 _OWNERSHIP_NEGATION = re.compile(
     r"\bwithout\s+(?:own(?:s|ed|ing|ership)?|ownership|being\s+responsible|"
-    r"taking\s+ownership)\b",
+    + r"taking\s+ownership)\b",
     re.IGNORECASE,
 )
 
