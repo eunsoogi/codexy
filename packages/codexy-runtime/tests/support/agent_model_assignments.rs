@@ -57,12 +57,17 @@ pub(crate) fn validate_catalog_replacement(
 
 pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
+    let runtime_root = codexy_runtime::paths::runtime_package_root();
     std::fs::write(
         temp.path().join("Cargo.toml"),
         format!(
             "[package]\nname = \"contract-privacy\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\ncodexy-runtime = {{ path = {:?} }}\n",
-            codexy_runtime::paths::runtime_package_root()
+            runtime_root
         ),
+    )?;
+    std::fs::copy(
+        runtime_root.join("Cargo.lock"),
+        temp.path().join("Cargo.lock"),
     )?;
     std::fs::create_dir(temp.path().join("src"))?;
     std::fs::write(
