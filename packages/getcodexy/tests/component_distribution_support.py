@@ -232,15 +232,13 @@ def host_process_active(path: Path) -> bool:
 def assert_cleanup_failures() -> None:
     import codexy_runtime_tools.component_hook_activation_host as host
 
-    if not hasattr(host, "_terminate_process_tree"):
-        return
     for failure in (
         subprocess.CompletedProcess([], 1),
         subprocess.TimeoutExpired([], 1),
         OSError("taskkill unavailable"),
     ):
         process = Mock(pid=123)
-        with patch.object(host.subprocess, "run", side_effect=failure):
+        with patch.object(host.subprocess, "run", side_effect=[failure]):
             assert not host._terminate_process_tree(process)
         process.kill.assert_called_once_with()
 
