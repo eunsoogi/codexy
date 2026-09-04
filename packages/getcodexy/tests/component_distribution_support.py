@@ -37,7 +37,7 @@ for line in sys.stdin:
 """
 
 DISTRIBUTION_HOST = """#!/usr/bin/env python3
-import json, os, sys, threading
+import json, os, subprocess, sys
 from pathlib import Path
 
 os.environ.setdefault("CODEXY_MATRIX_STATE", str(Path(os.environ["CODEX_HOME"]).parent / "host-state.json")); os.environ.setdefault("CODEXY_MATRIX_MARKETPLACE", str(Path(os.environ["CODEX_HOME"]).parent / "marketplace")); os.environ.setdefault("CODEXY_MATRIX_VERSION", "fixture")
@@ -88,7 +88,7 @@ if sys.argv[1:][:3] == ["app-server", "--listen", "stdio://"]:
             continue
         print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
         if request.get("method") == "hooks/list" and os.name == "nt" and str(Path(os.environ["CODEX_HOME"])).endswith("tree-probe-home"):
-            state_path.with_suffix(".pids").write_text(str(os.getpid()), encoding="utf-8"); threading.Event().wait(30)
+            child = subprocess.Popen([sys.executable, "-c", "import threading; threading.Event().wait(30)"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True); state_path.with_suffix(".pids").write_text(str(child.pid), encoding="utf-8")
     raise SystemExit(0)
 
 def installed(component):
