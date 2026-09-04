@@ -130,12 +130,8 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 process.stdin.close()
         except OSError:
             pass
-        cleanup_failed = False
         if process.poll() is None:
-            if os.name == "nt":
-                cleanup_failed = not _terminate_process_tree(process)
-            else:
-                _ = process.terminate()
+            _ = process.terminate()
             try:
                 _ = process.wait(timeout=1)
             except subprocess.TimeoutExpired:
@@ -147,32 +143,6 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
                 process.stdout.close()
         except OSError:
             pass
-        if cleanup_failed:
-            raise HookStateError("trusted Codex app-server process tree cleanup failed")
-
-
-def _terminate_process_tree(process: subprocess.Popen[str]) -> bool:
-    taskkill = (
-        Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "taskkill.exe"
-    )
-    try:
-        result = subprocess.run(
-            [str(taskkill), "/pid", str(process.pid), "/t", "/f"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=1,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        _ = process.kill()
-        return False
-    if result.returncode != 0:
-        _ = process.kill()
-        return False
-    return True
-
-
 def _extract_hooks(response: dict[str, object]) -> tuple[dict[str, object], ...]:
     result = response.get("result")
     if not isinstance(result, dict):
