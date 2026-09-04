@@ -238,7 +238,7 @@ def assert_cleanup_failures() -> None:
         subprocess.TimeoutExpired([], 1),
         OSError("taskkill unavailable"),
     ):
-        process = Mock(pid=123)
+        process = Mock(pid=123, poll=Mock(return_value=None))
         with patch.object(host.subprocess, "run", side_effect=[failure]):
             assert not host._terminate_process_tree(process)
         process.kill.assert_called_once_with()
