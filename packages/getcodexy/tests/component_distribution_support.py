@@ -98,8 +98,8 @@ def hook_rows():
                         "trustStatus": "trusted",
                     })
     return rows
-
 if args[:3] == ["app-server", "--listen", "stdio://"]:
+    state_path.with_suffix(".pids").write_text(str(os.getpid()), encoding="utf-8")
     for line in sys.stdin:
         request = json.loads(line)
         identifier = request.get("id")
@@ -112,12 +112,10 @@ if args[:3] == ["app-server", "--listen", "stdio://"]:
             continue
         print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
     raise SystemExit(0)
-
 def save(): state_path.write_text(json.dumps(state))
 def installed(component):
     plugin = plugins[component]
     return {"pluginId": plugin + "@codexy", "name": plugin, "marketplaceName": "codexy", "version": version, "installed": True, "enabled": True, "source": {"source": "local", "path": str(root / "plugins" / plugin)}, "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}
-
 if args[:4] == ["plugin", "marketplace", "list", "--json"]:
     payload = {"marketplaces": [] if not state["marketplace"] else [{"name": "codexy", "root": str(root), "marketplaceSource": {"sourceType": "git", "source": "https://github.com/eunsoogi/codexy.git"}}]}
 elif args[:3] == ["plugin", "marketplace", "add"]:
@@ -189,6 +187,7 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
 def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, object]]:
     from codexy_runtime_tools.component_capability_probe import probe_component
 
+    assert not host_process_active(marketplace.parent / "host-state.pids")
     measurements = []
     for component, plugin_name in (("core", "codexy"), ("github", "codexy-github")):
         plugin = marketplace / "plugins" / plugin_name
@@ -232,6 +231,11 @@ def windows_argv(probe, root: Path):
         else ()
     )
     return launchers, batch, native, python, executed
+
+
+def host_process_active(path: Path) -> bool:
+    pid = path.read_text().strip()
+    return os.name == "nt" and pid in subprocess.getoutput(f'tasklist /FI "PID eq {pid}" /NH')
 
 
 def _git(root: Path, *arguments: str) -> str:
