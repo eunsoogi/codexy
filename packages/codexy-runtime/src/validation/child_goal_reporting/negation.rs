@@ -7,6 +7,7 @@ pub(super) fn prohibited_goal_tools(line: &str) -> bool {
         .replace('’', "'")
         .replace("aren't", "are not")
         .replace("can't", "can not")
+        .replace("cannot", "can not")
         .replace("mustn't", "must not")
         .replace("don't", "do not")
         .chars()
@@ -51,6 +52,9 @@ fn inert_context(line: &str) -> bool {
 }
 
 fn denies_use(before: &[&str], after: &[&str]) -> bool {
+    if scoped_safety_rule(after) {
+        return false;
+    }
     ends_with(before, &["no"])
         || ends_with(before, &["never", "use"])
         || ["do", "must", "may", "shall", "can"]
@@ -77,6 +81,18 @@ fn denies_use(before: &[&str], after: &[&str]) -> bool {
             .any(|verb| starts_with(after, &[*verb, "not", "be", "used"]))
         || starts_with(after, &["authorization", "unauthorized"])
         || starts_with(after, &["authorization", "not", "authorized"])
+}
+
+fn scoped_safety_rule(after: &[&str]) -> bool {
+    let after = after
+        .iter()
+        .skip_while(|word| matches!(**word, "must" | "not" | "be" | "used" | "to"))
+        .copied()
+        .collect::<Vec<_>>();
+    starts_with(&after, &["overwrite", "an", "unrelated", "active", "goal"])
+        || starts_with(&after, &["broaden", "scope"])
+        || starts_with(&after, &["invent", "work"])
+        || starts_with(&after, &["replace", "external", "proof"])
 }
 
 fn ends_with(words: &[&str], suffix: &[&str]) -> bool {

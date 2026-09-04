@@ -22,10 +22,12 @@ that also supplies scope, verification, and a stop condition satisfies this
 contract. The child MUST NOT require a second instruction containing the word
 `goal` or another opt-in phrase.
 
-The child MUST project the assigned objective into an `Authorized goal
-objective:` control record and MUST use that exact objective for `create_goal`
-and the active readback. This record documents the assignment already given; it
-MUST NOT act as a second authorization or user opt-in.
+The parent handoff MUST state the assigned objective once as `Assignment
+objective:`. The child MUST project that exact value into an `Authorized goal
+objective:` control record and MUST use it unchanged for `create_goal`, the
+create result, and the active `get_goal` readback. This record documents the
+assignment already given; it MUST NOT act as a second authorization, broaden
+the parent-supplied objective, or become a user opt-in.
 
 The finite goal MUST match the assignment and MUST NOT broaden scope, invent
 work, replace external proof, or override the authoritative lifecycle state. A
