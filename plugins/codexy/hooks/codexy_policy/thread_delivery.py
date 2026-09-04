@@ -28,6 +28,9 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     session = request.session_id
     if not _non_empty_string(session):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
+    # The host-authenticated sender/target pair is the bounded replacement for
+    # native create_thread provenance; this consumer never reconstructs it from
+    # transcript records or handoff prose.
     metadata = _routing_metadata(
         request.routing_metadata,
         request.routing_metadata_present,

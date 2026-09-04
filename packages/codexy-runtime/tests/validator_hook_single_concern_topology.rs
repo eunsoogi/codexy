@@ -26,6 +26,12 @@ const CONCERNS: &[Concern] = &[
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
     Concern {
+        id: "subagent-ownership",
+        matcher: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        launcher: "codexy-subagent-ownership",
+        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
+    },
+    Concern {
         id: "repository-issue",
         matcher: "^mcp__codex_apps__github_(create|update)_issue$",
         launcher: "codexy-repository-issue",
@@ -69,6 +75,12 @@ const INSTALLED_CONCERNS: &[Concern] = &[
         matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
+    },
+    Concern {
+        id: "subagent-ownership",
+        matcher: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        launcher: "codexy-subagent-ownership",
+        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
     },
 ];
 
@@ -181,6 +193,7 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
     let tools = [
         "mcp__codex_app__send_message_to_thread",
         "codex_app__create_thread",
+        "spawn_agent",
         "mcp__codex_apps__github_create_issue",
         "mcp__codex_apps__github_create_pull_request",
         "mcp__codex_apps__github_merge_pull_request",
@@ -195,7 +208,8 @@ fn each_concern_emits_only_its_event_native_diagnostic_family()
                 "tool_input": null,
                 "cwd": "/tmp",
             });
-            let hooks = if matches!(concern.id, "thread-delivery" | "child-thread-creation") {
+            let installed = INSTALLED_CONCERNS.iter().any(|item| item.id == concern.id);
+            let hooks = if installed {
                 codexy_runtime::paths::repository_root().join("plugins/codexy/hooks")
             } else {
                 codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks")

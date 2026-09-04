@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v2",
-  "contentDigest": "f7378da399ca2ec8",
+  "contentDigest": "c25a0c782cd4e895",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -25,6 +25,20 @@
       ],
       "diagnosticFamily": "CODEXY_CHILD_THREAD_CREATION_",
       "contentDigest": "0a2139a5a371413d"
+    },
+    {
+      "concernId": "subagent-ownership",
+      "trigger": "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+      "events": ["PermissionRequest", "PreToolUse"],
+      "inputContract": "codexy.hooks.subagent-ownership.v1",
+      "preventive": true,
+      "entrypoints": [
+        "codexy-subagent-ownership.sh",
+        "codexy-subagent-ownership.cmd",
+        "codexy-subagent-ownership.py"
+      ],
+      "diagnosticFamily": "CODEXY_SUBAGENT_OWNERSHIP_",
+      "contentDigest": "52926abb2819fd77"
     }
   ]
 }

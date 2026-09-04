@@ -34,6 +34,13 @@ const CONCERNS: &[Expected] = &[
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
     },
+    Expected {
+        id: "subagent-ownership",
+        trigger: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        input: "codexy.hooks.subagent-ownership.v1",
+        launcher: "codexy-subagent-ownership",
+        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
+    },
 ];
 
 #[derive(Debug, Deserialize)]

@@ -33,6 +33,27 @@ pub(super) fn child_to_root_route(
     }
 }
 
+pub(super) fn parent_to_generic_route(
+    policy: &Policy,
+    capabilities: Option<&ThreadCapabilities>,
+    operation: &str,
+) -> Value {
+    if thread_capabilities::supports(
+        capabilities,
+        &policy.delivery.parent_to_generic.model,
+        &policy.delivery.parent_to_generic.thinking,
+    ) {
+        route(
+            "parent_to_generic",
+            operation,
+            &policy.delivery.parent_to_generic.model,
+            &policy.delivery.parent_to_generic.thinking,
+        )
+    } else {
+        json!({"route":policy.fallback})
+    }
+}
+
 pub(super) fn selected_general_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
