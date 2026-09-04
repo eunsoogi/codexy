@@ -9,9 +9,9 @@ from .github_mutation import (
     cli_number,
     form,
     merge as _merge,
-    read_command as _read_command,
     target,
 )
+from .github_workflow import read_or_admit
 from .merge import positive_int
 from .repository import (
     github_identity,
@@ -64,7 +64,7 @@ def forbidden(
             policy_status,
             policy_bound=True,
         )
-    if _read_command(filtered):
+    if read_or_admit(filtered, selected_target, owned_identity):
         return False
     if len(operation) != 2:
         return True

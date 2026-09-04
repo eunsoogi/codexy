@@ -39,6 +39,35 @@ a carried claim needs reclassification, MUST show it in its bucket. MUST return
 byte-identical `NO_CHANGE` only when current surfaces are clean and there is
 nothing to reclassify; MUST NOT create a report or other artifact.
 
+## Implementation sanity
+
+When the current `Fix` is an implementation obligation, MUST run one bounded
+sanity pass before choosing the next action. When the current `Fix` is read-only
+or otherwise non-implementation recovery, MUST NOT run it.
+
+MUST use only the current diff, governing scope, and meaningful tests to ask
+whether:
+
+1. the change repairs the evidenced structural cause or merely stacks another
+   edge-case exception;
+2. each relevant test exercises realistic required behavior and a regression,
+   rather than only the current implementation shape or generated wording; and
+3. a materially simpler design satisfies the same requirements, invariants, and
+   coverage.
+
+MUST report a patch-stack, test-for-test, or avoidable-complexity concern only
+when current evidence supports it. MUST NOT report an unsupported concern. MUST
+put that concern in `Fix` and MUST make the single next action the smallest
+structural correction, simpler-design check, or behavior/regression-proof
+correction; MUST NOT choose a different follow-up action. When the
+implementation is structurally sound, MUST continue under the existing output
+contract without ceremonial extra output.
+
+This pass is bounded and advisory. It MUST NOT become a general reviewer,
+prescribe an architecture, weaken requirements, delete legitimate edge-case
+coverage, narrow scope, mutate state, or replace orchestration, GitHub,
+reviewer, or completion authority.
+
 ## Capsule Compatibility
 
 The v1 compaction, fresh-child, and parent-handoff invocation contract remains

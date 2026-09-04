@@ -55,6 +55,11 @@ fn has_direct_control(state: &Value) -> bool {
         "unresolved_findings",
         "full_review_count",
         "delta_review_count",
+        "issue_number",
+        "terminal_review_count",
+        "terminal_review_limit",
+        "terminal_review_history",
+        "post_cap_re_review",
     ]
     .iter()
     .any(|field| control.contains_key(*field));

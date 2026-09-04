@@ -107,13 +107,17 @@ edits.
 - The owner MUST carry one issue-wide maximum of three terminal profile-selected
   verdicts across fresh goals, repair stages, compaction, parent
   reauthorization, and reviewer-route resets. A terminal `PASS`, `BLOCK`, or
-  `UNOBSERVABLE` counts; `PENDING` and `RUNNING` do not. After the third
-  verdict, the owner MUST NOT invoke another profile-selected reviewer. A third
-  `BLOCK` permits one bounded repair of its issue-contract/root-defect findings
-  and exact-head proof before handoff. A third `UNOBSERVABLE` requires a
-  maintainer-owned final disposition with current proof. Neither path waives
-  tests, validators, CI, review-thread, ownership, safety, LOC, or merge gates,
-  and neither may set a goal to `blocked` because of quota exhaustion or a wait.
+  `UNOBSERVABLE` counts; `PENDING` and `RUNNING` do not. The direct control
+  state MUST carry `issue_number`, `terminal_review_count`, the policy's
+  `terminal_review_limit`, and an ordered `terminal_review_history`; the history
+  MUST be carried forward rather than reset or shortened at a lane boundary.
+  After the third verdict, the owner MUST NOT invoke another profile-selected
+  reviewer. A third `BLOCK` permits one bounded repair of its
+  issue-contract/root findings and exact-head proof before handoff. A third
+  `UNOBSERVABLE` requires a maintainer-owned final disposition with current
+  proof. Neither path waives tests, validators, CI, review-thread, ownership,
+  safety, LOC, or merge gates, and neither may set a goal to `blocked` because
+  of quota exhaustion or a wait.
 
 ## Completion-Handoff Validation
 
@@ -137,14 +141,60 @@ The selected profile and its reviewer remain the authority for review state. The
 current-head control state MUST preserve the existing
 `codexy.review-control-state.v1` schema and carry `profile`, `reviewer`,
 `reviewed_head`, `terminal_result`, `unresolved_findings`, `full_review_count`,
-and `delta_review_count` directly.
+`delta_review_count`, `issue_number`, `terminal_review_count`,
+`terminal_review_limit`, and `terminal_review_history` directly.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
 `UNOBSERVABLE`, and a readiness handoff MUST have `PASS`, no unresolved
-findings, one full review, and at most one delta review. Light retains its
-existing no-reviewer route.
+findings, one full review, and at most one delta review. The history MUST
+contain that one `full` event, optionally followed by one `delta` event, with
+unique review IDs, the selected reviewer on every event, and a different
+reviewed head for each event. Its length MUST equal `terminal_review_count`, and
+the full and delta counters MUST equal the corresponding event kinds.
+
+The one bounded post-cap path is a third `required_current_head` event after the
+full and delta events. It MUST keep the same selected reviewer, bind the current
+head, set `terminal_review_count` to three, and carry exactly one
+`post_cap_re_review` object with `reason` set to either
+`mandatory_base_integration` or `in_scope_contract_root_repair`, plus
+`prior_reviewed_head` equal to the delta head. It MUST also carry
+`qualifying_change.from_head`, `qualifying_change.to_head`, and
+`qualifying_change.evidence_commit`; those values MUST bind the delta head and
+current head, and the evidence commit MUST be in their Git ancestry. The current
+head MUST differ from that prior head. Optional churn, a fourth event, a
+duplicate head or ID, a truncated/reordered history, and a marker on a non-third
+event MUST be rejected.
+
+Every reviewer-backed transition MUST use authenticated current and previous PR
+snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
+the same PR repository, number, URL, base branch, and authenticated capture
+provenance, and MUST carry `baseRefOid` and `headRefOid`. The previous
+snapshot's direct `reviewControl` is the only predecessor authority; a
+separately supplied `previous_control_state` MUST be rejected. The first full
+review appends to a clean genesis with zero terminal reviews, and later states
+MUST preserve the exact prior history prefix and increment the terminal count by
+one. The current snapshot supplies the current head and base identity; the
+validator MUST NOT rewrite either from caller-supplied review control.
+
+For `mandatory_base_integration`, the previous and current `baseRefOid` values
+MUST differ, the current base MUST descend from the previous base, and the
+integration evidence MUST descend from the current base. For
+`in_scope_contract_root_repair`, the base OID MUST remain unchanged, the prior
+delta MUST be `BLOCK` with non-empty findings, and
+`qualifying_change.finding_ids` MUST exactly identify those findings, and its
+evidence diff MUST change every finding's recorded path. In both cases the
+evidence commit MUST descend from the prior delta and precede the current head;
+a root-repair evidence commit MUST change the reviewed tree. Arbitrary JSON
+agreement is not authenticated readback authority.
+
+Light retains its existing no-reviewer route and MUST NOT carry terminal review
+history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal
+non-PASS disposition; the post-cap path never turns it into readiness.
 
 Headings, field order, explanatory prose, and omitted legacy ceremony fields
-MUST NOT override those direct facts. No auxiliary review state, digest, counter
-ledger, or replacement schema is needed to establish the result.
+MUST NOT override those direct facts. The ordered history and qualifying-change
+evidence are part of the direct control state; no auxiliary review ledger or
+replacement schema is needed. The selected reviewer MUST remain active and
+unchanged: the owner MUST NOT duplicate, poll, interrupt, or replace that
+reviewer while waiting for a terminal result.

@@ -18,13 +18,15 @@ pub(super) fn active_events(plugin_root: &std::path::Path, evidence: &str) -> Ve
     super::super::child_lifecycle_events::active_lines(evidence)
         .into_iter()
         .map(|line| ActiveEvent {
-            kind: ordered_event(plugin_root, &line.text),
+            kind: ordered_event(plugin_root, &line.raw_text),
             line: line.text,
         })
         .collect()
 }
 
 pub(super) fn ordered_event(plugin_root: &std::path::Path, line: &str) -> OrderedEvent {
+    let typed_review_terminal =
+        super::super::review_control::is_lifecycle_terminal(plugin_root, line);
     let line = line.to_ascii_lowercase();
     if line
         .strip_prefix("goal tool call: ")
@@ -34,7 +36,7 @@ pub(super) fn ordered_event(plugin_root: &std::path::Path, line: &str) -> Ordere
         OrderedEvent::BlockedCall
     } else if line.starts_with("parent direction event:") {
         OrderedEvent::ParentDirection
-    } else if super::super::review_control::is_lifecycle_terminal(plugin_root, &line) {
+    } else if typed_review_terminal {
         OrderedEvent::TypedReviewTerminal
     } else if is_terminal_goal_call(&line) {
         OrderedEvent::TerminalGoalCall

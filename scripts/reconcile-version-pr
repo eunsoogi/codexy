@@ -198,7 +198,7 @@ fi
 refresh_version_pr_snapshot
 publish_version_pr_metadata "$publication_phase"
 gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \
-  --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,body,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,url,labels,closingIssuesReferences \
+  --json number,state,isDraft,mergeStateStatus,reviewDecision,baseRefName,baseRefOid,body,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,url,labels,closingIssuesReferences \
   > "$state_dir/pr-state.base.json"
 gh api graphql \
   -f owner="$owner" -f name="$name" -F number="$pr_number" -f query='query($owner:String!, $name:String!, $number:Int!) {
