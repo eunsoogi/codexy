@@ -5,6 +5,9 @@ use serde_json::{Map, Value, json};
 use super::pre_pr::{number, object, reject_unknown, text};
 
 mod capture;
+mod producer;
+
+pub(super) use producer::{read_live, refresh_live};
 
 pub(super) const REASON: &str = "authenticated_external_finding_repair";
 
@@ -31,13 +34,8 @@ pub(super) fn requires_source(control: &Value) -> bool {
         == Some(REASON)
 }
 
-pub(super) fn normalize_producer(
-    control: &mut Value,
-    source: &Value,
-    host_capture: &Value,
-) -> Result<(), String> {
-    let source = capture::bind(source, host_capture)?;
-    let facts = check(&source)?;
+pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<(), String> {
+    let facts = check(source)?;
     let control = control
         .as_object_mut()
         .ok_or_else(|| "review control state must be an object".to_owned())?;
@@ -56,7 +54,7 @@ pub(super) fn normalize_producer(
                 "external finding repair requires qualifying change evidence".to_owned()
             })?;
         if let Some(existing) = change.get("external_finding") {
-            if existing != &source {
+            if existing != source {
                 return Err("external finding source changes during producer normalization".into());
             }
         }

@@ -41,6 +41,14 @@ pub(super) fn check_economics(
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
+    if let Some(control) = state.get("reviewControl") {
+        if external_finding::requires_source(control) {
+            let mut control = control.clone();
+            if let Err(error) = external_finding::refresh_live(&mut control) {
+                return vec![error];
+            }
+        }
+    }
     state::check_pr_state(plugin_root, state, true)
         .err()
         .into_iter()
@@ -59,9 +67,12 @@ pub(super) fn build_pr_state(
     previous_text: &str,
 ) -> Result<Value> {
     let current: Value = serde_json::from_str(current_text)?;
-    let control: Value = serde_json::from_str(control_text)?;
+    let mut control: Value = serde_json::from_str(control_text)?;
     if !control.is_object() {
         bail!("review control state must be an object");
+    }
+    if external_finding::requires_source(&control) {
+        external_finding::refresh_live(&mut control).map_err(anyhow::Error::msg)?;
     }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
@@ -120,23 +131,23 @@ pub(super) fn produce(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
         );
     }
-    let external_source = request.get("authenticated_external_finding");
-    let host_capture = request.get("authenticated_external_finding_capture");
-    if let Some(source) = external_source {
-        let host_capture = host_capture.ok_or_else(|| {
-            anyhow::anyhow!(
-                "review control producer requires authenticated_external_finding_capture"
-            )
-        })?;
-        external_finding::normalize_producer(&mut control, source, host_capture)
-            .map_err(anyhow::Error::msg)?;
-    } else if host_capture.is_some() {
+    if request.get("authenticated_external_finding").is_some()
+        || request
+            .get("authenticated_external_finding_capture")
+            .is_some()
+    {
         bail!(
-            "review control producer requires authenticated_external_finding with its host capture"
+            "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"
         );
+    }
+    if let Some(locator) = request.get("authenticated_external_finding_locator") {
+        let expected_commit = qualifying_change_from_head(&control).map(ToOwned::to_owned);
+        let source = external_finding::read_live(locator, expected_commit.as_deref())
+            .map_err(anyhow::Error::msg)?;
+        external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
     } else if external_finding::requires_source(&control) {
         bail!(
-            "review control producer requires authenticated_external_finding for external repair"
+            "review control producer requires authenticated_external_finding_locator for external repair"
         );
     }
     let control = if control
@@ -178,4 +189,15 @@ fn predecessor_has_pre_pr_history(state: Option<&Value>) -> bool {
         .and_then(|state| state.get("reviewControl"))
         .and_then(Value::as_object)
         .is_some_and(|control| control.contains_key("pre_pr_import"))
+}
+
+fn qualifying_change_from_head(control: &Value) -> Option<&str> {
+    control
+        .get("post_cap_re_review")
+        .and_then(Value::as_object)
+        .and_then(|post_cap| post_cap.get("qualifying_change"))
+        .and_then(Value::as_object)
+        .and_then(|change| change.get("from_head"))
+        .and_then(Value::as_str)
+        .filter(|head| !head.is_empty())
 }

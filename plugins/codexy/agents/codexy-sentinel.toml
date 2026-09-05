@@ -84,18 +84,22 @@ carry the base and head OIDs. Mandatory base integration MUST change
 `baseRefOid` and prove base ancestry; an in-scope contract/root repair MUST
 retain the base, follow a prior `BLOCK` delta with findings, bind `finding_ids`
 exactly to those findings, and show the evidence diff changes each finding's
-recorded path. An authenticated external finding repair MUST retain the base,
-follow a clean `PASS` delta with no unresolved findings, and carry an
-authenticated GitHub GraphQL `codexy.review-control-external-finding.v1`
-envelope produced from a separate `authenticated_external_finding_capture`
-host-authorized readback with a bounded `capture.raw` projection. The
-envelope's source repository, owning issue, source PR,
-review-thread/comment identity, author, observed commit equal to the delta
-head, unique finding IDs, and repository-relative paths MUST equal the
-corresponding raw fields; the validator MUST NOT treat a caller's
-`authenticated` flag as credential proof. Its producer-derived `finding_ids`
-MUST match the source exactly, and the evidence diff MUST touch every recorded
-path. The current head MUST differ.
+An authenticated external finding repair MUST retain the base,
+follow a clean `PASS` delta with no unresolved findings, and be produced from
+the locator-only `authenticated_external_finding_locator` through a fixed,
+host-authorized GitHub GraphQL read. The producer MUST reject caller-supplied
+external source or capture values, persist the raw response and deterministic
+projection in the authenticated GitHub GraphQL
+`codexy.review-control-external-finding.v1` envelope, and reject command
+failures, GraphQL errors, incomplete connections, and identity mismatches.
+`capture.raw` equality/re-projection is offline shape/integrity evidence only,
+not authentication. The producer, `build-pr-state`, and completion handoff MUST
+use the live source read for external-finding authority. The envelope's source
+repository, owning issue, source PR, review-thread/comment identity, author,
+observed commit equal to the delta head, unique finding IDs, and
+repository-relative paths MUST equal the live projection. Its producer-derived
+`finding_ids` MUST match the source exactly, and the evidence diff MUST touch
+every recorded path. The current head MUST differ.
 Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
 reordered, or truncated history MUST be rejected. The same Sentinel remains
 active; it MUST NOT be duplicated,

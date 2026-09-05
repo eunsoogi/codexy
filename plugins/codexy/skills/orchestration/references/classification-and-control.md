@@ -202,19 +202,23 @@ delta MUST be `BLOCK` with non-empty findings, and
 evidence diff MUST change every finding's recorded path. For
 `authenticated_external_finding_repair`, the base OID MUST remain unchanged, the
 prior delta MUST be a clean `PASS` with no unresolved findings, and
-`qualifying_change.external_finding` MUST be an authenticated GitHub GraphQL
-`codexy.review-control-external-finding.v1` envelope. The producer MUST receive
-the host readback as a separate `authenticated_external_finding_capture` input
-and persist its bounded `capture.raw` projection. The envelope MUST bind the
+`qualifying_change.external_finding` MUST be produced from a locator-only
+`authenticated_external_finding_locator` request. The producer MUST perform a
+fixed-argument, host-authorized GitHub GraphQL read for that locator, reject
+command failures, GraphQL errors, incomplete connections, and identity
+mismatches, and persist the raw response with its deterministic projection in
+the `codexy.review-control-external-finding.v1` envelope. Caller-supplied
+`authenticated_external_finding` or `authenticated_external_finding_capture`
+values MUST be rejected. `capture.raw` equality and re-projection are offline
+shape/integrity checks only and MUST NOT be treated as authentication. The
+producer, `build-pr-state`, and completion handoff MUST use the live source read
+for external-finding authority; offline validators only validate an envelope
+already admitted by that source-owned boundary. The envelope MUST bind the
 source repository, owning issue, source PR, immutable review-thread/comment
 identity and canonical URL, author, `observedCommit` equal to the prior delta
-head, unique finding IDs, and repository-relative paths to the corresponding raw
-fields. The validator MUST NOT treat a caller's `authenticated` flag as
-independent credential proof; the live host-authorized readback remains the
-authentication evidence. The producer MUST derive `finding_ids` from that
-envelope, and the evidence diff MUST touch every recorded path. The source PR's
-owning issue is provenance and MUST NOT replace the target
-`reviewControl.issue_number`. In all three cases, the evidence commit MUST
+head, unique finding IDs, and repository-relative paths to the live projection.
+The evidence diff MUST touch every recorded path. The source PR's owning issue
+is provenance and MUST NOT replace the target `reviewControl.issue_number`. In all three cases, the evidence commit MUST
 descend from the prior delta and precede the current head; repair evidence MUST
 change the reviewed tree. Arbitrary JSON agreement is not authenticated readback
 authority.

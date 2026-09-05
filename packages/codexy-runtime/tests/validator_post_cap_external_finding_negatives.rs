@@ -7,6 +7,10 @@ mod direct_state;
 
 #[path = "support/post_cap_review.rs"]
 mod post_cap;
+#[path = "support/post_cap_external_finding_fixture.rs"]
+mod external_finding_fixture;
+
+use external_finding_fixture::pr938_finding;
 
 const FULL_HEAD: &str = direct_state::SYNTHETIC_FULL_HEAD;
 const DELTA_HEAD: &str = direct_state::SYNTHETIC_DELTA_HEAD;
@@ -20,22 +24,39 @@ fn external_finding_rejects_stale_identity_and_unrelated_repair() -> TestResult 
     let mut stale = external_control();
     let stale_finding = &mut stale["post_cap_re_review"]["qualifying_change"]["external_finding"];
     stale_finding["observedCommit"] = json!("0000000000000000000000000000000000000000");
-    stale_finding["capture"]["raw"]["observedCommit"] =
+    stale_finding["capture"]["raw"]["projection"]["observedCommit"] =
         json!("0000000000000000000000000000000000000000");
-    assert_rejected(stale, BASE, BASE, "stale for the prior delta head")?;
+    stale_finding["capture"]["raw"]["response"]["data"]["thread"]["comments"]["nodes"][0]
+        ["commit"]["oid"] = json!("0000000000000000000000000000000000000000");
+    stale_finding["capture"]["raw"]["response"]["data"]["comment"]["commit"]["oid"] =
+        json!("0000000000000000000000000000000000000000");
+    assert_rejected(stale, BASE, BASE, "does not match live GitHub source")?;
 
     let mut wrong_path = external_control();
     let wrong_path_finding =
         &mut wrong_path["post_cap_re_review"]["qualifying_change"]["external_finding"];
     wrong_path_finding["findings"][0]["path"] = json!("README.md");
-    wrong_path_finding["capture"]["raw"]["findings"][0]["path"] = json!("README.md");
-    assert_rejected(wrong_path, BASE, BASE, "not linked to authenticated external finding path")?;
+    wrong_path_finding["capture"]["raw"]["projection"]["findings"][0]["path"] = json!("README.md");
+    wrong_path_finding["capture"]["raw"]["response"]["data"]["thread"]["path"] =
+        json!("README.md");
+    wrong_path_finding["capture"]["raw"]["response"]["data"]["thread"]["comments"]["nodes"][0]
+        ["path"] = json!("README.md");
+    wrong_path_finding["capture"]["raw"]["response"]["data"]["comment"]["path"] =
+        json!("README.md");
+    assert_rejected(wrong_path, BASE, BASE, "does not match live GitHub source")?;
 
     let mut malformed_path = external_control();
     let malformed_path_finding =
         &mut malformed_path["post_cap_re_review"]["qualifying_change"]["external_finding"];
     malformed_path_finding["findings"][0]["path"] = json!("../state.rs");
-    malformed_path_finding["capture"]["raw"]["findings"][0]["path"] = json!("../state.rs");
+    malformed_path_finding["capture"]["raw"]["projection"]["findings"][0]["path"] =
+        json!("../state.rs");
+    malformed_path_finding["capture"]["raw"]["response"]["data"]["thread"]["path"] =
+        json!("../state.rs");
+    malformed_path_finding["capture"]["raw"]["response"]["data"]["thread"]["comments"]["nodes"][0]
+        ["path"] = json!("../state.rs");
+    malformed_path_finding["capture"]["raw"]["response"]["data"]["comment"]["path"] =
+        json!("../state.rs");
     assert_rejected(malformed_path, BASE, BASE, "must be repository-relative")?;
     Ok(())
 }
@@ -46,12 +67,11 @@ fn external_finding_rejects_source_mismatch_and_base_change() -> TestResult {
     let wrong_repository_finding =
         &mut wrong_repository["post_cap_re_review"]["qualifying_change"]["external_finding"];
     wrong_repository_finding["repository"] = json!("other/repository");
-    wrong_repository_finding["capture"]["raw"]["repository"] = json!("other/repository");
     assert_rejected(
         wrong_repository,
         BASE,
         BASE,
-        "owning issue changes repository identity",
+        "does not match raw authenticated projection",
     )?;
 
     let mut wrong_url = external_control();
@@ -59,13 +79,11 @@ fn external_finding_rejects_source_mismatch_and_base_change() -> TestResult {
         &mut wrong_url["post_cap_re_review"]["qualifying_change"]["external_finding"];
     wrong_url_finding["reviewComment"]["url"] =
         json!("https://github.com/eunsoogi/codexy/pull/938#discussion_r7");
-    wrong_url_finding["capture"]["raw"]["reviewComment"]["url"] =
-        json!("https://github.com/eunsoogi/codexy/pull/938#discussion_r7");
     assert_rejected(
         wrong_url,
         BASE,
         BASE,
-        "review identity is not bound to its canonical URL",
+        "does not match raw authenticated projection",
     )?;
 
     let changed_base = external_control();
@@ -75,6 +93,20 @@ fn external_finding_rejects_source_mismatch_and_base_change() -> TestResult {
         direct_state::SYNTHETIC_UPDATED_BASE,
         "must not change baseRefOid",
     )?;
+    Ok(())
+}
+
+#[test]
+fn external_finding_rejects_matching_persisted_forgery_against_live_read() -> TestResult {
+    let mut forged = external_control();
+    let finding = &mut forged["post_cap_re_review"]["qualifying_change"]["external_finding"];
+    finding["author"] = json!("caller-controlled");
+    finding["capture"]["raw"]["projection"]["author"] = json!("caller-controlled");
+    finding["capture"]["raw"]["response"]["data"]["comment"]["author"]["login"] =
+        json!("caller-controlled");
+    finding["capture"]["raw"]["response"]["data"]["thread"]["comments"]["nodes"][0]
+        ["author"]["login"] = json!("caller-controlled");
+    assert_rejected(forged, BASE, BASE, "does not match live GitHub source")?;
     Ok(())
 }
 
@@ -124,24 +156,8 @@ fn external_finding_rejects_unbound_raw_authenticated_capture() -> TestResult {
         rebound,
         BASE,
         BASE,
-        "does not match raw authenticated capture",
+        "does not match raw authenticated projection",
     )?;
-    Ok(())
-}
-
-#[test]
-fn external_finding_rejects_caller_forged_legacy_source() -> TestResult {
-    let control = external_control();
-    let mut forged = pr938_finding(DELTA_HEAD);
-    let finding = &mut forged;
-    finding["capture"] = json!({
-        "provider": "github",
-        "method": "graphql",
-        "authenticated": true
-    });
-    finding["reviewThread"]["id"] = json!("PRRT_fake");
-    let result = post_cap::produce(&control, &forged, BASE, BASE);
-    assert!(result.is_err(), "producer accepted a caller-forged source");
     Ok(())
 }
 
@@ -176,72 +192,4 @@ fn assert_rejected(
         String::from_utf8_lossy(&result.stderr)
     );
     Ok(())
-}
-
-fn pr938_finding(observed_commit: &str) -> Value {
-    let raw = json!({
-        "repository": "eunsoogi/codexy",
-        "owningIssue": {
-            "repository": "eunsoogi/codexy",
-            "number": 937,
-            "url": "https://github.com/eunsoogi/codexy/issues/937",
-            "association": "linked-issue-reference"
-        },
-        "pullRequest": {
-            "repository": "eunsoogi/codexy",
-            "number": 938,
-            "url": "https://github.com/eunsoogi/codexy/pull/938"
-        },
-        "reviewThread": {
-            "id": "PRRT_kwDOS6i-_86fjYep",
-            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
-        },
-        "reviewComment": {
-            "id": "PRRC_kwDOS6i-_87q4eM0",
-            "databaseId": 3940672308u64,
-            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
-        },
-        "author": "chatgpt-codex-connector",
-        "observedCommit": observed_commit,
-        "findings": [{
-            "id": FINDING_ID,
-            "path": "packages/codexy-runtime/src/validation/review_control/state.rs"
-        }]
-    });
-    json!({
-        "schema": "codexy.review-control-external-finding.v1",
-        "capture": {
-            "provider": "github",
-            "method": "graphql",
-            "authenticated": true,
-            "raw": raw
-        },
-        "repository": "eunsoogi/codexy",
-        "owningIssue": {
-            "repository": "eunsoogi/codexy",
-            "number": 937,
-            "url": "https://github.com/eunsoogi/codexy/issues/937",
-            "association": "linked-issue-reference"
-        },
-        "pullRequest": {
-            "repository": "eunsoogi/codexy",
-            "number": 938,
-            "url": "https://github.com/eunsoogi/codexy/pull/938"
-        },
-        "reviewThread": {
-            "id": "PRRT_kwDOS6i-_86fjYep",
-            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
-        },
-        "reviewComment": {
-            "id": "PRRC_kwDOS6i-_87q4eM0",
-            "databaseId": 3940672308u64,
-            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
-        },
-        "author": "chatgpt-codex-connector",
-        "observedCommit": observed_commit,
-        "findings": [{
-            "id": FINDING_ID,
-            "path": "packages/codexy-runtime/src/validation/review_control/state.rs"
-        }]
-    })
 }

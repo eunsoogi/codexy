@@ -31,21 +31,25 @@ delta with findings, bind `qualifying_change.finding_ids` exactly to those
 findings, and show the evidence diff changes every finding's recorded path. The
 current snapshot's head and base identity are preserved.
 
-The external-finding reason MUST carry a
-`codexy.review-control-external-finding.v1` envelope captured by an
-authenticated GitHub GraphQL readback. The producer MUST receive that readback
-as a separate `authenticated_external_finding_capture` input and retain its
-bounded `capture.raw` projection. The envelope's repository, owning issue,
-source PR, immutable review-thread and comment identities with the canonical
-discussion URL, author, observed commit, unique finding IDs, and
-repository-relative affected paths MUST equal the corresponding raw fields. The
-validator MUST NOT use `capture.authenticated` as independent credential proof;
-live proof remains the host-authorized readback. The producer derives
-`qualifying_change.finding_ids` from that source; the transition requires its
-`observedCommit` to equal the prior delta head and the repair diff to touch
-every recorded path. A source with different repository, issue, PR, head,
-finding set, or paths is rejected. The source PR's owning issue is provenance
-and does not replace the target `reviewControl.issue_number`.
+The external-finding reason MUST be produced from a locator-only
+`authenticated_external_finding_locator` request. The producer MUST perform a
+fixed-argument, host-authorized GitHub GraphQL read for that locator, reject
+command failures, GraphQL errors, incomplete connections, and identity
+mismatches, then construct the `codexy.review-control-external-finding.v1`
+envelope with the raw response and its deterministic projection. Caller-supplied
+`authenticated_external_finding` or `authenticated_external_finding_capture`
+values MUST be rejected. `capture.raw` equality and re-projection are offline
+shape/integrity checks only and MUST NOT be treated as authentication. The
+producer, `build-pr-state`, and completion handoff MUST use the live source read
+for external-finding authority; offline validators only validate an envelope
+already admitted by that source-owned boundary. The envelope's repository,
+owning issue, source PR, immutable review-thread and comment identities with
+the canonical discussion URL, author, observed commit, unique finding IDs, and
+repository-relative affected paths MUST equal the live projection. The
+transition requires `observedCommit` to equal the prior delta head and the
+repair diff to touch every recorded path. A source with different repository,
+issue, PR, head, finding set, or paths is rejected. The source PR's owning issue
+is provenance and does not replace the target `reviewControl.issue_number`.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.

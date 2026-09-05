@@ -49,16 +49,19 @@ repair MUST preserve `baseRefOid`, require a prior `BLOCK` delta with non-empty
 findings, bind `finding_ids` exactly to those findings, and show the evidence
 diff changes every finding's recorded path. Authenticated external finding
 repair MUST preserve `baseRefOid`, require a clean prior `PASS` delta with no
-unresolved findings, and bind a source envelope captured by authenticated GitHub
-GraphQL readback. The producer MUST receive that readback as a separate
-`authenticated_external_finding_capture` input, persist its bounded
-`capture.raw` projection in the envelope, and bind the source repository, owning
-issue, PR, review-thread/comment identity, author, observed commit equal to the
-delta head, unique finding IDs, and repository-relative paths to the
-corresponding raw fields; the validator MUST NOT treat `capture.authenticated`
-alone as credential proof. The repair diff MUST touch every recorded path. The
-source PR's owning issue is provenance and does not replace the target control
-issue. Independent evaluator output remains unavailable unless a trusted adapter
+unresolved findings, and be produced from a locator-only
+`authenticated_external_finding_locator` request. The producer MUST perform a
+fixed-argument, host-authorized GitHub GraphQL read, persist its raw response and
+deterministic projection in the source envelope, and reject caller-supplied
+source or capture values. `capture.raw` equality and re-projection are offline
+shape/integrity checks only, not authentication. The producer, `build-pr-state`,
+and completion handoff MUST use the live source read for external-finding
+authority; offline validators only validate an envelope already admitted by
+that boundary. The envelope MUST bind the source repository, owning issue, PR,
+review-thread/comment identity, author, observed commit equal to the delta head,
+unique finding IDs, and repository-relative paths to the live projection; the
+repair diff MUST touch every recorded path. The source PR's owning issue is
+provenance and does not replace the target control issue. Independent evaluator output remains unavailable unless a trusted adapter
 exposes a concrete safe source with the same path/head binding and no private
 inputs, answers, or artifact paths; a public `FAIL` word alone is not evidence.
 Optional churn, duplicate or unchanged heads, missing/reordered/truncated

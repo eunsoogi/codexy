@@ -1,12 +1,14 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path};
 
 use serde_json::{Value, json};
 
-use crate::support::{FixtureCommand, TestResult};
+use crate::support::{FixtureCommand, TestResult, make_executable};
 #[path = "review_control_direct_state.rs"]
 mod direct_state;
 #[path = "post_cap_review_graph.rs"]
 mod graph;
+#[path = "post_cap_external_finding_fixture.rs"]
+mod external_finding_fixture;
 
 pub(crate) fn validate_readiness(
     control: Value,
@@ -81,6 +83,7 @@ pub(crate) fn build_pr_state(
         &control_path,
         &previous,
         &output,
+        &control,
     )?;
     assert!(
         result.status.success(),
@@ -111,72 +114,8 @@ pub(crate) fn run_build(
         &control_path,
         &previous,
         &output,
+        &control,
     )?)
-}
-pub(crate) fn produce(
-    control: &Value,
-    source: &Value,
-    previous_base: &str,
-    current_base: &str,
-) -> TestResult<Value> {
-    let temporary = tempfile::tempdir()?;
-    let repository = graph::SyntheticRepository::create(temporary.path())?;
-    let mut source_control = control.clone();
-    let retained_capture = source_control["post_cap_re_review"]["qualifying_change"]
-        ["external_finding"]["capture"]
-        .clone();
-    source_control["post_cap_re_review"]["qualifying_change"]["external_finding"] =
-        source.clone();
-    if retained_capture.is_object() {
-        source_control["post_cap_re_review"]["qualifying_change"]["external_finding"]["capture"] =
-            retained_capture;
-    }
-    let (mut control, previous_base, current_base) =
-        repository.prepare(&source_control, previous_base, current_base)?;
-    let source = control["post_cap_re_review"]["qualifying_change"]["external_finding"].clone();
-    let change = control["post_cap_re_review"]["qualifying_change"]
-        .as_object_mut()
-        .ok_or("qualifying change")?;
-    change.remove("external_finding");
-    change.remove("finding_ids");
-    let current_head = control["reviewed_head"].as_str().ok_or("current head")?;
-    let previous_head = control["terminal_review_history"][1]["reviewed_head"]
-        .as_str()
-        .ok_or("previous head")?;
-    let current = direct_state::pr_snapshot(
-        control["issue_number"].as_u64().ok_or("issue number")?,
-        &current_base,
-        current_head,
-        None,
-    );
-    let previous = direct_state::pr_snapshot(
-        control["issue_number"].as_u64().ok_or("issue number")?,
-        &previous_base,
-        previous_head,
-        Some(direct_state::post_cap_prior(&control)),
-    );
-    let input = temporary.path().join("producer-input.json");
-    let output = temporary.path().join("producer-output.json");
-    fs::write(
-        &input,
-        serde_json::to_vec(&json!({
-            "control_state": control,
-            "authenticated_external_finding_capture": source["capture"].clone(),
-            "authenticated_external_finding": source,
-            "current_pr_state": current,
-            "previous_pr_state": previous
-        }))?,
-    )?;
-    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--produce-review-control", "--input"])
-        .arg(&input)
-        .args(["--output"])
-        .arg(&output)
-        .args(["--repository-root"])
-        .arg(&repository.path)
-        .status()?;
-    if !result.success() { return Err(std::io::Error::other("producer rejected").into()); }
-    Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
 fn write_review_inputs(
     root: &std::path::Path,
@@ -222,9 +161,10 @@ fn write_review_inputs(
 fn invoke_build(
     repository: &Path,
     current: &std::path::Path,
-    control: &std::path::Path,
+    control_path: &std::path::Path,
     previous: &std::path::Path,
     output: &std::path::Path,
+    review_control: &Value,
 ) -> TestResult<std::process::Output> {
     let mut command = FixtureCommand::new(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
@@ -235,7 +175,7 @@ fn invoke_build(
         .arg("--base-pr-state-file")
         .arg_path(current)
         .arg("--review-control-state-file")
-        .arg_path(control)
+        .arg_path(control_path)
         .arg("--previous-pr-state-file")
         .arg_path(previous)
         .arg("--output")
@@ -244,5 +184,29 @@ fn invoke_build(
             "CODEXY_REVIEW_CONTROL_BIN",
             env!("CARGO_BIN_EXE_codexy-review-control"),
         );
+    #[cfg(unix)]
+    if review_control["post_cap_re_review"]["reason"].as_str()
+        == Some("authenticated_external_finding_repair")
+    {
+        let bin = output.parent().ok_or("build output parent")?.join("bin");
+        fs::create_dir(&bin)?;
+        let response = external_finding_fixture::pr938_response(
+            review_control["post_cap_re_review"]["qualifying_change"]["from_head"]
+                .as_str()
+                .ok_or("external finding prior head")?,
+        );
+        let response_file = output.parent().ok_or("build output parent")?.join("github-response.json");
+        fs::write(&response_file, serde_json::to_vec(&response)?)?;
+        let gh = bin.join("gh");
+        fs::write(&gh, "#!/bin/sh\ncat \"$CODEXY_TEST_GITHUB_RESPONSE\"\n")?;
+        make_executable(&gh)?;
+        let mut paths = vec![bin];
+        if let Some(path) = std::env::var_os("PATH") {
+            paths.extend(std::env::split_paths(&path));
+        }
+        command
+            .env_path_list("PATH", paths)
+            .env_path("CODEXY_TEST_GITHUB_RESPONSE", response_file);
+    }
     Ok(command.output()?)
 }
