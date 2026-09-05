@@ -7,6 +7,7 @@ mod classification;
 mod history;
 mod migration;
 mod policy;
+mod pre_pr;
 mod snapshot;
 mod state;
 mod transition;
@@ -63,7 +64,9 @@ pub(super) fn build_pr_state(
     }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
-    let control = if control.get("profile").and_then(Value::as_str) != Some("light") {
+    let control = if control.get("profile").and_then(Value::as_str) != Some("light")
+        || predecessor_has_pre_pr_history(Some(&previous))
+    {
         transition::check_with_repository(
             plugin_root,
             repository_root,
@@ -82,6 +85,18 @@ pub(super) fn build_pr_state(
     object.insert("reviewControl".into(), control);
     state::check_pr_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
     Ok(state)
+}
+
+pub(super) fn import_pre_pr_history(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current_text: &str,
+    envelope_text: &str,
+) -> Result<Value> {
+    let current: Value = serde_json::from_str(current_text)?;
+    let envelope: Value = serde_json::from_str(envelope_text)
+        .map_err(|error| anyhow::anyhow!("pre-PR history input is invalid: {error}"))?;
+    pre_pr::import(plugin_root, repository_root, &current, &envelope).map_err(anyhow::Error::msg)
 }
 
 pub(super) fn produce(
@@ -108,6 +123,7 @@ pub(super) fn produce(
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
+        || predecessor_has_pre_pr_history(request.get("previous_pr_state"))
     {
         let raw_error = state::check_control(plugin_root, &control).err();
         let current = request
@@ -134,4 +150,12 @@ pub(super) fn produce(
     };
     state::check_control(plugin_root, &control).map_err(anyhow::Error::msg)?;
     Ok(serde_json::json!({"control_state": control}))
+}
+
+fn predecessor_has_pre_pr_history(state: Option<&Value>) -> bool {
+    state
+        .and_then(Value::as_object)
+        .and_then(|state| state.get("reviewControl"))
+        .and_then(Value::as_object)
+        .is_some_and(|control| control.contains_key("pre_pr_import"))
 }

@@ -20,6 +20,21 @@ prior history prefix and increase the terminal count by one. A fresh one-event
 input MUST NOT reset prior terminal history, and the validator MUST preserve the
 current snapshot's authenticated head and base values.
 
+When a selected reviewer completed before PR creation, the trusted orchestrator
+MAY use one complete `codexy.review-control-pre-pr-history.v1` envelope to
+import the original final-message identity, turn/order references, reviewer
+facts, and terminal history into a genesis PR state. The source adapter MUST use
+an actual Codex readback, or the exact original host record when a completed
+`read_thread` turn omits its items; an empty turn MUST NOT be treated as
+evidence. The runtime validates structure, issue binding, reviewer policy, and
+Git ancestry but does not authenticate credentials or derive a verdict from a
+caller flag or signature. Import MUST preserve the current PR number, URL, base,
+and head, MUST reject an existing history, and MUST leave a compact immutable
+`pre_pr_import` marker. An older imported PASS is bookkeeping only: readiness
+still requires a PASS at the actual current head. Later ordinary transitions
+MUST preserve the marker and reject changed, removed, reordered, duplicated, or
+incomplete provenance.
+
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
 mandatory base integration or an in-scope contract/root repair. It MUST use the
