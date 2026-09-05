@@ -18,17 +18,25 @@ without mutation, probing, or an additional output field.
 
 MUST preserve the plan's concrete nouns and select only one causal assumption
 whose failure invalidates acceptance, with the smallest discriminating probe.
+The assumption MUST state a cause-and-effect relationship required by an
+acceptance criterion: name the condition that must hold, the success it enables,
+and what acceptance consequence follows if it fails. It MUST NOT merely restate
+a plan step, actor, consumer, action, or temporal gate. The probe MUST name what
+to compare or observe and how each possible result supports or falsifies the
+assumption; naming an actor, consumer, action, or intended sequence alone is not
+a probe.
 
 For each accepted request, derive the receipt from the supplied plan and
 acceptance criteria in this order:
 
 1. Identify the concrete nouns in the input that define the plan's subject and
    success boundary.
-2. State one causal assumption that determines whether acceptance succeeds or
-   fails.
-3. Describe the smallest probe that can distinguish that assumption's passing
-   and failing outcomes.
-4. Describe the observable passing or failing result and connect it to the
+2. State one cause-and-effect assumption that determines whether acceptance
+   succeeds or fails, including the condition required for success and the
+   consequence of its failure.
+3. Describe the smallest probe by naming what to compare or observe and how each
+   result distinguishes the assumption's passing and failing outcomes.
+4. Describe the observable result of that comparison and connect it to the
    decision effect without adding an approval or completion judgment.
 
 ## Receipt
