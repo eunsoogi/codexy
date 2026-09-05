@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 use crate::codegraph::{build_graph, neighborhood, reverse_deps};
 use crate::mcp::{ToolDef, text_result};
 
+use super::cache::invalidate;
 use super::errors::{CodegraphError, CodegraphErrorKind, begin_operation, take_errors};
 use super::files::{read_source, repo_root, result_limit, walk_code_files};
 use super::search::search;
@@ -54,7 +55,20 @@ pub fn tools() -> Vec<ToolDef> {
 /// Returns an error when required arguments are missing, a search regex is invalid, JSON
 /// serialization fails, or the tool name is unknown.
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
-    let root = repo_root(root_argument(args)?)?;
+    let root_input = match root_argument(args) {
+        Ok(root) => root,
+        Err(error) => {
+            invalidate();
+            return Err(error);
+        }
+    };
+    let root = match repo_root(root_input) {
+        Ok(root) => root,
+        Err(error) => {
+            invalidate();
+            return Err(error.into());
+        }
+    };
     match name {
         "codegraph_overview" => text_json(&overview(&root, limit(args))),
         "codegraph_search" => {

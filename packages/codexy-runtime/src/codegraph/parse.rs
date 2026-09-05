@@ -1,14 +1,29 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use regex::Regex;
 
 use super::GraphFile;
-use super::files::read_source;
 use super::language::parse_language;
 use super::mask::code_position_mask;
 
-pub(super) fn parse_file(root: &Path, file: &str, indexed_files: &BTreeSet<String>) -> GraphFile {
+#[cfg(test)]
+thread_local! {
+    static PARSE_CALLS: Cell<usize> = const { Cell::new(0) };
+}
+
+pub(super) fn parse_file(
+    root: &Path,
+    file: &str,
+    indexed_files: &BTreeSet<String>,
+    source: &str,
+) -> GraphFile {
+    #[cfg(test)]
+    PARSE_CALLS.with(|count| count.set(count.get() + 1));
+
     let extension = Path::new(file)
         .extension()
         .and_then(|value| value.to_str())
@@ -17,9 +32,9 @@ pub(super) fn parse_file(root: &Path, file: &str, indexed_files: &BTreeSet<Strin
         extension.as_str(),
         ".js" | ".jsx" | ".mjs" | ".cjs" | ".ts" | ".tsx"
     ) {
-        parse_javascript(root, file)
+        parse_javascript(source)
     } else {
-        parse_language(root, file, &extension, indexed_files)
+        parse_language(root, file, &extension, indexed_files, source)
     };
     GraphFile {
         path: file.to_owned(),
@@ -28,8 +43,7 @@ pub(super) fn parse_file(root: &Path, file: &str, indexed_files: &BTreeSet<Strin
     }
 }
 
-fn parse_javascript(root: &Path, file: &str) -> (Vec<String>, Vec<String>) {
-    let source = read_source(root, file);
+fn parse_javascript(source: &str) -> (Vec<String>, Vec<String>) {
     let mask = code_position_mask(&source);
     let imports = regex_values(
         &source,
@@ -141,4 +155,14 @@ fn unique(mut values: Vec<String>) -> Vec<String> {
     values.sort();
     values.dedup();
     values
+}
+
+#[cfg(test)]
+pub(super) fn parse_call_count() -> usize {
+    PARSE_CALLS.with(Cell::get)
+}
+
+#[cfg(test)]
+pub(super) fn reset_parse_call_count() {
+    PARSE_CALLS.with(|count| count.set(0));
 }
