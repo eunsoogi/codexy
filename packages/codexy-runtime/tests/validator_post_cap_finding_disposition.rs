@@ -84,7 +84,20 @@ fn disposition_rejects_reclassification_and_missing_code_repair() -> TestResult 
         ["requiredDisposition"] = serde_json::json!("current_head_ci_terminal");
     let result = post_cap::run_build(&no_code_repair, BASE, BASE)?;
     assert!(!result.status.success());
-    assert!(String::from_utf8_lossy(&result.stderr).contains("code-repair evidence"));
+    assert!(String::from_utf8_lossy(&result.stderr).contains("reclassifies"));
+    Ok(())
+}
+
+#[test]
+fn disposition_does_not_treat_a_workflow_source_defect_as_ci_observation() -> TestResult {
+    let mut control = disposition_control();
+    control["terminal_review_history"][1]["unresolved_findings"][2]["kind"] =
+        serde_json::json!("workflow_source_defect");
+    control["post_cap_re_review"]["qualifying_change"]["finding_disposition"]["findings"][2]
+        ["requiredDisposition"] = serde_json::json!("current_head_ci_terminal");
+    let result = post_cap::run_build(&control, BASE, BASE)?;
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("reclassifies"));
     Ok(())
 }
 

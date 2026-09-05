@@ -1,10 +1,18 @@
 use std::collections::HashSet;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::pre_pr::{object, reject_unknown, text};
 
 mod capture;
+mod classification;
+
+pub(super) fn derive(
+    source: &Value,
+    prior_delta: &serde_json::Map<String, Value>,
+) -> Result<(Value, Vec<Value>), String> {
+    classification::derive(source, prior_delta)
+}
 
 pub(super) const REASON: &str = "authenticated_finding_disposition";
 const SCHEMA: &str = "codexy.review-control-finding-disposition.v1";
@@ -106,10 +114,6 @@ pub(super) fn normalize_producer(
     source: &Value,
     previous: &Value,
 ) -> Result<(), String> {
-    check(source)?;
-    let source = source
-        .as_object()
-        .ok_or_else(|| "finding disposition source must be an object".to_owned())?;
     let prior = previous
         .get("reviewControl")
         .and_then(Value::as_object)
@@ -118,51 +122,7 @@ pub(super) fn normalize_producer(
         .and_then(|history| history.get(1))
         .and_then(Value::as_object)
         .ok_or_else(|| "finding disposition producer requires a prior delta event".to_owned())?;
-    let prior_findings = prior
-        .get("unresolved_findings")
-        .and_then(Value::as_array)
-        .filter(|findings| !findings.is_empty())
-        .ok_or_else(|| "finding disposition producer requires prior delta findings".to_owned())?;
-    let maintainer = source
-        .get("sources")
-        .and_then(Value::as_object)
-        .and_then(|sources| sources.get("maintainerDecision"))
-        .and_then(Value::as_object)
-        .and_then(|decision| decision.get("decision"))
-        .and_then(Value::as_object)
-        .ok_or_else(|| "finding disposition source lacks maintainer decision facts".to_owned())?;
-    let maintainer_id = text(maintainer, "findingId", "maintainer decision")?;
-    let maintainer_path = text(maintainer, "path", "maintainer decision")?;
-    let ci = source
-        .get("sources")
-        .and_then(Value::as_object)
-        .and_then(|sources| sources.get("currentHeadCi"))
-        .and_then(Value::as_object)
-        .ok_or_else(|| "finding disposition source lacks current-head CI facts".to_owned())?;
-    if ci.get("complete") != Some(&Value::Bool(true)) {
-        return Err("current-head CI source is not complete".into());
-    }
-
-    let mut findings = Vec::with_capacity(prior_findings.len());
-    let mut ids = Vec::with_capacity(prior_findings.len());
-    let mut seen = HashSet::new();
-    for finding in prior_findings {
-        let finding = object(Some(finding), "prior delta finding")?;
-        let id = text(finding, "id", "prior delta finding")?;
-        let path = text(finding, "path", "prior delta finding")?;
-        if !seen.insert(id) {
-            return Err("prior delta findings must contain unique ids".into());
-        }
-        let required = if id == maintainer_id && path == maintainer_path {
-            "maintainer_accepted_policy_difference"
-        } else if path.starts_with(".github/workflows/") {
-            "current_head_ci_terminal"
-        } else {
-            "code_repair"
-        };
-        findings.push(json!({"id": id, "path": path, "requiredDisposition": required}));
-        ids.push(Value::String(id.to_owned()));
-    }
+    let (source, ids) = classification::derive(source, prior)?;
     let post_cap = object(
         control
             .as_object()
@@ -176,8 +136,6 @@ pub(super) fn normalize_producer(
                 .into(),
         );
     }
-    let mut source = source.clone();
-    source.insert("findings".into(), Value::Array(findings));
     let post_cap = control
         .as_object_mut()
         .and_then(|object| object.get_mut("post_cap_re_review"))
@@ -188,7 +146,7 @@ pub(super) fn normalize_producer(
         .and_then(Value::as_object_mut)
         .ok_or_else(|| "qualifying change must be an object".to_owned())?;
     change.insert("finding_ids".into(), Value::Array(ids));
-    change.insert("finding_disposition".into(), Value::Object(source));
+    change.insert("finding_disposition".into(), source);
     Ok(())
 }
 
@@ -223,7 +181,7 @@ pub(super) fn check(value: &Value) -> Result<(), String> {
         let finding = object(Some(finding), "finding disposition record")?;
         reject_unknown(
             finding,
-            &["id", "path", "requiredDisposition"],
+            &["id", "path", "kind", "requiredDisposition"],
             "finding disposition record",
         )?;
         let id = text(finding, "id", "finding disposition record")?;
@@ -231,6 +189,11 @@ pub(super) fn check(value: &Value) -> Result<(), String> {
             return Err("finding disposition ids must be unique".into());
         }
         let path = text(finding, "path", "finding disposition record")?;
+        if let Some(kind) = finding.get("kind") {
+            if !kind.as_str().is_some_and(|kind| !kind.is_empty()) {
+                return Err("finding disposition record kind must be non-empty".into());
+            }
+        }
         if path.starts_with('/')
             || path.contains('\\')
             || path

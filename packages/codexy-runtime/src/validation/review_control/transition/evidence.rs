@@ -6,6 +6,7 @@ use super::super::{external_finding, post_cap_disposition, snapshot};
 
 mod disposition;
 mod paths;
+pub(super) mod pre_verdict;
 
 struct RootRepair<'a> {
     repository_root: &'a Path,
@@ -97,16 +98,16 @@ pub(super) fn check(
             from,
             evidence,
         }),
-        post_cap_disposition::REASON => disposition::check(
+        post_cap_disposition::REASON => disposition::check(&disposition::Context {
             repository_root,
             previous_base,
             current_base,
-            current_object,
+            current: current_object,
             prior_delta,
             change,
             from,
             evidence,
-        ),
+        }),
         _ => Err("review control transition post-cap reason is not eligible".into()),
     }
 }

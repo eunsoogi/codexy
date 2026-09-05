@@ -121,3 +121,7 @@ mod validator_post_cap_finding_disposition;
 #[path = "../validator_post_cap_finding_disposition_handoff.rs"]
 #[cfg(unix)]
 mod validator_post_cap_finding_disposition_handoff;
+
+#[path = "../validator_review_control_pre_verdict.rs"]
+#[cfg(unix)]
+mod validator_review_control_pre_verdict;

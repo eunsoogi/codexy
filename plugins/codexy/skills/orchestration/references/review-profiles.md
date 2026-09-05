@@ -57,15 +57,15 @@ finding from the blocked delta exactly once. It MUST be produced only from a
 locator-only `authenticated_finding_disposition_locator` request. The source
 envelope MUST combine a fixed exact-head `gh pr view` `statusCheckRollup` read
 with a fixed GraphQL lookup of the exact maintainer PR comment, binding the
-repository, owning issue, PR, base, head, finding ID/path, immutable
-unminimized OWNER/MEMBER authority, and the exact accepted model tuple from the
-body. The CI rollup MUST be non-empty with only terminal-success
-CheckRuns. Workflow findings resolve only through CI, the exact policy finding
-only through the maintainer decision, and all remaining findings require actual
-evidence-diff path coverage with at least one code repair. The producer,
-`build-pr-state`, and completion handoff MUST reread both sources; callers MUST
-NOT provide source, capture, classification, or finding IDs, and this reason
-MUST NOT waive code, CI, review, merge, or quota requirements.
+repository, owning issue, PR, base, head, finding ID/path, immutable unminimized
+OWNER/MEMBER authority, and the exact accepted model tuple from the body. The CI
+rollup MUST be non-empty with only terminal-success CheckRuns. Workflow findings
+resolve only through CI, the exact policy finding only through the maintainer
+decision, and all remaining findings require actual evidence-diff path coverage
+with at least one code repair. The producer, `build-pr-state`, and completion
+handoff MUST reread both sources; callers MUST NOT provide source, capture,
+classification, or finding IDs, and this reason MUST NOT waive code, CI, review,
+merge, or quota requirements.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.

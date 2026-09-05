@@ -19,15 +19,18 @@ pub(crate) fn post_cap_disposition_control(
         json!([
             {
                 "id": "external-source-provenance-not-authenticated",
-                "path": "packages/codexy-runtime/src/validation/review_control/external_finding/capture.rs"
+                "path": "packages/codexy-runtime/src/validation/review_control/external_finding/capture.rs",
+                "kind": "source_defect"
             },
             {
                 "id": "selected-reviewer-policy-mismatch",
-                "path": "plugins/codexy/agents/codexy-sentinel.toml"
+                "path": "plugins/codexy/agents/codexy-sentinel.toml",
+                "kind": "policy_difference"
             },
             {
                 "id": "current-head-ci-incomplete",
-                "path": ".github/workflows/bootstrap-package.yml"
+                "path": ".github/workflows/bootstrap-package.yml",
+                "kind": "ci_incomplete_observation"
             }
         ]),
         json!([
@@ -48,16 +51,19 @@ pub(crate) fn post_cap_disposition_control(
             {
                 "id": "external-source-provenance-not-authenticated",
                 "path": "packages/codexy-runtime/src/validation/review_control/external_finding/capture.rs",
+                "kind": "source_defect",
                 "requiredDisposition": "code_repair"
             },
             {
                 "id": "selected-reviewer-policy-mismatch",
                 "path": "plugins/codexy/agents/codexy-sentinel.toml",
+                "kind": "policy_difference",
                 "requiredDisposition": "maintainer_accepted_policy_difference"
             },
             {
                 "id": "current-head-ci-incomplete",
                 "path": ".github/workflows/bootstrap-package.yml",
+                "kind": "ci_incomplete_observation",
                 "requiredDisposition": "current_head_ci_terminal"
             }
         ],

@@ -5,16 +5,28 @@ use serde_json::{Map, Value};
 use super::paths;
 use crate::validation::review_control::post_cap_disposition;
 
-pub(super) fn check(
-    repository_root: &Path,
-    previous_base: &str,
-    current_base: &str,
-    current: &Map<String, Value>,
-    prior_delta: &Map<String, Value>,
-    change: &Map<String, Value>,
-    from: &str,
-    evidence: &str,
-) -> Result<(), String> {
+pub(super) struct Context<'a> {
+    pub(super) repository_root: &'a Path,
+    pub(super) previous_base: &'a str,
+    pub(super) current_base: &'a str,
+    pub(super) current: &'a Map<String, Value>,
+    pub(super) prior_delta: &'a Map<String, Value>,
+    pub(super) change: &'a Map<String, Value>,
+    pub(super) from: &'a str,
+    pub(super) evidence: &'a str,
+}
+
+pub(super) fn check(context: &Context<'_>) -> Result<(), String> {
+    let Context {
+        repository_root,
+        previous_base,
+        current_base,
+        current,
+        prior_delta,
+        change,
+        from,
+        evidence,
+    } = context;
     if previous_base != current_base {
         return Err("authenticated finding disposition must not change baseRefOid".into());
     }
@@ -72,7 +84,14 @@ pub(super) fn check(
     if records.len() != prior_findings.len() {
         return Err("finding disposition must cover every prior delta finding exactly once".into());
     }
-    let source_kind = maintainer_kind(disposition, prior_delta)?;
+    maintainer_kind(disposition, prior_delta)?;
+    let classified =
+        post_cap_disposition::derive(&Value::Object(disposition.clone()), prior_delta)?;
+    let classified_source = classified.0;
+    let classified_records = classified_source
+        .get("findings")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "finding disposition classification lacks findings".to_owned())?;
     let mut seen = HashSet::new();
     for ((prior, id), record) in prior_findings.iter().zip(finding_ids).zip(records) {
         let prior = prior
@@ -92,13 +111,15 @@ pub(super) fn check(
                 "finding disposition does not preserve exact prior finding ID/path order".into(),
             );
         }
-        let expected = if source_kind == Some((prior_id, prior_path)) {
-            "maintainer_accepted_policy_difference"
-        } else if prior_path.starts_with(".github/workflows/") {
-            "current_head_ci_terminal"
-        } else {
-            "code_repair"
-        };
+        let expected = classified_records
+            .iter()
+            .find(|record| {
+                record.get("id").and_then(Value::as_str) == Some(prior_id)
+                    && record.get("path").and_then(Value::as_str) == Some(prior_path)
+            })
+            .and_then(|record| record.get("requiredDisposition"))
+            .and_then(Value::as_str)
+            .ok_or_else(|| "finding disposition classification lost a prior finding".to_owned())?;
         if required_text(record, "requiredDisposition", "finding disposition record")? != expected {
             return Err(
                 "finding disposition reclassifies a prior finding without its required evidence"

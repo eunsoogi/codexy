@@ -10,6 +10,8 @@ mod migration;
 mod policy;
 mod post_cap_disposition;
 mod pre_pr;
+mod pre_verdict;
+mod request;
 mod snapshot;
 mod state;
 mod transition;
@@ -89,7 +91,7 @@ pub(super) fn build_pr_state(
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
     let control = if control.get("profile").and_then(Value::as_str) != Some("light")
-        || predecessor_has_pre_pr_history(Some(&previous))
+        || request::predecessor_has_pre_pr_history(Some(&previous))
     {
         transition::check_with_repository(
             plugin_root,
@@ -158,7 +160,7 @@ pub(super) fn produce(
         );
     }
     if let Some(locator) = request.get("authenticated_external_finding_locator") {
-        let expected_commit = qualifying_change_from_head(&control).map(ToOwned::to_owned);
+        let expected_commit = request::qualifying_change_from_head(&control).map(ToOwned::to_owned);
         let source = external_finding::read_live(locator, expected_commit.as_deref())
             .map_err(anyhow::Error::msg)?;
         external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
@@ -167,7 +169,7 @@ pub(super) fn produce(
             anyhow::anyhow!("finding disposition producer requires current_pr_state")
         })?;
         post_cap_disposition::validate_locator(locator, current).map_err(anyhow::Error::msg)?;
-        let expected_head = qualifying_change_to_head(&control);
+        let expected_head = request::qualifying_change_to_head(&control);
         let source =
             post_cap_disposition::read_live(locator, expected_head).map_err(anyhow::Error::msg)?;
         let previous = request.get("previous_pr_state").ok_or_else(|| {
@@ -188,7 +190,7 @@ pub(super) fn produce(
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
-        || predecessor_has_pre_pr_history(request.get("previous_pr_state"))
+        || request::predecessor_has_pre_pr_history(request.get("previous_pr_state"))
     {
         let raw_error = state::check_control(plugin_root, &control).err();
         let current = request
@@ -217,32 +219,19 @@ pub(super) fn produce(
     Ok(serde_json::json!({"control_state": control}))
 }
 
-fn predecessor_has_pre_pr_history(state: Option<&Value>) -> bool {
-    state
-        .and_then(Value::as_object)
-        .and_then(|state| state.get("reviewControl"))
-        .and_then(Value::as_object)
-        .is_some_and(|control| control.contains_key("pre_pr_import"))
-}
-
-fn qualifying_change_from_head(control: &Value) -> Option<&str> {
-    control
-        .get("post_cap_re_review")
-        .and_then(Value::as_object)
-        .and_then(|post_cap| post_cap.get("qualifying_change"))
-        .and_then(Value::as_object)
-        .and_then(|change| change.get("from_head"))
-        .and_then(Value::as_str)
-        .filter(|head| !head.is_empty())
-}
-
-fn qualifying_change_to_head(control: &Value) -> Option<&str> {
-    control
-        .get("post_cap_re_review")
-        .and_then(Value::as_object)
-        .and_then(|post_cap| post_cap.get("qualifying_change"))
-        .and_then(Value::as_object)
-        .and_then(|change| change.get("to_head"))
-        .and_then(Value::as_str)
-        .filter(|head| !head.is_empty())
+pub(super) fn check_next_review_eligibility(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current_text: &str,
+    previous_text: &str,
+    request_text: &str,
+) -> Result<Value> {
+    pre_verdict::check(
+        plugin_root,
+        repository_root,
+        current_text,
+        previous_text,
+        request_text,
+    )
+    .map_err(anyhow::Error::msg)
 }
