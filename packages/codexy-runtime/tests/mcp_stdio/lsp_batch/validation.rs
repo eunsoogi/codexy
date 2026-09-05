@@ -3,6 +3,13 @@ use super::*;
 #[test]
 fn lsp_batch_rejects_bounds_context_and_path_escape_before_spawn() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
+    let outside = tempfile::tempdir_in(root.path().parent().ok_or("root parent")?)?;
+    std::fs::write(outside.path().join("outside.toml"), "value = 1\n")?;
+    let outside_name = outside
+        .path()
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("outside directory name")?;
     let fake_lsp = env!("CARGO_BIN_EXE_codexy-fake-lsp");
     let capture = root.path().join("should-not-exist.json");
     let mut client = start_client(&[], Some(&capture))?;
@@ -45,13 +52,13 @@ fn lsp_batch_rejects_bounds_context_and_path_escape_before_spawn() -> Result<(),
     let escaped = batch_arguments(
         root.path(),
         fake_lsp,
-        json!([{"method":"lsp_document_symbols","path":"../outside.toml"}]),
+        json!([{"method":"lsp_document_symbols","path":PathBuf::from("..").join(outside_name).join("outside.toml")}]),
     );
     let response = batch_response(&mut client, 5, escaped)?;
     assert!(response["error"]["message"]
         .as_str()
         .unwrap_or("")
-        .contains("escapes root"));
+        .contains("escapes root"), "{response:#}");
     assert!(!capture.exists());
     Ok(())
 }

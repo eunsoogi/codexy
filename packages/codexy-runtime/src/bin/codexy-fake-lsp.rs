@@ -236,11 +236,13 @@ fn fixture_crash_after_request(request_count: u64) -> Result<()> {
 }
 
 fn fixture_release_stderr_gate() {
-    if let Ok(address) = std::env::var("CODEXY_TEST_STDERR_SHUTDOWN_GATE_ADDR")
-        && let Ok(mut gate) = TcpStream::connect(address)
-    {
-        let _ = gate
-            .write_all(b"shutdown-observed")
-            .and_then(|()| gate.flush());
-    }
+    let Ok(address) = std::env::var("CODEXY_TEST_STDERR_SHUTDOWN_GATE_ADDR") else {
+        return;
+    };
+    let Ok(mut gate) = TcpStream::connect(address) else {
+        return;
+    };
+    let _ = gate
+        .write_all(b"shutdown-observed")
+        .and_then(|()| gate.flush());
 }

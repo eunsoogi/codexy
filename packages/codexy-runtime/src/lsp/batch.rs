@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context as _, Result, bail};
@@ -192,14 +192,32 @@ fn ensure_path_within_root(raw_path: &str, file_path: &str, root: Option<&str>) 
     let Some(root) = root else {
         return Ok(());
     };
-    let root = Path::new(root)
-        .canonicalize()
-        .unwrap_or_else(|_| PathBuf::from(root));
-    let path = Path::new(file_path)
-        .canonicalize()
-        .unwrap_or_else(|_| PathBuf::from(file_path));
+    let root = normalize_path(
+        &Path::new(root)
+            .canonicalize()
+            .unwrap_or_else(|_| PathBuf::from(root)),
+    );
+    let path = normalize_path(
+        &Path::new(file_path)
+            .canonicalize()
+            .unwrap_or_else(|_| PathBuf::from(file_path)),
+    );
     if !path.starts_with(&root) {
         bail!("request.path escapes root: {raw_path}");
     }
     Ok(())
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                normalized.pop();
+            }
+            component => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized
 }

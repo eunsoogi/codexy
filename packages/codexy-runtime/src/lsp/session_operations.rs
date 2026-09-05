@@ -58,11 +58,14 @@ impl LspSession {
                 (Instant::now() + Duration::from_millis(request.timeout_ms)).min(deadline);
             match self.run_request(request, request_deadline, &initialize) {
                 Ok(mut result) => {
-                    if result.get("status").and_then(Value::as_str) == Some("ok")
-                        && let Err(error) = ensure_workspace_ready(&self.stderr)
-                    {
-                        result =
-                            failure_result(request, &error.to_string(), &stderr_text(&self.stderr));
+                    if result.get("status").and_then(Value::as_str) == Some("ok") {
+                        if let Err(error) = ensure_workspace_ready(&self.stderr) {
+                            result = failure_result(
+                                request,
+                                &error.to_string(),
+                                &stderr_text(&self.stderr),
+                            );
+                        }
                     }
                     results.push(result);
                 }
