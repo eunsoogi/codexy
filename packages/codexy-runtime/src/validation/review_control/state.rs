@@ -153,10 +153,10 @@ fn check_with_mode(
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
     };
-    if matches!(source, StateSource::PrSnapshot) {
-        if snapshot::owning_issue_number(state, "current")? != issue_number {
-            return Err("review control state issue_number disagrees with the owning issue".into());
-        }
+    if matches!(source, StateSource::PrSnapshot)
+        && snapshot::owning_issue_number(state, "current")? != issue_number
+    {
+        return Err("review control state issue_number disagrees with the owning issue".into());
     }
     let current_reviewer = serde_json::to_value(reviewer)
         .map_err(|_| "selected reviewer is not serializable".to_owned())?;
