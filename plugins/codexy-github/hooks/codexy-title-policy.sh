@@ -27,8 +27,10 @@ function trim_terminal_whitespace(value) {
 }
 function strip_punctuation(value) {
 	value = trim_terminal_whitespace(value)
-	while (value ~ /[.,]$/) sub(/[.,]$/, "", value)
-	value = trim_terminal_whitespace(value)
+	while (value ~ /[.,]$/) {
+		sub(/[.,]$/, "", value)
+		value = trim_terminal_whitespace(value)
+	}
 	return value
 }
 {
