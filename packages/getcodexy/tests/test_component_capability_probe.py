@@ -36,8 +36,12 @@ class CapabilityProcessTests(unittest.TestCase):
         self.assertNotIn("creationflags", probe._RUN_OPTIONS)
         for outcome, category in cases:
             with self.subTest(category=category):
-                with patch.object(probe.subprocess, "run", side_effect=[outcome]):
-                    result = probe._run(["hook"], Path.cwd(), "{}")
+                cwd = Path.cwd()
+                with (
+                    patch.object(probe.os, "name", "posix"),
+                    patch.object(probe.subprocess, "run", side_effect=[outcome]),
+                ):
+                    result = probe._run(["hook"], cwd, "{}")
                 self.assertEqual(result.category, category)
 
     def test_process_result_captures_bounded_diagnostics(self) -> None:
