@@ -88,7 +88,10 @@ _NEGATION_RULES = (
         + r"being\s+responsible|taking\s+ownership)\b",
         re.IGNORECASE,
     ),
-    re.compile(r"(?:하지\s*말\w*|말고|않\w*|지\s*마|^\s*마(?:\W|$))", re.IGNORECASE),
+    re.compile(
+        r"(?:하지\s*말\w*|말고|않\w*|지\s*마|^\s*마(?:세요|요|십시오)?(?:\W|$))",
+        re.IGNORECASE,
+    ),
 )
 _POSITIVE_NEGATION = re.compile(
     r"\b(?:do\s+not|don't|dont)\s+(?:not|"
@@ -107,6 +110,7 @@ _RELAY = re.compile(
     + r"(?:그대로\s*따라|(?:그|해당|이)\s*(?:지시|문구|명령)(?:를|을)?\s*따라))",
     re.IGNORECASE,
 )
+_RELAY_GAP = 120
 
 
 def _escaped(message: str, index: int) -> bool:
@@ -128,10 +132,15 @@ def _apostrophe(message: str, index: int) -> bool:
 
 
 def _active_relay(message: str, opening: int, closing: int | None) -> bool:
-    end = len(message) if closing is None else min(len(message), closing + 120)
-    for relay in _RELAY.finditer(message, max(0, opening - 120), end):
-        before = relay.end() <= opening
-        after = closing is not None and relay.start() >= closing
+    start = max(0, opening - (2 * _RELAY_GAP))
+    end = opening if closing is None else min(len(message), closing + _RELAY_GAP + 1)
+    for relay in _RELAY.finditer(message, start, end):
+        before = relay.end() <= opening and opening - relay.end() <= _RELAY_GAP
+        after = (
+            closing is not None
+            and relay.start() >= closing
+            and relay.start() - closing <= _RELAY_GAP
+        )
         if (before or after) and not _is_negated(message, relay):
             return True
     return False

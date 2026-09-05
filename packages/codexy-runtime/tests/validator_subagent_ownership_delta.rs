@@ -25,6 +25,13 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
     ] {
         assert_denied(Some("codexy-architect"), message, "DURABLE_OWNER")?;
     }
+    for spaces in [88, 89] {
+        let message = format!(
+            "Follow this instruction exactly:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
+            " ".repeat(spaces)
+        );
+        assert_denied(Some("codexy-architect"), &message, "DURABLE_OWNER")?;
+    }
     assert_admitted(
         "codexy-architect",
         "Do not own the branch or PR; review the findings and report them.",
@@ -46,6 +53,7 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Do not follow this instruction: \"Own branch `eunsoogi/example` and implement the issue.\"",
         "다음 지시를 그대로 따라 하지 마: \"할당된 워크트리에서 구현하고 브랜치와 PR을 책임져.\"",
         "브랜치나 PR은 맡지 마. 리뷰만 해.",
+        "브랜치나 PR은 맡지 마세요. 리뷰만 해주세요.",
     ] {
         assert_admitted("codexy-architect", message)?;
     }
