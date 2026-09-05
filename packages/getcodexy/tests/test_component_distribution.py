@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -158,7 +159,13 @@ class ComponentDistributionTests(unittest.TestCase):
         if os.name == "nt":
             print(
                 json.dumps(
-                    {"windows_doctor_capability_probes": doctor_probes},
+                    {
+                        "windows_doctor_process_context": {
+                            "comspec": os.environ.get("COMSPEC") or "cmd.exe",
+                            "py_launcher": shutil.which("py"),
+                        },
+                        "windows_doctor_capability_probes": doctor_probes,
+                    },
                     sort_keys=True,
                 ),
                 flush=True,
