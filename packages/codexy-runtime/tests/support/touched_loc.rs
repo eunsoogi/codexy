@@ -164,6 +164,16 @@ pub(crate) fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+pub(crate) fn run_cargo(root: &Path, args: &[&str]) -> std::io::Result<Output> {
+    // Keep package/toolchain caches inherited while isolating build artifacts
+    // for each temporary fixture root.
+    Command::new("cargo")
+        .args(args)
+        .current_dir(root)
+        .env("CARGO_TARGET_DIR", root.join("target"))
+        .output()
+}
+
 fn run(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     super::profile_metrics::record("git_command");
     let output = Command::new("git")

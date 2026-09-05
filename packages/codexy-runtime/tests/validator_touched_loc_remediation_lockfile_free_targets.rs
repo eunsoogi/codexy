@@ -2,7 +2,9 @@ use crate::support;
 
 use std::process::{Command, Output};
 
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -34,7 +36,7 @@ fn cargo_metadata_discovers_workspace_custom_target_without_lockfile() -> TestRe
         &regular_lines_from(248, 3),
     )?;
 
-    let cargo = run(repo.path(), "cargo", &["check", "--offline"])?;
+    let cargo = run_cargo(repo.path(), &["check", "--offline"])?;
     assert!(cargo.status.success(), "cargo stderr:\n{}", stderr(&cargo));
     let lockfile = repo.path().join("Cargo.lock");
     std::fs::remove_file(&lockfile)?;
