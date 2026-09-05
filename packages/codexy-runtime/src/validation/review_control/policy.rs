@@ -82,6 +82,14 @@ pub(super) fn current_reviewer(plugin_root: &Path, profile: &str) -> Result<Valu
     serde_json::to_value(reviewer).map_err(|_| "selected reviewer is not serializable".to_owned())
 }
 
+pub(super) fn terminal_review_limit(plugin_root: &Path, profile: &str) -> Result<u8, String> {
+    load(plugin_root)
+        .map_err(|_| "review profile policy is unavailable".to_owned())?
+        .get(profile)
+        .map(|profile| profile.terminal_review_limit)
+        .ok_or_else(|| "review control state selects an unknown profile".to_owned())
+}
+
 pub(super) fn legacy_reviewer(profile: &str) -> Option<Value> {
     let (name, model, reasoning_effort) = match profile {
         "standard" => ("codexy-inspector", "gpt-5.6-terra", "max"),

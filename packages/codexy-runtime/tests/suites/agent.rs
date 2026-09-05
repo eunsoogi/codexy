@@ -52,6 +52,9 @@ mod validator_portable_governed_code;
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 
+#[path = "../validator_review_control_import.rs"]
+mod validator_review_control_import;
+
 #[path = "../validator_review_control_identity.rs"]
 mod validator_review_control_identity;
 

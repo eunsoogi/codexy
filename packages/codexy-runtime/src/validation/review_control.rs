@@ -7,6 +7,7 @@ mod classification;
 mod history;
 mod migration;
 mod policy;
+mod pre_pr;
 mod snapshot;
 mod state;
 mod transition;
@@ -82,6 +83,18 @@ pub(super) fn build_pr_state(
     object.insert("reviewControl".into(), control);
     state::check_pr_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
     Ok(state)
+}
+
+pub(super) fn import_pre_pr_history(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current_text: &str,
+    envelope_text: &str,
+) -> Result<Value> {
+    let current: Value = serde_json::from_str(current_text)?;
+    let envelope: Value = serde_json::from_str(envelope_text)
+        .map_err(|error| anyhow::anyhow!("pre-PR history input is invalid: {error}"))?;
+    pre_pr::import(plugin_root, repository_root, &current, &envelope).map_err(anyhow::Error::msg)
 }
 
 pub(super) fn produce(

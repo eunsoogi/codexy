@@ -9,6 +9,15 @@ evidence, omissions, follow-ups, and issue linkage without prescribing a
 repository-independent heading order. Keep a PR draft while proof or known risk
 is incomplete.
 
+If selected review occurred before PR creation, the owning child MUST locally
+verify one complete pre-PR import envelope and publish the Draft PR before the
+first selected review for this lifecycle. The envelope MUST preserve the real
+host thread, turn, final-message identity, order, reviewer facts, verdicts, and
+findings; it MUST keep the current PR snapshot authoritative and MUST state that
+an older imported PASS is not current-head readiness. Missing host items remain
+unavailable unless the exact original host record supplies them; prose or a
+synthetic historical PR snapshot is not a substitute.
+
 Immediately read back the remote PR number, URL, title, body, state, draft
 state, base, head branch, exact head SHA, labels, and linked issue. Repository
 labels that apply MUST be present before readiness.
