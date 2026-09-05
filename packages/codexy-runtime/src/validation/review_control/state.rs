@@ -30,7 +30,13 @@ pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), S
             .and_then(Value::as_u64)
             .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
     }
-    check(plugin_root, &state, false)
+    check_with_mode(
+        plugin_root,
+        &state,
+        false,
+        ReviewerMode::Current,
+        StateSource::ControlOnly,
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -39,12 +45,34 @@ enum ReviewerMode {
     Legacy,
 }
 
-pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<(), String> {
-    check_with_mode(plugin_root, state, require_pass, ReviewerMode::Current)
+#[derive(Clone, Copy)]
+enum StateSource {
+    ControlOnly,
+    PrSnapshot,
 }
 
-pub(super) fn check_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
-    check_with_mode(plugin_root, state, false, ReviewerMode::Legacy)
+pub(super) fn check_pr_state(
+    plugin_root: &Path,
+    state: &Value,
+    require_pass: bool,
+) -> Result<(), String> {
+    check_with_mode(
+        plugin_root,
+        state,
+        require_pass,
+        ReviewerMode::Current,
+        StateSource::PrSnapshot,
+    )
+}
+
+pub(super) fn check_pr_state_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
+    check_with_mode(
+        plugin_root,
+        state,
+        false,
+        ReviewerMode::Legacy,
+        StateSource::PrSnapshot,
+    )
 }
 
 fn check_with_mode(
@@ -52,6 +80,7 @@ fn check_with_mode(
     state: &Value,
     require_pass: bool,
     reviewer_mode: ReviewerMode,
+    source: StateSource,
 ) -> Result<(), String> {
     let head = state
         .get("headRefOid")
@@ -120,7 +149,7 @@ fn check_with_mode(
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
     };
-    if state.get("capture").is_some() {
+    if matches!(source, StateSource::PrSnapshot) {
         snapshot::check(state, "current")?;
         if snapshot::owning_issue_number(state, "current")? != issue_number {
             return Err("review control state issue_number disagrees with the owning issue".into());

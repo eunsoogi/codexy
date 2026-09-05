@@ -46,9 +46,9 @@ pub(super) fn check_with_repository(
         check_genesis(plugin_root, previous_control)?;
         check_genesis_snapshot(previous, previous_control)?;
     } else if previous_is_current {
-        state::check(plugin_root, previous, false)?;
+        state::check_pr_state(plugin_root, previous, false)?;
     } else if previous_is_legacy {
-        state::check_predecessor(plugin_root, previous)?;
+        state::check_pr_state_predecessor(plugin_root, previous)?;
     } else {
         return Err(
             "review control transition previous state does not bind an approved reviewer".into(),
@@ -68,7 +68,7 @@ pub(super) fn check_with_repository(
     migration::reconcile(&mut normalized_control, migration)?;
 
     let current_state = with_control(current, &normalized_control)?;
-    state::check(plugin_root, &current_state, false)?;
+    state::check_pr_state(plugin_root, &current_state, false)?;
 
     let previous_history = history(previous_control, "previous")?;
     let current_history = history(&normalized_control, "current")?;
