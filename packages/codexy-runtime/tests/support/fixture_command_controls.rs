@@ -139,7 +139,7 @@ fn absolute_paired_dispatch_uses_the_python_fixture_not_a_posix_shell() -> TestR
     assert!(!program.ends_with("sh") && !program.ends_with("sh.exe"));
     let output = fixture.output()?;
     assert!(output.status.success());
-    assert_eq!(String::from_utf8(output.stdout)?, "absolute-dispatch\n");
+    assert_eq!(String::from_utf8(output.stdout)?, "absolute-dispatch\r\n");
     Ok(())
 }
 
