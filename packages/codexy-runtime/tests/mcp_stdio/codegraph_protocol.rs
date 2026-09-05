@@ -30,11 +30,14 @@ fn codegraph_stdio_preserves_protocol_and_search_boundaries()
             .as_str()
             .ok_or("omitted-root text")?,
     )?;
+    let actual_root = std::path::PathBuf::from(
+        omitted_graph["root"]
+            .as_str()
+            .ok_or("omitted-root path")?,
+    )
+    .canonicalize()?;
     let expected_root = relative_root.path().canonicalize()?;
-    assert_eq!(
-        omitted_graph["root"].as_str().ok_or("omitted-root path")?,
-        expected_root.to_str().ok_or("non-UTF-8 root path")?
-    );
+    assert_eq!(actual_root, expected_root);
     assert!(omitted_graph["partial"].is_null());
     assert!(omitted_graph["errors"].is_null());
     codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(&mut client)?;
