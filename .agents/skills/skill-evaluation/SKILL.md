@@ -105,6 +105,6 @@ necessary follow-up; the evaluator MUST NOT lower the rubric or remove cases.
 
 When this procedure is copied into future skill-specific issues, the evaluator
 MUST keep the same case matrix and record fields. The evaluator MUST attach only
-hashes, result summaries, measurements, and bounded artifact links. The
-evaluator MUST keep all holdout answers and private inputs with the evaluator,
-outside the deployed skill paths.
+case hashes, statuses, failed dimensions, and cost summaries. The evaluator MUST
+keep all holdout answers and private inputs with the evaluator, outside the
+deployed skill paths.
