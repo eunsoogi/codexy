@@ -48,6 +48,28 @@ class CapabilityProcessTests(unittest.TestCase):
                     result = probe._run(["hook"], Path.cwd(), "{}")
                 self.assertEqual(result.category, category)
 
+    def test_process_result_captures_bounded_diagnostics(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+
+        detail = "first line\nsecond line\n" + ("x" * 300)
+        completed = subprocess.CompletedProcess(
+            ["hook"], 9, stdout="", stderr=detail
+        )
+        with (
+            patch.object(probe.subprocess, "run", return_value=completed),
+            patch.object(probe, "perf_counter", side_effect=(10.0, 10.125)),
+        ):
+            result = probe._run(["hook"], Path.cwd(), "{}")
+        self.assertEqual(
+            (result.category, result.returncode, result.elapsed_seconds, result.detail),
+            (
+                "nonzero-exit",
+                9,
+                0.125,
+                ("first line second line " + ("x" * 300))[:probe._PROBE_DETAIL_LIMIT],
+            ),
+        )
+
 
 class ComponentDistributionTests(unittest.TestCase):
     @classmethod
@@ -180,6 +202,25 @@ class ComponentDistributionTests(unittest.TestCase):
             self._run("bootstrap")["selection_after"], ["core", "github", "devtools"]
         )
         doctor = self._run("doctor", expected=2)
+        doctor_probes = {
+            entry["component"]: entry.get("observed", {}).get("capability_probe")
+            for entry in doctor["component_health"]
+        }
+        if os.name == "nt":
+            print(
+                json.dumps(
+                    {"windows_doctor_capability_probes": doctor_probes},
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+        for component in ("core", "github"):
+            with self.subTest(component=component):
+                probe = doctor_probes[component]
+                self.assertEqual(probe["category"], "success", probe)
+                self.assertEqual(probe["returncode"], 0, probe)
+                self.assertLess(probe["elapsed_seconds"], 5, probe)
+                self.assertIsNone(probe["detail"], probe)
         if os.name == "nt":
             measurements = support.measure_hook_probes(self.marketplace, self.version)
             print(json.dumps({"windows_capability_probes": measurements}), flush=True)
