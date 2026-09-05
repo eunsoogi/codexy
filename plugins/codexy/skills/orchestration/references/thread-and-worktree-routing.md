@@ -67,21 +67,22 @@ diagnostic for known ownership and setup state.
    expected and observed HEAD/clean state, available lock evidence, and the
    conflict. The parent MUST NOT create or fork on that path, retry the same
    path, unlock it, clean it, archive it, or recycle it. When the host chooses
-   the path internally, invoke the supported worktree tool after this project
-   preflight; local checks MUST NOT be described as host-level atomicity proof.
+   the path internally, MUST invoke the supported worktree tool after this
+   project preflight; local checks MUST NOT be described as host-level atomicity
+   proof.
 3. MUST keep at most five active Codex app child threads and exactly one active
    owner for each issue-sized lane. If setup returns a `clientThreadId` or
-   `pendingWorktreeId`, retain it as a pending setup identity, not as a
-   `threadId`. Wait for an authoritative ready or failed setup result; an
+   `pendingWorktreeId`, MUST retain it as a pending setup identity, not as a
+   `threadId`. MUST wait for an authoritative ready or failed setup result; an
    observation timeout or an omitted list result is not by itself failure. While
-   pending, search by the pending identity, branch, issue/PR, SHA, and available
-   review-thread id. Only a surfaced thread with an active owner, an actionable
-   setup failure, or a bounded `not-surfaced-after-bounded-wait` state may end
-   pending setup; any retry or reassignment MUST name that state.
+   pending, MUST search by the pending identity, branch, issue/PR, SHA, and
+   available review-thread id. Only a surfaced thread with an active owner, an
+   actionable setup failure, or a bounded `not-surfaced-after-bounded-wait`
+   state may end pending setup; any retry or reassignment MUST name that state.
 4. When setup is ready, MUST verify the returned task identity, CWD, HEAD, clean
    state, and owner before implementation starts. If the result conflicts with
-   the ownership map or exposes unexpected dirty/locked state, stop the lane
-   without destructive cleanup or a duplicate retry.
+   the ownership map or exposes unexpected dirty/locked state, MUST stop the
+   lane without destructive cleanup or a duplicate retry.
 5. MUST inspect actual setup status, approval, or permission state only when the
    host exposes it. MUST NOT infer parent permission inheritance, invent a
    permission-setting API, bypass approval, or declare creation failed because a
@@ -113,9 +114,9 @@ git rev-parse --verify origin/<branch>
   `branchName=<new-branch>`. MUST treat `startingState.type="branch"` as an
   existing ref selector unless the tool documentation or current successful
   evidence proves it creates new branches.
-- MUST omit `startingState` when the default branch is intended. Supply a
+- MUST omit `startingState` when the default branch is intended. MUST supply a
   validated existing branch or ref only when the user requested a particular
-  starting point; never invent a non-existent branch selector.
+  starting point; MUST NOT invent a non-existent branch selector.
 - If Codex app setup reports `fatal: invalid reference: <branch>` after
   branch-name validation succeeds, MUST check whether the branch exists locally
   or remotely before retrying.
