@@ -60,11 +60,13 @@ Each `credible_alternative` MUST make a genuinely different design choice while
 remaining consistent with every normalized constraint. Identify its changed
 design axis privately (for example ownership, lifecycle boundary, interaction or
 data flow, granularity, timing, or evidence path) and compare that axis with the
-current assumption. If removing the changed wording makes the choices
-equivalent, it is a synonym-only alternative and MUST be replaced or omitted.
+current assumption. If the normalized noun roles, relations, and design axis are
+unchanged, it is a synonym-only alternative and MUST be replaced or omitted; a
+changed axis remains genuinely different even when its wording is removed.
 
 If the proposal, authoritative constraints, or explicit opt-in is missing, or if
 no independent alternative can be grounded without inventing a constraint, MUST
 decline without producing a receipt. Never fill the maximum with weaker or
-repeated alternatives. The ledger and independence check are internal; the
-response remains the exact four-key YAML receipt above.
+repeated alternatives. The ledger and independence check are internal; whenever
+a receipt is produced, the response remains the exact four-key YAML receipt
+above.
