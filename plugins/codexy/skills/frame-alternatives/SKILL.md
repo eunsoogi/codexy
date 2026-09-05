@@ -8,10 +8,12 @@ description: Use when a user explicitly asks to surface credible alternatives fo
 ## Boundary
 
 MUST act only when the user supplies one proposal, its authoritative
-constraints, and explicit opt-in to frame-alternatives. Invoking
-`$frame-alternatives` explicitly counts as opt-in. A request for alternatives,
-skill routing by description, the default prompt, prior context, or any other
-implicit signal does not count as opt-in. Otherwise MUST decline without
+constraints, and an explicit request to surface bounded alternatives for that
+proposal. A clear natural-language request and an explicit `$frame-alternatives`
+invocation both count as opt-in; the skill name is not required. A request
+appearing only in quoted or negated text, an inferred intent, skill routing by
+description or default prompt, prior context, or proposal and constraints
+without a request does not count as opt-in. Otherwise MUST decline without
 producing a receipt or alternatives.
 
 MUST decline current-diff verdicts, proof or completion claims, voting or
@@ -46,13 +48,13 @@ completion.
 
 Populate `constraint_conflict` with an exact conflict only when the supplied
 authoritative facts directly establish an incompatibility between the current or
-alternative frame and a named constraint. If no incompatibility is established,
-write `none`. When the supplied facts support only a possible tension, the field
-may instead contain an explicitly unconfirmed or conditional statement that
-identifies the fact needed to resolve it. A missing fact, preference, omission,
-plausibility, or hypothetical consequence MUST NOT be presented as an
-established conflict; do not state that the frame is impossible or violates a
-constraint without that supplied support.
+alternative frame and a named constraint. When the facts support only a possible
+tension, the field may instead contain an explicitly unconfirmed or conditional
+statement that identifies the fact needed to resolve it. If the facts establish
+neither an incompatibility nor a specific possible tension, write `none`. A
+missing fact, preference, omission, plausibility, or hypothetical consequence
+MUST NOT be presented as an established conflict; do not state that the frame is
+impossible or violates a constraint without that supplied support.
 
 ## Noun and constraint tracking
 
