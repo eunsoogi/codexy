@@ -190,7 +190,7 @@ pub(super) fn check(value: &Value) -> Result<(), String> {
         }
         let path = text(finding, "path", "finding disposition record")?;
         if let Some(kind) = finding.get("kind") {
-            if !kind.as_str().is_some_and(|kind| !kind.is_empty()) {
+            if kind.as_str().is_none_or(str::is_empty) {
                 return Err("finding disposition record kind must be non-empty".into());
             }
         }
