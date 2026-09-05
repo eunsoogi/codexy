@@ -38,8 +38,7 @@ normal:warm)
 	fi
 	printf 'normal warm measurement confirmed exact cache hit\n'
 	;;
-isolated:cold)
-	;;
+isolated:cold) ;;
 isolated:warm)
 	if [[ "$cache_hit" == true ]]; then
 		add_isolated_state warm-hit
