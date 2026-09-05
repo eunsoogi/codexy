@@ -207,15 +207,15 @@ approval; opening a PR is terminal only when explicitly requested.
 
 The one bounded exception is a genesis import for a complete pre-PR reviewer
 receipt. A trusted Codex host adapter may normalize an actual `read_thread`
-result, or its exact original host record when a completed turn exposes no items,
-into `codexy.review-control-pre-pr-history.v1`. The runtime keeps the original
-thread, turn, final-message, order, reviewer, verdict, and findings references,
-checks the owning issue and Git ancestry, and appends the facts to the existing
-ordered terminal history. It never fabricates a historical PR snapshot or treats
-an authenticated flag, signature, or caller-provided verdict as independent
-credential proof. The current PR's number, URL, base, and head remain authoritative;
-an imported older PASS is not current-head readiness, and its immutable
-`pre_pr_import` marker must survive later ordinary transitions.
+result, or its exact original host record when a completed turn exposes no
+items, into `codexy.review-control-pre-pr-history.v1`. The runtime keeps the
+original thread, turn, final-message, order, reviewer, verdict, and findings
+references, checks the owning issue and Git ancestry, and appends the facts to
+the existing ordered terminal history. It never fabricates a historical PR
+snapshot or treats an authenticated flag, signature, or caller-provided verdict
+as independent credential proof. The current PR's number, URL, base, and head
+remain authoritative; an imported older PASS is not current-head readiness, and
+its immutable `pre_pr_import` marker must survive later ordinary transitions.
 
 ## Plugin and runtime discovery
 

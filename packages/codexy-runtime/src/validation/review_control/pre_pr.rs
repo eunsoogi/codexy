@@ -1,8 +1,11 @@
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use serde_json::{Value, json};
 
-use super::{policy, snapshot, state};
+use super::{migration, policy, snapshot, state};
 
 #[path = "pre_pr/input.rs"]
 mod input;
@@ -63,6 +66,7 @@ pub(super) fn import(
     }
     let profile_name = text(envelope, "profile", "envelope")?;
     let reviewer = policy::current_reviewer(plugin_root, profile_name)?;
+    let legacy_reviewer = policy::legacy_reviewer(profile_name);
     let events = envelope
         .get("events")
         .and_then(Value::as_array)
@@ -90,8 +94,9 @@ pub(super) fn import(
     let mut refs = Vec::with_capacity(events.len());
     let mut ids = HashSet::new();
     let mut turns = HashSet::new();
-    let mut last_ordinal = None;
+    let mut last_ordinals = HashMap::new();
     let mut previous_head = None;
+    let mut has_legacy_prefix = false;
     for (index, value) in events.iter().enumerate() {
         let event = object(Some(value), "review event")?;
         reject_unknown(
@@ -120,23 +125,32 @@ pub(super) fn import(
         {
             return Err("pre-PR review event is not a completed final reviewer message".into());
         }
+        let thread_id = text(event, "thread_id", "review event")?;
         let id = text(event, "id", "review event")?;
         let turn = text(event, "turn_id", "review event")?;
         if !ids.insert(id) || !turns.insert(turn) {
             return Err("pre-PR review history has duplicate event identity".into());
         }
         let ordinal = number(event, "ordinal", "review event")?;
-        if last_ordinal.is_some_and(|last| ordinal <= last) {
+        if last_ordinals
+            .get(thread_id)
+            .is_some_and(|last| ordinal <= *last)
+        {
             return Err("pre-PR review history event order is not increasing".into());
         }
-        last_ordinal = Some(ordinal);
+        last_ordinals.insert(thread_id.to_owned(), ordinal);
         let kind = text(event, "kind", "review event")?;
         if kind != if index == 0 { "full" } else { "delta" } {
             return Err("pre-PR review history must be ordered full then optional delta".into());
         }
-        if event.get("reviewer") != Some(&reviewer) {
+        let event_reviewer = event
+            .get("reviewer")
+            .ok_or_else(|| "review event must contain reviewer facts".to_owned())?;
+        let is_legacy = index == 0 && legacy_reviewer.as_ref() == Some(event_reviewer);
+        if event_reviewer != &reviewer && !is_legacy {
             return Err("pre-PR review event does not bind the selected reviewer policy".into());
         }
+        has_legacy_prefix |= is_legacy;
         let head = snapshot::required_oid(event, "reviewed_head", "review event")?;
         if let Some(previous) = previous_head {
             check_ancestor(repository_root, previous, head, "ordered review history")?;
@@ -155,12 +169,12 @@ pub(super) fn import(
         history.push(json!({
             "id": id,
             "kind": kind,
-            "reviewer": reviewer,
+            "reviewer": event_reviewer,
             "reviewed_head": head,
             "terminal_result": result,
             "unresolved_findings": event["unresolved_findings"]
         }));
-        refs.push(json!({"id": id, "thread_id": text(event, "thread_id", "review event")?, "turn_id": turn, "ordinal": ordinal}));
+        refs.push(json!({"id": id, "thread_id": thread_id, "turn_id": turn, "ordinal": ordinal}));
     }
     let last = history
         .last()
@@ -173,7 +187,7 @@ pub(super) fn import(
         .iter()
         .filter(|event| event["kind"] == "delta")
         .count();
-    let control = json!({
+    let mut control = json!({
         "schema": state::CONTROL_SCHEMA,
         "issue_number": issue_number,
         "profile": profile_name,
@@ -188,6 +202,9 @@ pub(super) fn import(
         "terminal_review_history": history,
         "pre_pr_import": {"schema": IMPORT_SCHEMA, "source": source, "issue": issue, "complete": true, "events": refs}
     });
+    if has_legacy_prefix {
+        control["reviewer_migration"] = migration::marker(profile_name, &reviewer, 1)?;
+    }
     state::check_control(plugin_root, &control)?;
     let mut state = current.clone();
     state["reviewControl"] = control;
