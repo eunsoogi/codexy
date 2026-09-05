@@ -6,6 +6,9 @@ use sha2::{Digest, Sha256};
 use super::super::super::pre_pr::{number, object, text};
 use super::{Locator, bounded_response};
 
+#[path = "maintainer_body.rs"]
+mod body;
+
 const SCHEMA: &str = "codexy.github-maintainer-policy-decision.v1";
 
 pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
@@ -157,94 +160,24 @@ pub(super) fn project(raw: &Value, locator: &Locator) -> Result<Value, String> {
         return Err("maintainer decision comment is minimized or lacks minimization state".into());
     }
     let body = text(comment, "body", "maintainer decision comment")?;
-    let repository_line = exact_line(body, "Repository: ")?;
-    let issue_line = exact_line(body, "Owning issue: #")?;
-    let pr_line = exact_line(body, "Pull request: #")?;
-    let base_line = exact_line(body, "Base: ")?;
-    let head_line = exact_line(body, "Head: ")?;
-    let finding_id = exact_line(body, "Finding: ")?;
-    let finding_path = exact_line(body, "Finding path: ")?;
     let live_base = text(pull, "baseRefOid", "maintainer decision pull request")?;
     let live_head = text(pull, "headRefOid", "maintainer decision pull request")?;
-    if repository_line != locator.repository
-        || parse_number(issue_line)? != locator.owning_issue
-        || parse_number(pr_line)? != locator.pull_request
-        || !is_oid(base_line)
-        || !is_oid(head_line)
-        || base_line != live_base
-        || head_line != live_head
-        || finding_path.starts_with('/')
-        || finding_path.contains('\\')
-        || finding_path
-            .split('/')
-            .any(|part| part.is_empty() || matches!(part, "." | ".."))
-    {
-        return Err(
-            "maintainer decision body does not bind its exact repository, issue, PR, refs, or path"
-                .into(),
-        );
-    }
-    if !body.contains("orchestrator is recording that instruction, not obtaining or inventing a new approval")
-        || !body.contains("This disposition accepts only that model-policy difference")
-        || !body.contains("It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review")
-    {
-        return Err("maintainer decision body is not the narrow non-waiver disposition contract".into());
-    }
-    let accepted = exact_line(body, "Accepted difference: ")?;
-    let (actual_model, actual_reasoning_effort) = model_tuple(accepted)?;
+    let parsed = body::parse(
+        body,
+        &locator.repository,
+        locator.owning_issue,
+        locator.pull_request,
+        live_base,
+        live_head,
+    )?;
     let digest = format!("{:x}", Sha256::digest(body.as_bytes()));
     Ok(json!({
         "schema": SCHEMA,
         "repository": locator.repository,
         "owningIssue": {"repository": locator.repository, "number": locator.owning_issue, "url": issue_url},
-        "pullRequest": {"repository": locator.repository, "number": locator.pull_request, "url": text(pull, "url", "maintainer decision pull request")?, "baseRefOid": base_line, "headRefOid": head_line},
+        "pullRequest": {"repository": locator.repository, "number": locator.pull_request, "url": text(pull, "url", "maintainer decision pull request")?, "baseRefOid": live_base, "headRefOid": live_head},
         "comment": {"id": id, "databaseId": locator.maintainer_comment, "url": url, "author": author_login, "authorAssociation": association, "createdAt": created, "updatedAt": updated, "bodySha256": digest},
-        "decision": {"findingId": finding_id, "path": finding_path, "reviewer": "codexy-sentinel", "actualModel": actual_model, "actualReasoningEffort": actual_reasoning_effort, "accepted": true},
+        "decision": {"findingId": parsed.finding_id, "path": parsed.finding_path, "reviewer": "codexy-sentinel", "actualModel": parsed.actual_model, "actualReasoningEffort": parsed.actual_reasoning_effort, "accepted": true},
         "sourceProvenance": "orchestrator-transcription"
     }))
-}
-
-fn exact_line<'a>(body: &'a str, prefix: &str) -> Result<&'a str, String> {
-    let matches = body
-        .lines()
-        .filter_map(|line| {
-            line.strip_prefix(prefix)
-                .or_else(|| {
-                    line.strip_prefix("- ")
-                        .and_then(|line| line.strip_prefix(prefix))
-                })
-                .filter(|line| !line.is_empty())
-        })
-        .collect::<Vec<_>>();
-    match matches.as_slice() {
-        [value] => Ok(*value),
-        [] => Err(format!("maintainer decision body is missing `{prefix}`")),
-        _ => Err(format!("maintainer decision body repeats `{prefix}`")),
-    }
-}
-
-fn parse_number(value: &str) -> Result<u64, String> {
-    value
-        .parse()
-        .map_err(|_| "maintainer decision body contains an invalid number".into())
-}
-
-fn is_oid(value: &str) -> bool {
-    value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
-}
-
-fn model_tuple(value: &str) -> Result<(String, String), String> {
-    let token = value
-        .split_whitespace()
-        .find(|token| token.starts_with("gpt-") && token.contains('/'))
-        .ok_or("maintainer decision body must name the accepted model tuple")?;
-    let token = token
-        .trim_matches(|character: char| character == '.' || character == ',' || character == ';');
-    let (model, effort) = token
-        .split_once('/')
-        .ok_or("maintainer decision model tuple is invalid")?;
-    if model.is_empty() || effort.is_empty() {
-        return Err("maintainer decision model tuple is invalid".into());
-    }
-    Ok((model.to_owned(), effort.to_owned()))
 }

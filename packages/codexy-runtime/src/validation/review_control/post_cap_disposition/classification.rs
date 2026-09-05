@@ -56,8 +56,7 @@ pub(super) fn derive(
         let required =
             if kind == "policy_difference" && id == maintainer_id && path == maintainer_path {
                 "maintainer_accepted_policy_difference"
-            } else if kind == "ci_incomplete_observation" && path.starts_with(".github/workflows/")
-            {
+            } else if kind == "ci_incomplete_observation" {
                 "current_head_ci_terminal"
             } else {
                 "code_repair"

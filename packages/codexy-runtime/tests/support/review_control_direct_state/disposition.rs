@@ -72,5 +72,25 @@ pub(crate) fn post_cap_disposition_control(
             "maintainerDecision": {}
         }
     });
+    control["reviewer_migration"] = json!({
+        "schema": "codexy.review-control-migration.v1",
+        "from": {
+            "name": "codexy-sentinel",
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "xhigh"
+        },
+        "to": {
+            "name": "codexy-sentinel",
+            "model": "gpt-6-astra",
+            "reasoning_effort": "xhigh"
+        },
+        "history_boundary": 1,
+        "direction": "current_prefix_legacy_event"
+    });
+    control["terminal_review_history"][1]["reviewer"] = json!({
+        "name": "codexy-sentinel",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "xhigh"
+    });
     control
 }

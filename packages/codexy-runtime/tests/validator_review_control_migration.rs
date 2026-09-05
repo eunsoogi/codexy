@@ -86,6 +86,39 @@ fn in_flight_model_changes_reject_wrong_current_reviewer_contracts() -> TestResu
 }
 
 #[test]
+fn reviewer_migration_rejects_malformed_present_directions() -> TestResult {
+    for malformed in [json!(null), json!(true), json!({"kind": "legacy"})] {
+        let mut previous = fixtures::migrated_control(
+            "strict",
+            725,
+            runner::HEAD_OID,
+            runner::MIGRATED_HEAD_OID,
+        );
+        previous["reviewer_migration"] = json!({
+            "schema": "codexy.review-control-migration.v1",
+            "from": previous["terminal_review_history"][0]["reviewer"].clone(),
+            "to": previous["reviewer"].clone(),
+            "history_boundary": 1,
+            "direction": malformed
+        });
+        let current = fixtures::migrated_control(
+            "strict",
+            725,
+            runner::HEAD_OID,
+            runner::MIGRATED_HEAD_OID,
+        );
+        let (result, _) = runner::run_transition(&previous, &current)?;
+        assert!(!result.status.success());
+        assert!(
+            String::from_utf8_lossy(&result.stderr).contains("direction must be a string"),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn review_control_producer_migrates_authenticated_predecessor_history() -> TestResult {
     for profile in ["strict", "standard"] {
         let previous = fixtures::legacy_control(profile, 725, runner::HEAD_OID);

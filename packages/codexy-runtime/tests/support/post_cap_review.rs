@@ -15,7 +15,10 @@ mod disposition_fixture;
 mod disposition;
 
 #[allow(unused_imports)]
-pub(crate) use disposition::{produce_disposition, run_build_with_disposition_maintainer, validate_readiness};
+pub(crate) use disposition::{
+    produce_disposition, run_build_with_disposition_ci, run_build_with_disposition_maintainer,
+    validate_readiness,
+};
 
 pub(crate) fn build_pr_state(
     control: &Value,

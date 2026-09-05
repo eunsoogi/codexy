@@ -12,6 +12,7 @@ pub(super) struct CheckContext<'a> {
     pub(super) expected_reviewer: &'a Value,
     pub(super) legacy_reviewer: Option<&'a Value>,
     pub(super) legacy_history_boundary: Option<usize>,
+    pub(super) legacy_history_event: Option<usize>,
     pub(super) reviewed_head: &'a str,
     pub(super) terminal: &'a str,
     pub(super) findings: &'a [Value],
@@ -45,12 +46,22 @@ pub(super) fn check(
     if history.len() as u64 != context.terminal_count {
         return Err("review control state terminal review history is truncated".into());
     }
-    if context.legacy_reviewer.is_some() != context.legacy_history_boundary.is_some() {
+    if context.legacy_reviewer.is_some()
+        != (context.legacy_history_boundary.is_some() || context.legacy_history_event.is_some())
+    {
         return Err("review control state reviewer migration is incomplete".into());
+    }
+    if context.legacy_history_boundary.is_some() && context.legacy_history_event.is_some() {
+        return Err("review control state reviewer migration has conflicting directions".into());
     }
     if let Some(boundary) = context.legacy_history_boundary {
         if boundary == 0 || boundary >= history.len() {
             return Err("review control state reviewer migration boundary is invalid".into());
+        }
+    }
+    if let Some(index) = context.legacy_history_event {
+        if index == 0 || index >= history.len() {
+            return Err("review control state historical reviewer exception is invalid".into());
         }
     }
     let mut ids = HashSet::new();
@@ -90,11 +101,22 @@ pub(super) fn check(
             "required_current_head" => required_head_seen += 1,
             _ => return Err("review control state terminal review kind is invalid".into()),
         }
-        let expected_reviewer = match context.legacy_history_boundary {
-            Some(boundary) if index < boundary => context.legacy_reviewer.ok_or_else(|| {
-                "review control state reviewer migration is incomplete".to_owned()
-            })?,
-            _ => context.expected_reviewer,
+        if context.legacy_history_event == Some(index) && kind != "delta" {
+            return Err(
+                "review control state historical reviewer exception must bind the delta".into(),
+            );
+        }
+        let expected_reviewer = if context.legacy_history_event == Some(index) {
+            context.legacy_reviewer.ok_or_else(|| {
+                "review control state historical reviewer exception is incomplete".to_owned()
+            })?
+        } else {
+            match context.legacy_history_boundary {
+                Some(boundary) if index < boundary => context.legacy_reviewer.ok_or_else(|| {
+                    "review control state reviewer migration is incomplete".to_owned()
+                })?,
+                _ => context.expected_reviewer,
+            }
         };
         if event.get("reviewer") != Some(expected_reviewer) {
             return Err("review control state terminal review history changes reviewer".into());

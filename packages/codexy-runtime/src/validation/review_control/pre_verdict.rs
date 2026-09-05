@@ -54,19 +54,19 @@ pub(super) fn check(
     let prior_delta = pre_pr::object(history.get(1), "prior delta event")?;
     let previous_object = previous.as_object().ok_or("previous PR snapshot")?;
     let current_object = current.as_object().ok_or("current PR snapshot")?;
-    let previous_head = snapshot::required_oid(previous_object, "headRefOid", "previous")?;
+    let prior_delta_head = snapshot::required_oid(prior_delta, "reviewed_head", "prior delta")?;
     let previous_base = snapshot::required_oid(previous_object, "baseRefOid", "previous")?;
     let current_base = snapshot::required_oid(current_object, "baseRefOid", "current")?;
     let current_head = snapshot::required_oid(current_object, "headRefOid", "current")?;
     if previous_base != current_base {
         return Err("next-review eligibility must preserve baseRefOid".into());
     }
-    if previous_head == current_head {
+    if prior_delta_head == current_head {
         return Err("next-review eligibility requires a changed current head".into());
     }
     pre_pr::check_ancestor(
         repository_root,
-        previous_head,
+        prior_delta_head,
         current_head,
         "next-review eligibility",
     )?;
@@ -79,7 +79,7 @@ pub(super) fn check(
         current_base,
         current: current_object,
         prior_delta,
-        from: previous_head,
+        from: prior_delta_head,
         to: current_head,
         source: &source,
     })?;
@@ -100,7 +100,7 @@ pub(super) fn check(
         "predecessor": {
             "terminalReviewCount": 2,
             "delta": {
-                "reviewedHead": previous_head,
+                "reviewedHead": prior_delta_head,
                 "terminalResult": "BLOCK",
                 "findingIds": finding_ids
             }

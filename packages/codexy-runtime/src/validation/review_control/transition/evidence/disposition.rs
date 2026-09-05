@@ -188,10 +188,10 @@ fn bind_target_identity(
     Ok(())
 }
 
-fn maintainer_kind<'a>(
-    disposition: &'a Map<String, Value>,
+fn maintainer_kind(
+    disposition: &Map<String, Value>,
     prior_delta: &Map<String, Value>,
-) -> Result<Option<(&'a str, &'a str)>, String> {
+) -> Result<(), String> {
     let decision = disposition
         .get("sources")
         .and_then(Value::as_object)
@@ -207,15 +207,33 @@ fn maintainer_kind<'a>(
         .get("reviewer")
         .and_then(Value::as_object)
         .ok_or_else(|| "prior delta event must bind reviewer facts".to_owned())?;
-    if required_text(decision, "reviewer", "maintainer decision")?
-        != required_text(prior_reviewer, "name", "prior delta reviewer")?
-    {
-        return Err("maintainer decision does not bind the prior delta reviewer".into());
+    for (decision_key, reviewer_key) in [
+        ("reviewer", "name"),
+        ("actualModel", "model"),
+        ("actualReasoningEffort", "reasoning_effort"),
+    ] {
+        if required_text(decision, decision_key, "maintainer decision")?
+            != required_text(prior_reviewer, reviewer_key, "prior delta reviewer")?
+        {
+            return Err("maintainer decision does not bind the prior delta reviewer tuple".into());
+        }
     }
-    Ok(Some((
-        required_text(decision, "findingId", "maintainer decision")?,
-        required_text(decision, "path", "maintainer decision")?,
-    )))
+    let finding_id = required_text(decision, "findingId", "maintainer decision")?;
+    let finding_path = required_text(decision, "path", "maintainer decision")?;
+    if !prior_delta
+        .get("unresolved_findings")
+        .and_then(Value::as_array)
+        .is_some_and(|findings| {
+            findings.iter().any(|finding| {
+                finding.get("id").and_then(Value::as_str) == Some(finding_id)
+                    && finding.get("path").and_then(Value::as_str) == Some(finding_path)
+                    && finding.get("kind").and_then(Value::as_str) == Some("policy_difference")
+            })
+        })
+    {
+        return Err("maintainer decision does not bind a policy-difference finding".into());
+    }
+    Ok(())
 }
 
 fn required_text<'a>(

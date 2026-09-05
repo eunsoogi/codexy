@@ -145,10 +145,10 @@ current-head control state MUST preserve the existing
 `terminal_review_limit`, and `terminal_review_history` directly. When a
 profile's fixed reviewer model changes, an authenticated transition MAY add one
 `reviewer_migration` object with schema `codexy.review-control-migration.v1`,
-exact `from` and `to` reviewer values, and a positive `history_boundary` before
-the first current-reviewer event. The boundary and identities MUST be derived
-from the authenticated previous snapshot; callers MUST NOT invent or change
-them.
+exact `from`/`to` values, positive `history_boundary`, and explicit direction.
+`legacy_prefix_current_suffix` is normal; `current_prefix_legacy_event` is an
+authenticated exception only at boundary 1 and binds the delta. Facts and
+direction MUST come from the authenticated snapshot; callers MUST NOT change them.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
@@ -156,11 +156,9 @@ the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
 findings, one full review, and at most one delta review. The history MUST
 contain that one `full` event, optionally followed by one `delta` event, with
 unique review IDs, the selected reviewer on every event unless the exact
-versioned migration marker authorizes a legacy prefix, and a different reviewed
-head for each event. A migrated history MUST use the exact legacy reviewer
-before `history_boundary` and the current policy reviewer from that boundary
-onward. Its length MUST equal `terminal_review_count`, and the full and delta
-counters MUST equal the corresponding event kinds.
+versioned migration marker authorizes one supported exception, and a different
+reviewed head for each event. A migrated history MUST preserve actual tuples:
+normal direction uses the legacy reviewer before `history_boundary` and current policy thereafter; boundary-1 exception keeps current on `full` and legacy on `delta`. Its length MUST equal `terminal_review_count`; counters MUST equal kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
@@ -230,9 +228,11 @@ body, and accepted model tuple. The rollup MUST be non-empty and every CheckRun
 MUST be `COMPLETED`/`SUCCESS`. The producer MUST derive IDs, paths, and kinds
 from the prior authenticated delta, reject caller-supplied source, capture,
 classification, or IDs, and reread both sources at producer, build, and handoff.
-Workflow findings resolve through CI, the policy finding through the maintainer
-decision, and every remaining code finding through an evidence diff; at least
-one code repair MUST remain. This source MUST NOT waive code, CI, review, merge,
+Disposition classification MUST come from each retained finding's semantic kind,
+not its path: a `ci_incomplete_observation` resolves through CI, the policy
+finding through the maintainer decision, and a source defect—including one under
+the workflow directory—through an evidence diff; at least one code repair MUST
+remain. This source MUST NOT waive code, CI, review, merge,
 or quota requirements. In all four cases, the evidence commit MUST descend from
 the prior delta and precede the current head; repair evidence MUST change the
 reviewed tree. Arbitrary JSON agreement is not authenticated readback authority.

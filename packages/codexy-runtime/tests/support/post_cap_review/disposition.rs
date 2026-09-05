@@ -188,3 +188,45 @@ where
         Some((ci_response, maintainer_response)),
     )?)
 }
+
+pub(crate) fn run_build_with_disposition_ci<F>(
+    control: &Value,
+    previous_base: &str,
+    current_base: &str,
+    make_ci_response: F,
+) -> TestResult<std::process::Output>
+where
+    F: FnOnce(u64, &str, &str) -> Value,
+{
+    let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let (control, previous_base, current_base) =
+        repository.prepare(control, previous_base, current_base)?;
+    let output = temporary.path().join("pr-state.json");
+    let (current, control_path, previous) = write_review_inputs(
+        temporary.path(),
+        &control,
+        &previous_base,
+        &current_base,
+    )?;
+    let state: Value = serde_json::from_slice(&fs::read(&current)?)?;
+    let pull = state["number"].as_u64().ok_or("disposition pull")?;
+    let head = state["headRefOid"].as_str().ok_or("disposition head")?;
+    let issue = control["issue_number"].as_u64().ok_or("disposition issue")?;
+    let ci_response = make_ci_response(pull, &current_base, head);
+    let maintainer_response = disposition_fixture::maintainer_response(
+        pull,
+        issue,
+        &current_base,
+        head,
+    );
+    invoke_build(
+        &repository.path,
+        &current,
+        &control_path,
+        &previous,
+        &output,
+        &control,
+        Some((ci_response, maintainer_response)),
+    )
+}

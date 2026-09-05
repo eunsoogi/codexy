@@ -15,7 +15,10 @@ The post-cap re-review is not another full or delta quota. It is admitted only
 from the direct ordered terminal history, for mandatory base integration, an
 in-scope contract/root repair, an authenticated external finding discovered on
 the clean delta-PASS head, or an authenticated mixed-finding disposition from a
-blocked delta; the issue-wide terminal limit remains three.
+blocked delta; the issue-wide terminal limit remains three. A migration marker
+MUST preserve actual reviewer tuples and explicitly select the normal
+legacy-prefix/current-suffix direction or the boundary-1 current-prefix/legacy-
+delta exception; it MUST NOT rewrite history.
 
 Reviewer-backed transitions use authenticated current and previous PR snapshots
 from the canonical GitHub readback producer. Snapshots bind the same repository,
@@ -59,9 +62,11 @@ envelope MUST combine a fixed exact-head `gh pr view` `statusCheckRollup` read
 with a fixed GraphQL lookup of the exact maintainer PR comment, binding the
 repository, owning issue, PR, base, head, finding ID/path, immutable unminimized
 OWNER/MEMBER authority, and the exact accepted model tuple from the body. The CI
-rollup MUST be non-empty with only terminal-success CheckRuns. Workflow findings
-resolve only through CI, the exact policy finding only through the maintainer
-decision, and all remaining findings require actual evidence-diff path coverage
+rollup MUST be non-empty with only terminal-success CheckRuns. Finding
+classification MUST follow the retained semantic kind, not a workflow path: CI
+observations resolve only through CI, a source defect still requires actual
+evidence-diff path coverage, and the exact policy finding only through the maintainer
+decision. All remaining findings require actual evidence-diff path coverage
 with at least one code repair. The producer, `build-pr-state`, and completion
 handoff MUST reread both sources; callers MUST NOT provide source, capture,
 classification, or finding IDs, and this reason MUST NOT waive code, CI, review,

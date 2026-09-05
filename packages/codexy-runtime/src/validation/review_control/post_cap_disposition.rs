@@ -58,7 +58,7 @@ pub(super) fn validate_locator(locator: &Value, current: &Value) -> Result<(), S
 }
 
 pub(super) fn refresh_live(control: &mut Value, current: Option<&Value>) -> Result<(), String> {
-    let (source, findings, expected_head) = {
+    let (source, findings, finding_ids, expected_head, prior_delta) = {
         let control_object = object(Some(control), "review control state")?;
         let post_cap = object(
             control_object.get("post_cap_re_review"),
@@ -78,10 +78,23 @@ pub(super) fn refresh_live(control: &mut Value, current: Option<&Value>) -> Resu
             .get("findings")
             .cloned()
             .ok_or_else(|| "finding disposition must retain its finding coverage".to_owned())?;
+        let finding_ids = change
+            .get("finding_ids")
+            .cloned()
+            .ok_or_else(|| "finding disposition must retain its finding ids".to_owned())?;
+        let prior_delta = control_object
+            .get("terminal_review_history")
+            .and_then(Value::as_array)
+            .and_then(|history| history.get(1))
+            .and_then(Value::as_object)
+            .cloned()
+            .ok_or_else(|| "finding disposition requires a retained delta event".to_owned())?;
         (
             source.clone(),
             findings,
+            finding_ids,
             text(change, "to_head", "qualifying change")?.to_owned(),
+            prior_delta,
         )
     };
     let locator = source
@@ -91,11 +104,19 @@ pub(super) fn refresh_live(control: &mut Value, current: Option<&Value>) -> Resu
         validate_locator(locator, current)?;
     }
     let live = read_live(locator, Some(&expected_head))?;
-    let mut live = live
+    let (live, derived_ids) = classification::derive(&live, &prior_delta)?;
+    if live.get("findings") != Some(&findings) {
+        return Err(
+            "finding disposition retained classification reclassifies a prior finding".into(),
+        );
+    }
+    if finding_ids != Value::Array(derived_ids) {
+        return Err("finding disposition ids do not match the retained delta".into());
+    }
+    let live = live
         .as_object()
         .ok_or_else(|| "live finding disposition must be an object".to_owned())?
         .clone();
-    live.insert("findings".into(), findings);
     check(&Value::Object(live.clone()))?;
     let post_cap = control
         .get_mut("post_cap_re_review")

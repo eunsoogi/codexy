@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Value, json};
 
-use super::{CONTROL_SCHEMA, ReviewerMode, StateSource, check_with_mode};
+use super::{CONTROL_SCHEMA, ReviewerMode, StateSource, check};
 
 pub(super) fn is_terminal(plugin_root: &Path, record: &str) -> bool {
     let Ok(value) = serde_json::from_str::<Value>(record) else {
@@ -72,7 +72,7 @@ pub(super) fn is_terminal(plugin_root: &Path, record: &str) -> bool {
     if let Some(migration) = value.get("reviewer_migration") {
         control["reviewer_migration"] = migration.clone();
     }
-    check_with_mode(
+    check::with_mode(
         plugin_root,
         &json!({"headRefOid": head, "reviewControl": control}),
         false,

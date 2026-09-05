@@ -67,6 +67,24 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
         String::from_utf8_lossy(&current.stderr)
     );
 
+    let mut tampered = state.clone();
+    tampered["reviewControl"]["post_cap_re_review"]["qualifying_change"]
+        ["finding_disposition"]["findings"][0]["requiredDisposition"] =
+        serde_json::json!("current_head_ci_terminal");
+    fs::write(&state_path, serde_json::to_vec(&tampered)?)?;
+    let rejected = run_completion_handoff(
+        &temporary,
+        &handoff_path,
+        &state_path,
+        &ci_path,
+        &maintainer_path,
+    )?;
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr).contains("retained classification")
+    );
+    fs::write(&state_path, serde_json::to_vec(&state)?)?;
+
     let mut changed_ci = disposition_fixture::ci_response(issue, &current_base, &current_head);
     changed_ci["headRefOid"] = serde_json::json!("0000000000000000000000000000000000000000");
     fs::write(&ci_path, serde_json::to_vec(&changed_ci)?)?;
