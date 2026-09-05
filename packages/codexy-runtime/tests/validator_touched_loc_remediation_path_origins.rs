@@ -4,7 +4,9 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 use serde_json::Value;
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -63,8 +65,9 @@ fn touched_loc_rejects_stem_child_for_path_attributed_module_file() -> TestResul
 #[test]
 fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
     let repo = workspace_target_fixture("../../shared/src/tool.rs", "shared/src/helper.rs")?;
-    let metadata = run_cargo(
+    let metadata = run(
         repo.path(),
+        "cargo",
         &[
             "metadata",
             "--offline",
@@ -185,12 +188,4 @@ fn amend_fixture(root: &Path) -> TestResult {
 
 fn run(root: &Path, program: &str, args: &[&str]) -> std::io::Result<Output> {
     Command::new(program).args(args).current_dir(root).output()
-}
-
-fn run_cargo(root: &Path, args: &[&str]) -> std::io::Result<Output> {
-    Command::new("cargo")
-        .args(args)
-        .current_dir(root)
-        .env("CARGO_TARGET_DIR", root.join("target"))
-        .output()
 }
