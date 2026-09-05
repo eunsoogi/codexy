@@ -4,6 +4,8 @@ use super::*;
 mod codegraph_errors;
 #[path = "codegraph_root.rs"]
 mod codegraph_root;
+#[path = "codegraph_regressions.rs"]
+mod codegraph_regressions;
 
 #[test]
 fn codegraph_stdio_preserves_protocol_and_search_boundaries()

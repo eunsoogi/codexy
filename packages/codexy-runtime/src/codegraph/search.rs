@@ -89,7 +89,35 @@ fn is_false(value: &bool) -> bool {
 fn finish(mut output: SearchOutput) -> SearchOutput {
     output.errors = take_errors();
     output.partial = !output.errors.is_empty();
+    bound_content(&mut output);
     output
+}
+
+fn bound_content(output: &mut SearchOutput) {
+    if serialized_size(output) <= SEARCH_CONTENT_LIMIT_BYTES {
+        return;
+    }
+    output.truncation.content_bytes = true;
+    while output.errors.len() > 1 && serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
+        output.errors.pop();
+    }
+    if serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
+        if let Some(error) = output.errors.first_mut() {
+            error.path = ".".to_owned();
+            error.message = "error details truncated".to_owned();
+        }
+    }
+    while serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES && !output.matches.is_empty() {
+        output.matches.pop();
+        output.returned_match_count = output.matches.len();
+    }
+    if serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
+        output.errors.clear();
+    }
+}
+
+fn serialized_size(output: &SearchOutput) -> usize {
+    serde_json::to_vec(output).map_or(usize::MAX, |payload| payload.len())
 }
 
 fn push_if_content_fits(

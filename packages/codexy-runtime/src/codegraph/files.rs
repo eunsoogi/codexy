@@ -155,6 +155,10 @@ fn relative_display(root: &Path, path: &Path) -> String {
 }
 
 fn path_join_posix(root: &Path, file: &str) -> PathBuf {
+    let candidate = Path::new(file);
+    if candidate.is_absolute() {
+        return candidate.to_path_buf();
+    }
     file.split('/')
         .fold(root.to_path_buf(), |path, part| path.join(part))
 }
