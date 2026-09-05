@@ -15,6 +15,12 @@ on:
         required: true
         type: choice
         options: [cold, warm]
+      cache_mode:
+        description: Cache path used by the measurement
+        required: true
+        default: isolated
+        type: choice
+        options: [isolated, normal]
       repeat_id:
         description: Repeat identity such as cold-1
         required: true
@@ -25,7 +31,7 @@ on:
         default: false
         type: boolean
       cache_identity:
-        description: Isolated cache identity shared by cold and warm repeats
+        description: Cache identity shared by cold and warm repeats
         required: true
         type: string
 
@@ -73,17 +79,20 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Clear normal measurement cache paths
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
+        run: rm -rf -- "$HOME/.cargo/registry" "packages/codexy-runtime/target"
       - &rust-cache-restore
-        if: github.event_name != 'workflow_dispatch'
+        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
         id: rust-cache
         uses: actions/cache/restore@v5
         with:
           path: |
             ~/.cargo/registry
             packages/codexy-runtime/target
-          key: codexy-rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/codexy-runtime/rust-toolchain.toml') }}-${{ hashFiles('packages/codexy-runtime/Cargo.lock') }}-profile-test-${{ matrix.target.name }}
+          key: ${{ github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && format('codexy-rust-normal-measurement-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity) || format('codexy-rust-{0}-{1}-{2}-{3}-profile-test-{4}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name) }}
       - name: Prepare opt-in measurement
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         env:
           HEAD_SHA: ${{ inputs.head_sha }}
           CONDITION: ${{ inputs.condition }}
@@ -107,8 +116,8 @@ jobs:
           if [[ "$PROFILE_ENABLED" == true ]]; then
             printf 'CODEXY_PROFILE_METRICS=%s/metrics/profile.metrics\nCODEXY_PROFILE_COMMAND_METRICS_DIR=%s/metrics/commands\n' "$root" "$root" >> "$GITHUB_ENV"
           fi
-      - name: Restore opt-in measurement cache
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+      - &measurement-cache-restore
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'
         id: measurement-cache
         uses: actions/cache/restore@v5
         with:
@@ -120,23 +129,24 @@ jobs:
       - name: Require exact warm cache restore
         if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
         env:
-          CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
-        run: if [[ "$CACHE_HIT" == true ]]; then echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; else echo cache_state=warm-miss >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; exit 1; fi
+          CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
+          CACHE_MODE: ${{ inputs.cache_mode }}
+        run: if [[ "$CACHE_HIT" == true ]]; then [[ "$CACHE_MODE" != isolated ]] || echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; else [[ "$CACHE_MODE" != isolated ]] || echo cache_state=warm-miss >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; exit 1; fi
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Prepare opt-in measurement toolchain
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
       - &rust-cache-save
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' && success()
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()
         uses: actions/cache/save@v5
         with:
           path: |
             ~/.cargo/registry
             packages/codexy-runtime/target
-          key: codexy-rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/codexy-runtime/rust-toolchain.toml') }}-${{ hashFiles('packages/codexy-runtime/Cargo.lock') }}-profile-test-${{ matrix.target.name }}
-      - name: Save opt-in measurement cache
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
+          key: ${{ github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && format('codexy-rust-normal-measurement-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity) || format('codexy-rust-{0}-{1}-{2}-{3}-profile-test-{4}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name) }}
+      - &measurement-cache-save
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
         with:
           path: |
@@ -145,7 +155,7 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && always()
         uses: actions/upload-artifact@v7
         with:
           name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
@@ -167,9 +177,13 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Clear normal measurement cache paths
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
+        shell: pwsh
+        run: Remove-Item -LiteralPath "$HOME/.cargo/registry", "packages/codexy-runtime/target" -Recurse -Force -ErrorAction SilentlyContinue
       - *rust-cache-restore
       - name: Prepare opt-in measurement
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         shell: pwsh
         env:
           HEAD_SHA: ${{ inputs.head_sha }}
@@ -194,45 +208,28 @@ jobs:
             Add-Content $env:GITHUB_ENV "CODEXY_PROFILE_METRICS=$(Join-Path $root 'metrics/profile.metrics')"
             Add-Content $env:GITHUB_ENV "CODEXY_PROFILE_COMMAND_METRICS_DIR=$(Join-Path $root 'metrics/commands')"
           }
-      - name: Restore opt-in measurement cache
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
-        id: measurement-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ${{ runner.temp }}/codexy-rust-measurement/cargo
-            ${{ runner.temp }}/codexy-rust-measurement/rustup
-            ${{ runner.temp }}/codexy-rust-measurement/target
-          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - *measurement-cache-restore
       - name: Require exact warm cache restore
         if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
         shell: pwsh
         env:
-          CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
-        run: if ($env:CACHE_HIT -eq "true") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit" } else { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-miss"; throw "warm measurement requires an exact cache hit" }
+          CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
+          CACHE_MODE: ${{ inputs.cache_mode }}
+        run: if ($env:CACHE_HIT -eq "true") { if ($env:CACHE_MODE -eq "isolated") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit" } } else { if ($env:CACHE_MODE -eq "isolated") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-miss" }; throw "warm measurement requires an exact cache hit" }
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
-        if: github.event_name != 'workflow_dispatch'
+        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
         run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare opt-in measurement toolchain
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         shell: pwsh
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - *rust-cache-save
-      - name: Save opt-in measurement cache
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            ${{ runner.temp }}/codexy-rust-measurement/cargo
-            ${{ runner.temp }}/codexy-rust-measurement/rustup
-            ${{ runner.temp }}/codexy-rust-measurement/target
-          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && always()
         uses: actions/upload-artifact@v7
         with:
           name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
