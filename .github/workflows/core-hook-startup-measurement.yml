@@ -1,6 +1,16 @@
 name: Core hook startup measurement
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "plugins/codexy/hooks/codexy-*.sh"
+      - "plugins/codexy/hooks/codexy-*.cmd"
+      - "plugins/codexy/hooks/codexy-child-thread-creation.py"
+      - "plugins/codexy/hooks/codexy-subagent-ownership.py"
+      - "plugins/codexy/hooks/codexy-thread-delivery.py"
+      - ".github/workflows/core-hook-startup-measurement.yml"
+      - "scripts/measure-core-hook-startup.ps1"
   workflow_dispatch:
     inputs:
       baseline_sha:
@@ -13,7 +23,11 @@ on:
         required: true
         type: string
 
-run-name: Core hook startup ${{ inputs.baseline_sha }} vs ${{ inputs.head_sha }}
+run-name: Core hook startup ${{ github.event_name == 'workflow_dispatch' && inputs.baseline_sha || '9f8c9e207054294b834ef621ae80eb4a8c963793' }} vs ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
+
+env:
+  MEASUREMENT_BASELINE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.baseline_sha || '9f8c9e207054294b834ef621ae80eb4a8c963793' }}
+  MEASUREMENT_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
 
 permissions:
   contents: read
@@ -33,24 +47,25 @@ jobs:
       - name: Checkout measurement controller
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.head_sha }}
+          ref: ${{ env.MEASUREMENT_HEAD_SHA }}
           path: .measurement-controller
           fetch-depth: 1
           persist-credentials: false
       - uses: actions/checkout@v7
         with:
-          ref: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          ref: ${{ matrix.revision == 'baseline' && env.MEASUREMENT_BASELINE_SHA || env.MEASUREMENT_HEAD_SHA }}
           path: .measurement-repo
           fetch-depth: 1
           persist-credentials: false
-      - name: Verify exact measurement inputs and checkout
+      - name: Verify exact measurement inputs, controller, and checkout
         shell: pwsh
         env:
-          BASELINE_SHA: ${{ inputs.baseline_sha }}
-          HEAD_SHA: ${{ inputs.head_sha }}
-          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          BASELINE_SHA: ${{ env.MEASUREMENT_BASELINE_SHA }}
+          HEAD_SHA: ${{ env.MEASUREMENT_HEAD_SHA }}
+          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && env.MEASUREMENT_BASELINE_SHA || env.MEASUREMENT_HEAD_SHA }}
           REVISION: ${{ matrix.revision }}
         run: |
+          $controller = (Resolve-Path -LiteralPath ".measurement-controller").Path
           $repo = (Resolve-Path -LiteralPath ".measurement-repo").Path
           $shaPattern = '^[0-9a-f]{40}$'
           if ($env:BASELINE_SHA -notmatch $shaPattern -or $env:HEAD_SHA -notmatch $shaPattern) {
@@ -58,6 +73,11 @@ jobs:
           }
           if ($env:BASELINE_SHA -eq $env:HEAD_SHA) { throw "baseline_sha and head_sha must differ" }
           if ($env:REVISION -notin @("baseline", "current")) { throw "unexpected revision" }
+          $controllerActual = (git -C $controller rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $controllerActual -ne $env:HEAD_SHA) {
+            throw "controller checkout mismatch: expected $env:HEAD_SHA, got $controllerActual"
+          }
+          if (git -C $controller status --porcelain) { throw "measurement controller is not clean" }
           $actual = (git -C $repo rev-parse HEAD).Trim().ToLowerInvariant()
           if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SHA) {
             throw "checkout identity mismatch: expected $env:EXPECTED_SHA, got $actual"
@@ -66,7 +86,7 @@ jobs:
       - name: Measure native production hook launcher
         shell: pwsh
         env:
-          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && env.MEASUREMENT_BASELINE_SHA || env.MEASUREMENT_HEAD_SHA }}
           REVISION: ${{ matrix.revision }}
           CONCERN: ${{ matrix.concern }}
           EVENT_NAME: ${{ matrix.event }}
