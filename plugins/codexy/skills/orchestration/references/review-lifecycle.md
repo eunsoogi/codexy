@@ -38,23 +38,23 @@ incomplete provenance.
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
 mandatory base integration, an in-scope contract/root repair, or an
-authenticated external finding discovered on the clean delta-PASS head. It
-MUST use the current policy reviewer (with any previously authenticated
-migration marker preserved) and carry a typed `post_cap_re_review` reason plus
-the prior delta head. The marker MUST carry a qualifying-change object whose
-`from_head` is the delta head, whose `to_head` is the current head, and whose
+authenticated external finding discovered on the clean delta-PASS head. It MUST
+use the current policy reviewer (with any previously authenticated migration
+marker preserved) and carry a typed `post_cap_re_review` reason plus the prior
+delta head. The marker MUST carry a qualifying-change object whose `from_head`
+is the delta head, whose `to_head` is the current head, and whose
 `evidence_commit` is an ancestor between them. Mandatory base integration MUST
 change `baseRefOid` and prove base and integration ancestry. Contract/root
 repair MUST preserve `baseRefOid`, require a prior `BLOCK` delta with non-empty
 findings, bind `finding_ids` exactly to those findings, and show the evidence
 diff changes every finding's recorded path. Authenticated external finding
 repair MUST preserve `baseRefOid`, require a clean prior `PASS` delta with no
-unresolved findings, and bind a source envelope captured by authenticated
-GitHub GraphQL. That envelope MUST bind the source repository, owning issue,
-PR, review-thread/comment identity, author, observed commit equal to the delta
-head, unique finding IDs, and repository-relative paths; the repair diff MUST
-touch every recorded path. The source PR's owning issue is provenance and does
-not replace the target control issue. Independent evaluator output remains
+unresolved findings, and bind a source envelope captured by authenticated GitHub
+GraphQL. That envelope MUST bind the source repository, owning issue, PR,
+review-thread/comment identity, author, observed commit equal to the delta head,
+unique finding IDs, and repository-relative paths; the repair diff MUST touch
+every recorded path. The source PR's owning issue is provenance and does not
+replace the target control issue. Independent evaluator output remains
 unavailable unless a trusted adapter exposes a concrete safe source with the
 same path/head binding and no private inputs, answers, or artifact paths; a
 public `FAIL` word alone is not evidence. Optional churn, duplicate or unchanged

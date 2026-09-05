@@ -38,10 +38,10 @@ source PR, immutable review-thread and comment identities with the canonical
 discussion URL, author, observed commit, unique finding IDs, and
 repository-relative affected paths. The producer derives
 `qualifying_change.finding_ids` from that source; the transition requires its
-`observedCommit` to equal the prior delta head and the repair diff to touch every
-recorded path. A source with different repository, issue, PR, head, finding set,
-or paths is rejected. The source PR's owning issue is provenance and does not
-replace the target `reviewControl.issue_number`.
+`observedCommit` to equal the prior delta head and the repair diff to touch
+every recorded path. A source with different repository, issue, PR, head,
+finding set, or paths is rejected. The source PR's owning issue is provenance
+and does not replace the target `reviewControl.issue_number`.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.

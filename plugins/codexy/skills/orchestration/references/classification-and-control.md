@@ -165,15 +165,15 @@ counters MUST equal the corresponding event kinds.
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
 head, set `terminal_review_count` to three, and carry exactly one
-`post_cap_re_review` object with `reason` set to
-`mandatory_base_integration`, `in_scope_contract_root_repair`, or
-`authenticated_external_finding_repair`, plus `prior_reviewed_head` equal to
-the delta head. It MUST also carry `qualifying_change.from_head`,
-`qualifying_change.to_head`, and `qualifying_change.evidence_commit`; those
-values MUST bind the delta head and current head, and the evidence commit MUST
-be in their Git ancestry. The current head MUST differ from that prior head.
-Optional churn, a fourth event, a duplicate head or ID, a truncated/reordered
-history, and a marker on a non-third event MUST be rejected.
+`post_cap_re_review` object with `reason` set to `mandatory_base_integration`,
+`in_scope_contract_root_repair`, or `authenticated_external_finding_repair`,
+plus `prior_reviewed_head` equal to the delta head. It MUST also carry
+`qualifying_change.from_head`, `qualifying_change.to_head`, and
+`qualifying_change.evidence_commit`; those values MUST bind the delta head and
+current head, and the evidence commit MUST be in their Git ancestry. The current
+head MUST differ from that prior head. Optional churn, a fourth event, a
+duplicate head or ID, a truncated/reordered history, and a marker on a non-third
+event MUST be rejected.
 
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
@@ -200,11 +200,11 @@ integration evidence MUST descend from the current base. For
 delta MUST be `BLOCK` with non-empty findings, and
 `qualifying_change.finding_ids` MUST exactly identify those findings; its
 evidence diff MUST change every finding's recorded path. For
-`authenticated_external_finding_repair`, the base OID MUST remain unchanged,
-the prior delta MUST be a clean `PASS` with no unresolved findings, and
+`authenticated_external_finding_repair`, the base OID MUST remain unchanged, the
+prior delta MUST be a clean `PASS` with no unresolved findings, and
 `qualifying_change.external_finding` MUST be an authenticated GitHub GraphQL
-`codexy.review-control-external-finding.v1` envelope. The envelope MUST bind
-the source repository, owning issue, source PR, immutable review-thread/comment
+`codexy.review-control-external-finding.v1` envelope. The envelope MUST bind the
+source repository, owning issue, source PR, immutable review-thread/comment
 identity and canonical URL, author, `observedCommit` equal to the prior delta
 head, unique finding IDs, and repository-relative paths. The producer MUST
 derive `finding_ids` from that envelope, and the evidence diff MUST touch every
