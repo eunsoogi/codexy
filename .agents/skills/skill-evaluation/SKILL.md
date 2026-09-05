@@ -13,24 +13,17 @@ that are shipped to users.
 
 This skill MUST NOT build an execution service, an automatic LLM evaluator, a
 score dashboard, or skill-specific answer files. It MUST NOT add evaluation
-answers under `plugins/`. The procedure below is reusable. Completed run
-records, private inputs, expected answers, results, exact invocations,
-measurement sources, and raw measurements MUST remain in an evaluator-controlled
-private bounded artifact. The issue or PR MAY contain only the case hash,
-status, failed dimensions, cost summary, and evidence that the evaluator has
-approved as non-private. Any public link MUST resolve only to such approved
-non-private evidence and MUST NOT expose the private artifact.
+answers under `plugins/`. The procedure below is reusable. Completed run records
+and run-specific data MUST follow the public storage boundary below.
 
-## Public publication boundary
+## Public storage boundary
 
-The evaluator MAY copy to an issue or PR only the case hash, status, failed
-dimensions, cost summary, and evidence explicitly approved as non-private. The
-complete case record—including private input, expected behavior, prohibited
-behavior, evidence alignment, exact invocation, measurement source, raw
-measurements, and holdout answers—MUST stay in an evaluator-controlled private
-bounded artifact. Public links MUST point only to approved non-private evidence;
-they MUST NOT expose the private artifact. These rules apply to issue or PR
-bodies, comments, attachments, and linked artifacts.
+The evaluator MUST keep every complete case record and run-specific input,
+expected answer, result, exact invocation, measurement source, raw measurement,
+and private evidence in an evaluator-controlled private bounded artifact. Those
+materials MUST NOT be stored in deployed skill paths or published to an issue or
+PR. An issue or PR MAY contain only the case hash, status, failed dimensions,
+and cost summary. A link to the private artifact MUST NOT be published there.
 
 ## Freeze and case ownership
 
@@ -38,9 +31,9 @@ bodies, comments, attachments, and linked artifacts.
    evaluator MUST record a run id, the issue or PR, frozen head SHA, skill path
    and revision, evaluator, and UTC start time in a private run record.
 2. The evaluator MUST create private cases after that freeze. Every case MUST
-   have a stable hash. Skill authors MUST receive only the public summary fields
-   listed in the publication boundary; the evaluator MUST keep the input and
-   expected behavior private.
+   have a stable hash. Skill authors MUST receive only the fields allowed by the
+   public storage boundary; the evaluator MUST keep the input and expected
+   behavior private.
 3. If a case changes after creation, the evaluator MUST invalidate that case for
    the current run and MUST record the changed case as a separate run. The
    evaluator MUST keep both run records private and MUST NOT silently replace
@@ -87,8 +80,7 @@ execution_time_ms: <measured duration or unavailable with reason>
 ```
 
 The evaluator MUST record the measurement source and the exact invocation
-alongside the private record. The evaluator MUST NOT estimate an unavailable
-cost value.
+alongside the record. The evaluator MUST NOT estimate an unavailable cost value.
 
 ## Manual evaluation procedure
 
@@ -96,7 +88,7 @@ cost value.
    case.
 2. The evaluator MUST invoke the deployed skill without changing its shipped
    instructions during the run. The evaluator MUST preserve the case hash and
-   exact invocation in evaluator-owned private records.
+   exact invocation in evaluator-owned records.
 3. The evaluator MUST check machine output exactly. It MUST verify required
    field presence, field names, types, nesting, cardinality, and allowed values.
    A schema or presence mismatch MUST fail the case; the evaluator MUST NOT
@@ -110,26 +102,21 @@ cost value.
    correction, and retraction. An uncorrected boundary violation MUST fail; an
    ambiguous result MUST be `needs-review`.
 6. The evaluator MUST record input tokens, output tokens, and execution time for
-   each case in the private record, then MUST publish only the case hash,
-   status, failed dimensions, cost summary, and approved non-private evidence to
-   the issue or PR. The evaluator MUST NOT publish the complete record, private
-   inputs, expected answers, exact invocation, measurement source, raw
-   measurements, or other private evidence.
+   each case in the private record, then MUST publish only the fields allowed by
+   the public storage boundary to the issue or PR.
 
 When a comparable baseline exists, the evaluator MUST use the same private case
 and a separately recorded frozen revision. The evaluator MUST record measured
 improvement or semantic preservation in the private record. If there is no
 improvement or semantic preservation fails, the evaluator MUST record the cause
-and the smallest necessary follow-up privately; any public signal MUST stay
-within the publication boundary. The evaluator MUST NOT lower the rubric or
-remove cases.
+and the smallest necessary follow-up in the private record; any issue or PR
+update MUST use only the fields allowed by the public storage boundary. The
+evaluator MUST NOT lower the rubric or remove cases.
 
 ## Reuse in skill issues
 
 When this procedure is copied into future skill-specific issues, the evaluator
 MUST keep the same case matrix and record fields. The evaluator MUST attach only
-case hashes, statuses, failed dimensions, cost summaries, and approved
-non-private evidence. The evaluator MUST keep all complete case records, holdout
-answers, private inputs, exact invocations, measurement sources, raw
-measurements, and other private evidence in an evaluator-controlled private
-bounded artifact, outside the deployed skill paths.
+the fields allowed by the public storage boundary. The evaluator MUST keep all
+complete case records, holdout answers, and private inputs in an
+evaluator-controlled private bounded artifact, outside the deployed skill paths.
