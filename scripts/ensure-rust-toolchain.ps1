@@ -65,10 +65,23 @@ function Install-ConfiguredToolchain {
 }
 
 $state = Get-RustupState
-if ($null -eq $state -or
-    -not (Test-ExpectedToolchain $state) -or
-    -not (Test-RequiredComponents $state.Active)) {
+if ($null -ne $state -and -not (Test-ExpectedToolchain $state)) {
+    throw "root active Rust toolchain $($state.Active) does not match configured $toolchain-$($state.Host)"
+}
+
+$installed = $false
+if ($null -eq $state -or -not (Test-RequiredComponents $state.Active)) {
     Install-ConfiguredToolchain
+    $installed = $true
+    $state = Get-RustupState
+}
+
+if ($null -eq $state -or -not (Test-ExpectedToolchain $state) -or
+    -not (Test-RequiredComponents $state.Active)) {
+    throw "configured Rust toolchain is not the root active toolchain with required components"
+}
+
+if ($installed) {
     Write-Output "installed configured Rust toolchain $toolchain"
 } else {
     Write-Output "configured Rust toolchain $toolchain is already active with required components"
