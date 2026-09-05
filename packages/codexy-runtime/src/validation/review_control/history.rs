@@ -48,10 +48,10 @@ pub(super) fn check(
     if context.legacy_reviewer.is_some() != context.legacy_history_boundary.is_some() {
         return Err("review control state reviewer migration is incomplete".into());
     }
-    if let Some(boundary) = context.legacy_history_boundary
-        && (boundary == 0 || boundary >= history.len())
-    {
-        return Err("review control state reviewer migration boundary is invalid".into());
+    if let Some(boundary) = context.legacy_history_boundary {
+        if boundary == 0 || boundary >= history.len() {
+            return Err("review control state reviewer migration boundary is invalid".into());
+        }
     }
     let mut ids = HashSet::new();
     let mut full_seen = 0;
