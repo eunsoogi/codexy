@@ -87,8 +87,8 @@ jobs:
           [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
           test "$(git rev-parse HEAD)" = "$HEAD_SHA"
           [[ "$CONDITION" =~ ^(cold|warm)$ ]]
-          [[ "$REPEAT_ID" =~ ^[A-Za-z0-9._-]+$ ]]
-          [[ "$CACHE_IDENTITY" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$REPEAT_ID" =~ ^[A-Za-z0-9._-]{1,64}$ ]]
+          [[ "$CACHE_IDENTITY" =~ ^[A-Za-z0-9._-]{1,64}$ ]]
           root="$RUNNER_TEMP/codexy-rust-measurement"
           rm -rf "$root"
           mkdir -p "$root"/{cargo,rustup,target,metrics}
@@ -189,7 +189,7 @@ jobs:
         run: |
           if ($env:HEAD_SHA -notmatch '^[0-9a-f]{40}$' -or (git rev-parse HEAD).Trim() -ne $env:HEAD_SHA) { throw "checked out source commit does not match workflow input" }
           if ($env:CONDITION -notmatch '^(cold|warm)$') { throw "unsupported measurement condition" }
-          if ($env:REPEAT_ID -notmatch '^[A-Za-z0-9._-]+$' -or $env:CACHE_IDENTITY -notmatch '^[A-Za-z0-9._-]+$') { throw "measurement identities must use letters, digits, dot, underscore, or hyphen" }
+          if ($env:REPEAT_ID -notmatch '^[A-Za-z0-9._-]{1,64}$' -or $env:CACHE_IDENTITY -notmatch '^[A-Za-z0-9._-]{1,64}$') { throw "measurement identities must use 1-64 letters, digits, dot, underscore, or hyphen" }
           $root = Join-Path $env:RUNNER_TEMP "codexy-rust-measurement"
           Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force -Path (Join-Path $root "cargo"), (Join-Path $root "rustup"), (Join-Path $root "target"), (Join-Path $root "metrics") | Out-Null
