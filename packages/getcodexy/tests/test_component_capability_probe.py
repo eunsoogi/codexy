@@ -12,12 +12,22 @@ from unittest.mock import patch
 from packages.getcodexy.tests import component_distribution_support as support
 
 
+class _OSProxy:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __getattr__(self, attribute: str):
+        return getattr(os, attribute)
+
+
 class CapabilityProcessTests(unittest.TestCase):
     def test_windows_batch_hooks_use_explicit_clean_command_processor(self) -> None:
         from codexy_runtime_tools import component_capability_probe as probe
 
         with tempfile.TemporaryDirectory() as directory:
-            paths, batch, raw, py, ran = support.windows_argv(probe, Path(directory))
+            paths, batch, raw, py, ran = support.windows_argv(
+                probe, Path(directory), _OSProxy("nt")
+            )
         for launcher, command in zip(paths, batch, strict=True):
             self.assertIn(" /d /s /c ", command)
             self.assertTrue(command.endswith(f'""{launcher}" PermissionRequest"'))
@@ -38,7 +48,7 @@ class CapabilityProcessTests(unittest.TestCase):
         for outcome, category in cases:
             with self.subTest(category=category):
                 with (
-                    patch.object(process, "os", support.platform_os("posix")),
+                    patch.object(process, "os", _OSProxy("posix")),
                     patch.object(process.subprocess, "run", side_effect=[outcome]),
                 ):
                     result = probe._run(["hook"], Path.cwd(), "{}")
@@ -50,7 +60,7 @@ class CapabilityProcessTests(unittest.TestCase):
         detail = "first line\nsecond line\n" + ("x" * 300)
         completed = subprocess.CompletedProcess(["hook"], 9, stdout="", stderr=detail)
         with (
-            patch.object(probe, "os", support.platform_os("posix")),
+            patch.object(probe, "os", _OSProxy("posix")),
             patch.object(probe.subprocess, "run", return_value=completed),
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.125)),
         ):
@@ -71,7 +81,7 @@ class CapabilityProcessTests(unittest.TestCase):
         process.returncode = 0
         process.communicate.return_value = ("", "")
         with (
-            patch.object(probe, "os", support.platform_os("nt")),
+            patch.object(probe, "os", _OSProxy("nt")),
             patch.object(probe.subprocess, "Popen", return_value=process),
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.5, 14.5)),
         ):
@@ -97,7 +107,7 @@ class CapabilityProcessTests(unittest.TestCase):
             ("", ""),
         ]
         with (
-            patch.object(probe, "os", support.platform_os("nt")),
+            patch.object(probe, "os", _OSProxy("nt")),
             patch.object(probe.subprocess, "Popen", return_value=process),
             patch.object(
                 probe,
