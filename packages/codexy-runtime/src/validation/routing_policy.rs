@@ -15,7 +15,6 @@ const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 pub(super) struct Policy {
     pub(super) schema: String,
     pub(super) generic: Route,
-    pub(super) generic_fallback: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
     pub(super) fallback: String,
@@ -143,10 +142,6 @@ fn contract() -> Policy {
             model: "gpt-5.6-luna".to_owned(),
             thinking: "max".to_owned(),
         },
-        generic_fallback: Route {
-            model: "gpt-5.6-terra".to_owned(),
-            thinking: "high".to_owned(),
-        },
         named_specialist: Specialist {
             catalog: "agents/catalog.toml".to_owned(),
             caller_overrides: "forbidden".to_owned(),
@@ -171,7 +166,7 @@ fn contract() -> Policy {
                 thinking: "max".to_owned(),
             },
             child_to_root: Route {
-                model: "gpt-5.6-sol".to_owned(),
+                model: "gpt-6-astra".to_owned(),
                 thinking: "medium".to_owned(),
             },
         },
@@ -207,8 +202,6 @@ fn validate(policy: &Policy) -> Result<()> {
     if policy.schema != "codexy.child-routing-policy.v1"
         || policy.generic.model != "gpt-5.6-luna"
         || policy.generic.thinking != "max"
-        || policy.generic_fallback.model != "gpt-5.6-terra"
-        || policy.generic_fallback.thinking != "high"
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
         || policy.simple.model != "gpt-5.6-luna"
@@ -222,7 +215,7 @@ fn validate(policy: &Policy) -> Result<()> {
         || policy.fallback != "root_or_named_specialist"
         || policy.delivery.parent_to_generic.model != "gpt-5.6-luna"
         || policy.delivery.parent_to_generic.thinking != "max"
-        || policy.delivery.child_to_root.model != "gpt-5.6-sol"
+        || policy.delivery.child_to_root.model != "gpt-6-astra"
         || policy.delivery.child_to_root.thinking != "medium"
     {
         bail!(

@@ -23,7 +23,7 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-architect",
         filename: "codexy-architect.toml",
-        model: "gpt-5.6-sol",
+        model: "gpt-6-astra",
         effort: "high",
     },
     ExpectedAgent {
@@ -41,13 +41,13 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-inspector",
         filename: "codexy-inspector.toml",
-        model: "gpt-5.6-terra",
-        effort: "max",
+        model: "gpt-5.6-sol",
+        effort: "medium",
     },
     ExpectedAgent {
         name: "codexy-sentinel",
         filename: "codexy-sentinel.toml",
-        model: "gpt-5.6-sol",
+        model: "gpt-6-astra",
         effort: "xhigh",
     },
     ExpectedAgent {
@@ -59,7 +59,7 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-warden",
         filename: "codexy-warden.toml",
-        model: "gpt-5.6-sol",
+        model: "gpt-6-astra",
         effort: "xhigh",
     },
 ];
@@ -165,13 +165,13 @@ fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
 }
 
 #[test]
-fn sentinel_uses_sol_with_xhigh_reasoning_and_not_ultra() -> TestResult {
+fn sentinel_uses_astra_with_xhigh_reasoning_and_not_ultra() -> TestResult {
     let sentinel = parse_agent(
         &codexy_runtime::paths::repository_root().join("plugins/codexy/agents/codexy-sentinel.toml"),
     )?;
     assert_eq!(
         sentinel.get("model").and_then(toml::Value::as_str),
-        Some("gpt-5.6-sol")
+        Some("gpt-6-astra")
     );
     assert_eq!(
         sentinel

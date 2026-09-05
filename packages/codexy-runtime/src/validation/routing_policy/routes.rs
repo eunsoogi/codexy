@@ -9,7 +9,7 @@ pub(super) fn simple_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
-    generic_or_fallback(policy, capabilities, operation)
+    generic_route(policy, capabilities, operation)
 }
 
 pub(super) fn child_to_root_route(
@@ -59,10 +59,10 @@ pub(super) fn selected_general_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
-    generic_or_fallback(policy, capabilities, operation)
+    generic_route(policy, capabilities, operation)
 }
 
-fn generic_or_fallback(
+fn generic_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
@@ -77,17 +77,6 @@ fn generic_or_fallback(
             operation,
             &policy.generic.model,
             &policy.generic.thinking,
-        )
-    } else if thread_capabilities::supports(
-        capabilities,
-        &policy.generic_fallback.model,
-        &policy.generic_fallback.thinking,
-    ) {
-        route(
-            "generic",
-            operation,
-            &policy.generic_fallback.model,
-            &policy.generic_fallback.thinking,
         )
     } else {
         json!({"route":policy.fallback})

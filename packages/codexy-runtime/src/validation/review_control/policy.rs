@@ -95,8 +95,8 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-inspector".into(),
-                    model: "gpt-5.6-terra".into(),
-                    reasoning_effort: "max".into(),
+                    model: "gpt-5.6-sol".into(),
+                    reasoning_effort: "medium".into(),
                 }),
                 full_review_limit: 1,
                 delta_recheck_limit: 1,
@@ -110,7 +110,7 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-sentinel".into(),
-                    model: "gpt-5.6-sol".into(),
+                    model: "gpt-6-astra".into(),
                     reasoning_effort: "xhigh".into(),
                 }),
                 full_review_limit: 1,

@@ -8,7 +8,7 @@ from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 EXPECTED_CHILD = ("gpt-5.6-luna", "max")
-EXPECTED_PARENT = ("gpt-5.6-sol", "medium")
+EXPECTED_PARENT = ("gpt-6-astra", "medium")
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
     {
@@ -128,7 +128,7 @@ def _route(direction: str | None) -> str:
 
 
 _PARENT_ROUTE = (
-    "threadId=<authenticated parent>, model='gpt-5.6-sol', and thinking='medium'"
+    "threadId=<authenticated parent>, model='gpt-6-astra', and thinking='medium'"
 )
 _CHILD_ROUTE = (
     "threadId=<authenticated child>, model='gpt-5.6-luna', and thinking='max'"

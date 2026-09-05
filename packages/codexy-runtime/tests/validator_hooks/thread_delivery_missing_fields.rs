@@ -48,7 +48,7 @@ fn root_missing_fields_use_root_to_child_remedy() -> TestResult {
                 assert!(reason.contains("max"), "{event} {label}: {reason}");
                 assert!(reason.contains("MUST"), "{event} {label}: {reason}");
                 assert!(!reason.contains("child-to-parent"), "{event} {label}: {reason}");
-                assert!(!reason.contains("gpt-5.6-sol"), "{event} {label}: {reason}");
+                assert!(!reason.contains("gpt-6-astra"), "{event} {label}: {reason}");
             }
         }
     }
@@ -65,7 +65,7 @@ fn child_missing_fields_use_child_to_parent_remedy() -> TestResult {
         for root in &roots {
             for input in [
                 json!({"threadId":PARENT,"thinking":"medium"}),
-                json!({"threadId":PARENT,"model":"gpt-5.6-sol"}),
+                json!({"threadId":PARENT,"model":"gpt-6-astra"}),
             ] {
                 let reason = reason(
                     run(
@@ -74,13 +74,13 @@ fn child_missing_fields_use_child_to_parent_remedy() -> TestResult {
                         &transcript,
                         Some(CHILD),
                         input,
-                        Some(route("child_to_parent", CHILD, PARENT, "gpt-5.6-sol", "medium")),
+                    Some(route("child_to_parent", CHILD, PARENT, "gpt-6-astra", "medium")),
                     )?,
                     event,
                 )?;
                 assert!(reason.contains("MISSING_"), "{event}: {reason}");
                 assert!(reason.contains("child-to-parent"), "{event}: {reason}");
-                assert!(reason.contains("gpt-5.6-sol"), "{event}: {reason}");
+                assert!(reason.contains("gpt-6-astra"), "{event}: {reason}");
                 assert!(reason.contains("medium"), "{event}: {reason}");
                 assert!(reason.contains("MUST"), "{event}: {reason}");
             }
@@ -105,7 +105,7 @@ fn malformed_metadata_uses_mandatory_non_retry_wording() -> TestResult {
                     Some(CHILD),
                     json!({
                         "threadId":PARENT,
-                        "model":"gpt-5.6-sol",
+                        "model":"gpt-6-astra",
                         "thinking":"medium"
                     }),
                     Some(json!({"authenticated":true})),

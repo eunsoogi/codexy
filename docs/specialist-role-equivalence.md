@@ -12,7 +12,7 @@ preserves former capabilities without retaining removed callable aliases.
 | `codexy-pathfinder`   | Remove      | Orchestration owns classification, planning, and approach selection.  |
 | `codexy-scribe`       | Remove      | The owning child drafts its own documentation and handoff.            |
 | `codexy-sculptor`     | Remove      | The engineering workflow owns behavior-preserving refactoring.        |
-| `codexy-sentinel`     | Retain      | Independent strict review; fixed at `gpt-5.6-sol` / `xhigh`.          |
+| `codexy-sentinel`     | Retain      | Independent strict review; fixed at `gpt-6-astra` / `xhigh`.          |
 | `codexy-shipwright`   | Retain      | Release, package, and rollback readiness.                             |
 | `codexy-tracer`       | Remove      | The engineering workflow owns diagnosis and regression investigation. |
 | `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries.           |

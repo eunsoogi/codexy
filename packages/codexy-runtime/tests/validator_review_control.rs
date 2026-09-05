@@ -127,7 +127,7 @@ fn child_audit_evidence(review_record: &str) -> String {
 
 #[test]
 fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
-    let record = r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"state":"passed"}"#;
+    let record = r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"state":"passed"}"#;
     let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
     assert!(!output.status.success(), "terminal records without direct evidence must block");
     Ok(())
@@ -136,7 +136,7 @@ fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
 #[test]
 fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
     for result in ["PASS", "BLOCK"] {
-        let record = format!(r#"{{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{{"id":"strict-full-1","kind":"full","reviewer":{{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"}},"reviewed_head":"head","terminal_result":"{result}","unresolved_findings":[]}}]}}"#);
+        let record = format!(r#"{{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{{"id":"strict-full-1","kind":"full","reviewer":{{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"}},"reviewed_head":"head","terminal_result":"{result}","unresolved_findings":[]}}]}}"#);
         let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(&record))?;
         assert!(output.status.success(), "exact {result} must be a typed terminal: {}", String::from_utf8_lossy(&output.stderr));
     }
@@ -145,7 +145,7 @@ fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
 
 #[test]
 fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
-    let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{"id":"strict-full-1","kind":"full","reviewer":{"name":"codexy-sentinel","model":"gpt-5.6-sol","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"pass","unresolved_findings":[]}]}"#;
+    let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{"id":"strict-full-1","kind":"full","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"pass","unresolved_findings":[]}]}"#;
     let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
     assert!(!output.status.success(), "lowercase terminal result must not be typed evidence");
     Ok(())
