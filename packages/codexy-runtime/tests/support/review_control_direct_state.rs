@@ -83,7 +83,13 @@ pub(crate) fn pr_snapshot(
         "capture": {
             "provider": "github",
             "method": "graphql",
-            "authenticated": true
+            "authenticated": true,
+            "owningIssue": {
+                "repository": "eunsoogi/codexy",
+                "number": pr_number,
+                "url": format!("https://github.com/eunsoogi/codexy/issues/{pr_number}"),
+                "association": "owner-assignment"
+            }
         }
     });
     if let Some(control) = control {
