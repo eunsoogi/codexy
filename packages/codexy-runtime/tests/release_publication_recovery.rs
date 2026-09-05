@@ -2,7 +2,7 @@ use std::{fs, process::Command};
 
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;
-use fixture::{gh_fixture, git_fixture, make_executable};
+use fixture::{gh_fixture, git_fixture, publish_executable};
 const ASSETS: [&str; 4] = [
     "codexy-marketplace-plugin.tar.gz",
     "codexy-marketplace-bundle.tar.gz",
@@ -24,14 +24,13 @@ fn attestation_set_fails_closed_and_sorts_complete_sets()
         fs::write(artifacts.join(name), name)?;
     }
     let gh = bin.join("gh");
-    fs::write(&gh, r#"#!/bin/sh
+    publish_executable(&gh, r#"#!/bin/sh
 if test "${FAIL_ATTESTATION:-false}" = true; then exit 1; fi
 case "$3" in
   *codexy-runtime-package.tar.gz) case "${RUNTIME_SUBJECTS:-valid}" in malformed-top-level) printf '%s\n' '{"attestation":{"verificationResult":{"statement":{"subject":[{"name":"codexy-marketplace-plugin.tar.gz"},{"name":"runtime-staging-receipt.json"}]}}}}' ;; malformed-subject-object) printf '%s\n' '[{"verificationResult":{"statement":{"subject":{"first":{"name":"codexy-marketplace-plugin.tar.gz"},"second":{"name":"runtime-staging-receipt.json"}}}}}]' ;; *) jq -n --arg names "${RUNTIME_SUBJECTS:-codexy-marketplace-plugin.tar.gz,runtime-staging-receipt.json}" '[{"verificationResult":{"statement":{"subject": ($names | split(",") | map({name: .}))}}}]' ;; esac ;;
   *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"artifact"}]}}}]' ;;
 esac
 "#)?;
-    make_executable(&gh)?;
     let run = |mode: &str, output: &std::path::Path, fail: bool, runtime_subjects: &str| {
         let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
         let mut command = Command::new(codexy_runtime::paths::repository_root().join("scripts/verify-release-attestation-set"));
@@ -164,21 +163,19 @@ impl Fixture {
             let source = codexy_runtime::paths::repository_root()
                 .join("scripts")
                 .join(name);
-            fs::copy(source, root.join("scripts").join(name))?;
+            let destination = root.join("scripts").join(name);
+            publish_executable(&destination, fs::read(source)?)?;
         }
-        fs::write(
-            root.join("scripts/generate-release-changelog"),
+        publish_executable(
+            &root.join("scripts/generate-release-changelog"),
             "#!/bin/sh\nprintf '%s\\n' notes\n",
         )?;
-        fs::write(
-            root.join("scripts/verify-release-attestation-set"),
+        publish_executable(
+            &root.join("scripts/verify-release-attestation-set"),
             "#!/bin/sh\nprintf '[]\\n' > \"$2\"\n",
         )?;
-        fs::write(root.join("bin/git"), git_fixture())?;
-        fs::write(root.join("bin/gh"), gh_fixture())?;
-        for path in fs::read_dir(root.join("scripts"))?.chain(fs::read_dir(root.join("bin"))?) {
-            make_executable(&path?.path())?;
-        }
+        publish_executable(&root.join("bin/git"), git_fixture())?;
+        publish_executable(&root.join("bin/gh"), gh_fixture())?;
         Ok(Self { _temp: temp, root })
     }
     fn run_all(&self) -> Result<(), Box<dyn std::error::Error>> {
