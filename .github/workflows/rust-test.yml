@@ -114,9 +114,9 @@ jobs:
           CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
         run: if [[ "$CACHE_HIT" == true ]]; then echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; else echo cache_state=warm-miss >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; exit 1; fi
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
-      - name: Install opt-in measurement toolchain
+      - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch'
-        run: rustup toolchain install
+        run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
       - name: Save opt-in measurement cache
         if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
@@ -221,7 +221,12 @@ jobs:
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
+        if: github.event_name != 'workflow_dispatch'
         run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare opt-in measurement toolchain
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Save opt-in measurement cache
