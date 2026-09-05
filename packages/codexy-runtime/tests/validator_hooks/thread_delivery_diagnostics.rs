@@ -20,7 +20,7 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
         ),
         (
             "missing thinking",
-            json!({"threadId":PARENT,"model":"gpt-5.6-sol"}),
+            json!({"threadId":PARENT,"model":"gpt-6-astra"}),
             "MISSING_THINKING",
         ),
         (
@@ -30,12 +30,12 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
         ),
         (
             "unsupported thinking",
-            json!({"threadId":PARENT,"model":"gpt-5.6-sol","thinking":"high"}),
+            json!({"threadId":PARENT,"model":"gpt-6-astra","thinking":"high"}),
             "UNSUPPORTED_THINKING",
         ),
         (
             "wrong recipient",
-            json!({"threadId":OTHER,"model":"gpt-5.6-sol","thinking":"medium"}),
+            json!({"threadId":OTHER,"model":"gpt-6-astra","thinking":"medium"}),
             "WRONG_RECIPIENT",
         ),
     ];
@@ -53,7 +53,7 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
                             "child_to_parent",
                             CHILD,
                             PARENT,
-                            "gpt-5.6-sol",
+                            "gpt-6-astra",
                             "medium",
                         )),
                     )?,
@@ -79,7 +79,7 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
         for root in &roots {
             let input = json!({
                 "threadId":PARENT,
-                "model":"gpt-5.6-sol",
+                "model":"gpt-6-astra",
                 "thinking":"medium"
             });
             let missing_identity = reason(
@@ -93,7 +93,7 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
                         "child_to_parent",
                         CHILD,
                         PARENT,
-                        "gpt-5.6-sol",
+                        "gpt-6-astra",
                         "medium",
                     )),
                 )?,
@@ -134,7 +134,7 @@ fn authenticated_child_and_root_to_child_routes_remain_admitted_for_both_events(
     for event in EVENTS {
         for plugin in &roots {
             for (direction, sender, recipient, model, thinking) in [
-                ("child_to_parent", CHILD, PARENT, "gpt-5.6-sol", "medium"),
+                ("child_to_parent", CHILD, PARENT, "gpt-6-astra", "medium"),
                 ("root_to_child", PARENT, CHILD, "gpt-5.6-luna", "max"),
             ] {
                 let output = run(

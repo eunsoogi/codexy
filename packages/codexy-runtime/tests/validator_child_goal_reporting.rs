@@ -16,6 +16,7 @@ fn prose_controls_do_not_block_a_child_goal_report() -> Result<(), Box<dyn std::
         "parent-supplied assignment that names the objective and success criteria",
         "Authorized goal objective:",
         "same source task id and transition key",
+        "send_message_to_thread({ threadId: \"<authenticated parent>\", hostId: \"local\", model: \"gpt-6-astra\", thinking: \"medium\", prompt: \"<non-empty compact receipt>\" })",
     ] {
         assert!(reporting.contains(required), "missing reporting rule: {required}");
     }

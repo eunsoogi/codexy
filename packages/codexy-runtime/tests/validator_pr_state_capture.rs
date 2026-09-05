@@ -50,8 +50,8 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
                 control["profile"] = json!("standard");
                 control["reviewer"] = json!({
                     "name": "codexy-inspector",
-                    "model": "gpt-5.6-terra",
-                    "reasoning_effort": "max"
+                    "model": "gpt-5.6-sol",
+                    "reasoning_effort": "medium"
                 });
             },
         ] {

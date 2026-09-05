@@ -2,12 +2,12 @@
 
 Named packaged specialists are selected first and caller model overrides are
 forbidden. Generic work defaults to `gpt-5.6-luna` at `max`; when that route is
-unavailable, it falls back to `gpt-5.6-terra` at `high`. Simple work uses the
-same Luna route when all simple predicates are complete.
+unavailable, it fails closed to the root or named-specialist route. Simple work
+uses the same Luna route when all simple predicates are complete.
 
 Thread delivery MUST bind `model` and `thinking` to the authenticated recipient,
 not copy the sender settings. Parent-to-generic-child delivery MUST use
-`gpt-5.6-luna` at `max`; child-to-root delivery MUST use `gpt-5.6-sol` at
+`gpt-5.6-luna` at `max`; child-to-root delivery MUST use `gpt-6-astra` at
 `medium`. Both fields MUST be explicit. Unsupported or mismatched recipient
 settings MUST fail closed instead of falling back to the sender route.
 

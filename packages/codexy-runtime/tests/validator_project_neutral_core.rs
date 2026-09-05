@@ -40,7 +40,7 @@ fn top_level_agent_contract_keeps_closed_names_and_model_declarations() -> TestR
     let sentinel: toml::Value = toml::from_str(&fs::read_to_string(
         root.join("codexy-sentinel.toml"),
     )?)?;
-    assert_eq!(sentinel["model"].as_str(), Some("gpt-5.6-sol"));
+    assert_eq!(sentinel["model"].as_str(), Some("gpt-6-astra"));
     assert_eq!(sentinel["model_reasoning_effort"].as_str(), Some("xhigh"));
     Ok(())
 }

@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 use super::classification;
 
 const REQUEST_SCHEMA: &str = "codexy.review-profile-request.v1";
+pub(super) const REVIEWER_MIGRATION_SCHEMA: &str = "codexy.review-control-migration.v1";
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -68,6 +69,32 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
     Ok(route)
 }
 
+pub(super) fn current_reviewer(plugin_root: &Path, profile: &str) -> Result<Value, String> {
+    let profiles =
+        load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;
+    let profile = profiles
+        .get(profile)
+        .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
+    let reviewer = profile
+        .reviewer
+        .as_ref()
+        .ok_or_else(|| "selected reviewer is unavailable".to_owned())?;
+    serde_json::to_value(reviewer).map_err(|_| "selected reviewer is not serializable".to_owned())
+}
+
+pub(super) fn legacy_reviewer(profile: &str) -> Option<Value> {
+    let (name, model, reasoning_effort) = match profile {
+        "standard" => ("codexy-inspector", "gpt-5.6-terra", "max"),
+        "strict" => ("codexy-sentinel", "gpt-5.6-sol", "xhigh"),
+        _ => return None,
+    };
+    Some(json!({
+        "name": name,
+        "model": model,
+        "reasoning_effort": reasoning_effort
+    }))
+}
+
 fn rank(profile: &str) -> u8 {
     match profile {
         "light" => 0,
@@ -95,8 +122,8 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-inspector".into(),
-                    model: "gpt-5.6-terra".into(),
-                    reasoning_effort: "max".into(),
+                    model: "gpt-5.6-sol".into(),
+                    reasoning_effort: "medium".into(),
                 }),
                 full_review_limit: 1,
                 delta_recheck_limit: 1,
@@ -110,7 +137,7 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-sentinel".into(),
-                    model: "gpt-5.6-sol".into(),
+                    model: "gpt-6-astra".into(),
                     reasoning_effort: "xhigh".into(),
                 }),
                 full_review_limit: 1,

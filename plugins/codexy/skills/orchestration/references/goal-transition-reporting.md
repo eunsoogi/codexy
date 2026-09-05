@@ -16,7 +16,7 @@ including `agents.send_message('/root')`, MUST NOT be presented as a substitute.
 The exact authenticated child-to-parent call is:
 
 ```text
-send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", model: "gpt-5.6-sol", thinking: "medium", prompt: "<non-empty compact receipt>" })
+send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", model: "gpt-6-astra", thinking: "medium", prompt: "<non-empty compact receipt>" })
 ```
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy

@@ -15,7 +15,7 @@ pub(crate) fn strict_control(issue_number: u64, head: &str) -> Value {
         "profile": "strict",
         "reviewer": {
             "name": "codexy-sentinel",
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "xhigh"
         },
         "reviewed_head": head,
@@ -30,7 +30,7 @@ pub(crate) fn strict_control(issue_number: u64, head: &str) -> Value {
             "kind": "full",
             "reviewer": {
                 "name": "codexy-sentinel",
-                "model": "gpt-5.6-sol",
+                "model": "gpt-6-astra",
                 "reasoning_effort": "xhigh"
             },
             "reviewed_head": head,
@@ -47,7 +47,7 @@ pub(crate) fn strict_genesis(issue_number: u64) -> Value {
         "profile": "strict",
         "reviewer": {
             "name": "codexy-sentinel",
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6-astra",
             "reasoning_effort": "xhigh"
         },
         "unresolved_findings": [],
@@ -62,7 +62,7 @@ pub(crate) fn strict_genesis(issue_number: u64) -> Value {
 pub(crate) fn reviewer() -> Value {
     json!({
         "name": "codexy-sentinel",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6-astra",
         "reasoning_effort": "xhigh"
     })
 }

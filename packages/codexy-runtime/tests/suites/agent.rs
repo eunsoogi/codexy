@@ -52,6 +52,9 @@ mod validator_portable_governed_code;
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 
+#[path = "../validator_review_control_migration.rs"]
+mod validator_review_control_migration;
+
 #[path = "../validator_prompt_host_limits.rs"]
 mod validator_prompt_host_limits;
 

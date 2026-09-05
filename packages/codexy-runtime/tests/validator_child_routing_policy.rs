@@ -10,7 +10,7 @@ fn resolver_preserves_named_specialist_first_luna_default_and_fail_closed_routes
     assert_route(
         &root,
         json!({"schema":"codexy.child-routing-request.v1","classification":"general","codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}}),
-        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-terra","thinking":"high"}),
+        json!({"route":"root_or_named_specialist"}),
     )?;
     assert_route(
         &root,
@@ -77,10 +77,23 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "classification":"general",
             "codex_thread_operation":"send_message_to_thread",
             "codex_thread_direction":"child_to_root",
-            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-sol","thinking":["medium"]}]}
+            "codex_thread_capabilities":{"models":[{"model":"gpt-6-astra","thinking":["medium"]}]}
         }),
-        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-sol","thinking":"medium"}),
+        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-6-astra","thinking":"medium"}),
     )?;
+    for (model, thinking) in [("gpt-5.6-sol", "medium"), ("gpt-5.6-luna", "max")] {
+        assert_route(
+            &root,
+            json!({
+                "schema":"codexy.child-routing-request.v1",
+                "classification":"general",
+                "codex_thread_operation":"send_message_to_thread",
+                "codex_thread_direction":"child_to_root",
+                "codex_thread_capabilities":{"models":[{"model":model,"thinking":[thinking]}]}
+            }),
+            json!({"route":"root_or_named_specialist"}),
+        )?;
+    }
     assert_route(
         &root,
         json!({
@@ -89,7 +102,7 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "codex_thread_operation":"send_message_to_thread",
             "codex_thread_direction":"parent_to_generic",
             "codex_thread_capabilities":{"models":[
-                {"model":"gpt-5.6-sol","thinking":["medium"]},
+                {"model":"gpt-6-astra","thinking":["medium"]},
                 {"model":"gpt-5.6-luna","thinking":["max"]}
             ]}
         }),
