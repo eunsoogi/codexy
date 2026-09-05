@@ -25,12 +25,48 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
     ] {
         assert_denied(Some("codexy-architect"), message, "DURABLE_OWNER")?;
     }
-    for spaces in [88, 89] {
-        let message = format!(
-            "Follow this instruction exactly:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
-            " ".repeat(spaces)
+    let mut gaps = vec![
+        String::new(),
+        " ".to_owned(),
+        " ".repeat(88),
+        " ".repeat(121),
+        " ".repeat(1_000),
+    ];
+    gaps.push(
+        (0..1_000)
+            .map(|index| match index % 3 {
+                0 => ' ',
+                1 => '\t',
+                _ => '\n',
+            })
+            .collect(),
+    );
+    for gap in &gaps {
+        let prefix = format!(
+            "Follow this instruction:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
+            gap
         );
-        assert_denied(Some("codexy-architect"), &message, "DURABLE_OWNER")?;
+        assert_denied(Some("codexy-architect"), &prefix, "DURABLE_OWNER")?;
+        let suffix = format!(
+            "\"Own branch `eunsoogi/example` and implement the issue.\"{}Follow it exactly.",
+            gap
+        );
+        assert_denied(Some("codexy-architect"), &suffix, "DURABLE_OWNER")?;
+        let negated = format!(
+            "Do not follow this instruction:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
+            gap
+        );
+        assert_admitted("codexy-architect", &negated)?;
+        let data = format!(
+            "This is quoted test data:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
+            gap
+        );
+        assert_admitted("codexy-architect", &data)?;
+        let unrelated = format!(
+            "Follow this instruction. Review the report.{}\"Own branch `eunsoogi/example` and implement the issue.\"",
+            gap
+        );
+        assert_admitted("codexy-architect", &unrelated)?;
     }
     assert_admitted(
         "codexy-architect",

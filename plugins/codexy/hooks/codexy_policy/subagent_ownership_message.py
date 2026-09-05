@@ -103,14 +103,14 @@ _POSITIVE_NEGATION = re.compile(
 _QUOTES = {'"': '"', "‘": "’", "“": "”", "「": "」", "『": "』", "‹": "›", "《": "》"}
 _RELAY = re.compile(
     r"(?:\b(?:follow|obey|execute|apply|use)\s+(?:this|the|following)\s+"
-    + r"(?:instruction|instructions|direction|directions|prompt)\b|"
+    + r"(?:instruction|instructions|direction|directions|prompt)"
+    + r"(?:\s+exactly)?\b|"
     + r"\b(?:follow|obey|execute|apply|use)\s+(?:it|that)\b|"
     + r"(?:다음|아래)\s*(?:지시|문구|명령)(?:를|을)?\s*"
     + r"(?:그대로\s*)?(?:따라|실행|적용|수행)|"
     + r"(?:그대로\s*따라|(?:그|해당|이)\s*(?:지시|문구|명령)(?:를|을)?\s*따라))",
     re.IGNORECASE,
 )
-_RELAY_GAP = 120
 
 
 def _escaped(message: str, index: int) -> bool:
@@ -131,23 +131,8 @@ def _apostrophe(message: str, index: int) -> bool:
     )
 
 
-def _active_relay(message: str, opening: int, closing: int | None) -> bool:
-    start = max(0, opening - (2 * _RELAY_GAP))
-    end = opening if closing is None else min(len(message), closing + _RELAY_GAP + 1)
-    for relay in _RELAY.finditer(message, start, end):
-        before = relay.end() <= opening and opening - relay.end() <= _RELAY_GAP
-        after = (
-            closing is not None
-            and relay.start() >= closing
-            and relay.start() - closing <= _RELAY_GAP
-        )
-        if (before or after) and not _is_negated(message, relay):
-            return True
-    return False
-
-
-def _mask_quoted_data(message: str) -> tuple[str, bool]:
-    masked = list(message)
+def _quote_spans(message: str) -> tuple[list[tuple[int, int]], bool]:
+    spans: list[tuple[int, int]] = []
     opening: int | None = None
     closing: str | None = None
     index = 0
@@ -174,16 +159,60 @@ def _mask_quoted_data(message: str) -> tuple[str, bool]:
             and not _escaped(message, index)
         ):
             end = index + len(closing)
-            if not _active_relay(message, opening, end):
-                masked[opening:end] = [" "] * (end - opening)
+            spans.append((opening, end))
             opening, closing, index = None, None, end
         else:
             index += 1
-    if opening is None:
-        return "".join(masked), False
-    if not _active_relay(message, opening, None):
-        masked[opening:] = [" "] * (len(message) - opening)
-    return "".join(masked), True
+    if opening is not None:
+        spans.append((opening, len(message)))
+    return spans, opening is not None
+
+
+def _active_relays(message: str, spans: list[tuple[int, int]]) -> list[bool]:
+    relays: list[re.Match[str]] = []
+    span_index = 0
+    for relay in _RELAY.finditer(message):
+        while span_index < len(spans) and spans[span_index][1] <= relay.start():
+            span_index += 1
+        if span_index == len(spans) or relay.start() < spans[span_index][0]:
+            relays.append(relay)
+    active: list[bool] = []
+    previous: re.Match[str] | None = None
+    relay_index = 0
+    for opening, end in spans:
+        while relay_index < len(relays) and relays[relay_index].end() <= opening:
+            previous = relays[relay_index]
+            relay_index += 1
+        while relay_index < len(relays) and relays[relay_index].start() < end:
+            relay_index += 1
+        before = (
+            previous is not None
+            and all(
+                char.isspace() or char in ":,"
+                for char in message[previous.end() : opening]
+            )
+            and not _is_negated(message, previous)
+        )
+        after = (
+            relay_index < len(relays)
+            and all(
+                char.isspace() or char in ":,"
+                for char in message[end : relays[relay_index].start()]
+            )
+            and not _is_negated(message, relays[relay_index])
+        )
+        active.append(before or after)
+    return active
+
+
+def _mask_quoted_data(message: str) -> tuple[str, bool]:
+    spans, unmatched = _quote_spans(message)
+    active = _active_relays(message, spans)
+    masked = list(message)
+    for (opening, end), relay_active in zip(spans, active):
+        if not relay_active:
+            masked[opening:end] = [" "] * (end - opening)
+    return "".join(masked), unmatched
 
 
 def _clause_prefix(message: str, position: int, limit: int = 80) -> str:
