@@ -1,24 +1,31 @@
 const WAITING_STATE_ERROR: &str = "pending child work, queued worktree/thread setup, and async tool completion are waiting state evidence, not blocked evidence";
 pub(crate) mod readiness_status;
 
-const SETUP_FAILURE: &str = "failed|failure|fatal|invalid reference|does not exist|missing";
+mod matching;
+mod phrases;
+
 use super::child_goal_blocked_audit::wait_taxonomy::{
     WaitDisposition, classify_reviewer_text, classify_wait_text,
 };
+use matching::{has_any, has_unnegated_word};
+use phrases::{
+    blocked::{
+        CURRENT_CLAIM, DISALLOWED_RATIONALE, MATERIAL_CHANGE, NO_IN_SCOPE_ACTION, NO_SAFE_DEFAULT,
+        USER_DECISION,
+    },
+    checks::{
+        EXTERNAL_FAILURE, FAILURE_CONTEXT, FAILURE_WORDS, FALSE_CHECK_LABEL, RESOLVED_BLOCKER,
+        RESOLVED_CHECK,
+    },
+    review::{BARE_CONNECTOR_PASS, NONTERMINAL_GATE, SECURITY_BLOCKER, SECURITY_NON_BLOCKER},
+    setup::{CONTEXT as SETUP_CONTEXT, FAILURE as SETUP_FAILURE, QUEUED, QUEUED_MARKER},
+    waiting::{
+        ASYNC_COMPLETION, ASYNC_FAILURE, ASYNC_MARKER, ASYNC_RESULT, ASYNC_SUBJECT, ASYNC_WAIT,
+        CHILD_WORK, EVIDENCE_MARKER, HISTORICAL_ASYNC_FAILURE, MISSING_MARKER, RETURN_WAIT_RESULT,
+        RETURN_WAIT_TRIGGER, RETURNED, WAITING_CONTEXT,
+    },
+};
 
-const EXTERNAL_CHECK_FAILURE: &str = "required checks are failing|required checks failed|required status checks are failing|status checks are failing|status checks failed";
-const FALSE_CHECK_LABEL: &str = "required checks are failing: no|required status checks are failing: no|status checks are failing: no|required checks failed: no|required status checks failed: no|status checks failed: no|required checks are failing: false|required status checks are failing: false|status checks are failing: false|required checks failed: false|required status checks failed: false|status checks failed: false|required checks are failing: none|required status checks are failing: none|status checks are failing: none|required checks failed: none|required status checks failed: none|status checks failed: none|required checks are failing? no|required status checks are failing? no|status checks are failing? no|required checks failed? no|required status checks failed? no|status checks failed? no|required checks are failing? false|required status checks are failing? false|status checks are failing? false|required checks failed? false|required status checks failed? false|status checks failed? false|required checks are failing? none|required status checks are failing? none|status checks are failing? none|required checks failed? none|required status checks failed? none|status checks failed? none|required checks are failing = no|required status checks are failing = no|status checks are failing = no|required checks failed = no|required status checks failed = no|status checks failed = no|required checks are failing = false|required status checks are failing = false|status checks are failing = false|required checks failed = false|required status checks failed = false|status checks failed = false|required checks are failing = none|required status checks are failing = none|status checks are failing = none|required checks failed = none|required status checks failed = none|status checks failed = none|required checks are failing - no|required status checks are failing - no|status checks are failing - no|required checks failed - no|required status checks failed - no|status checks failed - no|required checks are failing - false|required status checks are failing - false|status checks are failing - false|required checks failed - false|required status checks failed - false|status checks failed - false|required checks are failing - none|required status checks are failing - none|status checks are failing - none|required checks failed - none|required status checks failed - none|status checks failed - none";
-const SECURITY_REVIEW_BLOCKER: &str = "required security review|security review required|security review is required|pending security review|security review pending|security review is pending|security review is waiting|security review waiting|security review is awaiting|security review awaiting|security review in progress|security review failed|security review failure";
-const SECURITY_REVIEW_NON_BLOCKER: &str = "security review passed|security review complete|security review completed|security review not required|no security review required|no security review needed";
-const CHILD_WORK: &str = "child-owned|review-response work|child-lane|child lane|child-thread work|child thread work|child-thread|child thread|child work";
-const ASYNC_FAILURE: &str = "error|failure|failed|permission|authentication|fatal";
-const ASYNC_WAIT: &str = "not returned|not yet returned|has not returned|hasn't returned|to return|until|previous permission error was fixed|previous error was fixed|previous failure was fixed|previous permission error was resolved|previous error was resolved|previous failure was resolved";
-const CURRENT_BLOCKED_CLAIM: &str = "now blocked|currently blocked|still blocked|remains blocked|is blocked|goal blocked|work blocked|lane blocked";
-const NONTERMINAL_GATE_WAIT: &str = "sentinel|ci|connector review|parent authorization|dependency integration|dependency merge|resource slot|alternate evidence|event-idle child";
-const BARE_CONNECTOR_PASS: &str =
-    "connector review pass|connector review passed|connector review: pass|connector review: passed";
-const DISALLOWED_BLOCKED_RATIONALE: &str =
-    "maintainer input|human input|external state change|true impasse";
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
@@ -31,7 +38,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
             && !has_true_impasse_rationale(fragment)
             && (!mentions_resolved_blocker(fragment)
                 || fragment.trim().starts_with("blocked")
-                || has_any(fragment, CURRENT_BLOCKED_CLAIM))
+                || has_any(fragment, CURRENT_CLAIM))
             && !mentions_true_blocker(fragment)
             && !context
                 .split([',', ';'])
@@ -51,200 +58,106 @@ pub(super) fn check(handoff: &str) -> Option<String> {
     }
     None
 }
+
 fn mentions_true_blocker(text: &str) -> bool {
     mentions_actionable_review_feedback(text)
         || mentions_missing_child_evidence(text)
-        || (has_any(text, "worktree setup|thread setup") && has_any(text, SETUP_FAILURE))
+        || (has_any(text, SETUP_CONTEXT) && has_any(text, SETUP_FAILURE))
         || mentions_external_gate_blocker(text)
         || mentions_async_tool_failure(text)
 }
+
 fn mentions_resolved_blocker(text: &str) -> bool {
-    !has_any(text, "are failing|resolved: blocked|now blocked")
-        && (has_any(
-            text,
-            "blocker resolved|blocker was resolved|previous blocker resolved|previous blocker was resolved|resolved blocker|previously blocked|was blocked|were blocked|had been blocked",
-        ) || has_any(
-            text,
-            "required checks failed and were fixed|required checks failed and were resolved|required checks failed and were cleared|required status checks failed and were fixed|required status checks failed and were resolved|required status checks failed and were cleared|status checks failed and were fixed|status checks failed and were resolved|status checks failed and were cleared|required checks were fixed|required checks were resolved|required checks were cleared|required status checks were fixed|required status checks were resolved|required status checks were cleared|status checks were fixed|status checks were resolved|status checks were cleared",
-        ))
+    !has_any(text, FAILURE_CONTEXT)
+        && (has_any(text, RESOLVED_BLOCKER) || has_any(text, RESOLVED_CHECK))
 }
+
 fn claims_blocked_state(text: &str) -> bool {
     has_unnegated_word(text, "blocked", 16)
         || has_unnegated_word(text, "blocker", 16)
         || has_unnegated_word(text, "blockers", 16)
 }
+
 fn mentions_non_blocking_wait(text: &str) -> bool {
     mentions_queued_setup(text)
         || mentions_async_completion(text)
         || mentions_return_wait(text)
         || classify_wait_text(text) == Some(WaitDisposition::Nonterminal)
         || has_any(text, BARE_CONNECTOR_PASS)
-        || has_any(text, DISALLOWED_BLOCKED_RATIONALE)
-        || (has_any(text, NONTERMINAL_GATE_WAIT) && mentions_waiting_context(text))
+        || has_any(text, DISALLOWED_RATIONALE)
+        || (has_any(text, NONTERMINAL_GATE) && mentions_waiting_context(text))
         || (has_any(text, CHILD_WORK)
             && mentions_waiting_context(text)
             && !mentions_missing_child_evidence(text))
 }
+
 fn mentions_actionable_review_feedback(text: &str) -> bool {
     classify_wait_text(text) == Some(WaitDisposition::Actionable)
 }
+
 fn mentions_external_gate_blocker(text: &str) -> bool {
-    (has_any(text, SECURITY_REVIEW_BLOCKER)
-        && !has_any(text, SECURITY_REVIEW_NON_BLOCKER)
-        && (has_any(text, "failed|failure")
+    (has_any(text, SECURITY_BLOCKER)
+        && !has_any(text, SECURITY_NON_BLOCKER)
+        && (has_any(text, FAILURE_WORDS)
             || classify_reviewer_text(text) != Some(WaitDisposition::Nonterminal)))
-        || (has_any(text, EXTERNAL_CHECK_FAILURE)
+        || (has_any(text, EXTERNAL_FAILURE)
             && !has_any(text, FALSE_CHECK_LABEL)
             && !mentions_resolved_blocker(text))
 }
+
 fn mentions_queued_setup(text: &str) -> bool {
-    has_any(text, "queued worktree|queued thread")
-        || (has_any(text, "worktree setup|thread setup")
-            && (mentions_waiting_context(text) || has_any(text, "queued"))
+    has_any(text, QUEUED)
+        || (has_any(text, SETUP_CONTEXT)
+            && (mentions_waiting_context(text) || has_any(text, QUEUED_MARKER))
             && !has_any(text, SETUP_FAILURE))
 }
+
 fn mentions_async_completion(text: &str) -> bool {
     mentions_async_tool_result(text)
-        && has_any(
-            text,
-            "completion|pending|waiting|running|in progress|not returned|not yet returned|has not returned|hasn't returned|to return|until",
-        )
+        && has_any(text, ASYNC_COMPLETION)
         && !mentions_returned_async_failure(text)
         && !mentions_async_tool_failure(text)
 }
+
 fn mentions_async_tool_failure(text: &str) -> bool {
     mentions_async_tool_result(text)
         && has_any(text, ASYNC_FAILURE)
-        && !has_any(text, "returned")
+        && !has_any(text, RETURNED)
         && !has_any(text, ASYNC_WAIT)
 }
+
 fn mentions_returned_async_failure(text: &str) -> bool {
-    mentions_async_tool_result(text) && has_any(text, "returned") && has_any(text, ASYNC_FAILURE)
+    mentions_async_tool_result(text) && has_any(text, RETURNED) && has_any(text, ASYNC_FAILURE)
 }
+
 fn mentions_returned_async_failure_context(fragment: &str, text: &str) -> bool {
-    let historical = "previous async|previous asynchronous|earlier|was fixed|was resolved";
-    (mentions_returned_async_failure(fragment) && !has_any(fragment, historical))
-        || (mentions_returned_async_failure(text) && !has_any(text, historical))
+    (mentions_returned_async_failure(fragment) && !has_any(fragment, HISTORICAL_ASYNC_FAILURE))
+        || (mentions_returned_async_failure(text) && !has_any(text, HISTORICAL_ASYNC_FAILURE))
 }
+
 fn mentions_async_tool_result(text: &str) -> bool {
-    (has_any(text, "asynchronous|async") && has_any(text, "tool|operation|result"))
-        || has_any(text, "tool result|background operation")
+    (has_any(text, ASYNC_MARKER) && has_any(text, ASYNC_SUBJECT)) || has_any(text, ASYNC_RESULT)
 }
+
 fn mentions_return_wait(text: &str) -> bool {
     has_any(text, CHILD_WORK)
-        && has_any(text, "until|waiting for")
-        && has_any(
-            text,
-            "returns|return|returned|not returned|not yet returned|has not returned|hasn't returned|comes back|responds|response|finishes|completes",
-        )
+        && has_any(text, RETURN_WAIT_TRIGGER)
+        && has_any(text, RETURN_WAIT_RESULT)
         && !mentions_actionable_review_feedback(text)
         && !mentions_missing_child_evidence(text)
 }
+
 fn mentions_waiting_context(text: &str) -> bool {
-    has_any(
-        text,
-        "pending|waiting|awaiting|in progress|processing|working|not returned|not yet returned|has not returned|hasn't returned",
-    )
+    has_any(text, WAITING_CONTEXT)
 }
+
 fn mentions_missing_child_evidence(text: &str) -> bool {
-    has_any(text, CHILD_WORK)
-        && has_any(text, "omitted|missing|required|pending")
-        && has_any(text, "evidence|goal tool|todo|plan|verification evidence")
+    has_any(text, CHILD_WORK) && has_any(text, MISSING_MARKER) && has_any(text, EVIDENCE_MARKER)
 }
+
 fn has_true_impasse_rationale(text: &str) -> bool {
-    has_any(text, "unanswered user decision|missing user information")
-        && has_any(
-            text,
-            "materially changes the result|materially changes result",
-        )
-        && has_any(text, "no safe default|safe default=unavailable")
-        && has_any(text, "no in-scope action|in-scope action=unavailable")
-}
-fn has_any(text: &str, phrases: &str) -> bool {
-    phrases
-        .split('|')
-        .any(|phrase| has_unnegated_phrase(text, phrase, 16))
-}
-fn has_unnegated_phrase(text: &str, phrase: &str, negation_window: usize) -> bool {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(phrase) {
-        let absolute_index = offset + index;
-        let after_index = absolute_index + phrase.len();
-        if phrase_has_boundaries(text, absolute_index, after_index) {
-            let prefix_start = char_window_start(text, absolute_index, negation_window);
-            if !has_nearby_negation(&text[prefix_start..absolute_index]) {
-                return true;
-            }
-        }
-        offset = after_index;
-        rest = &text[offset..];
-    }
-    false
-}
-fn has_unnegated_word(text: &str, word: &str, negation_window: usize) -> bool {
-    let mut rest = text;
-    let mut offset = 0;
-    while let Some(index) = rest.find(word) {
-        let absolute_index = offset + index;
-        let after_index = absolute_index + word.len();
-        if is_boundary(text[..absolute_index].chars().next_back())
-            && is_boundary(text[after_index..].chars().next())
-        {
-            let prefix_start = char_window_start(text, absolute_index, negation_window);
-            if !has_nearby_negation(&text[prefix_start..absolute_index])
-                && !has_false_blocker_label(text, word, after_index)
-            {
-                return true;
-            }
-        }
-        offset = after_index;
-        rest = &text[offset..];
-    }
-    false
-}
-fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
-    if !matches!(word, "blocked" | "blocker" | "blockers") {
-        return false;
-    }
-    let value = text[after_index..].trim_start();
-    let value = value.strip_prefix("state").unwrap_or(value).trim_start();
-    if !matches!(value.chars().next(), Some(':' | '-' | '?' | '=')) {
-        return false;
-    }
-    let value = value[1..].trim_start();
-    let first = value
-        .split(|c: char| !matches!(c, '/' | '0'..='9' | 'a'..='z'))
-        .next();
-    let rest = first.map_or("", |f| value[f.len()..].trim_start_matches([' ', '\t']));
-    let terminal = rest.chars().next().is_none_or(|c| ".;,\n\r".contains(c))
-        || has_any(rest, "active blockers|remaining");
-    matches!(first, Some("none" | "no" | "false" | "n/a" | "na")) && terminal
-        || value.starts_with("not applicable")
-}
-fn phrase_has_boundaries(text: &str, start: usize, end: usize) -> bool {
-    is_boundary(text[..start].chars().next_back()) && is_boundary(text[end..].chars().next())
-}
-fn is_boundary(c: Option<char>) -> bool {
-    c.is_none_or(|c| !c.is_ascii_alphanumeric())
-}
-fn has_nearby_negation(prefix: &str) -> bool {
-    let prefix = prefix.trim_end();
-    negation_phrase_matches(prefix)
-        || prefix.rsplit_once(' ').is_some_and(|(before, word)| {
-            let m = "active|actually|current|currently|presently|remaining|still|unresolved|yet";
-            m.split('|').any(|m| word == m) && negation_phrase_matches(before)
-        })
-}
-fn negation_phrase_matches(prefix: &str) -> bool {
-    "no|no known|no longer|non|non-|not|not a|not an|isn't|is not|hasn't|without"
-        .split('|')
-        .any(|phrase| prefix.ends_with(phrase))
-}
-fn char_window_start(text: &str, end: usize, window: usize) -> usize {
-    text[..end]
-        .char_indices()
-        .rev()
-        .nth(window)
-        .map_or(0, |(index, _)| index)
+    has_any(text, USER_DECISION)
+        && has_any(text, MATERIAL_CHANGE)
+        && has_any(text, NO_SAFE_DEFAULT)
+        && has_any(text, NO_IN_SCOPE_ACTION)
 }
