@@ -9,6 +9,13 @@ evidence, omissions, follow-ups, and issue linkage without prescribing a
 repository-independent heading order. Keep a PR draft while proof or known risk
 is incomplete.
 
+The PR title MUST use `type(scope): description`, with a nonempty valid scope
+and a nonempty description. An optional breaking marker goes after the scope:
+`feat(task)!: change behavior`. The PR title MUST NOT include an issue or PR
+number. The squash subject MUST be the validated PR title followed by one ASCII
+space and `(#<actual PR number>)`. It MUST be added only after the captured PR
+title has passed validation.
+
 Immediately read back the remote PR number, URL, title, body, state, draft
 state, base, head branch, exact head SHA, labels, and linked issue. Repository
 labels that apply MUST be present before readiness.

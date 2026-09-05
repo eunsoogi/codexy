@@ -162,7 +162,7 @@ mod tests {
                 EXPECTED_DIAGNOSTIC,
             ),
             (
-                "fix: #120 accidental close\n\nFixes #121\n",
+                "fix(workflow): fix: #120 accidental close\n\nFixes #121\n",
                 EXPECTED_DIAGNOSTIC,
             ),
             (

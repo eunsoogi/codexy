@@ -37,7 +37,7 @@ const CONCERNS: &[Concern] = &[
     },
     Concern {
         id: "repository-pull-request",
-        matcher: "^mcp__codex_apps__github_(create|update)_pull_request$",
+        matcher: "^(?:mcp__codex_apps__github_(create|update)_pull_request|github\\.(create|update)_pull_request)$",
         launcher: "codexy-repository-pull-request",
         diagnostic: "CODEXY_REPOSITORY_PULL_REQUEST_",
     },

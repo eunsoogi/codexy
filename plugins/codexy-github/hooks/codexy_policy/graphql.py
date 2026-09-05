@@ -1,7 +1,5 @@
 """Fail-closed GraphQL operation classification for GitHub API admission."""
 
-from __future__ import annotations
-
 import base64
 import json
 import re
@@ -21,6 +19,7 @@ from .graphql_parser import document, parse_document
 from .repository import github_identity, read_text
 from .repository_issue import graphql_issue
 from .repository_pull_request import graphql_review, graphql_reviewers
+from .titles import graphql_title, pr_title
 
 _STRING_VALUE = "<string>:"
 _NUMBER = "<number>"
@@ -59,11 +58,7 @@ def admitted(
     mutations = [item for item in parsed if item.kind == "mutation"]
     if not mutations:
         return True
-    if (
-        len(parsed) != 1
-        or len(mutations) != 1
-        or not _transport_owned(transport, owned)
-    ):
+    if len(parsed) != 1 or not _transport_owned(transport, owned):
         return False
     roots = mutations[0].selection
     if len(roots) != 1 or roots[0].alias:
@@ -222,7 +217,10 @@ def _pr_optional(
     if set(payload) - allowed:
         return False
     for key, value in payload.items():
-        if key in {"title", "body", "baseRefName"} and not graph_nullable(value):
+        if key == "title":
+            if value != "null" and not graphql_title(value, pr_title):
+                return False
+        elif key in {"body", "baseRefName"} and not graph_nullable(value):
             return False
         if key in {"draft", "maintainerCanModify"} and value not in {"true", "false"}:
             return False

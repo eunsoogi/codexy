@@ -32,6 +32,17 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
             .map_err(|error| format!("{case_id}: {error}"))?;
     }
     for (case_id, query) in [
+        ("N-ISS-title-category", "mutation { createIssue(input:{repositoryId:\"REPO_owned\",title:\"CI : reduce build time\",clientMutationId:\"CLIENT\"}) { issue { number } } }"),
+        ("N-ISS-update-title-category", "mutation { updateIssue(input:{issueId:\"ISS_owned\",title:\"Fix (task) : reject invalid titles\"}) { issue { number } } }"),
+        ("N-PR-title-scope-less", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"feat: desc\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
+        ("N-PR-title-reference", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"feat(task): desc (#900)\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
+        ("N-PR-update-title-reference", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",title:\"feat(task): desc (PR #926)\"}) { pullRequest { number } } }"),
+    ] {
+        let query = bind_query(query);
+        assert_case(&root, &owned, &format!("gh api graphql {bindings} -f query='{query}'"), true, &[])
+            .map_err(|error| format!("{case_id}: {error}"))?;
+    }
+    for (case_id, query) in [
         ("P-ISS-02-body-clear", "mutation { updateIssue(input:{issueId:\"ISS_owned\",body:null}) { issue { number } } }"),
         ("P-ISS-03", "mutation { closeIssue(input:{issueId:\"ISS_owned\",stateReason:DUPLICATE,duplicateIssueId:\"ISS_duplicate\"}) { issue { number } } }"),
         ("P-ISS-03-reopen", "mutation { reopenIssue(input:{issueId:\"ISS_owned\"}) { issue { number } } }"),

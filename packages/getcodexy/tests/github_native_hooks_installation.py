@@ -55,8 +55,19 @@ class GithubNativeHooksInstallationMixin:
             admissions = (
                 ("issue", "feat(github): extract workflow", True),
                 ("issue", "Extract GitHub workflow", False),
+                ("issue", "CI : reduce build time", True),
+                ("issue", "Fix(task)— reject invalid titles", True),
+                ("issue", "Fix(task)!— reject invalid titles", True),
+                ("issue", "CI\u0086: reduce build time", True),
+                ("issue", "CI", True),
                 ("pr", "Extract GitHub workflow", True),
                 ("pr", "refactor(github): extract workflow", False),
+                ("pr", "feat: desc", True),
+                ("pr", "feat(task): desc (#900)", True),
+                ("pr", "feat(task): desc (#900) ", True),
+                ("pr", "feat(task): desc (#900)  (#926)", True),
+                ("pr", "feat(task): desc PR #900", True),
+                ("pr", "Feat(Task): desc", True),
             )
             for rule, title, denied in admissions:
                 self._admission(installed, environment, rule, title, denied)
@@ -137,6 +148,51 @@ class GithubNativeHooksInstallationMixin:
                 ),
                 "",
             )
+            repository_pr_hook = hook_root / "codexy-repository-pull-request.sh"
+            repository_pr_cases = (
+                (
+                    "mcp__codex_apps__github_update_pull_request",
+                    {"title": "#951 · PR #953 · Windows 원인 진단"},
+                    True,
+                ),
+                (
+                    "github.update_pull_request",
+                    {
+                        "title": "#951 · PR #953 · Windows 원인 진단",
+                        "body": "diagnostic",
+                    },
+                    True,
+                ),
+                (
+                    "github.update_pull_request",
+                    {"title": "fix(hooks): update through installed route"},
+                    False,
+                ),
+                (
+                    "github.update_pull_request",
+                    {"title": "fix(hooks): update title and body", "body": "details"},
+                    False,
+                ),
+                ("github.update_pull_request", {"body": "metadata only"}, False),
+            )
+            for event in ("PermissionRequest", "PreToolUse"):
+                for tool, fields, denied in repository_pr_cases:
+                    payload = {
+                        "hook_event_name": event,
+                        "tool_name": tool,
+                        "tool_input": {
+                            "repository_full_name": "eunsoogi/codexy",
+                            "pr_number": 953,
+                            **fields,
+                        },
+                        "cwd": str(ROOT),
+                    }
+                    output = self._run_process(
+                        [str(repository_pr_hook), event],
+                        json.dumps(payload),
+                        {**environment, "PLUGIN_ROOT": str(installed)},
+                    )
+                    self.assertEqual(bool(output), denied, (event, tool, fields))
             assert_nested_exec_cases(
                 self, self._run_process, installed, environment, ROOT
             )

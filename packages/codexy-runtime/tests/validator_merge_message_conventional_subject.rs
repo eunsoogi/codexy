@@ -42,6 +42,23 @@ fn validator_cli_rejects_unseparated_pr_suffix() -> Result<(), Box<dyn std::erro
     )
 }
 
+#[test]
+fn validator_cli_rejects_scope_less_or_decorated_merge_subjects()
+-> Result<(), Box<dyn std::error::Error>> {
+    for message in [
+        "feat: desc (#926)\n\nFixes #121\n",
+        "feat(task): desc (#900)\n\nFixes #121\n",
+        "feat(task): desc (#926) (#926)\n\nFixes #121\n",
+        "feat(task): desc (#900)  (#926)\n\nFixes #121\n",
+    ] {
+        assert!(
+            !validate_message_for_pr(message, 926)?.status.success(),
+            "validator should reject {message:?}"
+        );
+    }
+    Ok(())
+}
+
 fn validate_message_for_pr(
     message: &str,
     expected_pr: u64,
