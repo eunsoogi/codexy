@@ -4,7 +4,11 @@ use crate::support::TestResult;
 
 use super::{exact_names, rows};
 
-const PROJECT_SKILLS: &[&str] = &["plugin-marketplace-prep", "release-engineering"];
+const PROJECT_SKILLS: &[&str] = &[
+    "plugin-marketplace-prep",
+    "release-engineering",
+    "skill-evaluation",
+];
 
 #[test]
 fn repository_only_skills_are_discoverable_without_plugin_exposure() -> TestResult {
