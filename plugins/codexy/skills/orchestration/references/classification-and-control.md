@@ -218,10 +218,10 @@ source repository, owning issue, source PR, immutable review-thread/comment
 identity and canonical URL, author, `observedCommit` equal to the prior delta
 head, unique finding IDs, and repository-relative paths to the live projection.
 The evidence diff MUST touch every recorded path. The source PR's owning issue
-is provenance and MUST NOT replace the target `reviewControl.issue_number`. In all three cases, the evidence commit MUST
-descend from the prior delta and precede the current head; repair evidence MUST
-change the reviewed tree. Arbitrary JSON agreement is not authenticated readback
-authority.
+is provenance and MUST NOT replace the target `reviewControl.issue_number`. In
+all three cases, the evidence commit MUST descend from the prior delta and
+precede the current head; repair evidence MUST change the reviewed tree.
+Arbitrary JSON agreement is not authenticated readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal

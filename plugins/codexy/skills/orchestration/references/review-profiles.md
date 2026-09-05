@@ -43,8 +43,8 @@ shape/integrity checks only and MUST NOT be treated as authentication. The
 producer, `build-pr-state`, and completion handoff MUST use the live source read
 for external-finding authority; offline validators only validate an envelope
 already admitted by that source-owned boundary. The envelope's repository,
-owning issue, source PR, immutable review-thread and comment identities with
-the canonical discussion URL, author, observed commit, unique finding IDs, and
+owning issue, source PR, immutable review-thread and comment identities with the
+canonical discussion URL, author, observed commit, unique finding IDs, and
 repository-relative affected paths MUST equal the live projection. The
 transition requires `observedCommit` to equal the prior delta head and the
 repair diff to touch every recorded path. A source with different repository,

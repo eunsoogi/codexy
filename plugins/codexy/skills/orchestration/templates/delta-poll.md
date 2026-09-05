@@ -89,13 +89,13 @@ task/thread
 - qualifying-change from/to heads and evidence commit in Git ancestry:
 - authenticated current/previous PR snapshots, baseRefOid transition, and
   finding_ids plus recorded-path linkage when root repair applies:
-- authenticated external-finding source envelope produced from the
-  locator-only `authenticated_external_finding_locator` through a fixed live
-  GitHub GraphQL read, with its raw response and deterministic projection,
-  source identity bound to the live projection, observed delta head, exact
-  finding IDs, and every recorded affected path when external repair applies;
-  persisted `capture.raw` equality/re-projection is offline integrity evidence,
-  not authentication:
+- authenticated external-finding source envelope produced from the locator-only
+  `authenticated_external_finding_locator` through a fixed live GitHub GraphQL
+  read, with its raw response and deterministic projection, source identity
+  bound to the live projection, observed delta head, exact finding IDs, and
+  every recorded affected path when external repair applies; persisted
+  `capture.raw` equality/re-projection is offline integrity evidence, not
+  authentication:
 - fourth profile review: prohibited after the third terminal verdict
 - remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
