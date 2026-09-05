@@ -4,6 +4,30 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact frozen commit SHA to measure
+        required: true
+        type: string
+      condition:
+        description: Controlled cache condition
+        required: true
+        type: choice
+        options: [cold, warm]
+      repeat_id:
+        description: Repeat identity such as cold-1
+        required: true
+        type: string
+      profiling:
+        description: Export existing profile metrics
+        required: true
+        default: false
+        type: boolean
+      cache_identity:
+        description: Isolated cache identity shared by cold and warm repeats
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -46,11 +70,73 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Prepare opt-in measurement
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          HEAD_SHA: ${{ inputs.head_sha }}
+          CONDITION: ${{ inputs.condition }}
+          REPEAT_ID: ${{ inputs.repeat_id }}
+          CACHE_IDENTITY: ${{ inputs.cache_identity }}
+          PROFILE_ENABLED: ${{ inputs.profiling && 'true' || 'false' }}
+          SHARD_INDEX: ${{ strategy.job-index }}
+        run: |
+          set -euo pipefail
+          [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          [[ "$CONDITION" =~ ^(cold|warm)$ ]]
+          [[ "$REPEAT_ID" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$CACHE_IDENTITY" =~ ^[A-Za-z0-9._-]+$ ]]
+          root="$RUNNER_TEMP/codexy-rust-measurement"
+          rm -rf "$root"
+          mkdir -p "$root"/{cargo,rustup,target,metrics}
+          printf 'head_sha=%s\ncondition=%s\nrepeat_id=%s\nprofiling=%s\ncache_identity=%s\nshard_index=%s\nrunner_os=%s\n' "$HEAD_SHA" "$CONDITION" "$REPEAT_ID" "$PROFILE_ENABLED" "$CACHE_IDENTITY" "$SHARD_INDEX" "$RUNNER_OS" > "$root/metrics/measurement.txt"
+          [[ "$CONDITION" != cold ]] || echo cache_state=cold-empty >> "$root/metrics/measurement.txt"
+          printf 'CARGO_HOME=%s/cargo\nRUSTUP_HOME=%s/rustup\nCARGO_TARGET_DIR=%s/target\n' "$root" "$root" "$root" >> "$GITHUB_ENV"
+          if [[ "$PROFILE_ENABLED" == true ]]; then
+            printf 'CODEXY_PROFILE_METRICS=%s/metrics/profile.metrics\nCODEXY_PROFILE_COMMAND_METRICS_DIR=%s/metrics/commands\n' "$root" "$root" >> "$GITHUB_ENV"
+          fi
+      - name: Restore opt-in measurement cache
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        id: measurement-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ runner.temp }}/codexy-rust-measurement/cargo
+            ${{ runner.temp }}/codexy-rust-measurement/rustup
+            ${{ runner.temp }}/codexy-rust-measurement/target
+          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - name: Require exact warm cache restore
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        env:
+          CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
+        run: |
+          test "$CACHE_HIT" = true
+          echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
+      - name: Install opt-in measurement toolchain
+        if: github.event_name == 'workflow_dispatch'
+        run: rustup toolchain install
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
+      - name: Save opt-in measurement cache
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ runner.temp }}/codexy-rust-measurement/cargo
+            ${{ runner.temp }}/codexy-rust-measurement/rustup
+            ${{ runner.temp }}/codexy-rust-measurement/target
+          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - name: Upload opt-in measurement artifacts
+        if: github.event_name == 'workflow_dispatch' && success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
+          path: ${{ runner.temp }}/codexy-rust-measurement/metrics
+          if-no-files-found: error
+          retention-days: 14
 
   windows-rust-test:
     name: Rust tests (Windows / ${{ matrix.target.name }})
@@ -89,12 +175,73 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Prepare opt-in measurement
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          HEAD_SHA: ${{ inputs.head_sha }}
+          CONDITION: ${{ inputs.condition }}
+          REPEAT_ID: ${{ inputs.repeat_id }}
+          CACHE_IDENTITY: ${{ inputs.cache_identity }}
+          PROFILE_ENABLED: ${{ inputs.profiling && 'true' || 'false' }}
+          SHARD_INDEX: ${{ strategy.job-index }}
+        run: |
+          if ($env:HEAD_SHA -notmatch '^[0-9a-f]{40}$' -or (git rev-parse HEAD).Trim() -ne $env:HEAD_SHA) { throw "checked out source commit does not match workflow input" }
+          if ($env:CONDITION -notmatch '^(cold|warm)$') { throw "unsupported measurement condition" }
+          if ($env:REPEAT_ID -notmatch '^[A-Za-z0-9._-]+$' -or $env:CACHE_IDENTITY -notmatch '^[A-Za-z0-9._-]+$') { throw "measurement identities must use letters, digits, dot, underscore, or hyphen" }
+          $root = Join-Path $env:RUNNER_TEMP "codexy-rust-measurement"
+          Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path (Join-Path $root "cargo"), (Join-Path $root "rustup"), (Join-Path $root "target"), (Join-Path $root "metrics") | Out-Null
+          @("head_sha=$env:HEAD_SHA", "condition=$env:CONDITION", "repeat_id=$env:REPEAT_ID", "profiling=$env:PROFILE_ENABLED", "cache_identity=$env:CACHE_IDENTITY", "shard_index=$env:SHARD_INDEX", "runner_os=$env:RUNNER_OS") | Set-Content -LiteralPath (Join-Path $root "metrics/measurement.txt")
+          if ($env:CONDITION -eq "cold") { Add-Content (Join-Path $root "metrics/measurement.txt") "cache_state=cold-empty" }
+          Add-Content $env:GITHUB_ENV "CARGO_HOME=$(Join-Path $root 'cargo')"
+          Add-Content $env:GITHUB_ENV "RUSTUP_HOME=$(Join-Path $root 'rustup')"
+          Add-Content $env:GITHUB_ENV "CARGO_TARGET_DIR=$(Join-Path $root 'target')"
+          if ($env:PROFILE_ENABLED -eq "true") {
+            Add-Content $env:GITHUB_ENV "CODEXY_PROFILE_METRICS=$(Join-Path $root 'metrics/profile.metrics')"
+            Add-Content $env:GITHUB_ENV "CODEXY_PROFILE_COMMAND_METRICS_DIR=$(Join-Path $root 'metrics/commands')"
+          }
+      - name: Restore opt-in measurement cache
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        id: measurement-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ runner.temp }}/codexy-rust-measurement/cargo
+            ${{ runner.temp }}/codexy-rust-measurement/rustup
+            ${{ runner.temp }}/codexy-rust-measurement/target
+          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - name: Require exact warm cache restore
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        shell: pwsh
+        env:
+          CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
+        run: |
+          if ($env:CACHE_HIT -ne "true") { throw "warm measurement requires an exact cache hit" }
+          Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit"
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Save opt-in measurement cache
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ${{ runner.temp }}/codexy-rust-measurement/cargo
+            ${{ runner.temp }}/codexy-rust-measurement/rustup
+            ${{ runner.temp }}/codexy-rust-measurement/target
+          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - name: Upload opt-in measurement artifacts
+        if: github.event_name == 'workflow_dispatch' && success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
+          path: ${{ runner.temp }}/codexy-rust-measurement/metrics
+          if-no-files-found: error
+          retention-days: 14
