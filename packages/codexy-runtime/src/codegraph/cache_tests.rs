@@ -165,7 +165,7 @@ fn oversized_source_uses_the_uncached_path() -> Result<(), Box<dyn std::error::E
 fn many_long_path_files_use_the_uncached_path() -> Result<(), Box<dyn std::error::Error>> {
     let repository = tempfile::tempdir()?;
     let directories = 300;
-    let files_per_directory = 50;
+    let files_per_directory = 150;
     for directory_index in 0..directories {
         let directory = repository
             .path()

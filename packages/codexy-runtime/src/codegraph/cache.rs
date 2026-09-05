@@ -15,7 +15,8 @@ const CACHE_TREE_NODE_BYTES: usize = 256;
 #[derive(Debug, Clone)]
 struct CachedFile {
     digest: [u8; 32],
-    graph: GraphFile,
+    imports: Vec<String>,
+    exports: Vec<String>,
     bytes: usize,
 }
 
@@ -23,8 +24,8 @@ struct CachedFile {
 struct ParseCache {
     root: Option<PathBuf>,
     environment_digest: Option<[u8; 32]>,
-    files: BTreeSet<String>,
-    entries: BTreeMap<String, CachedFile>,
+    files: Vec<String>,
+    entries: BTreeMap<usize, CachedFile>,
     bytes: usize,
     uncached: bool,
 }
@@ -62,21 +63,28 @@ fn parse_one(
     file: &str,
     indexed_files: &BTreeSet<String>,
 ) -> GraphFile {
+    let file_index = cache.file_index(file);
     let Some(source) = read_source_snapshot(root, file) else {
-        cache.remove(file);
+        if let Some(index) = file_index {
+            cache.remove(index);
+        }
         return empty_graph_file(file);
     };
-    if let Some(graph) = cache.lookup(file, &source.digest) {
-        return graph;
+    if let Some(index) = file_index {
+        if let Some(graph) = cache.lookup(index, file, &source.digest) {
+            return graph;
+        }
     }
     let graph = parse_file(root, file, indexed_files, &source.source);
-    cache.store(file, source.digest, &graph, source.source.len());
+    if let Some(index) = file_index {
+        cache.store(index, source.digest, &graph, source.source.len());
+    }
     graph
 }
 
 impl ParseCache {
     fn prepare(&mut self, root: &Path, snapshot: &FileSnapshot) {
-        let current_files = snapshot.files.iter().cloned().collect::<BTreeSet<_>>();
+        let current_files = snapshot.files.clone();
         let root_changed = self.root.as_deref() != Some(root);
         let environment_changed = self.environment_digest != Some(snapshot.environment_digest);
         let file_set_changed = self.files != current_files;
@@ -97,28 +105,37 @@ impl ParseCache {
         }
     }
 
-    fn lookup(&mut self, file: &str, digest: &[u8; 32]) -> Option<GraphFile> {
+    fn file_index(&self, file: &str) -> Option<usize> {
+        self.files
+            .binary_search_by(|candidate| candidate.as_str().cmp(file))
+            .ok()
+    }
+
+    fn lookup(&mut self, index: usize, file: &str, digest: &[u8; 32]) -> Option<GraphFile> {
         if self.uncached {
             return None;
         }
         if self
             .entries
-            .get(file)
+            .get(&index)
             .is_some_and(|entry| entry.digest == *digest)
         {
-            return self.entries.get(file).map(|entry| entry.graph.clone());
+            return self.entries.get(&index).map(|entry| GraphFile {
+                path: file.to_owned(),
+                imports: entry.imports.clone(),
+                exports: entry.exports.clone(),
+            });
         }
-        self.remove(file);
+        self.remove(index);
         None
     }
 
-    fn store(&mut self, file: &str, digest: [u8; 32], graph: &GraphFile, source_bytes: usize) {
+    fn store(&mut self, index: usize, digest: [u8; 32], graph: &GraphFile, source_bytes: usize) {
         if self.uncached {
             return;
         }
-        let key = file.to_owned();
-        let bytes = cached_file_storage_size(&key, graph, source_bytes);
-        self.remove(file);
+        let bytes = cached_file_storage_size(graph, source_bytes);
+        self.remove(index);
         if self.bytes.saturating_add(bytes) > MAX_CACHE_BYTES {
             self.clear_entries();
             self.uncached = true;
@@ -126,17 +143,18 @@ impl ParseCache {
         }
         self.bytes += bytes;
         self.entries.insert(
-            key,
+            index,
             CachedFile {
                 digest,
-                graph: graph.clone(),
+                imports: graph.imports.clone(),
+                exports: graph.exports.clone(),
                 bytes,
             },
         );
     }
 
-    fn remove(&mut self, file: &str) {
-        if let Some(entry) = self.entries.remove(file) {
+    fn remove(&mut self, index: usize) {
+        if let Some(entry) = self.entries.remove(&index) {
             self.bytes = self.bytes.saturating_sub(entry.bytes);
         }
     }
@@ -165,14 +183,13 @@ impl ParseCache {
             .saturating_add(self.root.as_deref().map_or(0, |path| {
                 size_of::<PathBuf>().saturating_add(path.to_string_lossy().len().saturating_mul(2))
             }))
-            .saturating_add(self.files.iter().map(tree_entry_storage_size).sum())
+            .saturating_add(vector_storage_size(&self.files, self.files.capacity()))
     }
 }
 
 fn graph_storage_size(graph: &GraphFile, source_bytes: usize) -> usize {
     source_bytes
         .saturating_add(size_of::<CachedFile>())
-        .saturating_add(owned_string_storage_size(&graph.path))
         .saturating_add(vector_storage_size(
             &graph.imports,
             graph.imports.capacity(),
@@ -183,14 +200,8 @@ fn graph_storage_size(graph: &GraphFile, source_bytes: usize) -> usize {
         ))
 }
 
-fn cached_file_storage_size(file: &String, graph: &GraphFile, source_bytes: usize) -> usize {
-    CACHE_TREE_NODE_BYTES
-        .saturating_add(owned_string_storage_size(file))
-        .saturating_add(graph_storage_size(graph, source_bytes))
-}
-
-fn tree_entry_storage_size(file: &String) -> usize {
-    CACHE_TREE_NODE_BYTES.saturating_add(owned_string_storage_size(file))
+fn cached_file_storage_size(graph: &GraphFile, source_bytes: usize) -> usize {
+    CACHE_TREE_NODE_BYTES.saturating_add(graph_storage_size(graph, source_bytes))
 }
 
 fn vector_storage_size(values: &[String], capacity: usize) -> usize {
