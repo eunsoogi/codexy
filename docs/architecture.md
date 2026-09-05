@@ -80,10 +80,11 @@ Codex discovers these maintenance workflows from
 [`.agents/skills`](../.agents/skills) while working in this repository. They
 remain deliberately outside the Codexy plugin payload.
 
-| Skill                     | Decision        | Trigger / use                                                                                                                          | Responsibility                                                                                                 |
-| ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `plugin-marketplace-prep` | Repository-only | Preparing manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation, or distribution readiness. | Proves the Codexy install and marketplace surface without making this workflow part of that installed surface. |
-| `release-engineering`     | Repository-only | Preparing versions, changelogs, release notes, tags, packaging, release flows, distribution checks, rollback plans, or publishing.     | Owns version, artifact, publication, and rollback gates for this repository.                                   |
+| Skill                     | Decision        | Trigger / use                                                                                                                          | Responsibility                                                                                                              |
+| ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `plugin-marketplace-prep` | Repository-only | Preparing manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation, or distribution readiness. | Proves the Codexy install and marketplace surface without making this workflow part of that installed surface.              |
+| `release-engineering`     | Repository-only | Preparing versions, changelogs, release notes, tags, packaging, release flows, distribution checks, rollback plans, or publishing.     | Owns version, artifact, publication, and rollback gates for this repository.                                                |
+| `skill-evaluation`        | Repository-only | Evaluating a shipped skill with private cases for semantic behavior, authority boundaries, schema fidelity, or execution cost.         | Separates evaluator-owned cases and evidence from shipped prompts while recording exact schema and measured execution cost. |
 
 ### Overlap boundaries
 

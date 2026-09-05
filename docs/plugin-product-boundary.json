@@ -116,7 +116,11 @@
     {
       "id": "skills.repository",
       "category": "skills",
-      "sources": [".agents/skills/plugin-marketplace-prep", ".agents/skills/release-engineering"],
+      "sources": [
+        ".agents/skills/plugin-marketplace-prep",
+        ".agents/skills/release-engineering",
+        ".agents/skills/skill-evaluation"
+      ],
       "target": "repository-only",
       "disposition": "move"
     },
