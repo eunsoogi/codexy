@@ -46,11 +46,18 @@ $PayloadTemplates = @{
 $Script:Records = [Collections.Generic.List[object]]::new()
 
 function Get-BytesHash([byte[]]$Bytes) {
-    return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Bytes)).ToLowerInvariant()
+    $normalizedBytes = [byte[]]::new(0); if ($null -ne $Bytes) { $normalizedBytes = [byte[]]$Bytes }
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [Convert]::ToHexString($hasher.ComputeHash($normalizedBytes, 0, $normalizedBytes.Length)).ToLowerInvariant()
+    } finally {
+        $hasher.Dispose()
+    }
 }
 
 function Get-Base64([byte[]]$Bytes) {
-    return [Convert]::ToBase64String($Bytes)
+    $normalizedBytes = [byte[]]::new(0); if ($null -ne $Bytes) { $normalizedBytes = [byte[]]$Bytes }
+    return [Convert]::ToBase64String($normalizedBytes)
 }
 
 function Invoke-Hook([byte[]]$Payload) {
