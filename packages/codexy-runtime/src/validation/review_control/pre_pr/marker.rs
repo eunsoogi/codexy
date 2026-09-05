@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use serde_json::{Map, Value};
 
@@ -94,7 +94,7 @@ pub(crate) fn check_marker(control: &Map<String, Value>) -> Result<(), String> {
     }
     let mut ids = std::collections::HashSet::new();
     let mut turns = std::collections::HashSet::new();
-    let mut ordinal = None;
+    let mut ordinals = HashMap::new();
     for (index, value) in refs.iter().enumerate() {
         let reference = object(Some(value), "pre-PR event reference")?;
         reject_unknown(
@@ -106,16 +106,16 @@ pub(crate) fn check_marker(control: &Map<String, Value>) -> Result<(), String> {
             return Err("pre-PR import marker does not bind the history prefix".into());
         }
         let id = text(reference, "id", "pre-PR event reference")?;
-        text(reference, "thread_id", "pre-PR event reference")?;
+        let thread_id = text(reference, "thread_id", "pre-PR event reference")?;
         let turn = text(reference, "turn_id", "pre-PR event reference")?;
         if !ids.insert(id) || !turns.insert(turn) {
             return Err("pre-PR import marker has duplicate event references".into());
         }
         let next = number(reference, "ordinal", "pre-PR event reference")?;
-        if ordinal.is_some_and(|last| next <= last) {
+        if ordinals.get(thread_id).is_some_and(|last| next <= *last) {
             return Err("pre-PR import marker event order is not increasing".into());
         }
-        ordinal = Some(next);
+        ordinals.insert(thread_id.to_owned(), next);
     }
     Ok(())
 }

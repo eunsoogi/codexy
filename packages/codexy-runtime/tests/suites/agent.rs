@@ -55,6 +55,9 @@ mod validator_review_control;
 #[path = "../validator_review_control_import.rs"]
 mod validator_review_control_import;
 
+#[path = "../validator_review_control_import_contract.rs"]
+mod validator_review_control_import_contract;
+
 #[path = "../validator_review_control_identity.rs"]
 mod validator_review_control_identity;
 
