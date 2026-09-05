@@ -72,7 +72,7 @@ impl FakeLsp {
                 Self::send(&json!({
                     "jsonrpc": "2.0",
                     "id": message.get("id").cloned().unwrap_or(Value::Null),
-                    "result": { "capabilities": { "diagnosticProvider": {} } }
+                    "result": { "capabilities": if std::env::var_os("CODEXY_FAKE_LSP_NO_PULL_DIAGNOSTICS").is_none() { json!({ "diagnosticProvider": {} }) } else { json!({}) } }
                 }))
             }
             Some("textDocument/didOpen") => self.capture_uri("openedUri", message),

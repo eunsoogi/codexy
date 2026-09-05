@@ -4,6 +4,8 @@ use super::*;
 mod validation;
 #[path = "lsp_batch/installed.rs"]
 mod installed;
+#[path = "lsp_batch/parity.rs"]
+mod parity;
 
 fn start_client(
     extra_env: &[(&str, &str)],

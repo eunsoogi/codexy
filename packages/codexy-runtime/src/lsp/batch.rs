@@ -10,6 +10,7 @@ use crate::lsp::pathing::{
 };
 use crate::lsp::protocol::{LspMethod, LspRequest, failure_result};
 use crate::lsp::session::LspSession;
+use crate::lsp::session_io::{ensure_workspace_ready, stderr_text};
 use crate::lsp::tools::{numeric_integer, text_json};
 use crate::mcp::ToolDef;
 
@@ -140,8 +141,17 @@ pub(super) fn call(args: &Value) -> Result<Value> {
             return text_json(&json!({ "status": "error", "results": results }));
         }
     };
-    let results = session.run_batch(&requests, deadline);
+    let mut results = session.run_batch(&requests, deadline);
     session.shutdown_until(Some(deadline))?;
+    if let Err(error) = ensure_workspace_ready(&session.stderr) {
+        let reason = error.to_string();
+        let stderr = stderr_text(&session.stderr);
+        for (request, result) in requests.iter().zip(results.iter_mut()) {
+            if result.get("status").and_then(Value::as_str) == Some("ok") {
+                *result = failure_result(request, &reason, &stderr);
+            }
+        }
+    }
     let status = if results
         .iter()
         .all(|result| result.get("status").and_then(Value::as_str) == Some("ok"))

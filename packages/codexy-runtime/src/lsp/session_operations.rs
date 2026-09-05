@@ -15,6 +15,8 @@ use crate::lsp::session_io::{ensure_workspace_ready, stderr_text};
 
 impl LspSession {
     pub(super) fn run(&mut self, request: &LspRequest) -> Result<Value> {
+        let text = fs::read_to_string(&request.file_path)
+            .with_context(|| format!("reading {}", request.file_path))?;
         let initialize = self.initialize(
             request,
             Instant::now() + Duration::from_millis(request.timeout_ms),
@@ -26,6 +28,8 @@ impl LspSession {
             request,
             Instant::now() + Duration::from_millis(request.timeout_ms),
             &initialize,
+            Some(&text),
+            true,
         )
     }
 
@@ -56,7 +60,7 @@ impl LspSession {
             }
             let request_deadline =
                 (Instant::now() + Duration::from_millis(request.timeout_ms)).min(deadline);
-            match self.run_request(request, request_deadline, &initialize) {
+            match self.run_request(request, request_deadline, &initialize, None, false) {
                 Ok(mut result) => {
                     if result.get("status").and_then(Value::as_str) == Some("ok") {
                         if let Err(error) = ensure_workspace_ready(&self.stderr) {
@@ -116,17 +120,27 @@ impl LspSession {
         request: &LspRequest,
         deadline: Instant,
         initialize: &Value,
+        file_text: Option<&str>,
+        allow_incomplete_diagnostics: bool,
     ) -> Result<Value> {
         let uri = to_file_uri(&request.file_path)?;
-        let text = fs::read_to_string(&request.file_path)
-            .with_context(|| format!("reading {}", request.file_path))?;
+        let text = match file_text {
+            Some(text) => text.to_owned(),
+            None => fs::read_to_string(&request.file_path)
+                .with_context(|| format!("reading {}", request.file_path))?,
+        };
         let notification_start = self.notifications.len();
         self.open_document(request, &uri, &text)?;
         let mut result = Value::Null;
         if matches!(request.method, LspMethod::Diagnostics)
             && !supports_pull_diagnostics(initialize)
         {
-            self.wait_for_publish_diagnostics(&uri, notification_start, deadline)?;
+            self.wait_for_publish_diagnostics(
+                &uri,
+                notification_start,
+                deadline,
+                allow_incomplete_diagnostics,
+            )?;
         } else {
             let response = self.request_until(
                 request.method.method_name(),
@@ -180,10 +194,14 @@ impl LspSession {
         uri: &str,
         notification_start: usize,
         deadline: Instant,
+        allow_incomplete: bool,
     ) -> Result<()> {
         while !has_publish_diagnostics(&self.notifications[notification_start..], uri) {
             self.check_child()?;
             let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                if allow_incomplete {
+                    return Ok(());
+                }
                 anyhow::bail!("Timed out waiting for diagnostics");
             };
             match self
@@ -196,6 +214,7 @@ impl LspSession {
                     }
                 }
                 Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) if allow_incomplete => return Ok(()),
                 Err(RecvTimeoutError::Disconnected) => {
                     anyhow::bail!("LSP server stdout closed before diagnostics")
                 }
