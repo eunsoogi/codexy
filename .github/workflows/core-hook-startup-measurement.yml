@@ -1,0 +1,89 @@
+name: Core hook startup measurement
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_sha:
+        description: Exact baseline commit to compare
+        required: true
+        default: 9f8c9e207054294b834ef621ae80eb4a8c963793
+        type: string
+      head_sha:
+        description: Exact current commit to compare
+        required: true
+        type: string
+
+run-name: Core hook startup ${{ inputs.baseline_sha }} vs ${{ inputs.head_sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: ${{ matrix.revision }} / ${{ matrix.concern }} / ${{ matrix.event }}
+    runs-on: windows-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [baseline, current]
+        concern: [child, subagent, thread]
+        event: [PreToolUse, PermissionRequest]
+    steps:
+      - name: Checkout measurement controller
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.head_sha }}
+          path: .measurement-controller
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          path: .measurement-repo
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Verify exact measurement inputs and checkout
+        shell: pwsh
+        env:
+          BASELINE_SHA: ${{ inputs.baseline_sha }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          REVISION: ${{ matrix.revision }}
+        run: |
+          $repo = (Resolve-Path -LiteralPath ".measurement-repo").Path
+          $shaPattern = '^[0-9a-f]{40}$'
+          if ($env:BASELINE_SHA -notmatch $shaPattern -or $env:HEAD_SHA -notmatch $shaPattern) {
+            throw "baseline_sha and head_sha must be lowercase full commit SHAs"
+          }
+          if ($env:BASELINE_SHA -eq $env:HEAD_SHA) { throw "baseline_sha and head_sha must differ" }
+          if ($env:REVISION -notin @("baseline", "current")) { throw "unexpected revision" }
+          $actual = (git -C $repo rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SHA) {
+            throw "checkout identity mismatch: expected $env:EXPECTED_SHA, got $actual"
+          }
+          if (git -C $repo status --porcelain) { throw "measurement checkout is not clean" }
+      - name: Measure native production hook launcher
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ matrix.revision == 'baseline' && inputs.baseline_sha || inputs.head_sha }}
+          REVISION: ${{ matrix.revision }}
+          CONCERN: ${{ matrix.concern }}
+          EVENT_NAME: ${{ matrix.event }}
+          OUTPUT_PATH: ${{ runner.temp }}\codexy-core-hook-measurement\results.jsonl
+        run: |
+          & .measurement-controller/scripts/measure-core-hook-startup.ps1 `
+            -RepoRoot (Resolve-Path -LiteralPath ".measurement-repo").Path `
+            -ExpectedSha $env:EXPECTED_SHA `
+            -Revision $env:REVISION `
+            -Concern $env:CONCERN `
+            -EventName $env:EVENT_NAME `
+            -OutputPath $env:OUTPUT_PATH
+      - name: Upload measurement evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: core-hook-startup-${{ matrix.revision }}-${{ matrix.concern }}-${{ matrix.event }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}\codexy-core-hook-measurement\results.jsonl
+          if-no-files-found: warn
+          retention-days: 14
