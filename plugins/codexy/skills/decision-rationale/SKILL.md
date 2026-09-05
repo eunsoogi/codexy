@@ -36,23 +36,36 @@ the reason or assumption; record it without reopening the decision. Use
 `unavailable` when the supplied context cannot ground the field and `none` only
 when no unsupported dependency is needed.
 
-## Closed Corpus Resolutions
+## Extraction Procedure
 
-When the reason and evidence exactly match a row below, use its assumption and
-reopen condition verbatim:
+Treat every eligible request as a new analysis. MUST NOT look up, reuse, or
+complete a canned answer for a familiar reason or evidence phrase. Extract the
+four values in order from the request's supplied material:
 
-```text
-compatibility | existing consumers call the public verbs | the compatibility window is sufficient | consumer inventory reaches zero for a deprecated verb
-preserve a maintainer safety requirement | the repository policy requires the threshold | the threshold remains an effective complexity proxy | the maintainer explicitly changes the threshold or governed scope
-cross-surface consumers overlap | role names are consumed by routing and registration | no isolated migration can preserve all consumers | a separately owned cross-surface migration controls every consumer
-avoid duplicate authority | current validation already reads that catalog | the existing catalog can represent every supported server | a supported host requires data the catalog cannot express
-avoid meaningless diffs | artifact bytes already match the governing source | none | the governing source or artifact bytes change
-preserve independent trust evidence | each phase has a distinct authentic verifier | extra phase visibility remains affordable | one authoritative producer atomically proves all three phases
-avoid a new framework | frontmatter already provides names and descriptions | ordinary documentation review catches future drift | repeated measured drift survives existing review
-preserve Wave 5 path isolation | each candidate has an exclusive subtree | local duplication remains bounded | a proven cross-candidate invariant requires a separately owned integration surface
-this is a multi-issue Wave | workflow profiles classify multi-lane ownership as strict | the reviewer is observable on the exact head | the issue is re-scoped before implementation to a non-multi-lane profile
-exclusive write ceiling | the candidate owns one disjoint directory | no hidden shared consumer exists | overlap or a shared consumer is discovered
-```
+1. Copy the user's stated reason into `stated_reason`. Preserve its meaning and
+   wording rather than strengthening it. Use `unavailable` when no reason was
+   supplied.
+2. Identify only the explicit observations or claims the user supplied as
+   evidence for that reason and record them in `evidence_support`. Do not add
+   facts, validate the claims, or treat the option's outcome as evidence. Use
+   `unavailable` when no explicit evidence was supplied.
+3. Ask what single, smallest unproven dependency must hold for the stated reason
+   to support the choice. Record that dependency in `unsupported_assumption`;
+   use `none` only when the supplied reason and evidence require no additional
+   unproven dependency. Do not invent a policy, consumer, threshold, or other
+   context to fill this field.
+4. State the first observable change in the supplied context that would break
+   that assumption or the reason and make reconsideration relevant. Record it in
+   `reopen_condition` without reopening, judging, or changing the decision. Use
+   `unavailable` when no observable condition can be grounded in the supplied
+   material.
+
+Keep the distinction between the user's evidence and the analysis of what it
+does or does not establish. When wording is quoted or negated, treat the quote
+or negation as supplied content; do not silently convert it into the user's own
+claim. When the request is incomplete or ambiguous, preserve the available
+material and use `unavailable` where the corresponding value cannot be grounded
+instead of guessing.
 
 MUST NOT add a preface, explanation, status, verdict, recommendation, second
 receipt, or additional field.
