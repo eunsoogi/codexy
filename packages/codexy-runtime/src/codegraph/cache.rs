@@ -165,12 +165,7 @@ impl ParseCache {
             .saturating_add(self.root.as_deref().map_or(0, |path| {
                 size_of::<PathBuf>().saturating_add(path.to_string_lossy().len().saturating_mul(2))
             }))
-            .saturating_add(
-                self.files
-                    .iter()
-                    .map(|file| tree_entry_storage_size(file))
-                    .sum(),
-            )
+            .saturating_add(self.files.iter().map(tree_entry_storage_size).sum())
     }
 }
 

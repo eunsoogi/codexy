@@ -18,11 +18,11 @@ pub(super) fn parse_language(
     source: &str,
 ) -> (Vec<String>, Vec<String>) {
     match extension {
-        ".html" | ".htm" | ".svg" => parse_markup(&source),
-        ".css" | ".scss" | ".sass" | ".less" => parse_stylesheet(&source),
+        ".html" | ".htm" | ".svg" => parse_markup(source),
+        ".css" | ".scss" | ".sass" | ".less" => parse_stylesheet(source),
         _ => {
-            let mask = language_mask(&source, extension);
-            parse_masked_language(root, file, extension, indexed_files, &source, &mask)
+            let mask = language_mask(source, extension);
+            parse_masked_language(root, file, extension, indexed_files, source, &mask)
         }
     }
 }

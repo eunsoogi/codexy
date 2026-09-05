@@ -44,9 +44,9 @@ pub(super) fn parse_file(
 }
 
 fn parse_javascript(source: &str) -> (Vec<String>, Vec<String>) {
-    let mask = code_position_mask(&source);
+    let mask = code_position_mask(source);
     let imports = regex_values(
-        &source,
+        source,
         &mask,
         &[
             r#"\bimport\s*(?:[^"'()]*?\s*from\s*)?["']([^"']+)["']"#,
@@ -57,13 +57,13 @@ fn parse_javascript(source: &str) -> (Vec<String>, Vec<String>) {
         ],
     );
     let mut exports = regex_values(
-        &source,
+        source,
         &mask,
         &[
             r"\bexport\s+(?:(?:async\s+)?(?:function|class|const|let|var)|interface|type|enum)\s+([A-Za-z_$][\w$]*)",
         ],
     );
-    exports.extend(export_list_values(&source, &mask));
+    exports.extend(export_list_values(source, &mask));
     (imports, exports)
 }
 
