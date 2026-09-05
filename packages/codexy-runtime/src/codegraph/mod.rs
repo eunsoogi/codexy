@@ -1,4 +1,5 @@
 mod candidates;
+mod errors;
 mod files;
 mod language;
 mod markup;
@@ -15,9 +16,12 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use self::errors::{begin_operation, take_errors};
 use self::files::{result_limit, walk_code_files};
 use self::parse::parse_file;
 use self::resolve::{graph_path, resolve_import};
+
+pub use self::errors::{CodegraphError, CodegraphErrorKind};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphFile {
@@ -49,6 +53,10 @@ pub struct Graph {
     pub limit: usize,
     pub truncated: bool,
     pub metadata: GraphMetadata,
+    #[serde(skip_serializing_if = "is_false")]
+    pub partial: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<CodegraphError>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -63,6 +71,10 @@ pub struct ReverseDeps {
     pub path: String,
     pub dependents: Vec<Dependent>,
     pub limit: usize,
+    #[serde(skip_serializing_if = "is_false")]
+    pub partial: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<CodegraphError>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -79,10 +91,15 @@ pub struct Neighborhood {
     pub edges: Vec<GraphEdge>,
     pub limit: usize,
     pub truncated: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub partial: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<CodegraphError>,
 }
 
 #[must_use]
 pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
+    begin_operation();
     let bounded_limit = result_limit(limit);
     let all_files = walk_code_files(root);
     let selected_files = all_files
@@ -110,6 +127,7 @@ pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
         })
         .collect::<Vec<_>>();
     let truncated = all_files.len() > selected_files.len();
+    let errors = take_errors();
     Graph {
         root: root.to_path_buf(),
         files,
@@ -118,6 +136,8 @@ pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
         limit: bounded_limit,
         truncated,
         metadata: GraphMetadata { truncated },
+        partial: !errors.is_empty(),
+        errors,
     }
 }
 
@@ -136,11 +156,15 @@ pub fn reverse_deps(root: &Path, target_path: &str, limit: Option<usize>) -> Rev
         })
         .take(bounded_limit)
         .collect::<Vec<_>>();
+    let partial = graph.partial;
+    let errors = graph.errors;
     ReverseDeps {
         root: root.to_path_buf(),
         path: target,
         dependents,
         limit: bounded_limit,
+        partial,
+        errors,
     }
 }
 
@@ -195,6 +219,8 @@ pub fn neighborhood(
         .collect::<Vec<_>>();
     truncated = truncated || queue.iter().any(|(path, _)| !seen.contains(path));
     truncated = truncated || neighborhood_edges.len() > bounded_limit;
+    let partial = graph.partial;
+    let errors = graph.errors;
     Neighborhood {
         root: root.to_path_buf(),
         path: start,
@@ -203,7 +229,13 @@ pub fn neighborhood(
         edges: neighborhood_edges.into_iter().take(bounded_limit).collect(),
         limit: bounded_limit,
         truncated,
+        partial,
+        errors,
     }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[must_use]

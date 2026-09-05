@@ -1,5 +1,10 @@
 use super::*;
 
+#[path = "codegraph_errors.rs"]
+mod codegraph_errors;
+#[path = "codegraph_root.rs"]
+mod codegraph_root;
+
 #[test]
 fn codegraph_stdio_preserves_protocol_and_search_boundaries()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -16,15 +21,68 @@ fn codegraph_stdio_preserves_protocol_and_search_boundaries()
     let init = client.send(&json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}))?;
     assert_eq!(init["result"]["serverInfo"]["name"], "codexy-codegraph");
     assert_eq!(init["result"]["serverInfo"]["version"], codexy_runtime::version::runtime_version());
+    let omitted_root = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"codegraph_index","arguments":{"limit":10}}
+    }))?;
+    let omitted_graph: Value = serde_json::from_str(
+        omitted_root["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("omitted-root text")?,
+    )?;
+    let expected_root = relative_root.path().canonicalize()?;
+    assert_eq!(
+        omitted_graph["root"].as_str().ok_or("omitted-root path")?,
+        expected_root.to_str().ok_or("non-UTF-8 root path")?
+    );
+    assert!(omitted_graph["partial"].is_null());
+    assert!(omitted_graph["errors"].is_null());
     codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(&mut client)?;
     codegraph_stdio_matches_absolute_paths_when_root_is_relative(
         &mut client,
         &dependency,
         &entry,
     )?;
-    codegraph_stdio_keeps_outside_absolute_paths_distinct(&mut client)?;
+    codegraph_errors::codegraph_stdio_keeps_outside_absolute_paths_distinct(&mut client)?;
     super::codegraph_search_bounds::search_bounds_cases(&mut client)?;
     Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn codegraph_stdio_rejects_an_explicit_unreadable_root()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let repository = tempfile::tempdir()?;
+    let unreadable = repository.path().join("unreadable-repository");
+    std::fs::create_dir(&unreadable)?;
+    let mut permissions = std::fs::metadata(&unreadable)?.permissions();
+    permissions.set_mode(0o000);
+    std::fs::set_permissions(&unreadable, permissions)?;
+    let mut client = McpClient::spawn_in(
+        env!("CARGO_BIN_EXE_codexy-mcp-codegraph"),
+        repository.path(),
+    )?;
+    let response = client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"tools/call",
+        "params":{"name":"codegraph_index","arguments":{"root":unreadable}}
+    }))?;
+    let mut restore = std::fs::metadata(&unreadable)?.permissions();
+    restore.set_mode(0o700);
+    std::fs::set_permissions(&unreadable, restore)?;
+    assert_eq!(response["error"]["code"], -32000);
+    assert!(response["error"]["message"]
+        .as_str()
+        .ok_or("missing root error message")?
+        .contains("root_unreadable"));
+    Ok(())
+}
+
+#[cfg(not(unix))]
+#[test]
+fn codegraph_explicit_unreadable_root_fixture_is_unavailable_on_non_unix() {
+    eprintln!("unreadable-root fixture is unavailable on this operating system");
 }
 
 fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(
@@ -97,7 +155,9 @@ fn codegraph_stdio_indexes_searches_and_bounds_missing_neighbors(
             .as_str()
             .ok_or("text")?,
     )?;
-    assert_eq!(neighbors, json!([]));
+    assert_eq!(neighbors["partial"], true);
+    assert_eq!(neighbors["errors"][0]["kind"], "source_missing");
+    assert_eq!(neighbors["imports"], json!([]));
     Ok(())
 }
 
@@ -168,81 +228,6 @@ fn codegraph_stdio_matches_absolute_paths_when_root_is_relative(
     assert!(
         !nodes.iter().any(|node| node["path"] == "dep.rs"),
         "float-encoded depth must be honored"
-    );
-    Ok(())
-}
-
-fn codegraph_stdio_keeps_outside_absolute_paths_distinct(
-    client: &mut McpClient,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let root = tempfile::tempdir()?;
-    let outside = tempfile::tempdir()?;
-    let outside_dep = outside.path().join("dep.rs");
-    std::fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
-    let canonical_outside = outside_dep.canonicalize()?;
-    let mirrored_suffix = canonical_outside
-        .components()
-        .filter_map(|component| match component {
-            std::path::Component::Normal(value) => Some(value),
-            _ => None,
-        })
-        .collect::<std::path::PathBuf>();
-    let mirrored_dep = root.path().join(mirrored_suffix);
-    let mirrored_dir = mirrored_dep.parent().ok_or("mirrored parent")?;
-    std::fs::create_dir_all(mirrored_dir)?;
-    std::fs::write(
-        &mirrored_dep,
-        "mod leaf;\npub const MIRRORED: u8 = leaf::LEAF;\n",
-    )?;
-    std::fs::write(mirrored_dir.join("leaf.rs"), "pub const LEAF: u8 = 1;\n")?;
-    std::fs::write(
-        mirrored_dir.join("entry.rs"),
-        "mod dep;\npub const ENTRY: u8 = dep::MIRRORED;\n",
-    )?;
-
-    let reverse_deps = client.send(&json!({
-        "jsonrpc":"2.0","id":2,"method":"tools/call",
-        "params":{"name":"codegraph_reverse_deps","arguments":{"root":root.path(),"path":outside_dep,"limit":10}}
-    }))?;
-    let reverse_payload: Value = serde_json::from_str(
-        reverse_deps["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("reverse deps text")?,
-    )?;
-    assert!(
-        reverse_payload["dependents"]
-            .as_array()
-            .ok_or("reverse dependents must be array")?
-            .is_empty(),
-        "outside absolute path must not alias mirrored in-root reverse deps"
-    );
-
-    let neighborhood = client.send(&json!({
-        "jsonrpc":"2.0","id":3,"method":"tools/call",
-        "params":{"name":"codegraph_neighborhood","arguments":{"root":root.path(),"path":outside_dep,"depth":1,"limit":10}}
-    }))?;
-    let neighborhood_payload: Value = serde_json::from_str(
-        neighborhood["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("neighborhood text")?,
-    )?;
-    assert!(
-        neighborhood_payload["edges"]
-            .as_array()
-            .ok_or("neighborhood edges must be array")?
-            .is_empty(),
-        "outside absolute path must not alias mirrored in-root neighborhood edges"
-    );
-    let nodes = neighborhood_payload["nodes"]
-        .as_array()
-        .ok_or("neighborhood nodes must be array")?;
-    assert!(
-        !nodes.iter().any(|node| {
-            node["path"]
-                .as_str()
-                .is_some_and(|path| path.ends_with("leaf.rs"))
-        }),
-        "outside absolute path must not traverse mirrored in-root imports"
     );
     Ok(())
 }

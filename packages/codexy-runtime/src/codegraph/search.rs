@@ -1,4 +1,3 @@
-use std::fs;
 use std::ops::Range;
 use std::path::Path;
 
@@ -6,7 +5,8 @@ use anyhow::{Context as _, Result};
 use regex::Regex;
 use serde::Serialize;
 
-use super::files::{result_limit, walk_code_files};
+use super::errors::{CodegraphError, begin_operation, take_errors};
+use super::files::{read_source, result_limit, walk_code_files};
 
 pub(super) const SEARCH_MATCH_LIMIT_BYTES: usize = 2_048;
 pub(super) const SEARCH_CONTENT_LIMIT_BYTES: usize = 8_192;
@@ -18,6 +18,10 @@ pub(super) struct SearchOutput {
     #[serde(rename = "returnedMatchCount")]
     pub returned_match_count: usize,
     pub truncation: SearchTruncation,
+    #[serde(skip_serializing_if = "is_false")]
+    pub partial: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<CodegraphError>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -39,6 +43,7 @@ pub(super) struct SearchTruncation {
 }
 
 pub(super) fn search(root: &Path, query: &str, limit: Option<usize>) -> Result<SearchOutput> {
+    begin_operation();
     let pattern = Regex::new(query).with_context(|| format!("invalid search regex: {query}"))?;
     let mut output = SearchOutput {
         matches: Vec::new(),
@@ -48,19 +53,19 @@ pub(super) fn search(root: &Path, query: &str, limit: Option<usize>) -> Result<S
         },
         returned_match_count: 0,
         truncation: SearchTruncation::default(),
+        partial: false,
+        errors: Vec::new(),
     };
     let result_limit = result_limit(limit);
     for file in walk_code_files(root) {
-        let Ok(source) = fs::read_to_string(root.join(&file)) else {
-            continue;
-        };
+        let source = read_source(root, &file);
         for (index, line) in source.lines().enumerate() {
             let Some(found) = pattern.find(line) else {
                 continue;
             };
             if output.matches.len() >= result_limit {
                 output.truncation.result_count = true;
-                return Ok(output);
+                return Ok(finish(output));
             }
             let formatted = format!("./{file}:{}:{line}", index + 1);
             let line_start = formatted.len() - line.len();
@@ -70,11 +75,21 @@ pub(super) fn search(root: &Path, query: &str, limit: Option<usize>) -> Result<S
                 SEARCH_MATCH_LIMIT_BYTES,
             );
             if !push_if_content_fits(&mut output, line, line_truncated)? {
-                return Ok(output);
+                return Ok(finish(output));
             }
         }
     }
-    Ok(output)
+    Ok(finish(output))
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+fn finish(mut output: SearchOutput) -> SearchOutput {
+    output.errors = take_errors();
+    output.partial = !output.errors.is_empty();
+    output
 }
 
 fn push_if_content_fits(

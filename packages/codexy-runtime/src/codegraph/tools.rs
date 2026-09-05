@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
@@ -8,7 +7,8 @@ use serde_json::{Value, json};
 use crate::codegraph::{build_graph, neighborhood, reverse_deps};
 use crate::mcp::{ToolDef, text_result};
 
-use super::files::{repo_root, result_limit, walk_code_files};
+use super::errors::{CodegraphError, CodegraphErrorKind, begin_operation, take_errors};
+use super::files::{read_source, repo_root, result_limit, walk_code_files};
 use super::search::search;
 
 #[must_use]
@@ -54,7 +54,7 @@ pub fn tools() -> Vec<ToolDef> {
 /// Returns an error when required arguments are missing, a search regex is invalid, JSON
 /// serialization fails, or the tool name is unknown.
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
-    let root = repo_root(args.get("root").and_then(Value::as_str));
+    let root = repo_root(root_argument(args)?)?;
     match name {
         "codegraph_overview" => text_json(&overview(&root, limit(args))),
         "codegraph_search" => {
@@ -65,7 +65,20 @@ pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
                 limit(args),
             )?)?))
         }
-        "codegraph_neighbors" => text_json(&imports_for(&root, string_arg(args, "path")?)),
+        "codegraph_neighbors" => {
+            begin_operation();
+            let imports = imports_for(&root, string_arg(args, "path")?);
+            let errors = take_errors();
+            if errors.is_empty() {
+                text_json(&imports)
+            } else {
+                text_json(&PartialImports {
+                    imports,
+                    partial: true,
+                    errors,
+                })
+            }
+        }
         "codegraph_index" => text_json(&build_graph(&root, limit(args))),
         "codegraph_reverse_deps" => {
             text_json(&reverse_deps(&root, string_arg(args, "path")?, limit(args)))
@@ -87,6 +100,13 @@ struct ImportLine {
 }
 
 #[derive(Debug, Serialize)]
+struct PartialImports {
+    imports: Vec<ImportLine>,
+    partial: bool,
+    errors: Vec<CodegraphError>,
+}
+
+#[derive(Debug, Serialize)]
 struct ImportEdgeLine {
     file: String,
     line: usize,
@@ -101,9 +121,14 @@ struct Overview {
     files: Vec<String>,
     #[serde(rename = "importEdges")]
     import_edges: Vec<ImportEdgeLine>,
+    #[serde(skip_serializing_if = "is_false")]
+    partial: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    errors: Vec<CodegraphError>,
 }
 
 fn overview(root: &Path, limit: Option<usize>) -> Overview {
+    begin_operation();
     let files = walk_code_files(root)
         .into_iter()
         .take(result_limit(limit))
@@ -122,19 +147,19 @@ fn overview(root: &Path, limit: Option<usize>) -> Overview {
         })
         .take(300)
         .collect::<Vec<_>>();
+    let errors = take_errors();
     Overview {
         root: root.to_path_buf(),
         file_count: files.len(),
         files,
         import_edges,
+        partial: !errors.is_empty(),
+        errors,
     }
 }
 
 fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
-    let path = root.join(file_path);
-    let Ok(text) = fs::read_to_string(path) else {
-        return Vec::new();
-    };
+    let text = read_source(root, file_path);
     text.lines()
         .enumerate()
         .map(|(index, line)| ImportLine {
@@ -151,6 +176,10 @@ fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
         .collect()
 }
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 fn text_json<T: Serialize>(value: &T) -> Result<Value> {
     Ok(text_result(&serde_json::to_string_pretty(value)?))
 }
@@ -160,6 +189,19 @@ fn string_arg<'a>(args: &'a Value, name: &str) -> Result<&'a str> {
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
         .with_context(|| format!("{name} is required"))
+}
+
+fn root_argument(args: &Value) -> Result<Option<&str>> {
+    let Some(value) = args.get("root") else {
+        return Ok(None);
+    };
+    value.as_str().map(Some).ok_or_else(|| {
+        anyhow::Error::new(CodegraphError {
+            kind: CodegraphErrorKind::RootInvalid,
+            path: "root".to_owned(),
+            message: "repository root must be a string when provided".to_owned(),
+        })
+    })
 }
 
 fn limit(args: &Value) -> Option<usize> {
