@@ -98,22 +98,52 @@ fn bound_content(output: &mut SearchOutput) {
         return;
     }
     output.truncation.content_bytes = true;
-    while output.errors.len() > 1 && serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
-        output.errors.pop();
+    let error_count = largest_fitting_error_prefix(output);
+    output.errors.truncate(error_count);
+    if serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
+        let match_count = largest_fitting_match_prefix(output);
+        output.matches.truncate(match_count);
+        output.returned_match_count = match_count;
     }
     if serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
-        if let Some(error) = output.errors.first_mut() {
-            error.path = ".".to_owned();
-            error.message = "error details truncated".to_owned();
-        }
-    }
-    while serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES && !output.matches.is_empty() {
-        output.matches.pop();
-        output.returned_match_count = output.matches.len();
-    }
-    if serialized_size(output) > SEARCH_CONTENT_LIMIT_BYTES {
+        output.matches.clear();
+        output.returned_match_count = 0;
         output.errors.clear();
     }
+}
+
+fn largest_fitting_error_prefix(output: &SearchOutput) -> usize {
+    largest_fitting_prefix(output.errors.len(), |count| {
+        let mut candidate = output.clone();
+        candidate.errors.truncate(count);
+        serialized_size(&candidate)
+    })
+}
+
+fn largest_fitting_match_prefix(output: &SearchOutput) -> usize {
+    largest_fitting_prefix(output.matches.len(), |count| {
+        let mut candidate = output.clone();
+        candidate.matches.truncate(count);
+        candidate.returned_match_count = count;
+        serialized_size(&candidate)
+    })
+}
+
+fn largest_fitting_prefix<F>(length: usize, size: F) -> usize
+where
+    F: Fn(usize) -> usize,
+{
+    let mut low = 0;
+    let mut high = length;
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        if size(middle) <= SEARCH_CONTENT_LIMIT_BYTES {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    low
 }
 
 fn serialized_size(output: &SearchOutput) -> usize {
