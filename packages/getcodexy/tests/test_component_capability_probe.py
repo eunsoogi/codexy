@@ -58,6 +58,24 @@ class CapabilityProcessTests(unittest.TestCase):
             ("nonzero-exit", 9, 0.125, expected),
         )
 
+    def test_windows_probe_accepts_completion_near_five_second_deadline(self) -> None:
+        from codexy_runtime_tools import component_capability_probe_process as probe
+
+        process = unittest.mock.Mock()
+        process.poll.return_value = 0
+        process.returncode = 0
+        process.communicate.return_value = ("", "")
+        cwd = Path.cwd()
+        with (
+            patch.object(probe.os, "name", "nt"),
+            patch.object(probe.subprocess, "Popen", return_value=process),
+            patch.object(probe, "perf_counter", side_effect=(10.0, 10.5, 14.5)),
+        ):
+            result = probe._run(["hook"], cwd, "{}")
+        self.assertEqual((result.category, result.returncode), ("success", 0))
+        self.assertEqual(result.elapsed_seconds, 4.5)
+        self.assertAlmostEqual(process.communicate.call_args.kwargs["timeout"], 4.5)
+
     def test_windows_timeout_cleanup_does_not_drain_inherited_pipes(self) -> None:
         from codexy_runtime_tools import component_capability_probe_process as probe
 
@@ -68,9 +86,12 @@ class CapabilityProcessTests(unittest.TestCase):
             process.poll.return_value = 1
 
         process.kill.side_effect = kill
-        process.communicate.side_effect = subprocess.TimeoutExpired(
-            ["hook"], 5, output=b"partial", stderr=b"diagnostic"
-        )
+        process.communicate.side_effect = [
+            subprocess.TimeoutExpired(
+                ["hook"], 5, output=b"partial", stderr=b"diagnostic"
+            ),
+            ("", ""),
+        ]
         cwd = Path.cwd()
         with (
             patch.object(probe.os, "name", "nt"),
@@ -80,14 +101,19 @@ class CapabilityProcessTests(unittest.TestCase):
                 "_terminate_process_tree",
                 side_effect=lambda target, deadline: target.kill(),
             ),
-            patch.object(probe, "perf_counter", side_effect=(10.0, 10.0, 15.0)),
         ):
             result = probe._run(["hook"], cwd, "{}")
         self.assertEqual(
-            (result.category, result.returncode, result.elapsed_seconds, result.detail),
-            ("timeout", None, 5.0, "diagnostic"),
+            (result.category, result.returncode, result.detail),
+            ("timeout", None, "diagnostic"),
         )
-        process.communicate.assert_called_once_with("{}", timeout=4.0)
+        self.assertEqual(process.communicate.call_count, 2)
+        self.assertEqual(process.communicate.call_args_list[0].args, ("{}",))
+        self.assertGreater(process.communicate.call_args_list[0].kwargs["timeout"], 4.9)
+        self.assertLessEqual(process.communicate.call_args_list[0].kwargs["timeout"], 5)
+        self.assertLessEqual(
+            process.communicate.call_args_list[1].kwargs["timeout"], 1.0
+        )
         process.kill.assert_called_once_with()
 
     @unittest.skipUnless(os.name == "nt", "Windows process-tree regression")
@@ -121,7 +147,7 @@ class CapabilityProcessTests(unittest.TestCase):
             self.assertEqual(result.category, "timeout")
             self.assertIsNone(result.returncode)
             self.assertLess(
-                result.elapsed_seconds, process._RUN_OPTIONS["timeout"] + 0.5
+                result.elapsed_seconds, process._RUN_OPTIONS["timeout"] + 1.5
             )
             self.assertTrue(pid_file.is_file())
             self.assertFalse(support.host_process_active(pid_file))

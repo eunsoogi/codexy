@@ -9,8 +9,8 @@ from time import perf_counter
 
 
 _RUN_OPTIONS = {"capture_output": True, "text": True, "timeout": 5}
-# Reserve part of the single probe deadline for bounded Windows tree cleanup.
-_WINDOWS_CLEANUP_RESERVE = 1.0
+# Post-timeout OS cleanup is bounded separately from the probe's five-second wait.
+_WINDOWS_CLEANUP_TIMEOUT = 1.0
 _RunResult = namedtuple(
     "_RunResult",
     "returncode stdout category elapsed_seconds detail",
@@ -92,18 +92,26 @@ def _run_windows(argv, cwd, input_text, env, deadline):
         cwd=cwd,
         env=env,
     )
+    cleanup_deadline = deadline
     try:
-        remaining = max(0.0, deadline - perf_counter() - _WINDOWS_CLEANUP_RESERVE)
+        remaining = max(0.0, deadline - perf_counter())
         if not remaining:
             raise subprocess.TimeoutExpired(argv, _RUN_OPTIONS["timeout"])
         stdout, stderr = process.communicate(input_text, timeout=remaining)
         return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
     except subprocess.TimeoutExpired:
-        _terminate_process_tree(process, deadline)
+        cleanup_deadline = perf_counter() + _WINDOWS_CLEANUP_TIMEOUT
+        _terminate_process_tree(process, cleanup_deadline)
+        remaining = max(0.0, cleanup_deadline - perf_counter())
+        if remaining:
+            try:
+                process.communicate(timeout=remaining)
+            except (OSError, ValueError, subprocess.TimeoutExpired):
+                pass
         raise
     finally:
         _close_process_pipes(process)
-        _wait_for_exit(process, deadline)
+        _wait_for_exit(process, cleanup_deadline)
 
 
 def _terminate_process_tree(process, deadline):
