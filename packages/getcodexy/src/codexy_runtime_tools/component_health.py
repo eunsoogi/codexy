@@ -103,9 +103,7 @@ def _component_health(
         "version": probe.get("runtime_version"),
     }
     if isinstance(probe.get("_capability_probe"), dict):
-        result["observed"]["capability_probe"] = dict(
-            probe["_capability_probe"]
-        )
+        result["observed"]["capability_probe"] = dict(probe["_capability_probe"])
     for ready, stage, default in (
         (result["started"], "started", "component-start-failed"),
         (result["callable"], "callable", "capability-call-failed"),
