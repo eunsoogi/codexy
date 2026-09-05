@@ -57,3 +57,71 @@ class CapabilityProcessTests(unittest.TestCase):
             (result.category, result.returncode, result.elapsed_seconds, result.detail),
             ("nonzero-exit", 9, 0.125, expected),
         )
+
+    def test_windows_timeout_cleanup_does_not_drain_inherited_pipes(self) -> None:
+        from codexy_runtime_tools import component_capability_probe_process as probe
+
+        process = unittest.mock.Mock()
+        process.poll.return_value = None
+
+        def kill() -> None:
+            process.poll.return_value = 1
+
+        process.kill.side_effect = kill
+        process.communicate.side_effect = subprocess.TimeoutExpired(
+            ["hook"], 5, output=b"partial", stderr=b"diagnostic"
+        )
+        cwd = Path.cwd()
+        with (
+            patch.object(probe.os, "name", "nt"),
+            patch.object(probe.subprocess, "Popen", return_value=process),
+            patch.object(
+                probe,
+                "_terminate_process_tree",
+                side_effect=lambda target, deadline: target.kill(),
+            ),
+            patch.object(probe, "perf_counter", side_effect=(10.0, 10.0, 15.0)),
+        ):
+            result = probe._run(["hook"], cwd, "{}")
+        self.assertEqual(
+            (result.category, result.returncode, result.elapsed_seconds, result.detail),
+            ("timeout", None, 5.0, "diagnostic"),
+        )
+        process.communicate.assert_called_once_with("{}", timeout=4.0)
+        process.kill.assert_called_once_with()
+
+    @unittest.skipUnless(os.name == "nt", "Windows process-tree regression")
+    def test_windows_timeout_kills_cmd_descendant_without_pipe_overrun(self) -> None:
+        from codexy_runtime_tools import component_capability_probe as probe
+        from codexy_runtime_tools import component_capability_probe_process as process
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            launcher = root / "pipe-holder.cmd"
+            holder = root / "pipe-holder.py"
+            pid_file = root / "pipe-holder.pid"
+            holder.write_text(
+                "import os, subprocess, sys, time\n"
+                "child = subprocess.Popen([sys.executable, '-c', "
+                '"import time; time.sleep(30)"] )\n'
+                "open(os.environ['CODEXY_TIMEOUT_PID_FILE'], 'w').write(str(child.pid))\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            launcher.write_text(
+                '@echo off\r\npy -3 -I -B "%~dp0pipe-holder.py"\r\n',
+                encoding="utf-8",
+            )
+            result = process._run(
+                probe._argv(f'"{launcher}" PermissionRequest', root),
+                root,
+                "{}",
+                os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)},
+            )
+            self.assertEqual(result.category, "timeout")
+            self.assertIsNone(result.returncode)
+            self.assertLess(
+                result.elapsed_seconds, process._RUN_OPTIONS["timeout"] + 0.5
+            )
+            self.assertTrue(pid_file.is_file())
+            self.assertFalse(support.host_process_active(pid_file))
