@@ -8,14 +8,14 @@ if ($condition -notin @("cold", "warm")) {
 $config = Join-Path $PSScriptRoot "..\packages\codexy-runtime\rust-toolchain.toml"
 $configText = Get-Content -LiteralPath $config -Raw
 $toolchain = [regex]::Match($configText, '(?m)^channel = "([^"]+)"$').Groups[1].Value
-$profile = [regex]::Match($configText, '(?m)^profile = "([^"]+)"$').Groups[1].Value
-if ([string]::IsNullOrWhiteSpace($toolchain) -or [string]::IsNullOrWhiteSpace($profile)) {
+$toolchainProfile = [regex]::Match($configText, '(?m)^profile = "([^"]+)"$').Groups[1].Value
+if ([string]::IsNullOrWhiteSpace($toolchain) -or [string]::IsNullOrWhiteSpace($toolchainProfile)) {
     throw "rust-toolchain.toml must define channel and profile"
 }
 
 $components = @([regex]::Match($configText, '(?m)^components = \[([^\]]*)\]$').Groups[1].Value -split ',' |
     ForEach-Object { $_.Trim().Trim('"') } | Where-Object { $_ })
-$rustupArgs = @("toolchain", "install", $toolchain, "--profile", $profile)
+$rustupArgs = @("toolchain", "install", $toolchain, "--profile", $toolchainProfile)
 foreach ($component in $components) {
     $rustupArgs += @("--component", $component)
 }
