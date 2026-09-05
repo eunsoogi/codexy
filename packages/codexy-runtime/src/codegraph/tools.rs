@@ -55,20 +55,15 @@ pub fn tools() -> Vec<ToolDef> {
 /// Returns an error when required arguments are missing, a search regex is invalid, JSON
 /// serialization fails, or the tool name is unknown.
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
-    let root_input = match root_argument(args) {
-        Ok(root) => root,
-        Err(error) => {
-            invalidate();
-            return Err(error);
-        }
-    };
-    let root = match repo_root(root_input) {
-        Ok(root) => root,
-        Err(error) => {
-            invalidate();
-            return Err(error.into());
-        }
-    };
+    let result = call_tool_inner(name, args);
+    if result.is_err() {
+        invalidate();
+    }
+    result
+}
+
+fn call_tool_inner(name: &str, args: &Value) -> Result<Value> {
+    let root = repo_root(root_argument(args)?)?;
     match name {
         "codegraph_overview" => text_json(&overview(&root, limit(args))),
         "codegraph_search" => {

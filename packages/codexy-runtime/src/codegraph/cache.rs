@@ -10,6 +10,7 @@ use super::parse::parse_file;
 use super::snapshot::FileSnapshot;
 
 pub(super) const MAX_CACHE_BYTES: usize = 32 * 1024 * 1024;
+const CACHE_TREE_NODE_BYTES: usize = 256;
 
 #[derive(Debug, Clone)]
 struct CachedFile {
@@ -52,7 +53,7 @@ pub(super) fn parse_files(
 }
 
 pub(super) fn invalidate() {
-    CACHE.with(|cell| cell.borrow_mut().clear_entries());
+    CACHE.with(|cell| cell.borrow_mut().reset());
 }
 
 fn parse_one(
@@ -78,14 +79,22 @@ impl ParseCache {
         let current_files = snapshot.files.iter().cloned().collect::<BTreeSet<_>>();
         let root_changed = self.root.as_deref() != Some(root);
         let environment_changed = self.environment_digest != Some(snapshot.environment_digest);
-        let file_was_removed = !self.files.is_subset(&current_files);
-        if root_changed || environment_changed || file_was_removed {
+        let file_set_changed = self.files != current_files;
+        let cache_changed = root_changed || environment_changed || file_set_changed;
+        if cache_changed {
             self.clear_entries();
         }
         self.root = Some(root.to_path_buf());
         self.environment_digest = Some(snapshot.environment_digest);
         self.files = current_files;
         self.uncached = false;
+        if cache_changed {
+            self.bytes = self.base_storage_size();
+        }
+        if self.bytes > MAX_CACHE_BYTES {
+            self.clear_entries();
+            self.uncached = true;
+        }
     }
 
     fn lookup(&mut self, file: &str, digest: &[u8; 32]) -> Option<GraphFile> {
@@ -107,22 +116,17 @@ impl ParseCache {
         if self.uncached {
             return;
         }
-        let bytes = graph_storage_size(graph, source_bytes);
-        if bytes > MAX_CACHE_BYTES
-            || self
-                .bytes
-                .saturating_add(bytes)
-                .saturating_sub(self.entries.get(file).map_or(0, |entry| entry.bytes))
-                > MAX_CACHE_BYTES
-        {
+        let key = file.to_owned();
+        let bytes = cached_file_storage_size(&key, graph, source_bytes);
+        self.remove(file);
+        if self.bytes.saturating_add(bytes) > MAX_CACHE_BYTES {
             self.clear_entries();
             self.uncached = true;
             return;
         }
-        self.remove(file);
         self.bytes += bytes;
         self.entries.insert(
-            file.to_owned(),
+            key,
             CachedFile {
                 digest,
                 graph: graph.clone(),
@@ -138,8 +142,8 @@ impl ParseCache {
     }
 
     fn finish(&mut self, has_errors: bool) {
-        if has_errors {
-            self.clear_entries();
+        if has_errors || self.uncached {
+            self.reset();
         }
     }
 
@@ -148,30 +152,60 @@ impl ParseCache {
         self.bytes = 0;
         self.uncached = false;
     }
+
+    fn reset(&mut self) {
+        self.root = None;
+        self.environment_digest = None;
+        self.files.clear();
+        self.clear_entries();
+    }
+
+    fn base_storage_size(&self) -> usize {
+        size_of::<Self>()
+            .saturating_add(self.root.as_deref().map_or(0, |path| {
+                size_of::<PathBuf>().saturating_add(path.to_string_lossy().len().saturating_mul(2))
+            }))
+            .saturating_add(
+                self.files
+                    .iter()
+                    .map(|file| tree_entry_storage_size(file))
+                    .sum(),
+            )
+    }
 }
 
 fn graph_storage_size(graph: &GraphFile, source_bytes: usize) -> usize {
     source_bytes
         .saturating_add(size_of::<CachedFile>())
-        .saturating_add(string_storage_size(&graph.path))
-        .saturating_add(
-            graph
-                .imports
-                .iter()
-                .map(|value| string_storage_size(value))
-                .sum(),
-        )
-        .saturating_add(
-            graph
-                .exports
-                .iter()
-                .map(|value| string_storage_size(value))
-                .sum(),
-        )
+        .saturating_add(owned_string_storage_size(&graph.path))
+        .saturating_add(vector_storage_size(
+            &graph.imports,
+            graph.imports.capacity(),
+        ))
+        .saturating_add(vector_storage_size(
+            &graph.exports,
+            graph.exports.capacity(),
+        ))
 }
 
-fn string_storage_size(value: &str) -> usize {
-    size_of::<String>().saturating_add(value.len())
+fn cached_file_storage_size(file: &String, graph: &GraphFile, source_bytes: usize) -> usize {
+    CACHE_TREE_NODE_BYTES
+        .saturating_add(owned_string_storage_size(file))
+        .saturating_add(graph_storage_size(graph, source_bytes))
+}
+
+fn tree_entry_storage_size(file: &String) -> usize {
+    CACHE_TREE_NODE_BYTES.saturating_add(owned_string_storage_size(file))
+}
+
+fn vector_storage_size(values: &[String], capacity: usize) -> usize {
+    capacity
+        .saturating_mul(size_of::<String>())
+        .saturating_add(values.iter().map(owned_string_storage_size).sum())
+}
+
+fn owned_string_storage_size(value: &String) -> usize {
+    size_of::<String>().saturating_add(value.capacity())
 }
 
 fn empty_graph_file(file: &str) -> GraphFile {
