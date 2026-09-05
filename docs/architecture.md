@@ -98,10 +98,10 @@ remain deliberately outside the Codexy plugin payload.
 ## Skill path-consumer map
 
 All 14 stable core packaged `skills/<name>/SKILL.md` paths in the inventory
-above have a matching `skills/<name>/agents/openai.yaml`. The two
-repository-only skills use the equivalent `.agents/skills/<name>/` paths. These
-consumer classes cover their selection, registration, references, validation,
-tests, and user-facing prompts.
+above have a matching `skills/<name>/agents/openai.yaml`. The repository-only
+skills use the equivalent `.agents/skills/<name>/` paths. These consumer classes
+cover their selection, registration, references, validation, tests, and
+user-facing prompts.
 
 | Consumer class               | Paths                                                                                                                                                                                                                                                                                                                          | Contract                                                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
