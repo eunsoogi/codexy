@@ -134,7 +134,7 @@ fn absolute_paired_dispatch_uses_the_python_fixture_not_a_posix_shell() -> TestR
     )?;
     std::fs::write(&python, "print('absolute-dispatch')\n")?;
 
-    let fixture = FixtureCommand::new(&shell);
+    let mut fixture = FixtureCommand::new(&shell);
     let program = fixture.get_program().to_string_lossy().to_ascii_lowercase();
     assert!(!program.ends_with("sh") && !program.ends_with("sh.exe"));
     let output = fixture.output()?;

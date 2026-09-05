@@ -18,6 +18,7 @@ ENTRYPOINTS = (
     "codexy-subagent-ownership.py",
     "codexy-thread-delivery.py",
 )
+SIZED_DELIVERY = ("codexy-thread-delivery.sh", "PreToolUse")
 
 
 class CoreHookStartupTests(unittest.TestCase):
@@ -99,31 +100,23 @@ class CoreHookStartupTests(unittest.TestCase):
                     value = json.loads(output)
                     specific = value["hookSpecificOutput"]
                     self.assertEqual(specific["hookEventName"], event)
-                    decision = (
-                        specific["decision"]
+                    decision, decision_key, reason_key = (
+                        (specific["decision"], "behavior", "message")
                         if event == "PermissionRequest"
-                        else specific
+                        else (
+                            specific,
+                            "permissionDecision",
+                            "permissionDecisionReason",
+                        )
                     )
-                    reason = (
-                        decision["message"]
-                        if event == "PermissionRequest"
-                        else decision["permissionDecisionReason"]
+                    self.assertEqual(decision[decision_key], "deny")
+                    self.assertTrue(
+                        decision[reason_key].startswith(prefix + "ENVELOPE"),
+                        decision[reason_key],
                     )
-                    self.assertEqual(
-                        decision["behavior"]
-                        if event == "PermissionRequest"
-                        else decision["permissionDecision"],
-                        "deny",
-                    )
-                    self.assertTrue(reason.startswith(prefix + "ENVELOPE"), reason)
 
-        oversized = self._run(
-            HOOKS.parent,
-            "codexy-thread-delivery.sh",
-            "PreToolUse",
-            b"x" * (1024 * 1024 + 1),
-        )
-        self.assertIn(b"CODEXY_THREAD_DELIVERY_ENVELOPE", oversized)
+        self.assertEqual(self._run_sized(1024 * 1024), b"")
+        self.assertIn(b"CODEXY_THREAD_DELIVERY_ENVELOPE", self._run_sized(2**20 + 1))
 
     @unittest.skipUnless(os.name != "nt", "POSIX launcher coverage")
     def test_retry_reuses_one_bounded_input_after_unsupported_interpreter(self):
@@ -239,12 +232,16 @@ class CoreHookStartupTests(unittest.TestCase):
         self.assertEqual(result.stderr, b"")
         return result.stdout
 
+    def _run_sized(self, size: int) -> bytes:
+        return self._run(HOOKS.parent, *SIZED_DELIVERY, _sized_payload(size))
+
+
+def _sized_payload(size: int) -> bytes:
+    prefix = b'{"hook_event_name":"PreToolUse","tool_name":"mcp__codex_app__send_message_to_thread","tool_input":{"padding":"'
+    return prefix + b"x" * (size - len(prefix) - 3) + b'"}}'
+
 
 def _payload(event: str, tool: str, tool_input: Mapping[str, object]) -> bytes:
     return json.dumps(
         {"hook_event_name": event, "tool_name": tool, "tool_input": tool_input}
     ).encode()
-
-
-if __name__ == "__main__":
-    unittest.main()
