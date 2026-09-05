@@ -23,7 +23,7 @@ function Test-ConventionalPrefix([string]$value) {
 }
 
 function Test-LabelSeparator([string]$value) {
-  return $value -match '^(?:[:：]|[-–—](?:$|[ \t]))'
+  return $value -match '^(?:[:\uFF1A]|[-\u2013\u2014](?:$|[ \t]))'
 }
 
 function Test-PrTitle([string]$value) {
@@ -35,8 +35,8 @@ function Test-PrTitle([string]$value) {
 function Test-Category([string]$value) {
   if ($value -match '^\[[A-Za-z0-9-]+(?:\([A-Za-z0-9_/-]+\))?!?\]') { return $true }
   $prefix = '[A-Za-z0-9-]+[ \t]*(?:\([ \t]*[A-Za-z0-9_/-]+[ \t]*\))?[ \t]*!?'
-  if ($value -match "^$prefix[ \t]*[:：]") { return $true }
-  if ($value -match "^$prefix[ \t]*[-–—][ \t]") { return $true }
+  if ($value -match "^$prefix[ \t]*[:\uFF1A]") { return $true }
+  if ($value -match "^$prefix[ \t]*[-\u2013\u2014][ \t]") { return $true }
   $scoped = [regex]::Match($value, '^[A-Za-z0-9-]+[ \t]*\([ \t]*[A-Za-z0-9_/-]+[ \t]*\)[ \t]*!?')
   if ($scoped.Success) {
     $prefixValue = $scoped.Value
