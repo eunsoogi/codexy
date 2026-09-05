@@ -142,19 +142,28 @@ current-head control state MUST preserve the existing
 `codexy.review-control-state.v1` schema and carry `profile`, `reviewer`,
 `reviewed_head`, `terminal_result`, `unresolved_findings`, `full_review_count`,
 `delta_review_count`, `issue_number`, `terminal_review_count`,
-`terminal_review_limit`, and `terminal_review_history` directly.
+`terminal_review_limit`, and `terminal_review_history` directly. When a
+profile's fixed reviewer model changes, an authenticated transition MAY add one
+`reviewer_migration` object with schema `codexy.review-control-migration.v1`,
+exact `from` and `to` reviewer values, and a positive `history_boundary` before
+the first current-reviewer event. The boundary and identities MUST be derived
+from the authenticated previous snapshot; callers MUST NOT invent or change
+them.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
 `UNOBSERVABLE`, and a readiness handoff MUST have `PASS`, no unresolved
 findings, one full review, and at most one delta review. The history MUST
 contain that one `full` event, optionally followed by one `delta` event, with
-unique review IDs, the selected reviewer on every event, and a different
-reviewed head for each event. Its length MUST equal `terminal_review_count`, and
-the full and delta counters MUST equal the corresponding event kinds.
+unique review IDs, the selected reviewer on every event unless the exact
+versioned migration marker authorizes a legacy prefix, and a different reviewed
+head for each event. A migrated history MUST use the exact legacy reviewer
+before `history_boundary` and the current policy reviewer from that boundary
+onward. Its length MUST equal `terminal_review_count`, and the full and delta
+counters MUST equal the corresponding event kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
-full and delta events. It MUST keep the same selected reviewer, bind the current
+full and delta events. It MUST use the current policy reviewer, bind the current
 head, set `terminal_review_count` to three, and carry exactly one
 `post_cap_re_review` object with `reason` set to either
 `mandatory_base_integration` or `in_scope_contract_root_repair`, plus

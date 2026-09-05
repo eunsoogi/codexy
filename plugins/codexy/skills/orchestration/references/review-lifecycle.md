@@ -23,18 +23,19 @@ current snapshot's authenticated head and base values.
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
 mandatory base integration or an in-scope contract/root repair. It MUST use the
-same selected reviewer and carry a typed `post_cap_re_review` reason plus the
-prior delta head. The marker MUST carry a qualifying-change object whose
-`from_head` is the delta head, whose `to_head` is the current head, and whose
-`evidence_commit` is an ancestor between them. Mandatory base integration MUST
-change `baseRefOid` and prove base and integration ancestry. Contract/root
-repair MUST preserve `baseRefOid`, require a prior `BLOCK` delta with non-empty
-findings, bind `finding_ids` exactly to those findings, and show the evidence
-diff changes every finding's recorded path. Optional churn, duplicate or
-unchanged heads, missing/reordered/truncated history, and a fourth terminal
-verdict MUST be rejected. A third `BLOCK` permits only the bounded
-issue-contract/root repair and refreshed exact-head proof; a third
-`UNOBSERVABLE` requires maintainer disposition and current proof.
+current policy reviewer (with any previously authenticated migration marker
+preserved) and carry a typed `post_cap_re_review` reason plus the prior delta
+head. The marker MUST carry a qualifying-change object whose `from_head` is the
+delta head, whose `to_head` is the current head, and whose `evidence_commit` is
+an ancestor between them. Mandatory base integration MUST change `baseRefOid`
+and prove base and integration ancestry. Contract/root repair MUST preserve
+`baseRefOid`, require a prior `BLOCK` delta with non-empty findings, bind
+`finding_ids` exactly to those findings, and show the evidence diff changes
+every finding's recorded path. Optional churn, duplicate or unchanged heads,
+missing/reordered/truncated history, and a fourth terminal verdict MUST be
+rejected. A third `BLOCK` permits only the bounded issue-contract/root repair
+and refreshed exact-head proof; a third `UNOBSERVABLE` requires maintainer
+disposition and current proof.
 
 The third verdict does not authorize completion by itself. Exact-head `PASS`, no
 unresolved findings, tests, validators, CI, review-thread, ownership, safety,

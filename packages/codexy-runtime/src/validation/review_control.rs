@@ -5,6 +5,7 @@ use serde_json::Value;
 
 mod classification;
 mod history;
+mod migration;
 mod policy;
 mod snapshot;
 mod state;
@@ -62,7 +63,7 @@ pub(super) fn build_pr_state(
     }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
-    if control.get("profile").and_then(Value::as_str) != Some("light") {
+    let control = if control.get("profile").and_then(Value::as_str) != Some("light") {
         transition::check_with_repository(
             plugin_root,
             repository_root,
@@ -70,8 +71,10 @@ pub(super) fn build_pr_state(
             &current,
             &control,
         )
-        .map_err(anyhow::Error::msg)?;
-    }
+        .map_err(anyhow::Error::msg)?
+    } else {
+        control
+    };
     let mut state = current;
     let object = state
         .as_object_mut()
@@ -101,26 +104,34 @@ pub(super) fn produce(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
         );
     }
-    state::check_control(plugin_root, &control).map_err(anyhow::Error::msg)?;
-    if control
+    let control = if control
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
     {
+        let raw_error = state::check_control(plugin_root, &control).err();
         let current = request
             .get("current_pr_state")
             .ok_or_else(|| anyhow::anyhow!("review control producer requires current_pr_state"))?;
         let previous = request
             .get("previous_pr_state")
             .ok_or_else(|| anyhow::anyhow!("review control producer requires previous_pr_state"))?;
-        transition::check_with_repository(
+        match transition::check_with_repository(
             plugin_root,
             repository_root,
             previous,
             current,
             &control,
-        )
-        .map_err(anyhow::Error::msg)?;
-    }
+        ) {
+            Ok(normalized) => normalized,
+            Err(error) => match raw_error {
+                None => return Err(anyhow::Error::msg(error)),
+                Some(raw_error) => return Err(anyhow::Error::msg(raw_error)),
+            },
+        }
+    } else {
+        control
+    };
+    state::check_control(plugin_root, &control).map_err(anyhow::Error::msg)?;
     Ok(serde_json::json!({"control_state": control}))
 }

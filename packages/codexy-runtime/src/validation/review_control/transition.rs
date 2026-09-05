@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use super::{policy, snapshot, state};
+use super::{migration, policy, snapshot, state};
 
 mod evidence;
 
@@ -12,7 +12,7 @@ pub(super) fn check_with_repository(
     previous: &Value,
     current: &Value,
     current_control: &Value,
-) -> Result<(), String> {
+) -> Result<Value, String> {
     snapshot::check(previous, "previous")?;
     snapshot::check(current, "current")?;
     snapshot::same_pr(previous, current)?;
@@ -26,21 +26,52 @@ pub(super) fn check_with_repository(
     let current_control = current_control
         .as_object()
         .ok_or_else(|| "review control current state must be an object".to_owned())?;
-    let current_state = with_control(current, current_control)?;
-    state::check(plugin_root, &current_state, false)?;
+    same_control_identity(previous_control, current_control)?;
+
+    let current_profile = required_text(current_control, "profile", "current")?;
+    let current_reviewer = policy::current_reviewer(plugin_root, current_profile)?;
+    if current_control.get("reviewer") != Some(&current_reviewer) {
+        return Err(
+            "review control transition current state does not bind the selected reviewer".into(),
+        );
+    }
 
     let previous_count = count(previous_control, "terminal_review_count")?;
+    let previous_reviewer = previous_control.get("reviewer");
+    let legacy_reviewer = policy::legacy_reviewer(current_profile);
+    let previous_is_current = previous_reviewer == Some(&current_reviewer);
+    let previous_is_legacy = legacy_reviewer.as_ref() == previous_reviewer;
     if previous_count == 0 {
         check_genesis(plugin_root, previous_control)?;
         check_genesis_snapshot(previous, previous_control)?;
-    } else {
+    } else if previous_is_current {
         state::check(plugin_root, previous, false)?;
+    } else if previous_is_legacy {
+        state::check_predecessor(plugin_root, previous)?;
+    } else {
+        return Err(
+            "review control transition previous state does not bind an approved reviewer".into(),
+        );
     }
-    same_control_identity(previous_control, current_control)?;
+
+    let mut normalized_control = current_control.clone();
+    let migration = if previous_is_legacy {
+        Some(migration::marker(
+            current_profile,
+            &current_reviewer,
+            previous_count,
+        )?)
+    } else {
+        previous_control.get("reviewer_migration").cloned()
+    };
+    migration::reconcile(&mut normalized_control, migration)?;
+
+    let current_state = with_control(current, &normalized_control)?;
+    state::check(plugin_root, &current_state, false)?;
 
     let previous_history = history(previous_control, "previous")?;
-    let current_history = history(current_control, "current")?;
-    let current_count = count(current_control, "terminal_review_count")?;
+    let current_history = history(&normalized_control, "current")?;
+    let current_count = count(&normalized_control, "terminal_review_count")?;
     let Some(expected_count) = previous_count.checked_add(1) else {
         return Err("review control transition terminal count overflow".into());
     };
@@ -57,11 +88,11 @@ pub(super) fn check_with_repository(
             repository_root,
             previous,
             current,
-            current_control,
+            &normalized_control,
             current_history,
         )?;
     }
-    Ok(())
+    Ok(Value::Object(normalized_control))
 }
 
 fn check_genesis(plugin_root: &Path, control: &Map<String, Value>) -> Result<(), String> {
@@ -69,6 +100,7 @@ fn check_genesis(plugin_root: &Path, control: &Map<String, Value>) -> Result<(),
         || control.contains_key("reviewed_head")
         || control.contains_key("terminal_result")
         || control.contains_key("post_cap_re_review")
+        || control.contains_key("reviewer_migration")
         || count(control, "full_review_count")? != 0
         || count(control, "delta_review_count")? != 0
         || count(control, "terminal_review_count")? != 0
@@ -123,7 +155,7 @@ fn same_control_identity(
     previous: &Map<String, Value>,
     current: &Map<String, Value>,
 ) -> Result<(), String> {
-    for field in ["issue_number", "profile", "reviewer"] {
+    for field in ["issue_number", "profile"] {
         if previous.get(field) != current.get(field) {
             return Err(format!("review control transition changes {field}"));
         }

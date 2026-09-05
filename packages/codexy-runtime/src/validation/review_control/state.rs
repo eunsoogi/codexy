@@ -2,83 +2,17 @@ use std::path::Path;
 
 use serde_json::{Map, Value, json};
 
-use super::{history, policy};
+use super::{history, migration, policy};
+
+#[path = "state/lifecycle.rs"]
+mod lifecycle;
 
 pub(super) const CONTROL_SCHEMA: &str = "codexy.review-control-state.v1";
 
 const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
-    let Ok(value) = serde_json::from_str::<Value>(record) else {
-        return false;
-    };
-    let Some(head) = value
-        .get("reviewed_head")
-        .or_else(|| value.get("head_oid"))
-        .and_then(Value::as_str)
-        .filter(|head| !head.is_empty())
-    else {
-        return false;
-    };
-    let Some(issue_number) = value.get("issue_number").and_then(Value::as_u64) else {
-        return false;
-    };
-    let Some(profile) = value.get("profile").and_then(Value::as_str) else {
-        return false;
-    };
-    let Some(unresolved_findings) = value.get("unresolved_findings").cloned() else {
-        return false;
-    };
-    let Some(full_review_count) = value.get("full_review_count").and_then(Value::as_u64) else {
-        return false;
-    };
-    let Some(delta_review_count) = value.get("delta_review_count").and_then(Value::as_u64) else {
-        return false;
-    };
-    let Some(terminal_review_count) = value.get("terminal_review_count").and_then(Value::as_u64)
-    else {
-        return false;
-    };
-    let Some(terminal_review_limit) = value.get("terminal_review_limit").and_then(Value::as_u64)
-    else {
-        return false;
-    };
-    let Some(history) = value.get("terminal_review_history").cloned() else {
-        return false;
-    };
-    let terminal = match value
-        .get("terminal_result")
-        .or_else(|| value.get("state"))
-        .and_then(Value::as_str)
-    {
-        Some("PASS") => "PASS",
-        Some("BLOCK") => "BLOCK",
-        Some("UNOBSERVABLE") => "UNOBSERVABLE",
-        _ => return false,
-    };
-    let mut control = json!({
-        "schema": CONTROL_SCHEMA,
-        "issue_number": issue_number,
-        "profile": profile,
-        "reviewer": value.get("reviewer").cloned().unwrap_or(Value::Null),
-        "reviewed_head": head,
-        "terminal_result": terminal,
-        "unresolved_findings": unresolved_findings,
-        "full_review_count": full_review_count,
-        "delta_review_count": delta_review_count,
-        "terminal_review_count": terminal_review_count,
-        "terminal_review_limit": terminal_review_limit,
-        "terminal_review_history": history,
-    });
-    if let Some(post_cap) = value.get("post_cap_re_review") {
-        control["post_cap_re_review"] = post_cap.clone();
-    }
-    check(
-        plugin_root,
-        &json!({"number": issue_number, "headRefOid": head, "reviewControl": control}),
-        false,
-    )
-    .is_ok()
+    lifecycle::is_terminal(plugin_root, record)
 }
 
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
@@ -100,7 +34,26 @@ pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), S
     check(plugin_root, &state, false)
 }
 
+#[derive(Clone, Copy)]
+enum ReviewerMode {
+    Current,
+    Legacy,
+}
+
 pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<(), String> {
+    check_with_mode(plugin_root, state, require_pass, ReviewerMode::Current)
+}
+
+pub(super) fn check_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
+    check_with_mode(plugin_root, state, false, ReviewerMode::Legacy)
+}
+
+fn check_with_mode(
+    plugin_root: &Path,
+    state: &Value,
+    require_pass: bool,
+    reviewer_mode: ReviewerMode,
+) -> Result<(), String> {
     let head = state
         .get("headRefOid")
         .and_then(Value::as_str)
@@ -134,6 +87,9 @@ pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Re
         .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
 
     if profile.reviewer.is_none() {
+        if matches!(reviewer_mode, ReviewerMode::Legacy) {
+            return Err("light review selection cannot have a legacy reviewer".into());
+        }
         if control
             .get("reviewer")
             .is_some_and(|reviewer| !reviewer.is_null())
@@ -151,6 +107,7 @@ pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Re
             "terminal_review_limit",
             "terminal_review_history",
             "post_cap_re_review",
+            "reviewer_migration",
         ]
         .iter()
         .any(|field| control.contains_key(*field))
@@ -169,9 +126,32 @@ pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Re
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
     };
-    let expected_reviewer = serde_json::to_value(reviewer)
+    let current_reviewer = serde_json::to_value(reviewer)
         .map_err(|_| "selected reviewer is not serializable".to_owned())?;
-    if control.get("reviewer") != Some(&expected_reviewer) {
+    let history_len = control
+        .get("terminal_review_history")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    let migration_boundary = match reviewer_mode {
+        ReviewerMode::Current => {
+            migration::boundary(control, selected, &current_reviewer, history_len)?
+        }
+        ReviewerMode::Legacy => {
+            if control.contains_key("reviewer_migration") {
+                return Err("legacy predecessor state must not carry reviewer migration".into());
+            }
+            None
+        }
+    };
+    let legacy_reviewer = policy::legacy_reviewer(selected);
+    let expected_reviewer = match reviewer_mode {
+        ReviewerMode::Current => &current_reviewer,
+        ReviewerMode::Legacy => match legacy_reviewer.as_ref() {
+            Some(reviewer) => reviewer,
+            None => return Err("legacy reviewer must be available".into()),
+        },
+    };
+    if control.get("reviewer") != Some(expected_reviewer) {
         return Err("review control state does not bind the selected reviewer".into());
     }
     let reviewed_head = control
@@ -204,7 +184,9 @@ pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Re
     history::check(
         control,
         &history::CheckContext {
-            expected_reviewer: &expected_reviewer,
+            expected_reviewer,
+            legacy_reviewer: migration_boundary.and(legacy_reviewer.as_ref()),
+            legacy_history_boundary: migration_boundary,
             reviewed_head,
             terminal,
             findings,

@@ -3,11 +3,15 @@ use std::collections::HashSet;
 use super::policy::Profile;
 use serde_json::{Map, Value};
 
+mod post_cap;
+
 const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 const REVIEW_KINDS: [&str; 3] = ["full", "delta", "required_current_head"];
 const MAX_TERMINAL_REVIEWS: u64 = 3;
 pub(super) struct CheckContext<'a> {
     pub(super) expected_reviewer: &'a Value,
+    pub(super) legacy_reviewer: Option<&'a Value>,
+    pub(super) legacy_history_boundary: Option<usize>,
     pub(super) reviewed_head: &'a str,
     pub(super) terminal: &'a str,
     pub(super) findings: &'a [Value],
@@ -40,6 +44,14 @@ pub(super) fn check(
         .ok_or_else(|| "review control state must carry terminal review history".to_owned())?;
     if history.len() as u64 != context.terminal_count {
         return Err("review control state terminal review history is truncated".into());
+    }
+    if context.legacy_reviewer.is_some() != context.legacy_history_boundary.is_some() {
+        return Err("review control state reviewer migration is incomplete".into());
+    }
+    if let Some(boundary) = context.legacy_history_boundary
+        && (boundary == 0 || boundary >= history.len())
+    {
+        return Err("review control state reviewer migration boundary is invalid".into());
     }
     let mut ids = HashSet::new();
     let mut full_seen = 0;
@@ -78,7 +90,13 @@ pub(super) fn check(
             "required_current_head" => required_head_seen += 1,
             _ => return Err("review control state terminal review kind is invalid".into()),
         }
-        if event.get("reviewer") != Some(context.expected_reviewer) {
+        let expected_reviewer = match context.legacy_history_boundary {
+            Some(boundary) if index < boundary => context.legacy_reviewer.ok_or_else(|| {
+                "review control state reviewer migration is incomplete".to_owned()
+            })?,
+            _ => context.expected_reviewer,
+        };
+        if event.get("reviewer") != Some(expected_reviewer) {
             return Err("review control state terminal review history changes reviewer".into());
         }
         let event_head = required_text(event, "reviewed_head", "terminal review history entry")?;
@@ -127,7 +145,7 @@ pub(super) fn check(
         let post_cap = post_cap.ok_or_else(|| {
             "review control state third terminal verdict requires post_cap_re_review".to_owned()
         })?;
-        check_post_cap(
+        post_cap::check(
             post_cap,
             history[1].get("reviewed_head"),
             context.reviewed_head,
@@ -139,90 +157,6 @@ pub(super) fn check(
     }
     Ok(())
 }
-fn check_post_cap(
-    value: &Value,
-    prior_head: Option<&Value>,
-    reviewed_head: &str,
-) -> Result<(), String> {
-    let object = value
-        .as_object()
-        .ok_or_else(|| "review control state post_cap_re_review must be an object".to_owned())?;
-    reject_unknown(
-        object,
-        &["reason", "prior_reviewed_head", "qualifying_change"],
-        "post_cap_re_review",
-    )?;
-    let reason = required_text(object, "reason", "post_cap_re_review")?;
-    if !matches!(
-        reason,
-        "mandatory_base_integration" | "in_scope_contract_root_repair"
-    ) {
-        return Err("review control state post-cap reason is not eligible".into());
-    }
-    let prior = required_text(object, "prior_reviewed_head", "post_cap_re_review")?;
-    if prior == reviewed_head {
-        return Err(
-            "review control state post-cap re-review must advance the reviewed head".into(),
-        );
-    }
-    if prior_head.and_then(Value::as_str) != Some(prior) {
-        return Err("review control state post-cap re-review does not bind the delta head".into());
-    }
-    let change = object
-        .get("qualifying_change")
-        .and_then(Value::as_object)
-        .ok_or_else(|| {
-            "review control state post-cap re-review must record qualifying change evidence"
-                .to_owned()
-        })?;
-    reject_unknown(
-        change,
-        &["from_head", "to_head", "evidence_commit", "finding_ids"],
-        "post_cap_re_review.qualifying_change",
-    )?;
-    if required_text(change, "from_head", "qualifying_change")? != prior
-        || required_text(change, "to_head", "qualifying_change")? != reviewed_head
-    {
-        return Err(
-            "review control state qualifying change evidence does not bind the heads".into(),
-        );
-    }
-    let evidence_commit = required_text(change, "evidence_commit", "qualifying_change")?;
-    if evidence_commit.len() != 40 || !evidence_commit.bytes().all(|byte| byte.is_ascii_hexdigit())
-    {
-        return Err("review control state qualifying change evidence must name a commit".into());
-    }
-    let finding_ids = change.get("finding_ids");
-    if let Some(value) = finding_ids {
-        let ids = value.as_array().ok_or_else(|| {
-            "review control state qualifying change finding_ids must be an array".to_owned()
-        })?;
-        let mut unique = HashSet::new();
-        for id in ids {
-            let id = id.as_str().filter(|id| !id.is_empty()).ok_or_else(|| {
-                "review control state qualifying change finding_ids must contain non-empty strings"
-                    .to_owned()
-            })?;
-            if !unique.insert(id) {
-                return Err(
-                    "review control state qualifying change finding_ids must be unique".into(),
-                );
-            }
-        }
-        if reason == "mandatory_base_integration" && !ids.is_empty() {
-            return Err(
-                "mandatory base integration must not claim contract/root finding ids".into(),
-            );
-        }
-        if reason == "in_scope_contract_root_repair" && ids.is_empty() {
-            return Err("contract/root repair must bind at least one finding id".into());
-        }
-    } else if reason == "in_scope_contract_root_repair" {
-        return Err("contract/root repair must bind finding ids".into());
-    }
-    Ok(())
-}
-
 fn required_text<'a>(
     object: &'a Map<String, Value>,
     key: &str,
