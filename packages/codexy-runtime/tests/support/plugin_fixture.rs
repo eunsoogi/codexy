@@ -1,6 +1,9 @@
 use std::panic::Location;
 use std::path::{Component, Path, PathBuf};
 
+#[path = "plugin_fixture_hooks.rs"]
+mod hook_fixture;
+
 #[derive(Debug)]
 pub(crate) struct PluginFixture {
     _temp: tempfile::TempDir,
@@ -86,6 +89,22 @@ pub(crate) fn copy_plugin_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> 
         let fixture = plugin_fixture()?;
         Ok((fixture._temp, fixture.root))
     }
+}
+
+#[track_caller]
+pub(crate) fn copy_plugin_hook_fixture(
+    source: &Path,
+    target: &Path,
+    mutable_files: &[&Path],
+) -> std::io::Result<()> {
+    hook_fixture::validate_mutable_files(source, mutable_files)?;
+    super::profile_metrics::record("plugin_fixture");
+    hook_fixture::copy(
+        source,
+        target,
+        mutable_files,
+        &fixture_identity("hook", Location::caller()),
+    )
 }
 
 #[track_caller]
