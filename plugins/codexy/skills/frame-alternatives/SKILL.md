@@ -40,22 +40,31 @@ MUST NOT vote, rank, average, claim consensus, choose a frame, change routing or
 ownership, implement, mutate, approve, or claim proof, review, verification, or
 completion.
 
-## Acceptance Corpus Fidelity
+## Noun and constraint tracking
 
-For an exact proposal-and-constraints pair named below, MUST use its exact four
-output values.
+Before drafting a record, MUST build a private ledger rather than outputting
+extra fields. Track design nouns (actors, artifacts, operations, and boundaries)
+with their roles, then track each constraint's source, modality, scope,
+polarity, threshold, and exclusion. Quoted material MUST remain distinct from
+the user's assertion, and a negated constraint MUST remain negated.
 
-| Proposal                                                                    | Constraints                                                            | current_assumption                                   | credible_alternative                                                                         | constraint_conflict                                 | owner_question                                                          |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
-| Move repeated task classification prose into orchestration/SKILL.md         | context-tiers remains the sole routing authority, no new resolver      | Moving prose into the entrypoint removes duplication | Delete duplicate prose and keep context-tiers as the sole authority                          | Moving rule ownership would duplicate context-tiers | Should this change delete duplicate prose without moving authority?     |
-| Use one reviewer for every task                                             | review profile remains risk-proportional, Sentinel remains strict-only | One reviewer reduces complexity                      | Keep profile selection and remove only duplicated review instructions                        | A universal reviewer violates profile selection     | Should scope be limited to duplicated review prose?                     |
-| Make README.md the skill registry                                           | skill frontmatter is canonical, no tracked roster                      | The README can be both documentation and authority   | Read frontmatter during the documentation update without making README authoritative         | README authority duplicates frontmatter             | Should README remain a derived human-readable view?                     |
-| Auto-start every configured MCP tool in every task                          | Devtools stays optional, Core must work without it                     | Configured implies universally required              | Expose configured, started, callable, and healthy state through the existing capability path | Universal auto-start breaks the optional boundary   | Should the change target capability truth instead of mandatory startup? |
-| Generate LSP client JSON from a new catalog generator                       | use existing validation path, no generator framework                   | A new generator is required for one source of truth  | Use a minimal projection inside the existing validator                                       | A generator adds a forbidden framework              | Which existing catalog should be the canonical input?                   |
-| Merge candidate, activation, and public verification into one release state | each trust phase remains independently observable                      | One state simplifies release UX                      | Consolidate presentation while preserving separate authoritative states                      | One state erases independent trust boundaries       | Should only the presentation layer be consolidated?                     |
-| Add a tracked JSON roster for public skills                                 | frontmatter is canonical, no catalog generator                         | A roster is necessary for discovery                  | Read frontmatter directly when documentation is updated                                      | A JSON roster creates duplicate authority           | Can discovery remain frontmatter-driven with no new roster?             |
-| Create a new evidence receipt schema for a human status view                | current host and proof receipts remain authoritative                   | A new schema is needed for presentation              | Render a read-only view from existing receipts                                               | The new schema duplicates state authority           | Should the view consume existing receipts without storing state?        |
-| Collapse all public CLI verbs into one command                              | existing verbs and compatibility window remain supported               | Fewer verbs always reduce complexity                 | Merge internal helpers while preserving public verbs                                         | Immediate collapse breaks compatibility             | Should the change target internal lifecycle duplication only?           |
-| Let a child handoff choose the next implementation owner                    | parent retains owner assignment authority                              | The child has enough context to reassign work        | Return one owner_question to the parent without reassignment                                 | Child reassignment violates parent authority        | Should the child report the ownership fork for the parent to decide?    |
+Equivalent wording MUST normalize to the same ledger meaning only when it keeps
+the same actor, relation, scope, modality, polarity, and threshold. A changed
+element is a changed constraint, not a synonym. Apply the same normalized ledger
+to the current assumption and every alternative; do not add a new YAML key for
+the ledger.
 
-Otherwise use only supplied inputs; preserve this boundary and receipt shape.
+## Independence check
+
+Each `credible_alternative` MUST make a genuinely different design choice while
+remaining consistent with every normalized constraint. Identify its changed
+design axis privately (for example ownership, lifecycle boundary, interaction or
+data flow, granularity, timing, or evidence path) and compare that axis with the
+current assumption. If removing the changed wording makes the choices
+equivalent, it is a synonym-only alternative and MUST be replaced or omitted.
+
+If the proposal, authoritative constraints, or explicit opt-in is missing, or if
+no independent alternative can be grounded without inventing a constraint, MUST
+decline without producing a receipt. Never fill the maximum with weaker or
+repeated alternatives. The ledger and independence check are internal; the
+response remains the exact four-key YAML receipt above.
