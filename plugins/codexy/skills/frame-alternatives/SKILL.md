@@ -9,8 +9,10 @@ description: Use when a user explicitly asks to surface credible alternatives fo
 
 MUST act only when the user supplies one proposal, its authoritative
 constraints, and explicit opt-in to frame-alternatives. Invoking
-`$frame-alternatives` explicitly counts as opt-in. Otherwise MUST decline
-without producing a receipt.
+`$frame-alternatives` explicitly counts as opt-in. A request for alternatives,
+skill routing by description, the default prompt, prior context, or any other
+implicit signal does not count as opt-in. Otherwise MUST decline without
+producing a receipt or alternatives.
 
 MUST decline current-diff verdicts, proof or completion claims, voting or
 consensus, model routing, owner assignment, implementation or mutation,
@@ -40,6 +42,18 @@ MUST NOT vote, rank, average, claim consensus, choose a frame, change routing or
 ownership, implement, mutate, approve, or claim proof, review, verification, or
 completion.
 
+## Conflict grounding
+
+Populate `constraint_conflict` with an exact conflict only when the supplied
+authoritative facts directly establish an incompatibility between the current or
+alternative frame and a named constraint. If no incompatibility is established,
+write `none`. When the supplied facts support only a possible tension, the field
+may instead contain an explicitly unconfirmed or conditional statement that
+identifies the fact needed to resolve it. A missing fact, preference, omission,
+plausibility, or hypothetical consequence MUST NOT be presented as an
+established conflict; do not state that the frame is impossible or violates a
+constraint without that supplied support.
+
 ## Noun and constraint tracking
 
 Before drafting a record, MUST build a private ledger rather than outputting
@@ -67,6 +81,6 @@ changed axis remains genuinely different even when its wording is removed.
 If the proposal, authoritative constraints, or explicit opt-in is missing, or if
 no independent alternative can be grounded without inventing a constraint, MUST
 decline without producing a receipt. Never fill the maximum with weaker or
-repeated alternatives. The ledger and independence check are internal; whenever
-a receipt is produced, the response remains the exact four-key YAML receipt
-above.
+repeated alternatives. The ledger, conflict grounding, and independence check
+are internal; whenever a receipt is produced, the response remains the exact
+four-key YAML receipt above.
