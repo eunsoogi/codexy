@@ -92,3 +92,14 @@ pub(super) fn error_result(request: &LspRequest, error: &Value, stderr: &str) ->
         "stderr": stderr
     })
 }
+
+pub(super) fn failure_result(request: &LspRequest, reason: &str, stderr: &str) -> Value {
+    json!({
+        "status": "error",
+        "path": request.file_path,
+        "server": { "id": request.server.id, "executable": request.server.executable },
+        "reason": reason,
+        "stderr": stderr,
+        "installHints": request.server.install_hints
+    })
+}

@@ -27,9 +27,9 @@ pub(super) fn spawn_stdout_reader(
     stdout: ChildStdout,
     tx: mpsc::Sender<Value>,
     stderr: &SharedStderr,
-) {
+) -> thread::JoinHandle<()> {
     let stderr = stderr.clone();
-    thread::spawn(move || read_stdout(stdout, &tx, &stderr));
+    thread::spawn(move || read_stdout(stdout, &tx, &stderr))
 }
 
 pub(super) fn spawn_stderr_reader(
