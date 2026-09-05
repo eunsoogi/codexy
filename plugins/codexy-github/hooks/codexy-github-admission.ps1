@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 function Test-InvalidCharacter([string]$value) {
   foreach ($character in $value.ToCharArray()) {
     $code = [int][char]$character
-    if ($code -lt 32 -or $code -eq 127 -or $code -in @(133, 8232, 8233)) { return $true }
+    if ($code -lt 32 -or ($code -ge 128 -and $code -le 159) -or $code -eq 127 -or $code -in @(8232, 8233)) { return $true }
   }
   return $false
 }
@@ -19,7 +19,11 @@ function Test-TerminalReference([string]$value) {
 
 function Test-ConventionalPrefix([string]$value) {
   $prefix = $value -replace '!$'
-  return $prefix -match '^[a-z0-9-]+\([a-z0-9_/-]+\)$'
+  return $prefix -cmatch '^[a-z0-9-]+\([a-z0-9_/-]+\)$'
+}
+
+function Test-LabelSeparator([string]$value) {
+  return $value -match '^(?:[:：]|[-–—](?:$|[ \t]))'
 }
 
 function Test-PrTitle([string]$value) {
@@ -32,18 +36,18 @@ function Test-Category([string]$value) {
   if ($value -match '^\[[A-Za-z0-9-]+(?:\([A-Za-z0-9_/-]+\))?!?\]') { return $true }
   $prefix = '[A-Za-z0-9-]+[ \t]*(?:\([ \t]*[A-Za-z0-9_/-]+[ \t]*\))?[ \t]*!?'
   if ($value -match "^$prefix[ \t]*[:：]") { return $true }
-  if ($value -match "^$prefix[ \t]+[-–—][ \t]") { return $true }
+  if ($value -match "^$prefix[ \t]*[-–—][ \t]") { return $true }
   $scoped = [regex]::Match($value, '^[A-Za-z0-9-]+[ \t]*\([ \t]*[A-Za-z0-9_/-]+[ \t]*\)[ \t]*!?')
   if ($scoped.Success) {
     $prefixValue = $scoped.Value
     while ($prefixValue.EndsWith(' ') -or $prefixValue.EndsWith("`t")) { $prefixValue = $prefixValue.Substring(0, $prefixValue.Length - 1) }
     $rest = $value.Substring($prefixValue.Length)
-    if ($rest.Length -eq 0 -or $rest.StartsWith(' ') -or $rest.StartsWith("`t") -or $rest.StartsWith(':') -or $rest.StartsWith('：')) { return $true }
+    if ($rest.Length -eq 0 -or $rest.StartsWith(' ') -or $rest.StartsWith("`t") -or (Test-LabelSeparator $rest)) { return $true }
   }
   $banged = [regex]::Match($value, '^[A-Za-z0-9-]+[ \t]*!')
   if ($banged.Success) {
     $rest = $value.Substring($banged.Value.Length)
-    if ($rest.Length -eq 0 -or $rest.StartsWith(' ') -or $rest.StartsWith("`t") -or $rest.StartsWith(':') -or $rest.StartsWith('：')) { return $true }
+    if ($rest.Length -eq 0 -or $rest.StartsWith(' ') -or $rest.StartsWith("`t") -or (Test-LabelSeparator $rest)) { return $true }
   }
   $trimmed = $value.TrimEnd(' ', "`t")
   return $trimmed -match '^[A-Za-z0-9-]+!?$'

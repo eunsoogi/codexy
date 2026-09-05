@@ -49,6 +49,7 @@ fn validator_cli_rejects_scope_less_or_decorated_merge_subjects()
         "feat: desc (#926)\n\nFixes #121\n",
         "feat(task): desc (#900)\n\nFixes #121\n",
         "feat(task): desc (#926) (#926)\n\nFixes #121\n",
+        "feat(task): desc (#900)  (#926)\n\nFixes #121\n",
     ] {
         assert!(
             !validate_message_for_pr(message, 926)?.status.success(),

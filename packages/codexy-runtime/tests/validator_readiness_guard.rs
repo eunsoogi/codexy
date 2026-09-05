@@ -44,7 +44,7 @@ fn readiness_guard_checks_pr_titles() -> Result<(), Box<dyn std::error::Error>> 
     );
 
     let bad_reference = Command::new(&script)
-        .args(["--check-pr-title", "--pr-title", "fix(workflow): gate PR #204"])
+        .args(["--check-pr-title", "--pr-title", "fix(workflow): gate PR #204 "])
         .output()?;
     assert!(
         !bad_reference.status.success(),

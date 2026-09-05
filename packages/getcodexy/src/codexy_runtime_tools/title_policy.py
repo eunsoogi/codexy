@@ -27,7 +27,10 @@ def _prefix(value: str) -> bool:
 
 def _invalid_character(value: str) -> bool:
     return any(
-        ord(char) < 32 or ord(char) == 127 or ord(char) in {0x85, 0x2028, 0x2029}
+        ord(char) < 32
+        or 0x80 <= ord(char) <= 0x9F
+        or ord(char) == 127
+        or ord(char) in {0x2028, 0x2029}
         for char in value
     )
 

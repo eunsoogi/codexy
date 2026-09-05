@@ -21,8 +21,14 @@ has_invalid_title_character() {
 
 has_terminal_reference() {
 	printf '%s\n' "$1" | awk '
+function trim_terminal_whitespace(value) {
+	sub(/[ \t]+$/, "", value)
+	return value
+}
 function strip_punctuation(value) {
+	value = trim_terminal_whitespace(value)
 	while (value ~ /[.,]$/) sub(/[.,]$/, "", value)
+	value = trim_terminal_whitespace(value)
 	return value
 }
 {

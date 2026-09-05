@@ -64,6 +64,10 @@ fn issue_title_hook_rejects_lifecycle_event_invocation_without_model_context()
 }
 
 fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    if title.contains('\n') {
+        return reject_issue_title_through_native_admission(title);
+    }
     let output = Command::new(hook_script("codexy-issue-title-check.sh"))
         .args(["--issue-title", title])
         .output()?;
@@ -74,6 +78,41 @@ fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
     assert!(
         output_text(&output).contains("issue title must"),
         "unexpected output: {}",
+        output_text(&output)
+    );
+    Ok(())
+}
+
+#[cfg(windows)]
+fn reject_issue_title_through_native_admission(
+    title: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::Write as _;
+    use std::process::Stdio;
+
+    let mut child = std::process::Command::new("cmd")
+        .args(["/d", "/c"])
+        .arg(hook_script("codexy-github-admission-issue.cmd"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("native issue admission stdin")?
+        .write_all(&serde_json::to_vec(&serde_json::json!({
+            "tool_input": {"title": title},
+        }))?)?;
+    let output = child.wait_with_output()?;
+    assert!(
+        output.status.success(),
+        "native issue admission should reject {title:?}: {}",
+        output_text(&output)
+    );
+    assert!(
+        output_text(&output).contains("\"permissionDecision\":\"deny\""),
+        "native issue admission did not emit a denial for {title:?}: {}",
         output_text(&output)
     );
     Ok(())

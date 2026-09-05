@@ -50,6 +50,7 @@ fn validator_cli_enforces_scoped_pr_titles_and_reference_boundaries()
         "feat: desc",
         "feat(): desc",
         "feat(task): desc (#900)",
+        "feat(task): desc (#900) ",
         "feat(task): desc #900",
         "feat(task): desc (PR #926)",
         "feat(task): desc PR #926",
@@ -123,6 +124,7 @@ fn validator_cli_enforces_descriptive_issue_title_matrix()
         "lowercase prose",
         "\u{200b}Invisible prefix",
         "Multiline\ntitle",
+        "CI\u{0086}: reduce build time",
     ] {
         assert!(
             !validate_issue_title(title)?.status.success(),

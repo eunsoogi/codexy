@@ -11,9 +11,10 @@ is incomplete.
 
 The PR title MUST use `type(scope): description`, with a nonempty valid scope
 and a nonempty description. An optional breaking marker goes after the scope:
-`feat(task)!: change behavior`. Do not append an issue or PR number to the PR
-title. The squash subject adds exactly ` (#<actual PR number>)` only after the
-captured PR title has passed validation.
+`feat(task)!: change behavior`. The PR title MUST NOT include an issue or PR
+number. The squash subject MUST be the validated PR title followed by one ASCII
+space and `(#<actual PR number>)`. It MUST be added only after the captured PR
+title has passed validation.
 
 Immediately read back the remote PR number, URL, title, body, state, draft
 state, base, head branch, exact head SHA, labels, and linked issue. Repository
