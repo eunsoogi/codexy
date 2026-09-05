@@ -90,7 +90,11 @@ jobs:
           path: |
             ~/.cargo/registry
             packages/codexy-runtime/target
-          key: ${{ github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && format('codexy-rust-normal-measurement-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity) || format('codexy-rust-{0}-{1}-{2}-{3}-profile-test-{4}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name) }}
+          key: &rust-cache-key >-
+            ${{ github.event_name == 'workflow_dispatch' &&
+            inputs.cache_mode == 'normal' &&
+            format('codexy-rust-normal-measurement-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity) ||
+            format('codexy-rust-{0}-{1}-{2}-{3}-profile-test-{4}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name) }}
       - name: Prepare opt-in measurement
         if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         env:
@@ -126,12 +130,15 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/rustup
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
-      - name: Require exact warm cache restore
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
+      - name: Verify measurement cache result
+        if: github.event_name == 'workflow_dispatch' && always()
+        shell: bash
         env:
-          CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
-          CACHE_MODE: ${{ inputs.cache_mode }}
-        run: if [[ "$CACHE_HIT" == true ]]; then [[ "$CACHE_MODE" != isolated ]] || echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; else [[ "$CACHE_MODE" != isolated ]] || echo cache_state=warm-miss >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; exit 1; fi
+          CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
+          CODEXY_MEASUREMENT_CONDITION: ${{ inputs.condition }}
+          CODEXY_MEASUREMENT_CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
+          CODEXY_MEASUREMENT_ROOT: ${{ runner.temp }}/codexy-rust-measurement
+        run: scripts/verify-rust-measurement-cache.sh
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
@@ -144,7 +151,7 @@ jobs:
           path: |
             ~/.cargo/registry
             packages/codexy-runtime/target
-          key: ${{ github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && format('codexy-rust-normal-measurement-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity) || format('codexy-rust-{0}-{1}-{2}-{3}-profile-test-{4}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name) }}
+          key: *rust-cache-key
       - &measurement-cache-save
         if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
@@ -209,13 +216,15 @@ jobs:
             Add-Content $env:GITHUB_ENV "CODEXY_PROFILE_COMMAND_METRICS_DIR=$(Join-Path $root 'metrics/commands')"
           }
       - *measurement-cache-restore
-      - name: Require exact warm cache restore
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
+      - name: Verify measurement cache result
+        if: github.event_name == 'workflow_dispatch' && always()
         shell: pwsh
         env:
-          CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
-          CACHE_MODE: ${{ inputs.cache_mode }}
-        run: if ($env:CACHE_HIT -eq "true") { if ($env:CACHE_MODE -eq "isolated") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit" } } else { if ($env:CACHE_MODE -eq "isolated") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-miss" }; throw "warm measurement requires an exact cache hit" }
+          CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
+          CODEXY_MEASUREMENT_CONDITION: ${{ inputs.condition }}
+          CODEXY_MEASUREMENT_CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
+          CODEXY_MEASUREMENT_ROOT: ${{ runner.temp }}/codexy-rust-measurement
+        run: scripts/verify-rust-measurement-cache.ps1
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
