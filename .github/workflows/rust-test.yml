@@ -109,12 +109,10 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Require exact warm cache restore
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
         env:
           CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
-        run: |
-          test "$CACHE_HIT" = true
-          echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"
+        run: if [[ "$CACHE_HIT" == true ]]; then echo cache_state=warm-hit >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; else echo cache_state=warm-miss >> "$RUNNER_TEMP/codexy-rust-measurement/metrics/measurement.txt"; exit 1; fi
       - run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Install opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch'
@@ -130,12 +128,12 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && success()
+        if: github.event_name == 'workflow_dispatch' && always()
         uses: actions/upload-artifact@v7
         with:
           name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
           path: ${{ runner.temp }}/codexy-rust-measurement/metrics
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
   windows-rust-test:
@@ -215,13 +213,11 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Require exact warm cache restore
-        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm'
+        if: github.event_name == 'workflow_dispatch' && inputs.condition == 'warm' && always()
         shell: pwsh
         env:
           CACHE_HIT: ${{ steps.measurement-cache.outputs.cache-hit }}
-        run: |
-          if ($env:CACHE_HIT -ne "true") { throw "warm measurement requires an exact cache hit" }
-          Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit"
+        run: if ($env:CACHE_HIT -eq "true") { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-hit" } else { Add-Content (Join-Path $env:RUNNER_TEMP "codexy-rust-measurement\metrics\measurement.txt") "cache_state=warm-miss"; throw "warm measurement requires an exact cache hit" }
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
@@ -238,10 +234,10 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && success()
+        if: github.event_name == 'workflow_dispatch' && always()
         uses: actions/upload-artifact@v7
         with:
           name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
           path: ${{ runner.temp }}/codexy-rust-measurement/metrics
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
