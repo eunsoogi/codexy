@@ -96,7 +96,7 @@ pub(super) fn import(
     let mut turns = HashSet::new();
     let mut last_ordinals = HashMap::new();
     let mut previous_head = None;
-    let mut has_legacy_prefix = false;
+    let mut legacy_prefix_len = 0;
     for (index, value) in events.iter().enumerate() {
         let event = object(Some(value), "review event")?;
         reject_unknown(
@@ -146,11 +146,15 @@ pub(super) fn import(
         let event_reviewer = event
             .get("reviewer")
             .ok_or_else(|| "review event must contain reviewer facts".to_owned())?;
-        let is_legacy = index == 0 && legacy_reviewer.as_ref() == Some(event_reviewer);
-        if event_reviewer != &reviewer && !is_legacy {
+        let is_legacy = legacy_reviewer.as_ref() == Some(event_reviewer);
+        if is_legacy {
+            if index != legacy_prefix_len {
+                return Err("pre-PR legacy review history must be a contiguous prefix".into());
+            }
+            legacy_prefix_len += 1;
+        } else if event_reviewer != &reviewer {
             return Err("pre-PR review event does not bind the selected reviewer policy".into());
         }
-        has_legacy_prefix |= is_legacy;
         let head = snapshot::required_oid(event, "reviewed_head", "review event")?;
         if let Some(previous) = previous_head {
             check_ancestor(repository_root, previous, head, "ordered review history")?;
@@ -202,8 +206,9 @@ pub(super) fn import(
         "terminal_review_history": history,
         "pre_pr_import": {"schema": IMPORT_SCHEMA, "source": source, "issue": issue, "complete": true, "events": refs}
     });
-    if has_legacy_prefix {
-        control["reviewer_migration"] = migration::marker(profile_name, &reviewer, 1)?;
+    if legacy_prefix_len > 0 {
+        control["reviewer_migration"] =
+            migration::marker(profile_name, &reviewer, legacy_prefix_len as u64)?;
     }
     state::check_control(plugin_root, &control)?;
     let mut state = current.clone();
