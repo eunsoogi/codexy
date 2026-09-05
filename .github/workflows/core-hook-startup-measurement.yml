@@ -77,12 +77,16 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $controllerActual -ne $env:HEAD_SHA) {
             throw "controller checkout mismatch: expected $env:HEAD_SHA, got $controllerActual"
           }
-          if (git -C $controller status --porcelain) { throw "measurement controller is not clean" }
+          $controllerStatus = @(git -C $controller status --porcelain)
+          if ($LASTEXITCODE -ne 0) { throw "measurement controller status failed" }
+          if ($controllerStatus.Count -gt 0) { throw "measurement controller is not clean" }
           $actual = (git -C $repo rev-parse HEAD).Trim().ToLowerInvariant()
           if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SHA) {
             throw "checkout identity mismatch: expected $env:EXPECTED_SHA, got $actual"
           }
-          if (git -C $repo status --porcelain) { throw "measurement checkout is not clean" }
+          $repoStatus = @(git -C $repo status --porcelain)
+          if ($LASTEXITCODE -ne 0) { throw "measurement checkout status failed" }
+          if ($repoStatus.Count -gt 0) { throw "measurement checkout is not clean" }
       - name: Measure native production hook launcher
         shell: pwsh
         env:

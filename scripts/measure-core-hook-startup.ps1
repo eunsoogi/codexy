@@ -189,7 +189,9 @@ function Save-Record([string]$Path) {
 
 $actualSha = (git -C $RepoRoot rev-parse HEAD).Trim().ToLowerInvariant()
 if ($LASTEXITCODE -ne 0 -or $actualSha -ne $ExpectedSha) { throw "script checkout identity mismatch" }
-if ((git -C $RepoRoot status --porcelain) -ne "") { throw "script checkout is not clean" }
+$repoStatus = @(git -C $RepoRoot status --porcelain)
+if ($LASTEXITCODE -ne 0) { throw "script checkout status failed" }
+if ($repoStatus.Count -gt 0) { throw "script checkout is not clean: $($repoStatus -join '; ')" }
 $payloadText = $PayloadTemplates[$Concern].Replace("__EVENT__", $EventName)
 $payload = [Text.Encoding]::UTF8.GetBytes($payloadText)
 if ($payload.Length -gt 1024 * 1024) { throw "measurement payload exceeds the hook input limit" }
