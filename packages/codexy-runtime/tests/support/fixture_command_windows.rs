@@ -54,10 +54,56 @@ pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
         .ok()?
         .replace("\r\n", "\n");
     (command.contains(&expected)
+        || is_absolute_python_fixture(&stem, &python_stem, &command)
         || is_dynamic_python_fixture(&stem, &command)
         || is_fail_closed_policy_fixture(&stem, &command))
     .then_some(python)
     .filter(|python| python.is_file())
+}
+
+fn is_absolute_python_fixture(stem: &str, python_stem: &str, command: &str) -> bool {
+    let diagnostic = match stem {
+        "codexy-child-thread-creation" => "CODEXY_CHILD_THREAD_CREATION_RUNTIME",
+        "codexy-thread-delivery" => "CODEXY_THREAD_DELIVERY_RUNTIME",
+        _ => return false,
+    };
+    let reason = format!("{diagnostic}: Codexy policy MUST NOT execute this operation.");
+    let pre_tool_denial = [
+        r#"echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":""#,
+        reason.as_str(),
+        r#""}}"#,
+    ]
+    .concat();
+    let permission_denial = [
+        r#"echo {"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":""#,
+        reason.as_str(),
+        r#""}}}"#,
+    ]
+    .concat();
+    let invoke = format!(r#""%runtime%" -3 -I -B "%~dp0{python_stem}.py" --event "%event%""#);
+    let lines = [
+        "@echo off",
+        "setlocal EnableExtensions DisableDelayedExpansion",
+        "set \"event=%~1\"",
+        "if /I \"%event%\"==\"PreToolUse\" goto evaluate",
+        "if /I \"%event%\"==\"PermissionRequest\" goto evaluate",
+        "set \"event=PreToolUse\"",
+        ":evaluate",
+        "set \"runtime=%SystemRoot%\\py.exe\"",
+        "if not exist \"%runtime%\" goto runtime_deny",
+        "set \"CODEXY_HOOK_SILENT=1\"",
+        invoke.as_str(),
+        "set \"status=%errorlevel%\"",
+        "if \"%status%\"==\"0\" exit /b 0",
+        ":runtime_deny",
+        "if /I \"%event%\"==\"PermissionRequest\" goto permission_deny",
+        pre_tool_denial.as_str(),
+        "exit /b 0",
+        ":permission_deny",
+        permission_denial.as_str(),
+        "exit /b 0",
+    ];
+    command == format!("{}\n", lines.join("\n"))
 }
 
 fn is_dynamic_python_fixture(stem: &str, command: &str) -> bool {
