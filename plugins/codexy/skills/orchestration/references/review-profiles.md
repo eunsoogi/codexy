@@ -65,12 +65,12 @@ OWNER/MEMBER authority, and the exact accepted model tuple from the body. The CI
 rollup MUST be non-empty with only terminal-success CheckRuns. Finding
 classification MUST follow the retained semantic kind, not a workflow path: CI
 observations resolve only through CI, a source defect still requires actual
-evidence-diff path coverage, and the exact policy finding only through the maintainer
-decision. All remaining findings require actual evidence-diff path coverage
-with at least one code repair. The producer, `build-pr-state`, and completion
-handoff MUST reread both sources; callers MUST NOT provide source, capture,
-classification, or finding IDs, and this reason MUST NOT waive code, CI, review,
-merge, or quota requirements.
+evidence-diff path coverage, and the exact policy finding only through the
+maintainer decision. All remaining findings require actual evidence-diff path
+coverage with at least one code repair. The producer, `build-pr-state`, and
+completion handoff MUST reread both sources; callers MUST NOT provide source,
+capture, classification, or finding IDs, and this reason MUST NOT waive code,
+CI, review, merge, or quota requirements.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.

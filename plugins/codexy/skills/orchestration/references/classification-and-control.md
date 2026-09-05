@@ -148,7 +148,8 @@ profile's fixed reviewer model changes, an authenticated transition MAY add one
 exact `from`/`to` values, positive `history_boundary`, and explicit direction.
 `legacy_prefix_current_suffix` is normal; `current_prefix_legacy_event` is an
 authenticated exception only at boundary 1 and binds the delta. Facts and
-direction MUST come from the authenticated snapshot; callers MUST NOT change them.
+direction MUST come from the authenticated snapshot; callers MUST NOT change
+them.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
 the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
@@ -158,7 +159,10 @@ contain that one `full` event, optionally followed by one `delta` event, with
 unique review IDs, the selected reviewer on every event unless the exact
 versioned migration marker authorizes one supported exception, and a different
 reviewed head for each event. A migrated history MUST preserve actual tuples:
-normal direction uses the legacy reviewer before `history_boundary` and current policy thereafter; boundary-1 exception keeps current on `full` and legacy on `delta`. Its length MUST equal `terminal_review_count`; counters MUST equal kinds.
+normal direction uses the legacy reviewer before `history_boundary` and current
+policy thereafter; boundary-1 exception keeps current on `full` and legacy on
+`delta`. Its length MUST equal `terminal_review_count`; counters MUST equal
+kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
@@ -232,18 +236,14 @@ Disposition classification MUST come from each retained finding's semantic kind,
 not its path: a `ci_incomplete_observation` resolves through CI, the policy
 finding through the maintainer decision, and a source defect—including one under
 the workflow directory—through an evidence diff; at least one code repair MUST
-remain. This source MUST NOT waive code, CI, review, merge,
-or quota requirements. In all four cases, the evidence commit MUST descend from
-the prior delta and precede the current head; repair evidence MUST change the
-reviewed tree. Arbitrary JSON agreement is not authenticated readback authority.
+remain. This source MUST NOT waive code, CI, review, merge, or quota
+requirements. In all four cases, the evidence commit MUST descend from the prior
+delta and precede the current head; repair evidence MUST change the reviewed
+tree. Arbitrary JSON agreement is not authenticated readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal
 non-PASS disposition; the post-cap path never turns it into readiness.
 
-Headings, field order, explanatory prose, and omitted legacy ceremony fields
-MUST NOT override those direct facts. The ordered history and qualifying-change
-evidence are part of the direct control state; no auxiliary review ledger or
-replacement schema is needed. The selected reviewer MUST remain active and
-unchanged: the owner MUST NOT duplicate, poll, interrupt, or replace that
-reviewer while waiting for a terminal result.
+Headings, prose, and omitted legacy ceremony fields MUST NOT override direct
+state facts; ordered history and qualifying-change evidence stay in that state.

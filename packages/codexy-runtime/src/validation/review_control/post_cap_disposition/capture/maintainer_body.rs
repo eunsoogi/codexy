@@ -40,7 +40,7 @@ pub(super) fn parse(
     }
     let non_waiver = lines
         .get(end..)
-        .and_then(|tail| tail.iter().skip_while(|line| line.is_empty()).next())
+        .and_then(|tail| tail.iter().find(|line| !line.is_empty()))
         .copied()
         .ok_or("maintainer decision body is missing its non-waiver statement")?;
     if !non_waiver.starts_with("This disposition accepts only that model-policy difference")
