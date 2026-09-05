@@ -2,9 +2,11 @@ use std::{collections::HashSet, path::Path, process::Command};
 
 use serde_json::{Map, Value};
 
-use super::super::{external_finding, snapshot};
+use super::super::{external_finding, post_cap_disposition, snapshot};
 
+mod disposition;
 mod paths;
+pub(super) mod pre_verdict;
 
 struct RootRepair<'a> {
     repository_root: &'a Path,
@@ -91,6 +93,16 @@ pub(super) fn check(
             previous_base,
             current_base,
             current_repository: required_text(current_object, "repository", "current")?,
+            prior_delta,
+            change,
+            from,
+            evidence,
+        }),
+        post_cap_disposition::REASON => disposition::check(&disposition::Context {
+            repository_root,
+            previous_base,
+            current_base,
+            current: current_object,
             prior_delta,
             change,
             from,

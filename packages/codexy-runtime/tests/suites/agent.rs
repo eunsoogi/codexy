@@ -52,6 +52,9 @@ mod validator_portable_governed_code;
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 
+#[path = "../validator_review_control_disposition.rs"]
+mod validator_review_control_disposition;
+
 #[path = "../validator_review_control_lifecycle.rs"]
 mod validator_review_control_lifecycle;
 
@@ -110,3 +113,15 @@ mod validator_post_cap_external_finding;
 #[path = "../validator_post_cap_external_finding_negatives.rs"]
 #[cfg(unix)]
 mod validator_post_cap_external_finding_negatives;
+
+#[path = "../validator_post_cap_finding_disposition.rs"]
+#[cfg(unix)]
+mod validator_post_cap_finding_disposition;
+
+#[path = "../validator_post_cap_finding_disposition_handoff.rs"]
+#[cfg(unix)]
+mod validator_post_cap_finding_disposition_handoff;
+
+#[path = "../validator_review_control_pre_verdict.rs"]
+#[cfg(unix)]
+mod validator_review_control_pre_verdict;

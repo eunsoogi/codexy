@@ -13,8 +13,9 @@ The closed review profile set is:
 
 The post-cap re-review is not another full or delta quota. It is admitted only
 from the direct ordered terminal history, for mandatory base integration, an
-in-scope contract/root repair, or an authenticated external finding discovered
-on the clean delta-PASS head; the issue-wide terminal limit remains three.
+in-scope contract/root repair, an authenticated external finding discovered on
+the clean delta-PASS head, or an authenticated mixed-finding disposition from a
+blocked delta; the issue-wide terminal limit remains three.
 
 Reviewer-backed transitions use authenticated current and previous PR snapshots
 from the canonical GitHub readback producer. Snapshots bind the same repository,
@@ -50,6 +51,21 @@ transition requires `observedCommit` to equal the prior delta head and the
 repair diff to touch every recorded path. A source with different repository,
 issue, PR, head, finding set, or paths is rejected. The source PR's owning issue
 is provenance and does not replace the target `reviewControl.issue_number`.
+
+The mixed-finding disposition reason MUST preserve the base OID and cover every
+finding from the blocked delta exactly once. It MUST be produced only from a
+locator-only `authenticated_finding_disposition_locator` request. The source
+envelope MUST combine a fixed exact-head `gh pr view` `statusCheckRollup` read
+with a fixed GraphQL lookup of the exact maintainer PR comment, binding the
+repository, owning issue, PR, base, head, finding ID/path, immutable unminimized
+OWNER/MEMBER authority, and the exact accepted model tuple from the body. The CI
+rollup MUST be non-empty with only terminal-success CheckRuns. Workflow findings
+resolve only through CI, the exact policy finding only through the maintainer
+decision, and all remaining findings require actual evidence-diff path coverage
+with at least one code repair. The producer, `build-pr-state`, and completion
+handoff MUST reread both sources; callers MUST NOT provide source, capture,
+classification, or finding IDs, and this reason MUST NOT waive code, CI, review,
+merge, or quota requirements.
 
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.
