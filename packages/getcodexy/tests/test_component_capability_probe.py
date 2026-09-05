@@ -49,12 +49,13 @@ class CapabilityProcessTests(unittest.TestCase):
 
         detail = "first line\nsecond line\n" + ("x" * 300)
         completed = subprocess.CompletedProcess(["hook"], 9, stdout="", stderr=detail)
+        cwd = Path.cwd()
         with (
             patch.object(probe.os, "name", "posix"),
             patch.object(probe.subprocess, "run", return_value=completed),
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.125)),
         ):
-            result = probe._run(["hook"], Path.cwd(), "{}")
+            result = probe._run(["hook"], cwd, "{}")
         expected = ("first line second line " + ("x" * 300))[
             : probe._PROBE_DETAIL_LIMIT
         ]
