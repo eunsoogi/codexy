@@ -8,6 +8,8 @@ use crate::support::TestResult;
 const REPAIR_PATH: &str =
     "packages/codexy-runtime/src/validation/child_goal_reporting/receipt/parse.rs";
 const EXTERNAL_FINDING_PATH: &str = "packages/codexy-runtime/src/validation/review_control/state.rs";
+const DISPOSITION_REPAIR_PATH: &str =
+    "packages/codexy-runtime/src/validation/review_control/external_finding/capture.rs";
 
 pub(crate) struct SyntheticRepository {
     pub(crate) path: PathBuf,
@@ -21,6 +23,8 @@ pub(crate) struct SyntheticRepository {
     repair_current: String,
     external_evidence: String,
     external_current: String,
+    disposition_evidence: String,
+    disposition_current: String,
 }
 
 impl SyntheticRepository {
@@ -61,6 +65,12 @@ impl SyntheticRepository {
         write(&path, "external-current.txt", "current\n")?;
         let external_current = commit(&path, "current external finding head")?;
 
+        git(&path, &["switch", "--create", "disposition", &delta])?;
+        write(&path, DISPOSITION_REPAIR_PATH, "repaired disposition finding\n")?;
+        let disposition_evidence = commit(&path, "authenticated finding disposition repair")?;
+        write(&path, "disposition-current.txt", "current\n")?;
+        let disposition_current = commit(&path, "current disposition head")?;
+
         Ok(Self {
             path,
             base,
@@ -73,6 +83,8 @@ impl SyntheticRepository {
             repair_current,
             external_evidence,
             external_current,
+            disposition_evidence,
+            disposition_current,
         })
     }
 
@@ -87,7 +99,9 @@ impl SyntheticRepository {
             == Some("in_scope_contract_root_repair");
         let external_finding = control["post_cap_re_review"]["reason"].as_str()
             == Some("authenticated_external_finding_repair");
-        rewrite(&mut control, self, root_repair, external_finding);
+        let disposition = control["post_cap_re_review"]["reason"].as_str()
+            == Some("authenticated_finding_disposition");
+        rewrite(&mut control, self, root_repair, external_finding, disposition);
         Ok((
             control,
             self.map_oid(previous_base)?,
@@ -96,7 +110,7 @@ impl SyntheticRepository {
     }
 
     fn map_oid(&self, value: &str) -> TestResult<String> {
-        self.resolve(value, false, false)
+        self.resolve(value, false, false, false)
     }
 
     pub(crate) fn resolve(
@@ -104,8 +118,9 @@ impl SyntheticRepository {
         value: &str,
         root_repair: bool,
         external_finding: bool,
+        disposition: bool,
     ) -> TestResult<String> {
-        self.map(value, root_repair, external_finding)
+        self.map(value, root_repair, external_finding, disposition)
             .map(str::to_owned)
             .ok_or_else(|| format!("unknown synthetic review reference: {value}").into())
     }
@@ -115,6 +130,7 @@ impl SyntheticRepository {
         value: &str,
         root_repair: bool,
         external_finding: bool,
+        disposition: bool,
     ) -> Option<&'a str> {
         match value {
             direct_state::SYNTHETIC_BASE => Some(&self.base),
@@ -126,6 +142,8 @@ impl SyntheticRepository {
                     Some(&self.repair_current)
                 } else if external_finding {
                     Some(&self.external_current)
+                } else if disposition {
+                    Some(&self.disposition_current)
                 } else {
                     Some(&self.integration_current)
                 }
@@ -133,6 +151,7 @@ impl SyntheticRepository {
             direct_state::SYNTHETIC_INTEGRATION_EVIDENCE => Some(&self.integration_evidence),
             direct_state::SYNTHETIC_REPAIR_EVIDENCE => Some(&self.repair_evidence),
             direct_state::SYNTHETIC_EXTERNAL_EVIDENCE => Some(&self.external_evidence),
+            direct_state::SYNTHETIC_DISPOSITION_EVIDENCE => Some(&self.disposition_evidence),
             _ => None,
         }
     }
@@ -143,19 +162,20 @@ fn rewrite(
     repository: &SyntheticRepository,
     root_repair: bool,
     external_finding: bool,
+    disposition: bool,
 ) {
     match value {
         Value::String(text) => {
-            if let Some(mapped) = repository.map(text, root_repair, external_finding) {
+            if let Some(mapped) = repository.map(text, root_repair, external_finding, disposition) {
                 *text = mapped.to_owned();
             }
         }
         Value::Array(values) => values
             .iter_mut()
-            .for_each(|value| rewrite(value, repository, root_repair, external_finding)),
+            .for_each(|value| rewrite(value, repository, root_repair, external_finding, disposition)),
         Value::Object(values) => values
             .values_mut()
-            .for_each(|value| rewrite(value, repository, root_repair, external_finding)),
+            .for_each(|value| rewrite(value, repository, root_repair, external_finding, disposition)),
         Value::Null | Value::Bool(_) | Value::Number(_) => {}
     }
 }

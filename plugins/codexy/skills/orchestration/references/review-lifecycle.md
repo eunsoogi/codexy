@@ -37,8 +37,9 @@ incomplete provenance.
 
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
-mandatory base integration, an in-scope contract/root repair, or an
-authenticated external finding discovered on the clean delta-PASS head. It MUST
+mandatory base integration, an in-scope contract/root repair, an
+authenticated external finding discovered on the clean delta-PASS head, or an
+authenticated mixed-finding disposition from a blocked delta. It MUST
 use the current policy reviewer (with any previously authenticated migration
 marker preserved) and carry a typed `post_cap_re_review` reason plus the prior
 delta head. The marker MUST carry a qualifying-change object whose `from_head`
@@ -70,7 +71,17 @@ terminal verdict MUST be rejected. A third `BLOCK` permits only the bounded
 issue-contract/root repair and refreshed exact-head proof; a third
 `UNOBSERVABLE` requires maintainer disposition and current proof.
 
-The third verdict does not authorize completion by itself. Exact-head `PASS`, no
+The mixed-finding disposition MUST preserve the unchanged base, bind every
+prior delta finding exactly once, use the locator-only
+`authenticated_finding_disposition_locator`, and refresh its authenticated CI
+rollup and maintainer decision at production, build, and handoff. CI findings
+require a non-empty exact-head all-success CheckRun rollup; the policy finding
+requires an immutable, unminimized OWNER/MEMBER comment bound to the exact
+repository, owning issue, PR, base, head, finding ID/path, and accepted model
+tuple. Other findings require an evidence diff touching their exact
+repository-relative paths, and at least one such code repair is mandatory.
+Caller-supplied source, capture, classification, and IDs are rejected; the
+disposition never waives code, CI, review, merge, or quota requirements. The third verdict does not authorize completion by itself. Exact-head `PASS`, no
 unresolved findings, tests, validators, CI, review-thread, ownership, safety,
 LOC, and merge gates remain required. Both third-result paths waive only review
 four, which MUST NOT occur. Reviewer MUST NOT be messaged, interrupted,

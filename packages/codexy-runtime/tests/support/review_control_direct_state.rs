@@ -1,5 +1,11 @@
 use serde_json::{Value, json};
 
+#[path = "review_control_direct_state/disposition.rs"]
+mod disposition;
+
+#[allow(unused_imports)]
+pub(crate) use disposition::post_cap_disposition_control;
+
 pub(crate) const SYNTHETIC_BASE: &str = "synthetic-base";
 pub(crate) const SYNTHETIC_UPDATED_BASE: &str = "synthetic-updated-base";
 pub(crate) const SYNTHETIC_FULL_HEAD: &str = "synthetic-full-head";
@@ -8,6 +14,7 @@ pub(crate) const SYNTHETIC_CURRENT_HEAD: &str = "synthetic-current-head";
 pub(crate) const SYNTHETIC_INTEGRATION_EVIDENCE: &str = "synthetic-integration-evidence";
 pub(crate) const SYNTHETIC_REPAIR_EVIDENCE: &str = "synthetic-repair-evidence";
 pub(crate) const SYNTHETIC_EXTERNAL_EVIDENCE: &str = "synthetic-external-evidence";
+pub(crate) const SYNTHETIC_DISPOSITION_EVIDENCE: &str = "synthetic-disposition-evidence";
 
 pub(crate) fn strict_control(issue_number: u64, head: &str) -> Value {
     json!({

@@ -166,7 +166,8 @@ The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
 head, set `terminal_review_count` to three, and carry exactly one
 `post_cap_re_review` object with `reason` set to `mandatory_base_integration`,
-`in_scope_contract_root_repair`, or `authenticated_external_finding_repair`,
+`in_scope_contract_root_repair`, `authenticated_external_finding_repair`, or
+`authenticated_finding_disposition`,
 plus `prior_reviewed_head` equal to the delta head. It MUST also carry
 `qualifying_change.from_head`, `qualifying_change.to_head`, and
 `qualifying_change.evidence_commit`; those values MUST bind the delta head and
@@ -218,8 +219,22 @@ source repository, owning issue, source PR, immutable review-thread/comment
 identity and canonical URL, author, `observedCommit` equal to the prior delta
 head, unique finding IDs, and repository-relative paths to the live projection.
 The evidence diff MUST touch every recorded path. The source PR's owning issue
-is provenance and MUST NOT replace the target `reviewControl.issue_number`. In
-all three cases, the evidence commit MUST descend from the prior delta and
+is provenance and MUST NOT replace the target `reviewControl.issue_number`.
+For `authenticated_finding_disposition`, the base OID MUST remain unchanged,
+the prior delta MUST be `BLOCK` with non-empty findings, and the producer MUST
+cover every prior finding exactly once through a locator-only
+`authenticated_finding_disposition_locator` request. Its source MUST combine a
+fixed exact-head `gh pr view` `statusCheckRollup` read with a fixed GraphQL
+PR-comment lookup bound to the exact repository, owning issue, PR, base, head,
+finding ID/path, immutable unminimized OWNER/MEMBER comment, narrow non-waiver
+body, and accepted model tuple. The rollup MUST be non-empty and every CheckRun
+MUST be `COMPLETED`/`SUCCESS`. The producer MUST derive IDs, paths, and kinds
+from the prior authenticated delta, reject caller-supplied source, capture,
+classification, or IDs, and reread both sources at producer, build, and
+handoff. Workflow findings resolve through CI, the policy finding through the
+maintainer decision, and every remaining code finding through an evidence diff;
+at least one code repair MUST remain. This source MUST NOT waive code, CI,
+review, merge, or quota requirements. In all four cases, the evidence commit MUST descend from the prior delta and
 precede the current head; repair evidence MUST change the reviewed tree.
 Arbitrary JSON agreement is not authenticated readback authority.
 

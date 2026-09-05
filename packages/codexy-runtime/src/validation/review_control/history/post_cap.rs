@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::{reject_unknown, required_text};
 use crate::validation::review_control::external_finding;
+use crate::validation::review_control::post_cap_disposition;
 
 pub(super) fn check(
     value: &Value,
@@ -21,7 +22,10 @@ pub(super) fn check(
     let reason = required_text(object, "reason", "post_cap_re_review")?;
     if !matches!(
         reason,
-        "mandatory_base_integration" | "in_scope_contract_root_repair" | external_finding::REASON
+        "mandatory_base_integration"
+            | "in_scope_contract_root_repair"
+            | external_finding::REASON
+            | post_cap_disposition::REASON
     ) {
         return Err("review control state post-cap reason is not eligible".into());
     }
@@ -49,6 +53,7 @@ pub(super) fn check(
             "evidence_commit",
             "finding_ids",
             "external_finding",
+            "finding_disposition",
         ],
         "post_cap_re_review.qualifying_change",
     )?;
@@ -88,14 +93,16 @@ pub(super) fn check(
         }
         if matches!(
             reason,
-            "in_scope_contract_root_repair" | external_finding::REASON
+            "in_scope_contract_root_repair"
+                | external_finding::REASON
+                | post_cap_disposition::REASON
         ) && ids.is_empty()
         {
             return Err("contract/root repair must bind at least one finding id".into());
         }
     } else if matches!(
         reason,
-        "in_scope_contract_root_repair" | external_finding::REASON
+        "in_scope_contract_root_repair" | external_finding::REASON | post_cap_disposition::REASON
     ) {
         return Err("contract/root repair must bind finding ids".into());
     }
@@ -111,7 +118,39 @@ pub(super) fn check(
         {
             return Err("qualifying change finding ids do not bind the external source".into());
         }
-    } else if change.contains_key("external_finding") {
+    } else if reason == post_cap_disposition::REASON {
+        let source = change
+            .get("finding_disposition")
+            .ok_or_else(|| "authenticated finding disposition must bind its source".to_owned())?;
+        post_cap_disposition::check(source)?;
+        let source_ids = source
+            .get("findings")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "finding disposition must bind finding ids".to_owned())?
+            .iter()
+            .map(|finding| {
+                finding
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "finding disposition finding id is invalid".to_owned())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let expected_ids = finding_ids
+            .and_then(Value::as_array)
+            .ok_or("missing finding ids")?
+            .iter()
+            .map(|id| id.as_str().ok_or("finding id is invalid"))
+            .collect::<Result<Vec<_>, _>>()?;
+        if source_ids != expected_ids {
+            return Err("finding disposition ids do not match its source coverage".into());
+        }
+        if change.contains_key("external_finding") {
+            return Err(
+                "authenticated finding disposition cannot bind external finding source".into(),
+            );
+        }
+    } else if change.contains_key("external_finding") || change.contains_key("finding_disposition")
+    {
         return Err("external finding source requires its typed post-cap reason".into());
     }
     Ok(())
