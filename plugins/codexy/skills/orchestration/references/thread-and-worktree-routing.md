@@ -43,32 +43,49 @@ child-owned implementation lane through another surface.
 MUST use this when calling Codex app thread/worktree tools such as `fork_thread`
 or `create_thread` with a worktree environment.
 
-## Live Worktree Reservation Preflight
+The supported `create_thread(worktree)` contract owns worktree-path allocation.
+This project-side preflight preserves known ownership and collision safeguards;
+it does not reserve host paths or prove atomic exclusion. MUST NOT require an
+additional undocumented reservation API or implement a replacement host
+allocator.
+
+## Live Worktree Setup Preflight
 
 MUST run this before creating, forking, reusing, or recycling a Codex app
 worktree for a repository-owned task. This is an active-project fail-closed
-diagnostic; it does not claim to atomically control the host allocator. The live
-worktree reservation preflight is the required project-side check.
+diagnostic for known ownership and setup state.
 
 1. MUST rebuild the reservation map from the active/waiting child ledger and
-   every active or waiting specialist or Sentinel. Each reservation MUST name
-   the canonical worktree CWD, frozen HEAD, clean/index state, referencing task
-   ids, role, status, and explicit release/archive state.
-2. MUST compare the candidate against every reservation before setup and MUST
-   exclude dirty or locked candidate worktrees. A collision or excluded
-   candidate MUST record the reserved path, referencing task ids/statuses,
-   expected frozen HEAD, observed HEAD/clean state, and the unavailable or
-   failed reservation API. The parent MUST NOT create or fork the new thread,
-   retry the same path, unlock it, clean it, archive it, or recycle it.
-3. If the host chooses the candidate internally, the parent MUST require an
-   atomic reservation/exclusion API that compares the full reservation map
-   before setup. Reservation API health MUST be available, complete, and prove a
-   full live-task inventory. When that health check fails, the parent MUST fail
-   setup before allocation and record the host allocator blocker. The parent
-   MUST NOT rely on post-setup collision checks.
-
-Only the host allocator can prove distinct-path allocation. The repository
-contract requires safe failure rather than fabricating allocator enforcement.
+   every active or waiting specialist or Sentinel. Each entry MUST name the
+   canonical worktree CWD, frozen HEAD, clean/index state, available lock
+   evidence, referencing task ids, role, status, and explicit release/archive
+   state. The preflight MUST also record the active child count and whether an
+   existing task owns the same issue or PR.
+2. When a candidate path is exposed before allocation, MUST compare it with
+   every known reservation and exclude a dirty, locked, or colliding candidate.
+   A stop record MUST include the reserved path, referencing task ids/statuses,
+   expected and observed HEAD/clean state, available lock evidence, and the
+   conflict. The parent MUST NOT create or fork on that path, retry the same
+   path, unlock it, clean it, archive it, or recycle it. When the host chooses
+   the path internally, invoke the supported worktree tool after this project
+   preflight; local checks MUST NOT be described as host-level atomicity proof.
+3. MUST keep at most five active Codex app child threads and exactly one active
+   owner for each issue-sized lane. If setup returns a `clientThreadId` or
+   `pendingWorktreeId`, retain it as a pending setup identity, not as a
+   `threadId`. Wait for an authoritative ready or failed setup result; an
+   observation timeout or an omitted list result is not by itself failure. While
+   pending, search by the pending identity, branch, issue/PR, SHA, and available
+   review-thread id. Only a surfaced thread with an active owner, an actionable
+   setup failure, or a bounded `not-surfaced-after-bounded-wait` state may end
+   pending setup; any retry or reassignment MUST name that state.
+4. When setup is ready, MUST verify the returned task identity, CWD, HEAD, clean
+   state, and owner before implementation starts. If the result conflicts with
+   the ownership map or exposes unexpected dirty/locked state, stop the lane
+   without destructive cleanup or a duplicate retry.
+5. MUST inspect actual setup status, approval, or permission state only when the
+   host exposes it. MUST NOT infer parent permission inheritance, invent a
+   permission-setting API, bypass approval, or declare creation failed because a
+   task is temporarily absent from a list view.
 
 - The root orchestrator MUST inspect current child owner state before creating
   or resuming a child Codex thread. The preflight evidence MUST include the
@@ -96,6 +113,9 @@ git rev-parse --verify origin/<branch>
   `branchName=<new-branch>`. MUST treat `startingState.type="branch"` as an
   existing ref selector unless the tool documentation or current successful
   evidence proves it creates new branches.
+- MUST omit `startingState` when the default branch is intended. Supply a
+  validated existing branch or ref only when the user requested a particular
+  starting point; never invent a non-existent branch selector.
 - If Codex app setup reports `fatal: invalid reference: <branch>` after
   branch-name validation succeeds, MUST check whether the branch exists locally
   or remotely before retrying.
