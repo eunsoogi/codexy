@@ -5,6 +5,8 @@ use std::sync::{Arc, Barrier};
 
 #[path = "validator_fixture_parallel_isolation/default_fixture.rs"]
 mod default_fixture;
+#[path = "validator_fixture_parallel_isolation/hook_fixture.rs"]
+mod hook_fixture;
 #[cfg(windows)]
 #[path = "validator_fixture_parallel_isolation/readonly_escape.rs"]
 mod readonly_escape;

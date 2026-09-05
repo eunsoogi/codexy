@@ -27,9 +27,13 @@ fn validator_rejects_node_tokens_in_generic_hook_commands_and_scripts()
 }
 fn fixture(base: &std::path::Path) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let root = base.join("codexy");
-    support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+    support::plugin_fixture::copy_plugin_hook_fixture(
+        &codexy_runtime::paths::repository_root().join("plugins/codexy"),
         &root,
+        &[
+            std::path::Path::new("hooks/hooks.json"),
+            std::path::Path::new("hooks/codexy-issue-title-check.sh"),
+        ],
     )?;
     set_command(
         &root,
