@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import shutil
 import subprocess
 from time import perf_counter
@@ -9,6 +10,18 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from codexy_runtime_tools.version_lock import default_package_version
+
+
+class _OSProxy:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __getattr__(self, attribute: str):
+        return getattr(os, attribute)
+
+
+def platform_os(name: str) -> _OSProxy:
+    return _OSProxy(name)
 
 
 FAKE_MCP = r"""#!/usr/bin/env python3
@@ -198,7 +211,7 @@ def windows_argv(probe, root: Path):
         launcher.parent.mkdir()
         launcher.write_text("@exit /b 0\r\n", encoding="utf-8")
     python = root / "Python Runtime" / "python.exe"
-    with patch.object(probe.os, "name", "nt"):
+    with patch.object(probe, "os", platform_os("nt")):
         batch = tuple(
             probe._argv(f'"{launcher}" PermissionRequest', root)
             for launcher in launchers

@@ -27,6 +27,7 @@ class CapabilityProcessTests(unittest.TestCase):
 
     def test_process_failures_keep_timeout_exit_and_missing_distinct(self) -> None:
         from codexy_runtime_tools import component_capability_probe as probe
+        from codexy_runtime_tools import component_capability_probe_process as process
 
         cases = (
             (subprocess.TimeoutExpired(["hook"], 5), "timeout"),
@@ -36,12 +37,11 @@ class CapabilityProcessTests(unittest.TestCase):
         self.assertNotIn("creationflags", probe._RUN_OPTIONS)
         for outcome, category in cases:
             with self.subTest(category=category):
-                cwd = Path.cwd()
                 with (
-                    patch.object(probe.os, "name", "posix"),
-                    patch.object(probe.subprocess, "run", side_effect=[outcome]),
+                    patch.object(process, "os", support.platform_os("posix")),
+                    patch.object(process.subprocess, "run", side_effect=[outcome]),
                 ):
-                    result = probe._run(["hook"], cwd, "{}")
+                    result = probe._run(["hook"], Path.cwd(), "{}")
                 self.assertEqual(result.category, category)
 
     def test_process_result_captures_bounded_diagnostics(self) -> None:
@@ -49,13 +49,12 @@ class CapabilityProcessTests(unittest.TestCase):
 
         detail = "first line\nsecond line\n" + ("x" * 300)
         completed = subprocess.CompletedProcess(["hook"], 9, stdout="", stderr=detail)
-        cwd = Path.cwd()
         with (
-            patch.object(probe.os, "name", "posix"),
+            patch.object(probe, "os", support.platform_os("posix")),
             patch.object(probe.subprocess, "run", return_value=completed),
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.125)),
         ):
-            result = probe._run(["hook"], cwd, "{}")
+            result = probe._run(["hook"], Path.cwd(), "{}")
         expected = ("first line second line " + ("x" * 300))[
             : probe._PROBE_DETAIL_LIMIT
         ]
@@ -71,13 +70,12 @@ class CapabilityProcessTests(unittest.TestCase):
         process.poll.return_value = 0
         process.returncode = 0
         process.communicate.return_value = ("", "")
-        cwd = Path.cwd()
         with (
-            patch.object(probe.os, "name", "nt"),
+            patch.object(probe, "os", support.platform_os("nt")),
             patch.object(probe.subprocess, "Popen", return_value=process),
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.5, 14.5)),
         ):
-            result = probe._run(["hook"], cwd, "{}")
+            result = probe._run(["hook"], Path.cwd(), "{}")
         self.assertEqual((result.category, result.returncode), ("success", 0))
         self.assertEqual(result.elapsed_seconds, 4.5)
         self.assertAlmostEqual(process.communicate.call_args.kwargs["timeout"], 4.5)
@@ -98,9 +96,8 @@ class CapabilityProcessTests(unittest.TestCase):
             ),
             ("", ""),
         ]
-        cwd = Path.cwd()
         with (
-            patch.object(probe.os, "name", "nt"),
+            patch.object(probe, "os", support.platform_os("nt")),
             patch.object(probe.subprocess, "Popen", return_value=process),
             patch.object(
                 probe,
@@ -108,7 +105,7 @@ class CapabilityProcessTests(unittest.TestCase):
                 side_effect=lambda target, deadline: target.kill(),
             ),
         ):
-            result = probe._run(["hook"], cwd, "{}")
+            result = probe._run(["hook"], Path.cwd(), "{}")
         self.assertEqual(
             (result.category, result.returncode, result.detail),
             ("timeout", None, "diagnostic"),
