@@ -1,9 +1,8 @@
-"""Exact Python equivalents of the canonical issue, PR, and merge predicates."""
+"""Shared title predicates for the installed generic GitHub checker."""
 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 
 
 _TYPE = re.compile(r"^[a-z0-9-]+$")
@@ -14,20 +13,16 @@ _REFERENCE = re.compile(
 )
 
 
-def _commit_type(value: str) -> bool:
-    return bool(_TYPE.fullmatch(value))
-
-
-def _scope(value: str) -> bool:
-    return bool(_SCOPE.fullmatch(value))
-
-
 def _prefix(value: str) -> bool:
     value = value.removesuffix("!")
     if "(" not in value or not value.endswith(")"):
         return False
     commit_type, scope = value.split("(", 1)
-    return ")" not in scope[:-1] and _commit_type(commit_type) and _scope(scope[:-1])
+    return (
+        ")" not in scope[:-1]
+        and bool(_TYPE.fullmatch(commit_type))
+        and bool(_SCOPE.fullmatch(scope[:-1]))
+    )
 
 
 def _invalid_character(value: str) -> bool:
@@ -53,25 +48,15 @@ def pr_title(value: object) -> bool:
     )
 
 
-def _type_character(char: str) -> bool:
-    return char.isascii() and (char.isalnum() or char == "-")
-
-
-def _scope_character(char: str) -> bool:
-    return char.isascii() and (char.isalnum() or char in "-_/")
-
-
-def _spaces(value: str, index: int) -> int:
-    while index < len(value) and value[index] in " \t":
-        index += 1
-    return index
-
-
 def _category_prefix(value: str) -> tuple[int, bool, bool] | None:
     index = 0
-    while index < len(value) and _type_character(value[index]):
+    while (
+        index < len(value)
+        and value[index].isascii()
+        and (value[index].isalnum() or value[index] == "-")
+    ):
         index += 1
-    if not _commit_type(value[:index].lower()):
+    if not _TYPE.fullmatch(value[:index].lower()):
         return None
     type_end = index
     next_index = _spaces(value, type_end)
@@ -81,9 +66,13 @@ def _category_prefix(value: str) -> tuple[int, bool, bool] | None:
         scoped = True
         index = _spaces(value, next_index + 1)
         start = index
-        while index < len(value) and _scope_character(value[index]):
+        while (
+            index < len(value)
+            and value[index].isascii()
+            and (value[index].isalnum() or value[index] in "-_/")
+        ):
             index += 1
-        if start == index or not _scope(value[start:index].lower()):
+        if start == index or not _SCOPE.fullmatch(value[start:index].lower()):
             return None
         index = _spaces(value, index)
         if index == len(value) or value[index] != ")":
@@ -96,8 +85,14 @@ def _category_prefix(value: str) -> tuple[int, bool, bool] | None:
     return index, scoped, breaking
 
 
+def _spaces(value: str, index: int) -> int:
+    while index < len(value) and value[index] in " \t":
+        index += 1
+    return index
+
+
 def _dash_separator(value: str) -> bool:
-    return value[:1] in "-–—" and (len(value) == 1 or value[1] in " \t")
+    return bool(value) and value[0] in "-–—" and (len(value) == 1 or value[1] in " \t")
 
 
 def _issue_category(value: str) -> bool:
@@ -126,11 +121,3 @@ def issue_title(value: object) -> bool:
     if not value[0].isupper() or _invalid_character(value):
         return False
     return not _issue_category(value)
-
-
-def graphql_title(value: object, predicate: Callable[[str], bool]) -> bool:
-    return value == "<string>" or (
-        isinstance(value, str)
-        and value.startswith("<string>:")
-        and predicate(value[9:])
-    )

@@ -55,8 +55,13 @@ class GithubNativeHooksInstallationMixin:
             admissions = (
                 ("issue", "feat(github): extract workflow", True),
                 ("issue", "Extract GitHub workflow", False),
+                ("issue", "CI : reduce build time", True),
+                ("issue", "CI", True),
                 ("pr", "Extract GitHub workflow", True),
                 ("pr", "refactor(github): extract workflow", False),
+                ("pr", "feat: desc", True),
+                ("pr", "feat(task): desc (#900)", True),
+                ("pr", "feat(task): desc PR #900", True),
             )
             for rule, title, denied in admissions:
                 self._admission(installed, environment, rule, title, denied)

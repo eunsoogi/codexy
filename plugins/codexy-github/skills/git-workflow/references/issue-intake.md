@@ -22,6 +22,15 @@ exact duplicate exists, an existing owner covers the work, or the selected
 metadata cannot be verified from the repository. Preserve the result as a
 handoff with the canonical issue or pull request when one exists.
 
+## Issue title
+
+Write an English, descriptive sentence-style title beginning with an ASCII
+uppercase letter. State the problem or requested change in plain prose. Do not
+prefix the title with a category, type, scope, bracket, colon, or dash; for
+example, use `Reduce CI build time`, not `CI: reduce build time` or `[CI]
+Reduce build time`. The title should explain the requested change clearly; a
+syntax check does not replace human review for meaning.
+
 ## Required issue body
 
 The body MUST contain substantive content under each heading:

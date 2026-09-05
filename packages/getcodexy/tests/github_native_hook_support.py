@@ -1,6 +1,7 @@
 """Host-command helpers shared by GitHub native hook integration cases."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -169,8 +170,16 @@ class GithubNativeHookSupport:
         payload: str,
         denied: bool,
     ) -> None:
+        if os.name == "nt":
+            command = [str(installed / f"hooks/codexy-github-admission-{rule}.cmd")]
+        else:
+            command = [
+                str(installed / "hooks/codexy-github-admission.sh"),
+                "--rule",
+                rule,
+            ]
         result = subprocess.run(
-            [str(installed / "hooks/codexy-github-admission.sh"), "--rule", rule],
+            command,
             input=payload,
             text=True,
             capture_output=True,

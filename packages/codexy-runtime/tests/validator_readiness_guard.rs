@@ -43,6 +43,14 @@ fn readiness_guard_checks_pr_titles() -> Result<(), Box<dyn std::error::Error>> 
         String::from_utf8_lossy(&bad.stdout)
     );
 
+    let bad_reference = Command::new(&script)
+        .args(["--check-pr-title", "--pr-title", "fix(workflow): gate PR #204"])
+        .output()?;
+    assert!(
+        !bad_reference.status.success(),
+        "guard should reject terminal PR references"
+    );
+
     let good = Command::new(&script)
         .args([
             "--check-pr-title",

@@ -1,7 +1,5 @@
 """Issue-side mutation checks and the direct connector launcher adapter."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from .envelope import Request
@@ -14,10 +12,9 @@ from .github_target import (
     graph_list,
     graph_literal,
     graph_nullable,
-    graph_object,
 )
 from .merge import positive_int
-from .titles import issue_title
+from .titles import graphql_title, issue_title
 
 
 def forbidden(request: Request) -> bool:
@@ -134,7 +131,7 @@ def graphql_issue(
         return (
             graph_common(payload, allowed, {"repositoryId", "title"})
             and graph_id(payload, "repositoryId", transport)
-            and graph_literal(payload["title"])
+            and graphql_title(payload["title"], issue_title)
             and _graphql_optional(payload, allowed, transport)
         )
     if name == "updateIssue":
@@ -197,7 +194,12 @@ def _graphql_update(payload: dict[str, object], transport: dict[str, str]) -> bo
         return False
     semantic = set(payload) - {"issueId", "clientMutationId"}
     if semantic and semantic <= {"title", "body"}:
-        return all(graph_nullable(payload[key]) for key in semantic)
+        return all(
+            value == "null"
+            or (key == "title" and graphql_title(value, issue_title))
+            or (key == "body" and graph_literal(value))
+            for key, value in ((key, payload[key]) for key in semantic)
+        )
     if semantic in ({"labelIds"}, {"assigneeIds"}):
         key = next(iter(semantic))
         return graph_bound_list(
