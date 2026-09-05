@@ -4,7 +4,6 @@ use std::path::Path;
 
 use regex::Regex;
 
-use super::files::read_source;
 use super::markup::{parse_markup, parse_stylesheet};
 use super::mask::language_mask;
 use super::parse::{import_list, parse_simple, regex_values};
@@ -16,14 +15,14 @@ pub(super) fn parse_language(
     file: &str,
     extension: &str,
     indexed_files: &BTreeSet<String>,
+    source: &str,
 ) -> (Vec<String>, Vec<String>) {
-    let source = read_source(root, file);
     match extension {
-        ".html" | ".htm" | ".svg" => parse_markup(&source),
-        ".css" | ".scss" | ".sass" | ".less" => parse_stylesheet(&source),
+        ".html" | ".htm" | ".svg" => parse_markup(source),
+        ".css" | ".scss" | ".sass" | ".less" => parse_stylesheet(source),
         _ => {
-            let mask = language_mask(&source, extension);
-            parse_masked_language(root, file, extension, indexed_files, &source, &mask)
+            let mask = language_mask(source, extension);
+            parse_masked_language(root, file, extension, indexed_files, source, &mask)
         }
     }
 }

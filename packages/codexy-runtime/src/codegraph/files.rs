@@ -4,14 +4,22 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
+use sha2::{Digest, Sha256};
 
 use super::errors::{CodegraphError, CodegraphErrorKind, record, remember_files, was_discovered};
+use super::snapshot::{FileSnapshot, environment_digest};
 
 const CODE_EXTENSIONS: &[&str] = &[
     "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "go", "rs", "rb", "java", "kt", "html", "htm",
     "css", "scss", "sass", "less", "svg", "vue", "svelte", "astro", "json", "jsonc", "yaml", "yml",
     "toml", "md", "mdx",
 ];
+
+#[derive(Debug)]
+pub(super) struct SourceSnapshot {
+    pub(super) source: String,
+    pub(super) digest: [u8; 32],
+}
 
 pub(super) fn result_limit(input: Option<usize>) -> usize {
     input.filter(|value| *value > 0).unwrap_or(80)
@@ -83,6 +91,17 @@ pub(super) fn to_posix(path: &Path) -> String {
 }
 
 pub(super) fn walk_code_files(root: &Path) -> Vec<String> {
+    enumerate_code_files(root)
+}
+
+pub(super) fn discover_code_files(root: &Path) -> FileSnapshot {
+    FileSnapshot {
+        files: enumerate_code_files(root),
+        environment_digest: environment_digest(root),
+    }
+}
+
+fn enumerate_code_files(root: &Path) -> Vec<String> {
     let mut files = WalkBuilder::new(root)
         .hidden(false)
         .filter_entry(|entry| {
@@ -110,18 +129,30 @@ pub(super) fn walk_code_files(root: &Path) -> Vec<String> {
     files
 }
 
+pub(super) fn read_source_snapshot(root: &Path, file: &str) -> Option<SourceSnapshot> {
+    let source = read_source_text(root, file)?;
+    Some(SourceSnapshot {
+        digest: Sha256::digest(source.as_bytes()).into(),
+        source,
+    })
+}
+
 pub(super) fn read_source(root: &Path, file: &str) -> String {
+    read_source_text(root, file).unwrap_or_default()
+}
+
+fn read_source_text(root: &Path, file: &str) -> Option<String> {
     let path = path_join_posix(root, file);
     let display_path = relative_display(root, &path);
     match fs::read_to_string(&path) {
-        Ok(source) => source,
+        Ok(source) => Some(source),
         Err(error) => {
             record(CodegraphError::new(
                 file_error_kind(&error, was_discovered(&display_path)),
                 display_path,
                 error.to_string(),
             ));
-            String::new()
+            None
         }
     }
 }
