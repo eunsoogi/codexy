@@ -23,7 +23,11 @@ $WarmSamples = 5
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     $RepoRoot = Join-Path $PSScriptRoot ".."
 }
-$RepoRoot = (Resolve-Path -LiteralPath $RepoRoot -PathType Container).Path
+$resolvedRepoRoot = Resolve-Path -LiteralPath $RepoRoot
+if (-not (Test-Path -LiteralPath $resolvedRepoRoot.Path -PathType Container)) {
+    throw "RepoRoot must be a directory"
+}
+$RepoRoot = $resolvedRepoRoot.Path
 $LauncherNames = @{
     child = "codexy-child-thread-creation.cmd"
     subagent = "codexy-subagent-ownership.cmd"
