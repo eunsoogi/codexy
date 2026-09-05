@@ -1,6 +1,8 @@
 use std::io::{self, Read as _, Write as _};
 use std::net::TcpStream;
 use std::path::Path;
+use std::thread;
+use std::time::Duration;
 
 use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
@@ -14,6 +16,9 @@ fn main() -> Result<()> {
 struct FakeLsp {
     buffer: Vec<u8>,
     capture: Option<Value>,
+    initialize_count: u64,
+    request_count: u64,
+    request_ids: Vec<Value>,
 }
 
 impl FakeLsp {
@@ -57,7 +62,7 @@ impl FakeLsp {
         match message.get("method").and_then(Value::as_str) {
             Some("initialize") => {
                 self.capture_initialize(message)?;
-                if let Some(error) = Self::fixture_response_error() {
+                if let Some(error) = fixture_response_error(None) {
                     return Self::send(&json!({
                         "jsonrpc": "2.0",
                         "id": message.get("id").cloned().unwrap_or(Value::Null),
@@ -67,13 +72,14 @@ impl FakeLsp {
                 Self::send(&json!({
                     "jsonrpc": "2.0",
                     "id": message.get("id").cloned().unwrap_or(Value::Null),
-                    "result": { "capabilities": { "diagnosticProvider": {} } }
+                    "result": { "capabilities": if std::env::var_os("CODEXY_FAKE_LSP_NO_PULL_DIAGNOSTICS").is_none() { json!({ "diagnosticProvider": {} }) } else { json!({}) } }
                 }))
             }
             Some("textDocument/didOpen") => self.capture_uri("openedUri", message),
             Some("shutdown") => {
-                Self::fixture_sync_point("shutdown-observed")?;
-                Self::release_fixture_stderr_gate();
+                self.merge_capture(&json!({ "shutdownCount": 1 }))?;
+                fixture_sync_point("shutdown-observed")?;
+                fixture_release_stderr_gate();
                 Self::send(&json!({
                     "jsonrpc": "2.0",
                     "id": message.get("id").cloned().unwrap_or(Value::Null),
@@ -82,7 +88,9 @@ impl FakeLsp {
             }
             Some(_) if message.get("id").is_some() => {
                 self.capture_request(message)?;
-                if let Some(error) = Self::fixture_response_error() {
+                fixture_delay()?;
+                fixture_crash_after_request(self.request_count)?;
+                if let Some(error) = fixture_response_error(Some(self.request_count)) {
                     return Self::send(&json!({
                         "jsonrpc": "2.0",
                         "id": message.get("id").cloned().unwrap_or(Value::Null),
@@ -100,62 +108,18 @@ impl FakeLsp {
     }
 
     fn capture_initialize(&mut self, message: &Value) -> Result<()> {
-        if let Some(stderr) = Self::fixture_stderr()? {
+        self.initialize_count += 1;
+        if let Some(stderr) = fixture_stderr()? {
             let mut output = io::stderr().lock();
             output.write_all(stderr.as_bytes())?;
             output.flush()?;
-            Self::fixture_sync_point("stderr-flushed")?;
+            fixture_sync_point("stderr-flushed")?;
         }
         self.merge_capture(&json!({
+            "initializeCount": self.initialize_count,
             "cwd": std::env::current_dir()?.display().to_string(),
             "rootUri": message.pointer("/params/rootUri").cloned().unwrap_or(Value::Null)
         }))
-    }
-
-    fn fixture_sync_point(name: &str) -> Result<()> {
-        let Some(directory) = std::env::var_os("CODEXY_FAKE_LSP_SYNC_DIR") else {
-            return Ok(());
-        };
-        std::fs::write(Path::new(&directory).join(name), b"ready")?;
-        Ok(())
-    }
-
-    fn fixture_response_error() -> Option<String> {
-        std::env::var_os("CODEXY_FAKE_LSP_RESPONSE_ERROR")
-            .map(|error| error.to_string_lossy().into_owned())
-    }
-
-    fn fixture_stderr() -> Result<Option<String>> {
-        let marker = std::env::var_os("CODEXY_FAKE_LSP_STDERR")
-            .map(|stderr| stderr.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let tail = match std::env::var_os("CODEXY_FAKE_LSP_STDERR_TAIL_BYTES") {
-            Some(tail) => tail
-                .to_string_lossy()
-                .parse::<usize>()
-                .context("parse fake LSP stderr tail length")?,
-            None => 0,
-        };
-        if marker.is_empty() && tail == 0 {
-            return Ok(None);
-        }
-        let mut stderr = marker;
-        if !stderr.is_empty() {
-            stderr.push('\n');
-        }
-        stderr.extend(std::iter::repeat_n('x', tail));
-        Ok(Some(stderr))
-    }
-
-    fn release_fixture_stderr_gate() {
-        let Ok(address) = std::env::var("CODEXY_TEST_STDERR_SHUTDOWN_GATE_ADDR") else {
-            return;
-        };
-        let Ok(mut gate) = TcpStream::connect(address) else {
-            return;
-        };
-        let _ = gate.write_all(b"shutdown-observed");
-        let _ = gate.flush();
     }
 
     fn capture_uri(&mut self, key: &str, message: &Value) -> Result<()> {
@@ -165,7 +129,13 @@ impl FakeLsp {
     }
 
     fn capture_request(&mut self, message: &Value) -> Result<()> {
+        self.request_count += 1;
+        if let Some(id) = message.get("id") {
+            self.request_ids.push(id.clone());
+        }
         let mut patch = json!({
+            "requestCount": self.request_count,
+            "requestIds": self.request_ids.clone(),
             "requestUri": message.pointer("/params/textDocument/uri").cloned().unwrap_or(Value::Null)
         });
         if let Some(position) = message
@@ -204,7 +174,6 @@ impl FakeLsp {
         Ok(())
     }
 }
-
 fn content_length(header: &str) -> Result<usize> {
     for line in header.lines() {
         let Some((name, value)) = line.split_once(':') else {
@@ -215,4 +184,65 @@ fn content_length(header: &str) -> Result<usize> {
         }
     }
     bail!("missing Content-Length")
+}
+
+fn fixture_sync_point(name: &str) -> Result<()> {
+    if let Some(directory) = std::env::var_os("CODEXY_FAKE_LSP_SYNC_DIR") {
+        std::fs::write(Path::new(&directory).join(name), b"ready")?;
+    }
+    Ok(())
+}
+
+fn fixture_response_error(request_count: Option<u64>) -> Option<String> {
+    let error = std::env::var_os("CODEXY_FAKE_LSP_RESPONSE_ERROR")
+        .map(|error| error.to_string_lossy().into_owned())?;
+    let requested = std::env::var_os("CODEXY_FAKE_LSP_RESPONSE_ERROR_ON_REQUEST")
+        .and_then(|value| value.to_string_lossy().parse::<u64>().ok());
+    (requested.is_none() || requested == request_count).then_some(error)
+}
+
+fn fixture_stderr() -> Result<Option<String>> {
+    let marker = std::env::var_os("CODEXY_FAKE_LSP_STDERR")
+        .map(|stderr| stderr.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let tail = std::env::var_os("CODEXY_FAKE_LSP_STDERR_TAIL_BYTES")
+        .map(|tail| tail.to_string_lossy().parse::<usize>())
+        .transpose()?
+        .unwrap_or(0);
+    if marker.is_empty() && tail == 0 {
+        return Ok(None);
+    }
+    let separator = if marker.is_empty() { "" } else { "\n" };
+    Ok(Some(format!("{marker}{separator}{}", "x".repeat(tail))))
+}
+
+fn fixture_delay() -> Result<()> {
+    let delay = std::env::var_os("CODEXY_FAKE_LSP_DELAY_MS")
+        .map(|value| value.to_string_lossy().parse::<u64>())
+        .transpose()?
+        .unwrap_or(0);
+    thread::sleep(Duration::from_millis(delay));
+    Ok(())
+}
+
+fn fixture_crash_after_request(request_count: u64) -> Result<()> {
+    let crash_after = std::env::var_os("CODEXY_FAKE_LSP_CRASH_AFTER_REQUEST")
+        .map(|value| value.to_string_lossy().parse::<u64>())
+        .transpose()?;
+    if crash_after == Some(request_count) {
+        std::process::exit(17);
+    }
+    Ok(())
+}
+
+fn fixture_release_stderr_gate() {
+    let Ok(address) = std::env::var("CODEXY_TEST_STDERR_SHUTDOWN_GATE_ADDR") else {
+        return;
+    };
+    let Ok(mut gate) = TcpStream::connect(address) else {
+        return;
+    };
+    let _ = gate
+        .write_all(b"shutdown-observed")
+        .and_then(|()| gate.flush());
 }
