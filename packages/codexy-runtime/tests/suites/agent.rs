@@ -96,3 +96,9 @@ mod validator_post_cap_review;
 
 #[path = "../validator_post_cap_review_negatives.rs"]
 mod validator_post_cap_review_negatives;
+
+#[path = "../validator_post_cap_external_finding.rs"]
+mod validator_post_cap_external_finding;
+
+#[path = "../validator_post_cap_external_finding_negatives.rs"]
+mod validator_post_cap_external_finding_negatives;

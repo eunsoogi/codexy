@@ -4,6 +4,7 @@ use anyhow::{Result, bail};
 use serde_json::Value;
 
 mod classification;
+mod external_finding;
 mod history;
 mod migration;
 mod policy;
@@ -104,7 +105,7 @@ pub(super) fn produce(
 ) -> Result<Value> {
     let request: Value = serde_json::from_str(request_text)
         .map_err(|error| anyhow::anyhow!("review control input is invalid: {error}"))?;
-    let control = request
+    let mut control = request
         .get("control_state")
         .or_else(|| request.get("reviewControl"))
         .cloned()
@@ -115,6 +116,14 @@ pub(super) fn produce(
     if request.get("previous_control_state").is_some() {
         bail!(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
+        );
+    }
+    let external_source = request.get("authenticated_external_finding");
+    if let Some(source) = external_source {
+        external_finding::normalize_producer(&mut control, source).map_err(anyhow::Error::msg)?;
+    } else if external_finding::requires_source(&control) {
+        bail!(
+            "review control producer requires authenticated_external_finding for external repair"
         );
     }
     let control = if control

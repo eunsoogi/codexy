@@ -83,11 +83,15 @@ task/thread
 - terminal proof:
 - post-third disposition (not applicable, PASS, final repair, or maintainer
   disposition):
-- post-cap reason (mandatory_base_integration or in_scope_contract_root_repair):
+- post-cap reason (mandatory_base_integration, in_scope_contract_root_repair, or
+  authenticated_external_finding_repair):
 - prior reviewed head (must equal the delta head):
 - qualifying-change from/to heads and evidence commit in Git ancestry:
 - authenticated current/previous PR snapshots, baseRefOid transition, and
   finding_ids plus recorded-path linkage when root repair applies:
+- authenticated external-finding source envelope, source identity, observed
+  delta head, exact finding IDs, and every recorded affected path when external
+  repair applies:
 - fourth profile review: prohibited after the third terminal verdict
 - remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 

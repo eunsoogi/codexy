@@ -165,15 +165,15 @@ counters MUST equal the corresponding event kinds.
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
 head, set `terminal_review_count` to three, and carry exactly one
-`post_cap_re_review` object with `reason` set to either
-`mandatory_base_integration` or `in_scope_contract_root_repair`, plus
-`prior_reviewed_head` equal to the delta head. It MUST also carry
-`qualifying_change.from_head`, `qualifying_change.to_head`, and
-`qualifying_change.evidence_commit`; those values MUST bind the delta head and
-current head, and the evidence commit MUST be in their Git ancestry. The current
-head MUST differ from that prior head. Optional churn, a fourth event, a
-duplicate head or ID, a truncated/reordered history, and a marker on a non-third
-event MUST be rejected.
+`post_cap_re_review` object with `reason` set to
+`mandatory_base_integration`, `in_scope_contract_root_repair`, or
+`authenticated_external_finding_repair`, plus `prior_reviewed_head` equal to
+the delta head. It MUST also carry `qualifying_change.from_head`,
+`qualifying_change.to_head`, and `qualifying_change.evidence_commit`; those
+values MUST bind the delta head and current head, and the evidence commit MUST
+be in their Git ancestry. The current head MUST differ from that prior head.
+Optional churn, a fourth event, a duplicate head or ID, a truncated/reordered
+history, and a marker on a non-third event MUST be rejected.
 
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
@@ -198,11 +198,21 @@ MUST differ, the current base MUST descend from the previous base, and the
 integration evidence MUST descend from the current base. For
 `in_scope_contract_root_repair`, the base OID MUST remain unchanged, the prior
 delta MUST be `BLOCK` with non-empty findings, and
-`qualifying_change.finding_ids` MUST exactly identify those findings, and its
-evidence diff MUST change every finding's recorded path. In both cases the
-evidence commit MUST descend from the prior delta and precede the current head;
-a root-repair evidence commit MUST change the reviewed tree. Arbitrary JSON
-agreement is not authenticated readback authority.
+`qualifying_change.finding_ids` MUST exactly identify those findings; its
+evidence diff MUST change every finding's recorded path. For
+`authenticated_external_finding_repair`, the base OID MUST remain unchanged,
+the prior delta MUST be a clean `PASS` with no unresolved findings, and
+`qualifying_change.external_finding` MUST be an authenticated GitHub GraphQL
+`codexy.review-control-external-finding.v1` envelope. The envelope MUST bind
+the source repository, owning issue, source PR, immutable review-thread/comment
+identity and canonical URL, author, `observedCommit` equal to the prior delta
+head, unique finding IDs, and repository-relative paths. The producer MUST
+derive `finding_ids` from that envelope, and the evidence diff MUST touch every
+recorded path. The source PR's owning issue is provenance and MUST NOT replace
+the target `reviewControl.issue_number`. In all three cases, the evidence commit
+MUST descend from the prior delta and precede the current head; repair evidence
+MUST change the reviewed tree. Arbitrary JSON agreement is not authenticated
+readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal

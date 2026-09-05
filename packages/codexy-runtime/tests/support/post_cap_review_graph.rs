@@ -7,6 +7,7 @@ use crate::support::TestResult;
 
 const REPAIR_PATH: &str =
     "packages/codexy-runtime/src/validation/child_goal_reporting/receipt/parse.rs";
+const EXTERNAL_FINDING_PATH: &str = "packages/codexy-runtime/src/validation/review_control/state.rs";
 
 pub(crate) struct SyntheticRepository {
     pub(crate) path: PathBuf,
@@ -18,6 +19,8 @@ pub(crate) struct SyntheticRepository {
     integration_current: String,
     repair_evidence: String,
     repair_current: String,
+    external_evidence: String,
+    external_current: String,
 }
 
 impl SyntheticRepository {
@@ -52,6 +55,12 @@ impl SyntheticRepository {
         write(&path, "repair-current.txt", "current\n")?;
         let repair_current = commit(&path, "current repair head")?;
 
+        git(&path, &["switch", "--create", "external", &delta])?;
+        write(&path, EXTERNAL_FINDING_PATH, "repaired external finding\n")?;
+        let external_evidence = commit(&path, "authenticated external finding repair")?;
+        write(&path, "external-current.txt", "current\n")?;
+        let external_current = commit(&path, "current external finding head")?;
+
         Ok(Self {
             path,
             base,
@@ -62,6 +71,8 @@ impl SyntheticRepository {
             integration_current,
             repair_evidence,
             repair_current,
+            external_evidence,
+            external_current,
         })
     }
 
@@ -74,7 +85,9 @@ impl SyntheticRepository {
         let mut control = control.clone();
         let root_repair = control["post_cap_re_review"]["reason"].as_str()
             == Some("in_scope_contract_root_repair");
-        rewrite(&mut control, self, root_repair);
+        let external_finding = control["post_cap_re_review"]["reason"].as_str()
+            == Some("authenticated_external_finding_repair");
+        rewrite(&mut control, self, root_repair, external_finding);
         Ok((
             control,
             self.map_oid(previous_base)?,
@@ -83,16 +96,26 @@ impl SyntheticRepository {
     }
 
     fn map_oid(&self, value: &str) -> TestResult<String> {
-        self.resolve(value, false)
+        self.resolve(value, false, false)
     }
 
-    pub(crate) fn resolve(&self, value: &str, root_repair: bool) -> TestResult<String> {
-        self.map(value, root_repair)
+    pub(crate) fn resolve(
+        &self,
+        value: &str,
+        root_repair: bool,
+        external_finding: bool,
+    ) -> TestResult<String> {
+        self.map(value, root_repair, external_finding)
             .map(str::to_owned)
             .ok_or_else(|| format!("unknown synthetic review reference: {value}").into())
     }
 
-    fn map<'a>(&'a self, value: &str, root_repair: bool) -> Option<&'a str> {
+    fn map<'a>(
+        &'a self,
+        value: &str,
+        root_repair: bool,
+        external_finding: bool,
+    ) -> Option<&'a str> {
         match value {
             direct_state::SYNTHETIC_BASE => Some(&self.base),
             direct_state::SYNTHETIC_UPDATED_BASE => Some(&self.updated_base),
@@ -101,30 +124,38 @@ impl SyntheticRepository {
             direct_state::SYNTHETIC_CURRENT_HEAD => {
                 if root_repair {
                     Some(&self.repair_current)
+                } else if external_finding {
+                    Some(&self.external_current)
                 } else {
                     Some(&self.integration_current)
                 }
             }
             direct_state::SYNTHETIC_INTEGRATION_EVIDENCE => Some(&self.integration_evidence),
             direct_state::SYNTHETIC_REPAIR_EVIDENCE => Some(&self.repair_evidence),
+            direct_state::SYNTHETIC_EXTERNAL_EVIDENCE => Some(&self.external_evidence),
             _ => None,
         }
     }
 }
 
-fn rewrite(value: &mut Value, repository: &SyntheticRepository, root_repair: bool) {
+fn rewrite(
+    value: &mut Value,
+    repository: &SyntheticRepository,
+    root_repair: bool,
+    external_finding: bool,
+) {
     match value {
         Value::String(text) => {
-            if let Some(mapped) = repository.map(text, root_repair) {
+            if let Some(mapped) = repository.map(text, root_repair, external_finding) {
                 *text = mapped.to_owned();
             }
         }
         Value::Array(values) => values
             .iter_mut()
-            .for_each(|value| rewrite(value, repository, root_repair)),
+            .for_each(|value| rewrite(value, repository, root_repair, external_finding)),
         Value::Object(values) => values
             .values_mut()
-            .for_each(|value| rewrite(value, repository, root_repair)),
+            .for_each(|value| rewrite(value, repository, root_repair, external_finding)),
         Value::Null | Value::Bool(_) | Value::Number(_) => {}
     }
 }

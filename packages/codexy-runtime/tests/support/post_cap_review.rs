@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, process::Command};
 
 use serde_json::{Value, json};
 
@@ -21,7 +21,9 @@ pub(crate) fn validate_readiness(
     let repository = graph::SyntheticRepository::create(temporary.path())?;
     let root_repair = control["post_cap_re_review"]["reason"].as_str()
         == Some("in_scope_contract_root_repair");
-    let head = repository.resolve(head, root_repair)?;
+    let external_finding = control["post_cap_re_review"]["reason"].as_str()
+        == Some("authenticated_external_finding_repair");
+    let head = repository.resolve(head, root_repair, external_finding)?;
     let (control, _, current_base) = repository.prepare(
         &control,
         direct_state::SYNTHETIC_BASE,
@@ -114,6 +116,64 @@ pub(crate) fn run_build(
         &previous,
         &output,
     )?)
+}
+
+pub(crate) fn produce(
+    control: &Value,
+    source: &Value,
+    previous_base: &str,
+    current_base: &str,
+) -> TestResult<Value> {
+    let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let mut source_control = control.clone();
+    source_control["post_cap_re_review"]["qualifying_change"]["external_finding"] =
+        source.clone();
+    let (mut control, previous_base, current_base) =
+        repository.prepare(&source_control, previous_base, current_base)?;
+    let source = control["post_cap_re_review"]["qualifying_change"]["external_finding"].clone();
+    let change = control["post_cap_re_review"]["qualifying_change"]
+        .as_object_mut()
+        .ok_or("qualifying change")?;
+    change.remove("external_finding");
+    change.remove("finding_ids");
+    let current_head = control["reviewed_head"].as_str().ok_or("current head")?;
+    let previous_head = control["terminal_review_history"][1]["reviewed_head"]
+        .as_str()
+        .ok_or("previous head")?;
+    let current = direct_state::pr_snapshot(
+        control["issue_number"].as_u64().ok_or("issue number")?,
+        &current_base,
+        current_head,
+        None,
+    );
+    let previous = direct_state::pr_snapshot(
+        control["issue_number"].as_u64().ok_or("issue number")?,
+        &previous_base,
+        previous_head,
+        Some(direct_state::post_cap_prior(&control)),
+    );
+    let input = temporary.path().join("producer-input.json");
+    let output = temporary.path().join("producer-output.json");
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": control,
+            "authenticated_external_finding": source,
+            "current_pr_state": current,
+            "previous_pr_state": previous
+        }))?,
+    )?;
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .args(["--repository-root"])
+        .arg(&repository.path)
+        .status()?;
+    assert!(result.success(), "producer must accept external source");
+    Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
 
 fn write_review_inputs(
