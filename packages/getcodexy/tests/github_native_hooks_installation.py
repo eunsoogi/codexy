@@ -148,6 +148,51 @@ class GithubNativeHooksInstallationMixin:
                 ),
                 "",
             )
+            repository_pr_hook = hook_root / "codexy-repository-pull-request.sh"
+            repository_pr_cases = (
+                (
+                    "mcp__codex_apps__github_update_pull_request",
+                    {"title": "#951 · PR #953 · Windows 원인 진단"},
+                    True,
+                ),
+                (
+                    "github.update_pull_request",
+                    {
+                        "title": "#951 · PR #953 · Windows 원인 진단",
+                        "body": "diagnostic",
+                    },
+                    True,
+                ),
+                (
+                    "github.update_pull_request",
+                    {"title": "fix(hooks): update through installed route"},
+                    False,
+                ),
+                (
+                    "github.update_pull_request",
+                    {"title": "fix(hooks): update title and body", "body": "details"},
+                    False,
+                ),
+                ("github.update_pull_request", {"body": "metadata only"}, False),
+            )
+            for event in ("PermissionRequest", "PreToolUse"):
+                for tool, fields, denied in repository_pr_cases:
+                    payload = {
+                        "hook_event_name": event,
+                        "tool_name": tool,
+                        "tool_input": {
+                            "repository_full_name": "eunsoogi/codexy",
+                            "pr_number": 953,
+                            **fields,
+                        },
+                        "cwd": str(ROOT),
+                    }
+                    output = self._run_process(
+                        [str(repository_pr_hook), event],
+                        json.dumps(payload),
+                        {**environment, "PLUGIN_ROOT": str(installed)},
+                    )
+                    self.assertEqual(bool(output), denied, (event, tool, fields))
             assert_nested_exec_cases(
                 self, self._run_process, installed, environment, ROOT
             )

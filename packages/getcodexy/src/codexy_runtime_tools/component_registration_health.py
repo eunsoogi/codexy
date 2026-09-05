@@ -84,7 +84,7 @@ ISSUE_MATCHER = r"^mcp__codex_apps__github_(?:add_comment_to_issue|add_issue_ass
 CONNECTOR_HOOKS = (
     (ISSUE_MATCHER, "codexy-repository-issue"),
     (
-        r"^mcp__codex_apps__github_(create|update)_pull_request$",
+        r"^(?:mcp__codex_apps__github_(create|update)_pull_request|github\.(create|update)_pull_request)$",
         "codexy-repository-pull-request",
     ),
     (
