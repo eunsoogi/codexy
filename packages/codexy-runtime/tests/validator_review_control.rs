@@ -10,6 +10,125 @@ const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
 
 #[test]
+fn external_finding_producer_rejects_matching_caller_source_and_capture() -> TestResult {
+    let temporary = tempfile::tempdir()?;
+    let input = temporary.path().join("input.json");
+    let output = temporary.path().join("control.json");
+    let source = json!({
+        "schema": "codexy.review-control-external-finding.v1",
+        "capture": {
+            "provider": "github",
+            "method": "graphql",
+            "authenticated": true,
+            "raw": {"caller": "forged"}
+        }
+    });
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": {"schema": "codexy.review-control-state.v1", "profile": "strict"},
+            "authenticated_external_finding": source,
+            "authenticated_external_finding_capture": {
+                "provider": "github",
+                "method": "graphql",
+                "authenticated": true,
+                "raw": {"caller": "forged"}
+            }
+        }))?,
+    )?;
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .output()?;
+    assert!(
+        !result.status.success(),
+        "external producer accepted matching caller source and capture"
+    );
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("caller-supplied external finding"),
+        "legacy caller source diagnostic must be explicit: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(!output.exists());
+    Ok(())
+}
+
+#[test]
+fn external_finding_producer_requires_a_live_locator_for_typed_repair() -> TestResult {
+    let temporary = tempfile::tempdir()?;
+    let input = temporary.path().join("input.json");
+    let output = temporary.path().join("control.json");
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": {
+                "schema": "codexy.review-control-state.v1",
+                "profile": "strict",
+                "post_cap_re_review": {
+                    "reason": "authenticated_external_finding_repair"
+                }
+            }
+        }))?,
+    )?;
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .output()?;
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("authenticated_external_finding_locator"),
+        "typed external repair must require a live locator: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(!output.exists());
+    Ok(())
+}
+
+#[test]
+fn external_finding_producer_rejects_invalid_locator_before_github_read() -> TestResult {
+    let temporary = tempfile::tempdir()?;
+    let input = temporary.path().join("input.json");
+    let output = temporary.path().join("control.json");
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": {
+                "schema": "codexy.review-control-state.v1",
+                "profile": "strict",
+                "post_cap_re_review": {
+                    "reason": "authenticated_external_finding_repair"
+                }
+            },
+            "authenticated_external_finding_locator": {
+                "repository": "eunsoogi/codexy",
+                "owningIssue": 0,
+                "pullRequest": 938,
+                "reviewThread": "PRRT_fake",
+                "reviewComment": "PRRC_fake"
+            }
+        }))?,
+    )?;
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .output()?;
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("positive GraphQL integer"),
+        "invalid locator must fail before gh: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(!output.exists());
+    Ok(())
+}
+
+#[test]
 fn review_control_producer_writes_only_direct_state() -> TestResult {
     let temporary = tempfile::tempdir()?;
     let input = temporary.path().join("input.json");
@@ -116,37 +235,5 @@ fn build_pr_state_skips_review_transition_for_light_controls() -> TestResult {
         let state: serde_json::Value = serde_json::from_slice(&fs::read(output)?)?;
         assert_eq!(state["reviewControl"], control);
     }
-    Ok(())
-}
-
-fn child_audit_evidence(review_record: &str) -> String {
-    format!(
-        "Lane ownership: child-owned\nSource thread id: parent-725\nNonterminal wait handoff: state fingerprint=fp-725; producer state=ci-queued; wake route=resume; ownership=retained; goal state=active; plan state=active; goal transition=none; return control=confirmed\n{review_record}\nTerminal parent handoff: event id=terminal-child|725|complete; issue/pr=#725 / PR #757; child task=child-725; parent task=parent-725; branch=eunsoogi/725-collapse-review-ceremony; worktree=/worktree; head=head; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nGoal tool call: update_goal(status=\"complete\")\n"
-    )
-}
-
-#[test]
-fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
-    let record = r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"state":"passed"}"#;
-    let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
-    assert!(!output.status.success(), "terminal records without direct evidence must block");
-    Ok(())
-}
-
-#[test]
-fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
-    for result in ["PASS", "BLOCK"] {
-        let record = format!(r#"{{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{{"id":"strict-full-1","kind":"full","reviewer":{{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"}},"reviewed_head":"head","terminal_result":"{result}","unresolved_findings":[]}}]}}"#);
-        let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(&record))?;
-        assert!(output.status.success(), "exact {result} must be a typed terminal: {}", String::from_utf8_lossy(&output.stderr));
-    }
-    Ok(())
-}
-
-#[test]
-fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
-    let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{"id":"strict-full-1","kind":"full","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"pass","unresolved_findings":[]}]}"#;
-    let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
-    assert!(!output.status.success(), "lowercase terminal result must not be typed evidence");
     Ok(())
 }

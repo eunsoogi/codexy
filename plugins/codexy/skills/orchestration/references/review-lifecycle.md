@@ -37,20 +37,38 @@ incomplete provenance.
 
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
-mandatory base integration or an in-scope contract/root repair. It MUST use the
-current policy reviewer (with any previously authenticated migration marker
-preserved) and carry a typed `post_cap_re_review` reason plus the prior delta
-head. The marker MUST carry a qualifying-change object whose `from_head` is the
-delta head, whose `to_head` is the current head, and whose `evidence_commit` is
-an ancestor between them. Mandatory base integration MUST change `baseRefOid`
-and prove base and integration ancestry. Contract/root repair MUST preserve
-`baseRefOid`, require a prior `BLOCK` delta with non-empty findings, bind
-`finding_ids` exactly to those findings, and show the evidence diff changes
-every finding's recorded path. Optional churn, duplicate or unchanged heads,
-missing/reordered/truncated history, and a fourth terminal verdict MUST be
-rejected. A third `BLOCK` permits only the bounded issue-contract/root repair
-and refreshed exact-head proof; a third `UNOBSERVABLE` requires maintainer
-disposition and current proof.
+mandatory base integration, an in-scope contract/root repair, or an
+authenticated external finding discovered on the clean delta-PASS head. It MUST
+use the current policy reviewer (with any previously authenticated migration
+marker preserved) and carry a typed `post_cap_re_review` reason plus the prior
+delta head. The marker MUST carry a qualifying-change object whose `from_head`
+is the delta head, whose `to_head` is the current head, and whose
+`evidence_commit` is an ancestor between them. Mandatory base integration MUST
+change `baseRefOid` and prove base and integration ancestry. Contract/root
+repair MUST preserve `baseRefOid`, require a prior `BLOCK` delta with non-empty
+findings, bind `finding_ids` exactly to those findings, and show the evidence
+diff changes every finding's recorded path. Authenticated external finding
+repair MUST preserve `baseRefOid`, require a clean prior `PASS` delta with no
+unresolved findings, and be produced from a locator-only
+`authenticated_external_finding_locator` request. The producer MUST perform a
+fixed-argument, host-authorized GitHub GraphQL read, persist its raw response
+and deterministic projection in the source envelope, and reject caller-supplied
+source or capture values. `capture.raw` equality and re-projection are offline
+shape/integrity checks only, not authentication. The producer, `build-pr-state`,
+and completion handoff MUST use the live source read for external-finding
+authority; offline validators only validate an envelope already admitted by that
+boundary. The envelope MUST bind the source repository, owning issue, PR,
+review-thread/comment identity, author, observed commit equal to the delta head,
+unique finding IDs, and repository-relative paths to the live projection; the
+repair diff MUST touch every recorded path. The source PR's owning issue is
+provenance and does not replace the target control issue. Independent evaluator
+output remains unavailable unless a trusted adapter exposes a concrete safe
+source with the same path/head binding and no private inputs, answers, or
+artifact paths; a public `FAIL` word alone is not evidence. Optional churn,
+duplicate or unchanged heads, missing/reordered/truncated history, and a fourth
+terminal verdict MUST be rejected. A third `BLOCK` permits only the bounded
+issue-contract/root repair and refreshed exact-head proof; a third
+`UNOBSERVABLE` requires maintainer disposition and current proof.
 
 The third verdict does not authorize completion by itself. Exact-head `PASS`, no
 unresolved findings, tests, validators, CI, review-thread, ownership, safety,

@@ -1,0 +1,49 @@
+query($owner:String!, $name:String!, $pullRequest:Int!, $owningIssue:Int!, $reviewThread:ID!, $reviewComment:ID!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$pullRequest) {
+      number
+      url
+      repository { nameWithOwner }
+      closingIssuesReferences(first:100) {
+        nodes { number url }
+        pageInfo { hasNextPage }
+      }
+    }
+    issue(number:$owningIssue) {
+      number
+      url
+      repository { nameWithOwner }
+    }
+  }
+  thread: node(id:$reviewThread) {
+    __typename
+    ... on PullRequestReviewThread {
+      id
+      path
+      pullRequest { number url repository { nameWithOwner } }
+      comments(first:100) {
+        nodes {
+          id
+          databaseId
+          url
+          author { login }
+          commit { oid }
+          path
+        }
+        pageInfo { hasNextPage }
+      }
+    }
+  }
+  comment: node(id:$reviewComment) {
+    __typename
+    ... on PullRequestReviewComment {
+      id
+      databaseId
+      url
+      author { login }
+      commit { oid }
+      path
+      pullRequest { number url repository { nameWithOwner } }
+    }
+  }
+}

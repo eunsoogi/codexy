@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::Path, process::Command};
 
 use serde_json::{Map, Value};
 
-use super::super::snapshot;
+use super::super::{external_finding, snapshot};
 
 mod paths;
 
@@ -81,6 +81,16 @@ pub(super) fn check(
             repository_root,
             previous_base,
             current_base,
+            prior_delta,
+            change,
+            from,
+            evidence,
+        }),
+        external_finding::REASON => paths::check_external_finding(paths::ExternalFindingContext {
+            repository_root,
+            previous_base,
+            current_base,
+            current_repository: required_text(current_object, "repository", "current")?,
             prior_delta,
             change,
             from,
