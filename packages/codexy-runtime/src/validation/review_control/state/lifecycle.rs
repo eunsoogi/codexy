@@ -74,7 +74,7 @@ pub(super) fn is_terminal(plugin_root: &Path, record: &str) -> bool {
     }
     check(
         plugin_root,
-        &json!({"number": issue_number, "headRefOid": head, "reviewControl": control}),
+        &json!({"headRefOid": head, "reviewControl": control}),
         false,
     )
     .is_ok()

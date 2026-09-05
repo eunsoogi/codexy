@@ -18,7 +18,12 @@ in-scope contract/root repair, and the issue-wide terminal limit remains three.
 Reviewer-backed transitions use authenticated current and previous PR snapshots
 from the canonical GitHub readback producer. Snapshots bind the same repository,
 PR number, URL, base branch, capture provenance, `baseRefOid`, and `headRefOid`;
-the previous snapshot's `reviewControl` is the only predecessor authority.
+the authenticated `capture.owningIssue` object also binds the owning issue's
+repository, number, canonical URL, and explicit `owner-assignment`,
+`closing-issue-reference`, or `linked-issue-reference` association. The owning
+issue object comes from the authenticated issue read and is distinct from the
+PR number; `reviewControl.issue_number` binds that owning issue. The previous
+snapshot's `reviewControl` is the only predecessor authority.
 `previous_control_state` is rejected. Base integration must change and prove
 base ancestry. Contract/root repair must retain the base, follow a prior `BLOCK`
 delta with findings, bind `qualifying_change.finding_ids` exactly to those

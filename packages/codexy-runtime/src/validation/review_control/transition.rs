@@ -16,6 +16,7 @@ pub(super) fn check_with_repository(
     snapshot::check(previous, "previous")?;
     snapshot::check(current, "current")?;
     snapshot::same_pr(previous, current)?;
+    snapshot::same_issue(previous, current)?;
     if current.get("reviewControl").is_some() {
         return Err(
             "review control current PR snapshot must not carry a caller-supplied predecessor"
@@ -139,8 +140,8 @@ fn check_genesis_snapshot(snapshot: &Value, control: &Map<String, Value>) -> Res
     let object = snapshot
         .as_object()
         .ok_or_else(|| "previous PR snapshot must be an object".to_owned())?;
-    let issue = count(control, "issue_number")?;
-    if object.get("number").and_then(Value::as_u64) != Some(issue) {
+    let issue = snapshot::owning_issue_number(snapshot, "previous")?;
+    if issue != count(control, "issue_number")? {
         return Err("genesis PR snapshot issue identity disagrees with review control".into());
     }
     if let Some(profile) = object.get("reviewProfile").and_then(Value::as_str) {

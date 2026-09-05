@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value, json};
 
-use super::{history, migration, policy};
+use super::{history, migration, policy, snapshot};
 
 #[path = "state/lifecycle.rs"]
 mod lifecycle;
@@ -23,13 +23,12 @@ pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), S
         .filter(|head| !head.is_empty())
         .or_else(|| light.then_some("light-review"))
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    let mut state = json!({"headRefOid": head, "reviewControl": control});
+    let state = json!({"headRefOid": head, "reviewControl": control});
     if !light {
-        let issue_number = control
+        control
             .get("issue_number")
             .and_then(Value::as_u64)
             .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
-        state["number"] = json!(issue_number);
     }
     check(plugin_root, &state, false)
 }
@@ -118,14 +117,15 @@ fn check_with_mode(
     }
 
     let issue_number = count(control, "issue_number")?;
-    if let Some(bound_issue) = state.get("number").and_then(Value::as_u64) {
-        if bound_issue != issue_number {
-            return Err("review control state issue_number disagrees with the PR".into());
-        }
-    }
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
     };
+    if state.get("capture").is_some() {
+        snapshot::check(state, "current")?;
+        if snapshot::owning_issue_number(state, "current")? != issue_number {
+            return Err("review control state issue_number disagrees with the owning issue".into());
+        }
+    }
     let current_reviewer = serde_json::to_value(reviewer)
         .map_err(|_| "selected reviewer is not serializable".to_owned())?;
     let history_len = control

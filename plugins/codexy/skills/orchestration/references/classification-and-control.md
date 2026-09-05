@@ -178,7 +178,11 @@ event MUST be rejected.
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
 the same PR repository, number, URL, base branch, and authenticated capture
-provenance, and MUST carry `baseRefOid` and `headRefOid`. The previous
+provenance, and MUST carry `baseRefOid`, `headRefOid`, and
+`capture.owningIssue` with the owning issue repository, number, canonical URL,
+and explicit owner-assignment or PR-linkage association. The owning issue MUST
+come from an authenticated issue read and MUST remain distinct from the PR
+number; `reviewControl.issue_number` binds the owning issue. The previous
 snapshot's direct `reviewControl` is the only predecessor authority; a
 separately supplied `previous_control_state` MUST be rejected. The first full
 review appends to a clean genesis with zero terminal reviews, and later states
