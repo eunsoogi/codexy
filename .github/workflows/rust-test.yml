@@ -229,7 +229,7 @@ jobs:
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
-        run: rustup toolchain install; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: scripts/ensure-rust-toolchain.ps1
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         shell: pwsh
