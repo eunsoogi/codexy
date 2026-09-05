@@ -31,3 +31,21 @@ MUST NOT weaken, delete, skip, or rewrite tests just to pass a refactor.
 - Split by stable responsibility without obscuring public contracts, worsening
   navigation, creating circular dependencies, or mixing feature work and
   unrelated cleanup.
+
+## Performance and test-preservation review
+
+Continue to preserve behavior and public contracts when a refactor changes test
+targets, fixtures, or measured execution paths. Use
+[Performance review](performance-review.md) only when the request explicitly
+asks for cost or test efficiency. Before deleting or merging a test, preserve
+this evidence chain:
+
+`requirement protected → replacement oracle → unique regression case retained`
+
+A green suite after deleting a test proves only that the deleted check no longer
+runs. Keep the actual regression and security checks, and record missing
+measurements as `not measured`.
+
+The 250-line limit and readable structural-remediation rules above remain
+unchanged. End the result with the problem, evidence, smallest improvement, and
+verification. Do not add a separate security checklist.

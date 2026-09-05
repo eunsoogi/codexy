@@ -16,6 +16,8 @@ applicable methods only. Proof-driven completion owns final audit.
 - [Test-driven development](references/test-driven-development.md) only for an
   executable boundary classified `engineering_tdd_required`.
 - [Refactoring](references/refactoring.md) for behavior-preserving structure.
+- [Performance review](references/performance-review.md) only for explicit cost
+  or test-efficiency review requests.
 - [Quality assurance](references/quality-assurance.md) for real-surface proof.
 
 ## Shared workflow contract
