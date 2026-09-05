@@ -114,6 +114,10 @@ fn check_with_mode(
         .get(selected)
         .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
 
+    if matches!(source, StateSource::PrSnapshot) {
+        snapshot::check(state, "current")?;
+    }
+
     if profile.reviewer.is_none() {
         if matches!(reviewer_mode, ReviewerMode::Legacy) {
             return Err("light review selection cannot have a legacy reviewer".into());
@@ -150,7 +154,6 @@ fn check_with_mode(
         return Err("selected reviewer is unavailable".into());
     };
     if matches!(source, StateSource::PrSnapshot) {
-        snapshot::check(state, "current")?;
         if snapshot::owning_issue_number(state, "current")? != issue_number {
             return Err("review control state issue_number disagrees with the owning issue".into());
         }
