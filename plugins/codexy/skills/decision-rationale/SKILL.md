@@ -54,11 +54,15 @@ four values in order from the request's supplied material:
    use `none` only when the supplied reason and evidence require no additional
    unproven dependency. Do not invent a policy, consumer, threshold, or other
    context to fill this field.
-4. State the first observable change in the supplied context that would break
-   that assumption or the reason and make reconsideration relevant. Record it in
-   `reopen_condition` without reopening, judging, or changing the decision. Use
-   `unavailable` when no observable condition can be grounded in the supplied
-   material.
+4. Derive `reopen_condition` from the supplied material rather than inventing a
+   hypothetical. Find the first observable change in that material that would
+   break the assumption or the reason and make reconsideration relevant. If the
+   material already supplies an observation, consequence, quote, or
+   counterexample that grounds such a change, record that first grounded
+   condition while preserving its attribution; do not return `unavailable` or
+   replace it with a future condition. Use `unavailable` only when no supplied
+   material grounds any observable condition. Record it without reopening,
+   judging, or changing the decision.
 
 Keep the distinction between the user's evidence and the analysis of what it
 does or does not establish. When wording is quoted or negated, treat the quote
