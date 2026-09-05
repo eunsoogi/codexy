@@ -2,7 +2,9 @@ use crate::support;
 
 use std::process::{Command, Output};
 
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -59,9 +61,8 @@ fn cargo_metadata_discovers_independent_target_below_nested_package_manifest() -
         "cargo metadata stderr:\n{}",
         stderr(&metadata)
     );
-    let cargo = run(
+    let cargo = run_cargo(
         repo.path(),
-        "cargo",
         &[
             "check",
             "--manifest-path",

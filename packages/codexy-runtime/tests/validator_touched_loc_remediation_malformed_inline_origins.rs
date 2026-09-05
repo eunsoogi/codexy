@@ -3,7 +3,9 @@ use crate::support;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -16,9 +18,8 @@ fn touched_loc_fails_closed_after_unterminated_inline_tokens() -> TestResult {
         "const BYTE: u8 = b'\\xZ';",
     ] {
         let repo = malformed_origin_fixture(malformed)?;
-        let cargo = run(
+        let cargo = run_cargo(
             repo.path(),
-            "cargo",
             &[
                 "check",
                 "--manifest-path",

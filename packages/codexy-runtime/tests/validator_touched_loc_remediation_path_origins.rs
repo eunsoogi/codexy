@@ -4,7 +4,9 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 use serde_json::Value;
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -94,7 +96,7 @@ fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
         })
     }));
 
-    let cargo = run(repo.path(), "cargo", &["check", "--offline", "--workspace"])?;
+    let cargo = run_cargo(repo.path(), &["check", "--offline", "--workspace"])?;
     assert!(cargo.status.success(), "cargo stderr:\n{}", stderr(&cargo));
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -104,7 +106,7 @@ fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
 #[test]
 fn touched_loc_rejects_stem_child_for_out_of_package_target() -> TestResult {
     let repo = workspace_target_fixture("../../shared/src/tool.rs", "shared/src/tool/helper.rs")?;
-    let cargo = run(repo.path(), "cargo", &["check", "--offline", "--workspace"])?;
+    let cargo = run_cargo(repo.path(), &["check", "--offline", "--workspace"])?;
     assert!(!cargo.status.success());
     assert!(stderr(&cargo).contains("file not found for module `helper`"));
 

@@ -4,7 +4,9 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 use serde_json::Value;
-use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
+use support::touched_loc::{
+    fixture, regular_lines, regular_lines_from, run_cargo, stderr, validate, write,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -29,9 +31,8 @@ fn cargo_metadata_discovers_independent_nested_target_below_root_manifest() -> T
         "cargo metadata stderr:\n{}",
         stderr(&metadata)
     );
-    let cargo = run(
+    let cargo = run_cargo(
         repo.path(),
-        "cargo",
         &[
             "check",
             "--manifest-path",
@@ -81,9 +82,8 @@ fn cargo_metadata_discovers_nested_package_target_without_root_manifest() -> Tes
         })
     }));
 
-    let cargo = run(
+    let cargo = run_cargo(
         repo.path(),
-        "cargo",
         &[
             "check",
             "--manifest-path",
