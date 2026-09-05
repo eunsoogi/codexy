@@ -121,8 +121,19 @@ pub(super) fn produce(
         );
     }
     let external_source = request.get("authenticated_external_finding");
+    let host_capture = request.get("authenticated_external_finding_capture");
     if let Some(source) = external_source {
-        external_finding::normalize_producer(&mut control, source).map_err(anyhow::Error::msg)?;
+        let host_capture = host_capture.ok_or_else(|| {
+            anyhow::anyhow!(
+                "review control producer requires authenticated_external_finding_capture"
+            )
+        })?;
+        external_finding::normalize_producer(&mut control, source, host_capture)
+            .map_err(anyhow::Error::msg)?;
+    } else if host_capture.is_some() {
+        bail!(
+            "review control producer requires authenticated_external_finding with its host capture"
+        );
     } else if external_finding::requires_source(&control) {
         bail!(
             "review control producer requires authenticated_external_finding for external repair"

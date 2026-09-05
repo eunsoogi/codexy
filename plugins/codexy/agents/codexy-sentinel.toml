@@ -87,11 +87,15 @@ exactly to those findings, and show the evidence diff changes each finding's
 recorded path. An authenticated external finding repair MUST retain the base,
 follow a clean `PASS` delta with no unresolved findings, and carry an
 authenticated GitHub GraphQL `codexy.review-control-external-finding.v1`
-envelope binding the source repository, owning issue, source PR,
+envelope produced from a separate `authenticated_external_finding_capture`
+host-authorized readback with a bounded `capture.raw` projection. The
+envelope's source repository, owning issue, source PR,
 review-thread/comment identity, author, observed commit equal to the delta
-head, unique finding IDs, and repository-relative paths. Its producer-derived
-`finding_ids` MUST match the source exactly, and the evidence diff MUST touch
-every recorded path. The current head MUST differ.
+head, unique finding IDs, and repository-relative paths MUST equal the
+corresponding raw fields; the validator MUST NOT treat a caller's
+`authenticated` flag as credential proof. Its producer-derived `finding_ids`
+MUST match the source exactly, and the evidence diff MUST touch every recorded
+path. The current head MUST differ.
 Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
 reordered, or truncated history MUST be rejected. The same Sentinel remains
 active; it MUST NOT be duplicated,

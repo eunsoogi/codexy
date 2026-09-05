@@ -50,18 +50,21 @@ findings, bind `finding_ids` exactly to those findings, and show the evidence
 diff changes every finding's recorded path. Authenticated external finding
 repair MUST preserve `baseRefOid`, require a clean prior `PASS` delta with no
 unresolved findings, and bind a source envelope captured by authenticated GitHub
-GraphQL. That envelope MUST bind the source repository, owning issue, PR,
-review-thread/comment identity, author, observed commit equal to the delta head,
-unique finding IDs, and repository-relative paths; the repair diff MUST touch
-every recorded path. The source PR's owning issue is provenance and does not
-replace the target control issue. Independent evaluator output remains
-unavailable unless a trusted adapter exposes a concrete safe source with the
-same path/head binding and no private inputs, answers, or artifact paths; a
-public `FAIL` word alone is not evidence. Optional churn, duplicate or unchanged
-heads, missing/reordered/truncated history, and a fourth terminal verdict MUST
-be rejected. A third `BLOCK` permits only the bounded issue-contract/root repair
-and refreshed exact-head proof; a third `UNOBSERVABLE` requires maintainer
-disposition and current proof.
+GraphQL readback. The producer MUST receive that readback as a separate
+`authenticated_external_finding_capture` input, persist its bounded
+`capture.raw` projection in the envelope, and bind the source repository, owning
+issue, PR, review-thread/comment identity, author, observed commit equal to the
+delta head, unique finding IDs, and repository-relative paths to the
+corresponding raw fields; the validator MUST NOT treat `capture.authenticated`
+alone as credential proof. The repair diff MUST touch every recorded path. The
+source PR's owning issue is provenance and does not replace the target control
+issue. Independent evaluator output remains unavailable unless a trusted adapter
+exposes a concrete safe source with the same path/head binding and no private
+inputs, answers, or artifact paths; a public `FAIL` word alone is not evidence.
+Optional churn, duplicate or unchanged heads, missing/reordered/truncated
+history, and a fourth terminal verdict MUST be rejected. A third `BLOCK` permits
+only the bounded issue-contract/root repair and refreshed exact-head proof; a
+third `UNOBSERVABLE` requires maintainer disposition and current proof.
 
 The third verdict does not authorize completion by itself. Exact-head `PASS`, no
 unresolved findings, tests, validators, CI, review-thread, ownership, safety,

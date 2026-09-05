@@ -147,6 +147,7 @@ fn producer_accepts_actual_pr938_discussion_on_its_reviewed_commit() -> TestResu
         serde_json::to_vec(&json!({
             "control_state": control,
             "authenticated_external_finding": pr938_finding(&delta),
+            "authenticated_external_finding_capture": pr938_finding(&delta)["capture"].clone(),
             "current_pr_state": direct_state::pr_snapshot(947, &base, &current, None),
             "previous_pr_state": direct_state::pr_snapshot(947, &base, &delta, Some(previous))
         }))?,
@@ -169,7 +170,6 @@ fn producer_accepts_actual_pr938_discussion_on_its_reviewed_commit() -> TestResu
     );
     Ok(())
 }
-
 fn git(repository: &std::path::Path, args: &[&str]) -> TestResult<String> {
     let output = Command::new("git").current_dir(repository).args(args).output()?;
     assert!(
@@ -182,9 +182,7 @@ fn git(repository: &std::path::Path, args: &[&str]) -> TestResult<String> {
 }
 
 fn pr938_finding(observed_commit: &str) -> Value {
-    json!({
-        "schema": "codexy.review-control-external-finding.v1",
-        "capture": {"provider": "github", "method": "graphql", "authenticated": true},
+    let raw = json!({
         "repository": "eunsoogi/codexy",
         "owningIssue": {
             "repository": "eunsoogi/codexy",
@@ -206,7 +204,43 @@ fn pr938_finding(observed_commit: &str) -> Value {
             "databaseId": 3940672308u64,
             "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
         },
-        "author": "chatgpt-codex-connector[bot]",
+        "author": "chatgpt-codex-connector",
+        "observedCommit": observed_commit,
+        "findings": [{
+            "id": "github-pr938-discussion-r3940672308",
+            "path": "packages/codexy-runtime/src/validation/review_control/state.rs"
+        }]
+    });
+    json!({
+        "schema": "codexy.review-control-external-finding.v1",
+        "capture": {
+            "provider": "github",
+            "method": "graphql",
+            "authenticated": true,
+            "raw": raw
+        },
+        "repository": "eunsoogi/codexy",
+        "owningIssue": {
+            "repository": "eunsoogi/codexy",
+            "number": 937,
+            "url": "https://github.com/eunsoogi/codexy/issues/937",
+            "association": "linked-issue-reference"
+        },
+        "pullRequest": {
+            "repository": "eunsoogi/codexy",
+            "number": 938,
+            "url": "https://github.com/eunsoogi/codexy/pull/938"
+        },
+        "reviewThread": {
+            "id": "PRRT_kwDOS6i-_86fjYep",
+            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
+        },
+        "reviewComment": {
+            "id": "PRRC_kwDOS6i-_87q4eM0",
+            "databaseId": 3940672308u64,
+            "url": "https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672308"
+        },
+        "author": "chatgpt-codex-connector",
         "observedCommit": observed_commit,
         "findings": [{
             "id": "github-pr938-discussion-r3940672308",

@@ -32,11 +32,15 @@ findings, and show the evidence diff changes every finding's recorded path. The
 current snapshot's head and base identity are preserved.
 
 The external-finding reason MUST carry a
-`codexy.review-control-external-finding.v1` envelope captured by authenticated
-GitHub GraphQL. The envelope binds its repository, authenticated owning issue,
+`codexy.review-control-external-finding.v1` envelope captured by an
+authenticated GitHub GraphQL readback. The producer MUST receive that readback
+as a separate `authenticated_external_finding_capture` input and retain its
+bounded `capture.raw` projection. The envelope's repository, owning issue,
 source PR, immutable review-thread and comment identities with the canonical
 discussion URL, author, observed commit, unique finding IDs, and
-repository-relative affected paths. The producer derives
+repository-relative affected paths MUST equal the corresponding raw fields. The
+validator MUST NOT use `capture.authenticated` as independent credential proof;
+live proof remains the host-authorized readback. The producer derives
 `qualifying_change.finding_ids` from that source; the transition requires its
 `observedCommit` to equal the prior delta head and the repair diff to touch
 every recorded path. A source with different repository, issue, PR, head,

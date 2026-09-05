@@ -4,6 +4,8 @@ use serde_json::{Map, Value, json};
 
 use super::pre_pr::{number, object, reject_unknown, text};
 
+mod capture;
+
 pub(super) const REASON: &str = "authenticated_external_finding_repair";
 
 const SCHEMA: &str = "codexy.review-control-external-finding.v1";
@@ -29,8 +31,13 @@ pub(super) fn requires_source(control: &Value) -> bool {
         == Some(REASON)
 }
 
-pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<(), String> {
-    let facts = check(source)?;
+pub(super) fn normalize_producer(
+    control: &mut Value,
+    source: &Value,
+    host_capture: &Value,
+) -> Result<(), String> {
+    let source = capture::bind(source, host_capture)?;
+    let facts = check(&source)?;
     let control = control
         .as_object_mut()
         .ok_or_else(|| "review control state must be an object".to_owned())?;
@@ -49,7 +56,7 @@ pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<
                 "external finding repair requires qualifying change evidence".to_owned()
             })?;
         if let Some(existing) = change.get("external_finding") {
-            if existing != source {
+            if existing != &source {
                 return Err("external finding source changes during producer normalization".into());
             }
         }
@@ -96,17 +103,7 @@ pub(super) fn check(value: &Value) -> Result<Facts, String> {
         return Err("authenticated external finding has an unsupported schema".into());
     }
     let capture = object(source.get("capture"), "external finding capture")?;
-    reject_unknown(
-        capture,
-        &["provider", "method", "authenticated"],
-        "external finding capture",
-    )?;
-    if text(capture, "provider", "external finding capture")? != "github"
-        || text(capture, "method", "external finding capture")? != "graphql"
-        || capture.get("authenticated") != Some(&Value::Bool(true))
-    {
-        return Err("external finding source is not authenticated GitHub GraphQL".into());
-    }
+    capture::check(capture, source)?;
 
     let repository = text(source, "repository", "authenticated external finding")?;
     if repository.split('/').count() != 2

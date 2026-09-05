@@ -3,10 +3,8 @@ use std::{fs, path::Path, process::Command};
 use serde_json::{Value, json};
 
 use crate::support::{FixtureCommand, TestResult};
-
 #[path = "review_control_direct_state.rs"]
 mod direct_state;
-
 #[path = "post_cap_review_graph.rs"]
 mod graph;
 
@@ -61,7 +59,6 @@ pub(crate) fn validate_readiness(
         &handoff, &state,
     )?)
 }
-
 pub(crate) fn build_pr_state(
     control: &Value,
     previous_base: &str,
@@ -92,7 +89,6 @@ pub(crate) fn build_pr_state(
     );
     Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
-
 pub(crate) fn run_build(
     control: &Value,
     previous_base: &str,
@@ -117,7 +113,6 @@ pub(crate) fn run_build(
         &output,
     )?)
 }
-
 pub(crate) fn produce(
     control: &Value,
     source: &Value,
@@ -127,8 +122,15 @@ pub(crate) fn produce(
     let temporary = tempfile::tempdir()?;
     let repository = graph::SyntheticRepository::create(temporary.path())?;
     let mut source_control = control.clone();
+    let retained_capture = source_control["post_cap_re_review"]["qualifying_change"]
+        ["external_finding"]["capture"]
+        .clone();
     source_control["post_cap_re_review"]["qualifying_change"]["external_finding"] =
         source.clone();
+    if retained_capture.is_object() {
+        source_control["post_cap_re_review"]["qualifying_change"]["external_finding"]["capture"] =
+            retained_capture;
+    }
     let (mut control, previous_base, current_base) =
         repository.prepare(&source_control, previous_base, current_base)?;
     let source = control["post_cap_re_review"]["qualifying_change"]["external_finding"].clone();
@@ -159,6 +161,7 @@ pub(crate) fn produce(
         &input,
         serde_json::to_vec(&json!({
             "control_state": control,
+            "authenticated_external_finding_capture": source["capture"].clone(),
             "authenticated_external_finding": source,
             "current_pr_state": current,
             "previous_pr_state": previous
@@ -172,10 +175,9 @@ pub(crate) fn produce(
         .args(["--repository-root"])
         .arg(&repository.path)
         .status()?;
-    assert!(result.success(), "producer must accept external source");
+    if !result.success() { return Err(std::io::Error::other("producer rejected").into()); }
     Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
-
 fn write_review_inputs(
     root: &std::path::Path,
     control: &Value,
@@ -217,7 +219,6 @@ fn write_review_inputs(
     )?;
     Ok((current, control_path, previous_path))
 }
-
 fn invoke_build(
     repository: &Path,
     current: &std::path::Path,

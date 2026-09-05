@@ -89,7 +89,9 @@ task/thread
 - qualifying-change from/to heads and evidence commit in Git ancestry:
 - authenticated current/previous PR snapshots, baseRefOid transition, and
   finding_ids plus recorded-path linkage when root repair applies:
-- authenticated external-finding source envelope, source identity, observed
+- authenticated external-finding source envelope produced with a separate
+  `authenticated_external_finding_capture` host readback, its bounded
+  `capture.raw` projection, source identity bound to the raw fields, observed
   delta head, exact finding IDs, and every recorded affected path when external
   repair applies:
 - fourth profile review: prohibited after the third terminal verdict

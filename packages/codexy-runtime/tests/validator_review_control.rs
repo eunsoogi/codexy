@@ -10,6 +10,28 @@ const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
 
 #[test]
+fn external_finding_producer_requires_a_separate_host_capture() -> TestResult {
+    let temporary = tempfile::tempdir()?;
+    let input = temporary.path().join("input.json");
+    let output = temporary.path().join("control.json");
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": {"schema": "codexy.review-control-state.v1", "profile": "strict"},
+            "authenticated_external_finding": {}
+        }))?,
+    )?;
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .status()?;
+    assert!(!result.success(), "external producer accepted missing host capture");
+    Ok(())
+}
+
+#[test]
 fn review_control_producer_writes_only_direct_state() -> TestResult {
     let temporary = tempfile::tempdir()?;
     let input = temporary.path().join("input.json");
