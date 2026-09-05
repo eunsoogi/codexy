@@ -45,9 +45,25 @@ jobs:
         run: |
           rust="$(jq -r .rust tooling/lint-tools.json)"
           rustup toolchain install "$rust" --profile minimal --component rustfmt --component clippy
+      - if: matrix.language == 'Text'
+        id: dprint-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.cargo/bin/dprint
+          key: codexy-dprint-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tooling/lint-tools.json') }}
       - name: Install dprint
         if: matrix.language == 'Text'
-        run: cargo install --locked dprint --version "$(jq -r .dprint tooling/lint-tools.json)"
+        run: |
+          version="$(jq -r .dprint tooling/lint-tools.json)"
+          if [[ ! -x "$HOME/.cargo/bin/dprint" ]] || [[ "$("$HOME/.cargo/bin/dprint" --version 2>/dev/null || true)" != "dprint $version" ]]; then
+            cargo install --locked dprint --version "$version"
+          fi
+          test "$("$HOME/.cargo/bin/dprint" --version)" = "dprint $version"
+      - if: matrix.language == 'Text' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.dprint-cache.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: ~/.cargo/bin/dprint
+          key: codexy-dprint-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tooling/lint-tools.json') }}
       - name: Install ShellCheck and shfmt
         if: matrix.language == 'Shell'
         shell: bash

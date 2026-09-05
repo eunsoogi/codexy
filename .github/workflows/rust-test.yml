@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
+        target: &rust-targets
           - name: library and binaries
             args: --lib --bins
           - name: support suite
@@ -73,6 +73,15 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - &rust-cache-restore
+        if: github.event_name != 'workflow_dispatch'
+        id: rust-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            packages/codexy-runtime/target
+          key: codexy-rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/codexy-runtime/rust-toolchain.toml') }}-${{ hashFiles('packages/codexy-runtime/Cargo.lock') }}-profile-test-${{ matrix.target.name }}
       - name: Prepare opt-in measurement
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -118,6 +127,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
+      - &rust-cache-save
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            packages/codexy-runtime/target
+          key: codexy-rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/codexy-runtime/rust-toolchain.toml') }}-${{ hashFiles('packages/codexy-runtime/Cargo.lock') }}-profile-test-${{ matrix.target.name }}
       - name: Save opt-in measurement cache
         if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
@@ -143,39 +160,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - name: library and binaries
-            args: --lib --bins
-          - name: support suite
-            args: --test suite_support
-          - name: agent suite
-            args: --test suite_agent
-          - name: child suite
-            args: --test suite_child
-          - name: orchestration suite
-            args: --test suite_orchestration
-          - name: governance suite
-            args: --test suite_governance
-          - name: governance workflows suite
-            args: --test suite_governance_workflows
-          - name: system suite
-            args: --test suite_system
-          - name: runtime suite
-            args: --test suite_runtime
-          - name: runtime activation suite
-            args: --test suite_runtime_activation
-          - name: runtime activation autocrlf suite
-            args: --test suite_runtime_activation_autocrlf
-          - name: sync version suite
-            args: --test suite_sync_version
-          - name: archive suite
-            args: --test suite_archive
+        target: *rust-targets
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - *rust-cache-restore
       - name: Prepare opt-in measurement
         if: github.event_name == 'workflow_dispatch'
         shell: pwsh
@@ -229,6 +221,7 @@ jobs:
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - *rust-cache-save
       - name: Save opt-in measurement cache
         if: github.event_name == 'workflow_dispatch' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
