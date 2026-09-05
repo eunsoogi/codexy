@@ -63,9 +63,8 @@ fn touched_loc_rejects_stem_child_for_path_attributed_module_file() -> TestResul
 #[test]
 fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
     let repo = workspace_target_fixture("../../shared/src/tool.rs", "shared/src/helper.rs")?;
-    let metadata = run(
+    let metadata = run_cargo(
         repo.path(),
-        "cargo",
         &[
             "metadata",
             "--offline",
@@ -94,7 +93,7 @@ fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
         })
     }));
 
-    let cargo = run(repo.path(), "cargo", &["check", "--offline", "--workspace"])?;
+    let cargo = run_cargo(repo.path(), &["check", "--offline", "--workspace"])?;
     assert!(cargo.status.success(), "cargo stderr:\n{}", stderr(&cargo));
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
@@ -104,7 +103,7 @@ fn cargo_metadata_discovers_workspace_target_outside_package() -> TestResult {
 #[test]
 fn touched_loc_rejects_stem_child_for_out_of_package_target() -> TestResult {
     let repo = workspace_target_fixture("../../shared/src/tool.rs", "shared/src/tool/helper.rs")?;
-    let cargo = run(repo.path(), "cargo", &["check", "--offline", "--workspace"])?;
+    let cargo = run_cargo(repo.path(), &["check", "--offline", "--workspace"])?;
     assert!(!cargo.status.success());
     assert!(stderr(&cargo).contains("file not found for module `helper`"));
 
@@ -186,4 +185,12 @@ fn amend_fixture(root: &Path) -> TestResult {
 
 fn run(root: &Path, program: &str, args: &[&str]) -> std::io::Result<Output> {
     Command::new(program).args(args).current_dir(root).output()
+}
+
+fn run_cargo(root: &Path, args: &[&str]) -> std::io::Result<Output> {
+    Command::new("cargo")
+        .args(args)
+        .current_dir(root)
+        .env("CARGO_TARGET_DIR", root.join("target"))
+        .output()
 }
