@@ -42,34 +42,31 @@ Treat every eligible request as a new analysis. MUST NOT look up, reuse, or
 complete a canned answer for a familiar reason or evidence phrase. Extract the
 four values in order from the request's supplied material:
 
-1. Copy the user's stated reason into `stated_reason`. Preserve its meaning and
-   wording rather than strengthening it. Use `unavailable` when no reason was
-   supplied.
-2. Identify only the explicit observations or claims the user supplied as
-   evidence for that reason and record them in `evidence_support`. Do not add
-   facts, validate the claims, or treat the option's outcome as evidence. Use
-   `unavailable` when no explicit evidence was supplied.
+1. Copy the complete user-supplied reason span verbatim into `stated_reason`,
+   preserving its order and wording. Use `unavailable` only when no reason span
+   was supplied.
+2. Copy every explicit evidence span for that reason verbatim into
+   `evidence_support` in its original order, preserving quotation and negation
+   attribution. Do not summarize, filter, judge, add facts, or treat the
+   option's outcome as evidence. Use `unavailable` only when no explicit
+   evidence span was supplied.
 3. Ask what single, smallest unproven dependency must hold for the stated reason
    to support the choice. Record that dependency in `unsupported_assumption`;
    use `none` only when the supplied reason and evidence require no additional
    unproven dependency. Do not invent a policy, consumer, threshold, or other
    context to fill this field.
 4. Derive `reopen_condition` from the supplied material rather than inventing a
-   hypothetical. Find the first observable change in that material that would
-   break the assumption or the reason and make reconsideration relevant. If the
-   material already supplies an observation, consequence, quote, or
-   counterexample that grounds such a change, record that first grounded
-   condition while preserving its attribution; do not return `unavailable` or
-   replace it with a future condition. Use `unavailable` only when no supplied
-   material grounds any observable condition. Record it without reopening,
+   hypothetical. Find the first observable change that would break the
+   assumption or reason and make reconsideration relevant. If the material
+   already supplies an observation, consequence, quote, or counterexample that
+   grounds it, record that first condition with attribution; do not return
+   `unavailable` or replace it with a future condition. Use `unavailable` only
+   when no supplied material grounds any condition. Record it without reopening,
    judging, or changing the decision.
 
-Keep the distinction between the user's evidence and the analysis of what it
-does or does not establish. When wording is quoted or negated, treat the quote
-or negation as supplied content; do not silently convert it into the user's own
-claim. When the request is incomplete or ambiguous, preserve the available
-material and use `unavailable` where the corresponding value cannot be grounded
-instead of guessing.
+Do not invent missing context or turn quoted or negated material into the user's
+claim; when input is incomplete or ambiguous, use `unavailable` where a field
+cannot be grounded.
 
 MUST NOT add a preface, explanation, status, verdict, recommendation, second
 receipt, or additional field.
