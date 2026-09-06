@@ -37,6 +37,40 @@ fn nested_page_cursor_identity_is_required() -> TestResult {
 }
 
 #[test]
+fn dropped_newest_pages_are_rejected() -> TestResult {
+    for role in ["owner", "reviewer"] {
+        let mut request = fixtures::request();
+        request[role]["pages"]
+            .as_array_mut()
+            .ok_or("pages")?
+            .remove(0);
+        let error = rejected(native_history::normalize_native_history(&request));
+        assert!(error.contains("first page cursor"), "{role}: {error}");
+    }
+    Ok(())
+}
+
+#[test]
+fn null_or_absent_first_cursor_preserves_complete_history() -> TestResult {
+    for absent in [false, true] {
+        let mut request = fixtures::request();
+        for role in ["owner", "reviewer"] {
+            let page = request[role]["pages"][0]["page"]
+                .as_object_mut()
+                .ok_or("page")?;
+            if absent {
+                page.remove("cursor");
+            } else {
+                page.insert("cursor".into(), serde_json::Value::Null);
+            }
+        }
+        let receipt = native_history::normalize_native_history(&request)?;
+        assert_eq!(receipt["history_projection"]["terminal_review_count"], 2);
+    }
+    Ok(())
+}
+
+#[test]
 fn duplicate_and_ambiguous_events_are_rejected() -> TestResult {
     let mut duplicate = fixtures::request();
     duplicate["reviewer"]["pages"][1]["turns"][0]["items"][0]["id"] = json!("message-delta");

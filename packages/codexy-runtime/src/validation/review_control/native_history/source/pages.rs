@@ -31,6 +31,13 @@ pub(super) fn read(value: &Value, label: &str) -> Result<PageSet, String> {
             .get("page")
             .and_then(Value::as_object)
             .ok_or_else(|| format!("{label} page must contain page metadata"))?;
+        if page_index == 0
+            && page_meta
+                .get("cursor")
+                .is_some_and(|cursor| !cursor.is_null())
+        {
+            return Err(format!("{label} first page cursor must be null or absent"));
+        }
         if fields::text(page_meta, &["order"], "page order")?.as_deref() != Some("newest_first") {
             return Err(format!("{label} page order must be newest_first"));
         }
