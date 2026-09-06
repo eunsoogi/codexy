@@ -151,7 +151,6 @@ class CoreHookTimingTests(unittest.TestCase):
             timing = self._timing(plugin)
             parent = directory / "race-parent"
             replacement = directory / "replacement-parent"
-            parent.mkdir()
             replacement.mkdir()
             self._make_junction(parent, replacement)
             target = parent / "records.jsonl"
