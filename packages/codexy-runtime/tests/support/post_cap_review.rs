@@ -1,49 +1,24 @@
 use std::{fs, path::Path};
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
-use crate::support::{FixtureCommand, TestResult};
-
+use crate::support::{FixtureCommand, TestResult, make_executable};
 #[path = "review_control_direct_state.rs"]
 mod direct_state;
-
 #[path = "post_cap_review_graph.rs"]
 mod graph;
+#[path = "post_cap_external_finding_fixture.rs"]
+mod external_finding_fixture;
+#[path = "post_cap_disposition_fixture.rs"]
+mod disposition_fixture;
+#[path = "post_cap_review/disposition.rs"]
+mod disposition;
 
-pub(crate) fn validate_readiness(
-    control: Value,
-    issue_number: u64,
-    head: &str,
-) -> TestResult<std::process::Output> {
-    let temporary = tempfile::tempdir()?;
-    let handoff = temporary.path().join("handoff.md");
-    let state = temporary.path().join("state.json");
-    let repository = graph::SyntheticRepository::create(temporary.path())?;
-    let root_repair = control["post_cap_re_review"]["reason"].as_str()
-        == Some("in_scope_contract_root_repair");
-    let head = repository.resolve(head, root_repair)?;
-    let (control, _, _) = repository.prepare(
-        &control,
-        direct_state::SYNTHETIC_BASE,
-        direct_state::SYNTHETIC_BASE,
-    )?;
-    fs::write(&handoff, "PASS on the exact current head.\n")?;
-    fs::write(
-        &state,
-        serde_json::to_vec(&json!({
-            "number": issue_number,
-            "state": "OPEN",
-            "isDraft": true,
-            "mergeStateStatus": "CLEAN",
-            "headRefOid": head,
-            "reviewProfile": control["profile"].clone(),
-            "reviewControl": control
-        }))?,
-    )?;
-    Ok(crate::support::validator_completion_handoff_files(
-        &handoff, &state,
-    )?)
-}
+#[allow(unused_imports)]
+pub(crate) use disposition::{
+    produce_disposition, run_build_with_disposition_ci, run_build_with_disposition_maintainer,
+    validate_readiness,
+};
 
 pub(crate) fn build_pr_state(
     control: &Value,
@@ -67,6 +42,8 @@ pub(crate) fn build_pr_state(
         &control_path,
         &previous,
         &output,
+        &control,
+        None,
     )?;
     assert!(
         result.status.success(),
@@ -98,6 +75,8 @@ pub(crate) fn run_build(
         &control_path,
         &previous,
         &output,
+        &control,
+        None,
     )?)
 }
 
@@ -142,13 +121,14 @@ fn write_review_inputs(
     )?;
     Ok((current, control_path, previous_path))
 }
-
 fn invoke_build(
     repository: &Path,
     current: &std::path::Path,
-    control: &std::path::Path,
+    control_path: &std::path::Path,
     previous: &std::path::Path,
     output: &std::path::Path,
+    review_control: &Value,
+    disposition_sources: Option<(Value, Value)>,
 ) -> TestResult<std::process::Output> {
     let mut command = FixtureCommand::new(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
@@ -159,7 +139,7 @@ fn invoke_build(
         .arg("--base-pr-state-file")
         .arg_path(current)
         .arg("--review-control-state-file")
-        .arg_path(control)
+        .arg_path(control_path)
         .arg("--previous-pr-state-file")
         .arg_path(previous)
         .arg("--output")
@@ -168,5 +148,60 @@ fn invoke_build(
             "CODEXY_REVIEW_CONTROL_BIN",
             env!("CARGO_BIN_EXE_codexy-review-control"),
         );
+    #[cfg(unix)]
+    if review_control["post_cap_re_review"]["reason"].as_str()
+        == Some("authenticated_external_finding_repair")
+    {
+        let bin = output.parent().ok_or("build output parent")?.join("bin");
+        fs::create_dir(&bin)?;
+        let response = external_finding_fixture::pr938_response(
+            review_control["post_cap_re_review"]["qualifying_change"]["from_head"]
+                .as_str()
+                .ok_or("external finding prior head")?,
+        );
+        let response_file = output.parent().ok_or("build output parent")?.join("github-response.json");
+        fs::write(&response_file, serde_json::to_vec(&response)?)?;
+        let gh = bin.join("gh");
+        fs::write(&gh, "#!/bin/sh\ncat \"$CODEXY_TEST_GITHUB_RESPONSE\"\n")?;
+        make_executable(&gh)?;
+        let mut paths = vec![bin];
+        if let Some(path) = std::env::var_os("PATH") {
+            paths.extend(std::env::split_paths(&path));
+        }
+        command
+            .env_path_list("PATH", paths)
+            .env_path("CODEXY_TEST_GITHUB_RESPONSE", response_file);
+    } else if review_control["post_cap_re_review"]["reason"].as_str()
+        == Some("authenticated_finding_disposition")
+    {
+        let bin = output.parent().ok_or("build output parent")?.join("bin");
+        fs::create_dir(&bin)?;
+        let state: Value = serde_json::from_slice(&fs::read(current)?)?;
+        let base = state["baseRefOid"].as_str().ok_or("disposition base")?;
+        let head = state["headRefOid"].as_str().ok_or("disposition head")?;
+        let issue = review_control["issue_number"].as_u64().ok_or("disposition issue")?;
+        let pull = state["number"].as_u64().ok_or("disposition pull")?;
+        let ci_response = output.parent().ok_or("build output parent")?.join("ci-response.json");
+        let maintainer_response = output.parent().ok_or("build output parent")?.join("maintainer-response.json");
+        let (ci_value, maintainer_value) = disposition_sources.unwrap_or_else(|| {
+            (
+                disposition_fixture::ci_response(pull, base, head),
+                disposition_fixture::maintainer_response(pull, issue, base, head),
+            )
+        });
+        fs::write(&ci_response, serde_json::to_vec(&ci_value)?)?;
+        fs::write(&maintainer_response, serde_json::to_vec(&maintainer_value)?)?;
+        let gh = bin.join("gh");
+        fs::write(&gh, "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n")?;
+        make_executable(&gh)?;
+        let mut paths = vec![bin];
+        if let Some(path) = std::env::var_os("PATH") {
+            paths.extend(std::env::split_paths(&path));
+        }
+        command
+            .env_path_list("PATH", paths)
+            .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
+            .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+    }
     Ok(command.output()?)
 }

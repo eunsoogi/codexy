@@ -145,9 +145,10 @@ current-head control state MUST preserve the existing
 `terminal_review_limit`, and `terminal_review_history` directly. When a
 profile's fixed reviewer model changes, an authenticated transition MAY add one
 `reviewer_migration` object with schema `codexy.review-control-migration.v1`,
-exact `from` and `to` reviewer values, and a positive `history_boundary` before
-the first current-reviewer event. The boundary and identities MUST be derived
-from the authenticated previous snapshot; callers MUST NOT invent or change
+exact `from`/`to` values, positive `history_boundary`, and explicit direction.
+`legacy_prefix_current_suffix` is normal; `current_prefix_legacy_event` is an
+authenticated exception only at boundary 1 and binds the delta. Facts and
+direction MUST come from the authenticated snapshot; callers MUST NOT change
 them.
 
 For standard and strict profiles, the reviewer and `reviewed_head` MUST match
@@ -156,54 +157,93 @@ the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
 findings, one full review, and at most one delta review. The history MUST
 contain that one `full` event, optionally followed by one `delta` event, with
 unique review IDs, the selected reviewer on every event unless the exact
-versioned migration marker authorizes a legacy prefix, and a different reviewed
-head for each event. A migrated history MUST use the exact legacy reviewer
-before `history_boundary` and the current policy reviewer from that boundary
-onward. Its length MUST equal `terminal_review_count`, and the full and delta
-counters MUST equal the corresponding event kinds.
+versioned migration marker authorizes one supported exception, and a different
+reviewed head for each event. A migrated history MUST preserve actual tuples:
+normal direction uses the legacy reviewer before `history_boundary` and current
+policy thereafter; boundary-1 exception keeps current on `full` and legacy on
+`delta`. Its length MUST equal `terminal_review_count`; counters MUST equal
+kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
 head, set `terminal_review_count` to three, and carry exactly one
-`post_cap_re_review` object with `reason` set to either
-`mandatory_base_integration` or `in_scope_contract_root_repair`, plus
-`prior_reviewed_head` equal to the delta head. It MUST also carry
-`qualifying_change.from_head`, `qualifying_change.to_head`, and
-`qualifying_change.evidence_commit`; those values MUST bind the delta head and
-current head, and the evidence commit MUST be in their Git ancestry. The current
-head MUST differ from that prior head. Optional churn, a fourth event, a
-duplicate head or ID, a truncated/reordered history, and a marker on a non-third
-event MUST be rejected.
+`post_cap_re_review` object with `reason` set to `mandatory_base_integration`,
+`in_scope_contract_root_repair`, `authenticated_external_finding_repair`, or
+`authenticated_finding_disposition`, plus `prior_reviewed_head` equal to the
+delta head. It MUST also carry `qualifying_change.from_head`,
+`qualifying_change.to_head`, and `qualifying_change.evidence_commit`; those
+values MUST bind the delta head and current head, and the evidence commit MUST
+be in their Git ancestry. The current head MUST differ from that prior head.
+Optional churn, a fourth event, a duplicate head or ID, a truncated/reordered
+history, and a marker on a non-third event MUST be rejected.
 
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
 the same PR repository, number, URL, base branch, and authenticated capture
-provenance, and MUST carry `baseRefOid` and `headRefOid`. The previous
-snapshot's direct `reviewControl` is the only predecessor authority; a
-separately supplied `previous_control_state` MUST be rejected. The first full
-review appends to a clean genesis with zero terminal reviews, and later states
-MUST preserve the exact prior history prefix and increment the terminal count by
-one. The current snapshot supplies the current head and base identity; the
-validator MUST NOT rewrite either from caller-supplied review control.
+provenance, and MUST carry `baseRefOid`, `headRefOid`, and `capture.owningIssue`
+with the owning issue repository, number, canonical URL, and explicit
+owner-assignment or PR-linkage association. The owning issue MUST come from an
+authenticated issue read and MUST remain distinct from the PR number;
+`reviewControl.issue_number` binds the owning issue. The previous snapshot's
+direct `reviewControl` is the only predecessor authority; a separately supplied
+`previous_control_state` MUST be rejected. The first full review appends to a
+clean genesis with zero terminal reviews, and later states MUST preserve the
+exact prior history prefix and increment the terminal count by one. The current
+snapshot supplies the current head and base identity; the validator MUST NOT
+rewrite either from caller-supplied review control. External PR-state consumers,
+including completion handoff, MUST use the PR-snapshot validation path; bare
+control and lifecycle checks use an explicit control-only path and MUST NOT
+interpret `issue_number` as a PR number.
 
 For `mandatory_base_integration`, the previous and current `baseRefOid` values
 MUST differ, the current base MUST descend from the previous base, and the
 integration evidence MUST descend from the current base. For
 `in_scope_contract_root_repair`, the base OID MUST remain unchanged, the prior
 delta MUST be `BLOCK` with non-empty findings, and
-`qualifying_change.finding_ids` MUST exactly identify those findings, and its
-evidence diff MUST change every finding's recorded path. In both cases the
-evidence commit MUST descend from the prior delta and precede the current head;
-a root-repair evidence commit MUST change the reviewed tree. Arbitrary JSON
-agreement is not authenticated readback authority.
+`qualifying_change.finding_ids` MUST exactly identify those findings; its
+evidence diff MUST change every finding's recorded path. For
+`authenticated_external_finding_repair`, the base OID MUST remain unchanged, the
+prior delta MUST be a clean `PASS` with no unresolved findings, and
+`qualifying_change.external_finding` MUST be produced from a locator-only
+`authenticated_external_finding_locator` request. The producer MUST perform a
+fixed-argument, host-authorized GitHub GraphQL read for that locator, reject
+command failures, GraphQL errors, incomplete connections, and identity
+mismatches, and persist the raw response with its deterministic projection in
+the `codexy.review-control-external-finding.v1` envelope. Caller-supplied
+`authenticated_external_finding` or `authenticated_external_finding_capture`
+values MUST be rejected. `capture.raw` equality and re-projection are offline
+shape/integrity checks only and MUST NOT be treated as authentication. The
+producer, `build-pr-state`, and completion handoff MUST use the live source read
+for external-finding authority; offline validators only validate an envelope
+already admitted by that source-owned boundary. The envelope MUST bind the
+source repository, owning issue, source PR, immutable review-thread/comment
+identity and canonical URL, author, `observedCommit` equal to the prior delta
+head, unique finding IDs, and repository-relative paths to the live projection.
+The evidence diff MUST touch every recorded path. The source PR's owning issue
+is provenance and MUST NOT replace the target `reviewControl.issue_number`. For
+`authenticated_finding_disposition`, the base OID MUST remain unchanged, the
+prior delta MUST be `BLOCK` with non-empty findings, and the producer MUST cover
+every prior finding exactly once through a locator-only
+`authenticated_finding_disposition_locator` request. Its source MUST combine a
+fixed exact-head `gh pr view` `statusCheckRollup` read with a fixed GraphQL
+PR-comment lookup bound to the exact repository, owning issue, PR, base, head,
+finding ID/path, immutable unminimized OWNER/MEMBER comment, narrow non-waiver
+body, and accepted model tuple. The rollup MUST be non-empty and every CheckRun
+MUST be `COMPLETED`/`SUCCESS`. The producer MUST derive IDs, paths, and kinds
+from the prior authenticated delta, reject caller-supplied source, capture,
+classification, or IDs, and reread both sources at producer, build, and handoff.
+Disposition classification MUST come from each retained finding's semantic kind,
+not its path: a `ci_incomplete_observation` resolves through CI, the policy
+finding through the maintainer decision, and a source defect—including one under
+the workflow directory—through an evidence diff; at least one code repair MUST
+remain. This source MUST NOT waive code, CI, review, merge, or quota
+requirements. In all four cases, the evidence commit MUST descend from the prior
+delta and precede the current head; repair evidence MUST change the reviewed
+tree. Arbitrary JSON agreement is not authenticated readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal
 non-PASS disposition; the post-cap path never turns it into readiness.
 
-Headings, field order, explanatory prose, and omitted legacy ceremony fields
-MUST NOT override those direct facts. The ordered history and qualifying-change
-evidence are part of the direct control state; no auxiliary review ledger or
-replacement schema is needed. The selected reviewer MUST remain active and
-unchanged: the owner MUST NOT duplicate, poll, interrupt, or replace that
-reviewer while waiting for a terminal result.
+Headings, prose, and omitted legacy ceremony fields MUST NOT override direct
+state facts; ordered history and qualifying-change evidence stay in that state.

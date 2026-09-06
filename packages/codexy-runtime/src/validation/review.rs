@@ -57,6 +57,20 @@ pub fn build_review_pr_state(
     review_control::build_pr_state(plugin_root, repository_root, base, control, previous)
 }
 
+/// Imports complete, pre-PR reviewer history into one authenticated current PR snapshot.
+///
+/// # Errors
+///
+/// Returns an error for incomplete source evidence, invalid identities, or missing Git ancestry.
+pub fn import_pre_pr_review_history(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current: &str,
+    envelope: &str,
+) -> Result<serde_json::Value> {
+    review_control::import_pre_pr_history(plugin_root, repository_root, current, envelope)
+}
+
 /// Returns direct review state from the compatibility producer entry point.
 ///
 /// # Errors
@@ -68,4 +82,26 @@ pub fn produce_review_control(
     request: &str,
 ) -> Result<serde_json::Value> {
     review_control::produce(plugin_root, repository_root, request)
+}
+
+/// Checks whether one authenticated mixed-finding post-cap review may run.
+///
+/// # Errors
+///
+/// Returns an error for stale snapshots, forged inputs, incomplete sources, or
+/// a predecessor that is not the exact two-event delta BLOCK state.
+pub fn check_next_review_eligibility(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current: &str,
+    previous: &str,
+    request: &str,
+) -> Result<serde_json::Value> {
+    review_control::check_next_review_eligibility(
+        plugin_root,
+        repository_root,
+        current,
+        previous,
+        request,
+    )
 }
