@@ -38,35 +38,36 @@ when no unsupported dependency is needed.
 
 ## Extraction Procedure
 
-Treat every eligible request as a new analysis. MUST NOT look up, reuse, or
-complete a canned answer for a familiar reason or evidence phrase. Extract the
-four values in order from the request's supplied material:
+MUST treat every eligible request as a new analysis. MUST NOT look up, reuse, or
+complete a canned answer for a familiar reason or evidence phrase. MUST extract
+the four values in order from the request's supplied material:
 
-1. Copy the complete user-supplied reason span verbatim into `stated_reason`,
-   preserving its order and wording. Use `unavailable` only when no reason span
-   was supplied.
-2. Copy every explicit evidence span for that reason verbatim into
+1. MUST copy the complete user-supplied reason span verbatim into
+   `stated_reason`, preserving its order and wording. MUST use `unavailable`
+   only when no reason span was supplied.
+2. MUST copy every explicit evidence span for that reason verbatim into
    `evidence_support` in its original order, preserving quotation and negation
-   attribution. Do not summarize, filter, judge, add facts, or treat the
-   option's outcome as evidence. Use `unavailable` only when no explicit
+   attribution. MUST NOT summarize, filter, judge, add facts, or treat the
+   option's outcome as evidence. MUST use `unavailable` only when no explicit
    evidence span was supplied.
-3. Ask what single, smallest unproven dependency must hold for the stated reason
-   to support the choice. Record that dependency in `unsupported_assumption`;
-   use `none` only when the supplied reason and evidence require no additional
-   unproven dependency. Do not invent a policy, consumer, threshold, or other
-   context to fill this field.
-4. Derive `reopen_condition` from the supplied material rather than inventing a
-   hypothetical. Find the first observable change that would break the
-   assumption or reason and make reconsideration relevant. If the material
-   already supplies an observation, consequence, quote, or counterexample that
-   grounds it, record that first condition with attribution; do not return
-   `unavailable` or replace it with a future condition. Use `unavailable` only
-   when no supplied material grounds any condition. Record it without reopening,
-   judging, or changing the decision.
+3. MUST ask what single, smallest unproven dependency must hold for the stated
+   reason to support the choice. MUST record that dependency in
+   `unsupported_assumption`; MUST use `none` only when the supplied reason and
+   evidence require no additional unproven dependency. MUST NOT invent a policy,
+   consumer, threshold, or other context to fill this field.
+4. MUST derive `reopen_condition` from the supplied material rather than
+   inventing a hypothetical. MUST find the first observable change that would
+   break the assumption or reason and make reconsideration relevant. If the
+   material already supplies an observation, consequence, quote, or
+   counterexample that grounds it, MUST record that first condition with
+   attribution; MUST NOT return `unavailable` or replace it with a future
+   condition. MUST use `unavailable` only when no supplied material grounds any
+   condition. MUST record it without reopening, judging, or changing the
+   decision.
 
-Do not invent missing context or turn quoted or negated material into the user's
-claim; when input is incomplete or ambiguous, use `unavailable` where a field
-cannot be grounded.
+MUST NOT invent missing context or turn quoted or negated material into the
+user's claim; when input is incomplete or ambiguous, MUST use `unavailable`
+where a field cannot be grounded.
 
 MUST NOT add a preface, explanation, status, verdict, recommendation, second
 receipt, or additional field.
