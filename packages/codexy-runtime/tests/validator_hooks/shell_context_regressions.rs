@@ -96,6 +96,8 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh release create v9 --repo eunsoogi/codexy",
         "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed",
         "gh issue list || GH_TOKEN=fixture gh issue list",
+        "! true || GH_TOKEN=fixture gh issue list",
+        "! false && GH_TOKEN=fixture gh issue list",
         "gh pr merge 42 --repo eunsoogi/codexy --squash",
         "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
         "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'",
