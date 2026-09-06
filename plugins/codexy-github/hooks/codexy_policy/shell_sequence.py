@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from .execution_context import CommandEffect, ExecutionContext
+from .filesystem_state import PathState
 from .shell_groups import Command, Conditional, Group, Sequence
 
 Segment = Callable[[list[str], ExecutionContext, int], tuple[bool, CommandEffect]]
@@ -87,7 +88,16 @@ def _node(
     segment: Segment,
 ) -> tuple[bool, CommandEffect]:
     if isinstance(node, Command):
-        return segment(list(node.tokens), context, depth)
+        denied, effect = segment(list(node.tokens), context, depth)
+        negations = next(
+            (index for index, token in enumerate(node.tokens) if token != "!"),
+            len(node.tokens),
+        )
+        return (
+            (denied, effect)
+            if denied or negations % 2 == 0
+            else (False, CommandEffect(effect.failure, effect.success))
+        )
     if isinstance(node, Conditional):
         return _conditional(node, context, depth, segment)
     denied, nested = evaluate(node.body, context, depth + 1, segment)
@@ -144,7 +154,7 @@ def _effect(
 def _join(contexts: list[ExecutionContext]) -> ExecutionContext | None:
     if not contexts:
         return None
-    aliases: dict[str, str] = {}
+    aliases: dict[str, PathState] = {}
     for context in contexts:
         aliases.update(context.executable_aliases)
     return replace(contexts[0], executable_aliases=tuple(aliases.items()))

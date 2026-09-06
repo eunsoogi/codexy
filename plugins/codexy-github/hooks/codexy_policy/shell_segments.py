@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import shlex
-from collections.abc import Iterator
 from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+from .shell_reflog import protect as protect_reflog, restore as restore_reflog
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
 REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
@@ -20,10 +20,12 @@ OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 def tokenize(command: str) -> list[str] | None:
     try:
         lexer = shlex.shlex(
-            separate_lines(command), posix=True, punctuation_chars=";&|(){}<>"
+            protect_reflog(separate_lines(command)),
+            posix=True,
+            punctuation_chars=";&|(){}<>",
         )
         lexer.whitespace_split, lexer.commenters = True, ""
-        return _strip_redirections(list(lexer))
+        return _strip_redirections(restore_reflog(list(lexer)))
     except ValueError:
         return None
 
@@ -146,11 +148,6 @@ def command_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:
     while index < len(tokens) and (tokens[index] == "!" or assignment(tokens[index])):
         index += 1
     return tokens[index:]
-
-
-def command_segments(command: str) -> Iterator[tuple[str, ...]]:
-    """Iterate parsed segments, raising no hidden raw-token policy decisions."""
-    yield from segments(command) or ()
 
 
 def opaque_syntax(command: str) -> OpaqueSyntax:
