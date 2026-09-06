@@ -259,10 +259,10 @@ a first-user guide to the current component inventory, not a separate registry.
 
 ### Devtools
 
-| Invocation        | Description                                                                                              |
-| ----------------- | -------------------------------------------------------------------------------------------------------- |
-| `codegraph`       | Use when Codexy Devtools is installed and the task needs bounded Codegraph repository exploration, search, or dependency navigation. |
-| `lsp`             | Use when Codexy Devtools is installed and the task needs language-aware diagnostics, symbols, definitions, references, or bounded LSP batches. |
+| Invocation  | Description                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codegraph` | Use when Codexy Devtools is installed and the task needs bounded Codegraph repository exploration, search, or dependency navigation.           |
+| `lsp`       | Use when Codexy Devtools is installed and the task needs language-aware diagnostics, symbols, definitions, references, or bounded LSP batches. |
 
 The repository also carries `plugin-marketplace-prep` and `release-engineering`
 under `.agents/skills/` for Codexy maintainers. These are repository-only

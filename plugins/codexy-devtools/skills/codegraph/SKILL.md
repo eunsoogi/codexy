@@ -13,10 +13,10 @@ structure and edges, `codegraph_search` for bounded search,
 `codegraph_neighborhood` for a bounded dependency neighborhood.
 
 Keep `root` and every path inside the user-authorized workspace. Respect each
-tool's limits and preserve returned `partial`, `errors`, and truncation metadata.
-If the MCP, root, source, or result is unavailable, missing, unreadable, or
-partial, record that status and use a proportional direct-read fallback; tool
-configuration is not proof that a call succeeded.
+tool's limits and preserve returned `partial`, `errors`, and truncation
+metadata. If the MCP, root, source, or result is unavailable, missing,
+unreadable, or partial, record that status and use a proportional direct-read
+fallback; tool configuration is not proof that a call succeeded.
 
 This package is optional, so core Codexy workflows MUST remain usable without
 it. Codegraph-only work MUST NOT initialize or call an LSP server. Command
