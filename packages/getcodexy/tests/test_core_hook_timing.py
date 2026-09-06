@@ -55,14 +55,12 @@ class CoreHookTimingTests(unittest.TestCase):
                 allowed = self._run_case(plugin, stem, tool, tool_input, target)
                 self._assert_success(allowed)
                 denied = self._run_case(plugin, stem, "wrong_tool", {}, target)
-                self.assertEqual(denied.returncode, 0, denied.stderr)
-                self.assertEqual(denied.stderr, b"")
-                self.assertEqual(
-                    json.loads(denied.stdout)["hookSpecificOutput"]["hookEventName"],
-                    "PreToolUse",
-                )
+                self.assertEqual((denied.returncode, denied.stderr), (0, b""))
+                denied_output = json.loads(denied.stdout)["hookSpecificOutput"]
+                self.assertEqual(denied_output["hookEventName"], "PreToolUse")
 
-            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+            if os.name != "nt":
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
             records = [json.loads(line) for line in target.read_text().splitlines()]
             self.assertEqual(len(records), 6)
             for record in records:
@@ -231,7 +229,9 @@ class CoreHookTimingTests(unittest.TestCase):
                 os.environ.get("COMSPEC", "cmd.exe"),
                 "/d",
                 "/c",
-                "call", str(path), "PreToolUse",
+                "call",
+                str(path),
+                "PreToolUse",
             ]
         )
         return subprocess.run(

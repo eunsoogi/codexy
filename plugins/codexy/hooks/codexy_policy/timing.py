@@ -52,12 +52,14 @@ def _target_path() -> Path | None:
 def _append(path: Path, line: bytes) -> None:
     if not _real_directory(path.parent):
         return
+    parent_handles = []
     parent_descriptor = None
     descriptor = None
     lock = None
     initial_size = None
     try:
         if os.name == "nt":
+            parent_handles = _open_windows_parents(path)
             before = _lstat(path)
         else:
             parent_descriptor = _open_parent(path)
@@ -70,7 +72,9 @@ def _append(path: Path, line: bytes) -> None:
         flags |= getattr(os, "O_NOFOLLOW", 0)
         if before is None:
             flags |= os.O_CREAT | os.O_EXCL
-        if parent_descriptor is None:
+        if os.name == "nt":
+            descriptor = _open_windows_target(path, before is None)
+        elif parent_descriptor is None:
             descriptor = os.open(path, flags, 0o600)
         else:
             descriptor = os.open(path.name, flags, 0o600, dir_fd=parent_descriptor)
@@ -102,6 +106,8 @@ def _append(path: Path, line: bytes) -> None:
             os.close(descriptor)
         if parent_descriptor is not None:
             os.close(parent_descriptor)
+        for handle in reversed(parent_handles):
+            _close_windows_handle(handle)
 
 
 def _open_parent(path: Path) -> int:
@@ -121,6 +127,57 @@ def _open_parent(path: Path) -> int:
     except OSError:
         os.close(descriptor)
         raise
+
+
+def _open_windows_parents(path: Path) -> list[int]:
+    handles, current = [], Path(path.anchor)
+    try:
+        for part in path.parts[1:-1]:
+            current /= part
+            handle = _windows_create_file(current, directory=True, create=False)
+            details = os.lstat(current)
+            if stat.S_ISLNK(details.st_mode) or not stat.S_ISDIR(details.st_mode):
+                _close_windows_handle(handle)
+                raise OSError("timing parent is not a real directory")
+            handles.append(handle)
+        return handles
+    except OSError:
+        for handle in reversed(handles):
+            _close_windows_handle(handle)
+        raise
+
+
+def _open_windows_target(path: Path, create: bool) -> int:
+    handle = _windows_create_file(path, directory=False, create=create)
+    try:
+        import msvcrt
+
+        flags = os.O_WRONLY | os.O_APPEND | getattr(os, "O_BINARY", 0)
+        descriptor = msvcrt.open_osfhandle(handle, flags)
+        handle = None
+        return descriptor
+    finally:
+        if handle is not None:
+            _close_windows_handle(handle)
+
+
+def _windows_create_file(path: Path, *, directory: bool, create: bool) -> int:
+    import ctypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.restype = ctypes.c_void_p
+    access, flags = (0x80, 0x2200000) if directory else (0x84, 0x200000)
+    name = ctypes.c_wchar_p(str(path))
+    handle = kernel32.CreateFileW(name, access, 3, None, int(create) or 3, flags, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise OSError(ctypes.get_last_error(), "CreateFileW failed", str(path))
+    return int(handle)
+
+
+def _close_windows_handle(handle: int) -> None:
+    import ctypes
+
+    ctypes.WinDLL("kernel32", use_last_error=True).CloseHandle(ctypes.c_void_p(handle))
 
 
 def _real_directory(path: Path) -> bool:
@@ -149,12 +206,15 @@ def _lstat_at(parent_descriptor: int, name: str) -> os.stat_result | None:
 
 def _private_writable_file(details: os.stat_result) -> bool:
     mode = details.st_mode
-    return (
-        stat.S_ISREG(mode)
-        and details.st_nlink == 1
-        and stat.S_IMODE(mode) & 0o077 == 0
-        and bool(mode & stat.S_IWUSR)
-    )
+    if not stat.S_ISREG(mode) or details.st_nlink != 1:
+        return False
+    if os.name == "nt":
+        return bool(mode & stat.S_IWRITE) and not _windows_reparse(details)
+    return stat.S_IMODE(mode) & 0o077 == 0 and bool(mode & stat.S_IWUSR)
+
+
+def _windows_reparse(details: os.stat_result) -> bool:
+    return os.name == "nt" and bool(getattr(details, "st_file_attributes", 0) & 0x400)
 
 
 def _try_lock(descriptor: int):
