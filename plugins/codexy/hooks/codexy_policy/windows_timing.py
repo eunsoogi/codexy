@@ -119,11 +119,13 @@ def private_writable(details: os.stat_result, descriptor: int | None = None) -> 
 
 
 def _private_acl(descriptor: int) -> bool:
+    import msvcrt
+
     advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     dacl, security = ctypes.c_void_p(), ctypes.c_void_p()
     result = advapi32.GetSecurityInfo(
-        ctypes.c_void_p(descriptor),
+        ctypes.c_void_p(msvcrt.get_osfhandle(descriptor)),
         1,
         5,
         None,
@@ -133,7 +135,6 @@ def _private_acl(descriptor: int) -> bool:
         ctypes.byref(security),
     )
     try:
-        print("acl pointers", result, dacl.value, security.value)
         if result or not dacl.value or not security.value:
             return False
         info = (ctypes.c_uint32 * 3)()
@@ -141,18 +142,10 @@ def _private_acl(descriptor: int) -> bool:
             not advapi32.GetAclInformation(dacl, info, ctypes.sizeof(info), 2)
             or info[0] != 1
         ):
-            print("acl info", list(info))
             return False
         ace = ctypes.c_void_p()
         if not advapi32.GetAce(dacl, 0, ctypes.byref(ace)) or not ace.value:
-            print("acl ace pointer", ace.value)
             return False
-        print(
-            "acl ace",
-            ctypes.string_at(ace.value, 2),
-            ctypes.c_uint32.from_address(ace.value + 4).value,
-            ctypes.string_at(ace.value + 8, 12),
-        )
         return (
             ctypes.string_at(ace.value, 2) == b"\x00\x00"
             and ctypes.c_uint32.from_address(ace.value + 4).value

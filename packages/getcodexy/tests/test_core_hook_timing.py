@@ -162,14 +162,6 @@ class CoreHookTimingTests(unittest.TestCase):
 
             target = directory / "private.jsonl"
             timing._append(target, b"seed\n")
-            import codexy_policy.windows_timing as windows_timing
-
-            descriptor = os.open(target, os.O_RDONLY)
-            try:
-                print("timing_private_acl", windows_timing._private_acl(descriptor))
-            finally:
-                os.close(descriptor)
-            subprocess.run(["icacls", str(target)], check=True)
             subprocess.run(
                 ["icacls", str(target), "/grant", "*S-1-1-0:F"],
                 check=True,
