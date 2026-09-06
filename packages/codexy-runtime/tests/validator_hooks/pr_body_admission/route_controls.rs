@@ -53,6 +53,14 @@ fn pr_body_contract_is_shared_across_registered_mutation_routes() -> TestResult 
             )?;
         }
     }
+    let command = graphql_create_without_body();
+    assert_shell(
+        &root,
+        &cwd,
+        "GraphQL create without body",
+        &command,
+        true,
+    )?;
     assert_metadata_only_updates(&root, &cwd)?;
     Ok(())
 }
@@ -187,6 +195,12 @@ fn graphql_commands(body: &str) -> TestResult<[String; 2]> {
         format!("{prefix}{}", shell_quote(&create)),
         format!("{prefix}{}", shell_quote(&update)),
     ])
+}
+
+fn graphql_create_without_body() -> String {
+    let query = r#"mutation { createPullRequest(input:{repositoryId:"R_kgDOS6i-_w",title:"fix(hooks): GraphQL body route",headRefName:"topic",baseRefName:"main"}) { pullRequest { number } } }"#;
+    let prefix = "gh api graphql -f owner=eunsoogi -f name=codexy -f repository_id=R_kgDOS6i-_w -f query=";
+    format!("{prefix}{}", shell_quote(query))
 }
 
 fn assert_shell(

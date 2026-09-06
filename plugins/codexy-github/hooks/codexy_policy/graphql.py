@@ -183,7 +183,7 @@ def graphql_pr(
     name: str, payload: dict[str, object], transport: dict[str, str]
 ) -> bool:
     if name == "createPullRequest":
-        required = {"repositoryId", "title", "headRefName", "baseRefName"}
+        required = {"repositoryId", "title", "headRefName", "baseRefName", "body"}
         return (
             graph_common(payload, GRAPH_CREATE, required)
             and graph_id(payload, "repositoryId", transport)
