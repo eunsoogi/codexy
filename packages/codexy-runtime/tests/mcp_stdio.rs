@@ -18,6 +18,8 @@ mod file_uri;
 mod fixture_gate;
 #[path = "mcp_stdio/lsp_protocol.rs"]
 mod lsp_protocol;
+#[path = "mcp_stdio/lsp_batch.rs"]
+mod lsp_batch;
 #[path = "mcp_stdio/lsp_server_error.rs"]
 mod lsp_server_error;
 #[path = "mcp_stdio/lsp_stderr.rs"]
