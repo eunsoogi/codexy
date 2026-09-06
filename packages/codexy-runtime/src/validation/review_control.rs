@@ -39,7 +39,7 @@ pub(super) fn check_economics(
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
-    state::check(plugin_root, state, true)
+    state::check_pr_state(plugin_root, state, true)
         .err()
         .into_iter()
         .collect()
@@ -80,7 +80,7 @@ pub(super) fn build_pr_state(
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("current PR state must be an object"))?;
     object.insert("reviewControl".into(), control);
-    state::check(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
+    state::check_pr_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
     Ok(state)
 }
 
