@@ -16,6 +16,7 @@ PLUGIN = ROOT / "plugins/codexy"
 TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 MAX_BYTES = 1024 * 1024
 FIELDS = {"event", "concern", "elapsed", "decision"}
+COMSPEC = os.environ.get("COMSPEC", "cmd.exe")
 CASES = (
     (
         "codexy-thread-delivery",
@@ -177,13 +178,11 @@ class CoreHookTimingTests(unittest.TestCase):
             self.assertEqual(target.stat().st_size, MAX_BYTES)
 
     def _make_junction(self, link: Path, target: Path) -> None:
-        command = [
-            os.environ.get("COMSPEC", "cmd.exe"),
-            "/d",
-            "/c",
-            f'mklink /J "{link}" "{target}"',
-        ]
-        subprocess.run(command, check=True, capture_output=True)
+        subprocess.run(
+            [COMSPEC, "/d", "/c", "call", "mklink", "/J", str(link), str(target)],
+            check=True,
+            capture_output=True,
+        )
 
     def _run_writers(self, timing, target: Path) -> None:
         barrier = threading.Barrier(2)
