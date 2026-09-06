@@ -79,7 +79,8 @@ def _append(path: Path, line: bytes) -> None:
         if lock is False:
             return
         details = os.fstat(descriptor)
-        if not _private_writable_file(details, windows, descriptor) or (
+        acl_descriptor = descriptor if before is not None else None
+        if not _private_writable_file(details, windows, acl_descriptor) or (
             before is not None
             and (before.st_dev, before.st_ino) != (details.st_dev, details.st_ino)
         ):
