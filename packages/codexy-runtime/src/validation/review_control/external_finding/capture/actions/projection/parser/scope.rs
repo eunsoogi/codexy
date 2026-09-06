@@ -70,7 +70,7 @@ fn timestamp(value: &str) -> Result<Timestamp, String> {
     let value = value
         .strip_suffix('Z')
         .ok_or("Actions step timestamps must be UTC ISO-8601 values")?;
-    let (second, fraction) = value.split_once('.').map_or((value, ""), |parts| parts);
+    let (second, fraction) = value.split_once('.').unwrap_or((value, ""));
     let bytes = second.as_bytes();
     if second.len() != 19
         || bytes.get(4) != Some(&b'-')

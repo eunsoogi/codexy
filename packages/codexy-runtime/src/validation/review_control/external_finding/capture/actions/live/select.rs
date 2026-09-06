@@ -36,7 +36,7 @@ pub(super) fn select_job(
     }
     let (step_index, step_value) = matching_steps[0];
     let step = object(Some(step_value), "Actions failed step")?;
-    let ambiguous_step_boundary = adjacent_step_boundary_is_ambiguous(&steps, step_index, step)?;
+    let ambiguous_step_boundary = adjacent_step_boundary_is_ambiguous(steps, step_index, step)?;
     if text(job, "name", "Actions job")? != locator.job_name
         || text(job, "head_sha", "Actions job")? != observed
         || number(job, "run_attempt", "Actions job")? != locator.run_attempt
