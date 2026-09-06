@@ -4,9 +4,11 @@ use anyhow::{Result, bail};
 use serde_json::Value;
 
 mod classification;
+mod external_finding;
 mod history;
 mod migration;
 mod policy;
+mod pre_pr;
 mod snapshot;
 mod state;
 mod transition;
@@ -39,7 +41,15 @@ pub(super) fn check_economics(
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
-    state::check(plugin_root, state, true)
+    if let Some(control) = state.get("reviewControl") {
+        if external_finding::requires_source(control) {
+            let mut control = control.clone();
+            if let Err(error) = external_finding::refresh_live(&mut control) {
+                return vec![error];
+            }
+        }
+    }
+    state::check_pr_state(plugin_root, state, true)
         .err()
         .into_iter()
         .collect()
@@ -57,13 +67,18 @@ pub(super) fn build_pr_state(
     previous_text: &str,
 ) -> Result<Value> {
     let current: Value = serde_json::from_str(current_text)?;
-    let control: Value = serde_json::from_str(control_text)?;
+    let mut control: Value = serde_json::from_str(control_text)?;
     if !control.is_object() {
         bail!("review control state must be an object");
     }
+    if external_finding::requires_source(&control) {
+        external_finding::refresh_live(&mut control).map_err(anyhow::Error::msg)?;
+    }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
-    let control = if control.get("profile").and_then(Value::as_str) != Some("light") {
+    let control = if control.get("profile").and_then(Value::as_str) != Some("light")
+        || predecessor_has_pre_pr_history(Some(&previous))
+    {
         transition::check_with_repository(
             plugin_root,
             repository_root,
@@ -80,8 +95,20 @@ pub(super) fn build_pr_state(
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("current PR state must be an object"))?;
     object.insert("reviewControl".into(), control);
-    state::check(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
+    state::check_pr_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
     Ok(state)
+}
+
+pub(super) fn import_pre_pr_history(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current_text: &str,
+    envelope_text: &str,
+) -> Result<Value> {
+    let current: Value = serde_json::from_str(current_text)?;
+    let envelope: Value = serde_json::from_str(envelope_text)
+        .map_err(|error| anyhow::anyhow!("pre-PR history input is invalid: {error}"))?;
+    pre_pr::import(plugin_root, repository_root, &current, &envelope).map_err(anyhow::Error::msg)
 }
 
 pub(super) fn produce(
@@ -91,7 +118,7 @@ pub(super) fn produce(
 ) -> Result<Value> {
     let request: Value = serde_json::from_str(request_text)
         .map_err(|error| anyhow::anyhow!("review control input is invalid: {error}"))?;
-    let control = request
+    let mut control = request
         .get("control_state")
         .or_else(|| request.get("reviewControl"))
         .cloned()
@@ -104,10 +131,30 @@ pub(super) fn produce(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
         );
     }
+    if request.get("authenticated_external_finding").is_some()
+        || request
+            .get("authenticated_external_finding_capture")
+            .is_some()
+    {
+        bail!(
+            "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"
+        );
+    }
+    if let Some(locator) = request.get("authenticated_external_finding_locator") {
+        let expected_commit = qualifying_change_from_head(&control).map(ToOwned::to_owned);
+        let source = external_finding::read_live(locator, expected_commit.as_deref())
+            .map_err(anyhow::Error::msg)?;
+        external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
+    } else if external_finding::requires_source(&control) {
+        bail!(
+            "review control producer requires authenticated_external_finding_locator for external repair"
+        );
+    }
     let control = if control
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
+        || predecessor_has_pre_pr_history(request.get("previous_pr_state"))
     {
         let raw_error = state::check_control(plugin_root, &control).err();
         let current = request
@@ -134,4 +181,23 @@ pub(super) fn produce(
     };
     state::check_control(plugin_root, &control).map_err(anyhow::Error::msg)?;
     Ok(serde_json::json!({"control_state": control}))
+}
+
+fn predecessor_has_pre_pr_history(state: Option<&Value>) -> bool {
+    state
+        .and_then(Value::as_object)
+        .and_then(|state| state.get("reviewControl"))
+        .and_then(Value::as_object)
+        .is_some_and(|control| control.contains_key("pre_pr_import"))
+}
+
+fn qualifying_change_from_head(control: &Value) -> Option<&str> {
+    control
+        .get("post_cap_re_review")
+        .and_then(Value::as_object)
+        .and_then(|post_cap| post_cap.get("qualifying_change"))
+        .and_then(Value::as_object)
+        .and_then(|change| change.get("from_head"))
+        .and_then(Value::as_str)
+        .filter(|head| !head.is_empty())
 }

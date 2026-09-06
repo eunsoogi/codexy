@@ -70,8 +70,11 @@ diagnostic for known ownership and setup state.
    the path internally, MUST invoke the supported worktree tool after this
    project preflight; local checks MUST NOT be described as host-level atomicity
    proof.
-3. MUST keep at most five active Codex app child threads and exactly one active
-   owner for each issue-sized lane. If setup returns a `clientThreadId` or
+3. MUST keep exactly one active owner for each issue-sized lane. The parent MAY
+   start all dependency-ready, disjoint child lanes it can supervise with
+   available resources. Actual resource exhaustion, unresolved ownership,
+   dirty/locked worktree collisions, or unallocated shared writes MAY defer a
+   lane; child count alone MUST NOT. If setup returns a `clientThreadId` or
    `pendingWorktreeId`, MUST retain it as a pending setup identity, not as a
    `threadId`. MUST wait for an authoritative ready or failed setup result; an
    observation timeout or an omitted list result is not by itself failure. While
@@ -92,16 +95,18 @@ diagnostic for known ownership and setup state.
   or resuming a child Codex thread. The preflight evidence MUST include the
   current active child Codex thread count and whether an existing thread owns
   the same issue or PR.
-- MUST keep at most five active Codex app child threads at a time. MUST NOT call
-  `create_thread`, `fork_thread`, or a child-thread resume/continue operation
-  that would make six active Codex app child threads.
+- The parent MUST NOT defer dependency-ready, disjoint child work solely because
+  other child threads are active. It MAY defer work for actual resource
+  exhaustion or unresolved ownership, dirty/locked collision, or shared-file
+  allocation conflicts.
 - If an existing usable thread already owns the same issue or PR, MUST reuse
   that owner thread or MUST continue that owner thread instead of creating a
   replacement. Replacement child threads MUST require inspected existing-owner
   evidence plus proof that the old owner is stopped, unusable, or explicitly
   superseded.
-- Packaged specialist subagents are helper or reviewer roles and MUST NOT count
-  toward the five active Codex app child-thread limit.
+- Packaged specialist subagents are helper or reviewer roles and MUST NOT be
+  treated as issue-sized implementation owners; their use does not change the
+  exactly-one-owner rule for each issue-sized lane.
 - MUST preflight branch names with local Git:
 
 ```sh
@@ -155,8 +160,9 @@ git rev-parse --verify origin/<branch>
 - One branch per pull request.
 - One independent requested outcome per child lane unless a maintainer
   explicitly scoped multiple outcomes as one atomic lane before implementation.
-- Orchestrators MUST keep at most five Codex app child threads active
-  concurrently for orchestrator-created or orchestrator-resumed child lanes.
+- Orchestrators MUST preserve one owner per issue-sized lane; dependency-ready,
+  disjoint lanes MAY run concurrently when resources and ownership/file
+  allocation permit.
 - Existing issue or PR owner threads MUST be reused when present and usable;
   replacement owner threads MUST require old-owner stop, unusable, or
   supersession evidence.

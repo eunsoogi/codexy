@@ -6,6 +6,8 @@ mod codegraph_errors;
 mod codegraph_root;
 #[path = "codegraph_regressions.rs"]
 mod codegraph_regressions;
+#[path = "go_module_regression.rs"]
+mod go_module_regression;
 
 #[test]
 fn codegraph_stdio_preserves_protocol_and_search_boundaries()

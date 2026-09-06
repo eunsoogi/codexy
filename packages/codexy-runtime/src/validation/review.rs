@@ -57,6 +57,20 @@ pub fn build_review_pr_state(
     review_control::build_pr_state(plugin_root, repository_root, base, control, previous)
 }
 
+/// Imports complete, pre-PR reviewer history into one authenticated current PR snapshot.
+///
+/// # Errors
+///
+/// Returns an error for incomplete source evidence, invalid identities, or missing Git ancestry.
+pub fn import_pre_pr_review_history(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current: &str,
+    envelope: &str,
+) -> Result<serde_json::Value> {
+    review_control::import_pre_pr_history(plugin_root, repository_root, current, envelope)
+}
+
 /// Returns direct review state from the compatibility producer entry point.
 ///
 /// # Errors

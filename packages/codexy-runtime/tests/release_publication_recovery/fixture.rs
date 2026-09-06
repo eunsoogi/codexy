@@ -1,15 +1,18 @@
 use std::path::Path;
 
-pub(crate) fn make_executable(path: &Path) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-
-        let mut permissions = std::fs::metadata(path)?.permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(path, permissions)?;
-    }
-    Ok(())
+pub(crate) fn publish_executable(
+    path: &Path,
+    source: impl AsRef<[u8]>,
+) -> std::io::Result<()> {
+    crate::support::write_executable_fixture(path, source).map_err(|error| {
+        std::io::Error::new(
+            error.kind(),
+            format!(
+                "release recovery fixture executable publication {}: {error}",
+                path.display()
+            ),
+        )
+    })
 }
 
 pub(crate) fn git_fixture() -> &'static str { r#"#!/bin/sh
@@ -91,7 +94,12 @@ sys.exit(1)
 mod tests {
     use std::fs;
 
+    #[cfg(target_os = "linux")]
+    use std::process::{Command, Stdio};
+
     use super::super::{Fixture, ASSETS};
+    #[cfg(target_os = "linux")]
+    use super::publish_executable;
 
     #[test]
     fn finalizer_reports_a_bounded_422_for_a_complete_public_update()
@@ -116,6 +124,29 @@ mod tests {
         assert!(stderr.len() <= 1_024, "diagnostic was not bounded: {}", stderr.len());
         assert!(!fixture.root.join("final-release-state.json").exists());
         assert!(!log.contains("publish\n"), "{log}");
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn atomic_publication_replaces_an_open_executable_without_etxtbsy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let executable = temp.path().join("cat");
+        let source = fs::read("/bin/cat")?;
+        publish_executable(&executable, &source)?;
+
+        let writer = fs::OpenOptions::new().write(true).open(&executable)?;
+        publish_executable(&executable, &source)?;
+
+        let mut child = Command::new(&executable)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .spawn()?;
+        let status = child.wait()?;
+        assert!(status.success(), "published executable was not runnable: {status:?}");
+        drop(writer);
+        assert_eq!(fs::read(&executable)?, source);
         Ok(())
     }
 }

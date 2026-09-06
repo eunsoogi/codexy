@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value, json};
 
-use super::{history, migration, policy};
+use super::{history, migration, policy, pre_pr, snapshot};
 
 #[path = "state/lifecycle.rs"]
 mod lifecycle;
@@ -23,15 +23,20 @@ pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), S
         .filter(|head| !head.is_empty())
         .or_else(|| light.then_some("light-review"))
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    let mut state = json!({"headRefOid": head, "reviewControl": control});
+    let state = json!({"headRefOid": head, "reviewControl": control});
     if !light {
-        let issue_number = control
+        control
             .get("issue_number")
             .and_then(Value::as_u64)
             .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
-        state["number"] = json!(issue_number);
     }
-    check(plugin_root, &state, false)
+    check_with_mode(
+        plugin_root,
+        &state,
+        false,
+        ReviewerMode::Current,
+        StateSource::ControlOnly,
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -40,12 +45,34 @@ enum ReviewerMode {
     Legacy,
 }
 
-pub(super) fn check(plugin_root: &Path, state: &Value, require_pass: bool) -> Result<(), String> {
-    check_with_mode(plugin_root, state, require_pass, ReviewerMode::Current)
+#[derive(Clone, Copy)]
+enum StateSource {
+    ControlOnly,
+    PrSnapshot,
 }
 
-pub(super) fn check_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
-    check_with_mode(plugin_root, state, false, ReviewerMode::Legacy)
+pub(super) fn check_pr_state(
+    plugin_root: &Path,
+    state: &Value,
+    require_pass: bool,
+) -> Result<(), String> {
+    check_with_mode(
+        plugin_root,
+        state,
+        require_pass,
+        ReviewerMode::Current,
+        StateSource::PrSnapshot,
+    )
+}
+
+pub(super) fn check_pr_state_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
+    check_with_mode(
+        plugin_root,
+        state,
+        false,
+        ReviewerMode::Legacy,
+        StateSource::PrSnapshot,
+    )
 }
 
 fn check_with_mode(
@@ -53,6 +80,7 @@ fn check_with_mode(
     state: &Value,
     require_pass: bool,
     reviewer_mode: ReviewerMode,
+    source: StateSource,
 ) -> Result<(), String> {
     let head = state
         .get("headRefOid")
@@ -86,6 +114,10 @@ fn check_with_mode(
         .get(selected)
         .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
 
+    if matches!(source, StateSource::PrSnapshot) {
+        snapshot::check(state, "current")?;
+    }
+
     if profile.reviewer.is_none() {
         if matches!(reviewer_mode, ReviewerMode::Legacy) {
             return Err("light review selection cannot have a legacy reviewer".into());
@@ -108,6 +140,7 @@ fn check_with_mode(
             "terminal_review_history",
             "post_cap_re_review",
             "reviewer_migration",
+            "pre_pr_import",
         ]
         .iter()
         .any(|field| control.contains_key(*field))
@@ -116,16 +149,15 @@ fn check_with_mode(
         }
         return Ok(());
     }
-
     let issue_number = count(control, "issue_number")?;
-    if let Some(bound_issue) = state.get("number").and_then(Value::as_u64) {
-        if bound_issue != issue_number {
-            return Err("review control state issue_number disagrees with the PR".into());
-        }
-    }
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
     };
+    if matches!(source, StateSource::PrSnapshot)
+        && snapshot::owning_issue_number(state, "current")? != issue_number
+    {
+        return Err("review control state issue_number disagrees with the owning issue".into());
+    }
     let current_reviewer = serde_json::to_value(reviewer)
         .map_err(|_| "selected reviewer is not serializable".to_owned())?;
     let history_len = control
@@ -160,9 +192,6 @@ fn check_with_mode(
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty())
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    if reviewed_head != head {
-        return Err("review control state reviewed_head is stale".into());
-    }
     let terminal = control
         .get("terminal_result")
         .and_then(Value::as_str)
@@ -203,6 +232,13 @@ fn check_with_mode(
     if require_pass && !findings.is_empty() {
         return Err("review control state has unresolved actionable findings".into());
     }
+    pre_pr::check_state(
+        matches!(source, StateSource::PrSnapshot),
+        require_pass,
+        head,
+        reviewed_head,
+        control,
+    )?;
     Ok(())
 }
 
