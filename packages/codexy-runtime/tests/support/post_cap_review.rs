@@ -154,7 +154,7 @@ fn invoke_build(
     {
         let bin = output.parent().ok_or("build output parent")?.join("bin");
         fs::create_dir(&bin)?;
-        let response = external_finding_fixture::pr938_response(
+        let response = external_finding_fixture::pr938_response_with_unrelated_reply(
             review_control["post_cap_re_review"]["qualifying_change"]["from_head"]
                 .as_str()
                 .ok_or("external finding prior head")?,

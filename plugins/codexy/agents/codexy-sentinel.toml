@@ -84,7 +84,7 @@ carry the base and head OIDs. Mandatory base integration MUST change
 `baseRefOid` and prove base ancestry; an in-scope contract/root repair MUST
 retain the base, follow a prior `BLOCK` delta with findings, bind `finding_ids`
 exactly to those findings, and show the evidence diff changes each finding's
-An authenticated external finding repair MUST retain the base,
+recorded path. An authenticated external finding repair MUST retain the base,
 follow a clean `PASS` delta with no unresolved findings, and be produced from
 the locator-only `authenticated_external_finding_locator` through a fixed,
 host-authorized GitHub GraphQL read. The producer MUST reject caller-supplied

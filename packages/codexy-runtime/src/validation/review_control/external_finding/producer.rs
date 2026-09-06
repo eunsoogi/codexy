@@ -31,8 +31,10 @@ pub(crate) fn refresh_live(control: &mut Value) -> Result<(), String> {
     };
     super::check(&source)?;
     let live = capture::read_live_from_source(&source, Some(&from_head))?;
-    if live != source {
-        return Err("persisted external finding does not match live GitHub source".into());
-    }
+    super::check(&live)?;
+    capture::compare_projection(
+        object(Some(&source), "authenticated external finding")?,
+        object(Some(&live), "live authenticated external finding")?,
+    )?;
     super::normalize_producer(control, &live)
 }

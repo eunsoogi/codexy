@@ -1,6 +1,6 @@
 ---
 name: engineering
-description: MUST use for diagnosis, specification, domain modeling, test-driven development, refactoring, or quality assurance in one atomic engineering workflow.
+description: MUST use for diagnosis, specification, domain modeling, test-driven development, refactoring, performance review, or quality assurance in one atomic engineering workflow.
 ---
 
 # Engineering
@@ -16,6 +16,8 @@ applicable methods only. Proof-driven completion owns final audit.
 - [Test-driven development](references/test-driven-development.md) only for an
   executable boundary classified `engineering_tdd_required`.
 - [Refactoring](references/refactoring.md) for behavior-preserving structure.
+- MUST select [Performance review](references/performance-review.md) only for
+  explicit cost or test-efficiency review requests.
 - [Quality assurance](references/quality-assurance.md) for real-surface proof.
 
 ## Shared workflow contract
