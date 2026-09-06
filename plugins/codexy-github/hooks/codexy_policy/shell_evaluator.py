@@ -15,8 +15,14 @@ from .execution_context import (
 from .invocation import Invocation, resolve
 from .shell_context import changed_directory
 from .shell_groups import GroupSyntaxError, parse
-from .shell_opaque import dynamic_control_executable, resolved_segments, separate_lines
-from .shell_segments import UNSAFE_REDIRECTION, opaque_syntax, segments, tokenize
+from .shell_opaque import DYNAMIC_NAME
+from .shell_segments import (
+    UNSAFE_REDIRECTION,
+    command_tokens,
+    opaque_syntax,
+    segments,
+    tokenize,
+)
 from .shell_sequence import evaluate as evaluate_sequence
 
 
@@ -47,9 +53,14 @@ def evaluate(
         sequence = parse(tokens)
     except GroupSyntaxError:
         if syntax.control:
-            return dynamic_control_executable(command) or _control_segments(
-                command, context, depth, policy
-            )
+            parsed = segments(command)
+            if parsed is None:
+                return True
+            return any(
+                command_tokens(segment)
+                and DYNAMIC_NAME.fullmatch(command_tokens(segment)[0])
+                for segment in parsed
+            ) or _control_segments(parsed, context, depth, policy)
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
     return evaluate_sequence(
         sequence,
@@ -64,6 +75,7 @@ def evaluate(
 class _CredentialPolicy:
     """Detect a credential operation through the ordinary stateful effect walk."""
 
+    detect_leading_credentials = True
     redirection_executables = frozenset()
 
     @staticmethod
@@ -93,14 +105,6 @@ class _CredentialPolicy:
 def credential_exposure(
     command: str, context: ExecutionContext, depth: int = 0
 ) -> bool:
-    walked = resolved_segments(command, context)
-    if walked is not None and any(
-        _credential_assignment(
-            segment.tokens[: len(segment.tokens) - len(segment.command)]
-        )
-        for segment in walked
-    ):
-        return True
     return evaluate(command, context, depth, _CredentialPolicy())
 
 
@@ -158,6 +162,10 @@ def _segment(
     depth: int,
     policy: Policy,
 ) -> tuple[bool, CommandEffect]:
+    if getattr(policy, "detect_leading_credentials", False):
+        command_start = command_tokens(tuple(tokens))
+        if _credential_assignment(tokens[: len(tokens) - len(command_start)]):
+            return True, CommandEffect(None)
     invocation = resolve(
         [token for token in tokens if token != UNSAFE_REDIRECTION], context, depth
     )
@@ -214,12 +222,12 @@ def _segment(
 
 
 def _control_segments(
-    command: str, context: ExecutionContext, depth: int, policy: Policy
+    parsed: tuple[tuple[str, ...], ...],
+    context: ExecutionContext,
+    depth: int,
+    policy: Policy,
 ) -> bool:
     """Walk parsed control bodies through the same typed invocation classifier."""
-    parsed = segments(command)
-    if parsed is None:
-        return False
     current = context
     for tokens in parsed:
         denied, effect = _segment(list(tokens), current, depth + 1, policy)
