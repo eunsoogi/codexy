@@ -11,15 +11,15 @@ The caller MUST use the supported Codex host read_thread surface to capture the
 complete owner and reviewer page chains. Each raw page MUST retain its thread
 identity, page metadata, turns, item IDs, and original UTF-8 text. Continuation
 pages are valid only when every intermediate page declares a continuation and
-the supplied next page completes the chain. A terminal page MUST declare that
-no continuation remains. The normalizer MUST reject truncated, contradictory,
+the supplied next page completes the chain. A terminal page MUST declare that no
+continuation remains. The normalizer MUST reject truncated, contradictory,
 duplicate, or reordered source records.
 
 The owner chain MUST contain exactly one completed collabAgentToolCall
 spawnAgent item whose sole receiver is the reviewer thread. Its sender,
-receiver, prompt, model, and reasoning effort are source facts. Unrelated
-spawn items MUST remain in the receipt as raw excluded helpers. A helper MUST
-NOT substitute for the reviewer invocation.
+receiver, prompt, model, and reasoning effort are source facts. Unrelated spawn
+items MUST remain in the receipt as raw excluded helpers. A helper MUST NOT
+substitute for the reviewer invocation.
 
 The reviewer chain MUST identify completed turns with one final
 agentMessage/AgentMessage item and explicit full, delta, or
@@ -41,10 +41,10 @@ Unclassified pathless observations remain unresolved for downstream admission
 even if a caller-supplied disposition says otherwise. When every event has a
 timestamp, the projection orders events by completion time and rejects ties.
 
-An event-level reviewer model or effort overrides the owner spawn facts only
-for that event. If no event-level override is present, the receipt records
-that the values came from owner_spawn. The projection preserves full, delta,
-and current-head events without assuming a universal event count.
+An event-level reviewer model or effort overrides the owner spawn facts only for
+that event. If no event-level override is present, the receipt records that the
+values came from owner_spawn. The projection preserves full, delta, and
+current-head events without assuming a universal event count.
 
 ## Current binding and admission
 
