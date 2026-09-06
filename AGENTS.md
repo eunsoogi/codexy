@@ -80,9 +80,9 @@ codexy/
   `@codex review` after the owning child satisfies the packaged multi-agent
   review policy on the frozen head, following the canonical procedure in
   `plugins/codexy-github/skills/git-workflow/references/codex-connector-review.md`.
-  Light-profile work remains subject to the existing manual connector-review
-  requirement, and any already-requested review's actionable findings remain
-  applicable.
+  Light-profile work MUST remain subject to the existing manual connector-review
+  requirement, and any already-requested review's actionable findings MUST
+  remain applicable.
 
 ## Release/version-only orchestration
 
