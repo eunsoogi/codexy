@@ -70,10 +70,19 @@ codexy/
 - MUST put executable Git, issue, PR, review, connector, and merge procedures in
   `plugins/codexy-github/skills/git-workflow/SKILL.md`, not in this file.
 - Manual Codex connector review is enabled for this repository; automatic
-  connector review MUST remain disabled. Before merge, the parent/orchestrator
-  MUST request exactly one explicit `@codex review` after the owning child
-  satisfies the packaged multi-agent review policy on the frozen head, following
-  the packaged connector procedure.
+  connector review MUST remain disabled. Standard-profile PRs do not require a
+  manual connector review by default; the selected `codexy-inspector` review and
+  its existing quota/history still apply. The recorded workflow profile controls
+  this exception; standard classification MUST NOT be used to relabel strict
+  work or evade the strict review. For strict-profile work, or when a manual
+  review is explicitly requested by the user or required by a stronger governing
+  requirement, the parent/orchestrator MUST request exactly one explicit
+  `@codex review` after the owning child satisfies the packaged multi-agent
+  review policy on the frozen head, following the canonical procedure in
+  `plugins/codexy-github/skills/git-workflow/references/codex-connector-review.md`.
+  Light-profile work remains subject to the existing manual connector-review
+  requirement, and any already-requested review's actionable findings remain
+  applicable.
 
 ## Release/version-only orchestration
 
