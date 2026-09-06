@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -75,8 +76,8 @@ def evaluate(
 class _CredentialPolicy:
     """Detect a credential operation through the ordinary stateful effect walk."""
 
-    detect_leading_credentials = True
-    redirection_executables = frozenset()
+    detect_leading_credentials: bool = True
+    redirection_executables: frozenset[str] = frozenset()
 
     @staticmethod
     def owns_opaque(command: str, context: ExecutionContext) -> bool:
@@ -108,7 +109,7 @@ def credential_exposure(
     return evaluate(command, context, depth, _CredentialPolicy())
 
 
-def _credential_assignment(tokens: tuple[str, ...]) -> bool:
+def _credential_assignment(tokens: Sequence[str]) -> bool:
     return any(
         assignment(token)
         and token.split("=", 1)[0]

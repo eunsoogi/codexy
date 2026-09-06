@@ -104,9 +104,9 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "gh pr view 17 --repo eunsoogi/codexy --json state,isDraft,mergeStateStatus,statusCheckRollup > new-output.json",
         "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT",
-        "gh api graphql -f query='query { repository { id } }' > new-query.json",
+        "gh api --method POST repos/eunsoogi/codexy/issues",
         "cat <(gh issue create --repo eunsoogi/codexy --title invalid)",
-        "cat >(git push --force origin main)",
+        "cat >(git push --force origin main; git rev-parse @{u})",
     ];
     let cases = eligible.iter()
         .map(|command| ((*command).to_owned(), false))
