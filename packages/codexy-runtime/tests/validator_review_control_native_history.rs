@@ -3,6 +3,8 @@ use serde_json::{Value, json};
 #[path = "validator_review_control_native_history/pure.rs"]
 mod native_history;
 
+#[path = "validator_review_control_native_history/cases.rs"]
+mod cases;
 #[path = "validator_review_control_native_history/fixtures.rs"]
 mod fixtures;
 #[path = "validator_review_control_native_history/live.rs"]
@@ -126,20 +128,6 @@ fn pre_creation_completion_is_rejected() -> TestResult {
 }
 
 #[test]
-fn duplicate_and_ambiguous_events_are_rejected() -> TestResult {
-    let mut duplicate = fixtures::request();
-    duplicate["reviewer"]["pages"][1]["turns"][0]["items"][0]["id"] = json!("message-delta");
-    let error = rejected(native_history::normalize_native_history(&duplicate));
-    assert!(error.contains("duplicate event identity"));
-
-    let mut tied = fixtures::request();
-    tied["reviewer"]["pages"][1]["turns"][0]["completedAt"] = json!(200);
-    let error = rejected(native_history::normalize_native_history(&tied));
-    assert!(error.contains("ambiguous completion order"));
-    Ok(())
-}
-
-#[test]
 fn pathless_semantics_and_authentication_claims_fail_closed() -> TestResult {
     let mut pathless = fixtures::request();
     let finding = pathless["reviewer"]["pages"][0]["turns"][0]["items"][0]["review"]["findings"][1]
@@ -203,6 +191,32 @@ fn request_and_markdown_sources_preserve_derived_spans() -> TestResult {
     let crlf = native_history::normalize_native_history(&markdown::request(true))?;
     let crlf_span = &crlf["events"][0]["findings"][0]["source_span"]["raw"];
     assert!(crlf_span["end"].as_u64() > crlf_span["start"].as_u64());
+    Ok(())
+}
+
+#[test]
+fn actual_host_markdown_without_structured_metadata_is_lossless() -> TestResult {
+    let receipt = native_history::normalize_native_history(&markdown::actual_request())?;
+    assert_eq!(receipt["events"].as_array().map(Vec::len), Some(2));
+    assert_eq!(receipt["events"][0]["message_id"], "actual-message-full");
+    assert_eq!(receipt["events"][0]["kind"], "full");
+    assert_eq!(receipt["events"][0]["terminal_result"], "BLOCK");
+    assert_eq!(receipt["events"][0]["reviewed_head"], fixtures::FULL_HEAD);
+    assert_eq!(receipt["events"][1]["message_id"], "actual-message-delta");
+    assert_eq!(receipt["events"][1]["kind"], "delta");
+    assert_eq!(receipt["events"][1]["reviewed_head"], fixtures::DELTA_HEAD);
+    for event in receipt["events"].as_array().ok_or("events")? {
+        let text = event["raw_text"].as_str().ok_or("raw text")?;
+        for finding in event["findings"].as_array().ok_or("findings")? {
+            let span = &finding["source_span"]["raw"];
+            let start = span["start"].as_u64().ok_or("start")? as usize;
+            let end = span["end"].as_u64().ok_or("end")? as usize;
+            assert_eq!(
+                &text[start..end],
+                finding["text"].as_str().ok_or("finding text")?
+            );
+        }
+    }
     Ok(())
 }
 

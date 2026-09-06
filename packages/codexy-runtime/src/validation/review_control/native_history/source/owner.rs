@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::{Invocation, PageSet, fields};
 
@@ -11,6 +11,7 @@ struct Spawn {
     prompt: Option<String>,
     model: Option<String>,
     effort: Option<String>,
+    receiver_agents: Vec<ReceiverAgent>,
     page: usize,
     turn: usize,
     item: usize,
@@ -41,14 +42,29 @@ pub(super) fn select(
     if selected.status.as_deref() != Some("completed") {
         return Err("matching reviewer spawnAgent must be completed".into());
     }
+    let receiver_agent = selected
+        .receiver_agents
+        .iter()
+        .filter(|agent| agent.thread == reviewer_thread)
+        .collect::<Vec<_>>();
+    if receiver_agent.len() != 1 {
+        return Err("reviewer invocation must preserve exactly one receiver agent".into());
+    }
+    let receiver_agent = receiver_agent[0];
+    let role = fields::required(receiver_agent.role.clone(), "reviewer receiver agent role")?;
+    if role != "codexy-sentinel" {
+        return Err("reviewer receiver agent role is not codexy-sentinel".into());
+    }
+    let prompt = fields::required(selected.prompt.clone(), "spawnAgent prompt")?;
     let invocation = Invocation {
         raw: selected.raw.clone(),
         id: fields::required(selected.id.clone(), "spawnAgent id")?,
         sender: fields::required(selected.sender.clone(), "spawnAgent sender")?,
         receiver: reviewer_thread.to_owned(),
-        prompt: fields::required(selected.prompt.clone(), "spawnAgent prompt")?,
+        prompt,
         model: fields::required(selected.model.clone(), "spawnAgent model")?,
         reasoning_effort: fields::required(selected.effort.clone(), "spawnAgent reasoningEffort")?,
+        receiver_role: role,
         source: serde_json::json!({
             "page_index": selected.page,
             "turn_index": selected.turn,
@@ -102,6 +118,7 @@ fn collect_spawns(pages: &PageSet) -> Result<Vec<Spawn>, String> {
                     &["reasoningEffort", "reasoning_effort", "thinking"],
                     "spawn effort",
                 )?,
+                receiver_agents: receiver_agents(map)?,
                 page: turn.page,
                 turn: turn.index,
                 item: item_index,
@@ -128,4 +145,40 @@ fn receivers(map: &serde_json::Map<String, Value>) -> Result<Vec<String>, String
     Ok(array
         .or_else(|| direct.map(|receiver| vec![receiver]))
         .unwrap_or_default())
+}
+
+#[derive(Clone)]
+struct ReceiverAgent {
+    thread: String,
+    role: Option<String>,
+}
+
+fn receiver_agents(map: &Map<String, Value>) -> Result<Vec<ReceiverAgent>, String> {
+    let Some(value) = map.get("receiver_agents") else {
+        return Ok(Vec::new());
+    };
+    let agents = value
+        .as_array()
+        .ok_or("spawn receiver_agents must be an array")?;
+    agents
+        .iter()
+        .map(|value| {
+            let agent = fields::object(value, "receiver agent")?;
+            Ok(ReceiverAgent {
+                thread: fields::required(
+                    fields::text(
+                        agent,
+                        &["thread_id", "threadId", "receiverThreadId"],
+                        "receiver agent thread",
+                    )?,
+                    "receiver agent thread",
+                )?,
+                role: fields::text(
+                    agent,
+                    &["agent_role", "agentRole", "role"],
+                    "receiver agent role",
+                )?,
+            })
+        })
+        .collect()
 }

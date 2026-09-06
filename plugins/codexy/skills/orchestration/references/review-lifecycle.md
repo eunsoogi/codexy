@@ -48,12 +48,12 @@ snapshot; the CLI binds the supplied snapshot and records the result as
 `proved_post_pr`, `not_attested`, and `not_admitted`. Recovery MUST accept only
 one full event followed by an optional delta, MUST reject an existing history,
 and MUST retain the immutable top-level `nativeHistoryRecovery` receipt. The
-recovered control MUST remain non-admissible while its
-`native_history_recovery` blocker is present. Only a subsequent ordinary
-current-head transition may append its real verdict and remove that blocker;
-the `native_history_provenance` marker and full receipt MUST be carried forward
-and revalidated against the preserved source. A recovery receipt alone MUST NOT
-authorize readiness, completion, merge, or another review.
+recovered control MUST remain non-admissible while its `native_history_recovery`
+blocker is present. Only a subsequent ordinary current-head transition may
+append its real verdict and remove that blocker; the `native_history_provenance`
+marker and full receipt MUST be carried forward and revalidated against the
+preserved source. A recovery receipt alone MUST NOT authorize readiness,
+completion, merge, or another review.
 
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for

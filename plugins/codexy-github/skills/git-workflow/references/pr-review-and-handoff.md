@@ -27,21 +27,22 @@ synthetic historical PR snapshot is not a substitute.
 
 If selected review events completed after PR creation, the owning child MUST
 capture the supported native host records before recovery: the complete owner
-page chain containing the single reviewer `spawnAgent`, the matching reviewer
-page chain, continuation cursors, completed final messages, source-local order,
-actual model/effort, reviewed heads, terminal results, findings, timestamps, and
-unchanged raw UTF-8 text. The child MUST run the existing
-`codexy-review-control --recover-native-review-history` mode with the fresh
-authenticated current PR snapshot and keep the input capture outside tracked
-files. The mode produces a non-admitted top-level `nativeHistoryRecovery`
-receipt; it does not authenticate caller fields, invent a historical snapshot,
-or establish current-head readiness. The next build MUST carry that receipt
-forward and consume the recovered predecessor through the ordinary transition
-validator. It MAY remove `native_history_recovery` only while appending a real
-current-head verdict; it MUST retain and revalidate `native_history_provenance`,
-the full/delta event prefix, actual source reviewer facts, findings, and event
-counts. Direct recovery output MUST NOT be described as PR-ready, complete,
-merge-authorized, or evidence that another review is needed.
+page chain containing the single reviewer `spawnAgent` or `spawn_agent`, the
+matching reviewer page chain, continuation cursors, completed final messages,
+source-local order, actual model/effort, reviewed heads, terminal results,
+findings, timestamps, and unchanged raw UTF-8 text. The child MUST run the
+existing `codexy-review-control --recover-native-review-history` mode with the
+fresh authenticated current PR snapshot and keep the input capture outside
+tracked files. The mode produces a non-admitted top-level
+`nativeHistoryRecovery` receipt; it does not authenticate caller fields, invent
+a historical snapshot, or establish current-head readiness. The next build MUST
+carry that receipt forward and consume the recovered predecessor through the
+ordinary transition validator. It MAY remove `native_history_recovery` only
+while appending a real current-head verdict; it MUST retain and revalidate
+`native_history_provenance`, the full/delta event prefix, actual source reviewer
+facts, findings, and event counts. Direct recovery output MUST NOT be described
+as PR-ready, complete, merge-authorized, or evidence that another review is
+needed.
 
 Immediately read back the remote PR number, URL, title, body, state, draft
 state, base, head branch, exact head SHA, labels, and linked issue. Repository

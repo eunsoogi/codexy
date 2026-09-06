@@ -31,6 +31,7 @@ pub(crate) struct Invocation {
     pub(crate) prompt: String,
     pub(crate) model: String,
     pub(crate) reasoning_effort: String,
+    pub(crate) receiver_role: String,
     pub(crate) source: Value,
 }
 

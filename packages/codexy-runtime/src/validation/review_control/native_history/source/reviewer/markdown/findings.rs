@@ -2,6 +2,8 @@ use serde_json::{Value, json};
 
 #[path = "followups.rs"]
 mod followups;
+#[path = "paths.rs"]
+mod paths;
 
 pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
     let lines = line_ranges(raw);
@@ -22,7 +24,7 @@ pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
         let block = raw[start..end].trim_end();
         let (severity, disposition) =
             finding_header(line).ok_or("markdown finding header changed")?;
-        let paths = explicit_paths(block);
+        let paths = paths::explicit_paths(block);
         let mut value = json!({
             "text": block,
             "severity": severity.to_ascii_lowercase(),
@@ -90,21 +92,24 @@ fn operative_headers(lines: &[(usize, usize, &str)]) -> Vec<usize> {
 
 fn finding_header(line: &str) -> Option<(String, String)> {
     let line = line.trim_start();
-    let dot = line.find('.')?;
-    if dot == 0 || !line[..dot].bytes().all(|byte| byte.is_ascii_digit()) {
-        return None;
-    }
-    let rest = line[dot + 1..].trim_start();
-    let body = rest.strip_prefix("**")?;
+    let line = strip_number(line);
+    let body = line.strip_prefix("**")?;
     let close = body.find("**")?;
     let mut heading = body[..close].trim();
     let tail = body[close + 2..].trim_start();
     let disposition = if let Some(disposition) = leading_parenthetical(tail) {
         disposition
-    } else {
-        let (open, disposition) = trailing_parenthetical(heading)?;
-        heading = heading[..open].trim_end();
+    } else if let Some(disposition) = leading_em_dash_label(tail) {
         disposition
+    } else {
+        if let Some((open, disposition)) = trailing_parenthetical(heading) {
+            heading = heading[..open].trim_end();
+            disposition
+        } else {
+            let (open, disposition) = trailing_em_dash_label(heading)?;
+            heading = heading[..open].trim_end();
+            disposition
+        }
     };
     let severity = heading
         .split_once('—')
@@ -115,10 +120,31 @@ fn finding_header(line: &str) -> Option<(String, String)> {
         .then(|| (severity.to_owned(), disposition.to_owned()))
 }
 
+fn strip_number(line: &str) -> &str {
+    let Some(dot) = line.find('.') else {
+        return line;
+    };
+    if dot == 0 || !line[..dot].bytes().all(|byte| byte.is_ascii_digit()) {
+        return line;
+    }
+    line[dot + 1..].trim_start()
+}
+
 fn leading_parenthetical(value: &str) -> Option<&str> {
     let value = value.strip_prefix('(')?;
     let close = value.find(')')?;
     let disposition = value[..close].trim().trim_matches(char::from(96)).trim();
+    (!disposition.is_empty()).then_some(disposition)
+}
+
+fn leading_em_dash_label(value: &str) -> Option<&str> {
+    let value = value.strip_prefix('—')?.trim_start();
+    let value = value.strip_prefix('`')?;
+    let close = value.find('`')?;
+    if !value[close + 1..].trim().is_empty() {
+        return None;
+    }
+    let disposition = value[..close].trim();
     (!disposition.is_empty()).then_some(disposition)
 }
 
@@ -138,6 +164,22 @@ fn trailing_parenthetical(value: &str) -> Option<(usize, &str)> {
     (!disposition.is_empty()).then_some((open, disposition))
 }
 
+fn trailing_em_dash_label(value: &str) -> Option<(usize, &str)> {
+    let open = value.rfind(" — ")?;
+    let disposition = value[open + " — ".len()..]
+        .trim()
+        .trim_matches(char::from(96))
+        .trim();
+    if disposition.is_empty()
+        || !disposition
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
+    {
+        return None;
+    }
+    Some((open, disposition))
+}
+
 fn followup_header(line: &str) -> Option<String> {
     let line = line.trim_start().strip_prefix("- ")?;
     line.split(char::from(96))
@@ -155,73 +197,9 @@ fn followup_values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Valu
     followups::values(raw, lines)
 }
 
-pub(super) fn explicit_paths(block: &str) -> Vec<String> {
-    let mut result = Vec::new();
-    for line in operative_text_lines(block) {
-        let mut cursor = 0;
-        while let Some(open_offset) = line[cursor..].find('[') {
-            let open = cursor + open_offset;
-            let Some(close_offset) = line[open + 1..].find(']') else {
-                break;
-            };
-            let close = open + 1 + close_offset;
-            let Some(url_start) = line[close + 1..].strip_prefix('(') else {
-                cursor = close + 1;
-                continue;
-            };
-            let Some(url_end) = url_start.find(')') else {
-                break;
-            };
-            if let Some(path) = clean_path(&line[open + 1..close]) {
-                if !result.contains(&path) {
-                    result.push(path);
-                }
-            }
-            cursor = close + 2 + url_end;
-        }
-    }
-    result
-}
-
-fn operative_text_lines(raw: &str) -> Vec<&str> {
-    let mut in_fence = false;
-    let mut result = Vec::new();
-    for part in raw.split_inclusive('\n') {
-        let without_newline = part.strip_suffix('\n').unwrap_or(part);
-        let line = without_newline
-            .strip_suffix('\r')
-            .unwrap_or(without_newline);
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") {
-            in_fence = !in_fence;
-        } else if !in_fence && !trimmed.starts_with('>') {
-            result.push(line);
-        }
-    }
-    result
-}
-
-pub(super) fn clean_path(value: &str) -> Option<String> {
-    let value = value.trim().trim_matches('`');
-    let value = value
-        .rsplit_once(':')
-        .filter(|(_, suffix)| suffix.bytes().all(|byte| byte.is_ascii_digit()))
-        .map_or(value, |(path, _)| path);
-    let path = value.trim();
-    let extension = path.rsplit_once('.').map(|(_, extension)| extension);
-    if path.is_empty()
-        || path.contains(char::is_whitespace)
-        || (!path.contains('/')
-            && !matches!(extension, Some("rs" | "py" | "cmd" | "sh" | "toml" | "md")))
-    {
-        return None;
-    }
-    Some(path.to_owned())
-}
-
 fn explicit_label(block: &str, labels: &[&str]) -> Result<Option<String>, String> {
     let mut result = None;
-    for line in operative_text_lines(block) {
+    for line in paths::operative_text_lines(block) {
         let Some((label, value)) = line.split_once(':') else {
             continue;
         };

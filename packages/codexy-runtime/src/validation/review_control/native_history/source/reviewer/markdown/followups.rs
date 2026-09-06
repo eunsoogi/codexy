@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 
-use super::{clean_path, explicit_paths, followup_header};
+use super::{followup_header, paths};
+use paths::{clean_path, explicit_paths};
 
 pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Value>, String> {
     let mut in_fence = false;

@@ -8,6 +8,7 @@ pub(super) fn invocation_value(invocation: &Invocation) -> Value {
         "sender": invocation.sender,
         "receiver": invocation.receiver,
         "prompt": invocation.prompt,
+        "receiver_role": invocation.receiver_role,
         "model": invocation.model,
         "reasoning_effort": invocation.reasoning_effort,
         "raw": invocation.raw,

@@ -2,6 +2,47 @@ use serde_json::{Value, json};
 
 use super::fixtures::{DELTA_HEAD, FULL_HEAD};
 
+pub(crate) fn actual_request() -> Value {
+    let mut request = super::fixtures::request();
+    request["reviewer"]["pages"][0]["turns"][0]["items"] = json!([
+        {
+            "type": "userMessage",
+            "id": "actual-request-delta",
+            "content": [{
+                "type": "text",
+                "text": format!(
+                    "Strict-profile SAME-REVIEWER DELTA only.\nReview current exact PR octo/example head {DELTA_HEAD}."
+                )
+            }]
+        },
+        {
+            "type": "agentMessage",
+            "id": "actual-message-delta",
+            "phase": "final_answer",
+            "text": actual_markdown(DELTA_HEAD, "src/delta.rs", "delta")
+        }
+    ]);
+    request["reviewer"]["pages"][1]["turns"][0]["items"] = json!([
+        {
+            "type": "userMessage",
+            "id": "actual-request-full",
+            "content": [{
+                "type": "text",
+                "text": format!(
+                    "Strict-profile full review.\nReview current exact PR octo/example head {FULL_HEAD}."
+                )
+            }]
+        },
+        {
+            "type": "agentMessage",
+            "id": "actual-message-full",
+            "phase": "final_answer",
+            "text": actual_markdown(FULL_HEAD, "src/full.rs", "full")
+        }
+    ]);
+    request
+}
+
 pub(crate) fn request(crlf: bool) -> Value {
     let mut request = super::fixtures::request();
     let delta_prompt = json!({
@@ -59,6 +100,12 @@ pub(crate) fn conflicting_finding_labels_request() -> Value {
     );
     request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"] = json!(text);
     request
+}
+
+fn actual_markdown(head: &str, path: &str, label: &str) -> String {
+    format!(
+        "## Blocking findings\n\n1. **P1 — {label} source issue** — `in_scope_blocker`\n\n[{path}](https://example.test/{path})\n\n## Terminal result\n\n`BLOCK`\n\n- Exact head: `{head}`\n"
+    )
 }
 
 fn markdown_text(head: &str, path: &str, model: &str, crlf: bool) -> String {

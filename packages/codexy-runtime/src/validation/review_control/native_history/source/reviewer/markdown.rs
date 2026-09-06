@@ -4,6 +4,8 @@ use super::super::fields;
 
 #[path = "markdown/findings.rs"]
 mod findings;
+#[path = "markdown/settings.rs"]
+mod settings;
 
 pub(super) fn candidate(raw: &str) -> Result<Option<Map<String, Value>>, String> {
     let mut result = Map::new();
@@ -18,7 +20,7 @@ pub(super) fn candidate(raw: &str) -> Result<Option<Map<String, Value>>, String>
         result.insert("terminal_result".into(), Value::String(terminal.value));
         spans.insert("terminal_result".into(), span);
     }
-    if let Some(setting) = reviewer_setting(raw)? {
+    if let Some(setting) = settings::reviewer_setting(raw)? {
         let span = setting.span();
         result.insert("model".into(), Value::String(setting.model));
         result.insert("reasoningEffort".into(), Value::String(setting.effort));
@@ -91,20 +93,39 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
                 });
             }
         }
+        if let Some((head, offset)) = labelled_sha(line) {
+            let start = start + offset;
+            matches.push(Located {
+                value: head,
+                start,
+                end: start + 40,
+            });
+        }
     }
     unique(matches, "markdown reviewed head")
 }
 
 fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
-    for (start, _, line) in operative_lines(raw) {
+    let lines = operative_lines(raw);
+    for (index, (start, _, line)) in lines.iter().enumerate() {
         let lower = line.trim().to_ascii_lowercase();
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
-            find_result(line)
+            find_result(line).map(|(result, offset)| (result, *start + offset))
         } else if lower.contains("terminal result") {
-            line.split_once(':').and_then(|(prefix, value)| {
-                find_result(value).map(|(result, offset)| (result, prefix.len() + 1 + offset))
-            })
+            line.split_once(':')
+                .and_then(|(prefix, value)| {
+                    find_result(value)
+                        .map(|(result, offset)| (result, *start + prefix.len() + 1 + offset))
+                })
+                .or_else(|| {
+                    lines[index + 1..]
+                        .iter()
+                        .find(|(_, _, next)| !next.trim().is_empty())
+                        .and_then(|(next_start, _, next)| {
+                            find_result(next).map(|(result, offset)| (result, *next_start + offset))
+                        })
+                })
         } else {
             None
         };
@@ -115,44 +136,27 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
             let length = value.len();
             matches.push(Located {
                 value,
-                start: start + offset,
-                end: start + offset + length,
+                start: offset,
+                end: offset + length,
             });
         }
     }
     unique(matches, "markdown terminal result")
 }
 
-fn reviewer_setting(raw: &str) -> Result<Option<Setting>, String> {
-    let mut matches = Vec::new();
-    for (start, end, line) in operative_lines(raw) {
-        let lower = line.to_ascii_lowercase();
-        let Some(index) = lower.find("reviewer setting:") else {
-            continue;
-        };
-        let value = line[index + "reviewer setting:".len()..].trim();
-        let Some((model, effort)) = value.split_once('/') else {
-            return Err("markdown reviewer setting label is invalid".into());
-        };
-        let model = clean(model);
-        let effort = clean(effort);
-        if model.is_empty() || effort.is_empty() {
-            return Err("markdown reviewer setting label is invalid".into());
-        }
-        matches.push(Setting {
-            model,
-            effort,
-            start,
-            end,
-        });
+fn labelled_sha(line: &str) -> Option<(String, usize)> {
+    let trimmed = line.trim().trim_start_matches("- ").trim();
+    let (label, value) = trimmed.split_once(':')?;
+    let label = label.to_ascii_lowercase().replace(['-', '_'], " ");
+    if !matches!(
+        label.trim(),
+        "exact head" | "exact reviewed pr head" | "reviewed head"
+    ) {
+        return None;
     }
-    if matches
-        .windows(2)
-        .any(|pair| pair[0].model != pair[1].model || pair[0].effort != pair[1].effort)
-    {
-        return Err("markdown reviewer setting is contradictory".into());
-    }
-    Ok(matches.into_iter().next())
+    let (head, offset) = find_sha(value)?;
+    let line_offset = line.find(value)?;
+    Some((head, line_offset + offset))
 }
 
 fn unique(matches: Vec<Located>, label: &str) -> Result<Option<Located>, String> {

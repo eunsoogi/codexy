@@ -78,10 +78,16 @@ pub(super) fn candidate(
 
 fn explicit_kind(first: &str) -> Option<String> {
     let normalized = first.to_ascii_lowercase();
-    if normalized.contains("same-reviewer delta only") {
+    if normalized.contains("same-reviewer")
+        && normalized.contains("delta")
+        && !negated(&normalized, "delta")
+    {
         return Some("delta".into());
     }
-    if normalized.starts_with("strict profile, read-only review.") {
+    if (normalized.contains("strict-profile") || normalized.contains("strict profile"))
+        && normalized.contains("review")
+        && !normalized.contains("delta")
+    {
         return Some("full".into());
     }
     let (label, value) = normalized.split_once(':')?;
@@ -91,6 +97,17 @@ fn explicit_kind(first: &str) -> Option<String> {
         return Some(value.trim().into());
     }
     None
+}
+
+fn negated(text: &str, subject: &str) -> bool {
+    [
+        format!("do not {subject}"),
+        format!("don't {subject}"),
+        format!("not a {subject}"),
+        format!("without {subject}"),
+    ]
+    .iter()
+    .any(|phrase| text.contains(phrase))
 }
 
 fn message_text(map: &Map<String, Value>) -> Option<String> {

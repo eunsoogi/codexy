@@ -21,6 +21,10 @@ fn native_spawn_agent_shape_preserves_source_facts() -> Result<(), String> {
     );
     assert_eq!(receipt["owner"]["invocation"]["model"], "gpt-5.6-sol");
     assert_eq!(receipt["owner"]["invocation"]["reasoning_effort"], "xhigh");
+    assert_eq!(
+        receipt["owner"]["invocation"]["receiver_role"],
+        "codexy-sentinel"
+    );
     assert_eq!(receipt["events"][0]["message_id"], "message-full");
     assert_eq!(receipt["events"][1]["message_id"], "message-delta");
     for event in receipt["events"].as_array().ok_or("events")? {

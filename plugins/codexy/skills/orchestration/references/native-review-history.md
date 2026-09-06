@@ -16,10 +16,10 @@ continuation remains. The normalizer MUST reject truncated, contradictory,
 duplicate, or reordered source records.
 
 The owner chain MUST contain exactly one completed collabAgentToolCall
-spawnAgent item whose sole receiver is the reviewer thread. Its sender,
-receiver, prompt, model, and reasoning effort are source facts. Unrelated spawn
-items MUST remain in the receipt as raw excluded helpers. A helper MUST NOT
-substitute for the reviewer invocation.
+`spawnAgent` or `spawn_agent` item whose sole receiver is the reviewer thread.
+Its sender, receiver, prompt, model, and reasoning effort are source facts.
+Unrelated spawn items MUST remain in the receipt as raw excluded helpers. A
+helper MUST NOT substitute for the reviewer invocation.
 
 The reviewer chain MUST identify completed turns with one final
 agentMessage/AgentMessage item and explicit full, delta, or

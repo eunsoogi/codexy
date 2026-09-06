@@ -108,7 +108,11 @@ fn owner_pages() -> Vec<Value> {
         "receiverThreadIds": ["reviewer-thread"],
         "prompt": "Review the current change using the selected profile.",
         "model": "model.initial",
-        "reasoningEffort": "low"
+        "reasoningEffort": "low",
+        "receiver_agents": [{
+            "thread_id": "reviewer-thread",
+            "agent_role": "codexy-sentinel"
+        }]
     });
     let helper = json!({
         "type": "collabAgentToolCall",
@@ -119,7 +123,11 @@ fn owner_pages() -> Vec<Value> {
         "receiverThreadIds": ["helper-thread"],
         "prompt": "Inspect one unrelated detail.",
         "model": "model.helper",
-        "reasoningEffort": "minimal"
+        "reasoningEffort": "minimal",
+        "receiver_agents": [{
+            "thread_id": "helper-thread",
+            "agent_role": "codexy-cartographer"
+        }]
     });
     vec![
         page(
@@ -130,7 +138,7 @@ fn owner_pages() -> Vec<Value> {
         ),
         page(
             "owner-thread",
-            "",
+            "owner-cursor",
             false,
             vec![turn("owner-turn-old", vec![selected])],
         ),
@@ -195,7 +203,7 @@ fn reviewer_pages() -> Vec<Value> {
         ),
         page(
             "reviewer-thread",
-            "",
+            "reviewer-cursor",
             false,
             vec![turn_at("reviewer-turn-old", 100, vec![full])],
         ),
@@ -208,7 +216,7 @@ fn page(thread: &str, cursor: &str, has_more: bool, turns: Vec<Value>) -> Value 
         "page": {
             "order": "newest_first",
             "limit": 10,
-            "cursor": if cursor.is_empty() { Value::Null } else { Value::String(cursor.into()) },
+            "cursor": if has_more { Value::Null } else if cursor.is_empty() { Value::Null } else { Value::String(cursor.into()) },
             "nextCursor": if has_more { Value::String(cursor.into()) } else { Value::Null },
             "hasMore": has_more
         },

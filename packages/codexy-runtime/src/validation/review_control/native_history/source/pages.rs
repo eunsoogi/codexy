@@ -58,9 +58,13 @@ pub(super) fn read(value: &Value, label: &str) -> Result<PageSet, String> {
                 .and_then(|map| map.get("page"))
                 .and_then(Value::as_object)
                 .and_then(|map| map.get("nextCursor"))
-                .and_then(Value::as_str);
-            let current = page.get("cursor").and_then(Value::as_str);
-            if current.is_some() && current != prior {
+                .and_then(Value::as_str)
+                .filter(|cursor| !cursor.is_empty());
+            let current = page_meta
+                .get("cursor")
+                .and_then(Value::as_str)
+                .filter(|cursor| !cursor.is_empty());
+            if current != prior {
                 return Err(format!(
                     "{label} page cursor does not continue the prior page"
                 ));
