@@ -21,6 +21,9 @@ const NON_WAIVER: &str = "This disposition accepts only that model-policy differ
 const PREAMBLE_TITLE: &str = "## Maintainer disposition recorded by the release orchestrator";
 const PREAMBLE_START: &str =
     "This records the maintainer's existing instruction in the release conversation: ";
+const PREAMBLE_SUBJECT_PREFIX: &str =
+    "differences between the actually used specialist models and the planned ";
+const PREAMBLE_SUBJECT_SUFFIX: &str = " routing";
 const PREAMBLE_END: &str = " are accepted for this milestone.";
 const PREAMBLE_ATTRIBUTION: &str =
     " The orchestrator is recording that instruction, not obtaining or inventing a new approval.";
@@ -175,29 +178,20 @@ fn check_preamble(lines: &[&str]) -> Result<(), String> {
         .and_then(|line| line.strip_suffix(PREAMBLE_END))
         .filter(|line| !line.is_empty() && line.len() <= 512)
         .ok_or("maintainer decision body contains an unsupported or contradictory preamble")?;
-    if statement
-        .chars()
-        .any(|character| matches!(character, '\n' | '\r' | '`' | '!' | '?' | '>' | '#'))
-        || statement.lines().any(|line| line.starts_with("- "))
-    {
-        return Err(
-            "maintainer decision body contains an unsupported or contradictory preamble".into(),
-        );
-    }
-    if statement
-        .char_indices()
-        .any(|(index, character)| character == '.' && !is_decimal_point(statement, index))
-    {
-        return Err(
-            "maintainer decision body contains an unsupported or contradictory preamble".into(),
-        );
-    }
+    statement
+        .strip_prefix(PREAMBLE_SUBJECT_PREFIX)
+        .and_then(|value| value.strip_suffix(PREAMBLE_SUBJECT_SUFFIX))
+        .filter(|value| is_route_descriptor(value))
+        .ok_or("maintainer decision body contains an unsupported or contradictory preamble")?;
     Ok(())
 }
 
-fn is_decimal_point(value: &str, index: usize) -> bool {
-    let previous = value[..index].chars().next_back();
-    let next = value[index + 1..].chars().next();
-    previous.is_some_and(|character| character.is_ascii_digit())
-        && next.is_some_and(|character| character.is_ascii_digit())
+fn is_route_descriptor(value: &str) -> bool {
+    !value.is_empty()
+        && value.split(' ').all(|token| {
+            !token.is_empty()
+                && token
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
+        })
 }

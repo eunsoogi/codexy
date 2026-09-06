@@ -15,6 +15,10 @@ model tuple. The rollup and registered inventories MUST be non-empty and
 terminal-success, and configured required contexts and app IDs MUST match the
 observed runs.
 
+The transcription preamble MUST use the fixed title, attribution, and a
+model-routing subject with a bounded lexical descriptor; free-form or operative
+pre-heading text is not authoritative and MUST be rejected.
+
 An authenticated `known_empty` required-check configuration is distinct from an
 unavailable or incomplete source. It MUST NOT be treated as an inventory of
 future jobs. The source may claim only `registered_check_runs` and registered
